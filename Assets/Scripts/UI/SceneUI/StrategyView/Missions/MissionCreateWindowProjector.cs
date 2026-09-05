@@ -16,15 +16,25 @@ internal sealed class MissionCreateWindowProjector
     private static readonly Color32 _gray = Color.gray;
     private static readonly Color32 _white = Color.white;
 
+    private readonly Func<string, Planet> getObservedPlanet;
     private readonly Func<UIContext> getUIContext;
+    private readonly Func<MissionStartRequest, MissionOdds> getMissionOdds;
 
     /// <summary>
     /// Creates a Mission Create projector with access to the current presentation context.
     /// </summary>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
-    public MissionCreateWindowProjector(Func<UIContext> getUIContext)
+    /// <param name="getMissionOdds">Calculates complete odds for a mission configuration.</param>
+    /// <param name="getObservedPlanet">Returns the latest player-visible planet snapshot by ID.</param>
+    public MissionCreateWindowProjector(
+        Func<UIContext> getUIContext,
+        Func<MissionStartRequest, MissionOdds> getMissionOdds = null,
+        Func<string, Planet> getObservedPlanet = null
+    )
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
+        this.getMissionOdds = getMissionOdds ?? (_ => null);
+        this.getObservedPlanet = getObservedPlanet ?? (_ => null);
     }
 
     /// <summary>
@@ -41,13 +51,14 @@ internal sealed class MissionCreateWindowProjector
             throw new ArgumentNullException(nameof(window));
 
         UIContext uiContext = GetRequiredUIContext();
-        MissionCreateWindowTheme theme = uiContext
-            .GetPlayerFactionTheme()
-            ?.StrategyWindows?.MissionCreate;
+        FactionTheme playerTheme = uiContext.GetPlayerFactionTheme();
+        MissionCreateWindowTheme theme = playerTheme?.StrategyWindows?.MissionCreate;
+        StrategyCheckboxTheme checkboxTheme = playerTheme?.StrategyCheckboxTheme;
         StrategyMissionChoice selectedChoice = session.SelectedChoice;
         ISceneNode target = session.Target.GetMissionTarget(
             selectedChoice?.TargetKind ?? MissionTargetKind.Planet
         );
+        MissionOddsRenderData selectedMissionOdds = BuildMissionOdds(session, selectedChoice);
         return new MissionCreateWindowRenderData(
             window.X,
             window.Y,
@@ -64,14 +75,18 @@ internal sealed class MissionCreateWindowProjector
             uiContext.GetTexture(theme?.DecoysHeaderImagePath),
             BuildTabs(uiContext, theme, session.ActiveTab),
             session.DropdownOpen
-                ? BuildDropdownItems(uiContext, session)
+                ? BuildDropdownItems(uiContext, session, selectedMissionOdds)
                 : Array.Empty<StrategyDropdownItemRenderData>(),
             session.ActiveTab == MissionCreateWindowTab.Personnel
                 ? BuildParticipantRows(uiContext, session.Agents, session.SelectedAgents)
                 : Array.Empty<MissionParticipantRowRenderData>(),
             session.ActiveTab == MissionCreateWindowTab.Personnel
                 ? BuildParticipantRows(uiContext, session.Decoys, session.SelectedDecoys)
-                : Array.Empty<MissionParticipantRowRenderData>()
+                : Array.Empty<MissionParticipantRowRenderData>(),
+            selectedMissionOdds,
+            session.ShowMissionOdds,
+            uiContext.GetTexture(checkboxTheme?.FrameImagePath),
+            uiContext.GetTexture(checkboxTheme?.CheckMarkImagePath)
         );
     }
 
@@ -129,10 +144,12 @@ internal sealed class MissionCreateWindowProjector
     /// </summary>
     /// <param name="uiContext">The current strategy presentation context.</param>
     /// <param name="session">The source Mission Create session.</param>
+    /// <param name="selectedMissionOdds">The already calculated selected-choice estimate.</param>
     /// <returns>The ordered immutable dropdown snapshots.</returns>
-    private static IReadOnlyList<StrategyDropdownItemRenderData> BuildDropdownItems(
+    private IReadOnlyList<StrategyDropdownItemRenderData> BuildDropdownItems(
         UIContext uiContext,
-        MissionCreateWindowSession session
+        MissionCreateWindowSession session,
+        MissionOddsRenderData selectedMissionOdds
     )
     {
         List<StrategyDropdownItemRenderData> rows = new List<StrategyDropdownItemRenderData>();
@@ -143,12 +160,85 @@ internal sealed class MissionCreateWindowProjector
                 new StrategyDropdownItemRenderData(
                     GetMissionChoiceTexture(uiContext, choice),
                     choice.Name,
-                    index == session.SelectedMissionIndex ? _white : _gray
+                    index == session.SelectedMissionIndex ? _white : _gray,
+                    index == session.SelectedMissionIndex
+                        ? selectedMissionOdds
+                        : BuildMissionOdds(session, choice)
                 )
             );
         }
 
         return rows;
+    }
+
+    /// <summary>
+    /// Builds the current participant split's estimate for one mission choice.
+    /// </summary>
+    /// <param name="session">The source Mission Create session.</param>
+    /// <param name="choice">The mission choice to evaluate.</param>
+    /// <returns>The rounded presentation estimate, or null when the choice is invalid.</returns>
+    private MissionOddsRenderData BuildMissionOdds(
+        MissionCreateWindowSession session,
+        StrategyMissionChoice choice
+    )
+    {
+        Planet sessionPlanet = session?.Target?.Planet?.Planet;
+        Planet planet = GetLatestObservedPlanet(sessionPlanet);
+        ISceneNode target = GetLatestObservedTarget(session?.Target?.Item, sessionPlanet, planet);
+        if (
+            choice == null
+            || planet == null
+            || session.Agents.Count == 0
+            || !session.ShowMissionOdds
+            || choice.TargetKind != MissionTargetKind.Planet && target == null
+        )
+            return null;
+
+        MissionOdds odds = getMissionOdds(session.CreateMissionRequest(choice, planet, target));
+        return odds == null
+            ? null
+            : new MissionOddsRenderData(odds.OverallSuccessProbability, odds.FoilProbability);
+    }
+
+    /// <summary>
+    /// Resolves the current player-visible planet so an open mission window reflects fleet changes.
+    /// </summary>
+    /// <param name="sessionPlanet">The snapshot captured when targeting began.</param>
+    /// <returns>The latest visible snapshot, falling back to the session snapshot.</returns>
+    private Planet GetLatestObservedPlanet(Planet sessionPlanet)
+    {
+        if (sessionPlanet == null)
+            return null;
+
+        return getObservedPlanet(sessionPlanet.InstanceID) ?? sessionPlanet;
+    }
+
+    /// <summary>
+    /// Rebinds the selected target into the latest visible planet hierarchy.
+    /// </summary>
+    /// <param name="sessionTarget">The target captured when targeting began.</param>
+    /// <param name="sessionPlanet">The planet captured when targeting began.</param>
+    /// <param name="observedPlanet">The latest player-visible planet snapshot.</param>
+    /// <returns>The corresponding current target, or the original target when it is unavailable.</returns>
+    private static ISceneNode GetLatestObservedTarget(
+        ISceneNode sessionTarget,
+        Planet sessionPlanet,
+        Planet observedPlanet
+    )
+    {
+        if (sessionTarget == null || observedPlanet == null)
+            return sessionTarget;
+        if (
+            ReferenceEquals(sessionTarget, sessionPlanet)
+            || sessionTarget.InstanceID == sessionPlanet?.InstanceID
+        )
+            return observedPlanet;
+        if (ReferenceEquals(observedPlanet, sessionPlanet))
+            return sessionTarget;
+
+        return observedPlanet
+            .GetChildren<ISceneNode>(recursive: true)
+            .FirstOrDefault(node => node.InstanceID == sessionTarget.InstanceID);
     }
 
     /// <summary>

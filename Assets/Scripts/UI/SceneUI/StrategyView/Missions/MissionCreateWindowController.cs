@@ -37,9 +37,11 @@ public sealed class MissionCreateWindowController
     private readonly Func<GameRoot> getGame;
     private readonly Func<MissionSystem> getMissionSystem;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
+    private readonly Func<bool> getShowMissionOdds;
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Action markDirty;
     private readonly Action<string> playSfx;
+    private readonly Action<bool> setShowMissionOdds;
     private readonly MissionCreateWindowProjector projector;
     private readonly Dictionary<MissionCreateWindowView, MissionCreateWindowSession> sessions =
         new Dictionary<MissionCreateWindowView, MissionCreateWindowSession>();
@@ -60,6 +62,9 @@ public sealed class MissionCreateWindowController
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
+    /// <param name="getObservedPlanet">Returns the latest player-visible planet snapshot by ID.</param>
+    /// <param name="getShowMissionOdds">Returns the persisted mission-odds visibility.</param>
+    /// <param name="setShowMissionOdds">Persists mission-odds visibility.</param>
     public MissionCreateWindowController(
         Func<GameRoot> getGame,
         Func<MissionSystem> getMissionSystem,
@@ -70,7 +75,10 @@ public sealed class MissionCreateWindowController
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
         Action markDirty,
-        Func<SelectionModifierState> getSelectionModifiers = null
+        Func<SelectionModifierState> getSelectionModifiers = null,
+        Func<string, Planet> getObservedPlanet = null,
+        Func<bool> getShowMissionOdds = null,
+        Action<bool> setShowMissionOdds = null
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
@@ -85,7 +93,13 @@ public sealed class MissionCreateWindowController
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
-        projector = new MissionCreateWindowProjector(getUIContext);
+        this.getShowMissionOdds = getShowMissionOdds ?? (() => true);
+        this.setShowMissionOdds = setShowMissionOdds ?? (_ => { });
+        projector = new MissionCreateWindowProjector(
+            getUIContext,
+            request => this.getMissionSystem().GetMissionOdds(request),
+            getObservedPlanet
+        );
     }
 
     /// <summary>
@@ -133,7 +147,8 @@ public sealed class MissionCreateWindowController
             target,
             choices,
             participants,
-            getSelectionModifiers
+            getSelectionModifiers,
+            getShowMissionOdds()
         );
         return true;
     }
@@ -262,6 +277,7 @@ public sealed class MissionCreateWindowController
         view.DropdownItemRequested += HandleDropdownItemRequested;
         view.DropdownToggleRequested += HandleDropdownToggleRequested;
         view.InfoRequested += HandleInfoRequested;
+        view.MissionOddsVisibilityChanged += HandleMissionOddsVisibilityChanged;
         view.MoveParticipantsRequested += HandleMoveParticipantsRequested;
         view.ParticipantClicked += HandleParticipantClicked;
         view.ParticipantPressed += HandleParticipantPressed;
@@ -380,6 +396,24 @@ public sealed class MissionCreateWindowController
     }
 
     /// <summary>
+    /// Changes whether planning estimates are shown in one Mission Create window.
+    /// </summary>
+    /// <param name="view">The requesting Mission Create view.</param>
+    /// <param name="visible">Whether mission odds should be visible.</param>
+    private void HandleMissionOddsVisibilityChanged(MissionCreateWindowView view, bool visible)
+    {
+        if (!sessions.TryGetValue(view, out MissionCreateWindowSession session))
+            return;
+
+        session.Window.RequestFocus();
+        if (!session.SetShowMissionOdds(visible))
+            return;
+
+        setShowMissionOdds(visible);
+        markDirty();
+    }
+
+    /// <summary>
     /// Moves the selected participants out of one requested source role.
     /// </summary>
     /// <param name="view">The requesting Mission Create view.</param>
@@ -484,6 +518,7 @@ public sealed class MissionCreateWindowController
         view.DropdownItemRequested -= HandleDropdownItemRequested;
         view.DropdownToggleRequested -= HandleDropdownToggleRequested;
         view.InfoRequested -= HandleInfoRequested;
+        view.MissionOddsVisibilityChanged -= HandleMissionOddsVisibilityChanged;
         view.MoveParticipantsRequested -= HandleMoveParticipantsRequested;
         view.ParticipantClicked -= HandleParticipantClicked;
         view.ParticipantPressed -= HandleParticipantPressed;
@@ -550,15 +585,11 @@ public sealed class MissionCreateWindowController
         if (choice == null || session.Agents.Count == 0 || missionPlanet == null)
             return false;
 
-        MissionStartRequest request = new MissionStartRequest
-        {
-            MissionTypeID = choice.MissionTypeID,
-            Location = missionPlanet,
-            SelectedTarget = session.Target.Item,
-            Discipline = choice.Discipline,
-            MainParticipants = session.Agents.ToList(),
-            DecoyParticipants = session.Decoys.ToList(),
-        };
+        MissionStartRequest request = session.CreateMissionRequest(
+            choice,
+            missionPlanet,
+            session.Target.Item
+        );
         MissionSystem missionSystem = getMissionSystem();
         if (!missionSystem.CanCreateMission(request) || !missionSystem.InitiateMission(request))
             return false;
@@ -661,6 +692,8 @@ internal sealed class MissionCreateWindowSession
 
     public bool DropdownOpen { get; private set; }
 
+    public bool ShowMissionOdds { get; private set; }
+
     public StrategyMissionChoice SelectedChoice =>
         SelectedMissionIndex >= 0 && SelectedMissionIndex < Choices.Count
             ? Choices[SelectedMissionIndex]
@@ -674,12 +707,14 @@ internal sealed class MissionCreateWindowSession
     /// <param name="choices">The available mission choices.</param>
     /// <param name="participants">The initial primary participants.</param>
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
+    /// <param name="showMissionOdds">Whether mission-planning estimates should be displayed.</param>
     public MissionCreateWindowSession(
         UIWindow window,
         StrategyMissionTarget target,
         IEnumerable<StrategyMissionChoice> choices,
         IEnumerable<IMissionParticipant> participants,
-        Func<SelectionModifierState> getSelectionModifiers = null
+        Func<SelectionModifierState> getSelectionModifiers = null,
+        bool showMissionOdds = true
     )
     {
         Window = window ?? throw new ArgumentNullException(nameof(window));
@@ -688,6 +723,7 @@ internal sealed class MissionCreateWindowSession
         readOnlyChoices = this.choices.AsReadOnly();
         readOnlyDecoys = decoys.AsReadOnly();
         this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
+        ShowMissionOdds = showMissionOdds;
         this.choices.AddRange(choices ?? throw new ArgumentNullException(nameof(choices)));
         agents.AddRange(participants ?? throw new ArgumentNullException(nameof(participants)));
         SelectedMissionIndex = this.choices.Count > 0 ? 0 : -1;
@@ -737,6 +773,47 @@ internal sealed class MissionCreateWindowSession
     public void ToggleDropdown()
     {
         DropdownOpen = !DropdownOpen;
+    }
+
+    /// <summary>
+    /// Changes whether mission-planning estimates are displayed.
+    /// </summary>
+    /// <param name="visible">Whether mission odds should be visible.</param>
+    /// <returns>True when the state changed.</returns>
+    public bool SetShowMissionOdds(bool visible)
+    {
+        if (ShowMissionOdds == visible)
+            return false;
+
+        ShowMissionOdds = visible;
+        return true;
+    }
+
+    /// <summary>
+    /// Builds the mission request shared by planning estimates and final submission.
+    /// </summary>
+    /// <param name="choice">The mission option to request.</param>
+    /// <param name="planet">The authoritative or observed mission planet.</param>
+    /// <param name="target">The authoritative or observed mission target.</param>
+    /// <returns>A request containing the session's current participant roles.</returns>
+    public MissionStartRequest CreateMissionRequest(
+        StrategyMissionChoice choice,
+        Planet planet,
+        ISceneNode target
+    )
+    {
+        if (choice == null)
+            throw new ArgumentNullException(nameof(choice));
+
+        return new MissionStartRequest
+        {
+            MissionTypeID = choice.MissionTypeID,
+            Location = planet,
+            SelectedTarget = target,
+            Discipline = choice.Discipline,
+            MainParticipants = agents.ToList(),
+            DecoyParticipants = decoys.ToList(),
+        };
     }
 
     /// <summary>

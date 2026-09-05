@@ -12,6 +12,37 @@ public enum MissionCreateWindowTab
 }
 
 /// <summary>
+/// Contains the rounded mission-planning percentages displayed over a mission icon.
+/// </summary>
+public sealed class MissionOddsRenderData
+{
+    public int OverallSuccessPercent { get; }
+
+    public int FoilPercent { get; }
+
+    public string OverallSuccessLabel => $"SUCCESS\n~{OverallSuccessPercent}%";
+
+    public string FoilLabel => $"FOILED\n~{FoilPercent}%";
+
+    /// <summary>
+    /// Creates one icon-overlay snapshot from calculated mission probabilities.
+    /// </summary>
+    /// <param name="overallSuccessProbability">Estimated visible operational success chance.</param>
+    /// <param name="foilProbability">Estimated chance of being foiled before the objective.</param>
+    public MissionOddsRenderData(double overallSuccessProbability, double foilProbability)
+    {
+        OverallSuccessPercent = RoundProbability(overallSuccessProbability);
+        FoilPercent = RoundProbability(foilProbability);
+    }
+
+    /// <summary>
+    /// Rounds and bounds one percentage for compact mission-icon presentation.
+    /// </summary>
+    private static int RoundProbability(double probability) =>
+        (int)Math.Round(Math.Clamp(probability, 0, 100), MidpointRounding.AwayFromZero);
+}
+
+/// <summary>
 /// Contains immutable presentation data for one mission-creation tab.
 /// </summary>
 public sealed class MissionCreateTabRenderData
@@ -73,6 +104,14 @@ public sealed class MissionCreateWindowRenderData
 
     public Texture SelectedMissionTexture { get; }
 
+    public MissionOddsRenderData SelectedMissionOdds { get; }
+
+    public bool ShowMissionOdds { get; }
+
+    public Texture CheckboxFrameTexture { get; }
+
+    public Texture CheckboxCheckMarkTexture { get; }
+
     public string TargetName { get; }
 
     public Texture TargetTexture { get; }
@@ -111,6 +150,10 @@ public sealed class MissionCreateWindowRenderData
     /// <param name="dropdownItems">The ordered mission dropdown rows.</param>
     /// <param name="agentRows">The ordered primary-agent rows.</param>
     /// <param name="decoyRows">The ordered decoy-agent rows.</param>
+    /// <param name="selectedMissionOdds">The estimate displayed over the selected mission icon.</param>
+    /// <param name="showMissionOdds">Whether the mission-odds overlays are enabled.</param>
+    /// <param name="checkboxFrameTexture">The theme-owned checkbox frame.</param>
+    /// <param name="checkboxCheckMarkTexture">The theme-owned checkbox check mark.</param>
     public MissionCreateWindowRenderData(
         int x,
         int y,
@@ -128,7 +171,11 @@ public sealed class MissionCreateWindowRenderData
         IReadOnlyList<MissionCreateTabRenderData> tabs,
         IReadOnlyList<StrategyDropdownItemRenderData> dropdownItems,
         IReadOnlyList<MissionParticipantRowRenderData> agentRows,
-        IReadOnlyList<MissionParticipantRowRenderData> decoyRows
+        IReadOnlyList<MissionParticipantRowRenderData> decoyRows,
+        MissionOddsRenderData selectedMissionOdds = null,
+        bool showMissionOdds = true,
+        Texture checkboxFrameTexture = null,
+        Texture checkboxCheckMarkTexture = null
     )
     {
         X = x;
@@ -139,6 +186,10 @@ public sealed class MissionCreateWindowRenderData
         TitleTexture = titleTexture;
         MissionName = missionName ?? string.Empty;
         SelectedMissionTexture = selectedMissionTexture;
+        SelectedMissionOdds = selectedMissionOdds;
+        ShowMissionOdds = showMissionOdds;
+        CheckboxFrameTexture = checkboxFrameTexture;
+        CheckboxCheckMarkTexture = checkboxCheckMarkTexture;
         TargetName = targetName ?? string.Empty;
         TargetTexture = targetTexture;
         UsePlanetTargetPreview = usePlanetTargetPreview;

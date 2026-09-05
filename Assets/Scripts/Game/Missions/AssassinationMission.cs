@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -119,16 +120,63 @@ namespace Rebellion.Game.Missions
         /// Returns the attacker's raw combat advantage over the assassination target.
         /// </summary>
         /// <param name="agent">The participant attempting the assassination.</param>
-        /// <param name="game">The current game state.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The raw combat advantage, or null when the target cannot be resolved.</returns>
-        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
+        protected override int? GetAgentScore(
+            IMissionParticipant agent,
+            MissionEvaluationContext context
+        )
         {
-            Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+            Officer target = GetEvaluationTarget(context);
             if (target == null)
                 return null;
 
             return agent.GetEffectiveRating(OfficerRating.Combat)
                 - target.GetEffectiveRating(OfficerRating.Combat);
+        }
+
+        /// <summary>
+        /// Includes the post-hit death roll required for an assassination to report success.
+        /// </summary>
+        /// <param name="participants">The participants attempting the assassination.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
+        /// <returns>The probability that at least one participant both hits and kills the target.</returns>
+        protected override double GetObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            MissionEvaluationContext context
+        )
+        {
+            Officer target = GetEvaluationTarget(context);
+            int killProbability = GetPostInjuryDeathProbability(
+                target,
+                context.Game?.Config?.Assassination?.KillProbability ?? 0
+            );
+            if (killProbability == 0)
+                return 0;
+
+            IEnumerable<double> probabilities = (
+                participants ?? Enumerable.Empty<IMissionParticipant>()
+            )
+                .Where(participant => participant != null)
+                .Select(participant =>
+                    GetAgentProbability(participant, context) * killProbability / 100d
+                );
+            return CombineSuccessProbabilities(probabilities);
+        }
+
+        /// <summary>
+        /// Resolves the assassination target from observed state when available, otherwise from
+        /// the authoritative game state.
+        /// </summary>
+        /// <param name="context">The state available while evaluating the mission.</param>
+        /// <returns>The matching target officer, or null when the target cannot be resolved.</returns>
+        private Officer GetEvaluationTarget(MissionEvaluationContext context)
+        {
+            return
+                context.Target is Officer observedOfficer
+                && observedOfficer.InstanceID == TargetOfficerInstanceID
+                ? observedOfficer
+                : context.Game?.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         }
 
         /// <summary>
