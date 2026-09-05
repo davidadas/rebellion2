@@ -66,5 +66,36 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.IsFalse(hasAbortProposal);
         }
+
+        [Test]
+        public void Plan_WithTravelingReconnaissanceMission_DoesNotAddAbortProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            SpecialForces probe = AITestSceneBuilder.CreateSpecialForces(
+                "probe",
+                empire.InstanceID,
+                MissionTypeIDs.Reconnaissance
+            );
+            StubMission mission = EntityFactory.CreateMission(
+                "mission",
+                empire.InstanceID,
+                target.InstanceID
+            );
+            mission.ConfigKey = MissionTypeIDs.Reconnaissance;
+            game.AttachNode(mission, target);
+            game.AttachNode(probe, mission);
+            probe.Movement = new Rebellion.Game.Movement.MovementState { TransitTicks = 10 };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            bool hasAbortProposal = new AIAbortMissionPlanner()
+                .Plan(context)
+                .OfType<AIAbortMissionProposal>()
+                .Any();
+
+            Assert.IsTrue(mission.IsWaitingForParticipants());
+            Assert.IsFalse(hasAbortProposal);
+        }
     }
 }

@@ -98,6 +98,31 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(SpecialForcesIntent.Decoy, context.GetSpecialForcesIntent(third));
         }
 
+        [Test]
+        public void Execute_WithPartiallyReplaceableRole_KeepsSpecialForcesAsPrimaryAgent()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            SpecialForces specialForces = CreateSpecialForces(
+                "special-forces",
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
+            );
+            specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Reconnaissance);
+            game.AttachNode(officer, planet);
+            game.AttachNode(specialForces, planet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            new AISpecialForcesIntentPhase().Execute(context);
+
+            Assert.AreEqual(
+                SpecialForcesIntent.PrimaryAgent,
+                context.GetSpecialForcesIntent(specialForces)
+            );
+        }
+
         private static SpecialForces CreateSpecialForces(
             string instanceId,
             string ownerInstanceId,

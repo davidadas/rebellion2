@@ -47,6 +47,13 @@ namespace Rebellion.AI.Scoring
             if (odds == null)
                 return 0;
 
+            if (
+                missionProposal.MainParticipants.OfType<Officer>().Any()
+                && odds.PersonnelLossProbability
+                    > context.Game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability
+            )
+                return 0;
+
             double successProbability = odds.ObjectiveSuccessProbability;
             if (!MeetsUprisingMissionProbabilityFloor(context, missionProposal, successProbability))
                 return 0;

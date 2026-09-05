@@ -364,6 +364,7 @@ namespace Rebellion.Tests.AI.Scoring
                 { -1000, 75 },
             };
             game.Config.AI.MissionPlanning.MissionFoilRiskWeight = 1;
+            game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 100;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
 
@@ -382,6 +383,73 @@ namespace Rebellion.Tests.AI.Scoring
             );
 
             Assert.AreEqual(60, decoyedScore - soloScore, 0.0001);
+        }
+
+        [Test]
+        public void Score_OfficerMissionAbovePersonnelLossLimit_ReturnsZero()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Regiment detector = AITestSceneBuilder.CreateRegiment("detector", rebels.InstanceID);
+            detector.DetectionRating = 100;
+            game.AttachNode(detector, target);
+            Officer participant = EntityFactory.CreateOfficer("participant", empire.InstanceID);
+            participant.Ratings[OfficerRating.Espionage] = 100;
+            game.AttachNode(participant, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+            };
+            game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 5;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            double score = new AIMissionProposalScorer().Score(
+                context,
+                new AIMissionProposal(new[] { participant }, MissionTypeIDs.Espionage, target)
+            );
+
+            Assert.AreEqual(0, score);
+        }
+
+        [Test]
+        public void Score_SpecialForcesMissionAbovePersonnelLossLimit_RemainsSelectable()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Regiment detector = AITestSceneBuilder.CreateRegiment("detector", rebels.InstanceID);
+            detector.DetectionRating = 100;
+            game.AttachNode(detector, target);
+            SpecialForces participant = AITestSceneBuilder.CreateSpecialForces(
+                "participant",
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
+            );
+            participant.Ratings[OfficerRating.Espionage] = 100;
+            game.AttachNode(participant, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 0;
+            game.Config.AI.MissionPlanning.MissionFoilRiskWeight = 0;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            double score = new AIMissionProposalScorer().Score(
+                context,
+                new AIMissionProposal(new[] { participant }, MissionTypeIDs.Espionage, target)
+            );
+
+            Assert.Greater(score, 0);
         }
 
         [Test]

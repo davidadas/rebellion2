@@ -130,6 +130,8 @@ namespace Rebellion.Game
 
             public int MissionFoilRiskWeight { get; set; } = 1;
 
+            public int MaximumOfficerMissionLossProbability { get; set; } = 20;
+
             public int ReconnaissancePriorityBonus { get; set; } = 50;
 
             public int RecruitmentPriorityBonus { get; set; } = 80;

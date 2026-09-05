@@ -46,7 +46,7 @@ namespace Rebellion.AI.Proposals
         /// Returns whether the mission-abort proposal may be selected.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when the mission remains eligible for abortion.</returns>
+        /// <returns>True when the mission remains eligible to be aborted.</returns>
         public override bool CanSelect(AITurnContext context)
         {
             return IsStillValid(context);

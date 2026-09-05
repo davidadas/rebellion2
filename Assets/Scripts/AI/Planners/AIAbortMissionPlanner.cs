@@ -25,7 +25,7 @@ namespace Rebellion.AI.Planners
             foreach (Mission mission in context.Assessment.ActiveMissions)
             {
                 Planet target = context.Assessment.GetKnownPlanet(mission.LocationInstanceID);
-                if (target == null)
+                if (target == null && mission.ConfigKey != MissionTypeIDs.Reconnaissance)
                     proposals.Add(new AIAbortMissionProposal(mission));
             }
 

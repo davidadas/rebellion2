@@ -55,19 +55,20 @@ namespace Rebellion.AI.Phases
         }
 
         /// <summary>
-        /// Returns whether any available officer can replace a special-forces role as primary agent.
+        /// Returns whether available officers can replace every capability in a special-forces role.
         /// </summary>
         /// <param name="officers">The officers available during this turn.</param>
         /// <param name="specialForces">A representative unit for the special-forces role.</param>
-        /// <returns>True when at least one role mission can be performed by an officer.</returns>
+        /// <returns>True when every role mission can be performed by an officer.</returns>
         private static bool CanOfficersPerformRole(
             IEnumerable<Officer> officers,
             SpecialForces specialForces
         )
         {
-            return specialForces.AllowedMissionTypeIDs.Any(missionTypeId =>
-                officers.Any(officer => officer.CanPerformMission(missionTypeId))
-            );
+            return specialForces.AllowedMissionTypeIDs.Count > 0
+                && specialForces.AllowedMissionTypeIDs.All(missionTypeId =>
+                    officers.Any(officer => officer.CanPerformMission(missionTypeId))
+                );
         }
 
         /// <summary>

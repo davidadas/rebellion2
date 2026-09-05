@@ -615,6 +615,37 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void GetMissionOdds_WithMultipleOfficers_CombinesPersonnelLossProbability()
+        {
+            (
+                GameRoot game,
+                Planet planet,
+                Officer firstOfficer,
+                Officer _,
+                MovementSystem movement
+            ) = BuildDetectionScene();
+            Officer secondOfficer = EntityFactory.CreateOfficer("second-officer", "empire");
+            game.AttachNode(secondOfficer, firstOfficer.GetParent());
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            MissionOdds odds = system.GetMissionOdds(
+                CreateRequest(
+                    MissionTypeIDs.Espionage,
+                    new List<IMissionParticipant> { firstOfficer, secondOfficer },
+                    new List<IMissionParticipant>(),
+                    planet
+                )
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(100, odds.FoilProbability, 0.001);
+            Assert.AreEqual(75, odds.PersonnelLossProbability, 0.001);
+        }
+
+        [Test]
         public void GetMissionOdds_DiplomacyUsesObservedPlanetSupport()
         {
             (GameRoot game, Planet _, Planet target, Officer diplomat, MissionSystem missions) =
