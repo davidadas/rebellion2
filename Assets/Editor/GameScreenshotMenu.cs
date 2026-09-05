@@ -7,13 +7,12 @@ using UnityEditor.Recorder.Input;
 using UnityEngine;
 
 /// <summary>
-/// Captures the active Game view to the project's local screenshot directory.
+/// Provides editor controls for capturing the active Game view.
 /// </summary>
 public static class GameScreenshotMenu
 {
     private const string _screenshotMenuPath = "Rebellion/Capture Game Screenshot";
     private const string _startRecordingMenuPath = "Rebellion/Start Game Recording";
-    private const string _stopRecordingMenuPath = "Rebellion/Stop Game Recording";
     private const string _screenshotDirectoryName = "_screenshots";
     private const string _recordingDirectoryName = "_recordings";
 
@@ -60,16 +59,7 @@ public static class GameScreenshotMenu
         return !IsRecording() && EditorApplication.isPlaying && !EditorApplication.isPaused;
     }
 
-    /// <summary>
-    /// Enables stopping only while a recording is active.
-    /// </summary>
-    [MenuItem(_stopRecordingMenuPath, true)]
-    private static bool CanStopGameRecording()
-    {
-        return IsRecording();
-    }
-
-    private static bool IsRecording()
+    internal static bool IsRecording()
     {
         return _recorderController != null && _recorderController.IsRecording();
     }
@@ -93,8 +83,9 @@ public static class GameScreenshotMenu
 
         string fileName = $"rebellion2-{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
         _recordingPath = Path.Combine(recordingDirectory, fileName + ".mp4");
-        int outputWidth = GetEvenDimension(Screen.width);
-        int outputHeight = GetEvenDimension(Screen.height);
+        Vector2 gameViewSize = Handles.GetMainGameViewSize();
+        int outputWidth = GetEvenDimension(Mathf.RoundToInt(gameViewSize.x));
+        int outputHeight = GetEvenDimension(Mathf.RoundToInt(gameViewSize.y));
 
         _recorderControllerSettings = ScriptableObject.CreateInstance<RecorderControllerSettings>();
         _movieRecorderSettings = ScriptableObject.CreateInstance<MovieRecorderSettings>();
@@ -139,7 +130,8 @@ public static class GameScreenshotMenu
             throw;
         }
 
-        Debug.Log($"Game recording started: {_recordingPath}");
+        GameRecordingControlsWindow.ShowWindow();
+        Debug.Log($"Game recording started at {outputWidth}x{outputHeight}: {_recordingPath}");
     }
 
     private static int GetEvenDimension(int dimension)
@@ -147,10 +139,6 @@ public static class GameScreenshotMenu
         return Mathf.Max(2, dimension - dimension % 2);
     }
 
-    /// <summary>
-    /// Stops the active Game view recording and finalizes its MP4 file.
-    /// </summary>
-    [MenuItem(_stopRecordingMenuPath, false, 202)]
     public static void StopGameRecording()
     {
         try
@@ -160,6 +148,7 @@ public static class GameScreenshotMenu
         finally
         {
             CleanupRecorder();
+            GameRecordingControlsWindow.CloseWindow();
         }
 
         if (!string.IsNullOrEmpty(_recordingPath))
@@ -183,6 +172,71 @@ public static class GameScreenshotMenu
         {
             UnityEngine.Object.DestroyImmediate(_recorderControllerSettings);
             _recorderControllerSettings = null;
+        }
+    }
+}
+
+/// <summary>
+/// Displays recording controls outside the captured Game view.
+/// </summary>
+internal sealed class GameRecordingControlsWindow : EditorWindow
+{
+    private const float _windowWidth = 240.0f;
+    private const float _windowHeight = 82.0f;
+
+    private static GameRecordingControlsWindow _instance;
+    private bool _closeWithoutStopping;
+
+    public static void ShowWindow()
+    {
+        CloseWindow();
+
+        _instance = CreateInstance<GameRecordingControlsWindow>();
+        _instance.titleContent = new GUIContent("Game Recording");
+        _instance.minSize = new Vector2(_windowWidth, _windowHeight);
+        _instance.maxSize = _instance.minSize;
+        _instance.ShowUtility();
+        _instance.Focus();
+    }
+
+    public static void CloseWindow()
+    {
+        if (_instance == null)
+        {
+            return;
+        }
+
+        _instance._closeWithoutStopping = true;
+        _instance.Close();
+        _instance = null;
+    }
+
+    private void OnGUI()
+    {
+        EditorGUILayout.Space(8.0f);
+        EditorGUILayout.LabelField("Recording Game View + audio", EditorStyles.boldLabel);
+        EditorGUILayout.Space(4.0f);
+
+        Color previousColor = GUI.backgroundColor;
+        GUI.backgroundColor = new Color(0.9f, 0.25f, 0.2f);
+        if (GUILayout.Button("Stop Recording", GUILayout.Height(30.0f)))
+        {
+            GameScreenshotMenu.StopGameRecording();
+        }
+
+        GUI.backgroundColor = previousColor;
+    }
+
+    private void OnDestroy()
+    {
+        if (_instance == this)
+        {
+            _instance = null;
+        }
+
+        if (!_closeWithoutStopping && GameScreenshotMenu.IsRecording())
+        {
+            GameScreenshotMenu.StopGameRecording();
         }
     }
 }
