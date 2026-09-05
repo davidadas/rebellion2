@@ -60,13 +60,27 @@ namespace Rebellion.AI.Scoring
                     HasExistingOrder(colonizationProposal)
                 ),
                 AIClearFleetOrderProposal => double.PositiveInfinity,
-                AIFleetDefenseProposal => context.Game.Config.AI.FleetDeployment.FleetDefenseScore,
+                AIFleetDefenseProposal defenseProposal => ScoreDefense(context, defenseProposal),
                 AITransferUnitProposal transferProposal => ScoreUnitTransfer(
                     context,
                     transferProposal
                 ),
                 _ => 0,
             };
+        }
+
+        /// <summary>
+        /// Returns the score for defending a threatened planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The fleet-defense proposal.</param>
+        /// <returns>The defense score.</returns>
+        private static double ScoreDefense(AITurnContext context, AIFleetDefenseProposal proposal)
+        {
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            return config.FleetDefenseScore
+                + context.Assessment.GetDefensiveSupportRisk(proposal.TargetPlanet)
+                    * config.DefenseSectorSupportRiskWeight;
         }
 
         /// <summary>
@@ -147,6 +161,8 @@ namespace Rebellion.AI.Scoring
             double score =
                 ScoreStrategicTargetValue(assessment, targetPlanet)
                     * config.AttackStrategicValueWeight
+                + assessment.GetOffensiveSupportLeverage(targetPlanet)
+                    * config.AttackSectorSupportLeverageWeight
                 + ScoreReadiness(context, fleet, targetPlanet) * config.AttackReadinessWeight
                 + ScoreCaptureViability(context, fleet, targetPlanet)
                     * config.AttackCaptureViabilityWeight

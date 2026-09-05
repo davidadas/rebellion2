@@ -392,6 +392,56 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithShieldBlockedAttack_AddsAlternativeTargetOutsideSystem()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector blockedSystem = AITestSceneBuilder.AddSector(game, "blocked-system");
+            Planet blockedTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                blockedSystem,
+                "blocked-target",
+                rebels.InstanceID
+            );
+            PlanetSector alternativeSystem = AITestSceneBuilder.AddSector(
+                game,
+                "alternative-system"
+            );
+            Planet alternativeTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                alternativeSystem,
+                "alternative-target",
+                rebels.InstanceID
+            );
+            AddShield(game, blockedTarget, "shield-1", rebels.InstanceID);
+            AddShield(game, blockedTarget, "shield-2", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, blockedTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, alternativeTarget);
+            Fleet fleet = AddBattleFleet(game, blockedTarget, empire.InstanceID, "fleet");
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = blockedTarget.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIFleetAttackProposal> proposals = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetAttackProposal>()
+                .Where(proposal => proposal.Fleet == fleet)
+                .ToList();
+
+            CollectionAssert.Contains(
+                proposals.Select(proposal => proposal.TargetPlanet.InstanceID),
+                alternativeTarget.InstanceID
+            );
+            CollectionAssert.DoesNotContain(
+                proposals.Select(proposal => proposal.TargetPlanet.InstanceID),
+                blockedTarget.InstanceID
+            );
+        }
+
+        [Test]
         public void Plan_WithDecisivePlanetAdvantageAndStagedAttack_AddsHeadquartersRetargetProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -784,6 +834,23 @@ namespace Rebellion.Tests.AI.Planners
                 ),
                 inboundShip
             );
+            for (int index = 2; index <= 3; index++)
+            {
+                CapitalShip additionalInboundShip = AITestSceneBuilder.CreateCapitalShip(
+                    $"inbound-ship-{index}",
+                    empire.InstanceID
+                );
+                additionalInboundShip.Movement = new MovementState { TransitTicks = 10 };
+                game.AttachNode(additionalInboundShip, targetFleet);
+                game.AttachNode(
+                    AITestSceneBuilder.CreateRegiment(
+                        $"inbound-regiment-{index}",
+                        empire.InstanceID,
+                        attackRating: 100
+                    ),
+                    additionalInboundShip
+                );
+            }
             Fleet sourceFleet = AddBattleFleet(game, owned, empire.InstanceID, "source-fleet");
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip("donor", empire.InstanceID),
@@ -2010,6 +2077,22 @@ namespace Rebellion.Tests.AI.Planners
             ship.SetParent(fleet);
             game.AttachNode(fleet, planet);
             return fleet;
+        }
+
+        private static void AddShield(
+            GameRoot game,
+            Planet planet,
+            string instanceId,
+            string ownerInstanceId
+        )
+        {
+            Building shield = AITestSceneBuilder.CreateBuildingTemplate(
+                instanceId,
+                BuildingType.Defense
+            );
+            shield.OwnerInstanceID = ownerInstanceId;
+            shield.ShieldStrength = 10;
+            game.AttachNode(shield, planet);
         }
 
         private static Fleet AddDonorFleet(

@@ -8,7 +8,7 @@ namespace Rebellion.AI.Phases
     /// <summary>
     /// Generates proposals for the current faction turn.
     /// </summary>
-    public sealed class AIPlanningPhase : IAITurnPhase
+    public sealed class AIPlanningPhase : IAIIncrementalTurnPhase
     {
         private readonly List<IAIProposalPlanner> _planners;
 
@@ -19,6 +19,7 @@ namespace Rebellion.AI.Phases
             : this(
                 new IAIProposalPlanner[]
                 {
+                    new AIAbortMissionPlanner(),
                     new AIMissionPlanner(),
                     new AIOrbitalEngagementPlanner(),
                     new AIFleetPlanner(),
@@ -49,11 +50,24 @@ namespace Rebellion.AI.Phases
         /// <param name="context">The current AI turn context.</param>
         public void Execute(AITurnContext context)
         {
+            foreach (object _ in ExecuteIncrementally(context)) { }
+        }
+
+        /// <summary>
+        /// Runs proposal planners one at a time.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>A sequence containing one marker per completed planner.</returns>
+        public IEnumerable<object> ExecuteIncrementally(AITurnContext context)
+        {
             if (context == null)
-                return;
+                yield break;
 
             foreach (IAIProposalPlanner planner in _planners)
+            {
                 context.AddProposals(planner.Plan(context));
+                yield return null;
+            }
         }
     }
 }

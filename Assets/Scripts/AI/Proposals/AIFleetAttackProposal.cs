@@ -215,7 +215,12 @@ namespace Rebellion.AI.Proposals
             }
 
             if (!canDamageMilitaryTargets)
+            {
+                if (context.Assessment.IsFleetBlockedByTargetShields(Fleet, liveTarget))
+                    Fleet.Order.Status = FleetOrderStatus.Building;
+
                 return;
+            }
 
             BombardmentResult bombardmentResult = context.Bombardment.Execute(
                 attackingFleets,
@@ -248,6 +253,7 @@ namespace Rebellion.AI.Proposals
                 liveTarget
             );
             context.AddResult(assaultResult);
+            context.AddResults(assaultResult.Events);
             context.AddResult(assaultResult.OwnershipChange);
             TryClearCompletedAttackOrder(context, liveTarget);
         }
@@ -322,7 +328,11 @@ namespace Rebellion.AI.Proposals
             if (context.Assessment.IsAssaultBlockedByShields(liveTarget))
                 return false;
 
-            return context.Assessment.GetReadyFleetRegimentCount(Fleet) > 0
+            int requiredRegimentCount = context.Assessment.GetRequiredAttackRegimentCount(
+                Fleet,
+                liveTarget
+            );
+            return context.Assessment.GetReadyFleetRegimentCount(Fleet) >= requiredRegimentCount
                 && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
                     >= context.Assessment.GetRequiredAttackRegimentStrength(Fleet, liveTarget)
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, liveTarget)

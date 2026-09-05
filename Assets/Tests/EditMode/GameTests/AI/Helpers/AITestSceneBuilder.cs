@@ -174,7 +174,11 @@ namespace Rebellion.Tests.AI.Helpers
             };
         }
 
-        public static SpecialForces CreateSpecialForces(string typeId, string ownerInstanceId)
+        public static SpecialForces CreateSpecialForces(
+            string typeId,
+            string ownerInstanceId,
+            params string[] allowedMissionTypeIds
+        )
         {
             SpecialForces specialForces = new SpecialForces
             {
@@ -186,6 +190,7 @@ namespace Rebellion.Tests.AI.Helpers
                 MaintenanceCost = 0,
                 BaseBuildSpeed = 1,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string>(allowedMissionTypeIds),
             };
             return specialForces;
         }

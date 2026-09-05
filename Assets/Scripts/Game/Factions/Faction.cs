@@ -130,7 +130,9 @@ namespace Rebellion.Game.Factions
         /// </summary>
         public Faction() { }
 
-        /// <summary>Returns maintenance headroom after adding a manufacturable item.</summary>
+        /// <summary>
+        /// Returns maintenance headroom after adding a manufacturable item.
+        /// </summary>
         /// <param name="item">The prospective item.</param>
         /// <returns>The projected maintenance headroom.</returns>
         public int GetProjectedMaintenanceHeadroom(IManufacturable item)
@@ -788,7 +790,7 @@ namespace Rebellion.Game.Factions
         /// </summary>
         /// <param name="participant">The participant to inspect.</param>
         /// <returns>True if the participant can currently receive mission orders.</returns>
-        private bool IsAvailableMissionParticipant(IMissionParticipant participant)
+        public bool IsAvailableMissionParticipant(IMissionParticipant participant)
         {
             if (participant == null || participant.OwnerInstanceID != InstanceID)
                 return false;

@@ -15,6 +15,9 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIMissionProposal : AIProposal
     {
+        // Cached Identity.
+        private readonly string _sortKey;
+
         // Participants.
         public IReadOnlyList<IMissionParticipant> Participants { get; }
 
@@ -32,6 +35,9 @@ namespace Rebellion.AI.Proposals
         public ISceneNode SelectedTarget { get; }
 
         public ResearchDiscipline? Discipline { get; }
+
+        // Mission Assessment.
+        public double FoilProbability { get; private set; }
 
         /// <summary>
         /// Creates a mission proposal.
@@ -65,6 +71,7 @@ namespace Rebellion.AI.Proposals
             SelectedTarget = selectedTarget;
             TargetOfficer = targetOfficer;
             Discipline = discipline;
+            _sortKey = BuildSortKey();
         }
 
         /// <summary>
@@ -123,6 +130,15 @@ namespace Rebellion.AI.Proposals
         /// <returns>A stable sort key.</returns>
         public override string GetSortKey()
         {
+            return _sortKey;
+        }
+
+        /// <summary>
+        /// Builds the immutable proposal identity used for deterministic ordering.
+        /// </summary>
+        /// <returns>The stable proposal sort key.</returns>
+        private string BuildSortKey()
+        {
             return string.Join(
                 ":",
                 "mission",
@@ -169,6 +185,37 @@ namespace Rebellion.AI.Proposals
                 return;
 
             context.Missions.InitiateMission(CreateRequest());
+        }
+
+        /// <summary>
+        /// Creates an equivalent proposal with one special-forces decoy assigned.
+        /// </summary>
+        /// <param name="decoy">The special-forces unit assigned as the decoy.</param>
+        /// <returns>A copy of this proposal containing the decoy assignment.</returns>
+        internal AIMissionProposal WithDecoy(SpecialForces decoy)
+        {
+            AIMissionProposal proposal = new AIMissionProposal(
+                MainParticipants,
+                MissionTypeID,
+                TargetPlanet,
+                SelectedTarget,
+                TargetOfficer,
+                Discipline,
+                new[] { decoy }
+            );
+            if (HasScore)
+                proposal.SetScore(Score);
+            proposal.FoilProbability = FoilProbability;
+            return proposal;
+        }
+
+        /// <summary>
+        /// Records the assessed probability that known defenders foil this mission.
+        /// </summary>
+        /// <param name="probability">The assessed foil probability.</param>
+        internal void SetFoilProbability(double probability)
+        {
+            FoilProbability = probability;
         }
 
         /// <summary>
@@ -225,10 +272,10 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether participant available.
+        /// Returns whether a participant can still perform this mission.
         /// </summary>
         /// <param name="participant">The mission participant.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the participant remains available and qualified.</returns>
         private bool IsParticipantAvailable(IMissionParticipant participant)
         {
             if (
@@ -251,9 +298,9 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether target officer available.
+        /// Returns whether the targeted officer remains valid for this mission.
         /// </summary>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when no officer is required or the target remains eligible.</returns>
         private bool IsTargetOfficerAvailable()
         {
             if (TargetOfficer == null)

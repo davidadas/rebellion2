@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scoring;
@@ -56,7 +55,7 @@ namespace Rebellion.AI.Planners
                 return;
 
             double score = _scorer.Score(context, proposal);
-            if (score <= 0 && !proposal.CanExecute(context))
+            if (score <= 0)
                 return;
 
             proposal.SetScore(score);
@@ -97,10 +96,32 @@ namespace Rebellion.AI.Planners
         /// <returns>The weakest proposal, or null when the collection is empty.</returns>
         private static AIMissionProposal GetWeakest(IEnumerable<AIMissionProposal> alternatives)
         {
-            return alternatives
-                .OrderBy(proposal => proposal.Score)
-                .ThenByDescending(proposal => proposal.GetSortKey(), StringComparer.Ordinal)
-                .FirstOrDefault();
+            AIMissionProposal weakest = null;
+            foreach (AIMissionProposal proposal in alternatives)
+            {
+                if (weakest == null || IsWeaker(proposal, weakest))
+                    weakest = proposal;
+            }
+
+            return weakest;
+        }
+
+        /// <summary>
+        /// Returns whether a proposal precedes another in the deterministic weakest-first order.
+        /// </summary>
+        /// <param name="candidate">The proposal being compared.</param>
+        /// <param name="currentWeakest">The current weakest proposal.</param>
+        /// <returns>True when the candidate is the weaker retained alternative.</returns>
+        private static bool IsWeaker(AIMissionProposal candidate, AIMissionProposal currentWeakest)
+        {
+            int scoreComparison = candidate.Score.CompareTo(currentWeakest.Score);
+            return scoreComparison != 0
+                ? scoreComparison < 0
+                : string.Compare(
+                    candidate.GetSortKey(),
+                    currentWeakest.GetSortKey(),
+                    StringComparison.Ordinal
+                ) > 0;
         }
     }
 }

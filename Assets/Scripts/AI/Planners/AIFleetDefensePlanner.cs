@@ -87,7 +87,8 @@ namespace Rebellion.AI.Planners
                         && context.Assessment.GetRequiredPlanetDefenseStrength(planet) > 0
                         && !HasDefenseOrder(context, planet)
                     )
-                    .OrderByDescending(context.Assessment.GetPlanetValue)
+                    .OrderByDescending(context.Assessment.GetDefensiveSupportRisk)
+                    .ThenByDescending(context.Assessment.GetPlanetValue)
                     .ThenByDescending(context.Assessment.GetRequiredPlanetDefenseStrength)
                     .ThenBy(planet => planet.InstanceID)
             )

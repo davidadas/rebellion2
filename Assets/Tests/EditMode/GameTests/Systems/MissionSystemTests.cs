@@ -615,6 +615,37 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void GetMissionOdds_WithMultipleOfficers_CombinesPersonnelLossProbability()
+        {
+            (
+                GameRoot game,
+                Planet planet,
+                Officer firstOfficer,
+                Officer _,
+                MovementSystem movement
+            ) = BuildDetectionScene();
+            Officer secondOfficer = EntityFactory.CreateOfficer("second-officer", "empire");
+            game.AttachNode(secondOfficer, firstOfficer.GetParent());
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            MissionOdds odds = system.GetMissionOdds(
+                CreateRequest(
+                    MissionTypeIDs.Espionage,
+                    new List<IMissionParticipant> { firstOfficer, secondOfficer },
+                    new List<IMissionParticipant>(),
+                    planet
+                )
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(100, odds.FoilProbability, 0.001);
+            Assert.AreEqual(75, odds.PersonnelLossProbability, 0.001);
+        }
+
+        [Test]
         public void GetMissionOdds_DiplomacyUsesObservedPlanetSupport()
         {
             (GameRoot game, Planet _, Planet target, Officer diplomat, MissionSystem missions) =
@@ -2734,13 +2765,33 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void TearDownMission_RecordedPlanetCaptured_CapturesOfficerAtMissionPlanet()
+        public void UpdateMission_DiplomacyTargetCaptured_ReturnsOfficerToNearestFriendlyPlanet()
         {
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
-            StubMission mission = CreateMission(game, planet, officer);
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly-planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(friendlyPlanet, planet.GetParent());
+            planet.AddVisitor("empire");
+            planet.SetPopularSupport("empire", 50);
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Diplomacy,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            mission.Initiate(0);
             officer.MissionReturnParentInstanceID = planet.InstanceID;
             officer.MissionReturnLocationInstanceID = planet.InstanceID;
             game.MoveNode(officer, mission);
@@ -2753,14 +2804,11 @@ namespace Rebellion.Tests.Sectors
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsTrue(officer.IsCaptured);
-            Assert.AreEqual("rebels", officer.CaptorInstanceID);
-            Assert.AreSame(planet, officer.GetParent());
-            Assert.IsTrue(
-                results
-                    .OfType<OfficerCaptureStateResult>()
-                    .Any(result => ReferenceEquals(result.TargetOfficer, officer))
-            );
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+            Assert.AreSame(friendlyPlanet, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsFalse(results.OfType<OfficerCaptureStateResult>().Any());
         }
 
         [Test]
@@ -4302,7 +4350,9 @@ namespace Rebellion.Tests.Sectors
         {
             private readonly Officer _target;
 
-            /// <summary>Creates an empty officer-killing mission copy.</summary>
+            /// <summary>
+            /// Creates an empty officer-killing mission copy.
+            /// </summary>
             /// <returns>An empty officer-killing mission.</returns>
             protected override BaseSceneNode CreateNodeCopy() =>
                 new OfficerKillingMission(null, null, null, null);

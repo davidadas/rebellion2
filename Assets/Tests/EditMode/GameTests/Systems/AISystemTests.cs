@@ -39,7 +39,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTickIncrementally_AtConfiguredInterval_YieldsAfterEveryPhase()
+        public void ProcessTickIncrementally_AtConfiguredInterval_YieldsBetweenWorkUnits()
         {
             (GameRoot game, Fleet fleet, AISystem system) = BuildScene();
             game.CurrentTick = game.Config.AI.TickInterval;
@@ -47,7 +47,7 @@ namespace Rebellion.Tests.Systems
 
             int completedSteps = system.ProcessTickIncrementally(results).Count();
 
-            Assert.AreEqual(4, completedSteps);
+            Assert.AreEqual(13, completedSteps);
             Assert.IsNotNull(fleet.Order);
             Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
         }

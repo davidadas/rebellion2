@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI.Director;
+using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
@@ -238,6 +239,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 MissionTypeIDs.Sabotage
             );
+            participant.Ratings[OfficerRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -286,6 +288,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 MissionTypeIDs.Sabotage
             );
+            participant.Ratings[OfficerRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -331,6 +334,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 MissionTypeIDs.Sabotage
             );
+            availableParticipant.Ratings[OfficerRating.Espionage] = 100;
             game.AttachNode(activeParticipant, origin);
             game.AttachNode(availableParticipant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
@@ -529,6 +533,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 MissionTypeIDs.Sabotage
             );
+            participant.Ratings[OfficerRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -542,7 +547,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithQualifiedSpecialForces_PrefersSpecialForcesDecoy()
+        public void Plan_WithDecoyIntents_DoesNotOfferUnitsAsPrimaryAgents()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -569,20 +574,25 @@ namespace Rebellion.Tests.AI.Planners
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             game.CurrentTick = game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            new AISpecialForcesIntentPhase().Execute(context);
 
-            AIMissionProposal proposal = new AIMissionPlanner()
+            AIMissionProposal[] proposals = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Single(candidate =>
-                    candidate.MissionTypeID == MissionTypeIDs.Espionage
-                    && candidate.Participant == leadSpy
-                );
+                .Where(candidate => candidate.MissionTypeID == MissionTypeIDs.Espionage)
+                .ToArray();
 
-            CollectionAssert.AreEqual(new[] { specialForcesDecoy }, proposal.DecoyParticipants);
+            Assert.AreEqual(SpecialForcesIntent.Decoy, context.GetSpecialForcesIntent(leadSpy));
+            Assert.AreEqual(
+                SpecialForcesIntent.Decoy,
+                context.GetSpecialForcesIntent(specialForcesDecoy)
+            );
+            Assert.IsFalse(proposals.Any(proposal => proposal.Participant == leadSpy));
+            Assert.IsFalse(proposals.Any(proposal => proposal.Participant == specialForcesDecoy));
         }
 
         [Test]
-        public void Plan_WithoutQualifiedSpecialForces_AssignsOfficerDecoy()
+        public void Plan_WithoutQualifiedSpecialForces_DoesNotAssignOfficerDecoy()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -609,7 +619,7 @@ namespace Rebellion.Tests.AI.Planners
                     && candidate.Participant == leadSpy
                 );
 
-            CollectionAssert.AreEqual(new[] { officerDecoy }, proposal.DecoyParticipants);
+            Assert.IsEmpty(proposal.DecoyParticipants);
         }
 
         [Test]
@@ -619,21 +629,27 @@ namespace Rebellion.Tests.AI.Planners
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
-            SpecialForces leadSpy = CreateSpecialForces(
-                "lead-spy",
-                empire.InstanceID,
-                MissionTypeIDs.Espionage
-            );
+            Officer leadSpy = EntityFactory.CreateOfficer("lead-spy", empire.InstanceID);
+            leadSpy.Ratings[OfficerRating.Espionage] = 80;
             SpecialForces decoy = CreateSpecialForces(
                 "decoy",
                 empire.InstanceID,
                 MissionTypeIDs.Espionage
             );
+            SpecialForces primaryAgent = CreateSpecialForces(
+                "primary-agent",
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
+            );
+            decoy.Ratings[OfficerRating.Espionage] = 60;
+            primaryAgent.Ratings[OfficerRating.Espionage] = 40;
             game.AttachNode(leadSpy, origin);
             game.AttachNode(decoy, origin);
+            game.AttachNode(primaryAgent, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             game.CurrentTick = game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            new AISpecialForcesIntentPhase().Execute(context);
             AIMissionProposal proposal = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
@@ -641,6 +657,9 @@ namespace Rebellion.Tests.AI.Planners
                     candidate.MissionTypeID == MissionTypeIDs.Espionage
                     && candidate.Participant == leadSpy
                 );
+            context.SetSelectedProposals(new[] { proposal });
+            new AIMissionDecoyAssignmentPhase().Execute(context);
+            proposal = context.SelectedProposals.OfType<AIMissionProposal>().Single();
 
             proposal.Execute(context);
 

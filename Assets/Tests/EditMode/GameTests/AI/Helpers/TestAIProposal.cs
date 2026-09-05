@@ -8,22 +8,27 @@ namespace Rebellion.Tests.AI.Helpers
     {
         private readonly List<string> _claimKeys;
         private readonly string _sortKey;
+        private readonly AIProposalPriority _priority;
+
+        internal override AIProposalPriority Priority => _priority;
 
         public bool CanSelectResult { get; set; }
         public bool CanExecuteResult { get; set; }
         public int ExecuteCount { get; private set; }
 
-        public TestAIProposal(
+        internal TestAIProposal(
             string sortKey = "test",
             IEnumerable<string> claimKeys = null,
             bool canSelect = true,
-            bool canExecute = true
+            bool canExecute = true,
+            AIProposalPriority priority = AIProposalPriority.Optional
         )
         {
             _sortKey = sortKey;
             _claimKeys = new List<string>(claimKeys ?? new string[0]);
             CanSelectResult = canSelect;
             CanExecuteResult = canExecute;
+            _priority = priority;
         }
 
         public override IReadOnlyList<string> GetClaimKeys()
@@ -48,6 +53,9 @@ namespace Rebellion.Tests.AI.Helpers
 
         public override void Execute(AITurnContext context)
         {
+            if (!CanExecute(context))
+                return;
+
             ExecuteCount++;
         }
     }

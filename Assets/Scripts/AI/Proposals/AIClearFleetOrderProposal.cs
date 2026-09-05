@@ -4,19 +4,30 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.AI.Proposals
 {
+    /// <summary>
+    /// Proposal to clear a fleet order that is no longer valid.
+    /// </summary>
     public sealed class AIClearFleetOrderProposal : AIProposal
     {
         private readonly FleetOrder _expectedOrder;
 
         public Fleet Fleet { get; }
 
+        /// <summary>
+        /// Creates a proposal for the supplied fleet and current order.
+        /// </summary>
+        /// <param name="fleet">The fleet whose order should be cleared.</param>
+        /// <param name="expectedOrder">The order expected to remain assigned.</param>
         public AIClearFleetOrderProposal(Fleet fleet, FleetOrder expectedOrder)
         {
             Fleet = fleet;
             _expectedOrder = expectedOrder;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns the claim that prevents another action from modifying the fleet order.
+        /// </summary>
+        /// <returns>The fleet-order claim.</returns>
         public override IReadOnlyList<string> GetClaimKeys()
         {
             return Fleet == null
@@ -24,25 +35,39 @@ namespace Rebellion.AI.Proposals
                 : new List<string> { AIClaimKeys.FleetOrder(Fleet.InstanceID) };
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns a stable sort key for the clear-order proposal.
+        /// </summary>
+        /// <returns>A stable sort key.</returns>
         public override string GetSortKey()
         {
             return $"fleet-clear-order:{Fleet?.InstanceID}";
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns whether this proposal may be selected.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the fleet still holds the order.</returns>
         public override bool CanSelect(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns whether this proposal may execute against the current game state.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the fleet order can still be cleared.</returns>
         public override bool CanExecute(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Clears the fleet order when it remains current.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         public override void Execute(AITurnContext context)
         {
             if (CanExecute(context))

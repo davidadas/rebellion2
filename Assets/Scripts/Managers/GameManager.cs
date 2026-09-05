@@ -100,6 +100,11 @@ public sealed class GameManager
     public event Action<BombardmentResult> BombardmentCompleted;
 
     /// <summary>
+    /// Raised after a result batch and all of its domain reactions have been resolved.
+    /// </summary>
+    public event Action<IReadOnlyList<GameResult>> ResultsResolved;
+
+    /// <summary>
     /// Raised after planetary-assault results complete domain reaction processing.
     /// </summary>
     public event Action<IReadOnlyList<PlanetaryAssaultResult>> PlanetaryAssaultsResolved;
@@ -674,6 +679,8 @@ public sealed class GameManager
     )
     {
         List<GameResult> resolvedResults = _resultProcessor.Process(results);
+        if (resolvedResults.Count > 0)
+            ResultsResolved?.Invoke(resolvedResults);
         List<PlanetaryAssaultResult> assaultResults = resolvedResults
             .OfType<PlanetaryAssaultResult>()
             .ToList();

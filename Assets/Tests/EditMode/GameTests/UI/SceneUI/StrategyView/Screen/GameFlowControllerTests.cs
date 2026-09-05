@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -56,6 +57,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             UIComponentTestHelper.InvokeLifecycle(_controller, "Reset");
 
             Assert.AreSame(_strategyController, GetField<StrategyController>("strategyController"));
+        }
+
+        [Test]
+        public void AdvanceActiveTick_WithRemainingStep_RetainsTickUntilFollowingFrame()
+        {
+            IEnumerator tick = new object[] { null }.GetEnumerator();
+            SetField("activeTick", tick);
+
+            InvokePrivate("AdvanceActiveTick");
+
+            Assert.AreSame(tick, GetField<IEnumerator>("activeTick"));
+
+            InvokePrivate("AdvanceActiveTick");
+
+            Assert.IsNull(GetField<IEnumerator>("activeTick"));
         }
 
         [Test]

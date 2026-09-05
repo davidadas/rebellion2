@@ -6,6 +6,9 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.AI.Proposals
 {
+    /// <summary>
+    /// Proposal to start or advance a fleet colonization order.
+    /// </summary>
     public sealed class AIColonizationProposal : AIProposal
     {
         public Fleet Fleet { get; }
@@ -14,6 +17,12 @@ namespace Rebellion.AI.Proposals
 
         public Planet TargetPlanet { get; }
 
+        /// <summary>
+        /// Creates a colonization proposal for the supplied fleet and planet.
+        /// </summary>
+        /// <param name="fleet">The fleet assigned to colonize.</param>
+        /// <param name="status">The proposed order status.</param>
+        /// <param name="targetPlanet">The planet to colonize.</param>
         public AIColonizationProposal(Fleet fleet, FleetOrderStatus status, Planet targetPlanet)
         {
             Fleet = fleet;
@@ -21,7 +30,10 @@ namespace Rebellion.AI.Proposals
             TargetPlanet = targetPlanet;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns claims that prevent incompatible fleet actions.
+        /// </summary>
+        /// <returns>Claim keys for this proposal.</returns>
         public override IReadOnlyList<string> GetClaimKeys()
         {
             List<string> claimKeys = new List<string>();
@@ -43,7 +55,10 @@ namespace Rebellion.AI.Proposals
             return claimKeys;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns a stable sort key for the colonization proposal.
+        /// </summary>
+        /// <returns>A stable sort key.</returns>
         public override string GetSortKey()
         {
             return string.Join(
@@ -55,21 +70,35 @@ namespace Rebellion.AI.Proposals
             );
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns whether this proposal may be selected.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the colonization order remains valid.</returns>
         public override bool CanSelect(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns whether this proposal may execute against the current game state.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the colonization order can still execute.</returns>
         public override bool CanExecute(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Starts or advances the colonization order.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         public override void Execute(AITurnContext context)
         {
+            if (!CanExecute(context))
+                return;
+
             EnsureOrder();
 
             if (Fleet.IsInCombat || Fleet.Movement != null)

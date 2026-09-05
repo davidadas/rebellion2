@@ -5,19 +5,30 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.AI.Proposals
 {
+    /// <summary>
+    /// Proposal to assign a fleet to defend a planet.
+    /// </summary>
     public sealed class AIFleetDefenseProposal : AIProposal
     {
         public Fleet Fleet { get; }
 
         public Planet TargetPlanet { get; }
 
+        /// <summary>
+        /// Creates a defense proposal for the supplied fleet and planet.
+        /// </summary>
+        /// <param name="fleet">The fleet assigned to defend.</param>
+        /// <param name="targetPlanet">The planet to defend.</param>
         public AIFleetDefenseProposal(Fleet fleet, Planet targetPlanet)
         {
             Fleet = fleet;
             TargetPlanet = targetPlanet;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns claims that prevent incompatible fleet actions.
+        /// </summary>
+        /// <returns>Claim keys for this proposal.</returns>
         public override IReadOnlyList<string> GetClaimKeys()
         {
             if (Fleet == null || TargetPlanet == null)
@@ -31,25 +42,39 @@ namespace Rebellion.AI.Proposals
             };
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns a stable sort key for the fleet-defense proposal.
+        /// </summary>
+        /// <returns>A stable sort key.</returns>
         public override string GetSortKey()
         {
             return $"fleet-defense:{TargetPlanet?.InstanceID}:{Fleet?.InstanceID}";
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns whether this proposal may be selected.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the defense order remains valid.</returns>
         public override bool CanSelect(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns whether this proposal may execute against the current game state.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the defense order can still execute.</returns>
         public override bool CanExecute(AITurnContext context)
         {
             return IsStillValid(context);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Assigns the fleet to defend the target planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         public override void Execute(AITurnContext context)
         {
             if (!CanExecute(context))

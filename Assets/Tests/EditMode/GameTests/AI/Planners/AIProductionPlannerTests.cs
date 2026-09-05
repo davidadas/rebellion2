@@ -8,6 +8,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
@@ -670,9 +671,9 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithSpecialForcesDeficits_SelectsEachRequestedUnlockedType()
+        public void Plan_WithSpecialForcesMissionDemand_SelectsRequestedUnlockedType()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 30;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -681,6 +682,7 @@ namespace Rebellion.Tests.AI.Planners
                 "training-world",
                 empire.InstanceID
             );
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             AITestSceneBuilder.AddProductionFacility(
                 game,
                 planet,
@@ -690,11 +692,13 @@ namespace Rebellion.Tests.AI.Planners
             );
             SpecialForces commandos = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
-                empire.InstanceID
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
             );
             SpecialForces spies = AITestSceneBuilder.CreateSpecialForces(
                 "spies",
-                empire.InstanceID
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
             );
             empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
             {
@@ -703,16 +707,27 @@ namespace Rebellion.Tests.AI.Planners
             };
             SpecialForces firstCommandos = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
-                empire.InstanceID
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
             );
             firstCommandos.InstanceID = "commandos-1";
             SpecialForces secondCommandos = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
-                empire.InstanceID
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
             );
             secondCommandos.InstanceID = "commandos-2";
             game.AttachNode(firstCommandos, planet);
             game.AttachNode(secondCommandos, planet);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            StubMission mission = EntityFactory.CreateMission(
+                "active-espionage",
+                empire.InstanceID,
+                target.InstanceID
+            );
+            mission.ConfigKey = MissionTypeIDs.Espionage;
+            game.AttachNode(mission, target);
+            game.AttachNode(officer, mission);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIManufactureProposal> proposals = new AIProductionPlanner()
@@ -721,15 +736,11 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(item => item.Demand.Kind == AIDemandKind.SpecialForces)
                 .ToList();
 
-            AIManufactureProposal commandoProposal = proposals.Single(item =>
-                item.Demand.ProductTypeId == "commandos"
-            );
             AIManufactureProposal spyProposal = proposals.Single(item =>
                 item.Demand.ProductTypeId == "spies"
             );
-            Assert.AreEqual(2, commandoProposal.Demand.QuantityNeeded);
-            Assert.AreSame(commandos, commandoProposal.Product.GetReference());
-            Assert.AreEqual(4, spyProposal.Demand.QuantityNeeded);
+            Assert.AreEqual(1, proposals.Count);
+            Assert.AreEqual(1, spyProposal.Demand.QuantityNeeded);
             Assert.AreSame(spies, spyProposal.Product.GetReference());
         }
 
@@ -943,7 +954,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithCombatAndTroopTransportDeficits_SelectsTransport()
+        public void Plan_WithCombatAndTransportDeficits_SelectsEfficientTransport()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -995,12 +1006,23 @@ namespace Rebellion.Tests.AI.Planners
                 starfighterCapacity: 0
             );
             transport.TypeID = "transport";
-            transport.ConstructionCost = 0;
+            transport.ConstructionCost = 10;
             transport.Roles.Add(CapitalShipRole.Transport);
+            CapitalShip slowTransport = AITestSceneBuilder.CreateCapitalShip(
+                "slow-transport-template",
+                empire.InstanceID,
+                combatStrength: 0,
+                regimentCapacity: 2,
+                starfighterCapacity: 0
+            );
+            slowTransport.TypeID = "slow-transport";
+            slowTransport.ConstructionCost = 100;
+            slowTransport.Roles.Add(CapitalShipRole.Transport);
             empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
             {
                 new Technology(lineShip),
                 new Technology(transport),
+                new Technology(slowTransport),
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -1186,8 +1208,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(lineShip, proposal.Product.GetReference());
         }
 
-        [Test]
-        public void Plan_WithGeneralRole_SelectsHighestEfficiencyMetric()
+        [TestCase(false, TestName = "Plan_WithNoCommittedCombatShip_PrioritizesConstructionRate")]
+        [TestCase(true, TestName = "Plan_WithCommittedCombatShip_PrioritizesCombatQuality")]
+        public void Plan_GeneralRoleSelectionReflectsFleetReadiness(bool hasCommittedCombatShip)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -1209,14 +1232,29 @@ namespace Rebellion.Tests.AI.Planners
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             fleet.RoleType = FleetRoleType.Battle;
             game.AttachNode(fleet, planet);
-            game.AttachNode(
-                AITestSceneBuilder.CreateCapitalShip(
-                    "existing-ship",
-                    empire.InstanceID,
-                    combatStrength: 100
-                ),
-                fleet
-            );
+            if (hasCommittedCombatShip)
+            {
+                game.AttachNode(
+                    AITestSceneBuilder.CreateCapitalShip(
+                        "existing-ship",
+                        empire.InstanceID,
+                        combatStrength: 100
+                    ),
+                    fleet
+                );
+            }
+            else
+            {
+                game.AttachNode(
+                    AITestSceneBuilder.CreateCapitalShip(
+                        "existing-transport",
+                        empire.InstanceID,
+                        combatStrength: 0,
+                        regimentCapacity: 1
+                    ),
+                    fleet
+                );
+            }
 
             CapitalShip lowerMetricTemplate = AITestSceneBuilder.CreateCapitalShip(
                 "lower-metric-template",
@@ -1250,11 +1288,14 @@ namespace Rebellion.Tests.AI.Planners
                     item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
-            Assert.AreSame(higherMetricTemplate, proposal.Product.GetReference());
+            Assert.AreSame(
+                hasCommittedCombatShip ? higherMetricTemplate : lowerMetricTemplate,
+                proposal.Product.GetReference()
+            );
         }
 
         [Test]
-        public void Plan_WithBombardmentDeficit_SelectsBombardmentCapableCapitalShip()
+        public void Plan_WithBombardmentDeficit_SelectsEfficientBombardmentShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -1322,10 +1363,22 @@ namespace Rebellion.Tests.AI.Planners
             bombardmentShip.TypeID = "bombardment";
             bombardmentShip.Bombardment = 20;
             bombardmentShip.HasGravityWell = true;
+            bombardmentShip.ConstructionCost = 20;
+            CapitalShip slowBombardmentShip = AITestSceneBuilder.CreateCapitalShip(
+                "slow-bombardment-template",
+                empire.InstanceID,
+                combatStrength: 100,
+                regimentCapacity: 0,
+                starfighterCapacity: 0
+            );
+            slowBombardmentShip.TypeID = "slow-bombardment";
+            slowBombardmentShip.Bombardment = 20;
+            slowBombardmentShip.ConstructionCost = 200;
             empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
             {
                 new Technology(lineShip),
                 new Technology(bombardmentShip),
+                new Technology(slowBombardmentShip),
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -1344,7 +1397,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithInterdictionDemand_SelectsHighestShieldRechargeGravityWellShip()
+        public void Plan_WithInterdictionDemand_SelectsHighestRechargePerConstructionCost()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -1396,6 +1449,7 @@ namespace Rebellion.Tests.AI.Planners
             lowerRecharge.TypeID = "lower-recharge";
             lowerRecharge.HasGravityWell = true;
             lowerRecharge.ShieldRechargeRate = 10;
+            lowerRecharge.ConstructionCost = 10;
             lowerRecharge.MaintenanceCost = 0;
             CapitalShip higherRecharge = AITestSceneBuilder.CreateCapitalShip(
                 "higher-recharge-template",
@@ -1404,6 +1458,7 @@ namespace Rebellion.Tests.AI.Planners
             higherRecharge.TypeID = "higher-recharge";
             higherRecharge.HasGravityWell = true;
             higherRecharge.ShieldRechargeRate = 20;
+            higherRecharge.ConstructionCost = 100;
             higherRecharge.MaintenanceCost = 0;
             empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
             {
@@ -1419,7 +1474,7 @@ namespace Rebellion.Tests.AI.Planners
                     item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
-            Assert.AreSame(higherRecharge, proposal.Product.GetReference());
+            Assert.AreSame(lowerRecharge, proposal.Product.GetReference());
             Assert.AreEqual(
                 AICapitalShipProductionRole.Interdiction,
                 proposal.Demand.CapitalShipRole
@@ -1765,6 +1820,8 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.Selection.CapitalMaintenanceAllocationPercent = 30;
+            game.Config.AI.Selection.CapitalMaintenanceSafetyPercent = 90;
             game.Config.AI.Selection.PreferredStarfighterTypeCountPerFleet = 10;
             game.Config.AI.Selection.LocalDuplicatePenaltyPerSelection = 1000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -2025,7 +2082,6 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction =
                 minimumMaintenanceHeadroom;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "defense-system");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -2072,7 +2128,6 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction =
                 minimumMaintenanceHeadroom;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
             game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
             game.Config.AI.NonCapitalSummary.InteriorStarfighterBaselinePercent = 100;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "defense-system");
@@ -2272,8 +2327,6 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
-            game.Config.AI.Selection.CapitalMaintenanceAllocationPercent = 30;
-            game.Config.AI.Selection.CapitalMaintenanceSafetyPercent = 90;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "capital-system");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -2331,7 +2384,6 @@ namespace Rebellion.Tests.AI.Planners
         ) CreateFacilityUpgradeScene(int maintenanceBudgetOffset)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
             game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
             game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 20;
