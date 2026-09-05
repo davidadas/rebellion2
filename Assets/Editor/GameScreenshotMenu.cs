@@ -12,7 +12,8 @@ using UnityEngine;
 public static class GameScreenshotMenu
 {
     private const string _screenshotMenuPath = "Rebellion/Capture Game Screenshot";
-    private const string _recordingMenuPath = "Rebellion/Record Game Video";
+    private const string _startRecordingMenuPath = "Rebellion/Start Game Recording";
+    private const string _stopRecordingMenuPath = "Rebellion/Stop Game Recording";
     private const string _screenshotDirectoryName = "_screenshots";
     private const string _recordingDirectoryName = "_recordings";
 
@@ -51,29 +52,21 @@ public static class GameScreenshotMenu
     }
 
     /// <summary>
-    /// Starts or stops an MP4 recording of the Game view and game audio.
+    /// Enables starting only while the Game view can render and no recording is active.
     /// </summary>
-    [MenuItem(_recordingMenuPath, false, 201)]
-    public static void ToggleGameRecording()
+    [MenuItem(_startRecordingMenuPath, true)]
+    private static bool CanStartGameRecording()
     {
-        if (IsRecording())
-        {
-            StopGameRecording();
-            return;
-        }
-
-        StartGameRecording();
+        return !IsRecording() && EditorApplication.isPlaying && !EditorApplication.isPaused;
     }
 
     /// <summary>
-    /// Enables recording controls only while the Game view can render frames.
+    /// Enables stopping only while a recording is active.
     /// </summary>
-    [MenuItem(_recordingMenuPath, true)]
-    private static bool CanToggleGameRecording()
+    [MenuItem(_stopRecordingMenuPath, true)]
+    private static bool CanStopGameRecording()
     {
-        bool isRecording = IsRecording();
-        Menu.SetChecked(_recordingMenuPath, isRecording);
-        return isRecording || EditorApplication.isPlaying && !EditorApplication.isPaused;
+        return IsRecording();
     }
 
     private static bool IsRecording()
@@ -89,7 +82,11 @@ public static class GameScreenshotMenu
         }
     }
 
-    private static void StartGameRecording()
+    /// <summary>
+    /// Starts an MP4 recording of the Game view and game audio.
+    /// </summary>
+    [MenuItem(_startRecordingMenuPath, false, 201)]
+    public static void StartGameRecording()
     {
         string recordingDirectory = Path.Combine(Application.dataPath, _recordingDirectoryName);
         Directory.CreateDirectory(recordingDirectory);
@@ -142,7 +139,6 @@ public static class GameScreenshotMenu
             throw;
         }
 
-        Menu.SetChecked(_recordingMenuPath, true);
         Debug.Log($"Game recording started: {_recordingPath}");
     }
 
@@ -151,7 +147,11 @@ public static class GameScreenshotMenu
         return Mathf.Max(2, dimension - dimension % 2);
     }
 
-    private static void StopGameRecording()
+    /// <summary>
+    /// Stops the active Game view recording and finalizes its MP4 file.
+    /// </summary>
+    [MenuItem(_stopRecordingMenuPath, false, 202)]
+    public static void StopGameRecording()
     {
         try
         {
@@ -162,7 +162,6 @@ public static class GameScreenshotMenu
             CleanupRecorder();
         }
 
-        Menu.SetChecked(_recordingMenuPath, false);
         if (!string.IsNullOrEmpty(_recordingPath))
         {
             Debug.Log($"Game recording saved: {_recordingPath}");
