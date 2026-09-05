@@ -36,8 +36,8 @@ Rebellion 2 is currently available through an early-access installer. Join the
 [Star Wars Rebellion Discord](https://discord.com/invite/rWP4vzw8Gg) and ask **@DavidAdas** for
 access.
 
-The installer verifies ownership automatically. A copy of *Star Wars: Rebellion* from either
-**GOG** or **Steam** is required.
+The installer verifies ownership automatically. You must own either *Star Wars: Rebellion* or
+*Star Wars: Empire at War: Gold Pack* on **GOG** or **Steam**.
 
 **NOTE: Installed game data and copyrighted assets must NEVER be redistributed, uploaded, or
 shared under any circumstances.**
