@@ -30,7 +30,7 @@ public static class GameScreenshotMenu
     [MenuItem(_screenshotMenuPath, false, 200)]
     public static void CaptureGameScreenshot()
     {
-        string screenshotDirectory = Path.Combine(Application.dataPath, _screenshotDirectoryName);
+        string screenshotDirectory = GetCaptureDirectory(_screenshotDirectoryName);
         Directory.CreateDirectory(screenshotDirectory);
 
         string fileName = $"rebellion2-{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}.png";
@@ -76,7 +76,7 @@ public static class GameScreenshotMenu
     [MenuItem(_startRecordingMenuPath, false, 201)]
     public static void StartGameRecording()
     {
-        string recordingDirectory = Path.Combine(Application.dataPath, _recordingDirectoryName);
+        string recordingDirectory = GetCaptureDirectory(_recordingDirectoryName);
         Directory.CreateDirectory(recordingDirectory);
 
         string fileName = $"rebellion2-{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
@@ -148,6 +148,11 @@ public static class GameScreenshotMenu
     private static int GetEvenDimension(int dimension)
     {
         return Mathf.Max(2, dimension - dimension % 2);
+    }
+
+    private static string GetCaptureDirectory(string directoryName)
+    {
+        return Path.GetFullPath(Path.Combine(Application.dataPath, "..", directoryName));
     }
 
     public static void StopGameRecording()

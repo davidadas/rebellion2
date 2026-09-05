@@ -41,13 +41,13 @@ node_modules
 
 # Assets - local files not tracked in source control
 Assets/_Recovery/
-Assets/_recordings/
-Assets/_recordings.meta
-Assets/_screenshots/
-Assets/_screenshots.meta
 Assets/Videos/
 Assets/TextMesh Pro/
 /Assets/Content/
+
+# Local captures
+/_recordings/
+/_screenshots/
 /Assets/Resources/
 # Installed content is supplied by rebellion2-media beside the project/player.
 /Content/
