@@ -96,6 +96,8 @@ public static class GameScreenshotMenu
 
         string fileName = $"rebellion2-{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
         _recordingPath = Path.Combine(recordingDirectory, fileName + ".mp4");
+        int outputWidth = GetEvenDimension(Screen.width);
+        int outputHeight = GetEvenDimension(Screen.height);
 
         _recorderControllerSettings = ScriptableObject.CreateInstance<RecorderControllerSettings>();
         _movieRecorderSettings = ScriptableObject.CreateInstance<MovieRecorderSettings>();
@@ -108,7 +110,11 @@ public static class GameScreenshotMenu
         };
         _movieRecorderSettings.CaptureAudio = true;
         _movieRecorderSettings.CaptureAlpha = false;
-        _movieRecorderSettings.ImageInputSettings = new GameViewInputSettings();
+        _movieRecorderSettings.ImageInputSettings = new GameViewInputSettings
+        {
+            OutputWidth = outputWidth,
+            OutputHeight = outputHeight,
+        };
         _movieRecorderSettings.OutputFile = Path.Combine(recordingDirectory, fileName);
 
         _recorderControllerSettings.AddRecorderSettings(_movieRecorderSettings);
@@ -138,6 +144,11 @@ public static class GameScreenshotMenu
 
         Menu.SetChecked(_recordingMenuPath, true);
         Debug.Log($"Game recording started: {_recordingPath}");
+    }
+
+    private static int GetEvenDimension(int dimension)
+    {
+        return Mathf.Max(2, dimension - dimension % 2);
     }
 
     private static void StopGameRecording()
