@@ -55,7 +55,7 @@ namespace Rebellion.AI.Planners
                 return;
 
             double score = _scorer.Score(context, proposal);
-            if (score <= 0 && !proposal.CanExecute(context))
+            if (score <= 0)
                 return;
 
             proposal.SetScore(score);

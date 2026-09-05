@@ -239,6 +239,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 MissionTypeIDs.Sabotage
             );
+            participant.Ratings[OfficerRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -287,6 +288,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 MissionTypeIDs.Sabotage
             );
+            participant.Ratings[OfficerRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -332,6 +334,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 MissionTypeIDs.Sabotage
             );
+            availableParticipant.Ratings[OfficerRating.Espionage] = 100;
             game.AttachNode(activeParticipant, origin);
             game.AttachNode(availableParticipant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
@@ -530,6 +533,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 MissionTypeIDs.Sabotage
             );
+            participant.Ratings[OfficerRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
