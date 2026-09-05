@@ -184,21 +184,17 @@ internal sealed class MissionCreateWindowProjector
     {
         Planet sessionPlanet = session?.Target?.Planet?.Planet;
         Planet planet = GetLatestObservedPlanet(sessionPlanet);
+        ISceneNode target = GetLatestObservedTarget(session?.Target?.Item, sessionPlanet, planet);
         if (
             choice == null
             || planet == null
             || session.Agents.Count == 0
             || !session.ShowMissionOdds
+            || choice.TargetKind != MissionTargetKind.Planet && target == null
         )
             return null;
 
-        MissionOdds odds = getMissionOdds(
-            session.CreateMissionRequest(
-                choice,
-                planet,
-                GetLatestObservedTarget(session.Target.Item, sessionPlanet, planet)
-            )
-        );
+        MissionOdds odds = getMissionOdds(session.CreateMissionRequest(choice, planet, target));
         return odds == null
             ? null
             : new MissionOddsRenderData(odds.OverallSuccessProbability, odds.FoilProbability);
@@ -237,11 +233,12 @@ internal sealed class MissionCreateWindowProjector
             || sessionTarget.InstanceID == sessionPlanet?.InstanceID
         )
             return observedPlanet;
+        if (ReferenceEquals(observedPlanet, sessionPlanet))
+            return sessionTarget;
 
         return observedPlanet
-                .GetChildren<ISceneNode>(recursive: true)
-                .FirstOrDefault(node => node.InstanceID == sessionTarget.InstanceID)
-            ?? sessionTarget;
+            .GetChildren<ISceneNode>(recursive: true)
+            .FirstOrDefault(node => node.InstanceID == sessionTarget.InstanceID);
     }
 
     /// <summary>

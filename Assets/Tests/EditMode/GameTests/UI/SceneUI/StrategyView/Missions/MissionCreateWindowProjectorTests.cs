@@ -254,6 +254,42 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void Build_MissionOdds_MissingFromLatestObservedPlanetOmitsTargetEstimate()
+        {
+            Officer primary = CreateOfficer("primary", "Primary", false);
+            Officer staleTarget = CreateOfficer("stale-target", "Stale Target", false);
+            Planet latestPlanet = new Planet { InstanceID = _planet.Planet.InstanceID };
+            int estimateCount = 0;
+            MissionCreateWindowProjector projector = new MissionCreateWindowProjector(
+                () => _uiContext,
+                _ =>
+                {
+                    estimateCount++;
+                    return new MissionOdds(50, 20);
+                },
+                _ => latestPlanet
+            );
+            MissionCreateWindowSession session = new MissionCreateWindowSession(
+                _window,
+                new StrategyMissionTarget(_planet, staleTarget),
+                new[]
+                {
+                    CreateChoice(
+                        MissionTypeIDs.Assassination,
+                        "Assassination",
+                        MissionTargetKind.Officer
+                    ),
+                },
+                new[] { primary }
+            );
+
+            MissionCreateWindowRenderData data = projector.Build(session, _window);
+
+            Assert.IsNull(data.SelectedMissionOdds);
+            Assert.AreEqual(0, estimateCount);
+        }
+
+        [Test]
         public void Build_MissionOddsDisabled_OmitsEveryEstimate()
         {
             int estimateCount = 0;
