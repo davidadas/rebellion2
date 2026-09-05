@@ -144,6 +144,44 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Gets the tick when a faction most recently saw a planet.
+        /// </summary>
+        /// <param name="faction">The faction whose observations are queried.</param>
+        /// <param name="planetInstanceId">The planet instance ID.</param>
+        /// <returns>The current tick for a visible planet, its snapshot tick, or null when unexplored.</returns>
+        public int? GetPlanetLastSeenTick(Faction faction, string planetInstanceId)
+        {
+            if (faction == null || string.IsNullOrEmpty(planetInstanceId))
+                return null;
+
+            foreach (PlanetSector sector in _game.Galaxy.GetChildren<PlanetSector>())
+            {
+                Planet planet = sector
+                    .GetChildren<Planet>()
+                    .FirstOrDefault(candidate => candidate.InstanceID == planetInstanceId);
+                if (planet == null)
+                    continue;
+
+                if (IsPlanetVisible(planet, faction))
+                    return _game.CurrentTick;
+
+                return
+                    faction.Fog.Snapshots.TryGetValue(
+                        sector.InstanceID,
+                        out PlanetSectorSnapshot sectorSnapshot
+                    )
+                    && sectorSnapshot.Planets.TryGetValue(
+                        planetInstanceId,
+                        out PlanetSnapshot planetSnapshot
+                    )
+                    ? planetSnapshot.TickCaptured
+                    : null;
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Builds a faction-specific galaxy view.
         /// Creates new sectors and planets. Owned visible entities remain live references;
         /// hidden and snapshotted entities are copied for display.

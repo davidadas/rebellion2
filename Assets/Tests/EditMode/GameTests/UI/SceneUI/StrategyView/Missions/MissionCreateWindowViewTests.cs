@@ -89,6 +89,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(FindObject("Personnel").activeSelf);
             Assert.AreSame(_texture, FindComponent<RawImage>("SelectedMissionImage").texture);
             Assert.AreEqual("Diplomacy", FindText("SelectedMissionNameTextField").text);
+            Assert.AreEqual("Show mission odds", FindText("LabelTextField").text);
             Assert.AreSame(_texture, FindComponent<RawImage>("TargetPreviewImage").texture);
             Assert.AreEqual("Corellia", FindText("TargetPreviewNameTextField").text);
             Assert.IsTrue(FindObject("Dropdown").activeSelf);
@@ -98,6 +99,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual("Diplomacy", FindDropdownText(items[0]).text);
             Assert.AreEqual("Espionage", FindDropdownText(items[1]).text);
             Assert.AreSame(_texture, FindDropdownImage(items[0]).texture);
+        }
+
+        [Test]
+        public void Render_LastSeenTick_OverlaysBottomCenterOfTargetWithoutBackground()
+        {
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                false,
+                Array.Empty<StrategyDropdownItemRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                targetLastSeenTick: 417
+            );
+
+            _view.Render(data);
+
+            RectTransform overlay = FindComponent<RectTransform>("TargetLastSeenOverlay");
+            TextMeshProUGUI label = FindText("TargetLastSeenTextField");
+            Assert.AreEqual(new RectInt(78, 275, 111, 15), UILayout.GetSourceRect(overlay));
+            Assert.AreEqual("Last Seen: Day 417", label.text);
+            Assert.AreEqual(TextAlignmentOptions.Center, label.alignment);
+            Assert.IsNull(overlay.GetComponent<Image>());
         }
 
         [Test]
@@ -774,7 +797,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             MissionOddsRenderData selectedMissionOdds = null,
             bool showMissionOdds = true,
             Texture checkboxFrameTexture = null,
-            Texture checkboxCheckMarkTexture = null
+            Texture checkboxCheckMarkTexture = null,
+            int? targetLastSeenTick = null
         )
         {
             return new MissionCreateWindowRenderData(
@@ -798,7 +822,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 selectedMissionOdds,
                 showMissionOdds,
                 checkboxFrameTexture,
-                checkboxCheckMarkTexture
+                checkboxCheckMarkTexture,
+                targetLastSeenTick
             );
         }
 

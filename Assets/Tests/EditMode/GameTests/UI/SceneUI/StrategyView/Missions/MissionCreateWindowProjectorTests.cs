@@ -173,6 +173,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void Build_TargetLastSeenTick_RemainsVisibleWhenMissionOddsAreHidden()
+        {
+            MissionCreateWindowProjector projector = new MissionCreateWindowProjector(
+                () => _uiContext,
+                getPlanetLastSeenTick: _ => 417
+            );
+            MissionCreateWindowSession session = CreateSession(
+                new StrategyMissionTarget(_planet, _planet.Planet),
+                Array.Empty<IMissionParticipant>()
+            );
+            session.SetShowMissionOdds(false);
+
+            MissionCreateWindowRenderData data = projector.Build(session, _window);
+
+            Assert.IsFalse(data.ShowMissionOdds);
+            Assert.AreEqual(417, data.TargetLastSeenTick);
+            Assert.AreEqual("Last Seen: Day 417", data.TargetLastSeenLabel);
+        }
+
+        [Test]
         public void Build_MissionOdds_UsesCurrentAgentAndDecoySplitForEveryIcon()
         {
             Officer primary = CreateOfficer("primary", "Primary", false);

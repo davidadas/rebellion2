@@ -87,6 +87,32 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void GetPlanetLastSeenTick_VisiblePlanet_ReturnsCurrentTick()
+        {
+            _game.CurrentTick = 123;
+
+            int? tick = _fogSystem.GetPlanetLastSeenTick(_alliance, _hoth.InstanceID);
+
+            Assert.AreEqual(123, tick);
+        }
+
+        [Test]
+        public void GetPlanetLastSeenTick_SnapshotPlanet_ReturnsSnapshotTick()
+        {
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 41);
+
+            int? tick = _fogSystem.GetPlanetLastSeenTick(_alliance, _coruscant.InstanceID);
+
+            Assert.AreEqual(41, tick);
+        }
+
+        [Test]
+        public void GetPlanetLastSeenTick_UnexploredPlanet_ReturnsNull()
+        {
+            Assert.IsNull(_fogSystem.GetPlanetLastSeenTick(_alliance, _tatooine.InstanceID));
+        }
+
+        [Test]
         public void BuildFactionView_UnexploredPlanet_EmptySnapshot()
         {
             Assert.AreEqual(

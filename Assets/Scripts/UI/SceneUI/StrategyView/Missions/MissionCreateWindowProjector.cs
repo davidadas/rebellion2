@@ -17,6 +17,7 @@ internal sealed class MissionCreateWindowProjector
     private static readonly Color32 _white = Color.white;
 
     private readonly Func<string, Planet> getObservedPlanet;
+    private readonly Func<string, int?> getPlanetLastSeenTick;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<MissionStartRequest, MissionOdds> getMissionOdds;
 
@@ -26,15 +27,18 @@ internal sealed class MissionCreateWindowProjector
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="getMissionOdds">Calculates complete odds for a mission configuration.</param>
     /// <param name="getObservedPlanet">Returns the latest player-visible planet snapshot by ID.</param>
+    /// <param name="getPlanetLastSeenTick">Returns the tick when a planet was last visible.</param>
     public MissionCreateWindowProjector(
         Func<UIContext> getUIContext,
         Func<MissionStartRequest, MissionOdds> getMissionOdds = null,
-        Func<string, Planet> getObservedPlanet = null
+        Func<string, Planet> getObservedPlanet = null,
+        Func<string, int?> getPlanetLastSeenTick = null
     )
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.getMissionOdds = getMissionOdds ?? (_ => null);
         this.getObservedPlanet = getObservedPlanet ?? (_ => null);
+        this.getPlanetLastSeenTick = getPlanetLastSeenTick ?? (_ => null);
     }
 
     /// <summary>
@@ -86,7 +90,8 @@ internal sealed class MissionCreateWindowProjector
             selectedMissionOdds,
             session.ShowMissionOdds,
             uiContext.GetTexture(checkboxTheme?.FrameImagePath),
-            uiContext.GetTexture(checkboxTheme?.CheckMarkImagePath)
+            uiContext.GetTexture(checkboxTheme?.CheckMarkImagePath),
+            getPlanetLastSeenTick(session.Target?.Planet?.Planet?.InstanceID)
         );
     }
 

@@ -65,6 +65,7 @@ public sealed class MissionCreateWindowController
     /// <param name="getObservedPlanet">Returns the latest player-visible planet snapshot by ID.</param>
     /// <param name="getShowMissionOdds">Returns the persisted mission-odds visibility.</param>
     /// <param name="setShowMissionOdds">Persists mission-odds visibility.</param>
+    /// <param name="getPlanetLastSeenTick">Returns the tick when a planet was last visible.</param>
     public MissionCreateWindowController(
         Func<GameRoot> getGame,
         Func<MissionSystem> getMissionSystem,
@@ -78,7 +79,8 @@ public sealed class MissionCreateWindowController
         Func<SelectionModifierState> getSelectionModifiers = null,
         Func<string, Planet> getObservedPlanet = null,
         Func<bool> getShowMissionOdds = null,
-        Action<bool> setShowMissionOdds = null
+        Action<bool> setShowMissionOdds = null,
+        Func<string, int?> getPlanetLastSeenTick = null
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
@@ -98,7 +100,8 @@ public sealed class MissionCreateWindowController
         projector = new MissionCreateWindowProjector(
             getUIContext,
             request => this.getMissionSystem().GetMissionOdds(request),
-            getObservedPlanet
+            getObservedPlanet,
+            getPlanetLastSeenTick
         );
     }
 

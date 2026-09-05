@@ -92,6 +92,12 @@ public sealed class MissionCreateWindowView
     private TextMeshProUGUI targetPreviewNameTextField;
 
     [SerializeField]
+    private RectTransform targetLastSeenRoot;
+
+    [SerializeField]
+    private TextMeshProUGUI targetLastSeenTextField;
+
+    [SerializeField]
     private RectTransform dropdownRoot;
 
     [SerializeField]
@@ -536,6 +542,10 @@ public sealed class MissionCreateWindowView
         targetPreviewNameTextField.gameObject.SetActive(!string.IsNullOrEmpty(data.TargetName));
         if (!string.IsNullOrEmpty(data.TargetName))
             UILayout.SetTextContent(targetPreviewNameTextField, data.TargetName);
+
+        targetLastSeenRoot.gameObject.SetActive(!string.IsNullOrEmpty(data.TargetLastSeenLabel));
+        if (!string.IsNullOrEmpty(data.TargetLastSeenLabel))
+            UILayout.SetTextContent(targetLastSeenTextField, data.TargetLastSeenLabel);
 
         RenderDropdown(data.DropdownOpen, data.DropdownItems);
     }
@@ -1004,6 +1014,10 @@ public sealed class MissionCreateWindowView
             throw new MissingReferenceException($"{name}/SelectedMissionOddsOverlay is missing.");
         if (missionOddsCheckbox == null)
             throw new MissingReferenceException($"{name}/MissionOddsCheckbox is missing.");
+        if (targetLastSeenRoot == null)
+            throw new MissingReferenceException($"{name}/TargetLastSeenOverlay is missing.");
+        if (targetLastSeenTextField == null)
+            throw new MissingReferenceException($"{name}/TargetLastSeenTextField is missing.");
         if (targetPreviewImage == null)
             throw new MissingReferenceException($"{name}/TargetPreviewImage is missing.");
         if (targetPreviewNameTextField == null)

@@ -26,6 +26,7 @@ public sealed class StatusWindowController
     private readonly Action<UIWindow> closeWindow;
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Func<IReadOnlyList<GalaxyMapSector>> getSectors;
+    private readonly Func<StrategyStatusTarget, int?> getLastSeenTick;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<string, ISceneNode> findVisibleNode;
     private readonly Action markDirty;
@@ -44,6 +45,7 @@ public sealed class StatusWindowController
     /// <param name="windowManager">Owns strategy-window creation and registration.</param>
     /// <param name="getSectors">Returns the visible sectors in presentation order.</param>
     /// <param name="findVisibleNode">Resolves a node from the visible galaxy snapshot.</param>
+    /// <param name="getLastSeenTick">Returns the day when the target was last observed.</param>
     /// <param name="playSfx">Plays a strategy UI sound effect.</param>
     /// <param name="getWindowPosition">Returns the authored status-window placement.</param>
     /// <param name="closeWindow">Closes a registered strategy window.</param>
@@ -54,6 +56,7 @@ public sealed class StatusWindowController
         UIWindowManager windowManager,
         Func<IReadOnlyList<GalaxyMapSector>> getSectors,
         Func<string, ISceneNode> findVisibleNode,
+        Func<StrategyStatusTarget, int?> getLastSeenTick,
         Action<string> playSfx,
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
@@ -67,6 +70,8 @@ public sealed class StatusWindowController
         this.getSectors = getSectors ?? throw new ArgumentNullException(nameof(getSectors));
         this.findVisibleNode =
             findVisibleNode ?? throw new ArgumentNullException(nameof(findVisibleNode));
+        this.getLastSeenTick =
+            getLastSeenTick ?? throw new ArgumentNullException(nameof(getLastSeenTick));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.getWindowPosition =
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
@@ -288,7 +293,7 @@ public sealed class StatusWindowController
                 info.Header,
                 ResolveImageTextures(uiContext, theme, info),
                 info.Label,
-                CreateRows(info.Rows)
+                CreateRows(info.Rows, getLastSeenTick(session.Target))
             )
         );
     }
@@ -297,12 +302,16 @@ public sealed class StatusWindowController
     /// Copies projected status values into presentation-only row data.
     /// </summary>
     /// <param name="rows">The projected status values.</param>
+    /// <param name="lastSeenTick">The day when the target was last observed.</param>
     /// <returns>The immutable presentation rows.</returns>
     private static IReadOnlyList<StatusWindowRowRenderData> CreateRows(
-        IReadOnlyList<StrategyStatusRow> rows
+        IReadOnlyList<StrategyStatusRow> rows,
+        int? lastSeenTick
     )
     {
         List<StatusWindowRowRenderData> result = new List<StatusWindowRowRenderData>();
+        if (lastSeenTick.HasValue)
+            result.Add(new StatusWindowRowRenderData("Last Seen:", $"Day {lastSeenTick.Value}"));
         foreach (StrategyStatusRow row in rows ?? Array.Empty<StrategyStatusRow>())
             result.Add(new StatusWindowRowRenderData(row?.Left, row?.Right));
         return result.AsReadOnly();

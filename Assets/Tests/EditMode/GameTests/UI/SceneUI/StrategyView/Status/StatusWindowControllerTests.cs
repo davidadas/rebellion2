@@ -73,6 +73,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                     _windowManager,
                     () => Array.Empty<GalaxyMapSector>(),
                     _ => null,
+                    _ => null,
                     _ => { },
                     () => Vector2Int.zero,
                     _ => { },
@@ -200,7 +201,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(0, _closeCount);
         }
 
-        private StatusWindowController CreateController()
+        [Test]
+        public void RenderWindow_KnownObservationDay_ShowsLastSeenAsFirstDetailRow()
+        {
+            _controller = CreateController(417);
+            _controller.Initialize(new TestActions());
+            _controller.Open(
+                new StrategyStatusTarget(null, new Officer { DisplayName = "Target" })
+            );
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out StatusWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            _controller.RenderWindow(view, window);
+
+            TMPro.TextMeshProUGUI[] textFields =
+                view.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true);
+            Assert.AreEqual(
+                "Last Seen:",
+                textFields.Single(field => field.name == "LeftRowTextField0").text
+            );
+            Assert.AreEqual(
+                "Day 417",
+                textFields.Single(field => field.name == "RightRowTextField0").text
+            );
+        }
+
+        private StatusWindowController CreateController(int? lastSeenTick = null)
         {
             return new StatusWindowController(
                 () => _uiContext,
@@ -208,6 +235,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 _windowManager,
                 () => Array.Empty<GalaxyMapSector>(),
                 _ => _visibleNode,
+                _ => lastSeenTick,
                 path => _playedSfx.Add(path),
                 () => new Vector2Int(75, 40),
                 window =>

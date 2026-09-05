@@ -114,6 +114,11 @@ public sealed class MissionCreateWindowRenderData
 
     public string TargetName { get; }
 
+    public int? TargetLastSeenTick { get; }
+
+    public string TargetLastSeenLabel =>
+        TargetLastSeenTick.HasValue ? $"Last Seen: Day {TargetLastSeenTick.Value}" : string.Empty;
+
     public Texture TargetTexture { get; }
 
     public bool UsePlanetTargetPreview { get; }
@@ -154,6 +159,7 @@ public sealed class MissionCreateWindowRenderData
     /// <param name="showMissionOdds">Whether the mission-odds overlays are enabled.</param>
     /// <param name="checkboxFrameTexture">The theme-owned checkbox frame.</param>
     /// <param name="checkboxCheckMarkTexture">The theme-owned checkbox check mark.</param>
+    /// <param name="targetLastSeenTick">The tick when the target planet was last visible.</param>
     public MissionCreateWindowRenderData(
         int x,
         int y,
@@ -175,7 +181,8 @@ public sealed class MissionCreateWindowRenderData
         MissionOddsRenderData selectedMissionOdds = null,
         bool showMissionOdds = true,
         Texture checkboxFrameTexture = null,
-        Texture checkboxCheckMarkTexture = null
+        Texture checkboxCheckMarkTexture = null,
+        int? targetLastSeenTick = null
     )
     {
         X = x;
@@ -191,6 +198,7 @@ public sealed class MissionCreateWindowRenderData
         CheckboxFrameTexture = checkboxFrameTexture;
         CheckboxCheckMarkTexture = checkboxCheckMarkTexture;
         TargetName = targetName ?? string.Empty;
+        TargetLastSeenTick = targetLastSeenTick;
         TargetTexture = targetTexture;
         UsePlanetTargetPreview = usePlanetTargetPreview;
         AgentsHeaderTexture = agentsHeaderTexture;

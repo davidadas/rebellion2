@@ -425,6 +425,7 @@ public sealed class StrategyController
             strategyWindowManager,
             () => Sectors,
             galaxyMapController.FindVisibleNode,
+            GetStatusTargetLastSeenTick,
             PlaySfx,
             windowPlacementController.GetStatusWindowPosition,
             CloseWindow,
@@ -478,7 +479,11 @@ public sealed class StrategyController
             () => bootstrap.GetInputManager().GetSelectionModifierState(),
             planetInstanceId => galaxyMapController.FindPlanet(planetInstanceId)?.Planet,
             GetShowMissionOdds,
-            SetShowMissionOdds
+            SetShowMissionOdds,
+            planetInstanceId =>
+                gameManager
+                    .GetFogOfWarSystem()
+                    .GetPlanetLastSeenTick(gameManager.GetPlayerFaction(), planetInstanceId)
         );
         confirmDialogWindowController = new ConfirmDialogWindowController(
             () => uiContext,
@@ -2530,6 +2535,22 @@ public sealed class StrategyController
     private bool TryOpenStatusWindow(StrategyStatusTarget target)
     {
         return statusWindowController.Open(target);
+    }
+
+    /// <summary>
+    /// Gets the day when the planet associated with a status target was last observed.
+    /// </summary>
+    /// <param name="target">The status target whose intelligence age is requested.</param>
+    /// <returns>The last observed day, or null when it is unknown.</returns>
+    private int? GetStatusTargetLastSeenTick(StrategyStatusTarget target)
+    {
+        Planet planet =
+            target?.Planet?.Planet
+            ?? target?.Item as Planet
+            ?? target?.Item?.GetParentOfType<Planet>();
+        return gameManager
+            ?.GetFogOfWarSystem()
+            .GetPlanetLastSeenTick(gameManager.GetPlayerFaction(), planet?.InstanceID);
     }
 
     /// <summary>

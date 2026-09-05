@@ -2886,6 +2886,22 @@ public static class StrategyViewPrefabBuilder
             211
         );
         SetSourceRect(targetPreview.rectTransform, 51, 211, 165, 79);
+        GameObject targetLastSeenObject = new GameObject(
+            "TargetLastSeenOverlay",
+            typeof(RectTransform)
+        );
+        RectTransform targetLastSeenRoot = targetLastSeenObject.GetComponent<RectTransform>();
+        targetLastSeenRoot.SetParent(missionSelection, false);
+        SetSourceRect(targetLastSeenRoot, 78, 275, 111, 15);
+        TextMeshProUGUI targetLastSeenText = CreateTextLabel(
+            "TargetLastSeenTextField",
+            targetLastSeenRoot
+        );
+        targetLastSeenText.text = "Last Seen: Day 0";
+        targetLastSeenText.color = Color.white;
+        targetLastSeenText.fontSize = 10;
+        targetLastSeenText.alignment = TextAlignmentOptions.Center;
+        SetSourceRect(targetLastSeenText.rectTransform, 0, 0, 111, 15);
         TextMeshProUGUI targetPreviewName = CreateTextLabel(
             "TargetPreviewNameTextField",
             missionSelection
@@ -3098,6 +3114,8 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "missionOddsCheckbox", missionOddsCheckbox);
         AssignReference(view, "targetPreviewImage", targetPreview);
         AssignReference(view, "targetPreviewNameTextField", targetPreviewName);
+        AssignReference(view, "targetLastSeenRoot", targetLastSeenRoot);
+        AssignReference(view, "targetLastSeenTextField", targetLastSeenText);
         AssignReference(view, "dropdownRoot", dropdown);
         AssignReference(view, "dropdownScrollArea", dropdownScrollArea);
         AssignReference(view, "dropdownItemRowTemplate", dropdownItemRowTemplate);
