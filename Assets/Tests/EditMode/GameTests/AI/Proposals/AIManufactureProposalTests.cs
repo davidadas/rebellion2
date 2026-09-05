@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -11,6 +12,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
 
@@ -400,7 +402,7 @@ namespace Rebellion.Tests.AI.Proposals
             System.Reflection.MethodInfo recordInitialState = trackerType.GetMethod(
                 "RecordInitialState"
             );
-            System.Reflection.MethodInfo recordTick = trackerType.GetMethod("RecordTick");
+            System.Reflection.MethodInfo record = trackerType.GetMethod("Record");
             System.Reflection.MethodInfo getManufacturedBuildings = trackerType.GetMethod(
                 "GetManufacturedBuildings",
                 new[] { typeof(string), typeof(BuildingType) }
@@ -417,7 +419,7 @@ namespace Rebellion.Tests.AI.Proposals
                     empire.InstanceID
                 )
             );
-            recordTick.Invoke(tracker, new object[] { game, specialForces });
+            record.Invoke(tracker, new object[] { Array.Empty<GameResult>() });
 
             Assert.AreEqual(
                 0,
@@ -432,8 +434,12 @@ namespace Rebellion.Tests.AI.Proposals
                 .OfType<Building>()
                 .Single();
             queuedShipyard.ManufacturingStatus = ManufacturingStatus.Complete;
-            recordTick.Invoke(tracker, new object[] { game, specialForces });
-            recordTick.Invoke(tracker, new object[] { game, specialForces });
+            GameResult[] completionResults =
+            {
+                new GameObjectDeployedResult { GameObject = queuedShipyard },
+            };
+            record.Invoke(tracker, new object[] { completionResults });
+            record.Invoke(tracker, new object[] { completionResults });
 
             Assert.AreEqual(
                 1,

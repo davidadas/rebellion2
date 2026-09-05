@@ -138,6 +138,8 @@ public static class HeadlessSimulationRunner
             manager.ResultsResolved += planetaryAssaultTracker.Record;
             manager.VictoriesResolved += results => victory ??= results.FirstOrDefault();
             manager.ResultsResolved += missionOutcomeTracker.Record;
+            manager.ResultsResolved += manufacturedUnitTracker.Record;
+            manager.ResultsResolved += specialForcesLifecycleTracker.Record;
             List<SpecialForces> initialSpecialForces = game.GetSceneNodesByType<SpecialForces>()
                 .ToList();
             manufacturedUnitTracker.RecordInitialState(game, initialSpecialForces);
@@ -147,7 +149,6 @@ public static class HeadlessSimulationRunner
             specialForcesLifecycleTracker.RecordInitialState(game, initialSpecialForces);
             long gameProcessingTimestampCount = 0;
             long idleTimestampCount = 0;
-            long manufacturedTimestampCount = 0;
             long fleetHistoryTimestampCount = 0;
             long activityTimestampCount = 0;
             long personnelTimestampCount = 0;
@@ -165,16 +166,12 @@ public static class HeadlessSimulationRunner
                 long gameProcessingElapsed = Stopwatch.GetTimestamp() - startTimestamp;
                 gameProcessingTimestampCount += gameProcessingElapsed;
                 gameProcessingSamples.Add(gameProcessingElapsed);
-                startTimestamp = Stopwatch.GetTimestamp();
-                List<SpecialForces> currentSpecialForces = game.GetSceneNodesByType<SpecialForces>()
-                    .ToList();
-                specialForcesTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
-                startTimestamp = Stopwatch.GetTimestamp();
-                idleTracker.RecordTick(game);
-                idleTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
-                startTimestamp = Stopwatch.GetTimestamp();
-                manufacturedUnitTracker.RecordTick(game, currentSpecialForces);
-                manufacturedTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                if (game.CurrentTick % ManufacturingIdleTracker.SampleInterval == 0)
+                {
+                    startTimestamp = Stopwatch.GetTimestamp();
+                    idleTracker.RecordSample(game);
+                    idleTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                }
                 startTimestamp = Stopwatch.GetTimestamp();
                 fleetHistoryTracker.RecordTick(game);
                 fleetHistoryTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
@@ -184,9 +181,12 @@ public static class HeadlessSimulationRunner
                 startTimestamp = Stopwatch.GetTimestamp();
                 personnelOutcomeTracker.RecordTick(game);
                 personnelTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
-                startTimestamp = Stopwatch.GetTimestamp();
-                specialForcesLifecycleTracker.RecordTick(game, currentSpecialForces);
-                specialForcesTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                if (game.CurrentTick % SpecialForcesLifecycleTracker.SampleInterval == 0)
+                {
+                    startTimestamp = Stopwatch.GetTimestamp();
+                    specialForcesLifecycleTracker.RecordSample(game);
+                    specialForcesTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
+                }
                 startTimestamp = Stopwatch.GetTimestamp();
                 attackReadinessTracker.RecordTick(game);
                 attackReadinessTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
@@ -195,7 +195,7 @@ public static class HeadlessSimulationRunner
             specialForcesLifecycleTracker.RecordFinalState(game);
             LogToFile(
                 logPath,
-                $"[HeadlessSim] timing game={GetElapsedSeconds(gameProcessingTimestampCount):F3}s idle={GetElapsedSeconds(idleTimestampCount):F3}s manufactured={GetElapsedSeconds(manufacturedTimestampCount):F3}s fleets={GetElapsedSeconds(fleetHistoryTimestampCount):F3}s activity={GetElapsedSeconds(activityTimestampCount):F3}s personnel={GetElapsedSeconds(personnelTimestampCount):F3}s specialForces={GetElapsedSeconds(specialForcesTimestampCount):F3}s readiness={GetElapsedSeconds(attackReadinessTimestampCount):F3}s"
+                $"[HeadlessSim] timing game={GetElapsedSeconds(gameProcessingTimestampCount):F3}s idle={GetElapsedSeconds(idleTimestampCount):F3}s fleets={GetElapsedSeconds(fleetHistoryTimestampCount):F3}s activity={GetElapsedSeconds(activityTimestampCount):F3}s personnel={GetElapsedSeconds(personnelTimestampCount):F3}s specialForces={GetElapsedSeconds(specialForcesTimestampCount):F3}s readiness={GetElapsedSeconds(attackReadinessTimestampCount):F3}s"
             );
             LogToFile(
                 logPath,
@@ -1973,7 +1973,7 @@ public static class HeadlessSimulationRunner
         /// <param name="game">The current game state.</param>
         public void RecordTick(GameRoot game)
         {
-            Dictionary<string, Officer> currentOfficers = game.GetSceneNodesByType<Officer>()
+            Dictionary<string, Officer> currentOfficers = GetFactionOwnedNodes<Officer>(game)
                 .ToDictionary(officer => officer.InstanceID, StringComparer.Ordinal);
             HashSet<string> abductionTargetIds = GetAbductionTargetIds(game);
             foreach (Officer officer in currentOfficers.Values)
@@ -2029,7 +2029,7 @@ public static class HeadlessSimulationRunner
         /// <returns>The targeted officer instance identifiers.</returns>
         private static HashSet<string> GetAbductionTargetIds(GameRoot game)
         {
-            return game.GetSceneNodesByType<AbductionMission>()
+            return GetFactionOwnedNodes<AbductionMission>(game)
                 .Select(mission => mission.TargetOfficerInstanceID)
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet(StringComparer.Ordinal);
@@ -2188,7 +2188,9 @@ public static class HeadlessSimulationRunner
 
     private sealed class SpecialForcesLifecycleTracker
     {
-        private const int _availabilitySampleInterval = 25;
+        // Availability changes slowly relative to a mission lifecycle, so a 25-tick sample keeps
+        // long-run utilization representative without adding a scene traversal to every tick.
+        public const int SampleInterval = 25;
 
         private readonly Dictionary<string, TrackedSpecialForces> _units = new(
             StringComparer.Ordinal
@@ -2221,40 +2223,48 @@ public static class HeadlessSimulationRunner
         }
 
         /// <summary>
-        /// Records special-forces creation, removal, and availability for one tick.
+        /// Records special-forces creation and removal from resolved lifecycle results.
         /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="specialForces">The shared current special-forces snapshot.</param>
-        public void RecordTick(GameRoot game, IReadOnlyCollection<SpecialForces> specialForces)
+        /// <param name="results">The resolved game results.</param>
+        public void Record(IReadOnlyList<GameResult> results)
         {
-            Dictionary<string, SpecialForces> currentUnits = specialForces.ToDictionary(
-                unit => unit.InstanceID,
-                StringComparer.Ordinal
-            );
+            if (results == null)
+                return;
 
-            foreach (TrackedSpecialForces previous in _units.Values)
+            foreach (GameObjectDeployedResult result in results.OfType<GameObjectDeployedResult>())
             {
-                if (!currentUnits.ContainsKey(previous.InstanceId))
-                    GetCounts(previous.OwnerInstanceId, previous.TypeId).RemovedCount++;
-            }
-
-            foreach (SpecialForces unit in currentUnits.Values)
-            {
-                if (_units.ContainsKey(unit.InstanceID))
+                if (
+                    result.GameObject is not SpecialForces unit
+                    || _units.ContainsKey(unit.InstanceID)
+                )
                     continue;
 
-                GetCounts(unit.OwnerInstanceID, unit.GetTypeID()).CreatedCount++;
-            }
-
-            _units.Clear();
-            foreach (SpecialForces unit in currentUnits.Values)
-            {
                 TrackedSpecialForces tracked = TrackedSpecialForces.From(unit);
                 _units[tracked.InstanceId] = tracked;
+                GetCounts(tracked.OwnerInstanceId, tracked.TypeId).CreatedCount++;
             }
 
-            if (game.CurrentTick % _availabilitySampleInterval == 0)
-                RecordAvailability(game, specialForces);
+            foreach (
+                GameObjectDestroyedResult result in results.OfType<GameObjectDestroyedResult>()
+            )
+            {
+                if (
+                    result.DestroyedObject is not SpecialForces unit
+                    || !_units.Remove(unit.InstanceID, out TrackedSpecialForces tracked)
+                )
+                    continue;
+
+                GetCounts(tracked.OwnerInstanceId, tracked.TypeId).RemovedCount++;
+            }
+        }
+
+        /// <summary>
+        /// Samples special-forces availability at the documented coarse interval.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        public void RecordSample(GameRoot game)
+        {
+            RecordAvailability(game, game.GetSceneNodesByType<SpecialForces>().ToList());
         }
 
         /// <summary>
@@ -2597,7 +2607,7 @@ public static class HeadlessSimulationRunner
         /// <param name="game">The current game state.</param>
         private void RecordMissions(GameRoot game)
         {
-            Dictionary<string, TrackedMission> currentMissions = game.GetSceneNodesByType<Mission>()
+            Dictionary<string, TrackedMission> currentMissions = GetFactionOwnedNodes<Mission>(game)
                 .ToDictionary(
                     mission => mission.InstanceID,
                     mission => TrackedMission.From(mission, game)
@@ -2736,8 +2746,12 @@ public static class HeadlessSimulationRunner
         /// <param name="game">The current game state.</param>
         private void RecordPlanetOwnership(GameRoot game)
         {
-            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            foreach (string planetId in _planetStates.Keys.ToList())
             {
+                Planet planet = game.GetSceneNodeByInstanceID<Planet>(planetId);
+                if (planet == null)
+                    continue;
+
                 PlanetState current = PlanetState.From(planet);
                 if (_planetStates.TryGetValue(planet.InstanceID, out PlanetState previous))
                 {
@@ -3029,7 +3043,9 @@ public static class HeadlessSimulationRunner
 
     private sealed class AttackReadinessTracker
     {
-        private const int _aiTurnSampleInterval = 5;
+        // Readiness blockers persist across construction and travel, making every 25th AI turn a
+        // representative sample without polling all planets and fleets on every turn.
+        private const int _aiTurnSampleInterval = 25;
         private readonly Dictionary<string, AttackReadinessFactionCounters> _counters = new(
             StringComparer.Ordinal
         );
@@ -3382,37 +3398,16 @@ public static class HeadlessSimulationRunner
         }
 
         /// <summary>
-        /// Records units created during the current simulation tick.
+        /// Records completed manufactured items from resolved lifecycle results.
         /// </summary>
-        /// <param name="game">The game state to inspect.</param>
-        /// <param name="specialForces">The shared current special-forces snapshot.</param>
-        public void RecordTick(GameRoot game, IReadOnlyCollection<SpecialForces> specialForces)
+        /// <param name="results">The resolved game results.</param>
+        public void Record(IReadOnlyList<GameResult> results)
         {
-            RecordNewUnits(
-                game.GetSceneNodesByType<CapitalShip>(),
-                _seenCapitalShips,
-                "CapitalShip",
-                counts => counts.CapitalShips++
-            );
-            RecordNewUnits(
-                game.GetSceneNodesByType<Starfighter>(),
-                _seenStarfighters,
-                "Starfighter",
-                counts => counts.Starfighters++
-            );
-            RecordNewUnits(
-                game.GetSceneNodesByType<Regiment>(),
-                _seenRegiments,
-                "Regiment",
-                counts => counts.Regiments++
-            );
-            RecordNewUnits(
-                specialForces,
-                _seenSpecialForces,
-                "SpecialForces",
-                counts => counts.SpecialForces++
-            );
-            RecordNewBuildings(game.GetSceneNodesByType<Building>());
+            if (results == null)
+                return;
+
+            foreach (GameObjectDeployedResult result in results.OfType<GameObjectDeployedResult>())
+                RecordNewUnit(result.GameObject as IManufacturable);
         }
 
         /// <summary>
@@ -3499,66 +3494,44 @@ public static class HeadlessSimulationRunner
         }
 
         /// <summary>
-        /// Records newly discovered units and increments faction counts.
+        /// Records a newly deployed manufactured item and increments its faction totals.
         /// </summary>
-        /// <typeparam name="T">The scene node type to record.</typeparam>
-        /// <param name="units">The units to inspect.</param>
-        /// <param name="seen">The set used to detect new unit IDs.</param>
-        /// <param name="category">The manufactured unit category.</param>
-        /// <param name="increment">The count update to apply.</param>
-        private void RecordNewUnits<T>(
-            IEnumerable<T> units,
-            HashSet<string> seen,
-            string category,
-            Action<ManufacturedUnitCounts> increment
-        )
-            where T : ISceneNode, IManufacturable
+        /// <param name="item">The deployed item.</param>
+        private void RecordNewUnit(IManufacturable item)
         {
-            foreach (T unit in units)
+            if (!IsManufactured(item))
+                return;
+
+            string instanceId = item.GetInstanceID();
+            string factionId = item.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(instanceId) || string.IsNullOrEmpty(factionId))
+                return;
+
+            ManufacturedUnitCounts counts = GetCounts(factionId);
+            switch (item)
             {
-                string instanceId = unit.GetInstanceID();
-                if (
-                    !IsManufactured(unit)
-                    || string.IsNullOrEmpty(instanceId)
-                    || !seen.Add(instanceId)
-                )
-                    continue;
-
-                string factionId = unit.GetOwnerInstanceID();
-                if (string.IsNullOrEmpty(factionId))
-                    continue;
-
-                ManufacturedUnitCounts counts = GetCounts(factionId);
-                increment(counts);
-                counts.RecordType(category, unit.GetTypeID(), unit.GetDisplayName());
-            }
-        }
-
-        /// <summary>
-        /// Records newly discovered buildings and increments faction counts.
-        /// </summary>
-        /// <param name="buildings">The buildings to inspect.</param>
-        private void RecordNewBuildings(IEnumerable<Building> buildings)
-        {
-            foreach (Building building in buildings)
-            {
-                string instanceId = building.GetInstanceID();
-                if (
-                    !IsManufactured(building)
-                    || string.IsNullOrEmpty(instanceId)
-                    || !_seenBuildings.Add(instanceId)
-                )
-                    continue;
-
-                string factionId = building.GetOwnerInstanceID();
-                if (string.IsNullOrEmpty(factionId))
-                    continue;
-
-                ManufacturedUnitCounts counts = GetCounts(factionId);
-                counts.Buildings++;
-                counts.BuildingsByType.TryGetValue(building.BuildingType, out int count);
-                counts.BuildingsByType[building.BuildingType] = count + 1;
-                counts.RecordType("Building", building.GetTypeID(), building.GetDisplayName());
+                case CapitalShip when _seenCapitalShips.Add(instanceId):
+                    counts.CapitalShips++;
+                    counts.RecordType("CapitalShip", item.GetTypeID(), item.GetDisplayName());
+                    break;
+                case Starfighter when _seenStarfighters.Add(instanceId):
+                    counts.Starfighters++;
+                    counts.RecordType("Starfighter", item.GetTypeID(), item.GetDisplayName());
+                    break;
+                case Regiment when _seenRegiments.Add(instanceId):
+                    counts.Regiments++;
+                    counts.RecordType("Regiment", item.GetTypeID(), item.GetDisplayName());
+                    break;
+                case SpecialForces when _seenSpecialForces.Add(instanceId):
+                    counts.SpecialForces++;
+                    counts.RecordType("SpecialForces", item.GetTypeID(), item.GetDisplayName());
+                    break;
+                case Building building when _seenBuildings.Add(instanceId):
+                    counts.Buildings++;
+                    counts.BuildingsByType.TryGetValue(building.BuildingType, out int count);
+                    counts.BuildingsByType[building.BuildingType] = count + 1;
+                    counts.RecordType("Building", item.GetTypeID(), item.GetDisplayName());
+                    break;
             }
         }
 
@@ -3568,7 +3541,7 @@ public static class HeadlessSimulationRunner
         /// <param name="item">The item to inspect.</param>
         /// <returns>True when production is complete.</returns>
         private static bool IsComplete(IManufacturable item) =>
-            item.ManufacturingStatus == ManufacturingStatus.Complete;
+            item?.ManufacturingStatus == ManufacturingStatus.Complete;
 
         /// <summary>
         /// Determines whether a completed item was produced during the game.
@@ -4389,15 +4362,31 @@ public static class HeadlessSimulationRunner
         }
     }
 
+    /// <summary>
+    /// Enumerates faction-owned nodes from the ownership indexes without traversing the galaxy.
+    /// </summary>
+    /// <typeparam name="T">The scene-node type to retrieve.</typeparam>
+    /// <param name="game">The game containing the faction indexes.</param>
+    /// <returns>The active owned nodes of the requested type.</returns>
+    private static IEnumerable<T> GetFactionOwnedNodes<T>(GameRoot game)
+        where T : ISceneNode
+    {
+        return game.GetFactions().SelectMany(faction => faction.GetOwnedUnitsByType<T>());
+    }
+
     private sealed class ManufacturingIdleTracker
     {
+        // Manufacturing queues and resource constraints persist for many ticks; weighting a
+        // 25-tick sample preserves long-run idle-capacity trends without hot-path graph polling.
+        public const int SampleInterval = 25;
+
         private readonly Dictionary<string, FactionIdleCounters> _factions = new();
 
         /// <summary>
-        /// Records idle manufacturing capacity for the current simulation tick.
+        /// Samples idle manufacturing capacity and weights it across the sampling interval.
         /// </summary>
         /// <param name="game">The game state to inspect.</param>
-        public void RecordTick(GameRoot game)
+        public void RecordSample(GameRoot game)
         {
             foreach (Faction faction in game.GetFactions())
             {
@@ -4494,22 +4483,22 @@ public static class HeadlessSimulationRunner
             switch (type)
             {
                 case ManufacturingType.Building:
-                    counters.BuildingIdlePlanetTicks++;
-                    counters.BuildingIdleCapacityTicks += idleCapacity;
-                    planetCounters.BuildingIdleTicks++;
-                    planetCounters.BuildingIdleCapacityTicks += idleCapacity;
+                    counters.BuildingIdlePlanetTicks += SampleInterval;
+                    counters.BuildingIdleCapacityTicks += idleCapacity * SampleInterval;
+                    planetCounters.BuildingIdleTicks += SampleInterval;
+                    planetCounters.BuildingIdleCapacityTicks += idleCapacity * SampleInterval;
                     break;
                 case ManufacturingType.Ship:
-                    counters.ShipIdlePlanetTicks++;
-                    counters.ShipIdleCapacityTicks += idleCapacity;
-                    planetCounters.ShipIdleTicks++;
-                    planetCounters.ShipIdleCapacityTicks += idleCapacity;
+                    counters.ShipIdlePlanetTicks += SampleInterval;
+                    counters.ShipIdleCapacityTicks += idleCapacity * SampleInterval;
+                    planetCounters.ShipIdleTicks += SampleInterval;
+                    planetCounters.ShipIdleCapacityTicks += idleCapacity * SampleInterval;
                     break;
                 case ManufacturingType.Troop:
-                    counters.TroopIdlePlanetTicks++;
-                    counters.TroopIdleCapacityTicks += idleCapacity;
-                    planetCounters.TroopIdleTicks++;
-                    planetCounters.TroopIdleCapacityTicks += idleCapacity;
+                    counters.TroopIdlePlanetTicks += SampleInterval;
+                    counters.TroopIdleCapacityTicks += idleCapacity * SampleInterval;
+                    planetCounters.TroopIdleTicks += SampleInterval;
+                    planetCounters.TroopIdleCapacityTicks += idleCapacity * SampleInterval;
                     break;
             }
         }
@@ -4655,7 +4644,7 @@ public static class HeadlessSimulationRunner
                     return;
 
                 FundedSampleCount++;
-                FundedCapacityTicks += idleCapacity;
+                FundedCapacityTicks += idleCapacity * SampleInterval;
             }
 
             /// <summary>
