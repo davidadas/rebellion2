@@ -634,6 +634,7 @@ public sealed class DefenseWindowController
             return;
 
         session.SelectItemForDrag(itemIndex, view.ItemColumnCount);
+        RenderSelection(view, session);
         if (
             session.CanDragSelectedItems()
             && session.SelectedItemIndexes.Contains(itemIndex)
@@ -643,8 +644,6 @@ public sealed class DefenseWindowController
             startItemDrag(session.Window, eventData);
             return;
         }
-
-        RenderSelection(view, session);
     }
 
     /// <summary>

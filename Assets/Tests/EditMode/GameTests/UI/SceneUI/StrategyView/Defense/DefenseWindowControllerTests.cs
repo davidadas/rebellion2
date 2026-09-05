@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -25,7 +26,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         private Officer _officer;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
+        private SelectionModifierState _selectionModifiers;
         private TargetingController _targetingController;
+        private Texture2D _texture;
         private UIContext _uiContext;
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
@@ -34,14 +37,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void SetUp()
         {
             _dirtyCount = 0;
+            _selectionModifiers = default;
+            _texture = new Texture2D(1, 1);
             GameRoot game = CreateGame();
-            _uiContext = TestContent.CreateUIContext(
-                game,
-                TestContent.CreateThemeLibrary(),
-                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
-            );
+            _uiContext = CreateUIContext(game);
             _planet = CreatePlanet(game);
-            _officer = new Officer { InstanceID = "officer", OwnerInstanceID = _playerFactionId };
+            _officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = _playerFactionId,
+                DisplayImagePath = "entity",
+            };
             _planet.Planet.AddTestChild(_officer);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
@@ -56,6 +62,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
+            UnityEngine.Object.DestroyImmediate(_texture);
         }
 
         [Test]
@@ -165,6 +172,59 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
+        public void ItemPress_ModifiedPortraitSelection_RendersSelectionBeforeStartingDrag()
+        {
+            Officer secondOfficer = new Officer
+            {
+                InstanceID = "second-officer",
+                OwnerInstanceID = _playerFactionId,
+                DisplayImagePath = "entity",
+            };
+            _planet.Planet.AddTestChild(secondOfficer);
+            int dragStartCount = 0;
+            _controller.Initialize(
+                new TestActions(),
+                new TestActions(),
+                new TestActions(),
+                (_, _) => dragStartCount++,
+                _ => { },
+                _ => { }
+            );
+            DefenseWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            Assert.IsTrue(_controller.SelectTarget(view, _officer));
+            _controller.RenderWindow(view, window, true);
+            _selectionModifiers = new SelectionModifierState(true, false);
+            StrategyUnitCardView[] cards = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Where(card => card.gameObject.activeInHierarchy)
+                .OrderBy(card => card.Index)
+                .ToArray();
+            StrategyUnitCardView secondCard = cards[1];
+            UIComponentTestHelper.InvokeLifecycle(secondCard, "Awake");
+            RectTransform entityRect = secondCard.transform.Find("EntityImage") as RectTransform;
+            Vector2 pointerPosition = RectTransformUtility.WorldToScreenPoint(
+                null,
+                entityRect.TransformPoint(entityRect.rect.center)
+            );
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerId = -1,
+                position = pointerPosition,
+                pressPosition = pointerPosition,
+                pointerCurrentRaycast = new RaycastResult { gameObject = entityRect.gameObject },
+                pointerPressRaycast = new RaycastResult { gameObject = entityRect.gameObject },
+            };
+
+            secondCard.GetComponent<UIPointerGestureRelay>().OnPointerDown(eventData);
+
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, _controller.GetSelectedItems(view));
+            Assert.IsTrue(cards[0].transform.Find("SelectionImage").gameObject.activeSelf);
+            Assert.IsTrue(cards[1].transform.Find("SelectionImage").gameObject.activeSelf);
+            Assert.AreEqual(1, dragStartCount);
+        }
+
+        [Test]
         public void WindowDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
             DefenseWindowView view = OpenWindow(out UIWindow window);
@@ -266,7 +326,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 _windowLayer,
                 _windowManager,
                 (x, y) => new Vector2Int(x + 17, y + 19),
-                () => _dirtyCount++
+                () => _dirtyCount++,
+                () => _selectionModifiers
             );
         }
 
@@ -276,6 +337,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             return game;
+        }
+
+        private UIContext CreateUIContext(GameRoot game)
+        {
+            FactionTheme playerTheme = new FactionTheme
+            {
+                FactionInstanceID = _playerFactionId,
+                FactionPrimaryColorHex = "#ffffff",
+                StrategyWindows = new StrategyWindowsTheme
+                {
+                    Defense = new DefenseWindowTheme { SelectionImagePath = "selection" },
+                },
+            };
+            FactionThemes themes = new FactionThemes
+            {
+                new FactionTheme { FactionInstanceID = "DEFAULT" },
+                playerTheme,
+            };
+            return new UIContext(
+                game,
+                new FactionThemeLibrary(themes),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>()),
+                _ => _texture
+            );
         }
 
         private GalaxyMapPlanet CreatePlanet(GameRoot game)

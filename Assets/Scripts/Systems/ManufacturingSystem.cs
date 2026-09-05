@@ -867,6 +867,7 @@ namespace Rebellion.Systems
                 bool hadQueuedItems = items?.Count > 0;
 
                 items?.RemoveAll(item => !IsQueuedItemActive(item));
+                RemoveInvalidPlanetDestinationItems(planet, items);
                 bool hasQueuedItems = items?.Count > 0;
                 List<Building> readyFacilities = AdvanceProductionFacilities(
                     planet,
@@ -938,6 +939,54 @@ namespace Rebellion.Systems
         {
             return item != null
                 && _game.GetSceneNodeByInstanceID<ISceneNode>(item.InstanceID) == item;
+        }
+
+        /// <summary>
+        /// Cancels unfinished building and troop orders whose planet destination is no longer
+        /// controlled by the producing faction.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="items">The production lane to validate.</param>
+        private void RemoveInvalidPlanetDestinationItems(
+            Planet producer,
+            List<IManufacturable> items
+        )
+        {
+            if (producer == null || items == null || items.Count == 0)
+                return;
+
+            foreach (IManufacturable item in items.ToList())
+            {
+                if (!HasInvalidPlanetDestination(item))
+                    continue;
+
+                item.ManufacturingQueueSequence = 0;
+                DetachQueuedItem(item);
+                items.Remove(item);
+            }
+        }
+
+        /// <summary>
+        /// Returns whether an unfinished building or troop has a directly assigned planet that
+        /// is not controlled by its producer. Fleet and capital-ship destinations are excluded.
+        /// </summary>
+        private static bool HasInvalidPlanetDestination(IManufacturable item)
+        {
+            if (
+                item is not ISceneNode sceneNode
+                || item is CapitalShip
+                || item is Starfighter
+                || sceneNode.GetParent() is not Planet destination
+            )
+            {
+                return false;
+            }
+
+            return !string.Equals(
+                destination.GetOwnerInstanceID(),
+                item.ProducerOwnerID,
+                StringComparison.Ordinal
+            );
         }
 
         /// <summary>
@@ -1513,6 +1562,58 @@ namespace Rebellion.Systems
 
                 ClearQueueItems(planet, items);
                 queue.Remove(type);
+            }
+        }
+
+        /// <summary>
+        /// Cancels unfinished building and troop orders assigned directly to a planet that is
+        /// changing to an incompatible owner. Orders assigned to fleets or capital ships remain.
+        /// </summary>
+        /// <param name="destination">The planet whose ownership is changing.</param>
+        /// <param name="newOwnerInstanceId">The planet's incoming owner.</param>
+        public void InvalidatePlanetDestinationOrders(Planet destination, string newOwnerInstanceId)
+        {
+            if (destination == null)
+                return;
+
+            foreach (Planet producer in _game.GetSceneNodesByType<Planet>())
+            {
+                string producerOwnerId = producer.GetOwnerInstanceID();
+                Dictionary<ManufacturingType, List<IManufacturable>> queues =
+                    producer.GetManufacturingQueue();
+                foreach (
+                    KeyValuePair<ManufacturingType, List<IManufacturable>> entry in queues.ToList()
+                )
+                {
+                    List<IManufacturable> items = entry.Value;
+                    if (items == null)
+                        continue;
+
+                    foreach (IManufacturable item in items.ToList())
+                    {
+                        if (
+                            item is not ISceneNode sceneNode
+                            || item is CapitalShip
+                            || item is Starfighter
+                            || !ReferenceEquals(sceneNode.GetParent(), destination)
+                            || string.Equals(
+                                producerOwnerId,
+                                newOwnerInstanceId,
+                                StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            continue;
+                        }
+
+                        item.ManufacturingQueueSequence = 0;
+                        DetachQueuedItem(item);
+                        items.Remove(item);
+                    }
+
+                    if (items.Count == 0)
+                        queues.Remove(entry.Key);
+                }
             }
         }
 
