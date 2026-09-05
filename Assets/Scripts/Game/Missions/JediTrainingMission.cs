@@ -203,11 +203,11 @@ namespace Rebellion.Game.Missions
         /// Calculates the probability that at least one student makes Force training progress.
         /// </summary>
         /// <param name="participants">The training participants to evaluate.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The calculated training progress odds.</returns>
-        internal override MissionOdds GetMissionOdds(
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
+        /// <returns>The calculated training progress probability.</returns>
+        protected override double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
-            GameRoot game
+            MissionEvaluationContext context
         )
         {
             List<Officer> officers = (participants ?? Enumerable.Empty<IMissionParticipant>())
@@ -216,13 +216,13 @@ namespace Rebellion.Game.Missions
             Officer trainer = officers.FirstOrDefault(officer =>
                 officer.InstanceID == TrainerInstanceID
             );
-            if (trainer == null || game?.Config?.Jedi == null)
-                return new MissionOdds(0);
+            if (trainer == null || context.Game?.Config?.Jedi == null)
+                return 0;
 
             IEnumerable<double> probabilities = officers
                 .Where(officer => officer != trainer)
-                .Select(officer => GetTrainingProgressProbability(officer, trainer, game));
-            return new MissionOdds(CombineSuccessProbabilities(probabilities));
+                .Select(officer => GetTrainingProgressProbability(officer, trainer, context.Game));
+            return CombineSuccessProbabilities(probabilities);
         }
 
         /// <summary>

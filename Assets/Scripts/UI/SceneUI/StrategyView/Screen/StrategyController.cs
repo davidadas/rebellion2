@@ -475,7 +475,10 @@ public sealed class StrategyController
             windowPlacementController.GetMissionCreateWindowPosition,
             CloseWindow,
             MarkDirty,
-            () => bootstrap.GetInputManager().GetSelectionModifierState()
+            () => bootstrap.GetInputManager().GetSelectionModifierState(),
+            planetInstanceId => galaxyMapController.FindPlanet(planetInstanceId)?.Planet,
+            GetShowMissionOdds,
+            SetShowMissionOdds
         );
         confirmDialogWindowController = new ConfirmDialogWindowController(
             () => uiContext,
@@ -1624,6 +1627,30 @@ public sealed class StrategyController
             ?.Settings?.Gameplay;
         if (settings?.IsEnabled(option) == true)
             gameManager?.SetGameSpeed(TickSpeed.Paused);
+    }
+
+    /// <summary>
+    /// Returns the saved mission-odds visibility, defaulting to visible before settings initialize.
+    /// </summary>
+    private static bool GetShowMissionOdds()
+    {
+        return AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowMissionOdds
+            ?? true;
+    }
+
+    /// <summary>
+    /// Saves mission-odds visibility when the Mission Create checkbox changes.
+    /// </summary>
+    /// <param name="visible">Whether mission-planning estimates should be displayed.</param>
+    private static void SetShowMissionOdds(bool visible)
+    {
+        UserSettingsManager settingsManager = AppBootstrap.Instance?.GetUserSettingsManager();
+        UserGameplaySettings gameplay = settingsManager?.Settings?.Gameplay;
+        if (gameplay == null || gameplay.ShowMissionOdds == visible)
+            return;
+
+        gameplay.ShowMissionOdds = visible;
+        settingsManager.Save();
     }
 
     /// <summary>

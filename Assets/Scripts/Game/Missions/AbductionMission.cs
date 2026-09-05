@@ -118,11 +118,18 @@ namespace Rebellion.Game.Missions
         /// Returns the attacker's raw combat advantage over the abduction target.
         /// </summary>
         /// <param name="agent">The participant attempting the abduction.</param>
-        /// <param name="game">The current game state.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The raw combat advantage, or null when the target cannot be resolved.</returns>
-        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
+        protected override int? GetAgentScore(
+            IMissionParticipant agent,
+            MissionEvaluationContext context
+        )
         {
-            Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+            Officer target =
+                context.Target is Officer observedOfficer
+                && observedOfficer.InstanceID == TargetOfficerInstanceID
+                    ? observedOfficer
+                    : context.Game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             if (target == null)
                 return null;
 

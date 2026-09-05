@@ -424,6 +424,41 @@ namespace Rebellion.Tests.Generation
             Assert.IsEmpty(other.GetChildren<Officer>());
         }
 
+        [Test]
+        public void Seed_WithFactionHqDestination_OfficerAddedToFactionHeadquarters()
+        {
+            Planet other = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
+            Planet headquarters = new Planet
+            {
+                InstanceID = "hq",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+                IsHeadquarters = true,
+            };
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            sector.AddChild(other);
+            sector.AddChild(headquarters);
+
+            Officer officer = MakeOfficer("MON_MOTHMA", "FNALL1");
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule
+                {
+                    OfficerInstanceID = officer.InstanceID,
+                    DestinationTypeID = GameGenerationConfig.FactionHqSentinel,
+                }
+            );
+
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
+
+            Assert.Contains(officer, headquarters.GetChildren<Officer>().ToList());
+            Assert.IsEmpty(other.GetChildren<Officer>());
+        }
+
         private static (Officer[] Deployed, Officer[] Unrecruited) Deploy(
             Officer[] officers,
             PlanetSector[] sectors,

@@ -122,6 +122,17 @@ public class StrategyContextMenuTheme
 }
 
 /// <summary>
+/// Defines the shared frame and checked-state artwork for strategy checkboxes.
+/// </summary>
+[PersistableObject]
+public class StrategyCheckboxTheme
+{
+    public string FrameImagePath { get; set; }
+
+    public string CheckMarkImagePath { get; set; }
+}
+
+/// <summary>
 /// Groups the presentation themes for all strategy windows.
 /// </summary>
 [PersistableObject]

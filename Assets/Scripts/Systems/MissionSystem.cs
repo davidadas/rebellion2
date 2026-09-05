@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -225,12 +226,12 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Calculates mission success odds without resolving an outcome.
+        /// Calculates the objective success probability without resolving an outcome.
         /// </summary>
         /// <param name="mission">The mission whose probability rules apply.</param>
         /// <param name="participants">The participants to evaluate.</param>
-        /// <returns>The calculated mission odds.</returns>
-        public MissionOdds GetMissionOdds(
+        /// <returns>The chance that at least one participant succeeds if the objective is reached.</returns>
+        public double GetObjectiveSuccessProbability(
             Mission mission,
             IEnumerable<IMissionParticipant> participants
         )
@@ -238,7 +239,29 @@ namespace Rebellion.Systems
             if (mission == null)
                 throw new ArgumentNullException(nameof(mission));
 
-            return mission.GetMissionOdds(participants, _game);
+            return mission.GetObjectiveSuccessProbability(participants, _game);
+        }
+
+        /// <summary>
+        /// Estimates a mission's visible objective-roll and foiling chances without resolving an
+        /// outcome. Hidden betrayal and state changes produced during uprising resolution are
+        /// intentionally excluded. Foiling uses the caller's observed planet state.
+        /// </summary>
+        /// <param name="request">The mission configuration to evaluate.</param>
+        /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
+        public MissionOdds GetMissionOdds(MissionStartRequest request)
+        {
+            if (!TryCreateMission(request, out Mission mission))
+                return null;
+
+            double objectiveSuccessProbability = mission.GetObjectiveSuccessProbability(
+                mission.GetMainParticipants(),
+                _game,
+                request.Location as Planet,
+                request.SelectedTarget
+            );
+            double foilProbability = EstimateFoilProbability(mission, request.Location as Planet);
+            return new MissionOdds(objectiveSuccessProbability, foilProbability);
         }
 
         /// <summary>
@@ -713,7 +736,7 @@ namespace Rebellion.Systems
             ResolveDecoys(mission, activeDetectors, planet, results);
 
             ISceneNode foilingDetector = activeDetectors.FirstOrDefault(detector =>
-                IsMissionDetected(mission, detector)
+                DoesDetectorFoilMission(mission, detector)
             );
             if (foilingDetector == null)
                 return false;
@@ -728,19 +751,182 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Rolls one hostile unit's detection attempt against a mission.
+        /// Rolls one hostile unit's attempt to foil a mission.
         /// </summary>
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile unit making the detection attempt.</param>
         /// <returns>True when the detector foils the mission.</returns>
-        private bool IsMissionDetected(Mission mission, ISceneNode detector)
+        private bool DoesDetectorFoilMission(Mission mission, ISceneNode detector)
         {
             if (mission == null || detector == null)
                 return false;
 
-            int score = CalculateDetectionScore(mission, detector);
-            int probability = LookupProbability(GetMissionTables().Foil, score);
-            return RollProbability(probability);
+            return RollProbability(GetFoilProbability(mission, detector));
+        }
+
+        /// <summary>
+        /// Estimates the chance that at least one observed detector foils the mission.
+        /// </summary>
+        /// <param name="mission">The unstarted or active mission to evaluate.</param>
+        /// <param name="observedPlanet">The planet state currently known to the planning faction.</param>
+        /// <returns>The estimated foiling percentage.</returns>
+        private double EstimateFoilProbability(Mission mission, Planet observedPlanet)
+        {
+            if (mission == null || observedPlanet == null)
+                return 0;
+
+            List<ISceneNode> detectors = GetDetectors(mission, observedPlanet);
+            if (detectors.Count == 0)
+                return 0;
+
+            IReadOnlyList<IMissionParticipant> decoys = mission.GetDecoyParticipants();
+            var decoyGroups = decoys
+                .GroupBy(decoy => new
+                {
+                    Espionage = decoy.GetEffectiveRating(OfficerRating.Espionage),
+                    Combat = decoy.GetEffectiveRating(OfficerRating.Combat),
+                    CanBeRemoved = decoy is Officer or SpecialForces,
+                })
+                .Select(group => new { Decoy = group.First(), Count = group.Count() })
+                .ToList();
+
+            // Encode each group's surviving count as one digit in a mixed-radix number.
+            BigInteger[] groupPlaceValues = new BigInteger[decoyGroups.Count];
+            BigInteger allDecoys = BigInteger.Zero;
+            BigInteger nextPlaceValue = BigInteger.One;
+            for (int index = 0; index < decoyGroups.Count; index++)
+            {
+                groupPlaceValues[index] = nextPlaceValue;
+                allDecoys += decoyGroups[index].Count * nextPlaceValue;
+                nextPlaceValue *= decoyGroups[index].Count + 1;
+            }
+
+            Dictionary<BigInteger, double> unfoiledByDecoyPool = new Dictionary<BigInteger, double>
+            {
+                { allDecoys, 1d },
+            };
+            foreach (ISceneNode detector in detectors)
+            {
+                double noFoilProbability =
+                    1d - Math.Clamp(GetFoilProbability(mission, detector) / 100d, 0, 1);
+                Dictionary<BigInteger, double> next = new Dictionary<BigInteger, double>();
+                foreach ((BigInteger availableDecoys, double probability) in unfoiledByDecoyPool)
+                {
+                    int[] availableCounts = new int[decoyGroups.Count];
+                    int availableCount = 0;
+                    for (int index = 0; index < decoyGroups.Count; index++)
+                    {
+                        availableCounts[index] = (int)(
+                            availableDecoys
+                            / groupPlaceValues[index]
+                            % (decoyGroups[index].Count + 1)
+                        );
+                        availableCount += availableCounts[index];
+                    }
+
+                    if (availableCount == 0)
+                    {
+                        AddProbability(next, availableDecoys, probability * noFoilProbability);
+                        continue;
+                    }
+
+                    for (int index = 0; index < decoyGroups.Count; index++)
+                    {
+                        if (availableCounts[index] == 0)
+                            continue;
+
+                        IMissionParticipant decoy = decoyGroups[index].Decoy;
+                        double selectionProbability =
+                            probability * availableCounts[index] / availableCount;
+                        double diversionProbability = Math.Clamp(
+                            mission.GetDecoyProbability(decoy, detector, _game) / 100d,
+                            0,
+                            1
+                        );
+                        double evasionProbability = GetDecoyEvasionProbability(
+                            mission,
+                            decoy,
+                            detector
+                        );
+
+                        // A diversion or successful evasion leaves this decoy available.
+                        AddProbability(
+                            next,
+                            availableDecoys,
+                            selectionProbability
+                                * (
+                                    diversionProbability
+                                    + (1d - diversionProbability)
+                                        * evasionProbability
+                                        * noFoilProbability
+                                )
+                        );
+
+                        // A failed evasion removes this specific decoy from later checks.
+                        AddProbability(
+                            next,
+                            availableDecoys - groupPlaceValues[index],
+                            selectionProbability
+                                * (1d - diversionProbability)
+                                * (1d - evasionProbability)
+                                * noFoilProbability
+                        );
+                    }
+                }
+
+                unfoiledByDecoyPool = next;
+                if (unfoiledByDecoyPool.Count == 0)
+                    break;
+            }
+
+            return (1d - unfoiledByDecoyPool.Values.Sum()) * 100d;
+        }
+
+        /// <summary>Adds probability to an existing or new decoy-pool outcome.</summary>
+        private static void AddProbability(
+            Dictionary<BigInteger, double> probabilities,
+            BigInteger decoyPool,
+            double probability
+        )
+        {
+            if (probability <= 0)
+                return;
+
+            probabilities.TryGetValue(decoyPool, out double existingProbability);
+            probabilities[decoyPool] = existingProbability + probability;
+        }
+
+        /// <summary>
+        /// Returns the chance that a decoy remains available after a failed diversion.
+        /// </summary>
+        private double GetDecoyEvasionProbability(
+            Mission mission,
+            IMissionParticipant decoy,
+            ISceneNode detector
+        )
+        {
+            if (decoy is not Officer && decoy is not SpecialForces)
+                return 1d;
+
+            Officer commander = mission.FindDetectorCommander(detector);
+            int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
+            int score = decoy.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
+            return Math.Clamp(GetEvasionProbability(score) / 100d, 0, 1);
+        }
+
+        /// <summary>
+        /// Returns one detector's configured chance to foil a mission.
+        /// </summary>
+        /// <param name="mission">The mission attempting to remain undetected.</param>
+        /// <param name="detector">The hostile detector.</param>
+        /// <returns>The foiling percentage.</returns>
+        private int GetFoilProbability(Mission mission, ISceneNode detector)
+        {
+            if (mission == null || detector == null)
+                return 0;
+
+            int score = CalculateFoilScore(mission, detector);
+            return LookupProbability(GetMissionTables().Foil, score);
         }
 
         /// <summary>
@@ -748,8 +934,8 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile unit making the detection attempt.</param>
-        /// <returns>The score used to look up the detection probability.</returns>
-        private int CalculateDetectionScore(Mission mission, ISceneNode detector)
+        /// <returns>The score used to look up the foiling probability.</returns>
+        private int CalculateFoilScore(Mission mission, ISceneNode detector)
         {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
             IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
