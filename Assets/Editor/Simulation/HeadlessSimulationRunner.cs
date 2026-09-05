@@ -145,7 +145,7 @@ public static class HeadlessSimulationRunner
             manufacturedUnitTracker.RecordInitialState(game, initialSpecialForces);
             fleetHistoryTracker.RecordTick(game);
             activityTracker.RecordInitialState(game);
-            personnelOutcomeTracker.RecordInitialState(game);
+            personnelOutcomeTracker.RecordInitialState(game, activityTracker.AbductionTargetIds);
             specialForcesLifecycleTracker.RecordInitialState(game, initialSpecialForces);
             long gameProcessingTimestampCount = 0;
             long idleTimestampCount = 0;
@@ -179,7 +179,7 @@ public static class HeadlessSimulationRunner
                 activityTracker.RecordTick(game);
                 activityTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
                 startTimestamp = Stopwatch.GetTimestamp();
-                personnelOutcomeTracker.RecordTick(game);
+                personnelOutcomeTracker.RecordTick(game, activityTracker.AbductionTargetIds);
                 personnelTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
                 if (game.CurrentTick % SpecialForcesLifecycleTracker.SampleInterval == 0)
                 {
@@ -1955,11 +1955,11 @@ public static class HeadlessSimulationRunner
         /// Records the personnel state before simulation ticks are processed.
         /// </summary>
         /// <param name="game">The initial game state.</param>
-        public void RecordInitialState(GameRoot game)
+        /// <param name="abductionTargetIds">Officers targeted by active abduction missions.</param>
+        public void RecordInitialState(GameRoot game, ISet<string> abductionTargetIds)
         {
             _knownOfficers.Clear();
             _officers.Clear();
-            HashSet<string> abductionTargetIds = GetAbductionTargetIds(game);
             foreach (Officer officer in game.GetSceneNodesByType<Officer>())
             {
                 _knownOfficers[officer.InstanceID] = officer;
@@ -1971,11 +1971,11 @@ public static class HeadlessSimulationRunner
         /// Records capture transitions, releases, and current officer state.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        public void RecordTick(GameRoot game)
+        /// <param name="abductionTargetIds">Officers targeted by active abduction missions.</param>
+        public void RecordTick(GameRoot game, ISet<string> abductionTargetIds)
         {
             Dictionary<string, Officer> currentOfficers = GetFactionOwnedNodes<Officer>(game)
                 .ToDictionary(officer => officer.InstanceID, StringComparer.Ordinal);
-            HashSet<string> abductionTargetIds = GetAbductionTargetIds(game);
             foreach (Officer officer in currentOfficers.Values)
                 _knownOfficers[officer.InstanceID] = officer;
 
@@ -2020,19 +2020,6 @@ public static class HeadlessSimulationRunner
             _officers.Clear();
             foreach (Officer officer in currentOfficers.Values)
                 _officers[officer.InstanceID] = TrackedOfficer.From(officer, abductionTargetIds);
-        }
-
-        /// <summary>
-        /// Indexes officers currently targeted by active abduction missions.
-        /// </summary>
-        /// <param name="game">The game containing active missions.</param>
-        /// <returns>The targeted officer instance identifiers.</returns>
-        private static HashSet<string> GetAbductionTargetIds(GameRoot game)
-        {
-            return GetFactionOwnedNodes<AbductionMission>(game)
-                .Select(mission => mission.TargetOfficerInstanceID)
-                .Where(id => !string.IsNullOrEmpty(id))
-                .ToHashSet(StringComparer.Ordinal);
         }
 
         /// <summary>
@@ -2488,6 +2475,12 @@ public static class HeadlessSimulationRunner
             StringComparer.Ordinal
         );
 
+        public ISet<string> AbductionTargetIds =>
+            _activeMissions
+                .Values.Select(mission => mission.OfficerTargetId)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToHashSet(StringComparer.Ordinal);
+
         /// <summary>
         /// Records the missions, ownership, and research state at simulation start.
         /// </summary>
@@ -2607,7 +2600,10 @@ public static class HeadlessSimulationRunner
         /// <param name="game">The current game state.</param>
         private void RecordMissions(GameRoot game)
         {
-            Dictionary<string, TrackedMission> currentMissions = GetFactionOwnedNodes<Mission>(game)
+            Dictionary<string, TrackedMission> currentMissions = _planetStates
+                .Keys.Select(planetId => game.GetSceneNodeByInstanceID<Planet>(planetId))
+                .Where(planet => planet != null)
+                .SelectMany(planet => planet.GetChildren<Mission>())
                 .ToDictionary(
                     mission => mission.InstanceID,
                     mission => TrackedMission.From(mission, game)
@@ -2943,6 +2939,7 @@ public static class HeadlessSimulationRunner
             public string FactionId;
             public string MissionTypeId;
             public string TargetId;
+            public string OfficerTargetId;
             public string PlanetId;
             public string TargetType;
             public int InitialIntelTick;
@@ -2973,6 +2970,7 @@ public static class HeadlessSimulationRunner
                     FactionId = factionId,
                     MissionTypeId = mission.ConfigKey,
                     TargetId = targetId,
+                    OfficerTargetId = (mission as AbductionMission)?.TargetOfficerInstanceID,
                     PlanetId = mission.LocationInstanceID,
                     TargetType = game.GetSceneNodeByInstanceID<ISceneNode>(targetId)
                         ?.GetType()
