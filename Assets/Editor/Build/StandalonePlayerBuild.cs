@@ -95,16 +95,49 @@ public static class StandalonePlayerBuild
             GetRequiredArgument(_buildPlayerPathArgument, _gameCIBuildPathArgument)
         );
         string originalVersion = UnityEditor.PlayerSettings.bundleVersion;
+#if UNITY_STANDALONE_OSX
+        UnityEditor.Build.OSArchitecture originalMacArchitecture = default;
+        if (target == UnityEditor.BuildTarget.StandaloneOSX)
+        {
+            originalMacArchitecture = UnityEditor.OSXStandalone.UserBuildSettings.architecture;
+        }
+#endif
         try
         {
             ApplyBuildVersion();
+#if UNITY_STANDALONE_OSX
+            ApplyBuildArchitecture(target);
+#endif
             BuildPlayer(target, outputPath);
         }
         finally
         {
             UnityEditor.PlayerSettings.bundleVersion = originalVersion;
+#if UNITY_STANDALONE_OSX
+            if (target == UnityEditor.BuildTarget.StandaloneOSX)
+            {
+                UnityEditor.OSXStandalone.UserBuildSettings.architecture = originalMacArchitecture;
+            }
+#endif
         }
     }
+
+#if UNITY_STANDALONE_OSX
+    /// <summary>
+    /// Builds macOS releases for both Intel and Apple Silicon.
+    /// </summary>
+    /// <param name="target">The desktop platform being built.</param>
+    private static void ApplyBuildArchitecture(UnityEditor.BuildTarget target)
+    {
+        if (target == UnityEditor.BuildTarget.StandaloneOSX)
+        {
+            UnityEditor.OSXStandalone.UserBuildSettings.architecture = UnityEditor
+                .Build
+                .OSArchitecture
+                .x64ARM64;
+        }
+    }
+#endif
 
     /// <summary>
     /// Applies the release version supplied by the build environment, when present.
