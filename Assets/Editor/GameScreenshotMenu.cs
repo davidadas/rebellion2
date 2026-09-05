@@ -1,9 +1,7 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using UnityEditor;
-using UnityEditor.Recorder;
-using UnityEditor.Recorder.Encoder;
-using UnityEditor.Recorder.Input;
 using UnityEngine;
 
 /// <summary>
@@ -16,9 +14,9 @@ public static class GameScreenshotMenu
     private const string _screenshotDirectoryName = "_screenshots";
     private const string _recordingDirectoryName = "_recordings";
 
-    private static RecorderController _recorderController;
-    private static RecorderControllerSettings _recorderControllerSettings;
-    private static MovieRecorderSettings _movieRecorderSettings;
+    private static UnityEditor.Recorder.RecorderController _recorderController;
+    private static UnityEditor.Recorder.RecorderControllerSettings _recorderControllerSettings;
+    private static UnityEditor.Recorder.MovieRecorderSettings _movieRecorderSettings;
     private static string _recordingPath;
 
     static GameScreenshotMenu()
@@ -61,7 +59,7 @@ public static class GameScreenshotMenu
 
     internal static bool IsRecording()
     {
-        return _recorderController != null && _recorderController.IsRecording();
+        return _recorderController?.IsRecording() == true;
     }
 
     private static void OnPlayModeStateChanged(PlayModeStateChange state)
@@ -83,21 +81,29 @@ public static class GameScreenshotMenu
 
         string fileName = $"rebellion2-{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
         _recordingPath = Path.Combine(recordingDirectory, fileName + ".mp4");
-        GameViewInputSettings gameViewInputSettings = new GameViewInputSettings();
+        UnityEditor.Recorder.Input.GameViewInputSettings gameViewInputSettings = new();
         int outputWidth = GetEvenDimension(gameViewInputSettings.OutputWidth);
         int outputHeight = GetEvenDimension(gameViewInputSettings.OutputHeight);
         gameViewInputSettings.OutputWidth = outputWidth;
         gameViewInputSettings.OutputHeight = outputHeight;
 
-        _recorderControllerSettings = ScriptableObject.CreateInstance<RecorderControllerSettings>();
-        _movieRecorderSettings = ScriptableObject.CreateInstance<MovieRecorderSettings>();
+        _recorderControllerSettings =
+            ScriptableObject.CreateInstance<UnityEditor.Recorder.RecorderControllerSettings>();
+        _movieRecorderSettings =
+            ScriptableObject.CreateInstance<UnityEditor.Recorder.MovieRecorderSettings>();
         _movieRecorderSettings.name = "Rebellion 2 Game Recording";
         _movieRecorderSettings.Enabled = true;
-        _movieRecorderSettings.EncoderSettings = new CoreEncoderSettings
-        {
-            Codec = CoreEncoderSettings.OutputCodec.MP4,
-            EncodingQuality = CoreEncoderSettings.VideoEncodingQuality.High,
-        };
+        _movieRecorderSettings.EncoderSettings =
+            new UnityEditor.Recorder.Encoder.CoreEncoderSettings
+            {
+                Codec = UnityEditor.Recorder.Encoder.CoreEncoderSettings.OutputCodec.MP4,
+                EncodingQuality = UnityEditor
+                    .Recorder
+                    .Encoder
+                    .CoreEncoderSettings
+                    .VideoEncodingQuality
+                    .High,
+            };
         _movieRecorderSettings.CaptureAudio = true;
         _movieRecorderSettings.CaptureAlpha = false;
         _movieRecorderSettings.ImageInputSettings = gameViewInputSettings;
@@ -105,13 +111,18 @@ public static class GameScreenshotMenu
 
         _recorderControllerSettings.AddRecorderSettings(_movieRecorderSettings);
         _recorderControllerSettings.SetRecordModeToManual();
-        _recorderControllerSettings.FrameRatePlayback = FrameRatePlayback.Variable;
+        _recorderControllerSettings.FrameRatePlayback = UnityEditor
+            .Recorder
+            .FrameRatePlayback
+            .Variable;
         _recorderControllerSettings.FrameRate = 30.0f;
         _recorderControllerSettings.CapFrameRate = false;
 
         try
         {
-            _recorderController = new RecorderController(_recorderControllerSettings);
+            _recorderController = new UnityEditor.Recorder.RecorderController(
+                _recorderControllerSettings
+            );
             _recorderController.PrepareRecording();
             if (!_recorderController.StartRecording())
             {
@@ -211,6 +222,7 @@ internal sealed class GameRecordingControlsWindow : EditorWindow
         _instance = null;
     }
 
+    [SuppressMessage("Roslynator", "RCS1213", Justification = "Invoked by Unity.")]
     private void OnGUI()
     {
         EditorGUILayout.Space(8.0f);
@@ -227,6 +239,7 @@ internal sealed class GameRecordingControlsWindow : EditorWindow
         GUI.backgroundColor = previousColor;
     }
 
+    [SuppressMessage("Roslynator", "RCS1213", Justification = "Invoked by Unity.")]
     private void OnDestroy()
     {
         if (_instance == this)
