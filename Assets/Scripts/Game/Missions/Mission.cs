@@ -12,23 +12,6 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Missions
 {
     /// <summary>
-    /// Contains calculated mission probabilities without resolving an outcome.
-    /// </summary>
-    public sealed class MissionOdds
-    {
-        public double SuccessProbability { get; }
-
-        /// <summary>
-        /// Creates a mission probability result.
-        /// </summary>
-        /// <param name="successProbability">Probability that at least one participant succeeds.</param>
-        internal MissionOdds(double successProbability)
-        {
-            SuccessProbability = successProbability;
-        }
-    }
-
-    /// <summary>
     /// Provides the external operations needed while a mission executes its post-arrival lifecycle.
     /// </summary>
     internal interface IMissionExecutionRuntime
@@ -67,6 +50,35 @@ namespace Rebellion.Game.Missions
     public abstract class Mission : ContainerNode
     {
         private const int _ratingPercentScale = 100;
+
+        /// <summary>
+        /// Supplies authoritative or observed state to mission-specific objective scoring.
+        /// </summary>
+        protected readonly struct MissionEvaluationContext
+        {
+            public GameRoot Game { get; }
+
+            public Planet Planet { get; }
+
+            public ISceneNode Target { get; }
+
+            /// <summary>
+            /// Creates an objective-scoring context from authoritative and optional observed state.
+            /// </summary>
+            /// <param name="game">The authoritative game state.</param>
+            /// <param name="planet">The optional observed planet.</param>
+            /// <param name="target">The optional observed target.</param>
+            public MissionEvaluationContext(
+                GameRoot game,
+                Planet planet = null,
+                ISceneNode target = null
+            )
+            {
+                Game = game;
+                Planet = planet;
+                Target = target;
+            }
+        }
 
         private string configKey;
 
@@ -392,9 +404,12 @@ namespace Rebellion.Game.Missions
         /// Returns the participant's raw mission score before table lookup.
         /// </summary>
         /// <param name="agent">The participant whose rating is evaluated.</param>
-        /// <param name="game">The current game state.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The participant's raw mission score, or null when it cannot be resolved.</returns>
-        protected virtual int? GetAgentScore(IMissionParticipant agent, GameRoot game)
+        protected virtual int? GetAgentScore(
+            IMissionParticipant agent,
+            MissionEvaluationContext context
+        )
         {
             return agent?.GetEffectiveRating(ParticipantRating);
         }
@@ -402,43 +417,78 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns the mission planet whether the mission is active or only being evaluated.
         /// </summary>
-        /// <param name="game">The current game state.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The mission planet, or null when it cannot be resolved.</returns>
-        protected Planet GetMissionPlanet(GameRoot game)
+        protected Planet GetMissionPlanet(MissionEvaluationContext context)
         {
-            return GetParent() as Planet
-                ?? game?.GetSceneNodeByInstanceID<Planet>(LocationInstanceID);
+            return context.Planet?.InstanceID == LocationInstanceID
+                ? context.Planet
+                : GetParent() as Planet
+                    ?? context.Game?.GetSceneNodeByInstanceID<Planet>(LocationInstanceID);
         }
 
         /// <summary>
-        /// Returns the participant's mission success probability.
+        /// Returns the participant's authoritative mission success probability.
         /// </summary>
         /// <param name="agent">The participant whose raw score is evaluated.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>The configured success probability, or zero when no score can be resolved.</returns>
-        protected virtual double GetAgentProbability(IMissionParticipant agent, GameRoot game)
+        protected double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
-            int? score = GetAgentScore(agent, game);
-            return score.HasValue ? LookupSuccessProbability(game, score.Value) : 0;
+            return GetAgentProbability(agent, new MissionEvaluationContext(game));
         }
 
         /// <summary>
-        /// Calculates success probability for a participant set without resolving the mission.
+        /// Returns a participant's mission success probability using authoritative or observed state.
+        /// </summary>
+        /// <param name="agent">The participant whose mission score is evaluated.</param>
+        /// <param name="context">The state used to evaluate the participant.</param>
+        /// <returns>The configured success probability, or zero when no score can be resolved.</returns>
+        protected double GetAgentProbability(
+            IMissionParticipant agent,
+            MissionEvaluationContext context
+        )
+        {
+            int? score = GetAgentScore(agent, context);
+            return score.HasValue ? LookupSuccessProbability(context.Game, score.Value) : 0;
+        }
+
+        /// <summary>
+        /// Calculates objective success probability for a participant set without resolving the mission.
         /// </summary>
         /// <param name="participants">The participants to evaluate.</param>
-        /// <param name="game">The current game state.</param>
+        /// <param name="game">The authoritative game state.</param>
+        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
+        /// <param name="observedTarget">Optional player-visible target state used for planning.</param>
         /// <returns>The probability that at least one participant succeeds.</returns>
-        internal virtual MissionOdds GetMissionOdds(
+        internal double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
-            GameRoot game
+            GameRoot game,
+            Planet observedPlanet = null,
+            ISceneNode observedTarget = null
+        ) =>
+            GetObjectiveSuccessProbability(
+                participants,
+                new MissionEvaluationContext(game, observedPlanet, observedTarget)
+            );
+
+        /// <summary>
+        /// Calculates objective success probability against authoritative or observed state.
+        /// </summary>
+        /// <param name="participants">The participants to evaluate.</param>
+        /// <param name="context">The state used for evaluation.</param>
+        /// <returns>The probability that at least one participant succeeds.</returns>
+        protected virtual double GetObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            MissionEvaluationContext context
         )
         {
             IEnumerable<double> probabilities = (
                 participants ?? Enumerable.Empty<IMissionParticipant>()
             )
                 .Where(participant => participant != null)
-                .Select(participant => GetAgentProbability(participant, game));
-            return new MissionOdds(CombineSuccessProbabilities(probabilities));
+                .Select(participant => GetAgentProbability(participant, context));
+            return CombineSuccessProbabilities(probabilities);
         }
 
         /// <summary>
@@ -644,12 +694,18 @@ namespace Rebellion.Game.Missions
             int deathProbability
         )
         {
-            if (officer?.IsMain != false)
-                return false;
-
-            int clampedProbability = Math.Min(100, Math.Max(0, deathProbability));
-            return provider.NextInt(0, 100) < clampedProbability;
+            int probability = GetPostInjuryDeathProbability(officer, deathProbability);
+            return probability > 0 && provider.NextInt(0, 100) < probability;
         }
+
+        /// <summary>
+        /// Returns the configured post-injury death probability for an officer.
+        /// </summary>
+        /// <param name="officer">The injured officer.</param>
+        /// <param name="deathProbability">Configured probability that minor personnel die.</param>
+        /// <returns>The clamped death probability, or zero for main characters.</returns>
+        protected static int GetPostInjuryDeathProbability(Officer officer, int deathProbability) =>
+            officer?.IsMain == false ? Math.Clamp(deathProbability, 0, 100) : 0;
 
         /// <summary>
         /// Applies the injury and minor-character death checks used when capture is attempted.
@@ -803,7 +859,8 @@ namespace Rebellion.Game.Missions
         /// <returns>The matching commander, or null when none is assigned.</returns>
         internal Officer FindDetectorCommander(ISceneNode detector)
         {
-            if (GetParent() is not Planet planet)
+            Planet planet = GetParent() as Planet ?? detector?.GetParentOfType<Planet>();
+            if (planet == null)
                 return null;
 
             OfficerRank requiredRank = detector switch

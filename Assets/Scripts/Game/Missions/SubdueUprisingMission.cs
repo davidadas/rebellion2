@@ -98,11 +98,14 @@ namespace Rebellion.Game.Missions
         /// Returns a participant's raw score for subduing the target uprising.
         /// </summary>
         /// <param name="agent">The participant attempting to subdue the uprising.</param>
-        /// <param name="game">The current game state.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The participant's raw subdue-uprising score.</returns>
-        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
+        protected override int? GetAgentScore(
+            IMissionParticipant agent,
+            MissionEvaluationContext context
+        )
         {
-            Planet planet = GetMissionPlanet(game);
+            Planet planet = GetMissionPlanet(context);
             if (planet == null)
                 throw new InvalidOperationException(
                     "SubdueUprisingMission must be attached to a Planet."

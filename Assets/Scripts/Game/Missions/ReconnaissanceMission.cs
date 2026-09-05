@@ -96,6 +96,17 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Reconnaissance always completes successfully after surviving the foiling phase.
+        /// </summary>
+        /// <param name="participants">The reconnaissance participants.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
+        /// <returns>One hundred percent when at least one participant is assigned; otherwise zero.</returns>
+        protected override double GetObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            MissionEvaluationContext context
+        ) => participants?.Any() == true ? 100 : 0;
+
+        /// <summary>
         /// Resolves reconnaissance without a success roll.
         /// </summary>
         /// <param name="game">Current game state.</param>

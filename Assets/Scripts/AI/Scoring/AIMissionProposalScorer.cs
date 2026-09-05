@@ -43,16 +43,15 @@ namespace Rebellion.AI.Scoring
             )
                 return 0;
 
-            if (!TryCreateMission(context, missionProposal, out Mission mission))
+            MissionOdds odds = context.Missions.GetMissionOdds(missionProposal.CreateRequest());
+            if (odds == null)
                 return 0;
 
-            double successProbability = context
-                .Missions.GetMissionOdds(mission, missionProposal.MainParticipants)
-                .SuccessProbability;
+            double successProbability = odds.ObjectiveSuccessProbability;
             if (!MeetsUprisingMissionProbabilityFloor(context, missionProposal, successProbability))
                 return 0;
 
-            double foilProbability = GetFoilProbability(context, missionProposal, mission);
+            double foilProbability = odds.FoilProbability;
             missionProposal.SetFoilProbability(foilProbability);
             double score = GetMissionScore(context, missionProposal, successProbability);
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, missionProposal);
@@ -61,28 +60,6 @@ namespace Rebellion.AI.Scoring
             score -= GetOfficerReplacementPenalty(context, missionProposal);
 
             return score >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? score : 0;
-        }
-
-        /// <summary>
-        /// Returns the probability that known defenders foil a mission.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The mission proposal being evaluated.</param>
-        /// <param name="mission">The mission created for probability evaluation.</param>
-        /// <returns>The estimated foil probability.</returns>
-        private static double GetFoilProbability(
-            AITurnContext context,
-            AIMissionProposal proposal,
-            Mission mission
-        )
-        {
-            if (proposal.TargetPlanet == null)
-                return 0;
-
-            return context.Missions.GetMissionFoilProbability(
-                mission,
-                context.Assessment.GetMissionDetectorCandidates(proposal.TargetPlanet)
-            );
         }
 
         /// <summary>
@@ -206,22 +183,6 @@ namespace Rebellion.AI.Scoring
             return officers
                 .Where(officer => officer != trainer)
                 .Sum(officer => Math.Max(0, trainer.ForceRank - officer.ForceRank));
-        }
-
-        /// <summary>
-        /// Attempts to create mission.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal to evaluate.</param>
-        /// <param name="mission">The mission.</param>
-        /// <returns>True when the condition is satisfied.</returns>
-        private static bool TryCreateMission(
-            AITurnContext context,
-            AIMissionProposal proposal,
-            out Mission mission
-        )
-        {
-            return context.Missions.TryCreateMission(proposal.CreateRequest(), out mission);
         }
 
         /// <summary>

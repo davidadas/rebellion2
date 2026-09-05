@@ -523,6 +523,288 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void GetMissionOdds_CombinesKnownDetectorsAndAssignedDecoys()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            Regiment secondDetector = CreateCompletedRegiment("r2", "rebels");
+            game.AttachNode(secondDetector, planet);
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            game.AttachNode(decoy, spy.GetParent());
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            MissionOdds odds = system.GetMissionOdds(
+                CreateRequest(
+                    MissionTypeIDs.Espionage,
+                    new List<IMissionParticipant> { spy },
+                    new List<IMissionParticipant> { decoy },
+                    planet
+                )
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(50, odds.FoilProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_TracksWhichDecoySurvivesEachDetector()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            Regiment secondDetector = CreateCompletedRegiment("r2", "rebels");
+            secondDetector.DetectionRating = 100;
+            game.AttachNode(secondDetector, planet);
+            Officer weakDecoy = EntityFactory.CreateOfficer("weak-decoy-1", "empire");
+            Officer secondWeakDecoy = EntityFactory.CreateOfficer("weak-decoy-2", "empire");
+            Officer strongDecoy = EntityFactory.CreateOfficer("strong-decoy", "empire");
+            weakDecoy.SetBaseRating(OfficerRating.Espionage, 0);
+            secondWeakDecoy.SetBaseRating(OfficerRating.Espionage, 0);
+            strongDecoy.SetBaseRating(OfficerRating.Espionage, 200);
+            game.AttachNode(weakDecoy, spy.GetParent());
+            game.AttachNode(secondWeakDecoy, spy.GetParent());
+            game.AttachNode(strongDecoy, spy.GetParent());
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            MissionOdds odds = system.GetMissionOdds(
+                CreateRequest(
+                    MissionTypeIDs.Espionage,
+                    new List<IMissionParticipant> { spy },
+                    new List<IMissionParticipant> { weakDecoy, secondWeakDecoy, strongDecoy },
+                    planet
+                )
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(52.777, odds.FoilProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_IncludesStationaryFleetDetectors()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+            game.DeleteNode(planet.GetChildren<Regiment>().Single());
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(capitalShip, fleet);
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            MissionOdds odds = system.GetMissionOdds(
+                CreateRequest(MissionTypeIDs.Espionage, spy, planet)
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(100, odds.FoilProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_DiplomacyUsesObservedPlanetSupport()
+        {
+            (GameRoot game, Planet _, Planet target, Officer diplomat, MissionSystem missions) =
+                BuildMissionOddsScene("empire");
+            target.PopularSupport["empire"] = 90;
+            Planet observedPlanet = target.CreateCopy() as Planet;
+            target.PopularSupport["empire"] = 10;
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { -100, 10 },
+                { 0, 50 },
+                { 40, 90 },
+            };
+
+            MissionOdds odds = missions.GetMissionOdds(
+                CreateRequest(MissionTypeIDs.Diplomacy, diplomat, observedPlanet)
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(90, odds.ObjectiveSuccessProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_DoesNotExposeHiddenBetrayalState()
+        {
+            (GameRoot game, Planet _, Planet target, Officer diplomat, MissionSystem missions) =
+                BuildMissionOddsScene("empire");
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { -100, 50 },
+            };
+
+            diplomat.CanBetray = false;
+            diplomat.Loyalty = 100;
+            MissionOdds loyalOdds = missions.GetMissionOdds(
+                CreateRequest(MissionTypeIDs.Diplomacy, diplomat, target)
+            );
+            diplomat.CanBetray = true;
+            diplomat.Loyalty = 0;
+            MissionOdds betrayalOdds = missions.GetMissionOdds(
+                CreateRequest(MissionTypeIDs.Diplomacy, diplomat, target)
+            );
+
+            Assert.IsNotNull(loyalOdds);
+            Assert.IsNotNull(betrayalOdds);
+            Assert.AreEqual(
+                loyalOdds.OverallSuccessProbability,
+                betrayalOdds.OverallSuccessProbability,
+                0.001
+            );
+            Assert.AreEqual(loyalOdds.FoilProbability, betrayalOdds.FoilProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_ReconnaissanceUsesItsGuaranteedCompletionRule()
+        {
+            (GameRoot game, Planet origin, Planet target, Officer _, MissionSystem missions) =
+                BuildMissionOddsScene("rebels");
+            target.VisitingFactionIDs.Clear();
+            SpecialForces probe = new SpecialForces
+            {
+                InstanceID = "probe",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
+            };
+            game.AttachNode(probe, origin);
+            game.Config.ProbabilityTables.Mission.DefaultSuccessProbability = 0;
+
+            MissionOdds odds = missions.GetMissionOdds(
+                CreateRequest(MissionTypeIDs.Reconnaissance, probe, target)
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(100, odds.ObjectiveSuccessProbability, 0.001);
+            Assert.AreEqual(100, odds.OverallSuccessProbability, 0.001);
+        }
+
+        [TestCase(MissionTypeIDs.Abduction, 80)]
+        [TestCase(MissionTypeIDs.Assassination, 20)]
+        public void GetMissionOdds_OfficerTargetMissionUsesObservedTargetRating(
+            string missionTypeId,
+            double expectedProbability
+        )
+        {
+            (
+                GameRoot game,
+                Planet _,
+                Planet targetPlanet,
+                Officer attacker,
+                MissionSystem missions
+            ) = BuildMissionOddsScene("rebels");
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = false;
+            target.SetBaseRating(OfficerRating.Combat, 0);
+            game.AttachNode(target, targetPlanet);
+            Planet observedPlanet = targetPlanet.CreateCopy(recursive: true) as Planet;
+            Officer observedTarget = observedPlanet.GetChildren<Officer>().Single();
+            target.SetBaseRating(OfficerRating.Combat, 100);
+            game.Config.ProbabilityTables.Mission.Abduction = new Dictionary<int, int>
+            {
+                { -100, 10 },
+                { 0, 80 },
+            };
+            game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
+            {
+                { -100, 10 },
+                { 0, 80 },
+            };
+            game.Config.Assassination.KillProbability = 25;
+
+            MissionOdds odds = missions.GetMissionOdds(
+                CreateRequest(
+                    missionTypeId,
+                    attacker,
+                    observedPlanet,
+                    targetOfficer: observedTarget
+                )
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(expectedProbability, odds.ObjectiveSuccessProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_AssassinationOfMainCharacterCannotReportSuccess()
+        {
+            (
+                GameRoot game,
+                Planet _,
+                Planet targetPlanet,
+                Officer attacker,
+                MissionSystem missions
+            ) = BuildMissionOddsScene("rebels");
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = true;
+            target.SetBaseRating(OfficerRating.Combat, 0);
+            game.AttachNode(target, targetPlanet);
+            game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
+            {
+                { -100, 100 },
+            };
+            game.Config.Assassination.KillProbability = 100;
+
+            MissionOdds odds = missions.GetMissionOdds(
+                CreateRequest(MissionTypeIDs.Assassination, attacker, targetPlanet, target)
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(0, odds.ObjectiveSuccessProbability, 0.001);
+            Assert.AreEqual(0, odds.OverallSuccessProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_AssassinationCombinesHitAndKillChecksPerParticipant()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer firstAttacker,
+                MissionSystem missions
+            ) = BuildMissionOddsScene("rebels");
+            Officer secondAttacker = EntityFactory.CreateOfficer("second-attacker", "empire");
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsMain = false;
+            game.AttachNode(secondAttacker, origin);
+            game.AttachNode(target, targetPlanet);
+            game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
+            {
+                { -100, 50 },
+            };
+            game.Config.Assassination.KillProbability = 50;
+
+            MissionOdds odds = missions.GetMissionOdds(
+                CreateRequest(
+                    MissionTypeIDs.Assassination,
+                    new List<IMissionParticipant> { firstAttacker, secondAttacker },
+                    new List<IMissionParticipant>(),
+                    targetPlanet,
+                    target
+                )
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(43.75, odds.ObjectiveSuccessProbability, 0.001);
+            Assert.AreEqual(43.75, odds.OverallSuccessProbability, 0.001);
+        }
+
+        [Test]
         public void UpdateMission_DiplomacyWithHostileDetector_CanBeFoiled()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
@@ -3802,6 +4084,46 @@ namespace Rebellion.Tests.Sectors
                 new FleetSystem(game)
             );
             return (game, planet, spy, defender, movement);
+        }
+
+        private (
+            GameRoot game,
+            Planet origin,
+            Planet target,
+            Officer participant,
+            MissionSystem missions
+        ) BuildMissionOddsScene(string targetOwnerInstanceId)
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            Planet target = new Planet
+            {
+                InstanceID = "target-planet",
+                OwnerInstanceID = targetOwnerInstanceId,
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int> { { targetOwnerInstanceId, 50 } },
+            };
+            target.AddVisitor("empire");
+            game.AttachNode(origin, sector);
+            game.AttachNode(target, sector);
+            Officer participant = EntityFactory.CreateOfficer("participant", "empire");
+            game.AttachNode(participant, origin);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            MissionSystem missions = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+            return (game, origin, target, participant, missions);
         }
 
         private (
