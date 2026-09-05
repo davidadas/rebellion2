@@ -2478,6 +2478,52 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ResolvePendingRetreat_PlanetaryHyperdriveFighterWithoutFleet_MovesFighterAndEndsCombat()
+        {
+            GameRoot game = CreateGame();
+            game.GetFactions().First(faction => faction.InstanceID == "alliance").PlayerID =
+                "player1";
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            (Planet allianceHome, _) = CreatePlanet(game, "allianceHome", owner: "alliance");
+            CreatePlanet(game, "empireHome", owner: "empire");
+            CreateFleet(game, "ef1", "empire", combatPlanet, 1, 1000, 100);
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "planet-fighter",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = 60,
+            };
+            game.AttachNode(fighter, combatPlanet);
+            SpaceCombatSystem manager = MakeSpaceCombat(game);
+
+            PendingCombatResult pending = manager
+                .ProcessTick()
+                .OfType<PendingCombatResult>()
+                .Single();
+            bool allianceCanRetreat =
+                pending.AttackerOwnerInstanceID == "alliance"
+                    ? pending.AttackerCanRetreat
+                    : pending.DefenderCanRetreat;
+            List<GameResult> results = manager.ResolvePendingRetreat("alliance");
+
+            Assert.IsTrue(allianceCanRetreat);
+            Assert.IsNotNull(results);
+            SpaceCombatResult combatResult = results.OfType<SpaceCombatResult>().Single();
+            string retreatPlanetInstanceId =
+                combatResult.AttackerOwnerInstanceID == "alliance"
+                    ? combatResult.AttackerRetreatPlanetInstanceID
+                    : combatResult.DefenderRetreatPlanetInstanceID;
+            Assert.AreEqual(allianceHome.InstanceID, retreatPlanetInstanceId);
+            Assert.AreSame(allianceHome, fighter.GetParentOfType<Planet>());
+            Assert.IsNotNull(fighter.Movement);
+            Assert.IsEmpty(manager.ProcessTick());
+            Assert.IsFalse(manager.HasPendingDecision);
+        }
+
+        [Test]
         public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighter_DoesNotMoveAnyForces()
         {
             GameRoot game = CreateGame();

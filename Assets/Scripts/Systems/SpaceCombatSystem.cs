@@ -254,7 +254,12 @@ namespace Rebellion.Systems
                     opposingFleets,
                     planet,
                     retreatingFactionInstanceId
-                ) || !TryRetreatFleets(retreatingFleets, opposingFleets, ignoreGravityWell: false)
+                )
+            )
+                return false;
+            if (
+                retreatingFleets.Count > 0
+                && !TryRetreatFleets(retreatingFleets, opposingFleets, ignoreGravityWell: false)
             )
                 return false;
 
@@ -267,6 +272,16 @@ namespace Rebellion.Systems
             );
             foreach (Starfighter fighter in retreatingFighters)
                 _movement.EvacuateToNearestFriendlyPlanet(fighter);
+            string retreatPlanetInstanceId = GetRetreatPlanetInstanceID(
+                retreatingFleets,
+                retreatingFighters,
+                planet,
+                SpaceCombatSideOutcome.Withdrawn
+            );
+            if (attackerRetreated)
+                result.AttackerRetreatPlanetInstanceID = retreatPlanetInstanceId;
+            else
+                result.DefenderRetreatPlanetInstanceID = retreatPlanetInstanceId;
 
             results.Add(result);
             ClearCombatFlags(decision);
@@ -274,7 +289,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Builds the combat result emitted after a successful fleet withdrawal.
+        /// Builds the combat result emitted after a successful force withdrawal.
         /// </summary>
         /// <param name="decision">The resolved combat decision.</param>
         /// <param name="attackerRetreated">Whether the attacking side withdrew.</param>
@@ -300,12 +315,6 @@ namespace Rebellion.Systems
                 DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID,
                 Planet = planet,
                 PlanetOwnerInstanceID = planet.OwnerInstanceID,
-                AttackerRetreatPlanetInstanceID = attackerRetreated
-                    ? attacker.GetParentOfType<Planet>()?.InstanceID
-                    : null,
-                DefenderRetreatPlanetInstanceID = attackerRetreated
-                    ? null
-                    : defender.GetParentOfType<Planet>()?.InstanceID,
                 Winner = attackerRetreated ? CombatSide.Defender : CombatSide.Attacker,
                 AttackerOutcome = attackerRetreated
                     ? SpaceCombatSideOutcome.Withdrawn
@@ -689,17 +698,21 @@ namespace Rebellion.Systems
             string ownerInstanceId
         )
         {
-            return fleets?.Count > 0
-                && !IsRetreatBlockedByGravityWell(fleets, opponents)
-                && fleets.All(fleet =>
+            IReadOnlyList<Fleet> retreatingFleets = fleets ?? Array.Empty<Fleet>();
+            List<Starfighter> retreatingFighters = GetActivePlanetStarfighters(
+                    planet,
+                    ownerInstanceId
+                )
+                .ToList();
+            return (retreatingFleets.Count > 0 || retreatingFighters.Count > 0)
+                && !IsRetreatBlockedByGravityWell(planet, opponents)
+                && retreatingFleets.All(fleet =>
                     HasHyperdriveCapableShip(fleet)
                     && _movement.CanEvacuateToNearestFriendlyPlanet(fleet)
                 )
-                && GetActivePlanetStarfighters(planet, ownerInstanceId)
-                    .All(fighter =>
-                        fighter.Hyperdrive > 0
-                        && _movement.CanEvacuateToNearestFriendlyPlanet(fighter)
-                    );
+                && retreatingFighters.All(fighter =>
+                    fighter.Hyperdrive > 0 && _movement.CanEvacuateToNearestFriendlyPlanet(fighter)
+                );
         }
 
         /// <summary>
