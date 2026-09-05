@@ -1,6 +1,9 @@
 using System;
 using System.IO;
 using UnityEditor;
+using UnityEditor.Recorder;
+using UnityEditor.Recorder.Encoder;
+using UnityEditor.Recorder.Input;
 using UnityEngine;
 
 /// <summary>
@@ -11,9 +14,9 @@ internal static class GameRecordingSession
 {
     private const string _recordingDirectoryName = "_recordings";
 
-    private static UnityEditor.Recorder.RecorderController _recorderController;
-    private static UnityEditor.Recorder.RecorderControllerSettings _recorderControllerSettings;
-    private static UnityEditor.Recorder.MovieRecorderSettings _movieRecorderSettings;
+    private static RecorderController _recorderController;
+    private static RecorderControllerSettings _recorderControllerSettings;
+    private static MovieRecorderSettings _movieRecorderSettings;
     private static string _recordingPath;
 
     static GameRecordingSession()
@@ -37,8 +40,7 @@ internal static class GameRecordingSession
         string fileName = $"rebellion2-{DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
         _recordingPath = Path.Combine(recordingDirectory, fileName + ".mp4");
 
-        UnityEditor.Recorder.Input.GameViewInputSettings gameViewInputSettings =
-            CreateGameViewInputSettings();
+        GameViewInputSettings gameViewInputSettings = CreateGameViewInputSettings();
         _movieRecorderSettings = CreateMovieRecorderSettings(
             gameViewInputSettings,
             Path.Combine(recordingDirectory, fileName)
@@ -93,9 +95,9 @@ internal static class GameRecordingSession
     /// Configures Game view capture at dimensions accepted by the MP4 encoder.
     /// Odd dimensions are expanded by one pixel rather than reduced.
     /// </summary>
-    private static UnityEditor.Recorder.Input.GameViewInputSettings CreateGameViewInputSettings()
+    private static GameViewInputSettings CreateGameViewInputSettings()
     {
-        UnityEditor.Recorder.Input.GameViewInputSettings settings = new();
+        GameViewInputSettings settings = new();
         settings.OutputWidth = GetEncoderCompatibleDimension(settings.OutputWidth);
         settings.OutputHeight = GetEncoderCompatibleDimension(settings.OutputHeight);
         return settings;
@@ -104,24 +106,18 @@ internal static class GameRecordingSession
     /// <summary>
     /// Creates the MP4 and audio settings for a Game view recording.
     /// </summary>
-    private static UnityEditor.Recorder.MovieRecorderSettings CreateMovieRecorderSettings(
-        UnityEditor.Recorder.Input.GameViewInputSettings gameViewInputSettings,
+    private static MovieRecorderSettings CreateMovieRecorderSettings(
+        GameViewInputSettings gameViewInputSettings,
         string outputPathWithoutExtension
     )
     {
-        UnityEditor.Recorder.MovieRecorderSettings settings =
-            ScriptableObject.CreateInstance<UnityEditor.Recorder.MovieRecorderSettings>();
+        MovieRecorderSettings settings = ScriptableObject.CreateInstance<MovieRecorderSettings>();
         settings.name = "Rebellion 2 Game Recording";
         settings.Enabled = true;
-        settings.EncoderSettings = new UnityEditor.Recorder.Encoder.CoreEncoderSettings
+        settings.EncoderSettings = new CoreEncoderSettings
         {
-            Codec = UnityEditor.Recorder.Encoder.CoreEncoderSettings.OutputCodec.MP4,
-            EncodingQuality = UnityEditor
-                .Recorder
-                .Encoder
-                .CoreEncoderSettings
-                .VideoEncodingQuality
-                .High,
+            Codec = CoreEncoderSettings.OutputCodec.MP4,
+            EncodingQuality = CoreEncoderSettings.VideoEncodingQuality.High,
         };
         settings.CaptureAudio = true;
         settings.CaptureAlpha = false;
@@ -133,15 +129,15 @@ internal static class GameRecordingSession
     /// <summary>
     /// Creates a manually controlled, variable-frame-rate Recorder session.
     /// </summary>
-    private static UnityEditor.Recorder.RecorderControllerSettings CreateRecorderControllerSettings(
-        UnityEditor.Recorder.MovieRecorderSettings movieRecorderSettings
+    private static RecorderControllerSettings CreateRecorderControllerSettings(
+        MovieRecorderSettings movieRecorderSettings
     )
     {
-        UnityEditor.Recorder.RecorderControllerSettings settings =
-            ScriptableObject.CreateInstance<UnityEditor.Recorder.RecorderControllerSettings>();
+        RecorderControllerSettings settings =
+            ScriptableObject.CreateInstance<RecorderControllerSettings>();
         settings.AddRecorderSettings(movieRecorderSettings);
         settings.SetRecordModeToManual();
-        settings.FrameRatePlayback = UnityEditor.Recorder.FrameRatePlayback.Variable;
+        settings.FrameRatePlayback = FrameRatePlayback.Variable;
         settings.FrameRate = 30.0f;
         settings.CapFrameRate = false;
         return settings;
@@ -154,9 +150,7 @@ internal static class GameRecordingSession
     {
         try
         {
-            _recorderController = new UnityEditor.Recorder.RecorderController(
-                _recorderControllerSettings
-            );
+            _recorderController = new RecorderController(_recorderControllerSettings);
             _recorderController.PrepareRecording();
             if (_recorderController.StartRecording())
             {
