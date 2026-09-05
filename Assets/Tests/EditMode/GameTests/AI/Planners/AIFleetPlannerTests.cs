@@ -834,6 +834,23 @@ namespace Rebellion.Tests.AI.Planners
                 ),
                 inboundShip
             );
+            for (int index = 2; index <= 3; index++)
+            {
+                CapitalShip additionalInboundShip = AITestSceneBuilder.CreateCapitalShip(
+                    $"inbound-ship-{index}",
+                    empire.InstanceID
+                );
+                additionalInboundShip.Movement = new MovementState { TransitTicks = 10 };
+                game.AttachNode(additionalInboundShip, targetFleet);
+                game.AttachNode(
+                    AITestSceneBuilder.CreateRegiment(
+                        $"inbound-regiment-{index}",
+                        empire.InstanceID,
+                        attackRating: 100
+                    ),
+                    additionalInboundShip
+                );
+            }
             Fleet sourceFleet = AddBattleFleet(game, owned, empire.InstanceID, "source-fleet");
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip("donor", empire.InstanceID),

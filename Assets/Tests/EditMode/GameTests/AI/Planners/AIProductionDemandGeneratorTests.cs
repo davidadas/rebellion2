@@ -1768,7 +1768,7 @@ namespace Rebellion.Tests.AI.Planners
                     item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(2, demand.QuantityNeeded);
             Assert.AreEqual(AICapitalShipProductionRole.TroopTransport, demand.CapitalShipRole);
         }
 

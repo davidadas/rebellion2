@@ -407,6 +407,20 @@ namespace Rebellion.Tests.AI.Scoring
                 ),
                 secondInboundShip
             );
+            CapitalShip thirdInboundShip = AITestSceneBuilder.CreateCapitalShip(
+                "third-inbound-ship",
+                empire.InstanceID
+            );
+            thirdInboundShip.Movement = new MovementState { TransitTicks = 10 };
+            game.AttachNode(thirdInboundShip, targetFleet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment(
+                    "third-inbound-regiment",
+                    empire.InstanceID,
+                    attackRating: 100
+                ),
+                thirdInboundShip
+            );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AITransferUnitProposal proposal = new AITransferUnitProposal(
                 sourceFleet,

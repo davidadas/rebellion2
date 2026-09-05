@@ -328,7 +328,11 @@ namespace Rebellion.AI.Proposals
             if (context.Assessment.IsAssaultBlockedByShields(liveTarget))
                 return false;
 
-            return context.Assessment.GetReadyFleetRegimentCount(Fleet) > 0
+            int requiredRegimentCount = context.Assessment.GetRequiredAttackRegimentCount(
+                Fleet,
+                liveTarget
+            );
+            return context.Assessment.GetReadyFleetRegimentCount(Fleet) >= requiredRegimentCount
                 && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
                     >= context.Assessment.GetRequiredAttackRegimentStrength(Fleet, liveTarget)
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, liveTarget)

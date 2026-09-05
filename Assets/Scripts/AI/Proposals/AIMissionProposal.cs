@@ -272,10 +272,10 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether participant available.
+        /// Returns whether a participant can still perform this mission.
         /// </summary>
         /// <param name="participant">The mission participant.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the participant remains available and qualified.</returns>
         private bool IsParticipantAvailable(IMissionParticipant participant)
         {
             if (
@@ -298,9 +298,9 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether target officer available.
+        /// Returns whether the targeted officer remains valid for this mission.
         /// </summary>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when no officer is required or the target remains eligible.</returns>
         private bool IsTargetOfficerAvailable()
         {
             if (TargetOfficer == null)

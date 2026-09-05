@@ -179,8 +179,10 @@ namespace Rebellion.Tests.AI.Proposals
         public void Execute_WithSuccessfulPlanetaryAssault_AddsGarrisonChangeResult()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, 100);
             Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
             CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
             game.AttachNode(AITestSceneBuilder.CreateRegiment("attacker", empire.InstanceID), ship);

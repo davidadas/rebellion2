@@ -126,6 +126,8 @@ namespace Rebellion.Game
 
             public int MinimumMissionScore { get; set; } = 20;
 
+            public int MinimumUprisingMissionSuccessPercent { get; set; } = 20;
+
             public int MissionFoilRiskWeight { get; set; } = 1;
 
             public int ReconnaissancePriorityBonus { get; set; } = 50;
@@ -233,7 +235,6 @@ namespace Rebellion.Game
             public int CapitalConstructionCostWeight { get; set; }
             public int CapitalMaintenanceCostWeight { get; set; }
             public int CapitalCombatWeight { get; set; }
-            public int CapitalLaserCannonWeightDivisor { get; set; } = 6;
             public int CapitalExcessCombatPenaltyWeight { get; set; } = 1;
             public int CapitalStarfighterCapacityWeight { get; set; }
             public int CapitalRegimentCapacityWeight { get; set; }

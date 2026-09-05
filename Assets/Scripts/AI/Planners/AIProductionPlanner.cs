@@ -374,11 +374,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether eligible building upgrade.
+        /// Returns whether a building can satisfy an ordinary or upgrade demand.
         /// </summary>
         /// <param name="demand">The production demand.</param>
         /// <param name="building">The building to evaluate.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when no replacement is required or the building is its declared upgrade.</returns>
         private static bool IsEligibleBuildingUpgrade(AIDemand demand, Building building)
         {
             return demand.Kind != AIDemandKind.BuildingUpgrade
@@ -386,11 +386,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns building maintenance cost.
+        /// Returns the additional maintenance incurred by constructing or upgrading a building.
         /// </summary>
         /// <param name="demand">The production demand.</param>
         /// <param name="building">The building to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The net maintenance cost.</returns>
         private static int GetBuildingMaintenanceCost(AIDemand demand, Building building)
         {
             if (demand.Kind != AIDemandKind.BuildingUpgrade || demand.BuildingToReplace == null)
@@ -400,11 +400,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns building maintenance budget.
+        /// Returns the maintenance budget available to a building demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The available maintenance budget.</returns>
         private int GetBuildingMaintenanceBudget(AITurnContext context, AIDemand demand)
         {
             if (IsFacilityExpansionDemand(demand))
@@ -421,11 +421,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns facility maintenance budget.
+        /// Returns the maintenance budget allocated to production-facility expansion.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The remaining facility maintenance budget.</returns>
         private int GetFacilityMaintenanceBudget(AITurnContext context, AIDemand demand)
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
@@ -498,14 +498,14 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns proposal demand.
+        /// Creates the producer-specific demand represented by one proposal.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
         /// <param name="producerPlanet">The producing planet.</param>
         /// <param name="product">The manufacturable product.</param>
         /// <param name="remainingQuantity">The remaining requested quantity.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The adjusted demand, or null when this producer cannot accept a batch.</returns>
         private AIDemand GetProposalDemand(
             AITurnContext context,
             AIDemand demand,
@@ -553,11 +553,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Creates proposal demand.
+        /// Copies a demand with a producer-specific quantity.
         /// </summary>
         /// <param name="demand">The production demand.</param>
         /// <param name="quantity">The requested quantity.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The copied demand.</returns>
         private static AIDemand CreateProposalDemand(AIDemand demand, int quantity)
         {
             AIDemand proposalDemand = new AIDemand(
@@ -576,12 +576,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns requested manufacturing count.
+        /// Returns the requested batch size for a demand and product.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
         /// <param name="product">The manufacturable product.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The requested unit count.</returns>
         private int GetRequestedManufacturingCount(
             AITurnContext context,
             AIDemand demand,
@@ -905,10 +905,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether facility expansion demand.
+        /// Returns whether a demand expands a production facility category.
         /// </summary>
         /// <param name="demand">The production demand.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True for construction-facility, shipyard, and training-facility demand.</returns>
         private static bool IsFacilityExpansionDemand(AIDemand demand)
         {
             return demand?.Kind
@@ -918,10 +918,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether distributed production demand.
+        /// Returns whether a demand can be divided among multiple producers.
         /// </summary>
         /// <param name="demand">The production demand.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when separate producers may manufacture portions of the demand.</returns>
         private static bool IsDistributedProductionDemand(AIDemand demand)
         {
             return demand?.Kind
@@ -934,10 +934,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns building capability.
+        /// Returns the comparable production or defensive capability of a building.
         /// </summary>
         /// <param name="building">The building to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The building capability used for technology selection.</returns>
         private static int GetBuildingCapability(Building building)
         {
             return building.GetBuildingType() switch
@@ -994,11 +994,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns unlocked special forces technology.
+        /// Returns the unlocked special-forces technology matching a requested type.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="productTypeId">The product type id.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The matching technology, or null when it is unavailable.</returns>
         private Technology GetUnlockedSpecialForcesTechnology(
             AITurnContext context,
             string productTypeId
@@ -1133,7 +1133,7 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Gets the remaining maintenance budget available to new capital ships this turn.
+        /// Returns the remaining maintenance budget available to new capital ships this turn.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <returns>The available capital-ship maintenance capacity.</returns>
@@ -1253,11 +1253,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns primary weapon metric.
+        /// Returns a capital ship's effective primary-weapon recharge metric.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <param name="combatConfig">The configured space-combat weapon effectiveness.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The effective recharge metric for the strongest firing arc.</returns>
         private static double GetPrimaryWeaponMetric(
             CapitalShip capitalShip,
             GameConfig.SpaceCombatConfig combatConfig
@@ -1307,10 +1307,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns maximum primary weapon strength.
+        /// Returns the largest primary-weapon count on any firing arc.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The maximum weapon count.</returns>
         private static int GetMaximumPrimaryWeaponStrength(CapitalShip capitalShip)
         {
             int maximumStrength = 0;
@@ -1327,12 +1327,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns weapon count.
+        /// Returns the weapon count for a type and firing arc.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <param name="weaponType">The weapon type.</param>
         /// <param name="weaponArc">The weapon arc.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The weapon count, or zero when no value is defined.</returns>
         private static int GetWeaponCount(
             CapitalShip capitalShip,
             PrimaryWeaponType weaponType,
@@ -1370,10 +1370,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns unlocked planetary starfighter technology.
+        /// Returns the most efficient unlocked starfighter for planetary defense.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The selected technology, or null when none is affordable.</returns>
         private Technology GetUnlockedPlanetaryStarfighterTechnology(AITurnContext context)
         {
             int maintenanceBudget = GetDefensiveMaintenanceBudget(context);
@@ -1398,10 +1398,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns planetary starfighter defense efficiency.
+        /// Returns a starfighter's defensive strength per maintenance point.
         /// </summary>
         /// <param name="starfighter">The starfighter.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The defensive efficiency.</returns>
         private static double GetPlanetaryStarfighterDefenseEfficiency(Starfighter starfighter)
         {
             int strength = starfighter.GetWeaponStrength();
@@ -1465,10 +1465,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns unlocked garrison regiment technology.
+        /// Returns the strongest affordable unlocked regiment for planetary defense.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The selected technology, or null when none is affordable.</returns>
         private Technology GetUnlockedGarrisonRegimentTechnology(AITurnContext context)
         {
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
@@ -1584,11 +1584,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether queue facility expansion.
+        /// Returns whether a planet can queue additional production facilities.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the planet is operational and has construction capacity.</returns>
         private bool CanQueueFacilityExpansion(AITurnContext context, Planet planet)
         {
             return planet?.IsColonized == true
@@ -1633,12 +1633,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether production facility.
+        /// Returns whether a planet has an operational facility for a manufacturing category.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to evaluate.</param>
         /// <param name="manufacturingType">The manufacturing category.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the planet can distribute this production category.</returns>
         private static bool HasProductionFacility(
             AITurnContext context,
             Planet planet,

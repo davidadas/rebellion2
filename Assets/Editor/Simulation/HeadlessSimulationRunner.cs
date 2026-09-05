@@ -132,10 +132,10 @@ public static class HeadlessSimulationRunner
             PersonnelOutcomeTracker personnelOutcomeTracker = new PersonnelOutcomeTracker();
             SpecialForcesLifecycleTracker specialForcesLifecycleTracker =
                 new SpecialForcesLifecycleTracker();
-            PlanetaryAssaultTracker planetaryAssaultTracker = new PlanetaryAssaultTracker();
+            PlanetaryAssaultTracker planetaryAssaultTracker = new PlanetaryAssaultTracker(game);
             AttackReadinessTracker attackReadinessTracker = new AttackReadinessTracker();
             VictoryResult victory = null;
-            manager.PlanetaryAssaultsResolved += planetaryAssaultTracker.Record;
+            manager.ResultsResolved += planetaryAssaultTracker.Record;
             manager.VictoriesResolved += results => victory ??= results.FirstOrDefault();
             manager.ResultsResolved += missionOutcomeTracker.Record;
             List<SpecialForces> initialSpecialForces = game.GetSceneNodesByType<SpecialForces>()
@@ -1794,6 +1794,7 @@ public static class HeadlessSimulationRunner
         public int Attempted;
         public int Succeeded;
         public int Failed;
+        public int ImmediateUprisings;
         public PlanetaryAssaultSimulationResult[] Results;
     }
 
@@ -1808,6 +1809,9 @@ public static class HeadlessSimulationRunner
         public int RemainingAttackerRegimentCount;
         public int InitialDefenderRegimentCount;
         public int RemainingDefenderRegimentCount;
+        public bool ImmediateUprising;
+        public int RequiredGarrisonCount;
+        public int GarrisonDeficit;
     }
 
     [Serializable]
@@ -3229,19 +3233,42 @@ public static class HeadlessSimulationRunner
 
     private sealed class PlanetaryAssaultTracker
     {
+        private readonly GameRoot _game;
         private readonly Dictionary<string, List<PlanetaryAssaultSimulationResult>> _results = new(
             StringComparer.Ordinal
         );
 
         /// <summary>
+        /// Creates an assault tracker for the simulated game.
+        /// </summary>
+        /// <param name="game">The simulated game.</param>
+        public PlanetaryAssaultTracker(GameRoot game)
+        {
+            _game = game;
+        }
+
+        /// <summary>
         /// Records resolved planetary assaults.
         /// </summary>
         /// <param name="results">The resolved assault results.</param>
-        public void Record(IReadOnlyList<PlanetaryAssaultResult> results)
+        public void Record(IReadOnlyList<GameResult> results)
         {
-            foreach (PlanetaryAssaultResult result in results)
+            if (results == null)
+                return;
+
+            HashSet<Planet> uprisingPlanets = results
+                .OfType<PlanetUprisingStartedResult>()
+                .Select(result => result.Planet)
+                .Where(planet => planet != null)
+                .ToHashSet();
+            foreach (PlanetaryAssaultResult result in results.OfType<PlanetaryAssaultResult>())
             {
                 string factionId = result.AttackerOwnerInstanceID ?? string.Empty;
+                int requiredGarrison = GetRequiredGarrison(result);
+                bool immediateUprising =
+                    result.Success
+                    && result.Planet != null
+                    && uprisingPlanets.Contains(result.Planet);
                 if (
                     !_results.TryGetValue(
                         factionId,
@@ -3264,9 +3291,36 @@ public static class HeadlessSimulationRunner
                         RemainingAttackerRegimentCount = result.RemainingAttackerRegimentCount,
                         InitialDefenderRegimentCount = result.InitialDefenderRegimentCount,
                         RemainingDefenderRegimentCount = result.RemainingDefenderRegimentCount,
+                        ImmediateUprising = immediateUprising,
+                        RequiredGarrisonCount = requiredGarrison,
+                        GarrisonDeficit = Math.Max(
+                            0,
+                            requiredGarrison - result.RemainingAttackerRegimentCount
+                        ),
                     }
                 );
             }
+        }
+
+        /// <summary>
+        /// Calculates the post-assault garrison required to keep the captured planet stable.
+        /// </summary>
+        /// <param name="result">The resolved assault.</param>
+        /// <returns>The required regiment count, or zero when the assault did not capture a planet.</returns>
+        private int GetRequiredGarrison(PlanetaryAssaultResult result)
+        {
+            if (!result.Success || result.Planet == null || result.AttackingFaction == null)
+                return 0;
+
+            int requirement = UprisingSystem.CalculateGarrisonRequirement(
+                result.Planet,
+                result.AttackingFaction,
+                _game.Config.AI.Garrison
+            );
+            int uprisingMultiplier = _game.Config.AI.Garrison.UprisingMultiplier;
+            return result.Planet.IsInUprising && uprisingMultiplier > 1
+                ? requirement / uprisingMultiplier
+                : requirement;
         }
 
         /// <summary>
@@ -3288,6 +3342,7 @@ public static class HeadlessSimulationRunner
                 Attempted = results.Length,
                 Succeeded = results.Count(result => result.Success),
                 Failed = results.Count(result => !result.Success),
+                ImmediateUprisings = results.Count(result => result.ImmediateUprising),
                 Results = results,
             };
         }

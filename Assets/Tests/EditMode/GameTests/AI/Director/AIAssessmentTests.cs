@@ -879,6 +879,25 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
+        public void GetRequiredAttackRegimentCount_WithoutDefenders_RequiresStableOccupation()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.AI.Garrison.GarrisonDivisor = 10;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, 20);
+            Fleet fleet = CreateAssaultFleet(game, origin, "attacker", empire.InstanceID, 4);
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(fleet, target));
+        }
+
+        [Test]
         public void GetDefendingRegimentDefenseStrength_WithDifferentBombardmentDefense_ReturnsEqualStrength()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -911,10 +930,13 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
-        public void GetRequiredAttackRegimentCount_WithDefendersAndLowSupport_RequiresOccupier()
+        public void GetRequiredAttackRegimentCount_WithDefendersAndLowSupport_AddsOccupationForce()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 2;
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.AI.Garrison.GarrisonDivisor = 10;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
             enemy.SetPopularSupport(empire.InstanceID, 0);
@@ -942,7 +964,7 @@ namespace Rebellion.Tests.AI.Director
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(enemy));
+            Assert.AreEqual(10, assessment.GetRequiredAttackRegimentCount(enemy));
         }
 
         [Test]
@@ -1027,7 +1049,7 @@ namespace Rebellion.Tests.AI.Director
             Planet target = assessment.GetKnownPlanet(firstEnemy.InstanceID);
 
             Assert.AreEqual(500, assessment.GetRequiredAttackCampaignCombatStrength(target));
-            Assert.AreEqual(5, assessment.GetRequiredAttackCampaignRegimentCount(target));
+            Assert.AreEqual(7, assessment.GetRequiredAttackCampaignRegimentCount(target));
             Assert.AreEqual(40, assessment.GetRequiredAttackCampaignRegimentStrength(target));
             Assert.AreEqual(11, assessment.GetRequiredAttackCampaignBombardmentStrength(target));
         }

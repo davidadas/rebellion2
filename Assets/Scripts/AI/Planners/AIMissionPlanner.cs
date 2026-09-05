@@ -77,7 +77,7 @@ namespace Rebellion.AI.Planners
         /// Creates mission proposals.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>Mission proposals for the available participants.</returns>
         private List<AIProposal> CreateMissionProposals(AITurnContext context)
         {
             List<AIProposal> proposals = new List<AIProposal>();
@@ -573,12 +573,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Creates proposal.
+        /// Creates a single-participant mission proposal.
         /// </summary>
         /// <param name="participant">The mission participant.</param>
         /// <param name="missionTypeId">The mission type identifier.</param>
-        /// <param name="target">The target to evaluate.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <param name="target">The mission target.</param>
+        /// <returns>The mission proposal.</returns>
         private static AIMissionProposal CreateProposal(
             IMissionParticipant participant,
             string missionTypeId,
@@ -589,10 +589,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns diplomacy candidate planets.
+        /// Returns owned and neutral planets eligible for diplomacy.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>Candidate planets in strategic-priority order.</returns>
         private IEnumerable<Planet> GetDiplomacyCandidatePlanets(AITurnContext context)
         {
             return _diplomacyCandidates ??= context
@@ -609,11 +609,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns reconnaissance candidate planets.
+        /// Returns unexplored planets reachable from a participant's current planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="participant">The mission participant.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>Candidate planets in distance order.</returns>
         private IEnumerable<Planet> GetReconnaissanceCandidatePlanets(
             AITurnContext context,
             IMissionParticipant participant
@@ -632,11 +632,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns research candidate planets.
+        /// Returns owned planets where an officer can conduct useful research.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="officer">The officer to evaluate.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>Candidate planets ordered by available research value.</returns>
         private IEnumerable<Planet> GetResearchCandidatePlanets(
             AITurnContext context,
             Officer officer
@@ -655,10 +655,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns espionage candidate planets.
+        /// Returns enemy planets whose intelligence is old enough to refresh.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>Candidate planets ordered by intelligence age and value.</returns>
         private IEnumerable<Planet> GetEspionageCandidatePlanets(AITurnContext context)
         {
             if (_espionageCandidates != null)
@@ -678,10 +678,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns sabotage candidate planets.
+        /// Returns enemy planets containing eligible sabotage targets.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>Candidate planets ordered by campaign relevance and target value.</returns>
         private IEnumerable<Planet> GetSabotageCandidatePlanets(AITurnContext context)
         {
             return _sabotageCandidates ??= GetFreshEnemyPlanets(context)
@@ -705,11 +705,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns sabotage targets.
+        /// Returns the highest-priority sabotage tier available on a planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>Eligible targets in strategic-priority order.</returns>
         private IEnumerable<IManufacturable> GetSabotageTargets(
             AITurnContext context,
             Planet planet
@@ -739,11 +739,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns eligible sabotage targets.
+        /// Returns completed enemy units and facilities not already targeted for sabotage.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>Eligible sabotage targets.</returns>
         private IEnumerable<IManufacturable> GetEligibleSabotageTargets(
             AITurnContext context,
             Planet planet
@@ -783,10 +783,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns fresh enemy planets.
+        /// Returns enemy planets whose intelligence is recent enough for hostile missions.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>Enemy planets within the configured intelligence age.</returns>
         private IEnumerable<Planet> GetFreshEnemyPlanets(AITurnContext context)
         {
             if (_freshEnemyPlanets != null)
@@ -807,10 +807,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns recruitment candidate planets.
+        /// Returns safe owned planets suitable for recruitment.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>Candidate planets ordered by popular support.</returns>
         private IEnumerable<Planet> GetRecruitmentCandidatePlanets(AITurnContext context)
         {
             return _recruitmentCandidates ??= context
@@ -821,12 +821,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns available research disciplines.
+        /// Returns research disciplines an officer can advance at a planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="officer">The officer to evaluate.</param>
         /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>Available, qualified research disciplines.</returns>
         private IEnumerable<ResearchDiscipline> GetAvailableResearchDisciplines(
             AITurnContext context,
             Officer officer,
@@ -849,12 +849,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether available research discipline.
+        /// Returns whether an officer can advance any research discipline at a planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="officer">The officer to evaluate.</param>
         /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when at least one discipline is available.</returns>
         private bool HasAvailableResearchDiscipline(
             AITurnContext context,
             Officer officer,
@@ -865,12 +865,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns available research discipline count.
+        /// Returns the number of research disciplines an officer can advance at a planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="officer">The officer to evaluate.</param>
         /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The available discipline count.</returns>
         private int GetAvailableResearchDisciplineCount(
             AITurnContext context,
             Officer officer,
@@ -881,12 +881,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns strongest research rating.
+        /// Returns an officer's strongest applicable research rating at a planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="officer">The officer to evaluate.</param>
         /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The strongest rating, or zero when no discipline is available.</returns>
         private int GetStrongestResearchRating(
             AITurnContext context,
             Officer officer,

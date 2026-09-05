@@ -149,7 +149,7 @@ namespace Rebellion.Tests.AI.Scoring
             {
                 { -1000, 19 },
             };
-            game.Config.AI.MissionPlanning.MinimumMissionScore = 20;
+            game.Config.AI.MissionPlanning.MinimumUprisingMissionSuccessPercent = 20;
             game.Config.AI.MissionPlanning.SubdueUprisingPriorityBonus = 120;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -160,16 +160,9 @@ namespace Rebellion.Tests.AI.Scoring
             );
 
             Assert.IsTrue(proposal.CanExecute(context));
-            Assert.IsTrue(
-                context.Missions.TryCreateMission(proposal.CreateRequest(), out Mission mission)
-            );
-            Assert.AreEqual(
-                19,
-                context
-                    .Missions.GetMissionOdds(mission, proposal.MainParticipants)
-                    .SuccessProbability,
-                0.0001
-            );
+            MissionOdds odds = context.Missions.GetMissionOdds(proposal.CreateRequest());
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(19, odds.ObjectiveSuccessProbability, 0.0001);
             double score = new AIMissionProposalScorer().Score(context, proposal);
 
             Assert.AreEqual(0, score);

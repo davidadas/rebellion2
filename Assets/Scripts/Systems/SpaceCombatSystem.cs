@@ -734,7 +734,16 @@ namespace Rebellion.Systems
 
             Planet originalPlanet = fleet.GetParentOfType<Planet>();
             _movement.EvacuateToNearestFriendlyPlanet(fleet);
-            return fleet.Movement != null || fleet.GetParentOfType<Planet>() != originalPlanet;
+            bool retreated =
+                fleet.Movement != null || fleet.GetParentOfType<Planet>() != originalPlanet;
+            if (
+                retreated
+                && fleet.Order?.OrderType == FleetOrderType.Attack
+                && fleet.Order.TargetPlanetId == originalPlanet?.InstanceID
+            )
+                fleet.Order = null;
+
+            return retreated;
         }
 
         /// <summary>

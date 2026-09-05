@@ -468,12 +468,12 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Queues fleet seed.
+        /// Creates a fleet and queues its first capital ship.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the ship was queued in the new fleet.</returns>
         private bool EnqueueFleetSeed(
             AITurnContext context,
             CapitalShip capitalShip,
@@ -495,10 +495,10 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether manufacture fleet seed.
+        /// Returns whether a fleet seed can be manufactured at its destination.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the destination and capital-ship template remain valid.</returns>
         private bool CanManufactureFleetSeed(AITurnContext context)
         {
             if (Destination is not Planet destinationPlanet)
@@ -558,12 +558,12 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether replace production facility.
+        /// Returns whether a completed production facility can be replaced by this building.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
         /// <param name="building">The building to evaluate.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the replacement is a valid upgrade and leaves production capacity.</returns>
         private bool CanReplaceProductionFacility(
             AITurnContext context,
             Planet destinationPlanet,
@@ -604,7 +604,7 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Executes building upgrade.
+        /// Replaces the completed facility and restores it if manufacturing cannot start.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         private void ExecuteBuildingUpgrade(AITurnContext context)
@@ -635,12 +635,12 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Queues at planet.
+        /// Queues a manufactured item for delivery to a planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
         /// <param name="manufacturable">The manufacturable.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the item was queued.</returns>
         private bool EnqueueAtPlanet(
             AITurnContext context,
             Planet destinationPlanet,
@@ -651,7 +651,7 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Logs enqueue failure.
+        /// Logs a failed production enqueue with its product and producer identifiers.
         /// </summary>
         private void LogEnqueueFailure()
         {
@@ -670,9 +670,9 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether counted manufacturing demand.
+        /// Returns whether the proposal quantity represents more than one unit.
         /// </summary>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when manufacturing should use the demand quantity.</returns>
         private bool IsCountedManufacturingDemand()
         {
             return IsFacilityExpansionDemand()
@@ -681,9 +681,9 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether facility expansion demand.
+        /// Returns whether this proposal expands a production facility category.
         /// </summary>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True for construction-facility, shipyard, and training-facility demand.</returns>
         private bool IsFacilityExpansionDemand()
         {
             return Demand?.Kind
@@ -706,10 +706,10 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether manufacture planet starfighter.
+        /// Returns whether a starfighter can be manufactured at the destination planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the destination and starfighter template remain valid.</returns>
         private bool CanManufacturePlanetStarfighter(AITurnContext context)
         {
             return Destination is Planet destinationPlanet
@@ -760,10 +760,10 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether manufacture special forces.
+        /// Returns whether the requested special-forces type can be manufactured at the planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the destination and requested template remain valid.</returns>
         private bool CanManufactureSpecialForces(AITurnContext context)
         {
             return Destination is Planet destinationPlanet

@@ -1516,9 +1516,8 @@ namespace Rebellion.AI.Director
                 _planetRequiredAttackRegimentCounts,
                 planet.InstanceID,
                 () =>
-                {
-                    return GetDefendingRegimentCount(planet) + 1;
-                }
+                    GetRequiredCombatRegimentCount(planet)
+                    + GetRequiredOccupationRegimentCount(planet)
             );
         }
 
@@ -1546,6 +1545,17 @@ namespace Rebellion.AI.Director
             return CanBombardDefendingRegiments(fleet, planet, projected: true)
                 ? GetRequiredOccupationRegimentCount(planet)
                 : GetRequiredAttackRegimentCount(planet);
+        }
+
+        /// <summary>
+        /// Returns the regiment count needed to defeat the target's current ground force.
+        /// </summary>
+        /// <param name="planet">Planet being attacked.</param>
+        /// <returns>The required combat regiment count.</returns>
+        private int GetRequiredCombatRegimentCount(Planet planet)
+        {
+            int defenderCount = GetDefendingRegimentCount(planet);
+            return defenderCount == 0 ? 0 : defenderCount + 1;
         }
 
         /// <summary>
