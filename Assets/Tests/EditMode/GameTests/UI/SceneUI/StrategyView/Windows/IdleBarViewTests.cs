@@ -51,10 +51,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             RectTransform mask =
                 template.GetComponentInChildren<Mask>(true).transform as RectTransform;
             Assert.IsNotNull(button);
-            Assert.AreEqual(Color.black, button.colors.normalColor);
-            Assert.AreEqual(Color.white, button.colors.highlightedColor);
-            Assert.AreEqual(Color.white, button.colors.pressedColor);
-            Assert.AreEqual(Color.black, button.colors.selectedColor);
+            Assert.AreEqual(Selectable.Transition.None, button.transition);
+            Assert.AreEqual(Color.black, frame.GetComponent<Image>().color);
             Assert.AreEqual(new Vector2(28f, 28f), frame.sizeDelta);
             Assert.AreEqual(new Vector2(24f, 24f), mask.sizeDelta);
             Assert.IsNull(template.GetComponentInChildren<TextMeshProUGUI>(true));
@@ -106,12 +104,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
             IdleBarSlotView slot = GetVisibleSlots().Single();
             RectTransform slotRect = slot.transform as RectTransform;
+            Image frame = slot.transform.Find("CircleFrame").GetComponent<Image>();
             RectTransform mask = slot.GetComponentInChildren<Mask>().transform as RectTransform;
             RawImage portraitBackground = slot
                 .transform.Find("PortraitMask/PortraitBackground")
                 .GetComponent<RawImage>();
             Assert.AreEqual(new Vector2(28f, 28f), slotRect.sizeDelta);
             Assert.AreEqual(new Vector2(24f, 24f), mask.sizeDelta);
+            Assert.AreEqual(Color.black, frame.color);
             RawImage portraitImage = slot
                 .transform.Find("PortraitMask/PortraitImage")
                 .GetComponent<RawImage>();
@@ -122,6 +122,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             Assert.AreEqual(new Vector2(28f, 28f), slotRect.sizeDelta);
             Assert.AreEqual(new Vector2(26f, 26f), mask.sizeDelta);
+            Assert.AreEqual(Color.black, frame.color);
             Assert.AreEqual(Color.black, portraitBackground.color);
             Assert.AreEqual(Vector3.one * 1.08f, portraitImage.rectTransform.localScale);
 

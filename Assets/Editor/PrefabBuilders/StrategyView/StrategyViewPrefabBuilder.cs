@@ -967,21 +967,12 @@ public static class StrategyViewPrefabBuilder
         frameObject.transform.SetParent(slotObject.transform, false);
         Image frame = frameObject.GetComponent<Image>();
         frame.sprite = circleSprite;
-        frame.color = Color.white;
+        frame.color = Color.black;
         frame.preserveAspect = true;
         frame.raycastTarget = false;
         SetSourceRect(frame.rectTransform, 0, 0, 28, 28);
         button.targetGraphic = frame;
-        button.transition = Selectable.Transition.ColorTint;
-        ColorBlock buttonColors = button.colors;
-        buttonColors.normalColor = Color.black;
-        buttonColors.highlightedColor = Color.white;
-        buttonColors.pressedColor = Color.white;
-        buttonColors.selectedColor = Color.black;
-        buttonColors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
-        buttonColors.colorMultiplier = 1f;
-        buttonColors.fadeDuration = 0.08f;
-        button.colors = buttonColors;
+        button.transition = Selectable.Transition.None;
 
         GameObject maskObject = new GameObject(
             "PortraitMask",
