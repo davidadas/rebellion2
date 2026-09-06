@@ -336,6 +336,29 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
+        public void Resolve_FighterWeaponCharge_MustRechargeBeforeFiringAgain()
+        {
+            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 10);
+            attacker.ShieldStrength = 1;
+            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 2;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatAutoResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { attacker },
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(90, GetShipOutcome(result, defender).HullAfter);
+        }
+
+        [Test]
         public void Resolve_IonDamageWithoutShields_DoesNotDamageCapitalShipHull()
         {
             Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 0);
@@ -1410,6 +1433,7 @@ namespace Rebellion.Tests.Game.Combat
             return new GameConfig.SpaceCombatConfig
             {
                 CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier = 1.0 / 6.0,
+                AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                 AutoResolveMaximumIterations = 4096,
                 AutoResolveStagnationIterations = 1200,
                 AutoResolveRetreatStrengthRatio = 0.33,
