@@ -62,6 +62,9 @@ public sealed class StrategyController
     private StrategyWindowLayerView strategyWindowLayerView;
 
     [SerializeField]
+    private IdleBarView idleBar;
+
+    [SerializeField]
     private UIWindowManager strategyWindowManager;
 
     [SerializeField]
@@ -575,6 +578,7 @@ public sealed class StrategyController
         strategyContextMenu.DismissRequested += HandleContextMenuDismissRequested;
         strategyOverlay.TargetingCancelRequested += HandleTargetingCancelRequested;
         bookmarkBar.BookmarkRequested += HandleBookmarkRequested;
+        idleBar.EntrySelected += HandleIdleBarSelected;
         briefingSkipConfirmation.Confirmed += ConfirmBriefingSkip;
         briefingSkipConfirmation.Canceled += CancelBriefingSkip;
     }
@@ -607,6 +611,8 @@ public sealed class StrategyController
             strategyOverlay.TargetingCancelRequested -= HandleTargetingCancelRequested;
         if (bookmarkBar != null)
             bookmarkBar.BookmarkRequested -= HandleBookmarkRequested;
+        if (idleBar != null)
+            idleBar.EntrySelected -= HandleIdleBarSelected;
         if (briefingSkipConfirmation != null)
         {
             briefingSkipConfirmation.Confirmed -= ConfirmBriefingSkip;
@@ -1030,12 +1036,15 @@ public sealed class StrategyController
             throw new MissingReferenceException("Windows is missing StrategyWindowLayerView.");
         if (strategyWindowManager == null)
             throw new MissingReferenceException("Windows is missing UIWindowManager.");
+        if (idleBar == null)
+            throw new MissingReferenceException("Windows is missing IdleBarView.");
         if (strategyWindowManager.transform != strategyWindowLayerView.transform)
             throw new MissingReferenceException(
                 "StrategyWindowLayerView and UIWindowManager must share the Windows root."
             );
 
         RequireRectTransform(strategyWindowLayerView, "Windows");
+        RequireRectTransform(idleBar, "IdleBar");
     }
 
     /// <summary>
@@ -1205,6 +1214,7 @@ public sealed class StrategyController
     /// </summary>
     private void RenderWindowContent()
     {
+        RenderIdleBar();
         bool hasModalWindow = strategyWindowManager.HasModalWindow();
         strategyWindowLayerView.RenderModalState(briefingActive || hasModalWindow, hasModalWindow);
         advisorReportWindowController.RenderWindows();
@@ -1222,6 +1232,34 @@ public sealed class StrategyController
         defenseWindowController.RenderWindows();
         missionsWindowController.RenderWindows();
         planetSectorWindowController.RenderWindows();
+    }
+
+    /// <summary>
+    /// Projects the player's currently available personnel and manufacturing planet.
+    /// </summary>
+    private void RenderIdleBar()
+    {
+        bool visible =
+            AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowIdleBar
+            ?? false;
+        idleBar.gameObject.SetActive(visible);
+        if (!visible)
+            return;
+
+        FactionTheme theme = uiContext.GetPlayerFactionTheme();
+        SourceRectLayout bounds = theme?.StrategyWindowPlacements?.WindowBounds;
+        if (bounds == null)
+            throw new MissingReferenceException(
+                "StrategyWindowPlacements/WindowBounds is missing."
+            );
+
+        idleBar.Render(
+            IdleBarProjector.Project(
+                gameManager.GetPlayerFaction(),
+                uiContext,
+                new RectInt(bounds.X, bounds.Y, bounds.Width, bounds.Height)
+            )
+        );
     }
 
     /// <summary>
@@ -2991,6 +3029,26 @@ public sealed class StrategyController
             default:
                 return true;
         }
+    }
+
+    /// <summary>
+    /// Opens the location or manufacturing window represented by an availability portrait.
+    /// </summary>
+    private void HandleIdleBarSelected(string instanceId)
+    {
+        ISceneNode target = gameManager.GetGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
+        Planet planet = target as Planet ?? target?.GetParentOfType<Planet>();
+        GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planet?.InstanceID);
+        if (target == null || strategyPlanet == null)
+            return;
+
+        Vector2Int position = GetSectorSourcePosition(strategyPlanet.Sector);
+        OpenPlanetSectorWindow(strategyPlanet.Sector);
+        PlanetIcon icon = target is Planet ? PlanetIcon.Facility : GetMessageTargetIcon(target);
+        UIWindow window = OpenPlanetWindowAt(strategyPlanet, icon, position.x, position.y);
+        SelectMessageTarget(window, target);
+
+        MarkDirty();
     }
 
     /// <summary>
