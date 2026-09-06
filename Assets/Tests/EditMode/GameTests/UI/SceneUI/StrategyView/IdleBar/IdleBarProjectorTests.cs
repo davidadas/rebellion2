@@ -7,7 +7,7 @@ using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using UnityEngine;
 
-namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 {
     [TestFixture]
     public class IdleBarProjectorTests
@@ -41,9 +41,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Planet secondPlanet = CreateManufacturingPlanet("B Planet");
             Planet firstPlanet = CreateManufacturingPlanet("A Planet");
 
-            IdleBarRenderData result = IdleBarProjector.Project(
+            IdleBarRenderData result = new IdleBarProjector(() => null).Project(
                 _playerFaction,
-                null,
                 new RectInt(10, 20, 300, 200)
             );
 
@@ -66,9 +65,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void Project_NoAvailableEntities_ReturnsEmptyStrip()
         {
-            IdleBarRenderData result = IdleBarProjector.Project(
+            IdleBarRenderData result = new IdleBarProjector(() => null).Project(
                 _playerFaction,
-                null,
                 new RectInt()
             );
 
@@ -85,9 +83,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             SpecialForces retiredSpecialForces = CreateSpecialForces("Retired Unit");
             retiredSpecialForces.IsRetired = true;
 
-            IdleBarRenderData result = IdleBarProjector.Project(
+            IdleBarRenderData result = new IdleBarProjector(() => null).Project(
                 _playerFaction,
-                null,
                 new RectInt()
             );
 

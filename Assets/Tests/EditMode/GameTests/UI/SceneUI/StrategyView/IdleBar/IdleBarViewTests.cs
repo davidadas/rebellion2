@@ -9,7 +9,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 {
     [TestFixture]
     public class IdleBarViewTests
@@ -59,11 +59,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void PrefabProperties_IdleBarIsTopLevelNonWindowFeature()
+        {
+            Transform windows = _view.transform.parent.Find("Windows");
+
+            Assert.AreEqual("StrategyView", _view.transform.parent.name);
+            Assert.IsNull(_view.GetComponent<UIWindow>());
+            Assert.IsNotNull(windows);
+            Assert.Less(_view.transform.GetSiblingIndex(), windows.GetSiblingIndex());
+        }
+
+        [Test]
         public void Render_FewEntries_CreatesSmallRightAlignedSingleRow()
         {
             RectInt bounds = new RectInt(50, 30, 700, 350);
             _view.Render(
                 new IdleBarRenderData(
+                    true,
                     new List<IdleBarEntry>
                     {
                         new IdleBarEntry(CreateOfficer("Officer"), null),
@@ -98,6 +110,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         {
             _view.Render(
                 new IdleBarRenderData(
+                    true,
                     new[] { new IdleBarEntry(CreateOfficer("Officer"), null) },
                     new RectInt(0, 0, 800, 480)
                 )
@@ -136,7 +149,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void PointerHover_TopBarRevealsSecondRowAndLeavingConcealsIt()
         {
-            _view.Render(new IdleBarRenderData(CreateEntries(20), new RectInt(50, 30, 400, 350)));
+            _view.Render(
+                new IdleBarRenderData(true, CreateEntries(20), new RectInt(50, 30, 400, 350))
+            );
 
             List<IdleBarSlotView> slots = GetVisibleSlots();
             Image hitArea = GetField<Image>("shelfHitArea");
@@ -195,7 +210,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void Scroll_OverflowingEntries_ShiftsVisibleShelfAndShowsPositionOnHover()
         {
-            _view.Render(new IdleBarRenderData(CreateEntries(15), new RectInt(50, 30, 400, 350)));
+            _view.Render(
+                new IdleBarRenderData(true, CreateEntries(15), new RectInt(50, 30, 400, 350))
+            );
             Assert.AreEqual("Officer 0", GetVisibleSlots()[0].name);
 
             _view.OnPointerEnter(new PointerEventData(null));
@@ -217,6 +234,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _view.EntrySelected += instanceId => selectedInstanceId = instanceId;
             _view.Render(
                 new IdleBarRenderData(
+                    true,
                     new[] { new IdleBarEntry(CreateOfficer("Officer"), null) },
                     new RectInt(0, 0, 700, 350)
                 )
@@ -235,6 +253,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _view.EntryUntrackRequested += instanceId => untrackedInstanceId = instanceId;
             _view.Render(
                 new IdleBarRenderData(
+                    true,
                     new[] { new IdleBarEntry(CreateOfficer("Officer"), null) },
                     new RectInt(0, 0, 700, 350)
                 )
@@ -254,14 +273,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void Render_EmptyEntries_HidesShelfAndExistingSlots()
         {
-            _view.Render(new IdleBarRenderData(CreateEntries(1), new RectInt(0, 0, 700, 350)));
+            _view.Render(
+                new IdleBarRenderData(true, CreateEntries(1), new RectInt(0, 0, 700, 350))
+            );
 
             _view.Render(
-                new IdleBarRenderData(new List<IdleBarEntry>(), new RectInt(0, 0, 700, 350))
+                new IdleBarRenderData(true, new List<IdleBarEntry>(), new RectInt(0, 0, 700, 350))
             );
 
             Assert.IsFalse(GetField<Image>("shelfHitArea").gameObject.activeSelf);
             Assert.IsEmpty(GetVisibleSlots());
+        }
+
+        [Test]
+        public void Render_HiddenPresentation_DeactivatesFeatureRoot()
+        {
+            _view.Render(new IdleBarRenderData(false, CreateEntries(1), new RectInt()));
+
+            Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
         private T GetField<T>(string fieldName)

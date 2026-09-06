@@ -41,18 +41,25 @@ public sealed class IdleBarView
     private bool initialized;
     private bool pointerOverShelf;
 
+    /// <summary>Raised when the player selects an idle-bar entry.</summary>
     internal event Action<string> EntrySelected;
 
+    /// <summary>Raised when the player requests that an entry stop being tracked.</summary>
     internal event Action<string> EntryUntrackRequested;
+
+    /// <summary>Raised when this authored view is destroyed.</summary>
+    internal event Action<IdleBarView> Destroyed;
 
     /// <summary>
     /// Applies current availability within a two-row shelf capped at half the desktop width.
     /// </summary>
+    /// <param name="data">The complete idle-bar presentation.</param>
     internal void Render(IdleBarRenderData data)
     {
         Initialize();
         currentData = data;
-        if (data == null || data.Entries.Count == 0)
+        gameObject.SetActive(data?.Visible == true);
+        if (data?.Visible != true || data.Entries.Count == 0)
         {
             firstVisibleIndex = 0;
             HideShelf();
@@ -80,6 +87,7 @@ public sealed class IdleBarView
     /// <summary>
     /// Reveals the unobtrusive page position while the shelf is being inspected.
     /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
     public void OnPointerEnter(PointerEventData eventData)
     {
         SetPointerOverShelf(true);
@@ -88,6 +96,7 @@ public sealed class IdleBarView
     /// <summary>
     /// Conceals paging chrome when the pointer leaves the shelf.
     /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
     public void OnPointerExit(PointerEventData eventData)
     {
         RequestPointerExit();
@@ -96,6 +105,7 @@ public sealed class IdleBarView
     /// <summary>
     /// Pages one row at a time when the pointer wheel is used over the shelf.
     /// </summary>
+    /// <param name="eventData">The source scroll event.</param>
     public void OnScroll(PointerEventData eventData)
     {
         if (currentData == null || columns <= 0 || Mathf.Approximately(eventData.scrollDelta.y, 0f))
@@ -153,6 +163,8 @@ public sealed class IdleBarView
                 slot.UntrackRequested -= HandleSlotUntrackRequested;
             }
         }
+
+        Destroyed?.Invoke(this);
     }
 
     /// <summary>
@@ -229,6 +241,7 @@ public sealed class IdleBarView
     /// <summary>
     /// Instantiates enough reusable slots for the visible page.
     /// </summary>
+    /// <param name="count">The required number of slots.</param>
     private void EnsureSlotCount(int count)
     {
         while (slots.Count < count)
@@ -244,6 +257,7 @@ public sealed class IdleBarView
     /// <summary>
     /// Returns the current one- or two-row page capacity.
     /// </summary>
+    /// <returns>The number of entries that fit in the current presentation.</returns>
     private int GetVisibleCapacity()
     {
         return columns * (pointerOverShelf ? _maximumRows : 1);
@@ -252,6 +266,7 @@ public sealed class IdleBarView
     /// <summary>
     /// Reveals the complete shelf while any of its interactive regions are hovered.
     /// </summary>
+    /// <param name="pointerOver">Whether the pointer is over the shelf.</param>
     private void SetPointerOverShelf(bool pointerOver)
     {
         bool hoverChanged = pointerOverShelf != pointerOver;
@@ -317,6 +332,7 @@ public sealed class IdleBarView
     /// <summary>
     /// Forwards one slot selection through the desktop view boundary.
     /// </summary>
+    /// <param name="instanceId">The selected entity identifier.</param>
     private void HandleSlotSelected(string instanceId)
     {
         EntrySelected?.Invoke(instanceId);
@@ -325,6 +341,7 @@ public sealed class IdleBarView
     /// <summary>
     /// Forwards one slot's untracking request through the desktop view boundary.
     /// </summary>
+    /// <param name="instanceId">The untracked entity identifier.</param>
     private void HandleSlotUntrackRequested(string instanceId)
     {
         EntryUntrackRequested?.Invoke(instanceId);
@@ -333,6 +350,11 @@ public sealed class IdleBarView
     /// <summary>
     /// Applies a source-space rectangle using the strategy screen's top-left coordinates.
     /// </summary>
+    /// <param name="rect">The rectangle to position.</param>
+    /// <param name="x">The source-space horizontal position.</param>
+    /// <param name="y">The source-space vertical position.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
     private static void SetSourceRect(RectTransform rect, int x, int y, int width, int height)
     {
         rect.anchorMin = new Vector2(0f, 1f);

@@ -11,7 +11,7 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Performs game-level window actions requested by the planet-sector feature.
 /// </summary>
-public interface IPlanetSectorWindowActions : IIdleBarTrackingActions
+public interface IPlanetSectorWindowActions
 {
     /// <summary>
     /// Rebuilds shared strategy state after a planet-sector command changes the game.
@@ -88,6 +88,7 @@ public sealed class PlanetSectorWindowController
     private IPlanetSectorWindowActions actions;
     private IStrategyWindowCommandActions commandActions;
     private IStrategyConfirmationActions confirmationActions;
+    private IIdleBarTrackingActions idleBarTrackingActions;
     private Action<UIWindow, PointerEventData> startItemDrag;
 
     /// <summary>
@@ -144,11 +145,13 @@ public sealed class PlanetSectorWindowController
     /// <param name="windowActions">The feature-specific planet-sector actions.</param>
     /// <param name="windowCommandActions">The shared mission and movement actions.</param>
     /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
+    /// <param name="trackingActions">Reads and changes idle-bar tracking state.</param>
     /// <param name="beginItemDrag">Begins a strategy item-drag candidate.</param>
     public void Initialize(
         IPlanetSectorWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
         IStrategyConfirmationActions windowConfirmationActions,
+        IIdleBarTrackingActions trackingActions,
         Action<UIWindow, PointerEventData> beginItemDrag
     )
     {
@@ -158,6 +161,8 @@ public sealed class PlanetSectorWindowController
         confirmationActions =
             windowConfirmationActions
             ?? throw new ArgumentNullException(nameof(windowConfirmationActions));
+        idleBarTrackingActions =
+            trackingActions ?? throw new ArgumentNullException(nameof(trackingActions));
         startItemDrag = beginItemDrag ?? throw new ArgumentNullException(nameof(beginItemDrag));
     }
 
@@ -515,7 +520,7 @@ public sealed class PlanetSectorWindowController
             StrategyContextMenuAvailability.CanToggleIdleBarTracking(
                 trackingItem,
                 playerFactionId,
-                actions?.IsIdleBarEnabled == true
+                idleBarTrackingActions?.IsIdleBarEnabled == true
             )
         )
         {
@@ -524,7 +529,7 @@ public sealed class PlanetSectorWindowController
                     StrategyMenuAction.ToggleIdleBarTracking,
                     "Tracked",
                     true,
-                    actions.IsIdleBarTracked(trackingItem)
+                    idleBarTrackingActions.IsIdleBarTracked(trackingItem)
                         ? StrategyContextMenuIconKeys.CheckMark
                         : StrategyContextMenuIconKeys.None
                 )
@@ -596,7 +601,7 @@ public sealed class PlanetSectorWindowController
         switch (strategyCommand.Action)
         {
             case StrategyMenuAction.ToggleIdleBarTracking:
-                actions.ToggleIdleBarTracking(source.Target?.Item);
+                idleBarTrackingActions.ToggleIdleBarTracking(source.Target?.Item);
                 break;
             case StrategyMenuAction.BombardMilitaryFacilities:
             case StrategyMenuAction.BombardCivilianFacilities:

@@ -9,62 +9,9 @@ using Rebellion.SceneGraph;
 using UnityEngine;
 
 /// <summary>
-/// Reads and changes whether strategy entities appear in the idle bar.
-/// </summary>
-public interface IIdleBarTrackingActions
-{
-    /// <summary>Reports whether the experimental idle bar is enabled.</summary>
-    bool IsIdleBarEnabled { get; }
-
-    /// <summary>Reports whether an entity appears in the idle bar.</summary>
-    /// <param name="entity">The entity whose tracking state is requested.</param>
-    /// <returns><see langword="true"/> when the entity is tracked.</returns>
-    bool IsIdleBarTracked(ISceneNode entity);
-
-    /// <summary>Changes whether an entity appears in the idle bar.</summary>
-    /// <param name="entity">The entity whose tracking state should change.</param>
-    void ToggleIdleBarTracking(ISceneNode entity);
-}
-
-/// <summary>
-/// Describes one available strategy entity shown in the idle bar.
-/// </summary>
-internal sealed class IdleBarEntry
-{
-    internal string Name { get; }
-
-    internal Texture2D Texture { get; }
-
-    internal ISceneNode Entity { get; }
-
-    internal IdleBarEntry(ISceneNode entity, Texture2D texture)
-    {
-        Entity = entity;
-        Name = entity?.GetDisplayName() ?? string.Empty;
-        Texture = texture;
-    }
-}
-
-/// <summary>
-/// Contains the ordered idle bar rendered on the strategy desktop.
-/// </summary>
-internal sealed class IdleBarRenderData
-{
-    internal IReadOnlyList<IdleBarEntry> Entries { get; }
-
-    internal RectInt DesktopBounds { get; }
-
-    internal IdleBarRenderData(IReadOnlyList<IdleBarEntry> entries, RectInt desktopBounds)
-    {
-        Entries = entries ?? Array.Empty<IdleBarEntry>();
-        DesktopBounds = desktopBounds;
-    }
-}
-
-/// <summary>
 /// Selects idle personnel and manufacturing capacity for the strategy desktop.
 /// </summary>
-internal static class IdleBarProjector
+internal sealed class IdleBarProjector
 {
     private static readonly ManufacturingType[] _manufacturingTypes =
     {
@@ -73,15 +20,26 @@ internal static class IdleBarProjector
         ManufacturingType.Building,
     };
 
+    private readonly Func<UIContext> getUIContext;
+
+    /// <summary>
+    /// Creates an idle-bar projector backed by the current strategy UI context.
+    /// </summary>
+    /// <param name="getUIContext">Returns the current strategy UI context.</param>
+    internal IdleBarProjector(Func<UIContext> getUIContext)
+    {
+        this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
+    }
+
     /// <summary>
     /// Projects available officers, special-forces units, and manufacturing planets in order.
     /// </summary>
-    internal static IdleBarRenderData Project(
-        Faction playerFaction,
-        UIContext uiContext,
-        RectInt desktopBounds
-    )
+    /// <param name="playerFaction">The faction whose available entities are projected.</param>
+    /// <param name="desktopBounds">The strategy desktop bounds.</param>
+    /// <returns>The ordered idle-bar presentation.</returns>
+    internal IdleBarRenderData Project(Faction playerFaction, RectInt desktopBounds)
     {
+        UIContext uiContext = getUIContext();
         List<IdleBarEntry> entries = FindAvailableParticipants<Officer>(playerFaction)
             .Select(officer => CreateEntry(officer, uiContext))
             .Concat(
@@ -102,12 +60,15 @@ internal static class IdleBarProjector
             )
             .ToList();
 
-        return new IdleBarRenderData(entries, desktopBounds);
+        return new IdleBarRenderData(true, entries, desktopBounds);
     }
 
     /// <summary>
     /// Selects all available mission participants of one type by display name.
     /// </summary>
+    /// <typeparam name="T">The mission-participant type to select.</typeparam>
+    /// <param name="playerFaction">The faction whose participants are selected.</param>
+    /// <returns>The available participants in display order.</returns>
     private static IEnumerable<T> FindAvailableParticipants<T>(Faction playerFaction)
         where T : class, IMissionParticipant
     {
@@ -123,6 +84,8 @@ internal static class IdleBarProjector
     /// <summary>
     /// Excludes personnel that cannot presently accept useful orders.
     /// </summary>
+    /// <param name="participant">The participant to evaluate.</param>
+    /// <returns><see langword="true"/> when the participant can receive orders.</returns>
     private static bool IsHealthyParticipant(IMissionParticipant participant)
     {
         if (participant is Officer officer)
@@ -134,6 +97,8 @@ internal static class IdleBarProjector
     /// <summary>
     /// Reports whether an owned planet has at least one empty manufacturing lane.
     /// </summary>
+    /// <param name="planet">The planet to evaluate.</param>
+    /// <returns><see langword="true"/> when any manufacturing lane is idle.</returns>
     private static bool HasIdleManufacturing(Planet planet)
     {
         return planet is { IsDestroyed: false }
@@ -143,6 +108,9 @@ internal static class IdleBarProjector
     /// <summary>
     /// Builds one optional display entry and resolves its compact artwork.
     /// </summary>
+    /// <param name="entity">The represented strategy entity.</param>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <returns>The resolved entry, or null when the entity is absent.</returns>
     private static IdleBarEntry CreateEntry(ISceneNode entity, UIContext uiContext)
     {
         if (entity == null)

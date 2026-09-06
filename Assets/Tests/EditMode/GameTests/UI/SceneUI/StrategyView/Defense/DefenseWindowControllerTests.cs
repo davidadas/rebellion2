@@ -55,7 +55,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _targetingController = new TargetingController();
             _controller = CreateController();
             TestActions actions = new TestActions();
-            _controller.Initialize(actions, actions, actions, (_, _) => { }, _ => { }, _ => { });
+            _controller.Initialize(
+                actions,
+                actions,
+                actions,
+                actions,
+                (_, _) => { },
+                _ => { },
+                _ => { }
+            );
         }
 
         [TearDown]
@@ -86,7 +94,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             TestActions actions = new TestActions();
 
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, actions, actions, (_, _) => { }, _ => { }, _ => { })
+                _controller.Initialize(
+                    null,
+                    actions,
+                    actions,
+                    actions,
+                    (_, _) => { },
+                    _ => { },
+                    _ => { }
+                )
             );
         }
 
@@ -183,6 +199,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _planet.Planet.AddTestChild(secondOfficer);
             int dragStartCount = 0;
             _controller.Initialize(
+                new TestActions(),
                 new TestActions(),
                 new TestActions(),
                 new TestActions(),
@@ -403,6 +420,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
 
         private sealed class TestActions
             : IDefenseWindowActions,
+                IIdleBarTrackingActions,
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {

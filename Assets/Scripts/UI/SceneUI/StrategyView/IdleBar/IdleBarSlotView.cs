@@ -36,13 +36,19 @@ public sealed class IdleBarSlotView
     private bool initialized;
     private int currentSlotSize;
 
+    /// <summary>Raised when the player selects this entry.</summary>
     internal event Action<string> Selected;
 
+    /// <summary>Raised when the player requests that this entry stop being tracked.</summary>
     internal event Action<string> UntrackRequested;
 
     /// <summary>
     /// Renders one entity at its top-left source-space position.
     /// </summary>
+    /// <param name="entry">The entry to render.</param>
+    /// <param name="x">The source-space horizontal position.</param>
+    /// <param name="y">The source-space vertical position.</param>
+    /// <param name="slotSize">The source-space square slot size.</param>
     internal void Render(IdleBarEntry entry, int x, int y, int slotSize)
     {
         if (entry == null)
@@ -63,6 +69,7 @@ public sealed class IdleBarSlotView
     /// <summary>
     /// Enlarges the portrait under the pointer.
     /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
     public void OnPointerEnter(PointerEventData eventData)
     {
         SetHovered(true);
@@ -71,6 +78,7 @@ public sealed class IdleBarSlotView
     /// <summary>
     /// Restores the portrait after the pointer leaves.
     /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
     public void OnPointerExit(PointerEventData eventData)
     {
         SetHovered(false);
@@ -79,6 +87,7 @@ public sealed class IdleBarSlotView
     /// <summary>
     /// Requests immediate removal from the idle bar on a secondary click.
     /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
     public void OnPointerClick(PointerEventData eventData)
     {
         if (
@@ -145,6 +154,7 @@ public sealed class IdleBarSlotView
     /// <summary>
     /// Applies the compact normal or emphasized hover geometry.
     /// </summary>
+    /// <param name="hovered">Whether the pointer is over the slot.</param>
     private void SetHovered(bool hovered)
     {
         this.hovered = hovered;
@@ -160,6 +170,8 @@ public sealed class IdleBarSlotView
     /// <summary>
     /// Crops rectangular artwork into a centered square before circular masking.
     /// </summary>
+    /// <param name="texture">The source portrait texture.</param>
+    /// <returns>The centered square UV rectangle.</returns>
     private static Rect GetCenteredSquareUv(Texture texture)
     {
         if (texture == null || texture.width <= 0 || texture.height <= 0)
@@ -178,6 +190,11 @@ public sealed class IdleBarSlotView
     /// <summary>
     /// Applies a source-space rectangle using the strategy screen's top-left coordinates.
     /// </summary>
+    /// <param name="rect">The rectangle to position.</param>
+    /// <param name="x">The source-space horizontal position.</param>
+    /// <param name="y">The source-space vertical position.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
     private static void SetSourceRect(RectTransform rect, int x, int y, int width, int height)
     {
         rect.anchorMin = new Vector2(0f, 1f);

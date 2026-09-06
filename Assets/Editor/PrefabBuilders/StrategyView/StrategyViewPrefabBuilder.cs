@@ -806,6 +806,7 @@ public static class StrategyViewPrefabBuilder
         pressedMainButtonImage.raycastTarget = false;
         pressedMainButtonImage.gameObject.SetActive(false);
 
+        IdleBarView idleBar = CreateIdleBarView(root.transform);
         GameObject windows = CreateLayer(_windowLayerName, root.transform);
         RectTransform windowsRect = windows.GetComponent<RectTransform>();
         SetStrategySurfaceRect(windowsRect);
@@ -815,7 +816,6 @@ public static class StrategyViewPrefabBuilder
         StrategyWindowLayerView windowsView = EnableRuntimeComponent(
             windows.AddComponent<StrategyWindowLayerView>()
         );
-        IdleBarView idleBar = CreateIdleBarView(windows.transform);
         RectTransform modelessWindowLayer = CreateChildLayer(
             _modelessWindowLayerName,
             windows.transform
@@ -920,11 +920,15 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Authors the compact circular availability-slot template behind strategy windows.
+    /// Authors the compact idle-bar layer beneath strategy windows.
     /// </summary>
+    /// <param name="parent">The strategy-view root.</param>
+    /// <returns>The authored idle-bar view.</returns>
     private static IdleBarView CreateIdleBarView(Transform parent)
     {
-        RectTransform layer = CreateChildLayer("IdleBar", parent);
+        GameObject layerObject = CreateLayer("IdleBar", parent);
+        RectTransform layer = layerObject.GetComponent<RectTransform>();
+        SetStrategySurfaceRect(layer);
         IdleBarView view = EnableRuntimeComponent(layer.gameObject.AddComponent<IdleBarView>());
         Sprite circleSprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
 

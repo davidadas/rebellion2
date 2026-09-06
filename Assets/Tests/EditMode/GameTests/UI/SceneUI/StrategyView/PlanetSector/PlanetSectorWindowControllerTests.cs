@@ -62,7 +62,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _actions = new TestActions();
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
-            _controller.Initialize(_actions, _actions, _actions, (_, _) => { });
+            _controller.Initialize(_actions, _actions, _actions, _actions, (_, _) => { });
         }
 
         [TearDown]
@@ -96,7 +96,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         public void Initialize_NullWindowActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, _actions, _actions, (_, _) => { })
+                _controller.Initialize(null, _actions, _actions, _actions, (_, _) => { })
             );
         }
 
@@ -265,7 +265,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
-            _controller.Initialize(_actions, _actions, _actions, (_, _) => { });
+            _controller.Initialize(_actions, _actions, _actions, _actions, (_, _) => { });
             PlanetSectorWindowView view = OpenWindow(out UIWindow window);
             _controller.RenderWindow(view, window);
             StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
@@ -632,6 +632,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
         private sealed class TestActions
             : IPlanetSectorWindowActions,
+                IIdleBarTrackingActions,
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {

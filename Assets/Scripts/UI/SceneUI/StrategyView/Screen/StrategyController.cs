@@ -29,6 +29,7 @@ public sealed class StrategyController
         IStrategyHudActions,
         IGalacticInformationDisplayActions,
         IGalaxyMapActions,
+        IIdleBarActions,
         IConstructionWindowActions,
         IFacilityWindowActions,
         IFleetWindowActions,
@@ -93,10 +94,6 @@ public sealed class StrategyController
         InputAction action,
         Action<InputAction.CallbackContext> callback
     )> _boundInputActions = new List<(InputAction, Action<InputAction.CallbackContext>)>();
-    private readonly HashSet<string> ignoredIdleBarIds = new HashSet<string>(
-        StringComparer.Ordinal
-    );
-
     private bool dirty = true;
     private bool contentReady;
     private bool initialized;
@@ -109,6 +106,7 @@ public sealed class StrategyController
     private StrategyMusicController strategyMusicController;
     private GalaxyMapController galaxyMapController;
     private GalacticInformationDisplayController galacticInformationDisplayController;
+    private IdleBarController idleBarController;
     private TargetingController targetingController;
     private ContextMenuController contextMenuController;
     private FleetWindowController fleetWindowController;
@@ -255,6 +253,16 @@ public sealed class StrategyController
         galaxyMapController = new GalaxyMapController(() => uiContext);
         galaxyMapController.Initialize(this);
         galaxyMapController.BindView(galaxyMap);
+        idleBarController = new IdleBarController(
+            () => gameManager?.GetPlayerFaction(),
+            () => uiContext,
+            () =>
+                AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowIdleBar
+                ?? false,
+            instanceId => gameManager?.GetGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
+        );
+        idleBarController.Initialize(this);
+        idleBarController.BindView(idleBar);
         briefingController = new StrategyBriefingController(
             gameManager.GetGame(),
             path => uiContext?.GetTexture(path),
@@ -538,6 +546,7 @@ public sealed class StrategyController
             this,
             windowCommandController,
             windowCommandController,
+            idleBarController,
             inputController.StartItemDrag,
             inputController.OnDrag,
             inputController.OnPointerUp
@@ -546,6 +555,7 @@ public sealed class StrategyController
             this,
             windowCommandController,
             windowCommandController,
+            idleBarController,
             inputController.StartItemDrag,
             inputController.OnDrag,
             inputController.OnPointerUp
@@ -554,6 +564,7 @@ public sealed class StrategyController
             this,
             windowCommandController,
             windowCommandController,
+            idleBarController,
             inputController.StartItemDrag
         );
         missionsWindowController.Initialize(this);
@@ -581,8 +592,6 @@ public sealed class StrategyController
         strategyContextMenu.DismissRequested += HandleContextMenuDismissRequested;
         strategyOverlay.TargetingCancelRequested += HandleTargetingCancelRequested;
         bookmarkBar.BookmarkRequested += HandleBookmarkRequested;
-        idleBar.EntrySelected += HandleIdleBarSelected;
-        idleBar.EntryUntrackRequested += HandleIdleBarUntrackRequested;
         briefingSkipConfirmation.Confirmed += ConfirmBriefingSkip;
         briefingSkipConfirmation.Canceled += CancelBriefingSkip;
     }
@@ -615,11 +624,6 @@ public sealed class StrategyController
             strategyOverlay.TargetingCancelRequested -= HandleTargetingCancelRequested;
         if (bookmarkBar != null)
             bookmarkBar.BookmarkRequested -= HandleBookmarkRequested;
-        if (idleBar != null)
-        {
-            idleBar.EntrySelected -= HandleIdleBarSelected;
-            idleBar.EntryUntrackRequested -= HandleIdleBarUntrackRequested;
-        }
         if (briefingSkipConfirmation != null)
         {
             briefingSkipConfirmation.Confirmed -= ConfirmBriefingSkip;
@@ -1004,6 +1008,7 @@ public sealed class StrategyController
         ValidateGalaxyMapLayer();
         ValidateGalacticInformationLayer();
         ValidateBookmarkLayer();
+        ValidateIdleBarLayer();
         ValidateContextMenuLayer();
 
         if (briefingSkipConfirmation == null)
@@ -1043,15 +1048,27 @@ public sealed class StrategyController
             throw new MissingReferenceException("Windows is missing StrategyWindowLayerView.");
         if (strategyWindowManager == null)
             throw new MissingReferenceException("Windows is missing UIWindowManager.");
-        if (idleBar == null)
-            throw new MissingReferenceException("Windows is missing IdleBarView.");
         if (strategyWindowManager.transform != strategyWindowLayerView.transform)
             throw new MissingReferenceException(
                 "StrategyWindowLayerView and UIWindowManager must share the Windows root."
             );
 
         RequireRectTransform(strategyWindowLayerView, "Windows");
+    }
+
+    /// <summary>
+    /// Validates the authored idle-bar layer.
+    /// </summary>
+    private void ValidateIdleBarLayer()
+    {
+        if (idleBar == null)
+            throw new MissingReferenceException("IdleBar is missing IdleBarView.");
+
         RequireRectTransform(idleBar, "IdleBar");
+        if (idleBar.GetComponent<UIWindow>() != null)
+            throw new MissingReferenceException("IdleBar must not use a strategy-window shell.");
+        if (idleBar.transform.parent != transform)
+            throw new MissingReferenceException("IdleBar must be a direct strategy-view layer.");
     }
 
     /// <summary>
@@ -1200,6 +1217,7 @@ public sealed class StrategyController
     {
         RenderGalaxyMap();
         RenderBookmarks();
+        idleBarController.Render();
         RenderWindows();
 
         RenderHud();
@@ -1221,7 +1239,6 @@ public sealed class StrategyController
     /// </summary>
     private void RenderWindowContent()
     {
-        RenderIdleBar();
         bool hasModalWindow = strategyWindowManager.HasModalWindow();
         strategyWindowLayerView.RenderModalState(briefingActive || hasModalWindow, hasModalWindow);
         advisorReportWindowController.RenderWindows();
@@ -1239,40 +1256,6 @@ public sealed class StrategyController
         defenseWindowController.RenderWindows();
         missionsWindowController.RenderWindows();
         planetSectorWindowController.RenderWindows();
-    }
-
-    /// <summary>
-    /// Projects the player's currently available personnel and manufacturing planet.
-    /// </summary>
-    private void RenderIdleBar()
-    {
-        bool visible =
-            AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowIdleBar
-            ?? false;
-        idleBar.gameObject.SetActive(visible);
-        if (!visible)
-            return;
-
-        FactionTheme theme = uiContext.GetPlayerFactionTheme();
-        SourceRectLayout bounds = theme?.StrategyWindowPlacements?.WindowBounds;
-        if (bounds == null)
-            throw new MissingReferenceException(
-                "StrategyWindowPlacements/WindowBounds is missing."
-            );
-
-        IdleBarRenderData projected = IdleBarProjector.Project(
-            gameManager.GetPlayerFaction(),
-            uiContext,
-            new RectInt(bounds.X, bounds.Y, bounds.Width, bounds.Height)
-        );
-        idleBar.Render(
-            new IdleBarRenderData(
-                projected
-                    .Entries.Where(entry => !ignoredIdleBarIds.Contains(entry.Entity?.InstanceID))
-                    .ToList(),
-                projected.DesktopBounds
-            )
-        );
     }
 
     /// <summary>
@@ -1710,7 +1693,7 @@ public sealed class StrategyController
     /// <param name="game">The replacement active game.</param>
     private void HandleGameReplaced(GameRoot game)
     {
-        ignoredIdleBarIds.Clear();
+        idleBarController.ResetSession();
         ResetStrategyPresentation();
         uiContext.ReplaceGame(game);
         PreloadStrategySfx();
@@ -3046,11 +3029,11 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Opens the location or manufacturing window represented by an availability portrait.
+    /// Opens the location or manufacturing window represented by an idle-bar entry.
     /// </summary>
-    private void HandleIdleBarSelected(string instanceId)
+    /// <param name="target">The selected strategy entity.</param>
+    void IIdleBarActions.OpenIdleBarTarget(ISceneNode target)
     {
-        ISceneNode target = gameManager.GetGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
         Planet planet = target as Planet ?? target?.GetParentOfType<Planet>();
         GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planet?.InstanceID);
         if (target == null || strategyPlanet == null)
@@ -3066,42 +3049,10 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Removes a secondary-clicked entity from the idle bar.
+    /// Requests a strategy render after idle-bar state changes.
     /// </summary>
-    private void HandleIdleBarUntrackRequested(string instanceId)
+    void IIdleBarActions.RequestIdleBarRender()
     {
-        if (string.IsNullOrEmpty(instanceId))
-            return;
-
-        ignoredIdleBarIds.Add(instanceId);
-        dirty = true;
-    }
-
-    /// <summary>
-    /// Reports whether idle-bar controls should be exposed.
-    /// </summary>
-    bool IIdleBarTrackingActions.IsIdleBarEnabled =>
-        AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowIdleBar ?? false;
-
-    /// <summary>
-    /// Reports whether an entity is currently included in idle-bar results.
-    /// </summary>
-    bool IIdleBarTrackingActions.IsIdleBarTracked(ISceneNode entity)
-    {
-        return !string.IsNullOrEmpty(entity?.InstanceID)
-            && !ignoredIdleBarIds.Contains(entity.InstanceID);
-    }
-
-    /// <summary>
-    /// Toggles whether an entity is included in idle-bar results.
-    /// </summary>
-    void IIdleBarTrackingActions.ToggleIdleBarTracking(ISceneNode entity)
-    {
-        if (string.IsNullOrEmpty(entity?.InstanceID))
-            return;
-
-        if (!ignoredIdleBarIds.Remove(entity.InstanceID))
-            ignoredIdleBarIds.Add(entity.InstanceID);
         dirty = true;
     }
 
