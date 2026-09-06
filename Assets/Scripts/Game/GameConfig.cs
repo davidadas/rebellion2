@@ -577,6 +577,8 @@ namespace Rebellion.Game
         {
             public double CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier { get; set; }
 
+            public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
+
             public int AutoResolveMaximumIterations { get; set; }
 
             public int AutoResolveStagnationIterations { get; set; }
