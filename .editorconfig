@@ -69,3 +69,4 @@ dotnet_diagnostic.RCS1213.severity = none
 # is therefore incomplete during lint even though Unity requires this import to compile the file.
 [Assets/Editor/Capture/GameRecordingSession.cs]
 dotnet_diagnostic.IDE0005.severity = none
+dotnet_diagnostic.CS8019.severity = none
