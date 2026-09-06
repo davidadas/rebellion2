@@ -64,3 +64,8 @@ dotnet_naming_rule.private_fields_underscore.severity = none
 
 [Assets/Scripts/Managers/InputManager.cs]
 dotnet_diagnostic.RCS1213.severity = none
+
+# CI stages Unity's managed assemblies without compiling package source. The Recorder namespace
+# is therefore incomplete during lint even though Unity requires this import to compile the file.
+[Assets/Editor/Capture/GameRecordingSession.cs]
+dotnet_diagnostic.IDE0005.severity = none
