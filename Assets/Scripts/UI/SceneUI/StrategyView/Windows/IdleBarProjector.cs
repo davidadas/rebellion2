@@ -9,6 +9,21 @@ using Rebellion.SceneGraph;
 using UnityEngine;
 
 /// <summary>
+/// Reads and changes whether strategy entities appear in the idle bar.
+/// </summary>
+public interface IIdleBarTrackingActions
+{
+    /// <summary>Reports whether an entity appears in the idle bar.</summary>
+    /// <param name="entity">The entity whose tracking state is requested.</param>
+    /// <returns><see langword="true"/> when the entity is tracked.</returns>
+    bool IsIdleBarTracked(ISceneNode entity);
+
+    /// <summary>Changes whether an entity appears in the idle bar.</summary>
+    /// <param name="entity">The entity whose tracking state should change.</param>
+    void ToggleIdleBarTracking(ISceneNode entity);
+}
+
+/// <summary>
 /// Describes one available strategy entity shown in the idle bar.
 /// </summary>
 internal sealed class IdleBarEntry

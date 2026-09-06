@@ -8,7 +8,7 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Performs game-level and shared-window actions requested by the Defense feature.
 /// </summary>
-public interface IDefenseWindowActions
+public interface IDefenseWindowActions : IIdleBarTrackingActions
 {
     /// <summary>
     /// Opens status information for one Defense-window target.
@@ -418,6 +418,12 @@ public sealed class DefenseWindowController
             StrategyContextMenuAvailability.CanCreateMission(items, playerFactionId),
             confirmationActions.CanRetire(items)
         );
+        IdleBarContextMenuBuilder.AppendTrackingToggle(
+            commands,
+            items.Count == 1 ? items[0] : null,
+            playerFactionId,
+            actions
+        );
         if (commands.Count == 0)
             return false;
 
@@ -455,6 +461,10 @@ public sealed class DefenseWindowController
 
         switch (strategyCommand.Action)
         {
+            case StrategyMenuAction.ToggleIdleBarTracking:
+                if (source.Items.Count == 1)
+                    actions.ToggleIdleBarTracking(source.Items[0]);
+                break;
             case StrategyMenuAction.Encyclopedia:
                 actions.OpenDefenseInfoWindow(source.Target);
                 break;

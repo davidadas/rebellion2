@@ -168,6 +168,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void GameplayActions_ToggleIdleBar()
         {
             OptionsMenuView view = OpenAndRender();
+            bool initiallyVisible = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.Gameplay.ShowIdleBar;
             OptionsToggleRowView gameplayRow = GetField<OptionsToggleRowView[]>(
                     view,
                     "_gameplayRows"
@@ -175,8 +178,16 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 .Single(row => row.OptionIndex == (int)UserGameplayOption.ShowIdleBar);
 
             GetField<Button>(gameplayRow, "_button").onClick.Invoke();
+            Assert.AreEqual(
+                !initiallyVisible,
+                _bootstrap.GetUserSettingsManager().Settings.Gameplay.ShowIdleBar
+            );
 
-            Assert.IsTrue(_bootstrap.GetUserSettingsManager().Settings.Gameplay.ShowIdleBar);
+            GetField<Button>(gameplayRow, "_button").onClick.Invoke();
+            Assert.AreEqual(
+                initiallyVisible,
+                _bootstrap.GetUserSettingsManager().Settings.Gameplay.ShowIdleBar
+            );
         }
 
         [Test]

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -313,9 +314,75 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(ownerControls);
         }
 
+        [Test]
+        public void AppendTrackingToggle_TrackedOwnedEntity_AppendsCheckedCommand()
+        {
+            Officer officer = CreateOfficer("player");
+            TrackingActions actions = new TrackingActions { Tracked = true };
+            List<StrategyMenuCommand> commands = new List<StrategyMenuCommand>();
+
+            IdleBarContextMenuBuilder.AppendTrackingToggle(commands, officer, "player", actions);
+
+            Assert.AreEqual(1, commands.Count);
+            Assert.AreEqual(StrategyMenuAction.ToggleIdleBarTracking, commands[0].Action);
+            Assert.AreEqual("Tracked", commands[0].Text);
+            Assert.AreEqual(StrategyContextMenuIconKeys.CheckMark, commands[0].IconKey);
+            Assert.AreSame(officer, actions.QueriedEntity);
+        }
+
+        [Test]
+        public void AppendTrackingToggle_UntrackedOwnedPlanet_AppendsUncheckedCommand()
+        {
+            Planet planet = new Planet { OwnerInstanceID = "player" };
+            TrackingActions actions = new TrackingActions();
+            List<StrategyMenuCommand> commands = new List<StrategyMenuCommand>();
+
+            IdleBarContextMenuBuilder.AppendTrackingToggle(commands, planet, "player", actions);
+
+            Assert.AreEqual(1, commands.Count);
+            Assert.AreEqual(StrategyContextMenuIconKeys.None, commands[0].IconKey);
+        }
+
+        [Test]
+        public void AppendTrackingToggle_EnemyOrUnsupportedEntity_DoesNotAppendCommand()
+        {
+            TrackingActions actions = new TrackingActions();
+            List<StrategyMenuCommand> commands = new List<StrategyMenuCommand>();
+
+            IdleBarContextMenuBuilder.AppendTrackingToggle(
+                commands,
+                CreateOfficer("enemy"),
+                "player",
+                actions
+            );
+            IdleBarContextMenuBuilder.AppendTrackingToggle(
+                commands,
+                new Regiment { OwnerInstanceID = "player" },
+                "player",
+                actions
+            );
+
+            Assert.IsEmpty(commands);
+        }
+
         private static Officer CreateOfficer(string ownerId)
         {
             return new Officer { OwnerInstanceID = ownerId };
+        }
+
+        private sealed class TrackingActions : IIdleBarTrackingActions
+        {
+            public bool Tracked { get; set; }
+
+            public ISceneNode QueriedEntity { get; private set; }
+
+            public bool IsIdleBarTracked(ISceneNode entity)
+            {
+                QueriedEntity = entity;
+                return Tracked;
+            }
+
+            public void ToggleIdleBarTracking(ISceneNode entity) { }
         }
     }
 }

@@ -11,7 +11,7 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Performs game-level window actions requested by the planet-sector feature.
 /// </summary>
-public interface IPlanetSectorWindowActions
+public interface IPlanetSectorWindowActions : IIdleBarTrackingActions
 {
     /// <summary>
     /// Rebuilds shared strategy state after a planet-sector command changes the game.
@@ -505,6 +505,16 @@ public sealed class PlanetSectorWindowController
                 StrategyMenuAction.PlanetaryAssault
             )
         );
+        StrategyStatusTarget statusTarget =
+            mobileHeadquarters == null
+                ? GetStatusTarget(view)
+                : new StrategyStatusTarget(hit.GalaxyMapPlanet, mobileHeadquarters);
+        IdleBarContextMenuBuilder.AppendTrackingToggle(
+            commands,
+            statusTarget?.Item,
+            GetUIContext().GetPlayerFactionInstanceID(),
+            actions
+        );
         if (commands.Count == 0)
             return false;
 
@@ -513,9 +523,7 @@ public sealed class PlanetSectorWindowController
             context.X,
             context.Y,
             items,
-            mobileHeadquarters == null
-                ? GetStatusTarget(view)
-                : new StrategyStatusTarget(hit.GalaxyMapPlanet, mobileHeadquarters)
+            statusTarget
         );
         request = new ContextMenuRequest(
             source,
@@ -572,6 +580,9 @@ public sealed class PlanetSectorWindowController
 
         switch (strategyCommand.Action)
         {
+            case StrategyMenuAction.ToggleIdleBarTracking:
+                actions.ToggleIdleBarTracking(source.Target?.Item);
+                break;
             case StrategyMenuAction.BombardMilitaryFacilities:
             case StrategyMenuAction.BombardCivilianFacilities:
             case StrategyMenuAction.GeneralBombardment:

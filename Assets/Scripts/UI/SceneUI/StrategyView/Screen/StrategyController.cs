@@ -93,6 +93,9 @@ public sealed class StrategyController
         InputAction action,
         Action<InputAction.CallbackContext> callback
     )> _boundInputActions = new List<(InputAction, Action<InputAction.CallbackContext>)>();
+    private readonly HashSet<string> ignoredIdleBarIds = new HashSet<string>(
+        StringComparer.Ordinal
+    );
 
     private bool dirty = true;
     private bool contentReady;
@@ -579,6 +582,7 @@ public sealed class StrategyController
         strategyOverlay.TargetingCancelRequested += HandleTargetingCancelRequested;
         bookmarkBar.BookmarkRequested += HandleBookmarkRequested;
         idleBar.EntrySelected += HandleIdleBarSelected;
+        idleBar.EntryUntrackRequested += HandleIdleBarUntrackRequested;
         briefingSkipConfirmation.Confirmed += ConfirmBriefingSkip;
         briefingSkipConfirmation.Canceled += CancelBriefingSkip;
     }
@@ -612,7 +616,10 @@ public sealed class StrategyController
         if (bookmarkBar != null)
             bookmarkBar.BookmarkRequested -= HandleBookmarkRequested;
         if (idleBar != null)
+        {
             idleBar.EntrySelected -= HandleIdleBarSelected;
+            idleBar.EntryUntrackRequested -= HandleIdleBarUntrackRequested;
+        }
         if (briefingSkipConfirmation != null)
         {
             briefingSkipConfirmation.Confirmed -= ConfirmBriefingSkip;
@@ -1253,11 +1260,17 @@ public sealed class StrategyController
                 "StrategyWindowPlacements/WindowBounds is missing."
             );
 
+        IdleBarRenderData projected = IdleBarProjector.Project(
+            gameManager.GetPlayerFaction(),
+            uiContext,
+            new RectInt(bounds.X, bounds.Y, bounds.Width, bounds.Height)
+        );
         idleBar.Render(
-            IdleBarProjector.Project(
-                gameManager.GetPlayerFaction(),
-                uiContext,
-                new RectInt(bounds.X, bounds.Y, bounds.Width, bounds.Height)
+            new IdleBarRenderData(
+                projected
+                    .Entries.Where(entry => !ignoredIdleBarIds.Contains(entry.Entity?.InstanceID))
+                    .ToList(),
+                projected.DesktopBounds
             )
         );
     }
@@ -1697,6 +1710,7 @@ public sealed class StrategyController
     /// <param name="game">The replacement active game.</param>
     private void HandleGameReplaced(GameRoot game)
     {
+        ignoredIdleBarIds.Clear();
         ResetStrategyPresentation();
         uiContext.ReplaceGame(game);
         PreloadStrategySfx();
@@ -3049,6 +3063,40 @@ public sealed class StrategyController
         SelectMessageTarget(window, target);
 
         MarkDirty();
+    }
+
+    /// <summary>
+    /// Removes a secondary-clicked entity from the idle bar.
+    /// </summary>
+    private void HandleIdleBarUntrackRequested(string instanceId)
+    {
+        if (string.IsNullOrEmpty(instanceId))
+            return;
+
+        ignoredIdleBarIds.Add(instanceId);
+        dirty = true;
+    }
+
+    /// <summary>
+    /// Reports whether an entity is currently included in idle-bar results.
+    /// </summary>
+    bool IIdleBarTrackingActions.IsIdleBarTracked(ISceneNode entity)
+    {
+        return !string.IsNullOrEmpty(entity?.InstanceID)
+            && !ignoredIdleBarIds.Contains(entity.InstanceID);
+    }
+
+    /// <summary>
+    /// Toggles whether an entity is included in idle-bar results.
+    /// </summary>
+    void IIdleBarTrackingActions.ToggleIdleBarTracking(ISceneNode entity)
+    {
+        if (string.IsNullOrEmpty(entity?.InstanceID))
+            return;
+
+        if (!ignoredIdleBarIds.Remove(entity.InstanceID))
+            ignoredIdleBarIds.Add(entity.InstanceID);
+        dirty = true;
     }
 
     /// <summary>

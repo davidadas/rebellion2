@@ -43,6 +43,8 @@ public sealed class IdleBarView
 
     internal event Action<string> EntrySelected;
 
+    internal event Action<string> EntryUntrackRequested;
+
     /// <summary>
     /// Applies current availability within a two-row shelf capped at half the desktop width.
     /// </summary>
@@ -146,7 +148,10 @@ public sealed class IdleBarView
         foreach (IdleBarSlotView slot in slots)
         {
             if (slot != null)
+            {
                 slot.Selected -= HandleSlotSelected;
+                slot.UntrackRequested -= HandleSlotUntrackRequested;
+            }
         }
     }
 
@@ -166,7 +171,7 @@ public sealed class IdleBarView
     }
 
     /// <summary>
-    /// Renders the current page with a right-to-left top row and left-to-right second row.
+    /// Renders the current page right-aligned with source ordering preserved across both rows.
     /// </summary>
     private void RenderVisiblePage()
     {
@@ -208,7 +213,7 @@ public sealed class IdleBarView
                 row == 0
                     ? currentData.DesktopBounds.xMax - _outerPadding - _horizontalPadding - rowWidth
                     : shelfX + _horizontalPadding;
-            int visualColumn = row == 0 ? entriesInRow - column - 1 : column;
+            int visualColumn = column;
             slots[index]
                 .Render(
                     currentData.Entries[firstVisibleIndex + index],
@@ -231,6 +236,7 @@ public sealed class IdleBarView
             IdleBarSlotView slot = Instantiate(slotTemplate, transform);
             slot.gameObject.name = $"AvailabilitySlot{slots.Count + 1}";
             slot.Selected += HandleSlotSelected;
+            slot.UntrackRequested += HandleSlotUntrackRequested;
             slots.Add(slot);
         }
     }
@@ -314,6 +320,14 @@ public sealed class IdleBarView
     private void HandleSlotSelected(string instanceId)
     {
         EntrySelected?.Invoke(instanceId);
+    }
+
+    /// <summary>
+    /// Forwards one slot's untracking request through the desktop view boundary.
+    /// </summary>
+    private void HandleSlotUntrackRequested(string instanceId)
+    {
+        EntryUntrackRequested?.Invoke(instanceId);
     }
 
     /// <summary>

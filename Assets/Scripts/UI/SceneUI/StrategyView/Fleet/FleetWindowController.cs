@@ -11,7 +11,7 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Performs game-level and shared-window actions requested by the fleet feature.
 /// </summary>
-public interface IFleetWindowActions
+public interface IFleetWindowActions : IIdleBarTrackingActions
 {
     /// <summary>
     /// Opens Encyclopedia information for one selected fleet item.
@@ -471,6 +471,12 @@ public sealed class FleetWindowController
                 StrategyMenuAction.PlanetaryAssault
             )
         );
+        IdleBarContextMenuBuilder.AppendTrackingToggle(
+            commands,
+            items.Count == 1 ? items[0] : null,
+            playerFactionId,
+            actions
+        );
         FleetContextMenuSource source = new FleetContextMenuSource(
             context.Window,
             context.X,
@@ -509,6 +515,10 @@ public sealed class FleetWindowController
 
         switch (menuCommand.Action)
         {
+            case StrategyMenuAction.ToggleIdleBarTracking:
+                if (source.Items.Count == 1)
+                    actions.ToggleIdleBarTracking(source.Items[0]);
+                break;
             case StrategyMenuAction.BombardMilitaryFacilities:
             case StrategyMenuAction.BombardCivilianFacilities:
             case StrategyMenuAction.GeneralBombardment:

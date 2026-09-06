@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -120,6 +121,44 @@ public enum StrategyMenuAction
     AdvisorConflictMessages,
     AdvisorChatMessages,
     AdvisorAdviceMessages,
+    ToggleIdleBarTracking,
+}
+
+/// <summary>
+/// Adds idle-bar tracking to ordinary entity context menus.
+/// </summary>
+internal static class IdleBarContextMenuBuilder
+{
+    internal static void AppendTrackingToggle(
+        List<StrategyMenuCommand> commands,
+        ISceneNode entity,
+        string playerFactionId,
+        IIdleBarTrackingActions actions
+    )
+    {
+        if (
+            commands == null
+            || actions == null
+            || entity is not Officer && entity is not SpecialForces && entity is not Planet
+            || !string.Equals(
+                entity.GetOwnerInstanceID(),
+                playerFactionId,
+                System.StringComparison.Ordinal
+            )
+        )
+            return;
+
+        commands.Add(
+            new StrategyMenuCommand(
+                StrategyMenuAction.ToggleIdleBarTracking,
+                "Tracked",
+                true,
+                actions.IsIdleBarTracked(entity)
+                    ? StrategyContextMenuIconKeys.CheckMark
+                    : StrategyContextMenuIconKeys.None
+            )
+        );
+    }
 }
 
 /// <summary>

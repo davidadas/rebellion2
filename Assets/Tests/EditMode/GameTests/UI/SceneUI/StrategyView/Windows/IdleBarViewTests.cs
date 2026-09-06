@@ -84,10 +84,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual("Officer", slots[0].name);
             Assert.AreEqual("Spec Ops", slots[1].name);
             Assert.AreEqual("Planet", slots[2].name);
-            Assert.Greater(first.anchoredPosition.x, second.anchoredPosition.x);
-            Assert.Greater(second.anchoredPosition.x, third.anchoredPosition.x);
+            Assert.Less(first.anchoredPosition.x, second.anchoredPosition.x);
+            Assert.Less(second.anchoredPosition.x, third.anchoredPosition.x);
             Assert.AreEqual(first.anchoredPosition.y, third.anchoredPosition.y);
-            Assert.AreEqual(741f, first.anchoredPosition.x + first.sizeDelta.x);
+            Assert.AreEqual(741f, third.anchoredPosition.x + third.sizeDelta.x);
             Assert.AreEqual(28f, third.sizeDelta.x);
             Assert.AreEqual(28f, third.sizeDelta.y);
             Assert.LessOrEqual(hitArea.rectTransform.sizeDelta.x, bounds.width / 2f);
@@ -148,7 +148,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(12, slots.Count);
             Assert.LessOrEqual(hitArea.rectTransform.sizeDelta.x, 200f);
             Assert.AreEqual(2, CountRows(slots));
-            Assert.Greater(
+            Assert.Less(
                 slots[0].GetComponent<RectTransform>().anchoredPosition.x,
                 slots[1].GetComponent<RectTransform>().anchoredPosition.x
             );
@@ -157,7 +157,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 slots[7].GetComponent<RectTransform>().anchoredPosition.x
             );
             Assert.AreEqual(
-                slots[5].GetComponent<RectTransform>().anchoredPosition.x,
+                slots[0].GetComponent<RectTransform>().anchoredPosition.x,
                 slots[6].GetComponent<RectTransform>().anchoredPosition.x
             );
             foreach (
@@ -223,6 +223,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             GetVisibleSlots()[0].GetComponent<Button>().onClick.Invoke();
 
             Assert.AreEqual("Officer", selectedInstanceId);
+        }
+
+        [Test]
+        public void Render_ThenRightClick_RaisesUntrackRequestWithoutSelecting()
+        {
+            string selectedInstanceId = null;
+            string untrackedInstanceId = null;
+            _view.EntrySelected += instanceId => selectedInstanceId = instanceId;
+            _view.EntryUntrackRequested += instanceId => untrackedInstanceId = instanceId;
+            _view.Render(
+                new IdleBarRenderData(
+                    new[] { new IdleBarEntry(CreateOfficer("Officer"), null) },
+                    new RectInt(0, 0, 700, 350)
+                )
+            );
+            PointerEventData rightClick = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+            };
+
+            GetVisibleSlots()[0].OnPointerClick(rightClick);
+
+            Assert.IsNull(selectedInstanceId);
+            Assert.AreEqual("Officer", untrackedInstanceId);
+            Assert.IsTrue(rightClick.used);
         }
 
         [Test]

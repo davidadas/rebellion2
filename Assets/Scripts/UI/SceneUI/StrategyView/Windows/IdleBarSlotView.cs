@@ -6,7 +6,11 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders and selects one compact entity portrait in the idle bar.
 /// </summary>
-public sealed class IdleBarSlotView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public sealed class IdleBarSlotView
+    : MonoBehaviour,
+        IPointerEnterHandler,
+        IPointerExitHandler,
+        IPointerClickHandler
 {
     private const int _circleSize = 24;
     private const int _hoveredCircleSize = 26;
@@ -33,6 +37,8 @@ public sealed class IdleBarSlotView : MonoBehaviour, IPointerEnterHandler, IPoin
     private int currentSlotSize;
 
     internal event Action<string> Selected;
+
+    internal event Action<string> UntrackRequested;
 
     /// <summary>
     /// Renders one entity at its top-left source-space position.
@@ -68,6 +74,21 @@ public sealed class IdleBarSlotView : MonoBehaviour, IPointerEnterHandler, IPoin
     public void OnPointerExit(PointerEventData eventData)
     {
         SetHovered(false);
+    }
+
+    /// <summary>
+    /// Requests immediate removal from the idle bar on a secondary click.
+    /// </summary>
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (
+            eventData?.button == PointerEventData.InputButton.Right
+            && !string.IsNullOrEmpty(instanceId)
+        )
+        {
+            eventData.Use();
+            UntrackRequested?.Invoke(instanceId);
+        }
     }
 
     /// <summary>
