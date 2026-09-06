@@ -65,6 +65,7 @@ public sealed class FleetWindowController
     private IFleetWindowActions actions;
     private IStrategyWindowCommandActions commandActions;
     private IStrategyConfirmationActions confirmationActions;
+    private IIdleBarTrackingActions idleBarTrackingActions;
     private Action<PointerEventData> moveItemDrag;
     private Action<UIWindow, PointerEventData> startItemDrag;
 
@@ -115,6 +116,7 @@ public sealed class FleetWindowController
     /// <param name="windowActions">The feature-specific fleet actions.</param>
     /// <param name="windowCommandActions">The shared mission and movement actions.</param>
     /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
+    /// <param name="trackingActions">Reads and changes idle-bar tracking state.</param>
     /// <param name="beginItemDrag">Begins a strategy item-drag candidate.</param>
     /// <param name="continueItemDrag">Advances the active strategy item drag.</param>
     /// <param name="completeItemDrag">Completes the active strategy item drag.</param>
@@ -122,6 +124,7 @@ public sealed class FleetWindowController
         IFleetWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
         IStrategyConfirmationActions windowConfirmationActions,
+        IIdleBarTrackingActions trackingActions,
         Action<UIWindow, PointerEventData> beginItemDrag,
         Action<PointerEventData> continueItemDrag,
         Action<PointerEventData> completeItemDrag
@@ -133,6 +136,8 @@ public sealed class FleetWindowController
         confirmationActions =
             windowConfirmationActions
             ?? throw new ArgumentNullException(nameof(windowConfirmationActions));
+        idleBarTrackingActions =
+            trackingActions ?? throw new ArgumentNullException(nameof(trackingActions));
         startItemDrag = beginItemDrag ?? throw new ArgumentNullException(nameof(beginItemDrag));
         moveItemDrag =
             continueItemDrag ?? throw new ArgumentNullException(nameof(continueItemDrag));
@@ -471,6 +476,26 @@ public sealed class FleetWindowController
                 StrategyMenuAction.PlanetaryAssault
             )
         );
+        ISceneNode trackingItem = items.Count == 1 ? items[0] : null;
+        if (
+            StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                trackingItem,
+                playerFactionId,
+                idleBarTrackingActions?.IsIdleBarEnabled == true
+            )
+        )
+        {
+            commands.Add(
+                new StrategyMenuCommand(
+                    StrategyMenuAction.ToggleIdleBarTracking,
+                    "Tracked",
+                    true,
+                    idleBarTrackingActions.IsIdleBarTracked(trackingItem)
+                        ? StrategyContextMenuIconKeys.CheckMark
+                        : StrategyContextMenuIconKeys.None
+                )
+            );
+        }
         FleetContextMenuSource source = new FleetContextMenuSource(
             context.Window,
             context.X,
@@ -509,6 +534,10 @@ public sealed class FleetWindowController
 
         switch (menuCommand.Action)
         {
+            case StrategyMenuAction.ToggleIdleBarTracking:
+                if (source.Items.Count == 1)
+                    idleBarTrackingActions.ToggleIdleBarTracking(source.Items[0]);
+                break;
             case StrategyMenuAction.BombardMilitaryFacilities:
             case StrategyMenuAction.BombardCivilianFacilities:
             case StrategyMenuAction.GeneralBombardment:

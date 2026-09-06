@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -311,6 +312,58 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
 
             Assert.IsTrue(playerControls);
             Assert.IsFalse(ownerControls);
+        }
+
+        [Test]
+        public void CanToggleIdleBarTracking_EnabledOwnedSupportedEntities_ReturnsTrue()
+        {
+            Assert.IsTrue(
+                StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                    CreateOfficer("player"),
+                    "player",
+                    true
+                )
+            );
+            Assert.IsTrue(
+                StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                    new SpecialForces { OwnerInstanceID = "player" },
+                    "player",
+                    true
+                )
+            );
+            Assert.IsTrue(
+                StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                    new Planet { OwnerInstanceID = "player" },
+                    "player",
+                    true
+                )
+            );
+        }
+
+        [Test]
+        public void CanToggleIdleBarTracking_DisabledEnemyOrUnsupportedEntity_ReturnsFalse()
+        {
+            Assert.IsFalse(
+                StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                    CreateOfficer("player"),
+                    "player",
+                    false
+                )
+            );
+            Assert.IsFalse(
+                StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                    CreateOfficer("enemy"),
+                    "player",
+                    true
+                )
+            );
+            Assert.IsFalse(
+                StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                    new Regiment { OwnerInstanceID = "player" },
+                    "player",
+                    true
+                )
+            );
         }
 
         private static Officer CreateOfficer(string ownerId)

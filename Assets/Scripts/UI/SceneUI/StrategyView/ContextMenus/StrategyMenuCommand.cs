@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -120,6 +121,7 @@ public enum StrategyMenuAction
     AdvisorConflictMessages,
     AdvisorChatMessages,
     AdvisorAdviceMessages,
+    ToggleIdleBarTracking,
 }
 
 /// <summary>
@@ -239,6 +241,28 @@ internal static class StrategyBombardmentMenuBuilder
 /// </summary>
 public static class StrategyContextMenuAvailability
 {
+    /// <summary>
+    /// Determines whether idle-bar tracking is available for one context-menu item.
+    /// </summary>
+    /// <param name="item">The context-targeted scene node.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="idleBarEnabled">Whether the experimental idle bar is enabled.</param>
+    /// <returns><see langword="true"/> when tracking can be changed for the item.</returns>
+    public static bool CanToggleIdleBarTracking(
+        ISceneNode item,
+        string playerFactionId,
+        bool idleBarEnabled
+    )
+    {
+        return idleBarEnabled
+            && item is Officer or SpecialForces or Planet
+            && string.Equals(
+                item.GetOwnerInstanceID(),
+                playerFactionId,
+                System.StringComparison.Ordinal
+            );
+    }
+
     /// <summary>
     /// Determines whether every selected item can move under player control.
     /// </summary>

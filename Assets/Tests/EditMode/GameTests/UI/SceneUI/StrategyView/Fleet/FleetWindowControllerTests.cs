@@ -65,7 +65,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
             _actions = new TestActions();
-            _controller.Initialize(_actions, _actions, _actions, (_, _) => { }, _ => { }, _ => { });
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => { }
+            );
         }
 
         [TearDown]
@@ -96,7 +104,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             TestActions actions = new TestActions();
 
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, actions, actions, (_, _) => { }, _ => { }, _ => { })
+                _controller.Initialize(
+                    null,
+                    actions,
+                    actions,
+                    actions,
+                    (_, _) => { },
+                    _ => { },
+                    _ => { }
+                )
             );
         }
 
@@ -270,6 +286,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 _actions,
                 _actions,
                 _actions,
+                _actions,
                 (window, eventData) =>
                 {
                     draggedWindow = window;
@@ -411,7 +428,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _fleet.SetParent(_planet.Planet);
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
-            _controller.Initialize(_actions, _actions, _actions, (_, _) => { }, _ => { }, _ => { });
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => { }
+            );
             FleetWindowView view = OpenWindow(out UIWindow window);
             _controller.RenderWindow(view, window, true);
             StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
@@ -624,12 +649,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
         private sealed class TestActions
             : IFleetWindowActions,
+                IIdleBarTrackingActions,
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {
             public GameResult LastBattleResult { get; private set; }
 
             public int RefreshCount { get; private set; }
+
+            public bool IsIdleBarEnabled => true;
+
+            public bool IsIdleBarTracked(ISceneNode entity) => true;
+
+            public void ToggleIdleBarTracking(ISceneNode entity) { }
 
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
 
