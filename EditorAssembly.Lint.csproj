@@ -33,6 +33,28 @@
       Condition="'$(TextMeshProHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.TextMeshPro.dll')"
       >Library/ScriptAssemblies/Unity.TextMeshPro.dll</TextMeshProHintPath
     >
+    <RecorderBaseHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.Recorder.Base.dll')"
+      >$(UnityManagedAssembliesPath)/Unity.Recorder.Base.dll</RecorderBaseHintPath
+    >
+    <RecorderBaseHintPath
+      Condition="'$(RecorderBaseHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.Recorder.Base.dll')"
+      >Library/ScriptAssemblies/Unity.Recorder.Base.dll</RecorderBaseHintPath
+    >
+    <RecorderHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.Recorder.dll')"
+      >$(UnityManagedAssembliesPath)/Unity.Recorder.dll</RecorderHintPath
+    >
+    <RecorderHintPath
+      Condition="'$(RecorderHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.Recorder.dll')"
+      >Library/ScriptAssemblies/Unity.Recorder.dll</RecorderHintPath
+    >
+    <RecorderEditorHintPath
+      Condition="Exists('$(UnityManagedAssembliesPath)/Unity.Recorder.Editor.dll')"
+      >$(UnityManagedAssembliesPath)/Unity.Recorder.Editor.dll</RecorderEditorHintPath
+    >
+    <RecorderEditorHintPath
+      Condition="'$(RecorderEditorHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.Recorder.Editor.dll')"
+      >Library/ScriptAssemblies/Unity.Recorder.Editor.dll</RecorderEditorHintPath
+    >
   </PropertyGroup>
   <ItemGroup>
     <Reference
@@ -126,12 +148,31 @@
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.PhysicsModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference
+      Include="UnityEngine.ScreenCaptureModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.ScreenCaptureModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.ScreenCaptureModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine.UI" Condition="'$(UGuiHintPath)' != ''">
       <HintPath>$(UGuiHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Unity.TextMeshPro" Condition="'$(TextMeshProHintPath)' != ''">
       <HintPath>$(TextMeshProHintPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Recorder.Base" Condition="'$(RecorderBaseHintPath)' != ''">
+      <HintPath>$(RecorderBaseHintPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Recorder" Condition="'$(RecorderHintPath)' != ''">
+      <HintPath>$(RecorderHintPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Recorder.Editor" Condition="'$(RecorderEditorHintPath)' != ''">
+      <HintPath>$(RecorderEditorHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
