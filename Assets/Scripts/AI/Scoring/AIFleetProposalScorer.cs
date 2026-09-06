@@ -391,13 +391,11 @@ namespace Rebellion.AI.Scoring
         )
         {
             AIAssessment assessment = context.Assessment;
-            int requiredRegimentCount = assessment.GetRequiredAttackCampaignRegimentCount(
-                targetPlanet
-            );
+            int requiredRegimentCount = assessment.GetRequiredAttackRegimentCount(targetPlanet);
             double combatReadiness = GetFulfillmentRatio(
                 assessment.GetProjectedFleetCombatValue(targetFleet)
                     + assessment.GetProjectedCapitalShipCombatValue(capitalShip),
-                assessment.GetRequiredAttackCampaignCombatStrength(targetPlanet)
+                assessment.GetRequiredAttackCombatStrength(targetPlanet)
             );
             double regimentReadiness = GetFulfillmentRatio(
                 assessment.GetFleetLoadedRegimentCount(targetFleet)
@@ -415,7 +413,7 @@ namespace Rebellion.AI.Scoring
                         targetFleet,
                         capitalShip
                     ),
-                assessment.GetRequiredAttackCampaignRegimentStrength(targetPlanet)
+                assessment.GetRequiredAttackRegimentStrength(targetPlanet)
             );
             List<double> readiness = new List<double>
             {
@@ -424,9 +422,7 @@ namespace Rebellion.AI.Scoring
                 transportReadiness,
                 groundReadiness,
             };
-            int requiredBombardment = assessment.GetRequiredAttackCampaignBombardmentStrength(
-                targetPlanet
-            );
+            int requiredBombardment = assessment.GetRequiredBombardmentStrength(targetPlanet);
             if (requiredBombardment > 0)
             {
                 readiness.Add(

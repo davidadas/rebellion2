@@ -10,12 +10,12 @@ using Rebellion.Game.Units;
 namespace Rebellion.AI.Phases
 {
     /// <summary>
-    /// Assigns reserved special-forces decoys to selected officer-led hostile missions.
+    /// Assigns decoys to officer-led hostile missions and requires them for espionage.
     /// </summary>
     public sealed class AIMissionDecoyAssignmentPhase : IAITurnPhase
     {
         /// <summary>
-        /// Protects the highest-scored compatible officer missions with distinct decoys.
+        /// Assigns distinct decoys by priority and removes officer espionage left unprotected.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         public void Execute(AITurnContext context)
@@ -31,8 +31,8 @@ namespace Rebellion.AI.Phases
             List<SpecialForces> decoys = context
                 .Assessment.AvailableMissionParticipants.OfType<SpecialForces>()
                 .Where(unit =>
-                    context.GetSpecialForcesIntent(unit) == SpecialForcesIntent.Decoy
-                    && !claimedParticipants.Contains(unit)
+                    !claimedParticipants.Contains(unit)
+                    && context.GetSpecialForcesIntent(unit) == SpecialForcesIntent.Decoy
                 )
                 .ToList();
             Dictionary<SpecialForces, Planet> origins = decoys.ToDictionary(
@@ -56,7 +56,11 @@ namespace Rebellion.AI.Phases
             {
                 SpecialForces decoy = SelectDecoy(mission, decoys, origins);
                 if (decoy == null)
+                {
+                    if (RequiresDecoy(mission))
+                        selected[selectedIndexes[mission]] = null;
                     continue;
+                }
 
                 selected[selectedIndexes[mission]] = mission.WithDecoy(decoy);
                 decoys.Remove(decoy);
@@ -72,7 +76,7 @@ namespace Rebellion.AI.Phases
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The mission proposal to inspect.</param>
-        /// <returns>True when the mission should be eligible for decoy protection.</returns>
+        /// <returns>True when the mission requires decoy protection.</returns>
         private static bool IsOfficerLedHostileMission(
             AITurnContext context,
             AIMissionProposal proposal
@@ -84,10 +88,20 @@ namespace Rebellion.AI.Phases
         }
 
         /// <summary>
-        /// Selects the strongest compatible decoy, using travel distance as the secondary choice.
+        /// Returns whether an unprotected mission must be removed from the selected set.
+        /// </summary>
+        /// <param name="proposal">The officer-led hostile mission to inspect.</param>
+        /// <returns>True when the mission requires a decoy.</returns>
+        private static bool RequiresDecoy(AIMissionProposal proposal)
+        {
+            return proposal.MissionTypeID == MissionTypeIDs.Espionage;
+        }
+
+        /// <summary>
+        /// Selects the strongest compatible special-forces decoy.
         /// </summary>
         /// <param name="mission">The selected mission requiring a decoy.</param>
-        /// <param name="decoys">Unclaimed decoys available during this turn.</param>
+        /// <param name="decoys">Unclaimed special-forces decoys available during this turn.</param>
         /// <param name="origins">Cached origin planets for the available decoys.</param>
         /// <returns>The preferred decoy, or null when no compatible unit is available.</returns>
         private static SpecialForces SelectDecoy(

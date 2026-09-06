@@ -81,6 +81,8 @@ namespace Rebellion.AI.Planners.Demand
             Kind
                 is AIDemandKind.Mine
                     or AIDemandKind.Refinery
+                    or AIDemandKind.ConstructionFacility
+                    or AIDemandKind.Shipyard
                     or AIDemandKind.TrainingFacility
                     or AIDemandKind.FleetRegiment
                     or AIDemandKind.GarrisonRegimentReserve;

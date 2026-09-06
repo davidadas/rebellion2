@@ -201,14 +201,6 @@ namespace Rebellion.AI.Proposals
             $"production:building-replacement:{buildingId}";
 
         /// <summary>
-        /// Creates a claim for producing a building type.
-        /// </summary>
-        /// <param name="buildingType">The building type.</param>
-        /// <returns>The building-kind claim.</returns>
-        internal static string ProductionBuildingKind(BuildingType buildingType) =>
-            $"production:building-kind:{buildingType}";
-
-        /// <summary>
         /// Creates a claim for a planet's building-production lane.
         /// </summary>
         /// <param name="planetId">The producer planet instance ID.</param>

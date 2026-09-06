@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
+using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Phases
 {
@@ -22,6 +23,7 @@ namespace Rebellion.AI.Phases
             string,
             int
         >(StringComparer.Ordinal);
+        private int _selectedProductionFacilityMaintenance;
         private int _selectedMaintenanceCost;
 
         /// <summary>
@@ -65,12 +67,21 @@ namespace Rebellion.AI.Phases
             if (WouldExceedMaintenanceHeadroom(context, proposal))
                 return false;
 
+            if (WouldExceedProductionFacilityBudget(context, proposal))
+                return false;
+
             IReadOnlyList<string> claimKeys = proposal.GetClaimKeys() ?? Array.Empty<string>();
             foreach (string claimKey in claimKeys)
                 _claimedKeys.Add(claimKey);
 
             ReserveProducerCapacity(proposal);
-            _selectedMaintenanceCost += GetMaintenanceCost(proposal);
+            int maintenanceCost = GetMaintenanceCost(proposal);
+            _selectedMaintenanceCost += maintenanceCost;
+            if (
+                proposal is AIManufactureProposal manufactureProposal
+                && manufactureProposal.IsProductionFacilityExpansion
+            )
+                _selectedProductionFacilityMaintenance += maintenanceCost;
             return true;
         }
 
@@ -229,6 +240,31 @@ namespace Rebellion.AI.Phases
                 - maintenanceCost;
 
             return projectedHeadroom < minimumHeadroom;
+        }
+
+        /// <summary>
+        /// Returns whether a proposal would exceed the shared production-facility allocation.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to inspect.</param>
+        /// <returns>True when selecting the proposal would exceed the allocation.</returns>
+        private bool WouldExceedProductionFacilityBudget(AITurnContext context, AIProposal proposal)
+        {
+            if (
+                proposal is not AIManufactureProposal manufactureProposal
+                || !manufactureProposal.IsProductionFacilityExpansion
+            )
+                return false;
+
+            int allocatedMaintenance = IntegerMath.ScaleByPercent(
+                context.Assessment.MaintenanceCapacity,
+                context.Game.Config.AI.Infrastructure.ProductionFacilityMaintenanceAllocationPercent
+            );
+            long committedMaintenance =
+                (long)context.Assessment.GetProductionFacilityMaintenance()
+                + _selectedProductionFacilityMaintenance
+                + manufactureProposal.GetMaintenanceCost();
+            return committedMaintenance > allocatedMaintenance;
         }
 
         /// <summary>

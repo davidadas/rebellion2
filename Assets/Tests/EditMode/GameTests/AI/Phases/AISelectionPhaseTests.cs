@@ -146,6 +146,38 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        public void Select_WithFacilityExpansionAtDistinctProducers_SelectsBothProposals()
+        {
+            AITurnContext context = CreateFacilityExpansionContext(
+                allocationPercent: 30,
+                out AIManufactureProposal first,
+                out AIManufactureProposal second
+            );
+            context.AddProposal(first);
+            context.AddProposal(second);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEquivalent(new[] { first, second }, selected);
+        }
+
+        [Test]
+        public void Select_WithFacilityExpansionBeyondSharedBudget_SelectsOneProposal()
+        {
+            AITurnContext context = CreateFacilityExpansionContext(
+                allocationPercent: 10,
+                out AIManufactureProposal first,
+                out AIManufactureProposal second
+            );
+            context.AddProposal(first);
+            context.AddProposal(second);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(1, selected.Count);
+        }
+
+        [Test]
         public void Select_WithDiscretionaryProductionBelowRefinedReserve_DoesNotSelectProposal()
         {
             AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
@@ -169,6 +201,27 @@ namespace Rebellion.Tests.AI.Phases
                 producer,
                 AIDemandKind.Refinery,
                 BuildingType.Refinery
+            );
+            context.AddProposal(proposal);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
+        }
+
+        [TestCase(AIDemandKind.ConstructionFacility, BuildingType.ConstructionFacility)]
+        [TestCase(AIDemandKind.Shipyard, BuildingType.Shipyard)]
+        [TestCase(AIDemandKind.TrainingFacility, BuildingType.TrainingFacility)]
+        public void Select_WithStrategicFacilityBelowRefinedReserve_SelectsProposal(
+            AIDemandKind demandKind,
+            BuildingType buildingType
+        )
+        {
+            AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
+            AIManufactureProposal proposal = CreateManufactureProposal(
+                producer,
+                demandKind,
+                buildingType
             );
             context.AddProposal(proposal);
 
@@ -356,6 +409,105 @@ namespace Rebellion.Tests.AI.Phases
                 new Technology(building)
             );
             proposal.SetScore(100);
+            return proposal;
+        }
+
+        /// <summary>
+        /// Creates two independent production-facility proposals backed by separate producers.
+        /// </summary>
+        /// <param name="allocationPercent">Shared maintenance allocation for production facilities.</param>
+        /// <param name="first">The first facility proposal.</param>
+        /// <param name="second">The second facility proposal.</param>
+        /// <returns>The configured AI turn context.</returns>
+        private static AITurnContext CreateFacilityExpansionContext(
+            int allocationPercent,
+            out AIManufactureProposal first,
+            out AIManufactureProposal second
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
+            game.Config.AI.Infrastructure.ProductionFacilityMaintenanceAllocationPercent =
+                allocationPercent;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "facility-system");
+            Planet firstPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "first-producer",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            Planet secondPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "second-producer",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            foreach (Planet planet in new[] { firstPlanet, secondPlanet })
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"{planet.InstanceID}-construction-yard",
+                    BuildingType.ConstructionFacility,
+                    ManufacturingType.Building
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"{planet.InstanceID}-mine",
+                    BuildingType.Mine,
+                    ManufacturingType.None
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"{planet.InstanceID}-refinery",
+                    BuildingType.Refinery,
+                    ManufacturingType.None
+                );
+            }
+
+            Building shipyard = AITestSceneBuilder.CreateBuildingTemplate(
+                "shipyard-template",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            shipyard.MaintenanceCost = 10;
+            first = CreateFacilityExpansionProposal(firstPlanet, shipyard, 100);
+            second = CreateFacilityExpansionProposal(secondPlanet, shipyard, 90);
+            return AITestSceneBuilder.CreateContext(game, empire);
+        }
+
+        /// <summary>
+        /// Creates a scored shipyard-expansion proposal at one planet.
+        /// </summary>
+        /// <param name="planet">The producer and destination planet.</param>
+        /// <param name="shipyard">The shipyard template.</param>
+        /// <param name="score">The proposal score.</param>
+        /// <returns>The facility-expansion proposal.</returns>
+        private static AIManufactureProposal CreateFacilityExpansionProposal(
+            Planet planet,
+            Building shipyard,
+            float score
+        )
+        {
+            AIDemand demand = new AIDemand(
+                $"shipyard-{planet.InstanceID}",
+                AIDemandKind.Shipyard,
+                ManufacturingType.Building,
+                BuildingType.Shipyard,
+                planet,
+                1,
+                100
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                planet,
+                new Technology(shipyard)
+            );
+            proposal.SetScore(score);
             return proposal;
         }
 

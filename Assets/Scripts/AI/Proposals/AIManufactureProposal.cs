@@ -55,6 +55,8 @@ namespace Rebellion.AI.Proposals
         internal bool UsesSharedProducerCapacity =>
             !IsFacilityExpansionDemand() && !DistributesDemand;
 
+        internal bool IsProductionFacilityExpansion => IsFacilityExpansionDemand();
+
         /// <summary>
         /// Creates a manufacture proposal.
         /// </summary>
@@ -161,11 +163,6 @@ namespace Rebellion.AI.Proposals
             if (Demand?.BuildingToReplace != null)
                 claimKeys.Add(
                     AIClaimKeys.ProductionBuildingReplacement(Demand.BuildingToReplace.InstanceID)
-                );
-
-            if (Demand?.Kind == AIDemandKind.ConstructionFacility)
-                claimKeys.Add(
-                    AIClaimKeys.ProductionBuildingKind(BuildingType.ConstructionFacility)
                 );
 
             if (Destination is Fleet destinationFleet && !DistributesDemand)

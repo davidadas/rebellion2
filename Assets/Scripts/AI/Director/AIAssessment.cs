@@ -97,6 +97,17 @@ namespace Rebellion.AI.Director
             new Dictionary<ManufacturingType, int>();
         private readonly Dictionary<ManufacturingType, double> _queuedProductionClearTicks =
             new Dictionary<ManufacturingType, double>();
+        private int? _productionFacilityMaintenance;
+        private readonly Dictionary<
+            (string PlanetId, ManufacturingType ManufacturingType),
+            int
+        > _planetQueuedProductionWork =
+            new Dictionary<(string PlanetId, ManufacturingType ManufacturingType), int>();
+        private readonly Dictionary<
+            (string PlanetId, ManufacturingType ManufacturingType),
+            double
+        > _planetQueuedProductionClearTicks =
+            new Dictionary<(string PlanetId, ManufacturingType ManufacturingType), double>();
         private readonly Dictionary<string, Planet> _knownPlanets = new Dictionary<string, Planet>(
             StringComparer.Ordinal
         );
@@ -149,6 +160,10 @@ namespace Rebellion.AI.Director
 
         public int RefinedMaterialStockpile { get; }
 
+        public int PendingRawMaterialRequestCount { get; }
+
+        public int PendingRefinedMaterialRequestCount { get; }
+
         // Missions.
         public IReadOnlyList<IMissionParticipant> AvailableMissionParticipants { get; }
 
@@ -191,6 +206,9 @@ namespace Rebellion.AI.Director
             RefinedMaterialSupply =
                 availableMaterials * (faction?.Settings?.RefinementMultiplier ?? 0);
             RefinedMaterialStockpile = faction?.RefinedMaterialStockpile ?? 0;
+            PendingRawMaterialRequestCount = faction?.PendingRawMaterialFacilityIDs?.Count ?? 0;
+            PendingRefinedMaterialRequestCount =
+                faction?.PendingRefinedMaterialFacilityIDs?.Count ?? 0;
             ActiveMissions = BuildActiveMissions();
             FactionViewPlanets = BuildFactionViewPlanets();
             UnexploredPlanets = FactionViewPlanets
@@ -339,6 +357,39 @@ namespace Rebellion.AI.Director
                 return int.MaxValue;
 
             return Math.Max(0, _context.Game.CurrentTick - snapshot.TickCaptured);
+        }
+
+        /// <summary>
+        /// Returns whether the faction snapshot contains each requested intelligence category.
+        /// </summary>
+        /// <param name="planet">Planet whose snapshot should be inspected.</param>
+        /// <param name="categories">Intelligence categories required by the caller.</param>
+        /// <returns>True when all requested categories are available.</returns>
+        public bool HasPlanetIntelligence(Planet planet, PlanetIntelligenceCategory categories)
+        {
+            if (planet == null || _context?.Faction?.Fog == null)
+                return false;
+
+            if (
+                IsOwnedPlanet(planet)
+                || GetFriendlyFleets(planet)
+                    .Any(fleet => fleet.Movement == null && fleet.HasOperationalCapitalShips())
+            )
+                return true;
+
+            return _context.Faction.Fog.PlanetToSector.TryGetValue(
+                    planet.InstanceID,
+                    out string sectorId
+                )
+                && _context.Faction.Fog.Snapshots.TryGetValue(
+                    sectorId,
+                    out PlanetSectorSnapshot sectorSnapshot
+                )
+                && sectorSnapshot.Planets.TryGetValue(
+                    planet.InstanceID,
+                    out PlanetSnapshot snapshot
+                )
+                && snapshot.RevealedCategories.HasFlag(categories);
         }
 
         /// <summary>
@@ -1098,106 +1149,6 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns the orbital strength required for a system campaign.
-        /// </summary>
-        /// <param name="systemId">Target system identifier.</param>
-        /// <returns>The required combat strength.</returns>
-        public int GetRequiredAttackCampaignCombatStrength(string systemId)
-        {
-            return GetRequiredAttackCampaignCombatStrength(GetAttackCampaignPlanets(systemId));
-        }
-
-        /// <summary>
-        /// Returns the orbital strength required for a target planet's campaign.
-        /// </summary>
-        /// <param name="targetPlanet">Primary campaign target.</param>
-        /// <returns>The required combat strength.</returns>
-        public int GetRequiredAttackCampaignCombatStrength(Planet targetPlanet)
-        {
-            return GetRequiredAttackCampaignCombatStrength(GetAttackCampaignPlanets(targetPlanet));
-        }
-
-        /// <summary>
-        /// Returns the orbital strength required for a set of campaign planets.
-        /// </summary>
-        /// <param name="targetPlanets">Campaign planets to evaluate.</param>
-        /// <returns>The required combat strength.</returns>
-        private int GetRequiredAttackCampaignCombatStrength(
-            IReadOnlyCollection<Planet> targetPlanets
-        )
-        {
-            if (targetPlanets == null || targetPlanets.Count == 0 || _context?.Game?.Config == null)
-                return 0;
-
-            return SumRequirements(targetPlanets, GetRequiredOrbitalStrength);
-        }
-
-        /// <summary>
-        /// Returns the regiment count required for a target planet's campaign.
-        /// </summary>
-        /// <param name="targetPlanet">Primary campaign target.</param>
-        /// <returns>The required regiment count.</returns>
-        public int GetRequiredAttackCampaignRegimentCount(Planet targetPlanet)
-        {
-            return SumRequirements(
-                GetAttackCampaignPlanets(targetPlanet),
-                GetRequiredAttackRegimentCount
-            );
-        }
-
-        /// <summary>
-        /// Returns the regiment count required for a system campaign.
-        /// </summary>
-        /// <param name="systemId">Target system identifier.</param>
-        /// <returns>The required regiment count.</returns>
-        public int GetRequiredAttackCampaignRegimentCount(string systemId)
-        {
-            return SumRequirements(
-                GetAttackCampaignPlanets(systemId),
-                GetRequiredAttackRegimentCount
-            );
-        }
-
-        /// <summary>
-        /// Returns the regiment strength required for a target planet's campaign.
-        /// </summary>
-        /// <param name="targetPlanet">Primary campaign target.</param>
-        /// <returns>The required regiment strength.</returns>
-        public int GetRequiredAttackCampaignRegimentStrength(Planet targetPlanet)
-        {
-            return SumRequirements(
-                GetAttackCampaignPlanets(targetPlanet),
-                GetRequiredAttackRegimentStrength
-            );
-        }
-
-        /// <summary>
-        /// Returns the bombardment strength required for a target planet's campaign.
-        /// </summary>
-        /// <param name="targetPlanet">Primary campaign target.</param>
-        /// <returns>The required bombardment strength.</returns>
-        public int GetRequiredAttackCampaignBombardmentStrength(Planet targetPlanet)
-        {
-            return GetAttackCampaignPlanets(targetPlanet)
-                .Select(GetRequiredBombardmentStrength)
-                .DefaultIfEmpty()
-                .Max();
-        }
-
-        /// <summary>
-        /// Returns the bombardment strength required for a system campaign.
-        /// </summary>
-        /// <param name="systemId">Target system identifier.</param>
-        /// <returns>The required bombardment strength.</returns>
-        public int GetRequiredAttackCampaignBombardmentStrength(string systemId)
-        {
-            return GetAttackCampaignPlanets(systemId)
-                .Select(GetRequiredBombardmentStrength)
-                .DefaultIfEmpty()
-                .Max();
-        }
-
-        /// <summary>
         /// Returns the orbital strength required to defeat known forces at a planet.
         /// </summary>
         /// <param name="planet">Planet to inspect.</param>
@@ -1356,27 +1307,78 @@ namespace Rebellion.AI.Director
             if (!IsOwnedPlanet(planet) || _context?.Game?.Config == null)
                 return 0;
 
-            int shieldCount = planet
-                .GetAllBuildings()
-                .Count(building =>
-                    building.GetOwnerInstanceID() == _context.Faction.InstanceID
-                    && building.IsPlanetaryShieldGenerator()
-                );
-            int weaponCount = planet
-                .GetAllBuildings()
-                .Count(building =>
-                    building.GetOwnerInstanceID() == _context.Faction.InstanceID
-                    && building.GetBuildingType() == BuildingType.Weapon
-                );
-            int shieldDeficit = Math.Max(
-                0,
-                _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit - shieldCount
-            );
+            int shieldCount = 0;
+            int weaponCount = 0;
+            foreach (Building building in GetPlanetBuildings(planet))
+            {
+                if (building.GetOwnerInstanceID() != _context.Faction.InstanceID)
+                    continue;
+
+                if (building.IsPlanetaryShieldGenerator())
+                    shieldCount++;
+                else if (building.GetBuildingType() == BuildingType.Weapon)
+                    weaponCount++;
+            }
+            int shieldDeficit = Math.Max(0, GetPlanetaryShieldTargetCount(planet) - shieldCount);
             int weaponDeficit = Math.Max(
                 0,
-                _context.Game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount - weaponCount
+                GetPlanetaryWeaponTargetCount(planet, weaponCount) - weaponCount
             );
             return shieldDeficit + weaponDeficit;
+        }
+
+        /// <summary>
+        /// Returns the number of shield generators warranted by a planet's strategic exposure.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>The required shield-generator count.</returns>
+        public int GetPlanetaryShieldTargetCount(Planet planet)
+        {
+            if (!IsOwnedPlanet(planet) || _context?.Game?.Config == null)
+                return 0;
+
+            int limit = _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            if (IsPriorityDefensePlanet(planet) || IsPlanetThreatened(planet))
+                return limit;
+
+            bool hasSupportRisk =
+                GetFactionPopularSupport(planet) < _context.Game.Config.AI.Garrison.SupportThreshold
+                || GetDefensiveSupportRisk(planet) > 0;
+            return hasSupportRisk || HasProductionInfrastructure(planet) ? Math.Min(1, limit) : 0;
+        }
+
+        /// <summary>
+        /// Returns the number of weapon emplacements warranted by a planet's strategic exposure.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <param name="currentCount">The current weapon-emplacement count.</param>
+        /// <returns>The required weapon-emplacement count.</returns>
+        public int GetPlanetaryWeaponTargetCount(Planet planet, int currentCount)
+        {
+            if (
+                !IsOwnedPlanet(planet)
+                || _context?.Game?.Config == null
+                || !IsPriorityDefensePlanet(planet) && !IsPlanetThreatened(planet)
+            )
+                return 0;
+
+            GameConfig.AIInfrastructureConfig config = _context.Game.Config.AI.Infrastructure;
+            return Math.Max(
+                config.PlanetaryWeaponTargetCount,
+                currentCount + config.PlanetaryDefenseSurplusBatchSize
+            );
+        }
+
+        /// <summary>
+        /// Returns whether a planet contains strategic production infrastructure.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True when the planet has at least one production facility.</returns>
+        public bool HasProductionInfrastructure(Planet planet)
+        {
+            return GetPlanetProductionFacilityCount(planet, ManufacturingType.Building) > 0
+                || GetPlanetProductionFacilityCount(planet, ManufacturingType.Ship) > 0
+                || GetPlanetProductionFacilityCount(planet, ManufacturingType.Troop) > 0;
         }
 
         /// <summary>
@@ -1772,18 +1774,18 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns whether projected fleet strength satisfies the target campaign.
+        /// Returns whether projected fleet strength satisfies the next attack target.
         /// </summary>
         /// <param name="fleet">Fleet to inspect.</param>
-        /// <param name="targetPlanet">Primary campaign target.</param>
+        /// <param name="targetPlanet">The next attack target.</param>
         /// <returns>True when projected strength is sufficient.</returns>
-        public bool IsFleetProjectedReadyToAttackCampaign(Fleet fleet, Planet targetPlanet)
+        public bool IsFleetProjectedReadyToAttackTarget(Fleet fleet, Planet targetPlanet)
         {
-            int requiredCombat = GetRequiredAttackCampaignCombatStrength(targetPlanet);
+            int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
             int availableCombat = GetProjectedFleetCombatValue(fleet);
-            int requiredRegiments = GetRequiredAttackCampaignRegimentCount(targetPlanet);
-            int requiredRegimentStrength = GetRequiredAttackCampaignRegimentStrength(targetPlanet);
-            int requiredBombardment = GetRequiredAttackCampaignBombardmentStrength(targetPlanet);
+            int requiredRegiments = GetRequiredAttackRegimentCount(targetPlanet);
+            int requiredRegimentStrength = GetRequiredAttackRegimentStrength(targetPlanet);
+            int requiredBombardment = GetRequiredBombardmentStrength(targetPlanet);
             return fleet?.GetChildren<CapitalShip>().Any(capitalShip => capitalShip != null) == true
                 && availableCombat > 0
                 && availableCombat >= requiredCombat
@@ -1830,17 +1832,17 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns the number of campaign readiness requirements a fleet satisfies.
+        /// Returns the number of projected attack-readiness requirements a fleet satisfies.
         /// </summary>
         /// <param name="fleet">Fleet to inspect.</param>
-        /// <param name="targetPlanet">Primary campaign target.</param>
+        /// <param name="targetPlanet">The next attack target.</param>
         /// <returns>The satisfied requirement count.</returns>
-        public int GetFleetAttackCampaignReadinessGateCount(Fleet fleet, Planet targetPlanet)
+        public int GetProjectedFleetAttackReadinessGateCount(Fleet fleet, Planet targetPlanet)
         {
-            int requiredCombat = GetRequiredAttackCampaignCombatStrength(targetPlanet);
-            int requiredRegiments = GetRequiredAttackCampaignRegimentCount(targetPlanet);
-            int requiredRegimentStrength = GetRequiredAttackCampaignRegimentStrength(targetPlanet);
-            int requiredBombardment = GetRequiredAttackCampaignBombardmentStrength(targetPlanet);
+            int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredRegiments = GetRequiredAttackRegimentCount(targetPlanet);
+            int requiredRegimentStrength = GetRequiredAttackRegimentStrength(targetPlanet);
+            int requiredBombardment = GetRequiredBombardmentStrength(targetPlanet);
             int gateCount = 0;
 
             if (fleet?.HasOperationalCapitalShips() == true)
@@ -2148,6 +2150,28 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns maintenance committed to complete and constructing production facilities.
+        /// </summary>
+        /// <returns>The committed production-facility maintenance.</returns>
+        public int GetProductionFacilityMaintenance()
+        {
+            if (_productionFacilityMaintenance.HasValue)
+                return _productionFacilityMaintenance.Value;
+
+            _productionFacilityMaintenance = OwnedPlanets
+                .SelectMany(GetPlanetBuildings)
+                .Where(building =>
+                    building.GetOwnerInstanceID() == _context.Faction.InstanceID
+                    && building.GetBuildingType()
+                        is BuildingType.ConstructionFacility
+                            or BuildingType.Shipyard
+                            or BuildingType.TrainingFacility
+                )
+                .Sum(building => building.MaintenanceCost);
+            return _productionFacilityMaintenance.Value;
+        }
+
+        /// <summary>
         /// Returns idle production throughput for a manufacturing type.
         /// </summary>
         /// <param name="type">Manufacturing type to inspect.</param>
@@ -2208,6 +2232,37 @@ namespace Rebellion.AI.Director
                         return double.PositiveInfinity;
 
                     return work / throughput;
+                }
+            );
+        }
+
+        /// <summary>
+        /// Returns estimated queue clear time for one planet and manufacturing type.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="type">The manufacturing category.</param>
+        /// <returns>The queued production clear ticks.</returns>
+        public double GetPlanetQueuedProductionClearTicks(Planet planet, ManufacturingType type)
+        {
+            if (planet == null || type == ManufacturingType.None)
+                return 0;
+
+            (string PlanetId, ManufacturingType ManufacturingType) key = (planet.InstanceID, type);
+            return GetOrAdd(
+                _planetQueuedProductionClearTicks,
+                key,
+                () =>
+                {
+                    int work = GetOrAdd(
+                        _planetQueuedProductionWork,
+                        key,
+                        () => GetQueuedProductionWork(planet, type)
+                    );
+                    if (work <= 0)
+                        return 0;
+
+                    double throughput = GetPlanetProductionRate(planet, type);
+                    return throughput <= 0 ? double.PositiveInfinity : work / throughput;
                 }
             );
         }
@@ -2400,21 +2455,6 @@ namespace Rebellion.AI.Director
             return manufacturingQueue.Sum(item =>
                 Math.Max(0, item.GetConstructionCost() - item.ManufacturingProgress)
             );
-        }
-
-        /// <summary>
-        /// Sums nonnegative requirements across target planets.
-        /// </summary>
-        /// <param name="planets">Planets to evaluate.</param>
-        /// <param name="getRequirement">Requirement selector.</param>
-        /// <returns>The bounded requirement total.</returns>
-        private static int SumRequirements(
-            IEnumerable<Planet> planets,
-            Func<Planet, int> getRequirement
-        )
-        {
-            long total = planets?.Sum(planet => (long)getRequirement(planet)) ?? 0;
-            return total > int.MaxValue ? int.MaxValue : (int)total;
         }
 
         /// <summary>

@@ -100,9 +100,9 @@ namespace Rebellion.Game
         {
             public int RetainedAlternativesPerMission { get; set; } = 3;
 
-            public int EspionageRefreshIntervalTicks { get; set; } = 70;
+            public int EspionageRefreshIntervalTicks { get; set; } = 20;
 
-            public int HostileMissionMaximumIntelAgeTicks { get; set; } = 70;
+            public int HostileMissionMaximumIntelAgeTicks { get; set; } = 40;
 
             public int MaximumJediTrainingStudents { get; set; } = 3;
 
@@ -277,6 +277,8 @@ namespace Rebellion.Game
             public int PlanetsPerConstructionFacility { get; set; }
             public int MinimumConstructionFacilityLanes { get; set; } = 1;
             public int ConstructionFacilityTargetClearTicks { get; set; } = 80;
+            public int ShipyardTargetClearTicks { get; set; } = 80;
+            public int TrainingFacilityTargetClearTicks { get; set; } = 80;
             public int PlanetsPerShipyard { get; set; }
             public int PlanetsPerTrainingFacility { get; set; }
             public int ManufacturingFacilityBaseDemandPercent { get; set; }
@@ -284,11 +286,17 @@ namespace Rebellion.Game
             public int ShipyardDemandPercent { get; set; }
             public int TrainingFacilityDemandPercent { get; set; } = 100;
             public int TrainingFacilityBacklogPressureBonus { get; set; } = 5;
-            public int ShipyardMaintenanceAllocationPercent { get; set; } = 30;
-            public int ShipyardMaintenanceAllocationScalePercent { get; set; } = 20;
-            public int TrainingFacilityMaintenanceAllocationPercent { get; set; } = 4;
-            public int TrainingFacilityMaintenanceAllocationScalePercent { get; set; } = 50;
-            public int ConstructionFacilityMaintenanceAllocationPercent { get; set; } = 4;
+            public int FacilitySystemCoverageWeight { get; set; } = 50;
+            public int FacilityExistingHubWeight { get; set; } = 30;
+            public int ConstructionFacilityHubWeight { get; set; } = 100;
+            public int FacilityAvailableEnergyWeight { get; set; } = 20;
+            public int FacilityPlanetValueWeight { get; set; } = 15;
+            public int FacilitySystemSecurityWeight { get; set; } = 20;
+            public int FacilityDemandProximityWeight { get; set; } = 15;
+            public int FacilityResourceOpportunityCostWeight { get; set; } = 25;
+            public int ProductionFacilityMaintenanceAllocationPercent { get; set; } = 30;
+            public int ProductionFacilityInvestmentHorizonTicks { get; set; } = 70;
+            public int ProductionFacilityInvestmentPressureWeight { get; set; } = 100;
             public int FacilityConstructionLaneReserve { get; set; } = 1;
             public int ProductionQueueTargetPlanningIntervals { get; set; } = 1;
             public int ProductionFacilityUpgradeMinimumRemainingCount { get; set; } = 1;

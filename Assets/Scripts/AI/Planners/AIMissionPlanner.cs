@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
@@ -17,6 +18,12 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIMissionPlanner : IAIProposalPlanner
     {
+        private const PlanetIntelligenceCategory _missionDefenseIntelligence =
+            PlanetIntelligenceCategory.CapitalShips
+            | PlanetIntelligenceCategory.Starfighters
+            | PlanetIntelligenceCategory.GroundForces
+            | PlanetIntelligenceCategory.Officers;
+
         // Planning State.
         private readonly AIMissionCandidateSelector _candidateSelector =
             new AIMissionCandidateSelector();
@@ -667,8 +674,13 @@ namespace Rebellion.AI.Planners
             int minimumAge = context.Game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks;
             _espionageCandidates = context
                 .Assessment.EnemyPlanets.Where(planet =>
-                    context.Assessment.GetPlanetIntelAge(planet) >= minimumAge
-                    && !HasActiveMissionAtPlanet(MissionTypeIDs.Espionage, planet.InstanceID)
+                    (
+                        context.Assessment.GetPlanetIntelAge(planet) >= minimumAge
+                        || !context.Assessment.HasPlanetIntelligence(
+                            planet,
+                            _missionDefenseIntelligence
+                        )
+                    ) && !HasActiveMissionAtPlanet(MissionTypeIDs.Espionage, planet.InstanceID)
                 )
                 .OrderByDescending(context.Assessment.GetPlanetIntelAge)
                 .ThenByDescending(context.Assessment.GetPlanetValue)
@@ -772,6 +784,10 @@ namespace Rebellion.AI.Planners
                 .Assessment.TargetableEnemyOfficerMissionTargets.Where(candidate =>
                     context.Assessment.GetPlanetIntelAge(candidate.Planet)
                         <= context.Game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks
+                    && context.Assessment.HasPlanetIntelligence(
+                        candidate.Planet,
+                        _missionDefenseIntelligence
+                    )
                     && !HasActiveOfficerTargetMission(candidate.TargetOfficer.InstanceID)
                 )
                 .Shuffle(context.Random)
@@ -801,6 +817,7 @@ namespace Rebellion.AI.Planners
             _freshEnemyPlanets = context
                 .Assessment.EnemyPlanets.Where(planet =>
                     context.Assessment.GetPlanetIntelAge(planet) <= maximumAge
+                    && context.Assessment.HasPlanetIntelligence(planet, _missionDefenseIntelligence)
                 )
                 .ToList();
             return _freshEnemyPlanets;

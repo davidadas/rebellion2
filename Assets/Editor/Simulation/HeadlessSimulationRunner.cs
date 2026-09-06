@@ -480,18 +480,33 @@ public static class HeadlessSimulationRunner
                         faction,
                         BuildingType.ConstructionFacility
                     ),
+                    ProjectedConstructionFacilityCount = CountProjectedProductionFacilities(
+                        game,
+                        faction,
+                        BuildingType.ConstructionFacility
+                    ),
                     AdvancedShipyardCount = CountAdvancedProductionFacilities(
                         game,
                         faction,
                         BuildingType.Shipyard
                     ),
                     ShipyardCount = CountProductionFacilities(game, faction, BuildingType.Shipyard),
+                    ProjectedShipyardCount = CountProjectedProductionFacilities(
+                        game,
+                        faction,
+                        BuildingType.Shipyard
+                    ),
                     AdvancedTrainingFacilityCount = CountAdvancedProductionFacilities(
                         game,
                         faction,
                         BuildingType.TrainingFacility
                     ),
                     TrainingFacilityCount = CountProductionFacilities(
+                        game,
+                        faction,
+                        BuildingType.TrainingFacility
+                    ),
+                    ProjectedTrainingFacilityCount = CountProjectedProductionFacilities(
                         game,
                         faction,
                         BuildingType.TrainingFacility
@@ -800,6 +815,23 @@ public static class HeadlessSimulationRunner
                 && building.GetManufacturingStatus() == ManufacturingStatus.Complete
                 && building.Movement == null
             );
+    }
+
+    /// <summary>
+    /// Counts complete, constructing, and in-transit production facilities.
+    /// </summary>
+    /// <param name="game">The simulated game state.</param>
+    /// <param name="faction">The faction whose facilities are counted.</param>
+    /// <param name="buildingType">The production-facility type.</param>
+    /// <returns>The projected production-facility count.</returns>
+    private static int CountProjectedProductionFacilities(
+        GameRoot game,
+        Faction faction,
+        BuildingType buildingType
+    )
+    {
+        return game.GetSceneNodesByOwnerInstanceID<Building>(faction.InstanceID)
+            .Count(building => building.GetBuildingType() == buildingType);
     }
 
     /// <summary>
@@ -1455,10 +1487,13 @@ public static class HeadlessSimulationRunner
         public int ProjectedFullyStaticDefendedPlanetCount;
         public int AdvancedConstructionFacilityCount;
         public int ConstructionFacilityCount;
+        public int ProjectedConstructionFacilityCount;
         public int AdvancedShipyardCount;
         public int ShipyardCount;
+        public int ProjectedShipyardCount;
         public int AdvancedTrainingFacilityCount;
         public int TrainingFacilityCount;
+        public int ProjectedTrainingFacilityCount;
         public int CapitalShipCount;
         public int StarfighterCount;
         public int RegimentCount;

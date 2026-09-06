@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -242,7 +243,12 @@ namespace Rebellion.Tests.AI.Helpers
         public static void RevealPlanet(GameRoot game, Faction faction, Planet planet)
         {
             PlanetSector system = planet.GetParentOfType<PlanetSector>();
-            new FogOfWarSystem(game).CaptureSnapshot(faction, planet, system, game.CurrentTick);
+            new FogOfWarRecorder().RecordEspionageSnapshot(
+                faction,
+                planet,
+                system,
+                game.CurrentTick
+            );
         }
     }
 }

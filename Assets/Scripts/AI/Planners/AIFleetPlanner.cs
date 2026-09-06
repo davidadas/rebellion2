@@ -342,23 +342,60 @@ namespace Rebellion.AI.Planners
                 .Where(systemId => !string.IsNullOrEmpty(systemId))
                 .Distinct()
                 .Where(systemId => !HasAttackFleetForSystem(context, systemId, fleet))
-                .OrderByDescending(systemId =>
-                    ShouldPrioritizeHeadquartersCampaign(context)
-                    && IsHeadquartersSystem(context, systemId)
+                .Select(systemId =>
+                {
+                    IReadOnlyList<Planet> planets = context.Assessment.GetAttackCampaignPlanets(
+                        systemId
+                    );
+                    return new
+                    {
+                        SystemId = systemId,
+                        IsHeadquarters = IsHeadquartersSystem(context, systemId),
+                        Readiness = planets
+                            .Select(target =>
+                                context.Assessment.GetProjectedFleetAttackReadinessGateCount(
+                                    fleet,
+                                    target
+                                )
+                            )
+                            .DefaultIfEmpty()
+                            .Max(),
+                        SupportLeverage = context.Assessment.GetEnemySystemSupportLeverage(
+                            systemId
+                        ),
+                        EnemyPlanetCount = planets.Count,
+                        RequiredCombat = planets
+                            .Select(context.Assessment.GetRequiredAttackCombatStrength)
+                            .DefaultIfEmpty()
+                            .Min(),
+                        RequiredRegiments = planets
+                            .Select(context.Assessment.GetRequiredAttackRegimentCount)
+                            .DefaultIfEmpty()
+                            .Min(),
+                        RequiredBombardment = planets
+                            .Select(context.Assessment.GetRequiredBombardmentStrength)
+                            .DefaultIfEmpty()
+                            .Min(),
+                        OwnedPresence = context.Assessment.GetOwnedSystemPresenceRatio(systemId),
+                        Value = context.Assessment.GetEnemySystemValue(systemId),
+                        Distance = GetDistanceToAttackSystem(context, currentPlanet, systemId),
+                    };
+                })
+                .OrderByDescending(candidate =>
+                    ShouldPrioritizeHeadquartersCampaign(context) && candidate.IsHeadquarters
                 )
-                .ThenByDescending(systemId =>
-                    GetAttackSystemReadinessGateCount(context, fleet, systemId)
-                )
-                .ThenByDescending(context.Assessment.GetEnemySystemSupportLeverage)
-                .ThenBy(context.Assessment.GetEnemyPlanetCountInSystem)
-                .ThenBy(context.Assessment.GetRequiredAttackCampaignCombatStrength)
-                .ThenBy(context.Assessment.GetRequiredAttackCampaignRegimentCount)
-                .ThenBy(context.Assessment.GetRequiredAttackCampaignBombardmentStrength)
-                .ThenByDescending(context.Assessment.GetOwnedSystemPresenceRatio)
-                .ThenByDescending(systemId => IsHeadquartersSystem(context, systemId))
-                .ThenByDescending(context.Assessment.GetEnemySystemValue)
-                .ThenBy(systemId => GetDistanceToAttackSystem(context, currentPlanet, systemId))
-                .ThenBy(systemId => systemId, System.StringComparer.Ordinal)
+                .ThenByDescending(candidate => candidate.Readiness)
+                .ThenByDescending(candidate => candidate.SupportLeverage)
+                .ThenBy(candidate => candidate.EnemyPlanetCount)
+                .ThenBy(candidate => candidate.RequiredCombat)
+                .ThenBy(candidate => candidate.RequiredRegiments)
+                .ThenBy(candidate => candidate.RequiredBombardment)
+                .ThenByDescending(candidate => candidate.OwnedPresence)
+                .ThenByDescending(candidate => candidate.IsHeadquarters)
+                .ThenByDescending(candidate => candidate.Value)
+                .ThenBy(candidate => candidate.Distance)
+                .ThenBy(candidate => candidate.SystemId, System.StringComparer.Ordinal)
+                .Select(candidate => candidate.SystemId)
                 .FirstOrDefault();
         }
 
@@ -385,25 +422,6 @@ namespace Rebellion.AI.Planners
             return context
                 .Assessment.GetAttackCampaignPlanets(systemId)
                 .Any(planet => planet.IsHeadquarters);
-        }
-
-        /// <summary>
-        /// Returns the number of campaign readiness gates a fleet satisfies for a system.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet being assigned.</param>
-        /// <param name="systemId">The candidate system identifier.</param>
-        /// <returns>The satisfied campaign readiness gate count.</returns>
-        private int GetAttackSystemReadinessGateCount(
-            AITurnContext context,
-            Fleet fleet,
-            string systemId
-        )
-        {
-            Planet targetPlanet = context
-                .Assessment.GetAttackCampaignPlanets(systemId)
-                .FirstOrDefault();
-            return context.Assessment.GetFleetAttackCampaignReadinessGateCount(fleet, targetPlanet);
         }
 
         /// <summary>
@@ -755,7 +773,7 @@ namespace Rebellion.AI.Planners
             }
 
             return targetFleet.Order?.OrderType == FleetOrderType.Attack
-                && !context.Assessment.IsFleetProjectedReadyToAttackCampaign(
+                && !context.Assessment.IsFleetProjectedReadyToAttackTarget(
                     targetFleet,
                     targetPlanet
                 );
@@ -800,7 +818,7 @@ namespace Rebellion.AI.Planners
                     CanReceiveCapitalShipTransfer(context, candidate.Fleet, candidate.TargetPlanet)
                 )
                 .OrderByDescending(candidate =>
-                    context.Assessment.GetFleetAttackCampaignReadinessGateCount(
+                    context.Assessment.GetProjectedFleetAttackReadinessGateCount(
                         candidate.Fleet,
                         candidate.TargetPlanet
                     )
@@ -984,16 +1002,14 @@ namespace Rebellion.AI.Planners
                 );
             }
 
-            int requiredCombat = context.Assessment.GetRequiredAttackCampaignCombatStrength(
+            int requiredCombat = context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredRegiments = context.Assessment.GetRequiredAttackRegimentCount(targetPlanet);
+            int requiredRegimentStrength = context.Assessment.GetRequiredAttackRegimentStrength(
                 targetPlanet
             );
-            int requiredRegiments = context.Assessment.GetRequiredAttackCampaignRegimentCount(
+            int requiredBombardment = context.Assessment.GetRequiredBombardmentStrength(
                 targetPlanet
             );
-            int requiredRegimentStrength =
-                context.Assessment.GetRequiredAttackCampaignRegimentStrength(targetPlanet);
-            int requiredBombardment =
-                context.Assessment.GetRequiredAttackCampaignBombardmentStrength(targetPlanet);
 
             int currentRegimentCapacity = context.Assessment.GetFleetRegimentCapacity(targetFleet);
             if (currentRegimentCapacity < requiredRegiments)
