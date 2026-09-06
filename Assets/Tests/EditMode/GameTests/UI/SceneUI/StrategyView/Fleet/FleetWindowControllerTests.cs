@@ -631,6 +631,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
             public int RefreshCount { get; private set; }
 
+            public bool IsIdleBarEnabled => true;
+
             public bool IsIdleBarTracked(ISceneNode entity) => true;
 
             public void ToggleIdleBarTracking(ISceneNode entity) { }

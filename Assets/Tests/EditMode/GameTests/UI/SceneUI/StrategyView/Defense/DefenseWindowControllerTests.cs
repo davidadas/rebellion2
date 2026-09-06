@@ -406,6 +406,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {
+            public bool IsIdleBarEnabled => true;
+
             public bool IsIdleBarTracked(ISceneNode entity) => true;
 
             public void ToggleIdleBarTracking(ISceneNode entity) { }

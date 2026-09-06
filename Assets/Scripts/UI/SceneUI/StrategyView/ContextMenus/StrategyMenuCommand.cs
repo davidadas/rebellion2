@@ -138,7 +138,7 @@ internal static class IdleBarContextMenuBuilder
     {
         if (
             commands == null
-            || actions == null
+            || actions?.IsIdleBarEnabled != true
             || entity is not Officer && entity is not SpecialForces && entity is not Planet
             || !string.Equals(
                 entity.GetOwnerInstanceID(),

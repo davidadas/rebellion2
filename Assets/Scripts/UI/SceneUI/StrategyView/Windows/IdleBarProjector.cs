@@ -13,6 +13,9 @@ using UnityEngine;
 /// </summary>
 public interface IIdleBarTrackingActions
 {
+    /// <summary>Reports whether the experimental idle bar is enabled.</summary>
+    bool IsIdleBarEnabled { get; }
+
     /// <summary>Reports whether an entity appears in the idle bar.</summary>
     /// <param name="entity">The entity whose tracking state is requested.</param>
     /// <returns><see langword="true"/> when the entity is tracked.</returns>

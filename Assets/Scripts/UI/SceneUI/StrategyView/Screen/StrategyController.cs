@@ -3078,6 +3078,12 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Reports whether idle-bar controls should be exposed.
+    /// </summary>
+    bool IIdleBarTrackingActions.IsIdleBarEnabled =>
+        AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowIdleBar ?? false;
+
+    /// <summary>
     /// Reports whether an entity is currently included in idle-bar results.
     /// </summary>
     bool IIdleBarTrackingActions.IsIdleBarTracked(ISceneNode entity)

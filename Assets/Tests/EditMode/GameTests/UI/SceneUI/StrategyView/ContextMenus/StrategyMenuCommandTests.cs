@@ -365,6 +365,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsEmpty(commands);
         }
 
+        [Test]
+        public void AppendTrackingToggle_DisabledIdleBar_DoesNotAppendCommand()
+        {
+            TrackingActions actions = new TrackingActions { Enabled = false };
+            List<StrategyMenuCommand> commands = new List<StrategyMenuCommand>();
+
+            IdleBarContextMenuBuilder.AppendTrackingToggle(
+                commands,
+                CreateOfficer("player"),
+                "player",
+                actions
+            );
+
+            Assert.IsEmpty(commands);
+        }
+
         private static Officer CreateOfficer(string ownerId)
         {
             return new Officer { OwnerInstanceID = ownerId };
@@ -372,6 +388,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
 
         private sealed class TrackingActions : IIdleBarTrackingActions
         {
+            public bool Enabled { get; set; } = true;
+
+            public bool IsIdleBarEnabled => Enabled;
+
             public bool Tracked { get; set; }
 
             public ISceneNode QueriedEntity { get; private set; }

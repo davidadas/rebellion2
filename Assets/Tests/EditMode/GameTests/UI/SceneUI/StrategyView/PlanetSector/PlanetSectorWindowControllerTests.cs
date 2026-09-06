@@ -642,6 +642,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             public StrategyMissionTarget LastTarget { get; private set; }
             public StrategyWindowTargetingSource LastTargetingSource { get; private set; }
 
+            public bool IsIdleBarEnabled => true;
+
             public bool IsIdleBarTracked(ISceneNode entity) => true;
 
             public void ToggleIdleBarTracking(ISceneNode entity) { }
