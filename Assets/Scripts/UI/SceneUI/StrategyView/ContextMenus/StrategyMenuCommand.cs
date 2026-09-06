@@ -125,43 +125,6 @@ public enum StrategyMenuAction
 }
 
 /// <summary>
-/// Adds idle-bar tracking to ordinary entity context menus.
-/// </summary>
-internal static class IdleBarContextMenuBuilder
-{
-    internal static void AppendTrackingToggle(
-        List<StrategyMenuCommand> commands,
-        ISceneNode entity,
-        string playerFactionId,
-        IIdleBarTrackingActions actions
-    )
-    {
-        if (
-            commands == null
-            || actions?.IsIdleBarEnabled != true
-            || entity is not Officer && entity is not SpecialForces && entity is not Planet
-            || !string.Equals(
-                entity.GetOwnerInstanceID(),
-                playerFactionId,
-                System.StringComparison.Ordinal
-            )
-        )
-            return;
-
-        commands.Add(
-            new StrategyMenuCommand(
-                StrategyMenuAction.ToggleIdleBarTracking,
-                "Tracked",
-                true,
-                actions.IsIdleBarTracked(entity)
-                    ? StrategyContextMenuIconKeys.CheckMark
-                    : StrategyContextMenuIconKeys.None
-            )
-        );
-    }
-}
-
-/// <summary>
 /// Resolves strategy menu actions to their domain values.
 /// </summary>
 public static class StrategyMenuActionExtensions
@@ -278,6 +241,28 @@ internal static class StrategyBombardmentMenuBuilder
 /// </summary>
 public static class StrategyContextMenuAvailability
 {
+    /// <summary>
+    /// Determines whether idle-bar tracking is available for one context-menu item.
+    /// </summary>
+    /// <param name="item">The context-targeted scene node.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="idleBarEnabled">Whether the experimental idle bar is enabled.</param>
+    /// <returns><see langword="true"/> when tracking can be changed for the item.</returns>
+    public static bool CanToggleIdleBarTracking(
+        ISceneNode item,
+        string playerFactionId,
+        bool idleBarEnabled
+    )
+    {
+        return idleBarEnabled
+            && item is Officer or SpecialForces or Planet
+            && string.Equals(
+                item.GetOwnerInstanceID(),
+                playerFactionId,
+                System.StringComparison.Ordinal
+            );
+    }
+
     /// <summary>
     /// Determines whether every selected item can move under player control.
     /// </summary>

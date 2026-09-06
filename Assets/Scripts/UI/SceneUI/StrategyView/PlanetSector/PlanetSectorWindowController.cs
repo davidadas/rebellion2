@@ -484,10 +484,11 @@ public sealed class PlanetSectorWindowController
             mobileHeadquarters != null
                 ? new List<ISceneNode> { mobileHeadquarters }
                 : GetPlayerFleetItems(hit?.Planet);
+        string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
         List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
             hit,
             items,
-            GetUIContext().GetPlayerFactionInstanceID(),
+            playerFactionId,
             mobileHeadquarters,
             fleetCommandController.CanExecutePlanetaryCombat(
                 items,
@@ -509,12 +510,26 @@ public sealed class PlanetSectorWindowController
             mobileHeadquarters == null
                 ? GetStatusTarget(view)
                 : new StrategyStatusTarget(hit.GalaxyMapPlanet, mobileHeadquarters);
-        IdleBarContextMenuBuilder.AppendTrackingToggle(
-            commands,
-            statusTarget?.Item,
-            GetUIContext().GetPlayerFactionInstanceID(),
-            actions
-        );
+        ISceneNode trackingItem = statusTarget?.Item;
+        if (
+            StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                trackingItem,
+                playerFactionId,
+                actions?.IsIdleBarEnabled == true
+            )
+        )
+        {
+            commands.Add(
+                new StrategyMenuCommand(
+                    StrategyMenuAction.ToggleIdleBarTracking,
+                    "Tracked",
+                    true,
+                    actions.IsIdleBarTracked(trackingItem)
+                        ? StrategyContextMenuIconKeys.CheckMark
+                        : StrategyContextMenuIconKeys.None
+                )
+            );
+        }
         if (commands.Count == 0)
             return false;
 

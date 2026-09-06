@@ -418,12 +418,26 @@ public sealed class DefenseWindowController
             StrategyContextMenuAvailability.CanCreateMission(items, playerFactionId),
             confirmationActions.CanRetire(items)
         );
-        IdleBarContextMenuBuilder.AppendTrackingToggle(
-            commands,
-            items.Count == 1 ? items[0] : null,
-            playerFactionId,
-            actions
-        );
+        ISceneNode trackingItem = items.Count == 1 ? items[0] : null;
+        if (
+            StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                trackingItem,
+                playerFactionId,
+                actions?.IsIdleBarEnabled == true
+            )
+        )
+        {
+            commands.Add(
+                new StrategyMenuCommand(
+                    StrategyMenuAction.ToggleIdleBarTracking,
+                    "Tracked",
+                    true,
+                    actions.IsIdleBarTracked(trackingItem)
+                        ? StrategyContextMenuIconKeys.CheckMark
+                        : StrategyContextMenuIconKeys.None
+                )
+            );
+        }
         if (commands.Count == 0)
             return false;
 

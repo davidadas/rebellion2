@@ -471,12 +471,26 @@ public sealed class FleetWindowController
                 StrategyMenuAction.PlanetaryAssault
             )
         );
-        IdleBarContextMenuBuilder.AppendTrackingToggle(
-            commands,
-            items.Count == 1 ? items[0] : null,
-            playerFactionId,
-            actions
-        );
+        ISceneNode trackingItem = items.Count == 1 ? items[0] : null;
+        if (
+            StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                trackingItem,
+                playerFactionId,
+                actions?.IsIdleBarEnabled == true
+            )
+        )
+        {
+            commands.Add(
+                new StrategyMenuCommand(
+                    StrategyMenuAction.ToggleIdleBarTracking,
+                    "Tracked",
+                    true,
+                    actions.IsIdleBarTracked(trackingItem)
+                        ? StrategyContextMenuIconKeys.CheckMark
+                        : StrategyContextMenuIconKeys.None
+                )
+            );
+        }
         FleetContextMenuSource source = new FleetContextMenuSource(
             context.Window,
             context.X,
