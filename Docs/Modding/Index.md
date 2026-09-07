@@ -10,8 +10,9 @@ sparse overlays, base-pack fallback, or a separate `Mods` directory.
 
 **Only distribute files you have the right to distribute.** For mods based on the classic pack,
 distribute your changes rather than the modified pack, and have players apply them to their installed
-content. Players and mod developers must own the original game and obtain its content through the
-ownership-verifying installer.
+content. Players and mod developers must own *Star Wars: Rebellion* or
+*Star Wars: Empire at War: Gold Pack* and obtain the content through the ownership-verifying
+installer.
 
 ## Create a private development workspace
 

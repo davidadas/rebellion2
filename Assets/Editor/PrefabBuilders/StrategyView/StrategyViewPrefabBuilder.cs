@@ -806,6 +806,7 @@ public static class StrategyViewPrefabBuilder
         pressedMainButtonImage.raycastTarget = false;
         pressedMainButtonImage.gameObject.SetActive(false);
 
+        IdleBarView idleBar = CreateIdleBarView(root.transform);
         GameObject windows = CreateLayer(_windowLayerName, root.transform);
         RectTransform windowsRect = windows.GetComponent<RectTransform>();
         SetStrategySurfaceRect(windowsRect);
@@ -858,6 +859,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(controller, "strategyContextMenu", contextMenu);
         AssignReference(controller, "strategyOverlay", overlayView);
         AssignReference(controller, "strategyWindowLayerView", windowsView);
+        AssignReference(controller, "idleBar", idleBar);
         AssignReference(controller, "strategyWindowManager", windowManager);
         AssignReference(controller, "galacticInformationDisplay", galacticInformationDisplay);
         AssignReference(controller, "galacticInformationLegend", galacticInformationLegend);
@@ -915,6 +917,113 @@ public static class StrategyViewPrefabBuilder
         Object.DestroyImmediate(sceneRoot);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+    }
+
+    /// <summary>
+    /// Authors the compact idle-bar layer beneath strategy windows.
+    /// </summary>
+    /// <param name="parent">The strategy-view root.</param>
+    /// <returns>The authored idle-bar view.</returns>
+    private static IdleBarView CreateIdleBarView(Transform parent)
+    {
+        GameObject layerObject = CreateLayer("IdleBar", parent);
+        RectTransform layer = layerObject.GetComponent<RectTransform>();
+        SetStrategySurfaceRect(layer);
+        IdleBarView view = EnableRuntimeComponent(layer.gameObject.AddComponent<IdleBarView>());
+        Sprite circleSprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+
+        GameObject shelfObject = new GameObject(
+            "ShelfHitArea",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        shelfObject.transform.SetParent(layer, false);
+        Image shelfHitArea = shelfObject.GetComponent<Image>();
+        shelfHitArea.color = new Color(0.08f, 0.09f, 0.11f, 0.9f);
+        shelfHitArea.raycastTarget = true;
+        SetSourceRect(shelfHitArea.rectTransform, 0, 0, 1, 1);
+
+        GameObject slotObject = new GameObject(
+            "SlotTemplate",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Button),
+            typeof(IdleBarSlotView)
+        );
+        slotObject.transform.SetParent(layer, false);
+        SetSourceRect(slotObject.GetComponent<RectTransform>(), 0, 0, 28, 28);
+        Image hitArea = slotObject.GetComponent<Image>();
+        hitArea.color = Color.clear;
+        hitArea.raycastTarget = true;
+        Button button = slotObject.GetComponent<Button>();
+        IdleBarSlotView slotView = EnableRuntimeComponent(
+            slotObject.GetComponent<IdleBarSlotView>()
+        );
+
+        GameObject frameObject = new GameObject(
+            "CircleFrame",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        frameObject.transform.SetParent(slotObject.transform, false);
+        Image frame = frameObject.GetComponent<Image>();
+        frame.sprite = circleSprite;
+        frame.color = Color.black;
+        frame.preserveAspect = true;
+        frame.raycastTarget = false;
+        SetSourceRect(frame.rectTransform, 0, 0, 28, 28);
+        button.targetGraphic = frame;
+        button.transition = Selectable.Transition.None;
+
+        GameObject maskObject = new GameObject(
+            "PortraitMask",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Mask)
+        );
+        maskObject.transform.SetParent(slotObject.transform, false);
+        Image maskImage = maskObject.GetComponent<Image>();
+        maskImage.sprite = circleSprite;
+        maskImage.color = Color.white;
+        maskImage.preserveAspect = true;
+        maskImage.raycastTarget = false;
+        maskObject.GetComponent<Mask>().showMaskGraphic = false;
+        SetSourceRect(maskImage.rectTransform, 2, 2, 24, 24);
+
+        RawImage background = CreatePanelImage(
+            "PortraitBackground",
+            maskObject.transform,
+            Color.black
+        );
+        FillParent(background.rectTransform);
+        background.raycastTarget = false;
+
+        RawImage portrait = CreatePanelImage("PortraitImage", maskObject.transform, Color.white);
+        FillParent(portrait.rectTransform);
+        portrait.raycastTarget = false;
+
+        TextMeshProUGUI pageText = CreateTextLabel("PageTextField", layer);
+        pageText.text = string.Empty;
+        pageText.fontSize = 7;
+        pageText.alignment = TextAlignmentOptions.TopLeft;
+        pageText.raycastTarget = false;
+        SetSourceRect(pageText.rectTransform, 0, 0, 20, 8);
+        pageText.gameObject.SetActive(false);
+
+        AssignReference(slotView, "button", button);
+        AssignReference(slotView, "frameImage", frame);
+        AssignReference(slotView, "portraitMask", maskImage.rectTransform);
+        AssignReference(slotView, "portraitBackground", background);
+        AssignReference(slotView, "portraitImage", portrait);
+        AssignReference(view, "shelfHitArea", shelfHitArea);
+        AssignReference(view, "pageTextField", pageText);
+        AssignReference(view, "slotTemplate", slotView);
+        slotObject.SetActive(false);
+        return view;
     }
 
     /// <summary>

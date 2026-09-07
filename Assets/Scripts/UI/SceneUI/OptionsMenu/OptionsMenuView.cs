@@ -986,8 +986,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || _controlsPage == null
         )
             throw new MissingReferenceException($"{name} is missing a page container.");
-        if (_gameplayRows.Length != 3 || Array.Exists(_gameplayRows, row => row == null))
-            throw new MissingReferenceException($"{name} expects three gameplay rows.");
+        if (_gameplayRows.Length != 4 || Array.Exists(_gameplayRows, row => row == null))
+            throw new MissingReferenceException($"{name} expects four gameplay rows.");
         if (
             _autosaveIntervalInputField == null
             || _autosaveIntervalBadgeImage == null

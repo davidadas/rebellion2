@@ -2961,6 +2961,7 @@ namespace Rebellion.Tests.Systems
                 {
                     SpaceCombat = new GameConfig.SpaceCombatConfig
                     {
+                        AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                         AutoResolveMaximumIterations = 4096,
                         AutoResolveStagnationIterations = 1200,
                         AutoResolveRetreatStrengthRatio = 0.33,

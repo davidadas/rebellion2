@@ -333,6 +333,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 .ToArray();
 
             CollectionAssert.Contains(labels, "GALACTIC MODE");
+            CollectionAssert.Contains(labels, "[Experimental] Show Idle Bar");
             CollectionAssert.Contains(labels, "RETURN TO GAME");
             CollectionAssert.Contains(labels, "RETURN TO MAIN MENU");
         }

@@ -5,7 +5,7 @@
 - Unity 6000.4.0f1
 - .NET SDK
 - A Bash-compatible shell
-- A copy of *Star Wars: Rebellion* owned through GOG or Steam
+- Ownership of *Star Wars: Rebellion* or *Star Wars: Empire at War: Gold Pack* through GOG or Steam
 - Access to the separate `rebellion2-media` repository
 
 Access to development content does not grant redistribution rights. **NEVER share, upload, commit,

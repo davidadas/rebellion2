@@ -455,10 +455,7 @@ namespace Rebellion.Game.Combat
                     .ToList();
                 Fighters = (fighters ?? Array.Empty<Starfighter>())
                     .Where(fighter => fighter != null)
-                    .Select(fighter => new StarfighterState(
-                        fighter,
-                        config.AutoResolveMinimumManeuverRatio
-                    ))
+                    .Select(fighter => new StarfighterState(fighter, config))
                     .ToList();
                 Units = new List<TacticalUnit>(Ships.Count + Fighters.Count);
                 Units.AddRange(Ships);
@@ -1546,9 +1543,12 @@ namespace Rebellion.Game.Combat
             internal readonly Starfighter Fighter;
             internal readonly int InitialSquadronSize;
             private readonly double _durabilityPerFighter;
+            private readonly double _maximumWeaponCharge;
+            private readonly double _weaponRecharge;
             private readonly double[] _weaponTargetDamage = new double[3];
             private readonly TacticalUnit[] _weaponTargets = new TacticalUnit[3];
             private double _currentDurability;
+            private double _currentWeaponCharge;
 
             internal int CurrentSquadronSize =>
                 IsAlive
@@ -1563,11 +1563,7 @@ namespace Rebellion.Game.Combat
             internal override bool IsStarfighter => true;
             internal override double RemainingDurability => _currentDurability;
             internal override bool CanScanForTargets =>
-                GetCombinedWeaponStrength(
-                    targetsFighters: false,
-                    engagementDistance: 0,
-                    requireRange: true
-                ) > 0;
+                _maximumWeaponCharge > 0 && _currentWeaponCharge >= _maximumWeaponCharge;
             internal override double ClosingSpeed => Math.Max(Fighter.SublightSpeed, 0);
             internal override double ManeuverRate =>
                 Math.Max(Fighter.SublightSpeed + Fighter.Agility, MinimumManeuverRatio);
@@ -1576,14 +1572,22 @@ namespace Rebellion.Game.Combat
             /// Creates tactical state from a fighter squadron's current strategic state.
             /// </summary>
             /// <param name="fighter">The fighter squadron entering combat.</param>
-            /// <param name="minimumManeuverRatio">The minimum maneuver value and multiplier.</param>
-            internal StarfighterState(Starfighter fighter, double minimumManeuverRatio)
-                : base(minimumManeuverRatio)
+            /// <param name="config">The automatic combat parameters.</param>
+            internal StarfighterState(Starfighter fighter, GameConfig.SpaceCombatConfig config)
+                : base(config.AutoResolveMinimumManeuverRatio)
             {
                 Fighter = fighter;
                 InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);
                 _durabilityPerFighter = Math.Max(fighter.ShieldStrength, 1);
                 _currentDurability = InitialSquadronSize * _durabilityPerFighter;
+                _maximumWeaponCharge =
+                    Math.Max(fighter.LaserCannon, 0)
+                    + Math.Max(fighter.IonCannon, 0)
+                    + Math.Max(fighter.Torpedoes, 0);
+                _currentWeaponCharge = _maximumWeaponCharge;
+                _weaponRecharge =
+                    Math.Max(fighter.ShieldStrength, 0)
+                    * Math.Max(config.AutoResolveFighterWeaponRechargeMultiplier, 0);
             }
 
             /// <inheritdoc />
@@ -1594,10 +1598,14 @@ namespace Rebellion.Game.Combat
                 IDictionary<TacticalUnit, PendingDamage> pendingDamage
             )
             {
+                if (_currentWeaponCharge < _maximumWeaponCharge)
+                    return;
+
                 if (scansForTarget)
                     ScanForWeaponTargets(targets, engagementDistance);
 
                 double squadronStrength = GetRemainingSquadronStrength();
+                double consumedCharge = 0;
                 for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
                 {
                     TacticalUnit target = _weaponTargets[weaponIndex];
@@ -1614,8 +1622,12 @@ namespace Rebellion.Game.Combat
                     if (damage > 0)
                     {
                         AddPendingDamage(pendingDamage, target, damage, weaponIndex == 2);
+                        consumedCharge += weaponStrength;
                     }
                 }
+
+                if (consumedCharge > 0)
+                    _currentWeaponCharge = Math.Max(_currentWeaponCharge - consumedCharge, 0);
             }
 
             /// <summary>
@@ -1685,7 +1697,13 @@ namespace Rebellion.Game.Combat
             protected override void AdvanceUnitState(
                 GameConfig.SpaceCombatConfig config,
                 IRandomNumberProvider random
-            ) { }
+            )
+            {
+                _currentWeaponCharge = Math.Min(
+                    _maximumWeaponCharge,
+                    _currentWeaponCharge + _weaponRecharge
+                );
+            }
 
             /// <inheritdoc />
             internal override void Destroy()

@@ -305,8 +305,14 @@ public static class OptionsMenuPrefabBuilder
         {
             UserGameplayOption.PauseAfterEnemyBombardment,
             UserGameplayOption.PauseWhenSpaceBattleBegins,
+            UserGameplayOption.ShowIdleBar,
         };
-        string[] labels = { "Pause After Enemy Bombardment", "Pause on Space Battles" };
+        string[] labels =
+        {
+            "Pause After Enemy Bombardment",
+            "Pause on Space Battles",
+            "[Experimental] Show Idle Bar",
+        };
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length + 1];
         rows[0] = autosaveRow;
         for (int i = 0; i < options.Length; i++)
