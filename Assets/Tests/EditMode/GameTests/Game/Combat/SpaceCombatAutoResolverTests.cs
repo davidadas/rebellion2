@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Game.Combat
             attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
             CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier = 0.25;
+            config.LaserCannonDamageAgainstCapitalShipsMultiplier = 0.25;
             config.AutoResolveMaximumIterations = 1;
             config.AutoResolveTargetScanDivisor = 1;
 
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.Game.Combat
             );
             defenderFighter.Agility = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier = 0.01;
+            config.LaserCannonDamageAgainstCapitalShipsMultiplier = 0.01;
             config.AutoResolveMaximumIterations = 1;
             config.AutoResolveTargetScanDivisor = 1;
             config.AutoResolveStartingDistance = 0;
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Game.Combat
                 weaponStrength: 20
             );
             GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier = 0.25;
+            config.LaserCannonDamageAgainstCapitalShipsMultiplier = 0.25;
             config.AutoResolveMaximumIterations = 0;
 
             SpaceCombatAutoResult result = Resolve(
@@ -1432,7 +1432,7 @@ namespace Rebellion.Tests.Game.Combat
         {
             return new GameConfig.SpaceCombatConfig
             {
-                CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier = 1.0 / 6.0,
+                LaserCannonDamageAgainstCapitalShipsMultiplier = 1.0 / 6.0,
                 AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                 AutoResolveMaximumIterations = 4096,
                 AutoResolveStagnationIterations = 1200,
