@@ -163,6 +163,8 @@ namespace Rebellion.AI.Scoring
                     * config.AttackStrategicValueWeight
                 + assessment.GetOffensiveSupportLeverage(targetPlanet)
                     * config.AttackSectorSupportLeverageWeight
+                + assessment.GetOwnedSystemPresenceRatio(assessment.GetPlanetSystemId(targetPlanet))
+                    * config.AttackSystemPresenceWeight
                 + ScoreReadiness(context, fleet, targetPlanet) * config.AttackReadinessWeight
                 + ScoreCaptureViability(context, fleet, targetPlanet)
                     * config.AttackCaptureViabilityWeight
@@ -180,6 +182,37 @@ namespace Rebellion.AI.Scoring
 
             score = Math.Max(0, score);
             return existingOrder ? score + config.ExistingAttackOrderBonus : score;
+        }
+
+        /// <summary>
+        /// Returns a provable upper bound for an attack proposal's score.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="targetPlanet">The attack target to bound.</param>
+        /// <returns>The highest score an attack proposal for the target can attain.</returns>
+        internal double GetNewAttackScoreUpperBound(AITurnContext context, Planet targetPlanet)
+        {
+            if (context?.Game == null || targetPlanet == null)
+                return 0;
+
+            AIAssessment assessment = context.Assessment;
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            double score =
+                ScoreStrategicTargetValue(assessment, targetPlanet)
+                    * config.AttackStrategicValueWeight
+                + assessment.GetOffensiveSupportLeverage(targetPlanet)
+                    * config.AttackSectorSupportLeverageWeight
+                + assessment.GetOwnedSystemPresenceRatio(assessment.GetPlanetSystemId(targetPlanet))
+                    * config.AttackSystemPresenceWeight
+                + Math.Max(0, config.AttackReadinessWeight)
+                + Math.Max(0, config.AttackCaptureViabilityWeight)
+                + Math.Max(0, config.AttackTravelEfficiencyWeight)
+                + Math.Max(0, config.OrbitalResponseBonus);
+
+            if (targetPlanet.IsHeadquarters)
+                score += config.HeadquartersAttackBonus;
+
+            return Math.Max(0, score);
         }
 
         /// <summary>
@@ -518,10 +551,9 @@ namespace Rebellion.AI.Scoring
                 return 0;
 
             double distance = currentPlanet.GetRawDistanceTo(targetPlanet);
-            double farthestTargetDistance = assessment
-                .EnemyPlanets.Select(planet => currentPlanet.GetRawDistanceTo(planet))
-                .DefaultIfEmpty()
-                .Max();
+            double farthestTargetDistance = assessment.GetFarthestEnemyPlanetDistance(
+                currentPlanet
+            );
 
             if (farthestTargetDistance <= 0)
                 return 1;

@@ -20,6 +20,7 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.AttackStrategicValueWeight = 0;
+            game.Config.AI.FleetDeployment.AttackSystemPresenceWeight = 0;
             game.Config.AI.FleetDeployment.AttackReadinessWeight = 0;
             game.Config.AI.FleetDeployment.AttackCaptureViabilityWeight = 0;
             game.Config.AI.FleetDeployment.AttackTravelEfficiencyWeight = 0;
@@ -80,6 +81,7 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.AttackStrategicValueWeight = 0;
+            game.Config.AI.FleetDeployment.AttackSystemPresenceWeight = 0;
             game.Config.AI.FleetDeployment.AttackReadinessWeight = 0;
             game.Config.AI.FleetDeployment.AttackCaptureViabilityWeight = 0;
             game.Config.AI.FleetDeployment.AttackTravelEfficiencyWeight = 0;
@@ -109,6 +111,35 @@ namespace Rebellion.Tests.AI.Scoring
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
             Assert.AreEqual(game.Config.AI.FleetDeployment.OrbitalResponseBonus, score);
+        }
+
+        [Test]
+        public void GetNewAttackScoreUpperBound_WithAttackProposal_DoesNotUnderestimateScore()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Fleet fleet = AddBattleFleet(
+                game,
+                owned,
+                "friendly",
+                empire.InstanceID,
+                combatStrength: 1000
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                target
+            );
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+
+            double score = scorer.Score(context, proposal);
+            double upperBound = scorer.GetNewAttackScoreUpperBound(context, target);
+
+            Assert.GreaterOrEqual(upperBound, score);
         }
 
         [Test]
@@ -153,6 +184,7 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.AttackStrategicValueWeight = 100;
+            game.Config.AI.FleetDeployment.AttackSystemPresenceWeight = 0;
             game.Config.AI.FleetDeployment.AttackReadinessWeight = 0;
             game.Config.AI.FleetDeployment.AttackCaptureViabilityWeight = 0;
             game.Config.AI.FleetDeployment.AttackTravelEfficiencyWeight = 0;

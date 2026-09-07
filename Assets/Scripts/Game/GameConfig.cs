@@ -191,6 +191,8 @@ namespace Rebellion.Game
 
             public int AttackSectorSupportLeverageWeight { get; set; } = 30;
 
+            public int AttackSystemPresenceWeight { get; set; } = 30;
+
             public int AttackReadinessWeight { get; set; } = 35;
 
             public int AttackCaptureViabilityWeight { get; set; } = 45;

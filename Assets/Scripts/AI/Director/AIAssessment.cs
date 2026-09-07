@@ -26,6 +26,12 @@ namespace Rebellion.AI.Director
         private readonly Dictionary<string, double> _planetValues = new Dictionary<string, double>(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<string, double> _farthestEnemyPlanetDistances = new Dictionary<
+            string,
+            double
+        >(StringComparer.Ordinal);
+        private double? _highestEnemyPlanetValue;
+        private double? _highestOwnedPlanetValue;
         private readonly Dictionary<string, int> _planetBuildingCounts = new Dictionary<
             string,
             int
@@ -484,7 +490,36 @@ namespace Rebellion.AI.Director
         /// <returns>The highest enemy planet value.</returns>
         public double GetHighestEnemyPlanetValue()
         {
-            return EnemyPlanets.Select(GetPlanetValue).DefaultIfEmpty().Max();
+            if (!_highestEnemyPlanetValue.HasValue)
+            {
+                _highestEnemyPlanetValue = EnemyPlanets
+                    .Select(GetPlanetValue)
+                    .DefaultIfEmpty()
+                    .Max();
+            }
+
+            return _highestEnemyPlanetValue.Value;
+        }
+
+        /// <summary>
+        /// Returns the distance from an origin to its farthest known enemy planet.
+        /// </summary>
+        /// <param name="origin">The origin planet.</param>
+        /// <returns>The farthest enemy-planet distance.</returns>
+        public double GetFarthestEnemyPlanetDistance(Planet origin)
+        {
+            if (origin == null)
+                return 0;
+
+            return GetOrAdd(
+                _farthestEnemyPlanetDistances,
+                origin.InstanceID,
+                () =>
+                    EnemyPlanets
+                        .Select(planet => origin.GetRawDistanceTo(planet))
+                        .DefaultIfEmpty()
+                        .Max()
+            );
         }
 
         /// <summary>
@@ -584,7 +619,15 @@ namespace Rebellion.AI.Director
         /// <returns>The highest owned planet value.</returns>
         public double GetHighestOwnedPlanetValue()
         {
-            return OwnedPlanets.Select(GetPlanetValue).DefaultIfEmpty().Max();
+            if (!_highestOwnedPlanetValue.HasValue)
+            {
+                _highestOwnedPlanetValue = OwnedPlanets
+                    .Select(GetPlanetValue)
+                    .DefaultIfEmpty()
+                    .Max();
+            }
+
+            return _highestOwnedPlanetValue.Value;
         }
 
         /// <summary>

@@ -15,6 +15,8 @@ namespace Rebellion.AI.Planners
     {
         // Specialized Planners.
         private readonly AIFleetDefensePlanner _defensePlanner = new AIFleetDefensePlanner();
+        private readonly AIFleetAttackCandidateSelector _attackCandidateSelector =
+            new AIFleetAttackCandidateSelector();
 
         /// <summary>
         /// Returns fleet proposals for the current AI turn.
@@ -30,8 +32,11 @@ namespace Rebellion.AI.Planners
 
             proposals.AddRange(_defensePlanner.Plan(context));
 
+            HashSet<string> activeAttackSystemIds = GetActiveAttackSystemIds(context);
             foreach (Fleet fleet in context.Assessment.OwnedFleets)
                 AddFleetProposal(context, fleet, proposals);
+
+            AddAttackOrderProposal(context, activeAttackSystemIds, proposals);
 
             AddCapitalShipTransferProposals(context, proposals);
 
@@ -55,7 +60,6 @@ namespace Rebellion.AI.Planners
 
             if (order == null)
             {
-                AddAttackOrderProposals(context, fleet, currentPlanet, proposals);
                 AddColonizationOrderProposals(context, fleet, currentPlanet, proposals);
                 return;
             }
@@ -284,119 +288,48 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds attack order proposals for an idle fleet.
+        /// Adds the strongest new attack order proposal for the faction.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to evaluate.</param>
-        /// <param name="currentPlanet">The fleet's current planet.</param>
+        /// <param name="activeAttackSystemIds">Systems already assigned to attack fleets.</param>
         /// <param name="proposals">The proposal list to update.</param>
-        private void AddAttackOrderProposals(
+        private void AddAttackOrderProposal(
             AITurnContext context,
-            Fleet fleet,
-            Planet currentPlanet,
+            HashSet<string> activeAttackSystemIds,
             List<AIProposal> proposals
         )
         {
-            bool canStartAttack = CanStartAttackOrder(context, fleet);
-            string preferredSystemId = canStartAttack
-                ? FindPreferredAttackSystemId(context, fleet, currentPlanet)
-                : string.Empty;
+            IEnumerable<Planet> targets = context.Assessment.EnemyPlanets.Where(target =>
+                !activeAttackSystemIds.Contains(context.Assessment.GetPlanetSystemId(target))
+            );
+            if (ShouldPrioritizeHeadquartersCampaign(context))
+                targets = targets.Where(target => target.IsHeadquarters);
 
-            foreach (Planet targetPlanet in context.Assessment.EnemyPlanets)
-            {
-                bool isPreferredCampaignTarget =
-                    canStartAttack
-                    && context.Assessment.GetPlanetSystemId(targetPlanet) == preferredSystemId;
-                if (!isPreferredCampaignTarget)
-                    continue;
-
-                if (HasAttackFleetForTarget(context, targetPlanet, fleet))
-                    continue;
-
-                proposals.Add(
-                    new AIFleetAttackProposal(
-                        fleet,
-                        FleetOrderType.Attack,
-                        GetInitialAttackStatus(currentPlanet, targetPlanet),
-                        targetPlanet
-                    )
-                );
-            }
+            AIFleetAttackProposal proposal = _attackCandidateSelector.Select(
+                context,
+                context.Assessment.OwnedFleets.Where(fleet =>
+                    fleet.Order == null && CanStartAttackOrder(context, fleet)
+                ),
+                targets
+            );
+            if (proposal != null)
+                proposals.Add(proposal);
         }
 
         /// <summary>
-        /// Selects the preferred system for a fleet's next attack campaign.
+        /// Returns systems already assigned to an attack fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">Fleet being assigned.</param>
-        /// <param name="currentPlanet">Fleet's current planet.</param>
-        /// <returns>The preferred system identifier, or null.</returns>
-        private string FindPreferredAttackSystemId(
-            AITurnContext context,
-            Fleet fleet,
-            Planet currentPlanet
-        )
+        /// <returns>System identifiers with active attack campaigns.</returns>
+        private HashSet<string> GetActiveAttackSystemIds(AITurnContext context)
         {
             return context
-                .Assessment.EnemyPlanets.Select(context.Assessment.GetPlanetSystemId)
-                .Where(systemId => !string.IsNullOrEmpty(systemId))
-                .Distinct()
-                .Where(systemId => !HasAttackFleetForSystem(context, systemId, fleet))
-                .Select(systemId =>
-                {
-                    IReadOnlyList<Planet> planets = context.Assessment.GetAttackCampaignPlanets(
-                        systemId
-                    );
-                    return new
-                    {
-                        SystemId = systemId,
-                        IsHeadquarters = IsHeadquartersSystem(context, systemId),
-                        Readiness = planets
-                            .Select(target =>
-                                context.Assessment.GetProjectedFleetAttackReadinessGateCount(
-                                    fleet,
-                                    target
-                                )
-                            )
-                            .DefaultIfEmpty()
-                            .Max(),
-                        SupportLeverage = context.Assessment.GetEnemySystemSupportLeverage(
-                            systemId
-                        ),
-                        EnemyPlanetCount = planets.Count,
-                        RequiredCombat = planets
-                            .Select(context.Assessment.GetRequiredAttackCombatStrength)
-                            .DefaultIfEmpty()
-                            .Min(),
-                        RequiredRegiments = planets
-                            .Select(context.Assessment.GetRequiredAttackRegimentCount)
-                            .DefaultIfEmpty()
-                            .Min(),
-                        RequiredBombardment = planets
-                            .Select(context.Assessment.GetRequiredBombardmentStrength)
-                            .DefaultIfEmpty()
-                            .Min(),
-                        OwnedPresence = context.Assessment.GetOwnedSystemPresenceRatio(systemId),
-                        Value = context.Assessment.GetEnemySystemValue(systemId),
-                        Distance = GetDistanceToAttackSystem(context, currentPlanet, systemId),
-                    };
-                })
-                .OrderByDescending(candidate =>
-                    ShouldPrioritizeHeadquartersCampaign(context) && candidate.IsHeadquarters
+                .Assessment.AttackOrderedFleets.Select(fleet =>
+                    context.Assessment.GetKnownPlanet(fleet.Order?.TargetPlanetId)
                 )
-                .ThenByDescending(candidate => candidate.Readiness)
-                .ThenByDescending(candidate => candidate.SupportLeverage)
-                .ThenBy(candidate => candidate.EnemyPlanetCount)
-                .ThenBy(candidate => candidate.RequiredCombat)
-                .ThenBy(candidate => candidate.RequiredRegiments)
-                .ThenBy(candidate => candidate.RequiredBombardment)
-                .ThenByDescending(candidate => candidate.OwnedPresence)
-                .ThenByDescending(candidate => candidate.IsHeadquarters)
-                .ThenByDescending(candidate => candidate.Value)
-                .ThenBy(candidate => candidate.Distance)
-                .ThenBy(candidate => candidate.SystemId, System.StringComparer.Ordinal)
-                .Select(candidate => candidate.SystemId)
-                .FirstOrDefault();
+                .Select(context.Assessment.GetPlanetSystemId)
+                .Where(systemId => !string.IsNullOrEmpty(systemId))
+                .ToHashSet(StringComparer.Ordinal);
         }
 
         /// <summary>
@@ -409,42 +342,6 @@ namespace Rebellion.AI.Planners
             return context.Assessment.EnemyPlanets.Count > 0
                 && context.Assessment.OwnedPlanets.Count
                     > context.Assessment.EnemyPlanets.Count * 2;
-        }
-
-        /// <summary>
-        /// Returns whether a campaign system contains an enemy headquarters.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="systemId">The candidate system identifier.</param>
-        /// <returns>True when the campaign system contains a headquarters.</returns>
-        private static bool IsHeadquartersSystem(AITurnContext context, string systemId)
-        {
-            return context
-                .Assessment.GetAttackCampaignPlanets(systemId)
-                .Any(planet => planet.IsHeadquarters);
-        }
-
-        /// <summary>
-        /// Returns the shortest distance from a planet to a campaign system.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="currentPlanet">Fleet's current planet.</param>
-        /// <param name="systemId">Candidate system identifier.</param>
-        /// <returns>The shortest raw distance.</returns>
-        private double GetDistanceToAttackSystem(
-            AITurnContext context,
-            Planet currentPlanet,
-            string systemId
-        )
-        {
-            if (currentPlanet == null)
-                return double.MaxValue;
-
-            return context
-                .Assessment.GetAttackCampaignPlanets(systemId)
-                .Select(currentPlanet.GetRawDistanceTo)
-                .DefaultIfEmpty(double.MaxValue)
-                .Min();
         }
 
         /// <summary>

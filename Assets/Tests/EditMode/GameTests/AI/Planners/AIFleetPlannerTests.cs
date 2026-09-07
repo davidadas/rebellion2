@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.AI.Director;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scoring;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -39,6 +40,53 @@ namespace Rebellion.Tests.AI.Planners
                         && proposal.OrderType == FleetOrderType.Attack
                     )
             );
+        }
+
+        [Test]
+        public void Plan_WithMultipleIdleBattleFleets_AddsBestAttackProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
+            Fleet weaker = AddBattleFleet(
+                game,
+                owned,
+                empire.InstanceID,
+                "weaker",
+                combatStrength: 100
+            );
+            Fleet stronger = AddBattleFleet(
+                game,
+                owned,
+                empire.InstanceID,
+                "stronger",
+                combatStrength: 1000
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+            AIFleetAttackProposal expected = new[] { weaker, stronger }
+                .SelectMany(fleet =>
+                    context.Assessment.EnemyPlanets.Select(target => new AIFleetAttackProposal(
+                        fleet,
+                        FleetOrderType.Attack,
+                        FleetOrderStatus.Staging,
+                        target
+                    ))
+                )
+                .OrderByDescending(proposal => scorer.Score(context, proposal))
+                .ThenBy(proposal => proposal.GetSortKey())
+                .First();
+
+            List<AIFleetAttackProposal> proposals = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetAttackProposal>()
+                .ToList();
+
+            Assert.AreEqual(1, proposals.Count);
+            Assert.AreSame(expected.Fleet, proposals[0].Fleet);
+            Assert.AreSame(expected.TargetPlanet, proposals[0].TargetPlanet);
         }
 
         [Test]
@@ -125,6 +173,16 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithEnemySystems_PrioritizesGreatestFriendlyPresence()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.AttackStrategicValueWeight = 0;
+            game.Config.AI.FleetDeployment.AttackSectorSupportLeverageWeight = 0;
+            game.Config.AI.FleetDeployment.AttackSystemPresenceWeight = 100;
+            game.Config.AI.FleetDeployment.AttackReadinessWeight = 0;
+            game.Config.AI.FleetDeployment.AttackCaptureViabilityWeight = 0;
+            game.Config.AI.FleetDeployment.AttackTravelEfficiencyWeight = 0;
+            game.Config.AI.FleetDeployment.AttackExpectedLossPenaltyWeight = 0;
+            game.Config.AI.FleetDeployment.AttackOpportunityCostPenaltyWeight = 0;
+            game.Config.AI.FleetDeployment.HeadquartersAttackBonus = 0;
+            game.Config.AI.FleetDeployment.OrbitalResponseBonus = 0;
             PlanetSector establishedSystem = AITestSceneBuilder.AddSector(
                 game,
                 "established-system"
