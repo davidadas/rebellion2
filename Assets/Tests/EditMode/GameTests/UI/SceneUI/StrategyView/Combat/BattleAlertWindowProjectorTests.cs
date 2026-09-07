@@ -134,7 +134,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void Project_PendingForces_WhenEmpireAttacks_IconsStillOpenMatchingFactions()
+        public void Project_PendingForces_WhenSecondFactionAttacks_IconsStillMatchFactionOrder()
         {
             (
                 GameRoot Game,
@@ -660,7 +660,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void Project_ResultForces_WhenEmpireAttacks_IconsStillOpenMatchingFactions()
+        public void Project_ResultForces_WhenSecondFactionAttacks_IconsStillMatchFactionOrder()
         {
             (
                 GameRoot Game,
