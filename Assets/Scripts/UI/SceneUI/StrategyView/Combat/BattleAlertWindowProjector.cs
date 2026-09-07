@@ -162,7 +162,12 @@ internal sealed class BattleAlertWindowProjector
         bool detail = panel is BattleResultPanel.FirstForces or BattleResultPanel.SecondForces;
         bool direct = panel == BattleResultPanel.Direct;
         bool planetaryResult = result.UsesPlanetaryLayout;
-        string ownerInstanceId = result.GetOwnerInstanceID(panel);
+        string ownerInstanceId = GetForcesOwnerInstanceID(
+            uiContext,
+            result.AttackerOwnerInstanceID,
+            result.DefenderOwnerInstanceID,
+            panel == BattleResultPanel.SecondForces
+        );
         BattleResultTableRenderData table = detail
             ? resultTableProjector.Project(uiContext, result, ownerInstanceId, category)
             : null;
@@ -434,10 +439,13 @@ internal sealed class BattleAlertWindowProjector
         switch (panel)
         {
             case BattleAlertPanel.FirstForces:
-                AddFleetRows(rows, pending, GetPendingOwnerInstanceID(pending, panel), uiContext);
-                break;
             case BattleAlertPanel.SecondForces:
-                AddFleetRows(rows, pending, GetPendingOwnerInstanceID(pending, panel), uiContext);
+                AddFleetRows(
+                    rows,
+                    pending,
+                    GetPendingOwnerInstanceID(uiContext, pending, panel),
+                    uiContext
+                );
                 break;
             case BattleAlertPanel.SystemAssets:
                 AddSystemRows(rows, pending?.Planet, uiContext);
@@ -646,7 +654,7 @@ internal sealed class BattleAlertWindowProjector
         {
             BattleAlertPanel.FirstForces or BattleAlertPanel.SecondForces => GetForcesHeader(
                 uiContext,
-                GetPendingOwnerInstanceID(pending, panel)
+                GetPendingOwnerInstanceID(uiContext, pending, panel)
             ),
             BattleAlertPanel.SystemAssets => "System Assets",
             _ => "Battle Summary",
@@ -656,23 +664,59 @@ internal sealed class BattleAlertWindowProjector
     /// <summary>
     /// Returns the owner represented by a pending-combat force panel.
     /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="pending">The pending encounter.</param>
     /// <param name="panel">The selected pending panel.</param>
     /// <returns>The represented owner identifier.</returns>
     private static string GetPendingOwnerInstanceID(
+        UIContext uiContext,
         PendingCombatResult pending,
         BattleAlertPanel panel
     )
     {
-        return panel == BattleAlertPanel.SecondForces
-            ? BattleResultPresentation.FirstNonBlank(
-                pending?.DefenderOwnerInstanceID,
-                pending?.DefenderFleet?.GetOwnerInstanceID()
+        string attackerOwnerInstanceId = BattleResultPresentation.FirstNonBlank(
+            pending?.AttackerOwnerInstanceID,
+            pending?.AttackerFleet?.GetOwnerInstanceID()
+        );
+        string defenderOwnerInstanceId = BattleResultPresentation.FirstNonBlank(
+            pending?.DefenderOwnerInstanceID,
+            pending?.DefenderFleet?.GetOwnerInstanceID()
+        );
+        return GetForcesOwnerInstanceID(
+            uiContext,
+            attackerOwnerInstanceId,
+            defenderOwnerInstanceId,
+            panel == BattleAlertPanel.SecondForces
+        );
+    }
+
+    /// <summary>
+    /// Resolves a faction-icon slot independently of which faction attacked.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="attackerOwnerInstanceId">The attacking faction identifier.</param>
+    /// <param name="defenderOwnerInstanceId">The defending faction identifier.</param>
+    /// <param name="secondForces">Whether to resolve the second faction-icon slot.</param>
+    /// <returns>The owner represented by the requested faction-icon slot.</returns>
+    private static string GetForcesOwnerInstanceID(
+        UIContext uiContext,
+        string attackerOwnerInstanceId,
+        string defenderOwnerInstanceId,
+        bool secondForces
+    )
+    {
+        string[] participants = { attackerOwnerInstanceId, defenderOwnerInstanceId };
+        IEnumerable<string> configuredFactionOrder =
+            uiContext?.Game?.GetFactions()?.Select(faction => faction?.InstanceID)
+            ?? Enumerable.Empty<string>();
+        List<string> orderedParticipants = configuredFactionOrder
+            .Concat(participants)
+            .Where(ownerInstanceId =>
+                !string.IsNullOrEmpty(ownerInstanceId) && participants.Contains(ownerInstanceId)
             )
-            : BattleResultPresentation.FirstNonBlank(
-                pending?.AttackerOwnerInstanceID,
-                pending?.AttackerFleet?.GetOwnerInstanceID()
-            );
+            .Distinct()
+            .ToList();
+        return orderedParticipants.ElementAtOrDefault(secondForces ? 1 : 0);
     }
 
     /// <summary>
