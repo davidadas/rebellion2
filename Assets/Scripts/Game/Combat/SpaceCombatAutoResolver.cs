@@ -1029,7 +1029,7 @@ namespace Rebellion.Game.Combat
                 _laserCannons = GetWeaponValues(ship, PrimaryWeaponType.LaserCannon);
                 _ionCannons = GetWeaponValues(ship, PrimaryWeaponType.IonCannon);
                 _laserCannonDamageAgainstCapitalShipsMultiplier = Math.Max(
-                    config.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier,
+                    config.LaserCannonDamageAgainstCapitalShipsMultiplier,
                     0
                 );
                 CurrentHull = InitialHull;
