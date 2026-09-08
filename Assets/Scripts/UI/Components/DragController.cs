@@ -116,9 +116,6 @@ public readonly struct DragPreviewImage
     /// </summary>
     public RectInt Bounds { get; }
 
-    /// <summary>
-    /// Gets the source texture region rendered inside the preview bounds.
-    /// </summary>
     public Rect UvRect { get; }
 
     /// <summary>
