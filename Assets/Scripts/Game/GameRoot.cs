@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Traits;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -41,6 +42,9 @@ namespace Rebellion.Game
         // Configuration.
         [PersistableIgnore]
         public GameConfig Config { get; private set; }
+
+        [PersistableIgnore]
+        public ModifierResolver Modifiers { get; private set; }
 
         // Random generators.
         [PersistableIgnore]
@@ -107,6 +111,7 @@ namespace Rebellion.Game
         public GameRoot()
         {
             Galaxy = new GalaxyMap();
+            ConfigureModifiers(null, null);
         }
 
         /// <summary>
@@ -118,6 +123,7 @@ namespace Rebellion.Game
         {
             SetConfig(config);
             Galaxy = new GalaxyMap();
+            ConfigureModifiers(null, null);
         }
 
         /// <summary>
@@ -131,6 +137,7 @@ namespace Rebellion.Game
             Summary = summary;
             SetConfig(config);
             Galaxy = new GalaxyMap();
+            ConfigureModifiers(null, null);
         }
 
         /// <summary>
@@ -167,7 +174,7 @@ namespace Rebellion.Game
         /// </summary>
         /// <param name="faction">The faction whose modifier is requested.</param>
         /// <returns>The configured AI modifier, or a neutral modifier.</returns>
-        public GameModifier GetDifficultyModifier(Faction faction)
+        public DifficultyModifiers GetDifficultyModifier(Faction faction)
         {
             if (
                 faction?.IsAIControlled() == true
@@ -177,14 +184,14 @@ namespace Rebellion.Game
                 && Config?.DifficultyModifiers != null
                 && Config.DifficultyModifiers.TryGetValue(
                     Summary.Difficulty,
-                    out GameModifier modifier
+                    out DifficultyModifiers modifier
                 )
             )
             {
                 return modifier;
             }
 
-            return GameModifier.Neutral;
+            return new DifficultyModifiers();
         }
 
         /// <summary>
@@ -192,10 +199,22 @@ namespace Rebellion.Game
         /// </summary>
         /// <param name="ownerInstanceId">The owning faction identifier.</param>
         /// <returns>The configured AI modifier, or a neutral modifier.</returns>
-        public GameModifier GetDifficultyModifier(string ownerInstanceId)
+        public DifficultyModifiers GetDifficultyModifier(string ownerInstanceId)
         {
             Faction faction = _factions.Find(candidate => candidate.InstanceID == ownerInstanceId);
             return GetDifficultyModifier(faction);
+        }
+
+        /// <summary>
+        /// Configures the runtime service that resolves authored traits and status effects.
+        /// </summary>
+        public void ConfigureModifiers(
+            IEnumerable<Trait> traits,
+            IEnumerable<StatusEffect> statusEffects
+        )
+        {
+            DifficultyModifierProvider difficulty = new DifficultyModifierProvider(this);
+            Modifiers = new ModifierResolver(this, traits, statusEffects, difficulty.GetModifiers);
         }
 
         /// <summary>

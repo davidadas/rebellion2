@@ -10,6 +10,7 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Traits;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.Util.Serialization;
@@ -301,6 +302,16 @@ public static class ContentPackLoader
             pack.BuildingsPath,
             "Buildings"
         );
+        Trait[] traits = string.IsNullOrWhiteSpace(pack.TraitsPath)
+            ? Array.Empty<Trait>()
+            : DeserializeGameData<Trait[]>(packRoot, pack.TraitsPath, "Traits");
+        StatusEffect[] statusEffects = string.IsNullOrWhiteSpace(pack.StatusEffectsPath)
+            ? Array.Empty<StatusEffect>()
+            : DeserializeGameData<StatusEffect[]>(
+                packRoot,
+                pack.StatusEffectsPath,
+                "StatusEffects"
+            );
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(
             packRoot,
             pack.GameEventsPath,
@@ -394,7 +405,9 @@ public static class ContentPackLoader
             gameEvents,
             messageDefinitions,
             encyclopediaEntries,
-            themes
+            themes,
+            traits,
+            statusEffects
         );
     }
 

@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Traits;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Systems
@@ -451,11 +452,11 @@ namespace Rebellion.Systems
             int support = Math.Max(1, planet?.GetPopularSupport(faction.InstanceID) ?? 0);
             int supportModifier = config.ResourceCollectionBasePercent * _percentScale / support;
             int duration = Math.Max(1, baseDuration * supportModifier / _percentScale);
-            GameModifier difficultyModifier = _game.GetDifficultyModifier(faction);
-            int outputPercent =
-                facility.BuildingType == BuildingType.Mine
-                    ? difficultyModifier.MineOutputPercent
-                    : difficultyModifier.RefineryOutputPercent;
+            decimal outputRate =
+                _game.Modifiers?.Resolve(ModifierType.ResourceGenerationRate, facility, 1m) ?? 1m;
+            int outputPercent = decimal.ToInt32(
+                decimal.Round(outputRate * 100m, 0, MidpointRounding.AwayFromZero)
+            );
             if (outputPercent <= 0)
                 return int.MaxValue;
 

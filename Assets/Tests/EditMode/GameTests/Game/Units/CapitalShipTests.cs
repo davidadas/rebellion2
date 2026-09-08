@@ -349,6 +349,7 @@ namespace Rebellion.Tests.Game.Units
             _capitalShip.ManufacturingQueueSequence = 7;
             _capitalShip.ShipNamePoolID = "POOL";
             _capitalShip.AssignName("Named Ship");
+            _capitalShip.ActiveStatusEffects["enhanced-turbolasers"] = 140;
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
             Starfighter starfighter = new Starfighter();
             Regiment regiment = new Regiment();
@@ -385,6 +386,10 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual("POOL", deserialized.ShipNamePoolID);
             Assert.AreEqual("Named Ship", deserialized.DisplayName);
             Assert.IsTrue(deserialized.HasAssignedName);
+            CollectionAssert.AreEquivalent(
+                _capitalShip.ActiveStatusEffects,
+                deserialized.ActiveStatusEffects
+            );
             Assert.AreEqual(
                 _capitalShip.GetChildren<Officer>().Count,
                 deserialized.GetChildren<Officer>().Count,

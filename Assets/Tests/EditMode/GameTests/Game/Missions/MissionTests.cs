@@ -36,7 +36,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             game.Summary.Difficulty = GameDifficulty.Hard;
             game.Summary.PlayerFactionID = "rebels";
-            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new GameModifier
+            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
                 MissionSuccessChancePoints = 15,
             };

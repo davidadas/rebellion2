@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Traits;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -1047,12 +1048,9 @@ namespace Rebellion.Systems
                 config.CapitalShipProductionPenaltyPercent,
                 config.FighterProductionPenaltyPercent
             );
-            int difficultyModifier = _game
-                .GetDifficultyModifier(planet.GetOwnerInstanceID())
-                .ManufacturingSpeedPercent;
-            return (double)modifier
-                * difficultyModifier
-                / (_productionRateScale * _productionRateScale);
+            decimal productionRate =
+                _game.Modifiers?.Resolve(ModifierType.ProductionSpeed, planet, 1m) ?? 1m;
+            return (double)(modifier * productionRate / _productionRateScale);
         }
 
         /// <summary>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Movement;
+using Rebellion.Game.Traits;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -36,7 +37,7 @@ namespace Rebellion.Game.Units
     /// <summary>
     /// Represents a capital ship in the game.
     /// </summary>
-    public class CapitalShip : ContainerNode, IManufacturable, IMovable
+    public class CapitalShip : ContainerNode, IManufacturable, IMovable, IStatusEffectTarget
     {
         public static IReadOnlyList<PrimaryWeaponArc> PrimaryWeaponArcs { get; } =
             Array.AsReadOnly((PrimaryWeaponArc[])Enum.GetValues(typeof(PrimaryWeaponArc)));
@@ -108,6 +109,12 @@ namespace Rebellion.Game.Units
         public int WeaponRecharge;
         public int Bombardment;
 
+        /// <summary>
+        /// Maps each currently applied status-effect ID to its expiration tick.
+        /// </summary>
+        public Dictionary<string, int?> ActiveStatusEffects { get; set; } =
+            new Dictionary<string, int?>();
+
         // Manufacturing Info.
         public int ManufacturingProgress { get; set; } = 0;
         public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
@@ -178,6 +185,7 @@ namespace Rebellion.Game.Units
             );
             copy.WeaponRecharge = WeaponRecharge;
             copy.Bombardment = Bombardment;
+            copy.ActiveStatusEffects = new Dictionary<string, int?>(ActiveStatusEffects);
             copy.ManufacturingProgress = ManufacturingProgress;
             copy.ManufacturingStatus = ManufacturingStatus;
             copy.RefinedMaterialProgress = RefinedMaterialProgress;

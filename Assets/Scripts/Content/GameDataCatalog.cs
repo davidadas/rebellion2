@@ -7,6 +7,7 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Traits;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 
@@ -35,6 +36,10 @@ public sealed class GameDataCatalog
 
     public Officer[] Officers { get; }
 
+    public Trait[] Traits { get; }
+
+    public StatusEffect[] StatusEffects { get; }
+
     public GameEvent[] GameEvents { get; }
 
     public MessageDefinition[] MessageDefinitions { get; }
@@ -60,6 +65,8 @@ public sealed class GameDataCatalog
     /// <param name="messageDefinitions">The message definitions.</param>
     /// <param name="encyclopediaEntries">The authored encyclopedia entries.</param>
     /// <param name="factionThemes">The neutral and faction presentation themes.</param>
+    /// <param name="traits">The reusable character-trait definitions.</param>
+    /// <param name="statusEffects">The reusable status-effect definitions.</param>
     public GameDataCatalog(
         GameConfig gameConfig,
         GameGenerationConfig generationConfig,
@@ -74,7 +81,9 @@ public sealed class GameDataCatalog
         GameEvent[] gameEvents,
         MessageDefinition[] messageDefinitions,
         EncyclopediaEntries encyclopediaEntries,
-        FactionThemes factionThemes
+        FactionThemes factionThemes,
+        Trait[] traits = null,
+        StatusEffect[] statusEffects = null
     )
     {
         GameConfig = gameConfig ?? throw new ArgumentNullException(nameof(gameConfig));
@@ -89,6 +98,8 @@ public sealed class GameDataCatalog
         Regiments = regiments ?? throw new ArgumentNullException(nameof(regiments));
         SpecialForces = specialForces ?? throw new ArgumentNullException(nameof(specialForces));
         Officers = officers ?? throw new ArgumentNullException(nameof(officers));
+        Traits = traits ?? Array.Empty<Trait>();
+        StatusEffects = statusEffects ?? Array.Empty<StatusEffect>();
         GameEvents = gameEvents ?? throw new ArgumentNullException(nameof(gameEvents));
         MessageDefinitions =
             messageDefinitions ?? throw new ArgumentNullException(nameof(messageDefinitions));

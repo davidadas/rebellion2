@@ -1854,6 +1854,113 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
+        [Test]
+        public void ApplyStatusEffect_Duration_AppliesExpirationToSelectedOfficer()
+        {
+            GameRoot game = BuildStatusEffectGame(out Planet planet);
+            game.CurrentTick = 120;
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = planet.OwnerInstanceID,
+            };
+            game.AttachNode(officer, planet);
+            ApplyStatusEffectAction action = new ApplyStatusEffectAction
+            {
+                StatusEffectID = "carbonite-sickness",
+                DurationTicks = 20,
+                Targets = new List<GameEventSelector>
+                {
+                    new SelectOfficers { InstanceID = officer.InstanceID },
+                },
+            };
+
+            action.Execute(game);
+
+            Assert.AreEqual(140, officer.ActiveStatusEffects["carbonite-sickness"]);
+        }
+
+        [Test]
+        public void ApplyStatusEffect_NoDuration_AppliesUntilRemoved()
+        {
+            GameRoot game = BuildStatusEffectGame(out Planet planet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = planet.OwnerInstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "fleet",
+                OwnerInstanceID = planet.OwnerInstanceID,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            ApplyStatusEffectAction action = new ApplyStatusEffectAction
+            {
+                StatusEffectID = "enhanced-turbolasers",
+                Targets = new List<GameEventSelector>
+                {
+                    new SelectCapitalShips { InstanceID = ship.InstanceID },
+                },
+            };
+
+            action.Execute(game);
+
+            Assert.IsNull(ship.ActiveStatusEffects["enhanced-turbolasers"]);
+        }
+
+        [Test]
+        public void RemoveStatusEffect_SelectedOfficer_RemovesEffect()
+        {
+            GameRoot game = BuildStatusEffectGame(out Planet planet);
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = planet.OwnerInstanceID,
+            };
+            officer.ActiveStatusEffects["seat-of-power"] = null;
+            game.AttachNode(officer, planet);
+            RemoveStatusEffectAction action = new RemoveStatusEffectAction
+            {
+                StatusEffectID = "seat-of-power",
+                Targets = new List<GameEventSelector>
+                {
+                    new SelectOfficers { InstanceID = officer.InstanceID },
+                },
+            };
+
+            action.Execute(game);
+
+            Assert.IsFalse(officer.ActiveStatusEffects.ContainsKey("seat-of-power"));
+        }
+
+        private static GameRoot BuildStatusEffectGame(out Planet planet)
+        {
+            GameRoot game = new GameRoot(new GameConfig());
+            game.ConfigureModifiers(
+                null,
+                new[]
+                {
+                    new StatusEffect { ID = "carbonite-sickness" },
+                    new StatusEffect { ID = "enhanced-turbolasers" },
+                    new StatusEffect { ID = "seat-of-power" },
+                }
+            );
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            planet = new Planet
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            game.AttachNode(planet, sector);
+            return game;
+        }
+
         private GameRoot BuildGame(out Planet empirePlanet, out Planet rebelPlanet)
         {
             GameConfig config = TestConfig.Create();

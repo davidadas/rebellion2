@@ -322,6 +322,7 @@ public sealed class GameManager
     private IEnumerable<object> ProcessTickCore()
     {
         _game.CurrentTick++;
+        _game.Modifiers?.RemoveExpiredStatusEffects();
         _messageSystem.ProcessTick();
         GameLogger.Debug("Tick: " + _game.CurrentTick);
 
@@ -427,6 +428,7 @@ public sealed class GameManager
         if (_game.Config == null)
             _game.SetConfig(_gameData.GameConfig);
         _game.RebuildSceneState();
+        _game.ConfigureModifiers(_gameData.Traits, _gameData.StatusEffects);
 
         _randomProvider = _game.Random;
         _deferredMessageResults.Clear();

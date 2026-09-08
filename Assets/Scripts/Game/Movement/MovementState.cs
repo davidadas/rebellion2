@@ -25,6 +25,11 @@ namespace Rebellion.Game.Movement
         public int TicksElapsed { get; set; }
 
         /// <summary>
+        /// Fractional progress retained when a movement-speed modifier is not a whole number.
+        /// </summary>
+        public decimal TickProgressRemainder { get; set; }
+
+        /// <summary>
         /// Identifier shared by units that were issued the same movement order.
         /// </summary>
         public string MovementGroupID { get; set; }
@@ -83,6 +88,7 @@ namespace Rebellion.Game.Movement
             {
                 TransitTicks = TransitTicks,
                 TicksElapsed = TicksElapsed,
+                TickProgressRemainder = TickProgressRemainder,
                 MovementGroupID = MovementGroupID,
                 SourceEventInstanceID = SourceEventInstanceID,
                 OriginPositionX = OriginPositionX,

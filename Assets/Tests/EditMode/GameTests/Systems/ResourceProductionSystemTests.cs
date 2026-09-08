@@ -66,7 +66,7 @@ namespace Rebellion.Tests.Systems
         {
             _game.Summary.Difficulty = GameDifficulty.Easy;
             _game.Summary.PlayerFactionID = "FACTION2";
-            _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new GameModifier
+            _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
             {
                 MineOutputPercent = 50,
             };
@@ -85,7 +85,7 @@ namespace Rebellion.Tests.Systems
         {
             _game.Summary.Difficulty = GameDifficulty.Easy;
             _game.Summary.PlayerFactionID = "FACTION2";
-            _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new GameModifier
+            _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
             {
                 RefineryOutputPercent = 50,
             };

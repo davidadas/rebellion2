@@ -5,6 +5,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
+using Rebellion.Game.Traits;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
@@ -210,7 +211,12 @@ namespace Rebellion.Game.Units
     /// <summary>
     /// Represents an officer that can be used in missions.
     /// </summary>
-    public class Officer : LeafNode, IMissionParticipant, IMovable
+    public class Officer
+        : LeafNode,
+            IMissionParticipant,
+            IMovable,
+            ITraitTarget,
+            IStatusEffectTarget
     {
         private const int _ratingPercentScale = 100;
 
@@ -296,6 +302,17 @@ namespace Rebellion.Game.Units
         public string MissionReturnLocationInstanceID { get; set; }
         public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();
         public OfficerImageSet ImageSet { get; set; } = new OfficerImageSet();
+
+        /// <summary>
+        /// IDs of content-authored traits possessed by this officer.
+        /// </summary>
+        public List<string> TraitIDs { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Maps each currently applied status-effect ID to its expiration tick.
+        /// </summary>
+        public Dictionary<string, int?> ActiveStatusEffects { get; set; } =
+            new Dictionary<string, int?>();
 
         // Mission rating info.
         public Dictionary<OfficerRating, int> Ratings { get; set; } =
@@ -383,6 +400,8 @@ namespace Rebellion.Game.Units
             copy.MissionReturnLocationInstanceID = MissionReturnLocationInstanceID;
             copy.VoiceSet = VoiceSet?.CreateCopy();
             copy.ImageSet = ImageSet?.CreateCopy();
+            copy.TraitIDs = new List<string>(TraitIDs);
+            copy.ActiveStatusEffects = new Dictionary<string, int?>(ActiveStatusEffects);
             copy.Ratings = new Dictionary<OfficerRating, int>(Ratings);
         }
 

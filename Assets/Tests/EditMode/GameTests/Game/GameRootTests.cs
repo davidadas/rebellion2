@@ -82,10 +82,13 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetDifficultyModifier_AIControlledFaction_ReturnsSelectedDifficultyModifier()
         {
-            GameModifier expected = new GameModifier { MissionSuccessChancePoints = 15 };
+            DifficultyModifiers expected = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
             _game.Config.DifficultyModifiers[GameDifficulty.Medium] = expected;
 
-            GameModifier actual = _game.GetDifficultyModifier(_faction2);
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
 
             Assert.AreSame(expected, actual);
         }
@@ -93,28 +96,30 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetDifficultyModifier_PlayerControlledFaction_ReturnsNeutralModifier()
         {
-            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new GameModifier
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
             {
                 MissionSuccessChancePoints = 15,
             };
 
-            GameModifier actual = _game.GetDifficultyModifier(_faction1);
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
 
-            Assert.AreSame(GameModifier.Neutral, actual);
+            Assert.AreEqual(0, actual.MissionSuccessChancePoints);
+            Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
         }
 
         [Test]
         public void GetDifficultyModifier_MissingDifficulty_ReturnsNeutralModifier()
         {
-            GameModifier actual = _game.GetDifficultyModifier(_faction2);
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
 
-            Assert.AreSame(GameModifier.Neutral, actual);
+            Assert.AreEqual(0, actual.MissionSuccessChancePoints);
+            Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
         }
 
         [Test]
         public void Serialize_RuntimeDifficultyModifiers_DoesNotPersistConfiguration()
         {
-            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new GameModifier
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
             {
                 MissionSuccessChancePoints = 15,
             };

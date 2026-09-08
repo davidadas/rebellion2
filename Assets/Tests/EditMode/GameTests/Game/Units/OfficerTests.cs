@@ -185,6 +185,11 @@ namespace Rebellion.Tests.Game.Units
                 CanBetray = false,
                 MissionReturnParentInstanceID = "return-parent",
                 MissionReturnLocationInstanceID = "return-location",
+                TraitIDs = new List<string> { "smuggler" },
+                ActiveStatusEffects = new Dictionary<string, int?>
+                {
+                    { "carbonite-sickness", 140 },
+                },
             };
 
             string xml = SerializationHelper.Serialize(originalOfficer);
@@ -233,6 +238,11 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(
                 originalOfficer.MissionReturnLocationInstanceID,
                 deserializedOfficer.MissionReturnLocationInstanceID
+            );
+            CollectionAssert.AreEqual(originalOfficer.TraitIDs, deserializedOfficer.TraitIDs);
+            CollectionAssert.AreEquivalent(
+                originalOfficer.ActiveStatusEffects,
+                deserializedOfficer.ActiveStatusEffects
             );
             Assert.AreEqual(25, deserializedOfficer.GetEffectiveRating(OfficerRating.Leadership));
             Assert.AreEqual(

@@ -8,6 +8,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
+using Rebellion.Game.Traits;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -15,6 +16,103 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
+    #region StatusEffectActions
+    /// <summary>
+    /// Applies a content-authored status effect to every selected compatible target.
+    /// </summary>
+    [PersistableObject(Name = "ApplyStatusEffect")]
+    public sealed class ApplyStatusEffectAction : GameAction
+    {
+        [PersistableAttribute]
+        public string StatusEffectID { get; set; }
+
+        [PersistableAttribute]
+        public int? DurationTicks { get; set; }
+
+        [PersistableMember(Name = "Targets")]
+        public List<GameEventSelector> Targets { get; set; } = new List<GameEventSelector>();
+
+        /// <summary>
+        /// Applies or refreshes the selected status effect. A missing duration means it remains
+        /// active until explicitly removed.
+        /// </summary>
+        internal override void Execute(GameActionContext context)
+        {
+            if (string.IsNullOrWhiteSpace(StatusEffectID))
+                throw new InvalidOperationException(
+                    "ApplyStatusEffect requires a status-effect ID."
+                );
+            if (DurationTicks.HasValue && DurationTicks.Value <= 0)
+                throw new InvalidOperationException(
+                    "ApplyStatusEffect duration must be greater than zero."
+                );
+            if (context.Game.Modifiers?.HasStatusEffect(StatusEffectID) == false)
+                throw new InvalidOperationException(
+                    $"ApplyStatusEffect references unknown status effect '{StatusEffectID}'."
+                );
+
+            int? expirationTick = DurationTicks.HasValue
+                ? checked(context.Game.CurrentTick + DurationTicks.Value)
+                : null;
+            foreach (ISceneNode node in ResolveTargets(context))
+            {
+                if (!(node is IStatusEffectTarget target))
+                    throw new InvalidOperationException(
+                        $"ApplyStatusEffect target '{node.InstanceID}' cannot hold status effects."
+                    );
+                target.ActiveStatusEffects[StatusEffectID] = expirationTick;
+            }
+            context.Game.Modifiers?.Invalidate();
+        }
+
+        private IEnumerable<ISceneNode> ResolveTargets(GameActionContext context) =>
+            Targets
+                .SelectMany(selector =>
+                    selector.Select(context.Game, context.Random, context.Evaluation)
+                )
+                .Distinct();
+    }
+
+    /// <summary>
+    /// Removes a content-authored status effect from every selected compatible target.
+    /// </summary>
+    [PersistableObject(Name = "RemoveStatusEffect")]
+    public sealed class RemoveStatusEffectAction : GameAction
+    {
+        [PersistableAttribute]
+        public string StatusEffectID { get; set; }
+
+        [PersistableMember(Name = "Targets")]
+        public List<GameEventSelector> Targets { get; set; } = new List<GameEventSelector>();
+
+        /// <summary>Removes the selected status effect when it is present.</summary>
+        internal override void Execute(GameActionContext context)
+        {
+            if (string.IsNullOrWhiteSpace(StatusEffectID))
+                throw new InvalidOperationException(
+                    "RemoveStatusEffect requires a status-effect ID."
+                );
+
+            foreach (ISceneNode node in ResolveTargets(context))
+            {
+                if (!(node is IStatusEffectTarget target))
+                    throw new InvalidOperationException(
+                        $"RemoveStatusEffect target '{node.InstanceID}' cannot hold status effects."
+                    );
+                target.ActiveStatusEffects.Remove(StatusEffectID);
+            }
+            context.Game.Modifiers?.Invalidate();
+        }
+
+        private IEnumerable<ISceneNode> ResolveTargets(GameActionContext context) =>
+            Targets
+                .SelectMany(selector =>
+                    selector.Select(context.Game, context.Random, context.Evaluation)
+                )
+                .Distinct();
+    }
+    #endregion
+
     #region RandomActions
     /// <summary>
     /// Defines an inclusive integer roll that may supply an action value or event binding.

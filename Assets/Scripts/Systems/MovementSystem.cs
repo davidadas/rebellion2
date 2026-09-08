@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
+using Rebellion.Game.Traits;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -1759,7 +1760,12 @@ namespace Rebellion.Systems
                     $"Unit {movable.GetDisplayName()} is in transit but has no container destination."
                 );
 
-            movable.Movement.TicksElapsed++;
+            decimal tickProgress =
+                _game.Modifiers?.Resolve(ModifierType.TravelSpeed, movable, 1m) ?? 1m;
+            tickProgress = Math.Max(0m, tickProgress) + movable.Movement.TickProgressRemainder;
+            int completedTicks = decimal.ToInt32(decimal.Floor(tickProgress));
+            movable.Movement.TicksElapsed += completedTicks;
+            movable.Movement.TickProgressRemainder = tickProgress - completedTicks;
             movable.SetPosition(CalculateInterpolatedPosition(movable, destinationPlanet));
 
             GameLogger.Log(

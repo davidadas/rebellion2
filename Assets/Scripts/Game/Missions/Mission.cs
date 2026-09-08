@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Traits;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -411,7 +412,19 @@ namespace Rebellion.Game.Missions
             MissionEvaluationContext context
         )
         {
-            return agent?.GetEffectiveRating(ParticipantRating);
+            if (agent == null)
+                return null;
+
+            int rating = agent.GetEffectiveRating(ParticipantRating);
+            if (
+                ParticipantRating == OfficerRating.Leadership
+                && context.Game.Modifiers != null
+                && agent is ISceneNode subject
+            )
+            {
+                rating = context.Game.Modifiers.Resolve(ModifierType.Leadership, subject, rating);
+            }
+            return rating;
         }
 
         /// <summary>
@@ -454,10 +467,16 @@ namespace Rebellion.Game.Missions
                 return 0;
 
             double probability = LookupSuccessProbability(context.Game, score.Value);
-            int modifier = context
-                .Game.GetDifficultyModifier(OwnerInstanceID)
-                .MissionSuccessChancePoints;
-            return Math.Clamp(probability + modifier, 0, 100);
+            if (agent is ISceneNode subject && context.Game.Modifiers != null)
+            {
+                probability = (double)
+                    context.Game.Modifiers.Resolve(
+                        ModifierType.MissionSuccessChance,
+                        subject,
+                        (decimal)probability
+                    );
+            }
+            return Math.Clamp(probability, 0, 100);
         }
 
         /// <summary>
