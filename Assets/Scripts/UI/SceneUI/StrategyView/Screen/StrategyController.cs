@@ -2221,7 +2221,7 @@ public sealed class StrategyController
         if (facilityWindow == null)
             return;
 
-        facilityWindowController.OpenConstruction(facilityWindow, manufacturingType);
+        facilityWindowController.OpenConstructionLane(facilityWindow, manufacturingType);
         MarkDirty();
     }
 
@@ -3103,7 +3103,7 @@ public sealed class StrategyController
         int width;
         if (target is Officer or SpecialForces)
         {
-            request = defenseWindowController.CreatePersonnelContextMenu(
+            request = defenseWindowController.CreateContextMenuForItem(
                 strategyPlanet,
                 target,
                 sourceX,

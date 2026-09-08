@@ -6087,6 +6087,11 @@ public static class StrategyViewPrefabBuilder
             window.transform
         );
         resultLayoutTemplates.gameObject.SetActive(false);
+        RectTransform resultItemsScrollPaddingTemplate = CreateChildLayer(
+            "ResultItemsScrollPaddingTemplate",
+            resultLayoutTemplates
+        );
+        SetSourceRect(resultItemsScrollPaddingTemplate, 0, 0, 1, 18);
         BattleResultItemView resultStandardItemTemplate = CreateBattleResultItemTemplate(
             resultLayoutTemplates,
             "ResultStandardItemTemplate",
@@ -6307,6 +6312,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "resultPersonnelDestroyedColumn", resultPersonnelDestroyedColumn);
         AssignReference(view, "resultStandardItemTemplate", resultStandardItemTemplate);
         AssignReference(view, "resultPersonnelItemTemplate", resultPersonnelItemTemplate);
+        AssignReference(view, "resultItemsScrollPaddingTemplate", resultItemsScrollPaddingTemplate);
         AssignReferenceArray(view, "viewButtonImages", viewButtonImages);
         AssignReferenceArray(view, "viewButtonPressVisuals", viewButtonPressVisuals);
         AssignReferenceArray(view, "viewButtons", viewButtons);

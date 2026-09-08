@@ -81,13 +81,9 @@ public sealed class AdvisorCommandController : ITargetingReceiver
         if (producerView == null)
             return;
 
-        FacilityWindowTab? manufacturingTab = manufacturingType switch
-        {
-            ManufacturingType.Ship => FacilityWindowTab.Shipyards,
-            ManufacturingType.Troop => FacilityWindowTab.Training,
-            ManufacturingType.Building => FacilityWindowTab.Construction,
-            _ => null,
-        };
+        FacilityWindowTab? manufacturingTab = ConstructionOrderController.GetManufacturingTab(
+            manufacturingType
+        );
         if (!manufacturingTab.HasValue)
             return;
 

@@ -176,6 +176,33 @@ public sealed class ConstructionOrderController
     }
 
     /// <summary>
+    /// Maps a manufacturing category to its authored facility panel.
+    /// </summary>
+    /// <param name="manufacturingType">The manufacturing category.</param>
+    /// <returns>The matching facility panel, or null for an unsupported category.</returns>
+    public static FacilityWindowTab? GetManufacturingTab(ManufacturingType manufacturingType)
+    {
+        return manufacturingType switch
+        {
+            ManufacturingType.Ship => FacilityWindowTab.Shipyards,
+            ManufacturingType.Troop => FacilityWindowTab.Training,
+            ManufacturingType.Building => FacilityWindowTab.Construction,
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Maps an authored manufacturing-card index to its facility panel.
+    /// </summary>
+    /// <param name="cardIndex">The manufacturing-card index.</param>
+    /// <returns>The matching facility panel, or null for a non-manufacturing index.</returns>
+    public static FacilityWindowTab? GetManufacturingTab(int cardIndex)
+    {
+        FacilityWindowTab tab = (FacilityWindowTab)cardIndex;
+        return GetManufacturingType(tab).HasValue ? tab : null;
+    }
+
+    /// <summary>
     /// Creates a build estimate when either completion or deployment can be calculated.
     /// </summary>
     /// <param name="producer">The planet performing the manufacturing.</param>

@@ -209,11 +209,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
-        public void OpenConstruction_RequestedManufacturingType_SelectsLaneAndOpensBuildWindow()
+        public void OpenConstructionLane_RequestedManufacturingType_SelectsLaneAndOpensBuildWindow()
         {
             FacilityWindowView view = OpenWindow(out UIWindow window);
 
-            _controller.OpenConstruction(window, ManufacturingType.Troop);
+            _controller.OpenConstructionLane(window, ManufacturingType.Troop);
 
             StrategyStatusTarget target = _controller.GetStatusTarget(view);
             Assert.AreEqual(ManufacturingType.Troop, target.ManufacturingType);

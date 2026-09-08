@@ -434,7 +434,7 @@ public sealed class DefenseWindowController
     /// <param name="hotspotX">The source-space horizontal menu position.</param>
     /// <param name="hotspotY">The source-space vertical menu position.</param>
     /// <returns>The normal Defense context-menu request.</returns>
-    internal ContextMenuRequest CreatePersonnelContextMenu(
+    internal ContextMenuRequest CreateContextMenuForItem(
         GalaxyMapPlanet planet,
         ISceneNode item,
         int hotspotX,

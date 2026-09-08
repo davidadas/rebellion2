@@ -26,19 +26,10 @@ public sealed class DragPreview
 {
     private readonly IReadOnlyList<DragPreviewImage> images;
 
-    /// <summary>
-    /// Gets the immutable image layers in rendering order.
-    /// </summary>
     public IReadOnlyList<DragPreviewImage> Images => images;
 
-    /// <summary>
-    /// Gets the source-space horizontal pointer coordinate captured with the preview.
-    /// </summary>
     public int HotspotX { get; }
 
-    /// <summary>
-    /// Gets the source-space vertical pointer coordinate captured with the preview.
-    /// </summary>
     public int HotspotY { get; }
 
     public Texture Texture => images.Count > 0 ? images[0].Texture : null;
@@ -51,9 +42,6 @@ public sealed class DragPreview
 
     public int OffsetY => images.Count > 0 ? HotspotY - images[0].Bounds.y : 0;
 
-    /// <summary>
-    /// Gets whether at least one image layer has a texture and positive dimensions.
-    /// </summary>
     public bool HasDrawableImages
     {
         get
@@ -106,14 +94,8 @@ public sealed class DragPreview
 /// </summary>
 public readonly struct DragPreviewImage
 {
-    /// <summary>
-    /// Gets the displayed texture.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the source-space layer bounds.
-    /// </summary>
     public RectInt Bounds { get; }
 
     public Rect UvRect { get; }

@@ -512,7 +512,7 @@ public sealed class FacilityWindowController
     /// </summary>
     /// <param name="window">The source facility window.</param>
     /// <param name="manufacturingType">The manufacturing category to open.</param>
-    public void OpenConstruction(UIWindow window, ManufacturingType manufacturingType)
+    public void OpenConstructionLane(UIWindow window, ManufacturingType manufacturingType)
     {
         if (
             !windowManager.TryGetWindowView(window, out FacilityWindowView view)
@@ -520,13 +520,9 @@ public sealed class FacilityWindowController
         )
             return;
 
-        FacilityWindowTab? manufacturingTab = manufacturingType switch
-        {
-            ManufacturingType.Ship => FacilityWindowTab.Shipyards,
-            ManufacturingType.Troop => FacilityWindowTab.Training,
-            ManufacturingType.Building => FacilityWindowTab.Construction,
-            _ => null,
-        };
+        FacilityWindowTab? manufacturingTab = ConstructionOrderController.GetManufacturingTab(
+            manufacturingType
+        );
         if (!manufacturingTab.HasValue)
             return;
 
@@ -716,7 +712,8 @@ public sealed class FacilityWindowController
     {
         if (
             view.TryGetManufacturingCardIndex(eventData, out int cardIndex)
-            && GetManufacturingTab(cardIndex) is FacilityWindowTab manufacturingTab
+            && ConstructionOrderController.GetManufacturingTab(cardIndex)
+                is FacilityWindowTab manufacturingTab
         )
         {
             session.SelectManufacturingCardForContext(manufacturingTab, cardIndex);
@@ -885,7 +882,9 @@ public sealed class FacilityWindowController
         PointerEventData eventData
     )
     {
-        FacilityWindowTab? manufacturingTab = GetManufacturingTab(cardIndex);
+        FacilityWindowTab? manufacturingTab = ConstructionOrderController.GetManufacturingTab(
+            cardIndex
+        );
         if (
             !manufacturingTab.HasValue
             || eventData == null
@@ -1071,17 +1070,6 @@ public sealed class FacilityWindowController
             BuildingType.Mine => FacilityWindowTab.Mines,
             _ => null,
         };
-    }
-
-    /// <summary>
-    /// Converts an authored manufacturing card index to its facility tab.
-    /// </summary>
-    /// <param name="cardIndex">The authored manufacturing card index.</param>
-    /// <returns>The matching manufacturing facility tab, or null.</returns>
-    private static FacilityWindowTab? GetManufacturingTab(int cardIndex)
-    {
-        FacilityWindowTab tab = (FacilityWindowTab)cardIndex;
-        return ConstructionOrderController.GetManufacturingType(tab).HasValue ? tab : null;
     }
 
     /// <summary>

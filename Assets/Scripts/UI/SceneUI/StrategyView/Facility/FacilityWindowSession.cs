@@ -83,7 +83,9 @@ internal sealed class FacilityWindowSession
         {
             selectedBuildingIds.Clear();
             contextBuildingId = null;
-            selectedCards.RemoveWhere(index => !GetManufacturingTab(index).HasValue);
+            selectedCards.RemoveWhere(index =>
+                !ConstructionOrderController.GetManufacturingTab(index).HasValue
+            );
             return;
         }
 
@@ -143,7 +145,7 @@ internal sealed class FacilityWindowSession
         if (ActiveTab != FacilityWindowTab.Manufacturing || selectedCards.Count != 1)
             return null;
 
-        return GetManufacturingTab(selectedCards.First());
+        return ConstructionOrderController.GetManufacturingTab(selectedCards.First());
     }
 
     /// <summary>
@@ -422,17 +424,6 @@ internal sealed class FacilityWindowSession
             FacilityWindowTab.Mines => planet?.NumRawResourceNodes ?? 0,
             _ => buildingCount,
         };
-    }
-
-    /// <summary>
-    /// Converts a manufacturing card index to its facility tab.
-    /// </summary>
-    /// <param name="cardIndex">The manufacturing card index.</param>
-    /// <returns>The matching manufacturing tab, or null.</returns>
-    private static FacilityWindowTab? GetManufacturingTab(int cardIndex)
-    {
-        FacilityWindowTab tab = (FacilityWindowTab)cardIndex;
-        return ConstructionOrderController.GetManufacturingType(tab).HasValue ? tab : null;
     }
 
     /// <summary>

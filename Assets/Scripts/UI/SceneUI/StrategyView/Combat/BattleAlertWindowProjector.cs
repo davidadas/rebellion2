@@ -555,7 +555,7 @@ internal sealed class BattleAlertWindowProjector
 
         foreach (ISceneNode child in planet.GetChildren())
         {
-            if (child is Fleet or Starfighter || !IsPresentAndComplete(child))
+            if (child is Fleet or Starfighter || !ShouldIncludePendingUnit(child))
                 continue;
 
             rows.Add(
@@ -575,15 +575,15 @@ internal sealed class BattleAlertWindowProjector
     /// <returns>True when the squadron is complete, stationary, and has surviving fighters.</returns>
     private static bool IsActiveStarfighter(Starfighter fighter)
     {
-        return IsPresentAndComplete(fighter) && fighter.CurrentSquadronSize > 0;
+        return ShouldIncludePendingUnit(fighter) && fighter.CurrentSquadronSize > 0;
     }
 
     /// <summary>
-    /// Returns whether a unit is complete and physically present at the battle planet.
+    /// Returns whether a scene node belongs in a pending-combat unit list.
     /// </summary>
     /// <param name="unit">The candidate battle unit.</param>
     /// <returns>True when the unit is neither unfinished nor in transit.</returns>
-    private static bool IsPresentAndComplete(ISceneNode unit)
+    private static bool ShouldIncludePendingUnit(ISceneNode unit)
     {
         return unit is not IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete }
             && (unit is not IMovable movable || movable.GetTransitMovement() == null);
@@ -606,7 +606,7 @@ internal sealed class BattleAlertWindowProjector
 
         foreach (ISceneNode child in node.GetChildren())
         {
-            if (!IsPresentAndComplete(child))
+            if (!ShouldIncludePendingUnit(child))
                 continue;
 
             rows.Add(

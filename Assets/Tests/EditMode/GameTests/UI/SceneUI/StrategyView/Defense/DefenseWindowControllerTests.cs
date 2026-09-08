@@ -326,9 +326,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void CreatePersonnelContextMenu_Officer_UsesNormalDefenseCommands()
+        public void CreateContextMenuForItem_Officer_UsesNormalDefenseCommands()
         {
-            ContextMenuRequest request = _controller.CreatePersonnelContextMenu(
+            ContextMenuRequest request = _controller.CreateContextMenuForItem(
                 _planet,
                 _officer,
                 10,
@@ -357,7 +357,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         [Test]
         public void ContextMenu_DirectOfficerMoveConfirm_StartsTargetingWithoutSourceWindow()
         {
-            ContextMenuRequest request = _controller.CreatePersonnelContextMenu(
+            ContextMenuRequest request = _controller.CreateContextMenuForItem(
                 _planet,
                 _officer,
                 10,
