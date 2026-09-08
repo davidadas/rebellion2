@@ -11,6 +11,7 @@ using UnityEngine.UI;
 public sealed class BattleAlertWindowView : MonoBehaviour
 {
     private const int _personnelResultColumnCount = 3;
+    private const int _resultItemBottomPadding = 18;
     private const int _resultNavigationButtonCount = 2;
     private const int _standardResultColumnCount = 2;
 
@@ -766,7 +767,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
 
         SetResultColumnVisibility(result.UsesPersonnelColumns);
         resultRowsScrollArea.SetContentHeight(
-            contentRows * template.Height,
+            contentRows * template.Height + _resultItemBottomPadding,
             template.Height,
             resetRowsScroll
         );

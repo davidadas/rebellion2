@@ -232,12 +232,73 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             Assert.IsTrue(created);
             Assert.AreEqual(8, request.Commands.Count);
+            Assert.IsFalse(
+                request
+                    .Commands.Cast<StrategyMenuCommand>()
+                    .Any(command => command.Action == StrategyMenuAction.ToggleIdleBarTracking)
+            );
             CollectionAssert.AreEqual(
                 new ISceneNode[] { _fleet },
                 _controller.GetContextItems(view)
             );
             Assert.AreSame(_planet, target.Planet);
             Assert.AreSame(_fleet, target.Item);
+        }
+
+        [Test]
+        public void TryCreateContextMenu_PlanetImage_OffersPlanetTracking()
+        {
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 177, 4, 6, 7),
+                CreatePlanetPointerEvent(view),
+                10,
+                20
+            );
+
+            bool created = _controller.TryCreateContextMenu(
+                context,
+                out ContextMenuRequest request,
+                out int _
+            );
+
+            Assert.IsTrue(created);
+            StrategyMenuCommand command = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.ToggleIdleBarTracking);
+
+            _controller.OnContextMenuCommandSelected(request, command);
+
+            Assert.AreSame(_planet.Planet, _actions.LastTrackedEntity);
+        }
+
+        [Test]
+        public void TryCreateContextMenu_FacilityImage_DoesNotOfferPlanetTracking()
+        {
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 177, 4, 6, 7),
+                CreateOverlayPointerEvent(view, "facilityImage"),
+                10,
+                20
+            );
+
+            bool created = _controller.TryCreateContextMenu(
+                context,
+                out ContextMenuRequest request,
+                out int _
+            );
+
+            Assert.IsTrue(created);
+            Assert.IsFalse(
+                request
+                    .Commands.Cast<StrategyMenuCommand>()
+                    .Any(command => command.Action == StrategyMenuAction.ToggleIdleBarTracking)
+            );
         }
 
         [Test]
@@ -570,6 +631,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             };
         }
 
+        private static PointerEventData CreatePlanetPointerEvent(
+            PlanetSectorWindowView view,
+            PointerEventData.InputButton button = PointerEventData.InputButton.Right
+        )
+        {
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            RawImage planetImage = GetField<RawImage>(planetView, "planetImage");
+            return new PointerEventData(null)
+            {
+                button = button,
+                pointerCurrentRaycast = new RaycastResult { gameObject = planetImage.gameObject },
+                pointerPressRaycast = new RaycastResult { gameObject = planetImage.gameObject },
+            };
+        }
+
+        private static PointerEventData CreateOverlayPointerEvent(
+            PlanetSectorWindowView view,
+            string imageFieldName
+        )
+        {
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            RawImage overlayImage = GetField<RawImage>(planetView, imageFieldName);
+            return new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+                pointerCurrentRaycast = new RaycastResult { gameObject = overlayImage.gameObject },
+                pointerPressRaycast = new RaycastResult { gameObject = overlayImage.gameObject },
+            };
+        }
+
         private static T GetField<T>(object owner, string fieldName)
         {
             return (T)
@@ -640,6 +735,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             public int TargetedCommandCount { get; private set; }
             public GameResult LastBattleResult { get; private set; }
             public IReadOnlyList<ISceneNode> LastItems { get; private set; }
+            public ISceneNode LastTrackedEntity { get; private set; }
             public StrategyMissionTarget LastTarget { get; private set; }
             public StrategyWindowTargetingSource LastTargetingSource { get; private set; }
 
@@ -647,7 +743,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             public bool IsIdleBarTracked(ISceneNode entity) => true;
 
-            public void ToggleIdleBarTracking(ISceneNode entity) { }
+            public void ToggleIdleBarTracking(ISceneNode entity)
+            {
+                LastTrackedEntity = entity;
+            }
 
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
 

@@ -372,6 +372,58 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void Project_SpotlightPlanet_OverridesThenRestoresActiveFilterMarkers()
+        {
+            GalaxyPlanetSector planetSector = CreateSector("sector", "Corellia", 0, 0);
+            Planet targetPlanet = CreatePlanet("target", _playerFactionId, 1, 2);
+            Planet otherPlanet = CreatePlanet("other", _opposingFactionId, 3, 4);
+            targetPlanet.IsInUprising = false;
+            otherPlanet.IsInUprising = true;
+            GalaxyMapSector sector = CreateSector(planetSector, targetPlanet, otherPlanet);
+            FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
+            GalacticInformationFilterTheme filter =
+                playerTheme.GalacticInformationDisplay.GetFilter(
+                    GalacticInformationFilterMode.Uprisings
+                );
+
+            GalaxyMapRenderData highlighted = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.Uprisings,
+                null,
+                spotlightPlanetInstanceId: targetPlanet.InstanceID
+            );
+            GalaxyMapRenderData restored = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.Uprisings,
+                null
+            );
+
+            Assert.AreSame(
+                _uiContext.GetTexture(playerTheme.GalaxyBackground.PlanetIcons.XL),
+                highlighted.Clusters[0].Stars[0].StarTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetTheme(_opposingFactionId).GalaxyBackground.PlanetIcons.XL
+                ),
+                highlighted.Clusters[0].Stars[1].StarTexture
+            );
+            Assert.AreEqual(filter.Label, highlighted.ActiveFilterLabel.Text);
+            Assert.AreSame(
+                _uiContext.GetTexture(playerTheme.GalaxyBackground.PlanetIcons.Small),
+                restored.Clusters[0].Stars[0].StarTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetTheme(_opposingFactionId).GalaxyBackground.PlanetIcons.XL
+                ),
+                restored.Clusters[0].Stars[1].StarTexture
+            );
+        }
+
+        [Test]
         public void Project_OpponentLoyaltyBriefing_HighlightsOnlyOpponentAndUsesCueLabel()
         {
             GalaxyPlanetSector planetSector = CreateSector("sector", "Corellia", 0, 0);

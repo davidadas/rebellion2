@@ -515,7 +515,7 @@ public sealed class PlanetSectorWindowController
             mobileHeadquarters == null
                 ? GetStatusTarget(view)
                 : new StrategyStatusTarget(hit.GalaxyMapPlanet, mobileHeadquarters);
-        ISceneNode trackingItem = statusTarget?.Item;
+        ISceneNode trackingItem = hit?.PlanetImage == true ? hit.Planet : null;
         if (
             StrategyContextMenuAvailability.CanToggleIdleBarTracking(
                 trackingItem,
@@ -543,7 +543,8 @@ public sealed class PlanetSectorWindowController
             context.X,
             context.Y,
             items,
-            statusTarget
+            statusTarget,
+            trackingItem
         );
         request = new ContextMenuRequest(
             source,
@@ -601,7 +602,7 @@ public sealed class PlanetSectorWindowController
         switch (strategyCommand.Action)
         {
             case StrategyMenuAction.ToggleIdleBarTracking:
-                idleBarTrackingActions.ToggleIdleBarTracking(source.Target?.Item);
+                idleBarTrackingActions.ToggleIdleBarTracking(source.TrackingItem);
                 break;
             case StrategyMenuAction.BombardMilitaryFacilities:
             case StrategyMenuAction.BombardCivilianFacilities:
@@ -1263,6 +1264,8 @@ public sealed class PlanetSectorWindowController
 
         public StrategyStatusTarget Target { get; }
 
+        public ISceneNode TrackingItem { get; }
+
         public UIWindow Window { get; }
 
         /// <summary>
@@ -1273,12 +1276,14 @@ public sealed class PlanetSectorWindowController
         /// <param name="hotspotY">The menu hotspot vertical coordinate.</param>
         /// <param name="items">The selected fleet items.</param>
         /// <param name="target">The selected status target.</param>
+        /// <param name="trackingItem">The explicitly selected idle-bar tracking subject.</param>
         public PlanetSectorContextMenuSource(
             UIWindow window,
             int hotspotX,
             int hotspotY,
             IReadOnlyList<ISceneNode> items,
-            StrategyStatusTarget target
+            StrategyStatusTarget target,
+            ISceneNode trackingItem
         )
         {
             Window = window;
@@ -1286,6 +1291,7 @@ public sealed class PlanetSectorWindowController
             HotspotY = hotspotY;
             Items = new List<ISceneNode>(items ?? Array.Empty<ISceneNode>()).AsReadOnly();
             Target = target;
+            TrackingItem = trackingItem;
         }
     }
 

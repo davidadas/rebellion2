@@ -36,26 +36,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         public void PrefabProperties_AuthoredView_ContainsCompactShelfAndCircularSlotTemplate()
         {
             Image hitArea = GetField<Image>("shelfHitArea");
-            TextMeshProUGUI pageText = GetField<TextMeshProUGUI>("pageTextField");
+            ScrollAreaView scrollArea = GetField<ScrollAreaView>("entriesScrollArea");
             IdleBarSlotView template = GetField<IdleBarSlotView>("slotTemplate");
             Assert.IsNotNull(_view);
             Assert.IsNotNull(hitArea);
             Assert.AreEqual(new Color(0.08f, 0.09f, 0.11f, 0.9f), hitArea.color);
             Assert.IsTrue(hitArea.raycastTarget);
-            Assert.IsNotNull(pageText);
-            Assert.IsFalse(pageText.gameObject.activeSelf);
+            Assert.IsNotNull(scrollArea);
+            Assert.IsFalse(scrollArea.gameObject.activeSelf);
             Assert.IsNotNull(template);
             Assert.IsFalse(template.gameObject.activeSelf);
+            Assert.AreSame(scrollArea.ContentRoot, template.transform.parent);
             Button button = template.GetComponent<Button>();
             RectTransform frame = template.transform.Find("CircleFrame") as RectTransform;
             RectTransform mask =
                 template.GetComponentInChildren<Mask>(true).transform as RectTransform;
+            TextMeshProUGUI overflowText = template.GetComponentInChildren<TextMeshProUGUI>(true);
             Assert.IsNotNull(button);
             Assert.AreEqual(Selectable.Transition.None, button.transition);
             Assert.AreEqual(Color.black, frame.GetComponent<Image>().color);
             Assert.AreEqual(new Vector2(28f, 28f), frame.sizeDelta);
             Assert.AreEqual(new Vector2(24f, 24f), mask.sizeDelta);
-            Assert.IsNull(template.GetComponentInChildren<TextMeshProUGUI>(true));
+            Assert.IsNotNull(overflowText);
+            Assert.AreEqual(FontStyles.Bold, overflowText.fontStyle);
+            Assert.IsFalse(overflowText.gameObject.activeSelf);
         }
 
         [Test]
@@ -64,6 +68,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Transform windows = _view.transform.parent.Find("Windows");
 
             Assert.AreEqual("StrategyView", _view.transform.parent.name);
+            Assert.IsFalse(_view.gameObject.activeSelf);
             Assert.IsNull(_view.GetComponent<UIWindow>());
             Assert.IsNotNull(windows);
             Assert.Less(_view.transform.GetSiblingIndex(), windows.GetSiblingIndex());
@@ -97,7 +102,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.Less(first.anchoredPosition.x, second.anchoredPosition.x);
             Assert.Less(second.anchoredPosition.x, third.anchoredPosition.x);
             Assert.AreEqual(first.anchoredPosition.y, third.anchoredPosition.y);
-            Assert.AreEqual(741f, third.anchoredPosition.x + third.sizeDelta.x);
+            ScrollAreaView scrollArea = GetField<ScrollAreaView>("entriesScrollArea");
+            Assert.AreEqual(
+                741f,
+                scrollArea.GetComponent<RectTransform>().anchoredPosition.x
+                    + scrollArea.ScrollRoot.anchoredPosition.x
+                    + third.anchoredPosition.x
+                    + third.sizeDelta.x
+            );
             Assert.AreEqual(28f, third.sizeDelta.x);
             Assert.AreEqual(28f, third.sizeDelta.y);
             Assert.LessOrEqual(hitArea.rectTransform.sizeDelta.x, bounds.width / 2f);
@@ -147,7 +159,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void PointerHover_TopBarRevealsSecondRowAndLeavingConcealsIt()
+        public void PointerHover_OverflowingEntries_RevealsThreeRowsUntilPointerLeaves()
         {
             _view.Render(
                 new IdleBarRenderData(true, CreateEntries(20), new RectInt(50, 30, 400, 350))
@@ -155,26 +167,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
             List<IdleBarSlotView> slots = GetVisibleSlots();
             Image hitArea = GetField<Image>("shelfHitArea");
-            Assert.AreEqual(6, slots.Count);
+            Assert.AreEqual(5, slots.Count);
+            Assert.AreEqual("+16", slots[4].name);
             Assert.AreEqual(1, CountRows(slots));
 
             _view.OnPointerEnter(new PointerEventData(null));
 
             slots = GetVisibleSlots();
-            Assert.AreEqual(12, slots.Count);
-            Assert.LessOrEqual(hitArea.rectTransform.sizeDelta.x, 200f);
-            Assert.AreEqual(2, CountRows(slots));
+            Assert.AreEqual(20, slots.Count);
+            Assert.AreEqual(210f, hitArea.rectTransform.sizeDelta.x);
+            Assert.AreEqual(3, CountRows(slots));
             Assert.Less(
                 slots[0].GetComponent<RectTransform>().anchoredPosition.x,
                 slots[1].GetComponent<RectTransform>().anchoredPosition.x
             );
             Assert.Less(
-                slots[6].GetComponent<RectTransform>().anchoredPosition.x,
-                slots[7].GetComponent<RectTransform>().anchoredPosition.x
+                slots[7].GetComponent<RectTransform>().anchoredPosition.x,
+                slots[8].GetComponent<RectTransform>().anchoredPosition.x
             );
             Assert.AreEqual(
                 slots[0].GetComponent<RectTransform>().anchoredPosition.x,
-                slots[6].GetComponent<RectTransform>().anchoredPosition.x
+                slots[7].GetComponent<RectTransform>().anchoredPosition.x
+            );
+            ScrollAreaView scrollArea = GetField<ScrollAreaView>("entriesScrollArea");
+            Assert.AreEqual(86f, scrollArea.ViewportHeight);
+            Assert.IsFalse(
+                scrollArea.GetComponentInChildren<Scrollbar>(true).gameObject.activeSelf
             );
             foreach (
                 IGrouping<float, IdleBarSlotView> row in slots.GroupBy(slot =>
@@ -197,34 +215,70 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             slots[0].OnPointerExit(new PointerEventData(null));
             InvokeViewMethod("LateUpdate");
 
-            Assert.AreEqual(12, GetVisibleSlots().Count);
-            Assert.AreEqual(2, CountRows(GetVisibleSlots()));
+            Assert.AreEqual(20, GetVisibleSlots().Count);
+            Assert.AreEqual(3, CountRows(GetVisibleSlots()));
 
             _view.OnPointerExit(new PointerEventData(null));
             InvokeViewMethod("LateUpdate");
 
-            Assert.AreEqual(6, GetVisibleSlots().Count);
+            Assert.AreEqual(5, GetVisibleSlots().Count);
+            Assert.AreEqual("+16", GetVisibleSlots()[4].name);
             Assert.AreEqual(1, CountRows(GetVisibleSlots()));
         }
 
         [Test]
-        public void Scroll_OverflowingEntries_ShiftsVisibleShelfAndShowsPositionOnHover()
+        public void Scroll_OverflowingEntries_MovesSharedScrollAreaByOneRow()
         {
             _view.Render(
-                new IdleBarRenderData(true, CreateEntries(15), new RectInt(50, 30, 400, 350))
+                new IdleBarRenderData(true, CreateEntries(29), new RectInt(50, 30, 400, 350))
             );
             Assert.AreEqual("Officer 0", GetVisibleSlots()[0].name);
+            Assert.AreEqual("+25", GetVisibleSlots()[4].name);
 
             _view.OnPointerEnter(new PointerEventData(null));
             PointerEventData scroll = new PointerEventData(null)
             {
                 scrollDelta = new Vector2(0f, -1f),
             };
-            _view.OnScroll(scroll);
+            ScrollAreaView scrollArea = GetField<ScrollAreaView>("entriesScrollArea");
+            scrollArea.RelayScroll(scroll);
 
-            Assert.AreEqual("Officer 3", GetVisibleSlots()[0].name);
-            Assert.IsTrue(scroll.used);
-            Assert.IsTrue(GetField<TextMeshProUGUI>("pageTextField").gameObject.activeSelf);
+            Assert.AreEqual(29f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
+            Scrollbar scrollbar = scrollArea.GetComponentInChildren<Scrollbar>(true);
+            Assert.IsTrue(scrollbar.gameObject.activeSelf);
+            Assert.Greater(
+                scrollbar.GetComponent<RectTransform>().anchoredPosition.x,
+                scrollArea.ScrollRoot.anchoredPosition.x
+            );
+            Assert.Greater(
+                scrollArea.GetComponent<RectTransform>().anchoredPosition.x
+                    + scrollbar.GetComponent<RectTransform>().anchoredPosition.x,
+                250f
+            );
+        }
+
+        [Test]
+        public void DragCandidate_CenteredPortrait_PreservesCrop()
+        {
+            Texture2D texture = new Texture2D(40, 20);
+            DragPreview capturedPreview = null;
+            _view.EntryDragCandidateRequested += (_, preview, _) => capturedPreview = preview;
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(CreateOfficer("Officer"), texture) },
+                    new RectInt(0, 0, 700, 350)
+                )
+            );
+            IdleBarSlotView slot = GetVisibleSlots().Single();
+
+            slot.OnPointerDown(
+                new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+            );
+
+            Assert.IsNotNull(capturedPreview);
+            Assert.AreEqual(new Rect(0.25f, 0f, 0.5f, 1f), capturedPreview.Images[0].UvRect);
+            Object.DestroyImmediate(texture);
         }
 
         [Test]
@@ -303,9 +357,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
         private List<IdleBarSlotView> GetVisibleSlots()
         {
-            return GetField<List<IdleBarSlotView>>("slots")
+            List<IdleBarSlotView> visible = GetField<List<IdleBarSlotView>>("slots")
                 .Where(slot => slot.gameObject.activeSelf)
                 .ToList();
+            IdleBarSlotView overflow = GetField<IdleBarSlotView>("overflowSlot");
+            if (overflow?.gameObject.activeSelf == true)
+                visible.Add(overflow);
+            return visible;
         }
 
         private void InvokeViewMethod(string methodName)

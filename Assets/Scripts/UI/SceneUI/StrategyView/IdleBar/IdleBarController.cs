@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Defines strategy-screen actions requested by the idle-bar feature.
@@ -16,6 +18,29 @@ public interface IIdleBarActions
 
     /// <summary>Requests a strategy render after idle-bar state changes.</summary>
     void RequestIdleBarRender();
+
+    /// <summary>Temporarily emphasizes an idle entity's planet on the galaxy map.</summary>
+    /// <param name="target">The hovered entity, or null to restore the current display.</param>
+    void SetIdleBarLocationHighlight(ISceneNode target);
+
+    /// <summary>Begins a direct drag candidate for one idle entity.</summary>
+    /// <param name="target">The pressed idle entity.</param>
+    /// <param name="preview">The compact drag preview.</param>
+    /// <param name="eventData">The source pointer event.</param>
+    /// <returns>True when the candidate was accepted.</returns>
+    bool TryStartIdleBarItemDrag(
+        ISceneNode target,
+        DragPreview preview,
+        PointerEventData eventData
+    );
+
+    /// <summary>Advances an accepted direct idle-bar item drag.</summary>
+    /// <param name="eventData">The source pointer event.</param>
+    void MoveIdleBarItemDrag(PointerEventData eventData);
+
+    /// <summary>Completes or clears an accepted direct idle-bar item drag.</summary>
+    /// <param name="eventData">The source pointer event.</param>
+    void EndIdleBarItemDrag(PointerEventData eventData);
 }
 
 /// <summary>
@@ -49,6 +74,8 @@ public sealed class IdleBarController : IIdleBarTrackingActions
     private readonly Func<string, ISceneNode> resolveEntity;
 
     private IIdleBarActions actions;
+    private bool itemDragCandidateActive;
+    private string highlightedEntityId;
     private IdleBarView view;
 
     /// <inheritdoc />
@@ -103,6 +130,11 @@ public sealed class IdleBarController : IIdleBarTrackingActions
         ReleaseView();
         view = nextView;
         view.Destroyed += HandleViewDestroyed;
+        view.EntryHoverCleared += HandleEntryHoverCleared;
+        view.EntryHovered += HandleEntryHovered;
+        view.EntryDragCandidateRequested += HandleEntryDragCandidateRequested;
+        view.EntryDragEnded += HandleEntryDragEnded;
+        view.EntryDragMoved += HandleEntryDragMoved;
         view.EntrySelected += HandleEntrySelected;
         view.EntryUntrackRequested += HandleEntryUntrackRequested;
     }
@@ -115,21 +147,23 @@ public sealed class IdleBarController : IIdleBarTrackingActions
         IdleBarView requiredView = GetRequiredView();
         if (!IsIdleBarEnabled)
         {
+            ClearItemDrag();
+            ClearLocationHighlight();
             requiredView.Render(new IdleBarRenderData(false, null, new RectInt()));
             return;
         }
 
         RectInt desktopBounds = GetDesktopBounds();
         IdleBarRenderData projected = projector.Project(getPlayerFaction(), desktopBounds);
-        requiredView.Render(
-            new IdleBarRenderData(
-                true,
-                projected
-                    .Entries.Where(entry => !ignoredEntityIds.Contains(entry.Entity?.InstanceID))
-                    .ToList(),
-                projected.DesktopBounds
-            )
-        );
+        List<IdleBarEntry> entries = projected
+            .Entries.Where(entry => !ignoredEntityIds.Contains(entry.Entity?.InstanceID))
+            .ToList();
+        if (
+            !string.IsNullOrEmpty(highlightedEntityId)
+            && entries.All(entry => entry.Entity?.InstanceID != highlightedEntityId)
+        )
+            ClearLocationHighlight();
+        requiredView.Render(new IdleBarRenderData(true, entries, projected.DesktopBounds));
     }
 
     /// <summary>
@@ -156,6 +190,8 @@ public sealed class IdleBarController : IIdleBarTrackingActions
     /// </summary>
     public void ResetSession()
     {
+        ClearItemDrag();
+        ClearLocationHighlight();
         ignoredEntityIds.Clear();
     }
 
@@ -173,7 +209,11 @@ public sealed class IdleBarController : IIdleBarTrackingActions
             return;
 
         if (!ignoredEntityIds.Remove(entity.InstanceID))
+        {
             ignoredEntityIds.Add(entity.InstanceID);
+            if (highlightedEntityId == entity.InstanceID)
+                ClearLocationHighlight();
+        }
         actions.RequestIdleBarRender();
     }
 
@@ -197,7 +237,95 @@ public sealed class IdleBarController : IIdleBarTrackingActions
         if (string.IsNullOrEmpty(instanceId) || !ignoredEntityIds.Add(instanceId))
             return;
 
+        if (highlightedEntityId == instanceId)
+            ClearLocationHighlight();
         actions.RequestIdleBarRender();
+    }
+
+    /// <summary>
+    /// Starts a shared strategy drag candidate for a movable idle-bar entity.
+    /// </summary>
+    /// <param name="instanceId">The pressed entity identifier.</param>
+    /// <param name="preview">The compact entity drag preview.</param>
+    /// <param name="eventData">The source pointer event.</param>
+    private void HandleEntryDragCandidateRequested(
+        string instanceId,
+        DragPreview preview,
+        PointerEventData eventData
+    )
+    {
+        ClearItemDrag();
+        ISceneNode target = string.IsNullOrEmpty(instanceId) ? null : resolveEntity(instanceId);
+        itemDragCandidateActive =
+            target is Officer or SpecialForces
+            && actions.TryStartIdleBarItemDrag(target, preview, eventData);
+    }
+
+    /// <summary>
+    /// Advances the shared strategy drag owned by an idle-bar entity.
+    /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
+    private void HandleEntryDragMoved(PointerEventData eventData)
+    {
+        if (itemDragCandidateActive)
+            actions.MoveIdleBarItemDrag(eventData);
+    }
+
+    /// <summary>
+    /// Completes or clears the shared strategy drag owned by an idle-bar entity.
+    /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
+    private void HandleEntryDragEnded(PointerEventData eventData)
+    {
+        if (!itemDragCandidateActive)
+            return;
+
+        itemDragCandidateActive = false;
+        actions.EndIdleBarItemDrag(eventData);
+    }
+
+    /// <summary>Clears an unfinished direct item drag owned by the idle bar.</summary>
+    private void ClearItemDrag()
+    {
+        if (!itemDragCandidateActive)
+            return;
+
+        itemDragCandidateActive = false;
+        actions?.EndIdleBarItemDrag(null);
+    }
+
+    /// <summary>
+    /// Highlights the location represented by the hovered idle-bar entity.
+    /// </summary>
+    /// <param name="instanceId">The hovered entity identifier.</param>
+    private void HandleEntryHovered(string instanceId)
+    {
+        ISceneNode target = string.IsNullOrEmpty(instanceId) ? null : resolveEntity(instanceId);
+        if (target == null)
+            return;
+
+        highlightedEntityId = instanceId;
+        actions.SetIdleBarLocationHighlight(target);
+    }
+
+    /// <summary>
+    /// Restores the active galactic-information display when the current hover ends.
+    /// </summary>
+    /// <param name="instanceId">The entity identifier whose hover ended.</param>
+    private void HandleEntryHoverCleared(string instanceId)
+    {
+        if (instanceId == highlightedEntityId)
+            ClearLocationHighlight();
+    }
+
+    /// <summary>Clears any transient idle-bar location highlight.</summary>
+    private void ClearLocationHighlight()
+    {
+        if (string.IsNullOrEmpty(highlightedEntityId))
+            return;
+
+        highlightedEntityId = null;
+        actions?.SetIdleBarLocationHighlight(null);
     }
 
     /// <summary>
@@ -219,8 +347,15 @@ public sealed class IdleBarController : IIdleBarTrackingActions
             return;
 
         view.Destroyed -= HandleViewDestroyed;
+        view.EntryHoverCleared -= HandleEntryHoverCleared;
+        view.EntryHovered -= HandleEntryHovered;
+        view.EntryDragCandidateRequested -= HandleEntryDragCandidateRequested;
+        view.EntryDragEnded -= HandleEntryDragEnded;
+        view.EntryDragMoved -= HandleEntryDragMoved;
         view.EntrySelected -= HandleEntrySelected;
         view.EntryUntrackRequested -= HandleEntryUntrackRequested;
+        ClearItemDrag();
+        ClearLocationHighlight();
         view = null;
     }
 

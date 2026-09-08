@@ -1661,6 +1661,106 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(reporter.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
         }
 
+        [TestCase(
+            false,
+            TestName = "CreateMessages_MissionReport_MainCharacterLaterInMainTeam_UsesMatchingImageAndVoice"
+        )]
+        [TestCase(
+            true,
+            TestName = "CreateMessages_MissionReport_MainCharacterInDecoyTeam_UsesMatchingImageAndVoice"
+        )]
+        public void CreateMessages_MissionReport_PrefersMainCharacterReporter(
+            bool mainCharacterIsDecoy
+        )
+        {
+            GameRoot game = new GameRoot(new GameConfig());
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+            game.GetFactions().Add(alliance);
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "CORE" };
+            Planet target = new Planet
+            {
+                InstanceID = "YAVIN",
+                DisplayName = "Yavin",
+                OwnerInstanceID = "FNEMP1",
+                IsColonized = true,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(target, sector);
+            Officer supportingOfficer = new Officer
+            {
+                TypeID = "supporting-officer",
+                DisplayName = "Supporting Officer",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath = "supporting-officer-card",
+                VoiceSet = new OfficerVoiceSet
+                {
+                    MissionSuccessPaths = new List<string> { "supporting-officer-success" },
+                },
+            };
+            Officer mainCharacter = new Officer
+            {
+                TypeID = "main-character",
+                DisplayName = "Main Character",
+                OwnerInstanceID = alliance.InstanceID,
+                IsMain = true,
+                MessageImagePath = "main-character-card",
+                VoiceSet = new OfficerVoiceSet
+                {
+                    MissionSuccessPaths = new List<string> { "main-character-success" },
+                },
+            };
+            Mission mission = new SabotageMission
+            {
+                DisplayName = "Sabotage",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+            game.AttachNode(supportingOfficer, mission);
+            if (mainCharacterIsDecoy)
+                mission.AddDecoyParticipant(mainCharacter);
+            game.AttachNode(mainCharacter, mission);
+            Assert.AreEqual(
+                mainCharacterIsDecoy,
+                mission.GetDecoyParticipants().Contains(mainCharacter)
+            );
+            Assert.AreEqual(
+                !mainCharacterIsDecoy,
+                mission.GetMainParticipants().Contains(mainCharacter)
+            );
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "report:{participant}",
+                            "body",
+                            outcome: MessageResultOutcome.Success,
+                            imageKey: "mission_report",
+                            showSubjectImage: true
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Success,
+                        Participants = mission.GetAllParticipants().ToList(),
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("report:Main Character", message.Title);
+            Assert.AreEqual("main-character-card", message.OverlayImagePath);
+            Assert.AreEqual("main-character-success", message.OfficerVoicePath);
+            Assert.AreEqual(mainCharacter.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
+        }
+
         [Test]
         public void CreateMessages_TargetUnavailableMission_UsesAbortVoice()
         {
@@ -2558,7 +2658,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_AssassinatedOfficer_ReturnsImperialAssassinsReport()
+        public void CreateMessages_AssassinatedOfficer_ReturnsAssassinationReport()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -2574,6 +2674,12 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Menndo",
                 OwnerInstanceID = empire.InstanceID,
             };
+            AssassinationMission mission = new AssassinationMission
+            {
+                OwnerInstanceID = empire.InstanceID,
+                TargetOfficerInstanceID = victim.InstanceID,
+            };
+            game.AttachNode(mission, target);
 
             Message message = FirstMessageFor(
                 CreateMessages(
@@ -2584,7 +2690,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageResultType.OfficerAssassinated,
                             MessageType.Mission,
                             "{officer} Killed",
-                            "{officer} was killed by Imperial Assassins at {system}.",
+                            "{officer} was assassinated at {system}.",
                             imagePaths: FactionImages()
                         ),
                     },
@@ -2593,15 +2699,83 @@ namespace Rebellion.Tests.Game.Messages
                         TargetOfficer = victim,
                         Assassin = assassin,
                         Context = target,
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Success,
                     }
                 ),
                 alliance
             );
 
             Assert.AreEqual("Mon Mothma Killed", message.Title);
-            Assert.AreEqual("Mon Mothma was killed by Imperial Assassins at Yavin.", message.Body);
+            Assert.AreEqual("Mon Mothma was assassinated at Yavin.", message.Body);
+            Assert.AreEqual("alliance-image", message.DisplayImagePath);
             Assert.AreEqual(target.InstanceID, message.EventLocationInstanceID);
             Assert.AreEqual(victim.InstanceID, message.NavigationTargetInstanceID);
+        }
+
+        [Test]
+        public void CreateMessages_CaptureEvasionDeath_UsesGenericKilledReport()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Officer victim = new Officer
+            {
+                InstanceID = "victim",
+                DisplayName = "Agent",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            Officer opponent = new Officer
+            {
+                InstanceID = "opponent",
+                OwnerInstanceID = empire.InstanceID,
+            };
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.OfficerKilled,
+                            MessageType.Mission,
+                            "{officer} Killed",
+                            "{officer} has been killed.",
+                            imagePaths: FactionImages()
+                        ),
+                        Definition(
+                            MessageResultType.OfficerAssassinated,
+                            MessageType.Mission,
+                            "{officer} Assassinated",
+                            "{officer} was assassinated.",
+                            imagePaths: FactionImages()
+                        ),
+                    },
+                    new OfficerKilledResult
+                    {
+                        TargetOfficer = victim,
+                        Assassin = opponent,
+                        Context = target,
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Foiled,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Agent Killed", message.Title);
+            Assert.AreEqual("Agent has been killed.", message.Body);
+            Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
         [Test]

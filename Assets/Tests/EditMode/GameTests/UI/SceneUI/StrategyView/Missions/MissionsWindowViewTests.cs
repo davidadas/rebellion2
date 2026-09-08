@@ -266,14 +266,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
-        public void ParticipantPress_RenderedRow_RaisesStableIndexAndOriginalEvent()
+        public void ParticipantGestures_RenderedRow_RaiseStableIndexAndOriginalEvent()
         {
             int pressedIndex = -1;
-            PointerEventData received = null;
+            int releasedIndex = -1;
+            PointerEventData pressedEvent = null;
+            PointerEventData releasedEvent = null;
             _view.ParticipantPressed += (_, index, eventData) =>
             {
                 pressedIndex = index;
-                received = eventData;
+                pressedEvent = eventData;
+            };
+            _view.ParticipantReleased += (_, index, eventData) =>
+            {
+                releasedIndex = index;
+                releasedEvent = eventData;
             };
             _view.Render(
                 CreateRenderData(
@@ -289,10 +296,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 button = PointerEventData.InputButton.Left,
             };
 
-            row.GetComponent<UIPointerGestureRelay>().OnPointerDown(eventData);
+            UIPointerGestureRelay relay = row.GetComponent<UIPointerGestureRelay>();
+            relay.OnPointerDown(eventData);
+            relay.OnPointerClick(eventData);
 
             Assert.AreEqual(1, pressedIndex);
-            Assert.AreSame(eventData, received);
+            Assert.AreSame(eventData, pressedEvent);
+            Assert.AreEqual(1, releasedIndex);
+            Assert.AreSame(eventData, releasedEvent);
         }
 
         [Test]
@@ -366,6 +377,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _view.TabRequested += (_, _) => tabCount++;
             _view.MissionPressed += (_, _, _) => missionCount++;
             _view.ParticipantPressed += (_, _, _) => participantCount++;
+            _view.ParticipantReleased += (_, _, _) => participantCount++;
             _view.Render(
                 CreateRenderData(
                     true,
@@ -386,6 +398,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             FindComponent<Button>("AgentTabButtonImage").onClick.Invoke();
             mission.GetComponent<UIPointerGestureRelay>().OnPointerDown(eventData);
             participant.GetComponent<UIPointerGestureRelay>().OnPointerDown(eventData);
+            participant.GetComponent<UIPointerGestureRelay>().OnPointerClick(eventData);
 
             Assert.AreSame(_view, destroyed);
             Assert.AreEqual(0, tabCount);

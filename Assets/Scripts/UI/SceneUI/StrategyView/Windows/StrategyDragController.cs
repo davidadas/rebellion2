@@ -151,6 +151,33 @@ public sealed class StrategyDragController
     }
 
     /// <summary>
+    /// Begins tracking an item-drag candidate supplied directly by a non-window feature.
+    /// </summary>
+    /// <param name="item">The direct scene-node source.</param>
+    /// <param name="preview">The optional direct drag preview.</param>
+    /// <param name="eventData">The originating pointer press.</param>
+    /// <param name="x">The source-space horizontal press coordinate.</param>
+    /// <param name="y">The source-space vertical press coordinate.</param>
+    /// <returns>True when the candidate was accepted.</returns>
+    public bool TryStartItemCandidate(
+        ISceneNode item,
+        DragPreview preview,
+        PointerEventData eventData,
+        int x,
+        int y
+    )
+    {
+        if (item == null || !TryTrackItemPointer(eventData))
+        {
+            ClearItemDrag();
+            return false;
+        }
+
+        itemDragController.StartCandidate(item, preview, x, y);
+        return true;
+    }
+
+    /// <summary>
     /// Processes item-drag movement at known strategy source coordinates.
     /// </summary>
     /// <param name="eventData">The active pointer gesture.</param>
@@ -262,6 +289,19 @@ public sealed class StrategyDragController
     {
         itemDragController.Clear();
         ClearTrackedItemPointer();
+    }
+
+    /// <summary>
+    /// Cancels pending or active item-drag state when present.
+    /// </summary>
+    /// <returns>True when item-drag state was cleared.</returns>
+    public bool TryCancelItemDrag()
+    {
+        if (!HasItemState)
+            return false;
+
+        ClearItemDrag();
+        return true;
     }
 
     /// <summary>

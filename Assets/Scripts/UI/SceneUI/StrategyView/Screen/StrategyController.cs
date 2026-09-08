@@ -1215,9 +1215,9 @@ public sealed class StrategyController
     /// </summary>
     private void Render()
     {
+        idleBarController.Render();
         RenderGalaxyMap();
         RenderBookmarks();
-        idleBarController.Render();
         RenderWindows();
 
         RenderHud();
@@ -3054,6 +3054,72 @@ public sealed class StrategyController
     void IIdleBarActions.RequestIdleBarRender()
     {
         dirty = true;
+    }
+
+    /// <summary>
+    /// Temporarily emphasizes the hovered idle entity's location on the galaxy map.
+    /// </summary>
+    /// <param name="target">The hovered entity, or null to restore the selected display.</param>
+    void IIdleBarActions.SetIdleBarLocationHighlight(ISceneNode target)
+    {
+        Planet planet = target as Planet ?? target?.GetParentOfType<Planet>();
+        galaxyMapController.SetSpotlightPlanet(planet?.InstanceID);
+    }
+
+    /// <summary>
+    /// Begins a shared strategy drag directly from one movable idle-bar entity.
+    /// </summary>
+    /// <param name="target">The pressed idle entity.</param>
+    /// <param name="preview">The compact entity drag preview.</param>
+    /// <param name="eventData">The source pointer event.</param>
+    /// <returns>True when the drag candidate was accepted.</returns>
+    bool IIdleBarActions.TryStartIdleBarItemDrag(
+        ISceneNode target,
+        DragPreview preview,
+        PointerEventData eventData
+    )
+    {
+        IReadOnlyList<ISceneNode> items = new[] { target };
+        if (
+            targetingController.IsTargeting
+            || !StrategyContextMenuAvailability.CanMoveItems(items, PlayerFactionId)
+            || !TryGetSourcePosition(
+                eventData,
+                eventData?.position ?? Vector2.zero,
+                out int x,
+                out int y
+            )
+        )
+            return false;
+
+        return strategyDragController.TryStartItemCandidate(target, preview, eventData, x, y);
+    }
+
+    /// <summary>
+    /// Advances a shared strategy drag started from the idle bar.
+    /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
+    void IIdleBarActions.MoveIdleBarItemDrag(PointerEventData eventData)
+    {
+        inputController.OnDrag(eventData);
+    }
+
+    /// <summary>
+    /// Completes or clears a shared strategy drag started from the idle bar.
+    /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
+    void IIdleBarActions.EndIdleBarItemDrag(PointerEventData eventData)
+    {
+        if (eventData == null)
+        {
+            strategyDragController.ClearItemDrag();
+            targetingController.TryCancel();
+            RenderOverlay();
+            MarkDirty();
+            return;
+        }
+
+        inputController.OnPointerUp(eventData);
     }
 
     /// <summary>

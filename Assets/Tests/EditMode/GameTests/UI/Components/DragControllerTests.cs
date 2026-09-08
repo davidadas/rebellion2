@@ -58,9 +58,10 @@ namespace Rebellion.Tests.UI.Components
         [Test]
         public void DragPreview_MultipleImages_PreservesImageBoundsAndHotspot()
         {
+            Rect uvRect = new Rect(0.25f, 0f, 0.5f, 1f);
             DragPreviewImage[] images =
             {
-                new DragPreviewImage(_texture, new RectInt(10, 20, 30, 40)),
+                new DragPreviewImage(_texture, new RectInt(10, 20, 30, 40), uvRect),
                 new DragPreviewImage(_texture, new RectInt(60, 80, 20, 10)),
             };
             DragPreview preview = new DragPreview(images, 17, 29);
@@ -70,6 +71,8 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(2, preview.Images.Count);
             Assert.AreEqual(new RectInt(10, 20, 30, 40), preview.Images[0].Bounds);
             Assert.AreEqual(new RectInt(60, 80, 20, 10), preview.Images[1].Bounds);
+            Assert.AreEqual(uvRect, preview.Images[0].UvRect);
+            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), preview.Images[1].UvRect);
             Assert.AreEqual(17, preview.HotspotX);
             Assert.AreEqual(29, preview.HotspotY);
             Assert.IsTrue(preview.HasDrawableImages);

@@ -117,14 +117,29 @@ public readonly struct DragPreviewImage
     public RectInt Bounds { get; }
 
     /// <summary>
+    /// Gets the source texture region rendered inside the preview bounds.
+    /// </summary>
+    public Rect UvRect { get; }
+
+    /// <summary>
     /// Creates one drag-preview image layer.
     /// </summary>
     /// <param name="texture">The displayed texture.</param>
     /// <param name="bounds">The source-space layer bounds.</param>
     public DragPreviewImage(Texture texture, RectInt bounds)
+        : this(texture, bounds, new Rect(0f, 0f, 1f, 1f)) { }
+
+    /// <summary>
+    /// Creates one textured drag-preview layer with an explicit source region.
+    /// </summary>
+    /// <param name="texture">The displayed texture.</param>
+    /// <param name="bounds">The source-space layer bounds.</param>
+    /// <param name="uvRect">The normalized source texture region.</param>
+    public DragPreviewImage(Texture texture, RectInt bounds, Rect uvRect)
     {
         Texture = texture;
         Bounds = bounds;
+        UvRect = uvRect;
     }
 }
 

@@ -74,6 +74,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
+        public void Project_MainCharacters_PrecedeOtherOfficers()
+        {
+            Officer firstNamedOfficer = CreateOfficer("A Officer");
+            Officer mainCharacter = CreateOfficer("Z Main Character");
+            mainCharacter.IsMain = true;
+
+            IdleBarRenderData result = new IdleBarProjector(() => null).Project(
+                _playerFaction,
+                new RectInt()
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { mainCharacter, firstNamedOfficer },
+                result.Entries.Select(entry => entry.Entity)
+            );
+        }
+
+        [Test]
         public void Project_ParticipantsWithUnavailableStatus_AreExcluded()
         {
             Officer injuredOfficer = CreateOfficer("Injured");

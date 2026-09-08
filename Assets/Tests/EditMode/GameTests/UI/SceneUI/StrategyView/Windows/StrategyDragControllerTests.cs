@@ -211,6 +211,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void TryStartItemCandidate_DirectEntity_UsesSharedDragFlow()
+        {
+            Officer officer = new Officer();
+            DragPreview preview = new DragPreview(_texture, 20, 30, 2, 3);
+            StrategyDragController controller = CreateController();
+
+            bool accepted = controller.TryStartItemCandidate(
+                officer,
+                preview,
+                _pointerEvent,
+                10,
+                20
+            );
+            StrategyDragEventResult result = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                13,
+                24
+            );
+
+            Assert.IsTrue(accepted);
+            Assert.IsTrue(result.Handled);
+            Assert.IsTrue(result.RenderOverlay);
+            Assert.IsTrue(controller.TryGetOverlay(out Texture texture, out _));
+            Assert.AreSame(_texture, texture);
+        }
+
+        [Test]
         public void TryHandleItemPointerMove_DifferentPress_ClearsCandidateWithoutDragging()
         {
             _contextItems = new ISceneNode[] { new Officer() };

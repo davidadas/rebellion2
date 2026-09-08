@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -17,6 +18,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         private TestActions _actions;
         private IdleBarController _controller;
         private Officer _officer;
+        private ISceneNode _resolvedEntity;
         private GameObject _rootObject;
         private IdleBarView _view;
 
@@ -26,12 +28,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _rootObject.GetComponentInChildren<IdleBarView>(true);
             _officer = new Officer { InstanceID = "officer", DisplayName = "Officer" };
+            _resolvedEntity = _officer;
             _actions = new TestActions();
             _controller = new IdleBarController(
                 () => null,
                 () => null,
                 () => true,
-                instanceId => instanceId == _officer.InstanceID ? _officer : null
+                instanceId => instanceId == _resolvedEntity?.InstanceID ? _resolvedEntity : null
             );
             _controller.Initialize(_actions);
             _controller.BindView(_view);
@@ -94,11 +97,64 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             {
                 button = PointerEventData.InputButton.Right,
             };
+            slot.OnPointerEnter(new PointerEventData(null));
 
             slot.OnPointerClick(rightClick);
 
             Assert.IsFalse(_controller.IsIdleBarTracked(_officer));
             Assert.AreEqual(1, _actions.RenderRequestCount);
+            Assert.IsNull(_actions.HighlightedTarget);
+        }
+
+        [Test]
+        public void EntryHover_ActiveEntry_HighlightsLocationUntilPointerExits()
+        {
+            RenderOfficerDirectly();
+            IdleBarSlotView slot = _view.GetComponentInChildren<IdleBarSlotView>(false);
+
+            slot.OnPointerEnter(new PointerEventData(null));
+
+            Assert.AreSame(_officer, _actions.HighlightedTarget);
+
+            slot.OnPointerExit(new PointerEventData(null));
+
+            Assert.IsNull(_actions.HighlightedTarget);
+        }
+
+        [Test]
+        public void EntryDrag_MovableEntity_RoutesCandidateMovementAndCompletion()
+        {
+            RenderOfficerDirectly();
+            IdleBarSlotView slot = _view.GetComponentInChildren<IdleBarSlotView>(false);
+            ScrollAreaView scrollArea = _view.GetComponentInChildren<ScrollAreaView>(true);
+            PointerEventData eventData = CreatePointerEvent(slot.gameObject);
+
+            slot.OnPointerDown(eventData);
+            scrollArea.RelayDrag(eventData);
+            scrollArea.RelayDragEnd(eventData);
+
+            Assert.AreSame(_officer, _actions.DraggedTarget);
+            Assert.AreEqual(1, _actions.DragMoveCount);
+            Assert.AreEqual(1, _actions.DragEndCount);
+        }
+
+        [Test]
+        public void EntryDrag_Planet_DoesNotStartItemDrag()
+        {
+            Planet planet = new Planet { InstanceID = "planet", DisplayName = "Planet" };
+            _resolvedEntity = planet;
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new List<IdleBarEntry> { new IdleBarEntry(planet, null) },
+                    new RectInt(0, 0, 700, 350)
+                )
+            );
+            IdleBarSlotView slot = _view.GetComponentInChildren<IdleBarSlotView>(false);
+
+            slot.OnPointerDown(CreatePointerEvent(slot.gameObject));
+
+            Assert.IsNull(_actions.DraggedTarget);
         }
 
         [Test]
@@ -139,11 +195,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
         }
 
+        private static PointerEventData CreatePointerEvent(GameObject target)
+        {
+            return new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerId = -1,
+                pressPosition = new Vector2(10, 20),
+                pointerCurrentRaycast = new RaycastResult { gameObject = target },
+                pointerPressRaycast = new RaycastResult { gameObject = target },
+            };
+        }
+
         private sealed class TestActions : IIdleBarActions
         {
             public int RenderRequestCount { get; private set; }
 
             public ISceneNode OpenedTarget { get; private set; }
+
+            public ISceneNode HighlightedTarget { get; private set; }
+
+            public ISceneNode DraggedTarget { get; private set; }
+
+            public int DragMoveCount { get; private set; }
+
+            public int DragEndCount { get; private set; }
 
             public void OpenIdleBarTarget(ISceneNode target)
             {
@@ -153,6 +229,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             public void RequestIdleBarRender()
             {
                 RenderRequestCount++;
+            }
+
+            public void SetIdleBarLocationHighlight(ISceneNode target)
+            {
+                HighlightedTarget = target;
+            }
+
+            public bool TryStartIdleBarItemDrag(
+                ISceneNode target,
+                DragPreview preview,
+                PointerEventData eventData
+            )
+            {
+                DraggedTarget = target;
+                return true;
+            }
+
+            public void MoveIdleBarItemDrag(PointerEventData eventData)
+            {
+                DragMoveCount++;
+            }
+
+            public void EndIdleBarItemDrag(PointerEventData eventData)
+            {
+                DragEndCount++;
             }
         }
     }
