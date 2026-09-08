@@ -29,6 +29,7 @@ public static class HeadlessSimulationRunner
     private const string _outputPathFlag = "-simOut";
     private const string _seedFlag = "-simSeed";
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
+    private const string _defaultSimulationSaveFileName = "headless-simulation";
     private const string _savedSimulationPlayerId = "PLAYER1";
     private const int _percentScale = 100;
 
@@ -56,9 +57,9 @@ public static class HeadlessSimulationRunner
     /// <param name="tickCount">The number of ticks to simulate.</param>
     /// <param name="outputPath">The summary output path.</param>
     /// <param name="seed">The optional generation seed.</param>
-    /// <param name="saveFileName">The optional save file name.</param>
-    /// <param name="saveDisplayName">The optional save display name.</param>
-    /// <param name="playerFactionId">The faction assigned to the player in the saved game.</param>
+    /// <param name="saveFileName">The optional save-file name override.</param>
+    /// <param name="saveDisplayName">The optional save display-name override.</param>
+    /// <param name="playerFactionId">The optional player-faction override for the saved game.</param>
     /// <returns>The completed simulation result.</returns>
     public static SimulationRunResult RunPersistentSimulation(
         int tickCount,
@@ -244,22 +245,27 @@ public static class HeadlessSimulationRunner
     }
 
     /// <summary>
-    /// Saves and reloads a completed simulation when the options request a save artifact.
+    /// Saves and reloads a completed simulation.
     /// </summary>
     /// <param name="game">The completed simulated game.</param>
     /// <param name="options">The simulation options containing save configuration.</param>
-    /// <returns>The validated save-file path, or an empty string when saving is disabled.</returns>
+    /// <returns>The validated save-file path.</returns>
     private static string SaveSimulation(GameRoot game, SimulationOptions options)
     {
-        if (string.IsNullOrWhiteSpace(options.SaveFileName))
-            return string.Empty;
+        string saveFileName = ResolveSaveFileName(options);
+        string saveDisplayName = string.IsNullOrWhiteSpace(options.SaveDisplayName)
+            ? $"Simulation {options.Seed?.ToString() ?? "random"} - Tick {game.CurrentTick}"
+            : options.SaveDisplayName;
+        string playerFactionId = string.IsNullOrWhiteSpace(options.PlayerFactionId)
+            ? game.Summary.PlayerFactionID
+            : options.PlayerFactionId;
 
         Faction playerFaction = game.GetFactions()
-            .FirstOrDefault(faction => faction.InstanceID == options.PlayerFactionId);
+            .FirstOrDefault(faction => faction.InstanceID == playerFactionId);
         if (playerFaction == null)
         {
             throw new InvalidOperationException(
-                $"Cannot save simulation with unknown player faction '{options.PlayerFactionId}'."
+                $"Cannot save simulation with unknown player faction '{playerFactionId}'."
             );
         }
 
@@ -271,19 +277,31 @@ public static class HeadlessSimulationRunner
         }
 
         SaveGameManager saveManager = SaveGameManager.Instance;
-        saveManager.SaveGameData(game, options.SaveFileName, options.SaveDisplayName);
-        GameRoot loadedGame = saveManager.LoadGameData(options.SaveFileName);
+        saveManager.SaveGameData(game, saveFileName, saveDisplayName);
+        GameRoot loadedGame = saveManager.LoadGameData(saveFileName);
         if (
             loadedGame.CurrentTick != game.CurrentTick
             || loadedGame.Summary?.PlayerFactionID != playerFaction.InstanceID
         )
         {
             throw new InvalidOperationException(
-                $"Saved simulation validation failed for '{options.SaveFileName}'."
+                $"Saved simulation validation failed for '{saveFileName}'."
             );
         }
 
-        return saveManager.GetSaveFilePath(options.SaveFileName);
+        return saveManager.GetSaveFilePath(saveFileName);
+    }
+
+    /// <summary>
+    /// Returns the explicit save name or the shared simulation save slot.
+    /// </summary>
+    /// <param name="options">The simulation options.</param>
+    /// <returns>The save-file name without its extension.</returns>
+    private static string ResolveSaveFileName(SimulationOptions options)
+    {
+        return string.IsNullOrWhiteSpace(options.SaveFileName)
+            ? _defaultSimulationSaveFileName
+            : options.SaveFileName;
     }
 
     /// <summary>
@@ -1946,6 +1964,7 @@ public static class HeadlessSimulationRunner
         public string MissionTypeId;
         public int Started;
         public int OfficerLedHostileStarted;
+        public int OfficerLedHostileStartedWithDecoy;
         public int OfficerLedHostileStartedWithSpecialForcesDecoy;
         public int Ended;
         public int Active;
@@ -2569,6 +2588,8 @@ public static class HeadlessSimulationRunner
                         MissionTypeId = pair.Key,
                         Started = pair.Value.Started,
                         OfficerLedHostileStarted = pair.Value.OfficerLedHostileStarted,
+                        OfficerLedHostileStartedWithDecoy =
+                            pair.Value.OfficerLedHostileStartedWithDecoy,
                         OfficerLedHostileStartedWithSpecialForcesDecoy =
                             pair.Value.OfficerLedHostileStartedWithSpecialForcesDecoy,
                         Ended = pair.Value.Ended,
@@ -2672,6 +2693,8 @@ public static class HeadlessSimulationRunner
                 if (mission.OfficerLedHostile)
                 {
                     missionCounts.OfficerLedHostileStarted++;
+                    if (mission.HasDecoy)
+                        missionCounts.OfficerLedHostileStartedWithDecoy++;
                     if (mission.HasSpecialForcesDecoy)
                         missionCounts.OfficerLedHostileStartedWithSpecialForcesDecoy++;
                 }
@@ -2939,6 +2962,7 @@ public static class HeadlessSimulationRunner
         {
             public int Started;
             public int OfficerLedHostileStarted;
+            public int OfficerLedHostileStartedWithDecoy;
             public int OfficerLedHostileStartedWithSpecialForcesDecoy;
             public int Ended;
         }
@@ -2983,6 +3007,7 @@ public static class HeadlessSimulationRunner
             public bool WaitingForParticipants;
             public int MainRating;
             public bool OfficerLedHostile;
+            public bool HasDecoy;
             public bool HasSpecialForcesDecoy;
 
             /// <summary>
@@ -3017,6 +3042,7 @@ public static class HeadlessSimulationRunner
                         mainParticipants.OfType<Officer>().Any()
                         && !string.IsNullOrEmpty(targetPlanet?.GetOwnerInstanceID())
                         && targetPlanet.GetOwnerInstanceID() != factionId,
+                    HasDecoy = mission.GetDecoyParticipants().Count > 0,
                     HasSpecialForcesDecoy = mission
                         .GetDecoyParticipants()
                         .OfType<SpecialForces>()

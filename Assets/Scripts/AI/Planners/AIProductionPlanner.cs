@@ -1003,9 +1003,6 @@ namespace Rebellion.AI.Planners
 
             int maintenanceBudget = GetCapitalShipMaintenanceBudget(context);
             GameConfig.AISelectionConfig selectionConfig = context.Game.Config.AI.Selection;
-            bool prioritizeGeneralDelivery =
-                demand.CapitalShipRole == AICapitalShipProductionRole.General
-                && !HasCommittedCombatCapitalShip(demand.DestinationFleet);
             bool needsStarfighterCapacity =
                 demand.CapitalShipRole == AICapitalShipProductionRole.General
                 && demand.DestinationFleet?.GetStarfighterCapacity() <= 0;
@@ -1029,7 +1026,6 @@ namespace Rebellion.AI.Planners
                     rankedTechnologies,
                     technology,
                     demand.CapitalShipRole,
-                    prioritizeGeneralDelivery,
                     needsStarfighterCapacity
                 );
             }
@@ -1051,9 +1047,6 @@ namespace Rebellion.AI.Planners
         /// <param name="rankedTechnologies">The ranked technologies.</param>
         /// <param name="candidate">The candidate.</param>
         /// <param name="role">The role.</param>
-        /// <param name="prioritizeGeneralDelivery">
-        /// Whether an unready fleet needs its first combat ship delivered quickly.
-        /// </param>
         /// <param name="needsStarfighterCapacity">
         /// Whether the receiving fleet lacks starfighter capacity.
         /// </param>
@@ -1062,7 +1055,6 @@ namespace Rebellion.AI.Planners
             List<Technology> rankedTechnologies,
             Technology candidate,
             AICapitalShipProductionRole role,
-            bool prioritizeGeneralDelivery,
             bool needsStarfighterCapacity
         )
         {
@@ -1071,7 +1063,6 @@ namespace Rebellion.AI.Planners
             double candidateMetric = GetCapitalShipRoleMetric(
                 candidateShip,
                 role,
-                prioritizeGeneralDelivery,
                 needsStarfighterCapacity,
                 context.Game.Config.AI.Selection,
                 combatConfig
@@ -1083,7 +1074,6 @@ namespace Rebellion.AI.Planners
                 double rankedMetric = GetCapitalShipRoleMetric(
                     rankedShip,
                     role,
-                    prioritizeGeneralDelivery,
                     needsStarfighterCapacity,
                     context.Game.Config.AI.Selection,
                     combatConfig
@@ -1159,21 +1149,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether a fleet has a completed or constructing combat capital ship.
-        /// </summary>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>True when the fleet has committed capital-ship combat capability.</returns>
-        private static bool HasCommittedCombatCapitalShip(Fleet fleet)
-        {
-            return fleet
-                    ?.GetChildren<CapitalShip>()
-                    .Any(capitalShip =>
-                        IsCommittedCapitalShip(capitalShip)
-                        && GetMaximumPrimaryWeaponStrength(capitalShip) > 0
-                    ) == true;
-        }
-
-        /// <summary>
         /// Returns whether a capital ship is eligible for a production role.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
@@ -1205,9 +1180,6 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <param name="role">The role.</param>
-        /// <param name="prioritizeGeneralDelivery">
-        /// Whether an unready fleet needs its first combat ship delivered quickly.
-        /// </param>
         /// <param name="needsStarfighterCapacity">
         /// Whether the receiving fleet lacks starfighter capacity.
         /// </param>
@@ -1217,7 +1189,6 @@ namespace Rebellion.AI.Planners
         private static double GetCapitalShipRoleMetric(
             CapitalShip capitalShip,
             AICapitalShipProductionRole role,
-            bool prioritizeGeneralDelivery,
             bool needsStarfighterCapacity,
             GameConfig.AISelectionConfig selectionConfig,
             GameConfig.SpaceCombatConfig combatConfig
@@ -1237,11 +1208,7 @@ namespace Rebellion.AI.Planners
                 AICapitalShipProductionRole.Interdiction => capitalShip.ShieldRechargeRate,
                 _ => 0,
             };
-            bool prioritizeConstructionRate =
-                role != AICapitalShipProductionRole.General || prioritizeGeneralDelivery;
-            return prioritizeConstructionRate
-                ? capabilityMetric * _productionRateMetricScale / constructionCost
-                : capabilityMetric;
+            return capabilityMetric * _productionRateMetricScale / constructionCost;
         }
 
         /// <summary>

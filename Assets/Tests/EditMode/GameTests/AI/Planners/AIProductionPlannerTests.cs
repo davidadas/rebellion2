@@ -1159,8 +1159,10 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [TestCase(false, TestName = "Plan_WithNoCommittedCombatShip_PrioritizesConstructionRate")]
-        [TestCase(true, TestName = "Plan_WithCommittedCombatShip_PrioritizesCombatQuality")]
-        public void Plan_GeneralRoleSelectionReflectsFleetReadiness(bool hasCommittedCombatShip)
+        [TestCase(true, TestName = "Plan_WithCommittedCombatShip_PrioritizesConstructionRate")]
+        public void Plan_GeneralRoleSelectionPrioritizesConstructionRate(
+            bool hasCommittedCombatShip
+        )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -1238,10 +1240,7 @@ namespace Rebellion.Tests.AI.Planners
                     item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
-            Assert.AreSame(
-                hasCommittedCombatShip ? higherMetricTemplate : lowerMetricTemplate,
-                proposal.Product.GetReference()
-            );
+            Assert.AreSame(lowerMetricTemplate, proposal.Product.GetReference());
         }
 
         [TestCase(false, TestName = "Plan_WithNoCarrier_SelectsCarrierCapableWarship")]

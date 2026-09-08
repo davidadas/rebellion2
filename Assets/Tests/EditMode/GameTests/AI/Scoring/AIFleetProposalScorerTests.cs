@@ -16,6 +16,38 @@ namespace Rebellion.Tests.AI.Scoring
     public class AIFleetProposalScorerTests
     {
         [Test]
+        public void Score_ReturningAttackFleet_ReturnsFallbackScore()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Fleet fleet = AddBattleFleet(
+                game,
+                target,
+                "fleet",
+                empire.InstanceID,
+                combatStrength: 100
+            );
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Returning,
+                target
+            );
+
+            double score = new AIFleetProposalScorer().Score(context, proposal);
+
+            Assert.AreEqual(1, score);
+        }
+
+        [Test]
         public void Score_AttackProposalForHeadquarters_ReturnsHigherScore()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -140,6 +172,70 @@ namespace Rebellion.Tests.AI.Scoring
             double upperBound = scorer.GetNewAttackScoreUpperBound(context, target);
 
             Assert.GreaterOrEqual(upperBound, score);
+        }
+
+        [Test]
+        public void Score_AttackProposalWithOlderIntelligence_ReturnsLowerScore()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;
+            config.AttackStrategicValueWeight = 100;
+            config.AttackSectorSupportLeverageWeight = 0;
+            config.AttackSystemPresenceWeight = 0;
+            config.AttackReadinessWeight = 0;
+            config.AttackCaptureViabilityWeight = 0;
+            config.AttackTravelEfficiencyWeight = 0;
+            config.AttackExpectedLossPenaltyWeight = 0;
+            config.AttackOpportunityCostPenaltyWeight = 0;
+            config.AttackIntelAgePenaltyPerRefreshInterval = 2;
+            config.OrbitalResponseBonus = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet olderTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "older",
+                rebels.InstanceID
+            );
+            Planet freshTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "fresh",
+                rebels.InstanceID
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, olderTarget);
+            game.CurrentTick = 20;
+            AITestSceneBuilder.RevealPlanet(game, empire, freshTarget);
+            Fleet fleet = AddBattleFleet(
+                game,
+                owned,
+                "fleet",
+                empire.InstanceID,
+                combatStrength: 1000
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+
+            double olderScore = scorer.Score(
+                context,
+                new AIFleetAttackProposal(
+                    fleet,
+                    FleetOrderType.Attack,
+                    FleetOrderStatus.Staging,
+                    olderTarget
+                )
+            );
+            double freshScore = scorer.Score(
+                context,
+                new AIFleetAttackProposal(
+                    fleet,
+                    FleetOrderType.Attack,
+                    FleetOrderStatus.Staging,
+                    freshTarget
+                )
+            );
+
+            Assert.AreEqual(2, freshScore - olderScore);
         }
 
         [Test]

@@ -64,7 +64,6 @@ namespace Rebellion.AI.Scoring
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, missionProposal);
             score -= foilProbability * context.Game.Config.AI.MissionPlanning.MissionFoilRiskWeight;
             score -= GetTravelPenalty(context, missionProposal);
-            score -= GetOfficerReplacementPenalty(context, missionProposal);
 
             return score >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? score : 0;
         }
@@ -106,7 +105,6 @@ namespace Rebellion.AI.Scoring
             double score = GetMissionScore(context, proposal, _maximumSuccessProbability);
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, proposal);
             score -= GetTravelPenalty(context, proposal);
-            score -= GetOfficerReplacementPenalty(context, proposal);
             return score;
         }
 
@@ -239,31 +237,6 @@ namespace Rebellion.AI.Scoring
                     )
                     .DefaultIfEmpty()
                     .Max() / distanceScale;
-        }
-
-        /// <summary>
-        /// Returns the penalty for assigning an officer where special forces could serve instead.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal to evaluate.</param>
-        /// <returns>The configured replacement penalty, or zero when no replacement is available.</returns>
-        private int GetOfficerReplacementPenalty(AITurnContext context, AIMissionProposal proposal)
-        {
-            if (
-                proposal.Participant is not Officer
-                || proposal.TargetPlanet?.GetOwnerInstanceID() == null
-                || proposal.TargetPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
-            )
-                return 0;
-
-            bool hasSpecialForcesReplacement = context
-                .Faction.GetUnlockedTechnologies(ManufacturingType.Troop)
-                .Select(technology => technology.GetReference())
-                .OfType<SpecialForces>()
-                .Any(specialForces => specialForces.CanPerformMission(proposal.MissionTypeID));
-            return hasSpecialForcesReplacement
-                ? context.Game.Config.AI.MissionPlanning.HostileOfficerReplacementPenalty
-                : 0;
         }
 
         /// <summary>

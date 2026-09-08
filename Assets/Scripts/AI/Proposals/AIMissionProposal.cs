@@ -188,11 +188,11 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Creates an equivalent proposal with one special-forces decoy assigned.
+        /// Creates an equivalent proposal with one decoy assigned.
         /// </summary>
-        /// <param name="decoy">The special-forces unit assigned as the decoy.</param>
+        /// <param name="decoy">The participant assigned as the decoy.</param>
         /// <returns>A copy of this proposal containing the decoy assignment.</returns>
-        internal AIMissionProposal WithDecoy(SpecialForces decoy)
+        internal AIMissionProposal WithDecoy(IMissionParticipant decoy)
         {
             AIMissionProposal proposal = new AIMissionProposal(
                 MainParticipants,

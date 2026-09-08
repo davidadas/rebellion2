@@ -1751,7 +1751,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithAttackRegimentStrengthGap_AddsFleetRegimentDemand()
+        public void Generate_WithAttackRegimentStrengthGap_AddsDemandForEntireDeficit()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
@@ -1772,7 +1772,7 @@ namespace Rebellion.Tests.AI.Planners
                 owned,
                 enemy,
                 empire.InstanceID,
-                regimentCapacity: 2
+                regimentCapacity: 5
             );
             game.AttachNode(
                 AITestSceneBuilder.CreateRegiment("attacker", empire.InstanceID, attackRating: 5),
@@ -1786,7 +1786,7 @@ namespace Rebellion.Tests.AI.Planners
                     item.Kind == AIDemandKind.FleetRegiment && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(3, demand.QuantityNeeded);
         }
 
         [Test]
@@ -1825,7 +1825,7 @@ namespace Rebellion.Tests.AI.Planners
                     item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(2, demand.QuantityNeeded);
+            Assert.AreEqual(3, demand.QuantityNeeded);
             Assert.AreEqual(AICapitalShipProductionRole.TroopTransport, demand.CapitalShipRole);
         }
 

@@ -43,6 +43,7 @@ namespace Rebellion.AI.Scoring
 
             return proposal switch
             {
+                AIFleetAttackProposal { Status: FleetOrderStatus.Returning } => 1,
                 AIFleetAttackProposal attackProposal => ScoreAttack(
                     context,
                     attackProposal.Fleet,
@@ -172,7 +173,8 @@ namespace Rebellion.AI.Scoring
                     * config.AttackTravelEfficiencyWeight
                 - ScoreExpectedLossRisk(context, fleet, targetPlanet)
                     * config.AttackExpectedLossPenaltyWeight
-                - ScoreOpportunityCost(context, fleet) * config.AttackOpportunityCostPenaltyWeight;
+                - ScoreOpportunityCost(context, fleet) * config.AttackOpportunityCostPenaltyWeight
+                - GetIntelAgePenalty(context, targetPlanet, config);
 
             if (targetPlanet.IsHeadquarters)
                 score += config.HeadquartersAttackBonus;
@@ -182,6 +184,31 @@ namespace Rebellion.AI.Scoring
 
             score = Math.Max(0, score);
             return existingOrder ? score + config.ExistingAttackOrderBonus : score;
+        }
+
+        /// <summary>
+        /// Returns the score penalty for committing a fleet against aging intelligence.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="targetPlanet">The prospective attack target.</param>
+        /// <param name="config">Fleet deployment scoring settings.</param>
+        /// <returns>The intelligence-age penalty.</returns>
+        private static double GetIntelAgePenalty(
+            AITurnContext context,
+            Planet targetPlanet,
+            GameConfig.AIFleetDeploymentConfig config
+        )
+        {
+            int age = context.Assessment.GetPlanetIntelAge(targetPlanet);
+            int refreshInterval = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .EspionageRefreshIntervalTicks;
+            return age < int.MaxValue && refreshInterval > 0
+                ? (double)age / refreshInterval * config.AttackIntelAgePenaltyPerRefreshInterval
+                : 0;
         }
 
         /// <summary>
@@ -266,6 +293,9 @@ namespace Rebellion.AI.Scoring
             if (!CanScoreUnitTransfer(context, proposal))
                 return 0;
 
+            if (proposal.Unit is Regiment regiment)
+                return ScoreRegimentTransfer(context, proposal, regiment);
+
             Fleet sourceFleet = proposal.SourceContainer as Fleet;
             CapitalShip capitalShip = proposal.Unit as CapitalShip;
             AIAssessment assessment = context.Assessment;
@@ -306,6 +336,64 @@ namespace Rebellion.AI.Scoring
                     * config.AttackOpportunityCostPenaltyWeight;
 
             return Math.Max(0, score);
+        }
+
+        /// <summary>
+        /// Returns the score for moving a planet regiment into an attack fleet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The regiment transfer proposal.</param>
+        /// <param name="regiment">The regiment being transferred.</param>
+        /// <returns>The regiment transfer score.</returns>
+        private double ScoreRegimentTransfer(
+            AITurnContext context,
+            AITransferUnitProposal proposal,
+            Regiment regiment
+        )
+        {
+            AIAssessment assessment = context.Assessment;
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            int requiredCount = assessment.GetProjectedRequiredAttackRegimentCount(
+                proposal.TargetFleet,
+                proposal.TargetPlanet
+            );
+            int requiredStrength = assessment.GetProjectedRequiredAttackRegimentStrength(
+                proposal.TargetFleet,
+                proposal.TargetPlanet
+            );
+            double countGain =
+                GetFulfillmentRatio(
+                    assessment.GetFleetLoadedRegimentCount(proposal.TargetFleet) + 1,
+                    requiredCount
+                )
+                - GetFulfillmentRatio(
+                    assessment.GetFleetLoadedRegimentCount(proposal.TargetFleet),
+                    requiredCount
+                );
+            double strengthGain =
+                GetFulfillmentRatio(
+                    assessment.GetProjectedFleetRegimentAttackStrength(proposal.TargetFleet)
+                        + regiment.AttackRating,
+                    requiredStrength
+                )
+                - GetFulfillmentRatio(
+                    assessment.GetProjectedFleetRegimentAttackStrength(proposal.TargetFleet),
+                    requiredStrength
+                );
+            double readinessGain = Math.Max(0, countGain) + Math.Max(0, strengthGain);
+            Planet receivingPlanet = assessment.GetFleetPlanet(proposal.TargetFleet);
+            double travelEfficiency = ScoreTravelEfficiency(
+                assessment,
+                proposal.SourceContainer as Planet,
+                receivingPlanet
+            );
+            return Math.Max(
+                0,
+                readinessGain * config.AttackReadinessWeight
+                    + ScoreStrategicTargetValue(assessment, proposal.TargetPlanet)
+                        * config.AttackStrategicValueWeight
+                    + travelEfficiency * config.AttackTravelEfficiencyWeight
+            );
         }
 
         /// <summary>
@@ -771,21 +859,22 @@ namespace Rebellion.AI.Scoring
             )
                 return false;
 
-            Fleet sourceFleet = proposal.SourceContainer as Fleet;
-            CapitalShip capitalShip = proposal.Unit as CapitalShip;
-            if (sourceFleet == null || capitalShip == null)
+            if (proposal.SourceContainer == proposal.TargetFleet)
                 return false;
 
-            if (sourceFleet == proposal.TargetFleet)
-                return false;
-
-            if (sourceFleet.GetOwnerInstanceID() != context.Faction.InstanceID)
+            if (proposal.SourceContainer.GetOwnerInstanceID() != context.Faction.InstanceID)
                 return false;
 
             if (proposal.TargetFleet.GetOwnerInstanceID() != context.Faction.InstanceID)
                 return false;
 
-            if (capitalShip.GetParentOfType<Fleet>() != sourceFleet)
+            if (proposal.Unit.GetParent() != proposal.SourceContainer)
+                return false;
+
+            if (
+                proposal.Unit is not Regiment
+                && (proposal.SourceContainer is not Fleet || proposal.Unit is not CapitalShip)
+            )
                 return false;
 
             FleetOrder order = proposal.TargetFleet.Order;

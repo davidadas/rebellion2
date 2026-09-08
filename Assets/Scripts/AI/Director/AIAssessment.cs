@@ -60,6 +60,8 @@ namespace Rebellion.AI.Director
         >(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _planetRequiredAttackCombatStrengths =
             new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _systemRequiredAttackCombatStrengths =
+            new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _planetRequiredAttackRegimentCounts =
             new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _strongestHostileFleetStrengths = new Dictionary<
@@ -1187,7 +1189,32 @@ namespace Rebellion.AI.Director
             return GetOrAdd(
                 _planetRequiredAttackCombatStrengths,
                 planet.InstanceID,
-                () => GetRequiredOrbitalStrength(planet)
+                () =>
+                    Math.Max(
+                        _context.Game.Config.AI.FleetDeployment.MinimumAttackStrength,
+                        GetRequiredSystemOrbitalStrength(planet)
+                    )
+            );
+        }
+
+        /// <summary>
+        /// Returns the strength required against the strongest known orbital opposition in a system.
+        /// </summary>
+        /// <param name="targetPlanet">Planet identifying the target system.</param>
+        /// <returns>The largest orbital strength requirement in the system.</returns>
+        private int GetRequiredSystemOrbitalStrength(Planet targetPlanet)
+        {
+            string systemId = GetPlanetSystemId(targetPlanet);
+            if (
+                string.IsNullOrEmpty(systemId)
+                || !_knownPlanetsBySystemId.TryGetValue(systemId, out IReadOnlyList<Planet> planets)
+            )
+                return GetRequiredOrbitalStrength(targetPlanet);
+
+            return GetOrAdd(
+                _systemRequiredAttackCombatStrengths,
+                systemId,
+                () => planets.Select(GetRequiredOrbitalStrength).DefaultIfEmpty().Max()
             );
         }
 
@@ -1771,6 +1798,33 @@ namespace Rebellion.AI.Director
                 targetPlanet,
                 _context.Game.Config.Combat.PlanetaryAssault
             );
+        }
+
+        /// <summary>
+        /// Returns whether a fleet can immediately bombard or assault its current target.
+        /// </summary>
+        /// <param name="fleet">Fleet assigned to the attack.</param>
+        /// <param name="targetPlanet">Planet being attacked.</param>
+        /// <returns>True when the fleet can make immediate progress against the planet.</returns>
+        public bool CanFleetMakeImmediateAttackProgress(Fleet fleet, Planet targetPlanet)
+        {
+            if (CanBombardMilitaryTargets(fleet, targetPlanet))
+                return true;
+
+            if (IsAssaultBlockedByShields(targetPlanet))
+                return false;
+
+            return GetReadyFleetRegimentCount(fleet)
+                    >= GetRequiredAttackRegimentCount(fleet, targetPlanet)
+                && GetReadyFleetRegimentAttackStrength(fleet)
+                    >= GetRequiredAttackRegimentStrength(fleet, targetPlanet)
+                && GetPlanetaryAssaultSuccessPercent(fleet, targetPlanet)
+                    >= _context
+                        .Game
+                        .Config
+                        .AI
+                        .FleetDeployment
+                        .MinimumPlanetaryAssaultSuccessPercent;
         }
 
         /// <summary>

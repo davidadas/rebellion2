@@ -225,6 +225,24 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Draws the temporary galaxy-visibility control used to inspect simulation saves.
+    /// </summary>
+    private void OnGUI()
+    {
+        if (!presentationActive || galaxyMapController == null)
+            return;
+
+        string label = galaxyMapController.ShowFullGalaxy
+            ? "View: Full Intel"
+            : "View: Faction Intel";
+        if (!GUI.Button(new Rect(8, 8, 150, 30), label))
+            return;
+
+        galaxyMapController.ToggleGalaxyVisibility();
+        RefreshStrategyState();
+    }
+
+    /// <summary>
     /// Creates and binds the screen-level HUD and galaxy presentation controllers.
     /// </summary>
     private void InitializeScreenControllers()

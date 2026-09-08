@@ -47,6 +47,7 @@ public sealed class GalaxyMapController
     private GalaxyMapView view;
     private GalaxyMap visibleGalaxyMap;
     private StrategyBriefingMapPresentation briefingPresentation;
+    private bool showFullGalaxy = true;
     private string hoveredSectorInstanceId;
     private string playerFactionId = string.Empty;
 
@@ -55,6 +56,8 @@ public sealed class GalaxyMapController
     public IReadOnlyList<GalaxyMapSector> Sectors => readOnlySectors;
 
     public GalaxyMap VisibleGalaxyMap => visibleGalaxyMap;
+
+    public bool ShowFullGalaxy => showFullGalaxy;
 
     /// <summary>
     /// Creates a galaxy-map controller backed by the current strategy UI context.
@@ -111,7 +114,9 @@ public sealed class GalaxyMapController
         visibleGalaxyMap = null;
         if (playerFaction != null)
         {
-            visibleGalaxyMap = gameManager.GetFogOfWarSystem().BuildFactionView(playerFaction);
+            visibleGalaxyMap = showFullGalaxy
+                ? gameManager.GetGame().GetGalaxyMap()
+                : gameManager.GetFogOfWarSystem().BuildFactionView(playerFaction);
             IReadOnlyList<PlanetSector> visibleSectors =
                 visibleGalaxyMap?.GetChildren<PlanetSector>();
             foreach (PlanetSector sector in visibleSectors ?? Array.Empty<PlanetSector>())
@@ -128,6 +133,14 @@ public sealed class GalaxyMapController
 
         RebuildDomainLookups(sectors);
         ReconcileHoveredSector();
+    }
+
+    /// <summary>
+    /// Switches between the live galaxy and the player's faction intelligence.
+    /// </summary>
+    public void ToggleGalaxyVisibility()
+    {
+        showFullGalaxy = !showFullGalaxy;
     }
 
     /// <summary>

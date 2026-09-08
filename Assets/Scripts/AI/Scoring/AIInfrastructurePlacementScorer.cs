@@ -77,6 +77,30 @@ namespace Rebellion.AI.Scoring
             Planet demandPlanet,
             ManufacturingType manufacturingType,
             Func<Planet, int> availableEnergy
+        ) =>
+            RankDestinations(
+                candidates,
+                demandPlanet,
+                manufacturingType,
+                BuildingType.None,
+                availableEnergy
+            );
+
+        /// <summary>
+        /// Returns production-facility destinations in descending strategic-value order.
+        /// </summary>
+        /// <param name="candidates">Eligible destination planets.</param>
+        /// <param name="demandPlanet">The planet whose demand prompted the expansion.</param>
+        /// <param name="manufacturingType">The manufacturing category being expanded.</param>
+        /// <param name="buildingType">The production-facility type being expanded.</param>
+        /// <param name="availableEnergy">Returns energy available after defensive reserves.</param>
+        /// <returns>The ranked destinations.</returns>
+        public IReadOnlyList<Planet> RankDestinations(
+            IReadOnlyList<Planet> candidates,
+            Planet demandPlanet,
+            ManufacturingType manufacturingType,
+            BuildingType buildingType,
+            Func<Planet, int> availableEnergy
         )
         {
             if (candidates == null || candidates.Count == 0)
@@ -120,6 +144,7 @@ namespace Rebellion.AI.Scoring
                         candidate,
                         demandPlanet,
                         manufacturingType,
+                        buildingType,
                         availableEnergyByPlanet[candidate.InstanceID],
                         highestProductionRate,
                         highestPlanetValue,
@@ -140,6 +165,7 @@ namespace Rebellion.AI.Scoring
         /// <param name="planet">The candidate planet.</param>
         /// <param name="demandPlanet">The planet whose demand prompted expansion.</param>
         /// <param name="manufacturingType">The manufacturing category being expanded.</param>
+        /// <param name="buildingType">The production-facility type being expanded.</param>
         /// <param name="availableEnergy">Energy available after defensive reserves.</param>
         /// <param name="highestProductionRate">The strongest candidate production rate.</param>
         /// <param name="highestPlanetValue">The strongest candidate strategic value.</param>
@@ -151,6 +177,7 @@ namespace Rebellion.AI.Scoring
             Planet planet,
             Planet demandPlanet,
             ManufacturingType manufacturingType,
+            BuildingType buildingType,
             int availableEnergy,
             double highestProductionRate,
             double highestPlanetValue,
@@ -184,6 +211,14 @@ namespace Rebellion.AI.Scoring
                     _context.Assessment.GetPlanetProductionRate(planet, manufacturingType),
                     highestProductionRate
                 );
+            if (
+                buildingType == BuildingType.TrainingFacility
+                && _context.Assessment.GetPlanetProductionFacilityCount(
+                    planet,
+                    ManufacturingType.Troop
+                ) == 1
+            )
+                score += config.TrainingFacilitySecondFacilityWeight;
             score +=
                 config.FacilityAvailableEnergyWeight
                 * Normalize(availableEnergy, highestAvailableEnergy);

@@ -176,6 +176,39 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Execute_WithNoViableBombardmentOrAssault_ReturnsOrderToBuilding()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = target.InstanceID,
+            };
+            AddShield(game, target, "shield", rebels.InstanceID);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("defender", rebels.InstanceID),
+                target
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Ready,
+                target
+            );
+
+            proposal.Execute(context);
+
+            Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
+            Assert.IsEmpty(context.Results.OfType<BombardmentResult>());
+            Assert.IsEmpty(context.Results.OfType<PlanetaryAssaultResult>());
+        }
+
+        [Test]
         public void Execute_WithSuccessfulPlanetaryAssault_AddsGarrisonChangeResult()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

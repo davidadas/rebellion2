@@ -77,16 +77,71 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Execute_WithOnlyOfficerAvailable_RemovesUnprotectedEspionageMission()
+        public void Execute_WithOnlyOfficerAvailable_KeepsEspionageMission()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
-            Officer otherOfficer = EntityFactory.CreateOfficer("other-officer", empire.InstanceID);
             game.AttachNode(officer, origin);
-            game.AttachNode(otherOfficer, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal mission = new AIMissionProposal(
+                new[] { officer },
+                MissionTypeIDs.Espionage,
+                target
+            );
+            mission.SetScore(50);
+            context.SetSelectedProposals(new[] { mission });
+
+            new AIMissionDecoyAssignmentPhase().Execute(context);
+
+            Assert.AreSame(mission, context.SelectedProposals.Single());
+        }
+
+        [Test]
+        public void Execute_WithUnclaimedOfficerAvailable_AssignsOfficerAsDecoy()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Officer participant = EntityFactory.CreateOfficer("participant", empire.InstanceID);
+            Officer decoy = EntityFactory.CreateOfficer("decoy", empire.InstanceID);
+            game.AttachNode(participant, origin);
+            game.AttachNode(decoy, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal mission = new AIMissionProposal(
+                new[] { participant },
+                MissionTypeIDs.Espionage,
+                target
+            );
+            mission.SetScore(50);
+            context.SetSelectedProposals(new[] { mission });
+
+            new AIMissionDecoyAssignmentPhase().Execute(context);
+
+            AIMissionProposal selected = context
+                .SelectedProposals.OfType<AIMissionProposal>()
+                .Single();
+            CollectionAssert.AreEqual(new[] { decoy }, selected.DecoyParticipants);
+        }
+
+        [Test]
+        public void Execute_WithStaleIntelAndNoDecoy_RemovesOfficerMission()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks = 20;
+            game.Config.AI.MissionPlanning.HostileMissionIntelAgeFoilPenaltyPerRefreshInterval = 5;
+            game.Config.AI.MissionPlanning.MaximumUnprotectedOfficerMissionFoilProbability = 20;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            game.AttachNode(officer, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.CurrentTick = 100;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal mission = new AIMissionProposal(
                 new[] { officer },
@@ -99,6 +154,61 @@ namespace Rebellion.Tests.AI.Phases
             new AIMissionDecoyAssignmentPhase().Execute(context);
 
             Assert.IsEmpty(context.SelectedProposals);
+        }
+
+        [Test]
+        public void Execute_WithTwoRiskyOfficerMissions_CombinesThemIntoProtectedMission()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks = 20;
+            game.Config.AI.MissionPlanning.HostileMissionIntelAgeFoilPenaltyPerRefreshInterval = 5;
+            game.Config.AI.MissionPlanning.MaximumUnprotectedOfficerMissionFoilProbability = 20;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet firstTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "first-target",
+                rebels.InstanceID
+            );
+            Planet secondTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "second-target",
+                rebels.InstanceID
+            );
+            Officer firstOfficer = EntityFactory.CreateOfficer("first-officer", empire.InstanceID);
+            Officer secondOfficer = EntityFactory.CreateOfficer(
+                "second-officer",
+                empire.InstanceID
+            );
+            game.AttachNode(firstOfficer, origin);
+            game.AttachNode(secondOfficer, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, firstTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, secondTarget);
+            game.CurrentTick = 100;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal firstMission = new AIMissionProposal(
+                new[] { firstOfficer },
+                MissionTypeIDs.Espionage,
+                firstTarget
+            );
+            firstMission.SetScore(100);
+            AIMissionProposal secondMission = new AIMissionProposal(
+                new[] { secondOfficer },
+                MissionTypeIDs.Espionage,
+                secondTarget
+            );
+            secondMission.SetScore(50);
+            context.SetSelectedProposals(new[] { firstMission, secondMission });
+
+            new AIMissionDecoyAssignmentPhase().Execute(context);
+
+            AIMissionProposal selected = context
+                .SelectedProposals.OfType<AIMissionProposal>()
+                .Single();
+            Assert.AreEqual(firstTarget, selected.TargetPlanet);
+            CollectionAssert.AreEqual(new[] { secondOfficer }, selected.DecoyParticipants);
         }
 
         [Test]
@@ -131,7 +241,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Execute_WithOfficerLedNonEspionageMission_DoesNotRequireDecoy()
+        public void Execute_WithFreshIntelAndNoDecoy_KeepsOfficerMission()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -139,6 +249,7 @@ namespace Rebellion.Tests.AI.Phases
             Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
             game.AttachNode(officer, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal mission = new AIMissionProposal(
                 new[] { officer },
@@ -180,6 +291,8 @@ namespace Rebellion.Tests.AI.Phases
             game.AttachNode(firstOfficer, origin);
             game.AttachNode(secondOfficer, origin);
             game.AttachNode(decoy, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, firstTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, secondTarget);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             context.SetSpecialForcesIntent(decoy, SpecialForcesIntent.Decoy);
             AIMissionProposal lowerRisk = new AIMissionProposal(
@@ -203,7 +316,9 @@ namespace Rebellion.Tests.AI.Phases
             AIMissionProposal[] selected = context
                 .SelectedProposals.OfType<AIMissionProposal>()
                 .ToArray();
-            Assert.IsFalse(selected.Any(proposal => proposal.TargetPlanet == firstTarget));
+            Assert.IsEmpty(
+                selected.Single(proposal => proposal.TargetPlanet == firstTarget).DecoyParticipants
+            );
             CollectionAssert.AreEqual(
                 new[] { decoy },
                 selected.Single(proposal => proposal.TargetPlanet == secondTarget).DecoyParticipants

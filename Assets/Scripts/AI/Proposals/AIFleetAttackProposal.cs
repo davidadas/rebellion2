@@ -53,6 +53,12 @@ namespace Rebellion.AI.Proposals
 
             claimKeys.Add(AIClaimKeys.FleetOrder(Fleet.InstanceID));
 
+            if (Status == FleetOrderStatus.Returning)
+            {
+                claimKeys.Add(AIClaimKeys.FleetMovement(Fleet.InstanceID));
+                return claimKeys;
+            }
+
             if (OrderType == FleetOrderType.Attack)
             {
                 claimKeys.Add(AIClaimKeys.FleetAttack(Fleet.InstanceID));
@@ -126,6 +132,12 @@ namespace Rebellion.AI.Proposals
 
             EnsureOrder();
 
+            if (Fleet.Order.Status == FleetOrderStatus.Returning)
+            {
+                ReturnToFriendlyTerritory(context);
+                return;
+            }
+
             if (OrderType == FleetOrderType.Attack)
                 ExecuteAttackOrder(context);
         }
@@ -141,7 +153,12 @@ namespace Rebellion.AI.Proposals
                 && order.OrderType == OrderType
                 && order.TargetPlanetId == TargetPlanet.InstanceID
             )
+            {
+                if (Status == FleetOrderStatus.Returning)
+                    order.Status = FleetOrderStatus.Returning;
+
                 return;
+            }
 
             Fleet.Order = new FleetOrder
             {
@@ -214,11 +231,9 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (!canDamageMilitaryTargets)
+            if (!shouldBombardMilitaryTargets)
             {
-                if (context.Assessment.IsFleetBlockedByTargetShields(Fleet, liveTarget))
-                    Fleet.Order.Status = FleetOrderStatus.Building;
-
+                Fleet.Order.Status = FleetOrderStatus.Building;
                 return;
             }
 
@@ -350,6 +365,22 @@ namespace Rebellion.AI.Proposals
         {
             return context.Assessment.CanFleetDepartHeadquarters(Fleet)
                 && context.Assessment.IsFleetReadyToAttack(Fleet, TargetPlanet);
+        }
+
+        /// <summary>
+        /// Returns an attack fleet to the nearest friendly planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        private void ReturnToFriendlyTerritory(AITurnContext context)
+        {
+            Planet currentPlanet = Fleet.GetParentOfType<Planet>();
+            if (currentPlanet?.GetOwnerInstanceID() == context.Faction.InstanceID)
+            {
+                ClearOrder();
+                return;
+            }
+
+            context.Movement?.EvacuateToNearestFriendlyPlanet(Fleet);
         }
 
         /// <summary>

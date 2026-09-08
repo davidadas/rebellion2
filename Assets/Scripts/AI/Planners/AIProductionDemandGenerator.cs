@@ -1744,6 +1744,7 @@ namespace Rebellion.AI.Planners
                 candidates,
                 demandPlanet,
                 manufacturingType,
+                buildingType,
                 planet => GetAvailableFacilityExpansionEnergy(context, planet)
             );
         }
@@ -1914,6 +1915,15 @@ namespace Rebellion.AI.Planners
                 pressure += GetTargetValuePressure(context, targetPlanet);
                 pressure += GetFleetReadinessPressure(context, kind, fleet, targetPlanet);
                 pressure += GetFinalReadinessGatePressure(context, fleet, targetPlanet, deficit);
+                if (kind is AIDemandKind.FleetCapitalShip or AIDemandKind.FleetRegiment)
+                {
+                    pressure += context
+                        .Game
+                        .Config
+                        .AI
+                        .Infrastructure
+                        .AttackFleetReinforcementPressureBonus;
+                }
             }
 
             if (kind == AIDemandKind.FleetStarfighter)
@@ -2225,7 +2235,24 @@ namespace Rebellion.AI.Planners
                     )
             )
             {
-                fillTarget = Math.Max(fillTarget, fleet.GetCurrentRegimentCount() + 1);
+                int currentCount = fleet.GetCurrentRegimentCount();
+                int currentStrength = context.Assessment.GetProjectedFleetRegimentAttackStrength(
+                    fleet
+                );
+                int requiredStrength =
+                    context.Assessment.GetProjectedRequiredAttackRegimentStrength(
+                        fleet,
+                        targetPlanet
+                    );
+                int estimatedStrengthPerRegiment = Math.Max(
+                    1,
+                    currentCount > 0 ? currentStrength / currentCount : requiredStrength
+                );
+                int strengthDeficitCount = IntegerMath.DivideRoundedUp(
+                    requiredStrength - currentStrength,
+                    estimatedStrengthPerRegiment
+                );
+                fillTarget = Math.Max(fillTarget, currentCount + strengthDeficitCount);
             }
 
             return fillTarget;

@@ -306,14 +306,14 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Execute_ShieldsSubtractFromStrikeAttempts()
+        public void Execute_PlanetaryShieldStrength_UsesBombardmentScale()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
             AddRegiment(game, planet, "defender", "empire");
             Building shield = AddBuilding(game, planet, "shield", "empire", BuildingType.Defense);
-            shield.ShieldStrength = 2;
-            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 3);
+            shield.ShieldStrength = 40;
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 5);
 
             BombardmentResult result = MakeBombardment(
                     game,
@@ -321,8 +321,8 @@ namespace Rebellion.Tests.Systems
                 )
                 .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
 
-            Assert.AreEqual(3, result.BombardmentStrength);
-            Assert.AreEqual(2, result.ShieldStrength);
+            Assert.AreEqual(5, result.BombardmentStrength);
+            Assert.AreEqual(40, result.ShieldStrength);
             Assert.AreEqual(1, result.StrikeAttempts);
         }
 
