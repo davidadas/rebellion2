@@ -1704,6 +1704,7 @@ public sealed class StrategyController
         idleBarController.ResetSession();
         ResetStrategyPresentation();
         uiContext.ReplaceGame(game);
+        windowPlacementController.RefreshMovementBounds();
         PreloadStrategySfx();
         strategyMusicController.Resume();
         RefreshStrategyState();
