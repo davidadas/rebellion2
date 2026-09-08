@@ -335,8 +335,10 @@ internal static class FinderWindowProjector
         FinderWindowTab activeTab
     )
     {
+        bool usesFactionUnitColumns =
+            mode == FinderMode.Troops || mode == FinderMode.Personnel && panel;
         FinderWindowTheme activeTheme =
-            mode == FinderMode.Troops && !string.IsNullOrEmpty(activeTab?.FactionInstanceId)
+            usesFactionUnitColumns && !string.IsNullOrEmpty(activeTab?.FactionInstanceId)
                 ? GetFinderTheme(uiContext, activeTab.FactionInstanceId)
                 : theme;
         string path = mode switch
@@ -347,7 +349,7 @@ internal static class FinderWindowProjector
                 : theme?.FleetFinderBackgroundImagePath,
             FinderMode.Troops => activeTheme?.TroopFinderBackgroundImagePath,
             FinderMode.Personnel => panel
-                ? theme?.SpecialForcesFinderBackgroundImagePath
+                ? activeTheme?.SpecialForcesFinderBackgroundImagePath
                 : theme?.PersonnelFinderBackgroundImagePath,
             _ => null,
         };

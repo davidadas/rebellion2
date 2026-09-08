@@ -6,6 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
@@ -554,9 +555,7 @@ internal sealed class BattleAlertWindowProjector
 
         foreach (ISceneNode child in planet.GetChildren())
         {
-            if (child is Fleet || child is Starfighter fighter && IsActiveStarfighter(fighter))
-                continue;
-            if (child is IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete })
+            if (child is Fleet or Starfighter || !IsPresentAndComplete(child))
                 continue;
 
             rows.Add(
@@ -576,9 +575,18 @@ internal sealed class BattleAlertWindowProjector
     /// <returns>True when the squadron is complete, stationary, and has surviving fighters.</returns>
     private static bool IsActiveStarfighter(Starfighter fighter)
     {
-        return fighter.ManufacturingStatus == ManufacturingStatus.Complete
-            && fighter.Movement == null
-            && fighter.CurrentSquadronSize > 0;
+        return IsPresentAndComplete(fighter) && fighter.CurrentSquadronSize > 0;
+    }
+
+    /// <summary>
+    /// Returns whether a unit is complete and physically present at the battle planet.
+    /// </summary>
+    /// <param name="unit">The candidate battle unit.</param>
+    /// <returns>True when the unit is neither unfinished nor in transit.</returns>
+    private static bool IsPresentAndComplete(ISceneNode unit)
+    {
+        return unit is not IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete }
+            && (unit is not IMovable movable || movable.GetTransitMovement() == null);
     }
 
     /// <summary>
@@ -598,7 +606,7 @@ internal sealed class BattleAlertWindowProjector
 
         foreach (ISceneNode child in node.GetChildren())
         {
-            if (child is IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete })
+            if (!IsPresentAndComplete(child))
                 continue;
 
             rows.Add(

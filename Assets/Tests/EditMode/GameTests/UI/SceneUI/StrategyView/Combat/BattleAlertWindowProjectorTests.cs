@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using UnityEngine;
@@ -134,7 +135,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void Project_PendingSecondForces_ExcludesUnitsUnderConstruction()
+        public void Project_PendingSecondForces_ExcludesUnfinishedAndInTransitUnits()
         {
             (
                 GameRoot Game,
@@ -150,6 +151,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
             unfinishedShip.ManufacturingStatus = ManufacturingStatus.Building;
             scene.Game.AttachNode(unfinishedShip, scene.OpponentFleet);
+            CapitalShip reinforcement = CreateCapitalShip(
+                "reinforcement",
+                _opponentFactionId,
+                "Incoming Reinforcement"
+            );
+            reinforcement.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            scene.Game.AttachNode(reinforcement, scene.OpponentFleet);
             PendingCombatResult pending = new PendingCombatResult
             {
                 Planet = scene.Planet,
