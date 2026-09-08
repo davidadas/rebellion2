@@ -115,16 +115,29 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
     /// <param name="y">The vertical source-space coordinate.</param>
     public void StartCandidate(ISceneNode item, DragPreview preview, int x, int y)
     {
-        if (item == null)
+        StartCandidate(new[] { item }, preview, x, y);
+    }
+
+    /// <summary>
+    /// Captures directly supplied scene nodes as a possible item drag.
+    /// </summary>
+    /// <param name="items">The direct drag sources.</param>
+    /// <param name="preview">The optional direct drag preview.</param>
+    /// <param name="x">The horizontal source-space coordinate.</param>
+    /// <param name="y">The vertical source-space coordinate.</param>
+    public void StartCandidate(IReadOnlyList<ISceneNode> items, DragPreview preview, int x, int y)
+    {
+        List<ISceneNode> validItems = items?.Where(item => item != null).Distinct().ToList();
+        if (validItems == null || validItems.Count == 0)
             return;
 
         candidateHotspotX = x;
         candidateHotspotY = y;
         ClearCapturedCandidate();
-        candidateItems.Add(item);
+        candidateItems.AddRange(validItems);
         candidatePreview = preview;
         candidateHasPreview = preview?.HasDrawableImages == true;
-        dragController.StartCandidate(new DragRequest(item), x, y);
+        dragController.StartCandidate(new DragRequest(validItems[0]), x, y);
     }
 
     /// <summary>

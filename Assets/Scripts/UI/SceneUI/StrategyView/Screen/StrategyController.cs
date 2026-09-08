@@ -259,6 +259,7 @@ public sealed class StrategyController
             () =>
                 idleBarContextMenuRequest != null
                 && ReferenceEquals(contextMenuController?.ActiveRequest, idleBarContextMenuRequest),
+            () => AppBootstrap.Instance?.GetInputManager()?.GetSelectionModifierState() ?? default,
             () => uiContext,
             () =>
                 AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowIdleBar
@@ -802,6 +803,9 @@ public sealed class StrategyController
     {
         if (gameManager == null || !contentReady)
             return;
+
+        if (Mouse.current?.leftButton.wasPressedThisFrame == true)
+            idleBarController?.ClearSelectionOutside(Mouse.current.position.ReadValue());
 
         if (briefingActive)
         {
@@ -3124,22 +3128,21 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Begins a shared strategy drag directly from one movable idle-bar entity.
+    /// Begins a shared strategy drag directly from selected movable idle-bar entities.
     /// </summary>
-    /// <param name="target">The pressed idle entity.</param>
+    /// <param name="targets">The selected idle entities.</param>
     /// <param name="preview">The compact entity drag preview.</param>
     /// <param name="eventData">The source pointer event.</param>
     /// <returns>True when the drag candidate was accepted.</returns>
     bool IIdleBarActions.TryStartIdleBarItemDrag(
-        ISceneNode target,
+        IReadOnlyList<ISceneNode> targets,
         DragPreview preview,
         PointerEventData eventData
     )
     {
-        IReadOnlyList<ISceneNode> items = new[] { target };
         if (
             targetingController.IsTargeting
-            || !StrategyContextMenuAvailability.CanMoveItems(items, PlayerFactionId)
+            || !StrategyContextMenuAvailability.CanMoveItems(targets, PlayerFactionId)
             || !TryGetSourcePosition(
                 eventData,
                 eventData?.position ?? Vector2.zero,
@@ -3149,7 +3152,7 @@ public sealed class StrategyController
         )
             return false;
 
-        return strategyDragController.TryStartItemCandidate(target, preview, eventData, x, y);
+        return strategyDragController.TryStartItemCandidate(targets, preview, eventData, x, y);
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -17,9 +18,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
         private TestActions _actions;
         private IdleBarController _controller;
+        private readonly List<ISceneNode> _resolvedEntities = new List<ISceneNode>();
         private Officer _officer;
-        private ISceneNode _resolvedEntity;
         private GameObject _rootObject;
+        private SelectionModifierState _selectionModifiers;
         private IdleBarView _view;
 
         [SetUp]
@@ -28,14 +30,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _rootObject.GetComponentInChildren<IdleBarView>(true);
             _officer = new Officer { InstanceID = "officer", DisplayName = "Officer" };
-            _resolvedEntity = _officer;
+            _resolvedEntities.Clear();
+            _resolvedEntities.Add(_officer);
+            _selectionModifiers = default;
             _actions = new TestActions();
             _controller = new IdleBarController(
                 () => null,
                 () => false,
+                () => _selectionModifiers,
                 () => null,
                 () => true,
-                instanceId => instanceId == _resolvedEntity?.InstanceID ? _resolvedEntity : null
+                ResolveEntity
             );
             _controller.Initialize(_actions);
             _controller.BindView(_view);
@@ -53,6 +58,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             IdleBarController controller = new IdleBarController(
                 () => null,
                 () => false,
+                () => default,
                 () => null,
                 () => false,
                 _ => null
@@ -72,6 +78,118 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 .onClick.Invoke();
 
             Assert.AreSame(_officer, _actions.OpenedTarget);
+        }
+
+        [Test]
+        public void ShiftSelectEntry_TogglesSelectionWithoutOpeningEntity()
+        {
+            _selectionModifiers = new SelectionModifierState(multiSelect: true, rangeSelect: false);
+            RenderEntriesDirectly(_officer);
+
+            ClickSlot(0);
+
+            Assert.IsTrue(_controller.IsSelected(_officer));
+            Assert.IsNull(_actions.OpenedTarget);
+
+            ClickSlot(0);
+
+            Assert.IsFalse(_controller.IsSelected(_officer));
+        }
+
+        [Test]
+        public void ShiftSelectEntries_OfficerAndSpecialForcesSharePersonnelSelection()
+        {
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                DisplayName = "Special Forces",
+            };
+            _resolvedEntities.Add(specialForces);
+            _selectionModifiers = new SelectionModifierState(multiSelect: true, rangeSelect: false);
+            RenderEntriesDirectly(_officer, specialForces);
+
+            ClickSlot(0);
+            ClickSlot(1);
+
+            Assert.IsTrue(_controller.IsSelected(_officer));
+            Assert.IsTrue(_controller.IsSelected(specialForces));
+        }
+
+        [Test]
+        public void EntryDrag_SelectedPersonnel_RoutesCompleteSelection()
+        {
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                DisplayName = "Special Forces",
+            };
+            _resolvedEntities.Add(specialForces);
+            _selectionModifiers = new SelectionModifierState(multiSelect: true, rangeSelect: false);
+            RenderEntriesDirectly(_officer, specialForces);
+            ClickSlot(0);
+            ClickSlot(1);
+            _selectionModifiers = default;
+            IdleBarSlotView slot = GetEntitySlots().First();
+
+            slot.OnPointerDown(CreatePointerEvent(slot.gameObject));
+
+            CollectionAssert.AreEquivalent(
+                new ISceneNode[] { _officer, specialForces },
+                _actions.DraggedTargets
+            );
+        }
+
+        [Test]
+        public void EntryDrag_ShiftHeld_DoesNotStartDragCandidate()
+        {
+            _selectionModifiers = new SelectionModifierState(multiSelect: true, rangeSelect: false);
+            RenderEntriesDirectly(_officer);
+            IdleBarSlotView slot = GetEntitySlots().Single();
+
+            slot.OnPointerDown(CreatePointerEvent(slot.gameObject));
+
+            Assert.IsNull(_actions.DraggedTargets);
+        }
+
+        [Test]
+        public void ShiftSelectEntry_IncompatibleTypeReplacesCurrentSelection()
+        {
+            Planet planet = new Planet { InstanceID = "planet", DisplayName = "Planet" };
+            _resolvedEntities.Add(planet);
+            _selectionModifiers = new SelectionModifierState(multiSelect: true, rangeSelect: false);
+            RenderEntriesDirectly(_officer, planet);
+
+            ClickSlot(0);
+            ClickSlot(1);
+
+            Assert.IsFalse(_controller.IsSelected(_officer));
+            Assert.IsTrue(_controller.IsSelected(planet));
+        }
+
+        [Test]
+        public void UnmodifiedSelectEntry_ClearsMultiSelectionAndOpensEntity()
+        {
+            _selectionModifiers = new SelectionModifierState(multiSelect: true, rangeSelect: false);
+            RenderEntriesDirectly(_officer);
+            ClickSlot(0);
+            _selectionModifiers = default;
+
+            ClickSlot(0);
+
+            Assert.IsFalse(_controller.IsSelected(_officer));
+            Assert.AreSame(_officer, _actions.OpenedTarget);
+        }
+
+        [Test]
+        public void PrimaryPressOutsideIdleBar_ClearsMultiSelection()
+        {
+            _selectionModifiers = new SelectionModifierState(multiSelect: true, rangeSelect: false);
+            RenderEntriesDirectly(_officer);
+            ClickSlot(0);
+
+            _controller.ClearSelectionOutside(new Vector2(-10000f, -10000f));
+
+            Assert.IsFalse(_controller.IsSelected(_officer));
         }
 
         [Test]
@@ -136,7 +254,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             scrollArea.RelayDrag(eventData);
             scrollArea.RelayDragEnd(eventData);
 
-            Assert.AreSame(_officer, _actions.DraggedTarget);
+            CollectionAssert.AreEqual(new ISceneNode[] { _officer }, _actions.DraggedTargets);
             Assert.AreEqual(1, _actions.DragMoveCount);
             Assert.AreEqual(1, _actions.DragEndCount);
         }
@@ -145,7 +263,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         public void EntryDrag_Planet_DoesNotStartItemDrag()
         {
             Planet planet = new Planet { InstanceID = "planet", DisplayName = "Planet" };
-            _resolvedEntity = planet;
+            _resolvedEntities.Add(planet);
             _view.Render(
                 new IdleBarRenderData(
                     true,
@@ -157,7 +275,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
             slot.OnPointerDown(CreatePointerEvent(slot.gameObject));
 
-            Assert.IsNull(_actions.DraggedTarget);
+            Assert.IsNull(_actions.DraggedTargets);
         }
 
         [Test]
@@ -176,6 +294,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             IdleBarController controller = new IdleBarController(
                 () => null,
                 () => false,
+                () => default,
                 () => null,
                 () => false,
                 _ => null
@@ -190,13 +309,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
         private void RenderOfficerDirectly()
         {
+            RenderEntriesDirectly(_officer);
+        }
+
+        private void RenderEntriesDirectly(params ISceneNode[] entities)
+        {
             _view.Render(
                 new IdleBarRenderData(
                     true,
-                    new List<IdleBarEntry> { new IdleBarEntry(_officer, null) },
+                    entities.Select(entity => new IdleBarEntry(entity, null)).ToList(),
                     new RectInt(0, 0, 700, 350)
                 )
             );
+        }
+
+        private void ClickSlot(int index)
+        {
+            GetEntitySlots().ElementAt(index).GetComponent<Button>().onClick.Invoke();
+        }
+
+        private IEnumerable<IdleBarSlotView> GetEntitySlots()
+        {
+            return _view
+                .GetComponentsInChildren<IdleBarSlotView>(false)
+                .Where(slot => slot.GetComponent<Button>().interactable);
+        }
+
+        private ISceneNode ResolveEntity(string instanceId)
+        {
+            return _resolvedEntities.FirstOrDefault(entity => entity.InstanceID == instanceId);
         }
 
         private static PointerEventData CreatePointerEvent(GameObject target)
@@ -223,7 +364,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
             public ISceneNode HighlightedTarget { get; private set; }
 
-            public ISceneNode DraggedTarget { get; private set; }
+            public IReadOnlyList<ISceneNode> DraggedTargets { get; private set; }
 
             public int DragMoveCount { get; private set; }
 
@@ -251,12 +392,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             }
 
             public bool TryStartIdleBarItemDrag(
-                ISceneNode target,
+                IReadOnlyList<ISceneNode> targets,
                 DragPreview preview,
                 PointerEventData eventData
             )
             {
-                DraggedTarget = target;
+                DraggedTargets = targets;
                 return true;
             }
 

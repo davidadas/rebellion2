@@ -17,16 +17,21 @@ internal sealed class IdleBarEntry
     /// <summary>Gets the resolved portrait texture.</summary>
     internal Texture2D Texture { get; }
 
+    /// <summary>Gets whether the entry belongs to the current idle-bar selection.</summary>
+    internal bool Selected { get; }
+
     /// <summary>
     /// Creates one idle-bar entry.
     /// </summary>
     /// <param name="entity">The represented strategy entity.</param>
     /// <param name="texture">The resolved portrait texture.</param>
-    internal IdleBarEntry(ISceneNode entity, Texture2D texture)
+    /// <param name="selected">Whether the entry belongs to the current selection.</param>
+    internal IdleBarEntry(ISceneNode entity, Texture2D texture, bool selected = false)
     {
         Entity = entity;
         Name = entity?.GetDisplayName() ?? string.Empty;
         Texture = texture;
+        Selected = selected;
     }
 }
 

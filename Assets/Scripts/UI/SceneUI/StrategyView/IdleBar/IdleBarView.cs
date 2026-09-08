@@ -95,6 +95,26 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
         RefreshContextMenuState();
     }
 
+    /// <summary>Reports whether a screen-space point lies within the visible idle-bar shelf.</summary>
+    /// <param name="screenPosition">The screen-space point to test.</param>
+    /// <returns>True when the point lies within the active shelf.</returns>
+    internal bool ContainsScreenPoint(Vector2 screenPosition)
+    {
+        if (shelfHitArea?.gameObject.activeInHierarchy != true)
+            return false;
+
+        Canvas canvas = GetComponentInParent<Canvas>();
+        Camera camera =
+            canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? canvas.worldCamera
+                : null;
+        return RectTransformUtility.RectangleContainsScreenPoint(
+            shelfHitArea.rectTransform,
+            screenPosition,
+            camera
+        );
+    }
+
     /// <summary>
     /// Reveals the scrollable rows while the shelf is being inspected.
     /// </summary>

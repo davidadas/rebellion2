@@ -159,6 +159,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
+        public void Render_SelectedEntry_UsesWhiteCircleOutline()
+        {
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(CreateOfficer("Officer"), null, true) },
+                    new RectInt(0, 0, 800, 480)
+                )
+            );
+
+            Image frame = GetVisibleSlots()
+                .Single()
+                .transform.Find("CircleFrame")
+                .GetComponent<Image>();
+
+            Assert.AreEqual(Color.white, frame.color);
+        }
+
+        [Test]
         public void PointerHover_OverflowingEntries_RevealsThreeRowsUntilPointerLeaves()
         {
             _view.Render(

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -28,13 +29,13 @@ public interface IIdleBarActions
     /// <param name="target">The hovered entity, or null to restore the current display.</param>
     void SetIdleBarLocationHighlight(ISceneNode target);
 
-    /// <summary>Begins a direct drag candidate for one idle entity.</summary>
-    /// <param name="target">The pressed idle entity.</param>
+    /// <summary>Begins a direct drag candidate for selected idle entities.</summary>
+    /// <param name="targets">The selected idle entities.</param>
     /// <param name="preview">The compact drag preview.</param>
     /// <param name="eventData">The source pointer event.</param>
     /// <returns>True when the candidate was accepted.</returns>
     bool TryStartIdleBarItemDrag(
-        ISceneNode target,
+        IReadOnlyList<ISceneNode> targets,
         DragPreview preview,
         PointerEventData eventData
     );
@@ -73,9 +74,13 @@ public sealed class IdleBarController : IIdleBarTrackingActions
 {
     private readonly Func<Faction> getPlayerFaction;
     private readonly Func<bool> getContextMenuOpen;
+    private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<bool> getVisibility;
     private readonly HashSet<string> ignoredEntityIds = new HashSet<string>(StringComparer.Ordinal);
+    private readonly HashSet<string> selectedEntityIds = new HashSet<string>(
+        StringComparer.Ordinal
+    );
     private readonly IdleBarProjector projector;
     private readonly Func<string, ISceneNode> resolveEntity;
 
@@ -92,12 +97,14 @@ public sealed class IdleBarController : IIdleBarTrackingActions
     /// </summary>
     /// <param name="getPlayerFaction">Returns the current player faction.</param>
     /// <param name="getContextMenuOpen">Reports whether this feature's context menu is open.</param>
+    /// <param name="getSelectionModifiers">Returns the configured selection modifiers currently held.</param>
     /// <param name="getUIContext">Returns the current strategy UI context.</param>
     /// <param name="getVisibility">Returns whether the experimental feature is enabled.</param>
     /// <param name="resolveEntity">Resolves an entity by its stable instance identifier.</param>
     public IdleBarController(
         Func<Faction> getPlayerFaction,
         Func<bool> getContextMenuOpen,
+        Func<SelectionModifierState> getSelectionModifiers,
         Func<UIContext> getUIContext,
         Func<bool> getVisibility,
         Func<string, ISceneNode> resolveEntity
@@ -107,6 +114,8 @@ public sealed class IdleBarController : IIdleBarTrackingActions
             getPlayerFaction ?? throw new ArgumentNullException(nameof(getPlayerFaction));
         this.getContextMenuOpen =
             getContextMenuOpen ?? throw new ArgumentNullException(nameof(getContextMenuOpen));
+        this.getSelectionModifiers =
+            getSelectionModifiers ?? throw new ArgumentNullException(nameof(getSelectionModifiers));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.getVisibility =
             getVisibility ?? throw new ArgumentNullException(nameof(getVisibility));
@@ -168,7 +177,17 @@ public sealed class IdleBarController : IIdleBarTrackingActions
         IdleBarRenderData projected = projector.Project(getPlayerFaction(), desktopBounds);
         List<IdleBarEntry> entries = projected
             .Entries.Where(entry => !ignoredEntityIds.Contains(entry.Entity?.InstanceID))
+            .Select(entry => new IdleBarEntry(
+                entry.Entity,
+                entry.Texture,
+                selectedEntityIds.Contains(entry.Entity?.InstanceID)
+            ))
             .ToList();
+        HashSet<string> availableEntityIds = entries
+            .Select(entry => entry.Entity?.InstanceID)
+            .Where(instanceId => !string.IsNullOrEmpty(instanceId))
+            .ToHashSet(StringComparer.Ordinal);
+        selectedEntityIds.RemoveWhere(instanceId => !availableEntityIds.Contains(instanceId));
         if (
             !string.IsNullOrEmpty(highlightedEntityId)
             && entries.All(entry => entry.Entity?.InstanceID != highlightedEntityId)
@@ -204,6 +223,7 @@ public sealed class IdleBarController : IIdleBarTrackingActions
         ClearItemDrag();
         ClearLocationHighlight();
         ignoredEntityIds.Clear();
+        selectedEntityIds.Clear();
     }
 
     /// <inheritdoc />
@@ -211,6 +231,15 @@ public sealed class IdleBarController : IIdleBarTrackingActions
     {
         return !string.IsNullOrEmpty(entity?.InstanceID)
             && !ignoredEntityIds.Contains(entity.InstanceID);
+    }
+
+    /// <summary>Reports whether an entity belongs to the current idle-bar selection.</summary>
+    /// <param name="entity">The entity whose selection state is requested.</param>
+    /// <returns>True when the entity is selected.</returns>
+    internal bool IsSelected(ISceneNode entity)
+    {
+        return !string.IsNullOrEmpty(entity?.InstanceID)
+            && selectedEntityIds.Contains(entity.InstanceID);
     }
 
     /// <inheritdoc />
@@ -222,6 +251,7 @@ public sealed class IdleBarController : IIdleBarTrackingActions
         if (!ignoredEntityIds.Remove(entity.InstanceID))
         {
             ignoredEntityIds.Add(entity.InstanceID);
+            selectedEntityIds.Remove(entity.InstanceID);
             if (highlightedEntityId == entity.InstanceID)
                 ClearLocationHighlight();
         }
@@ -229,14 +259,72 @@ public sealed class IdleBarController : IIdleBarTrackingActions
     }
 
     /// <summary>
-    /// Resolves and opens the selected idle-bar entity.
+    /// Toggles Shift selections or opens an unmodified idle-bar entity.
     /// </summary>
     /// <param name="instanceId">The selected entity identifier.</param>
     private void HandleEntrySelected(string instanceId)
     {
         ISceneNode target = string.IsNullOrEmpty(instanceId) ? null : resolveEntity(instanceId);
-        if (target != null)
-            actions.OpenIdleBarTarget(target);
+        if (target == null)
+            return;
+
+        if (getSelectionModifiers().MultiSelect)
+        {
+            ToggleSelection(target);
+            return;
+        }
+
+        ClearSelection();
+        actions.OpenIdleBarTarget(target);
+    }
+
+    /// <summary>Clears the current idle-bar multi-selection.</summary>
+    public void ClearSelection()
+    {
+        if (selectedEntityIds.Count == 0)
+            return;
+
+        selectedEntityIds.Clear();
+        actions?.RequestIdleBarRender();
+    }
+
+    /// <summary>Clears the selection when a primary press occurs outside the idle bar.</summary>
+    /// <param name="screenPosition">The pointer position in screen coordinates.</param>
+    public void ClearSelectionOutside(Vector2 screenPosition)
+    {
+        if (view?.ContainsScreenPoint(screenPosition) != true)
+            ClearSelection();
+    }
+
+    /// <summary>Toggles one entity within its compatible idle-bar selection group.</summary>
+    /// <param name="target">The entity whose selected state should change.</param>
+    private void ToggleSelection(ISceneNode target)
+    {
+        string instanceId = target?.InstanceID;
+        if (string.IsNullOrEmpty(instanceId))
+            return;
+
+        ISceneNode selectedEntity = selectedEntityIds
+            .Select(resolveEntity)
+            .FirstOrDefault(entity => entity != null);
+        if (selectedEntity != null && !CanSelectTogether(selectedEntity, target))
+            selectedEntityIds.Clear();
+
+        if (!selectedEntityIds.Add(instanceId))
+            selectedEntityIds.Remove(instanceId);
+
+        actions.RequestIdleBarRender();
+    }
+
+    /// <summary>Reports whether two entities belong to the same selectable group.</summary>
+    /// <param name="first">The current selection's representative entity.</param>
+    /// <param name="second">The proposed entity.</param>
+    /// <returns>True for two personnel entries or two planets.</returns>
+    private static bool CanSelectTogether(ISceneNode first, ISceneNode second)
+    {
+        bool firstIsPersonnel = first is Officer or SpecialForces;
+        bool secondIsPersonnel = second is Officer or SpecialForces;
+        return firstIsPersonnel ? secondIsPersonnel : first is Planet && second is Planet;
     }
 
     /// <summary>
@@ -265,9 +353,35 @@ public sealed class IdleBarController : IIdleBarTrackingActions
     {
         ClearItemDrag();
         ISceneNode target = string.IsNullOrEmpty(instanceId) ? null : resolveEntity(instanceId);
+        if (getSelectionModifiers().MultiSelect)
+            return;
+
+        IReadOnlyList<ISceneNode> dragTargets = GetDragTargets(target);
         itemDragCandidateActive =
-            target is Officer or SpecialForces
-            && actions.TryStartIdleBarItemDrag(target, preview, eventData);
+            dragTargets.Count > 0
+            && actions.TryStartIdleBarItemDrag(dragTargets, preview, eventData);
+    }
+
+    /// <summary>Gets the compatible selected personnel represented by a drag press.</summary>
+    /// <param name="target">The directly pressed entity.</param>
+    /// <returns>The selected personnel group, the pressed entity, or an empty collection.</returns>
+    private IReadOnlyList<ISceneNode> GetDragTargets(ISceneNode target)
+    {
+        if (target is not Officer and not SpecialForces)
+            return Array.Empty<ISceneNode>();
+
+        if (!selectedEntityIds.Contains(target.InstanceID))
+        {
+            ClearSelection();
+            return new[] { target };
+        }
+
+        return selectedEntityIds
+            .Select(resolveEntity)
+            .Where(entity => entity is Officer or SpecialForces)
+            .OrderBy(entity => entity.GetDisplayName(), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(entity => entity.InstanceID, StringComparer.Ordinal)
+            .ToList();
     }
 
     /// <summary>
