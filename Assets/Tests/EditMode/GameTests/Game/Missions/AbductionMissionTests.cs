@@ -298,7 +298,8 @@ namespace Rebellion.Tests.Game.Missions
                 Planet enemyPlanet,
                 Officer officer,
                 FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
+            ) = MissionSceneBuilder.Build(new GameConfig());
+            MakeAbductionAlwaysSucceed(game);
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.IsMain = true;
@@ -324,6 +325,7 @@ namespace Rebellion.Tests.Game.Missions
                 .FirstOrDefault();
             Assert.IsNotNull(captured, "Should return OfficerCaptureStateResult on success");
             Assert.AreEqual("target", captured.TargetOfficer.InstanceID);
+            Assert.AreSame(officer, captured.CapturingUnit);
             Assert.IsNotEmpty(
                 results.OfType<OfficerInjuredResult>(),
                 "A successful injury roll should injure the target before capture"

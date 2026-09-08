@@ -215,6 +215,71 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Establishes a captured officer's custody in a captor-controlled container.
+        /// </summary>
+        /// <param name="officer">The captured officer to transfer.</param>
+        /// <param name="destination">The captor-controlled ship or planet receiving the officer.</param>
+        /// <param name="escort">The captor unit accompanying a remote transfer, if one exists.</param>
+        /// <param name="results">The collection receiving movement results.</param>
+        /// <returns>True when custody is established or the officer is already there.</returns>
+        internal bool TryEstablishCapturedOfficerCustody(
+            Officer officer,
+            ContainerNode destination,
+            IMovable escort,
+            ICollection<GameResult> results
+        )
+        {
+            if (officer == null)
+                throw new ArgumentNullException(nameof(officer));
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+            if (!officer.IsCaptured || string.IsNullOrEmpty(officer.CaptorInstanceID))
+                return false;
+
+            destination = ResolveLiveContainer(destination);
+            if (
+                !TryResolveAcceptedDestination(
+                    officer,
+                    destination,
+                    out ContainerNode resolvedDestination
+                )
+                || !string.Equals(
+                    resolvedDestination.GetOwnerInstanceID(),
+                    officer.CaptorInstanceID,
+                    StringComparison.Ordinal
+                )
+            )
+                return false;
+
+            if (ReferenceEquals(officer.GetParent(), resolvedDestination))
+                return true;
+
+            Planet originPlanet = officer.GetParentOfType<Planet>();
+            Planet destinationPlanet = RequireDestinationPlanet(resolvedDestination);
+            if (!officer.IsActive() || ReferenceEquals(originPlanet, destinationPlanet))
+            {
+                officer.Movement = null;
+                _game.MoveNode(officer, resolvedDestination);
+                return true;
+            }
+
+            if (escort == null)
+            {
+                officer.Movement = null;
+                _game.MoveNode(officer, resolvedDestination);
+                return true;
+            }
+
+            return TryExecuteMoveGroup(
+                new List<IMovable> { escort, officer },
+                resolvedDestination,
+                results
+            );
+        }
+
+        /// <summary>
         /// Requests move.
         /// </summary>
         /// <param name="unit">The unit to move.</param>
@@ -515,7 +580,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves a participant's recorded container or recorded planet.
+        /// Resolves a participant's recorded container, recorded planet, or nearest friendly planet.
         /// </summary>
         /// <param name="participant">The participant whose return destination is required.</param>
         /// <returns>The first valid return container, or null when none can receive the participant.</returns>
@@ -542,7 +607,13 @@ namespace Rebellion.Systems
                     return returnLocation;
             }
 
-            return null;
+            string ownerInstanceID = GetMovementControlOwner(participant);
+            if (string.IsNullOrEmpty(ownerInstanceID))
+                return null;
+
+            Faction owner = _game.GetFactionByOwnerInstanceID(ownerInstanceID);
+            Planet missionPlanet = participant.GetParentOfType<Planet>();
+            return FindEvacuationDestinations(owner, participant, missionPlanet).FirstOrDefault();
         }
 
         /// <summary>
@@ -2347,6 +2418,18 @@ namespace Rebellion.Systems
             string evictingOwnerInstanceID = null
         )
         {
+            if (unit == null)
+                throw new ArgumentNullException(nameof(unit));
+
+            if (!CanTravelBetweenPlanets(unit))
+            {
+                unit.Movement = null;
+                GameLogger.Warning(
+                    $"{unit.GetDisplayName()} has no hyperdrive or carrier and cannot evacuate."
+                );
+                return;
+            }
+
             string ownerID = GetMovementControlOwner(unit);
             if (string.IsNullOrEmpty(ownerID))
             {
@@ -2380,6 +2463,27 @@ namespace Rebellion.Systems
             }
 
             GameLogger.Warning($"{unit.GetDisplayName()} has no friendly planet to evacuate to.");
+        }
+
+        /// <summary>
+        /// Determines whether a unit has a valid friendly evacuation destination.
+        /// </summary>
+        /// <param name="unit">The unit that would evacuate.</param>
+        /// <returns>True when at least one owned colonized planet can receive the unit.</returns>
+        internal bool CanEvacuateToNearestFriendlyPlanet(IMovable unit)
+        {
+            if (unit == null)
+                return false;
+            if (!CanTravelBetweenPlanets(unit))
+                return false;
+
+            string ownerId = GetMovementControlOwner(unit);
+            if (string.IsNullOrEmpty(ownerId))
+                return false;
+
+            Faction owner = _game.GetFactionByOwnerInstanceID(ownerId);
+            Planet currentPlanet = unit.GetParentOfType<Planet>();
+            return FindEvacuationDestinations(owner, unit, currentPlanet).Any();
         }
 
         /// <summary>
@@ -2417,25 +2521,86 @@ namespace Rebellion.Systems
             if (units == null)
                 throw new ArgumentNullException(nameof(units));
 
-            foreach (IMovable unit in units.Where(unit => unit != null).ToList())
+            foreach (
+                IMovable unit in units
+                    .Where(unit => unit != null)
+                    .OrderBy(unit => unit is Starfighter fighter && fighter.Hyperdrive <= 0 ? 0 : 1)
+                    .ToList()
+            )
             {
                 ISceneNode node = unit;
                 CapitalShip currentShip = node?.GetParentOfType<CapitalShip>();
                 Fleet fleet = node?.GetParentOfType<Fleet>();
-                CapitalShip destination = fleet
-                    ?.GetChildren<CapitalShip>()
-                    .FirstOrDefault(ship =>
+                List<CapitalShip> availableShips = (
+                    fleet?.GetChildren<CapitalShip>() ?? Array.Empty<CapitalShip>()
+                )
+                    .Where(ship =>
                         ship != currentShip
                         && ship.ManufacturingStatus == ManufacturingStatus.Complete
                         && ship.Movement == null
                         && ship.CurrentHullStrength > 0
-                        && ship.CanAcceptChild(node)
-                    );
-                if (destination != null)
+                    )
+                    .ToList();
+                CapitalShip destination = availableShips.FirstOrDefault(ship =>
+                    ship.CanAcceptChild(node)
+                );
+                Starfighter independentlyMobileOccupant = null;
+                if (
+                    destination == null
+                    && unit is Starfighter starfighter
+                    && starfighter.Hyperdrive <= 0
+                )
+                {
+                    foreach (CapitalShip availableShip in availableShips)
+                    {
+                        independentlyMobileOccupant = availableShip
+                            .GetChildren<Starfighter>()
+                            .FirstOrDefault(fighter =>
+                                fighter.ManufacturingStatus == ManufacturingStatus.Complete
+                                && fighter.Movement == null
+                                && fighter.Hyperdrive > 0
+                                && CanEvacuateToNearestFriendlyPlanet(fighter)
+                            );
+                        if (independentlyMobileOccupant == null)
+                            continue;
+
+                        destination = availableShip;
+                        break;
+                    }
+                }
+
+                if (independentlyMobileOccupant != null)
+                    EvacuateToNearestFriendlyPlanet(independentlyMobileOccupant);
+
+                if (destination?.CanAcceptChild(node) == true)
                     _game.MoveNode(node, destination);
-                else
+                else if (CanTravelBetweenPlanets(unit))
                     EvacuateToNearestFriendlyPlanet(unit);
             }
+        }
+
+        /// <summary>
+        /// Returns whether a unit can cross interplanetary space under its own power or as part
+        /// of a fleet with at least one operational hyperdrive.
+        /// </summary>
+        /// <param name="unit">The unit attempting to travel.</param>
+        /// <returns>True when the unit has a valid interplanetary movement source.</returns>
+        private static bool CanTravelBetweenPlanets(IMovable unit)
+        {
+            return unit switch
+            {
+                Starfighter fighter => fighter.Hyperdrive > 0,
+                CapitalShip capitalShip => capitalShip.Hyperdrive > 0,
+                Fleet fleet => fleet
+                    .GetChildren<CapitalShip>()
+                    .Any(ship =>
+                        ship.ManufacturingStatus == ManufacturingStatus.Complete
+                        && ship.Movement == null
+                        && ship.CurrentHullStrength > 0
+                        && ship.Hyperdrive > 0
+                    ),
+                _ => unit != null,
+            };
         }
 
         /// <summary>

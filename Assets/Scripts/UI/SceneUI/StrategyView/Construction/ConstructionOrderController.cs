@@ -258,25 +258,9 @@ public sealed class ConstructionOrderController
         {
             FacilityWindowTab.Shipyards => item is CapitalShip or Starfighter,
             FacilityWindowTab.Training => item is Regiment or SpecialForces,
-            FacilityWindowTab.Construction => item is Building building
-                && IsBuildableFacility(building),
+            FacilityWindowTab.Construction => item is Building,
             _ => false,
         };
-    }
-
-    /// <summary>
-    /// Determines whether a building template is available from the construction window.
-    /// </summary>
-    /// <param name="building">The building template.</param>
-    /// <returns>True when the template is a manufacturable facility.</returns>
-    private static bool IsBuildableFacility(Building building)
-    {
-        return building.GetBuildingType()
-            is BuildingType.Mine
-                or BuildingType.Refinery
-                or BuildingType.Shipyard
-                or BuildingType.TrainingFacility
-                or BuildingType.ConstructionFacility;
     }
 
     /// <summary>

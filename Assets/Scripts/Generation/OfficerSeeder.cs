@@ -342,6 +342,9 @@ namespace Rebellion.Generation
         {
             if (rule?.DestinationTypeID != null)
             {
+                if (rule.DestinationTypeID == GameGenerationConfig.FactionHqSentinel)
+                    return factionDests.First(n => n is Planet planet && planet.IsHeadquarters);
+
                 return factionDests.First(n =>
                     n is Planet planet && planet.TypeID == rule.DestinationTypeID
                 );

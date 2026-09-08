@@ -43,6 +43,7 @@ public sealed class CutscenePlayer : MonoBehaviour
         videoPlayer.isLooping = false;
         videoPlayer.errorReceived += HandlePlaybackError;
         audioSource.playOnAwake = false;
+        audioSource.ignoreListenerPause = true;
         authoredScreenColor = screen.color;
         BlankScreen();
     }

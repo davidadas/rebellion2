@@ -128,6 +128,70 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void GetBuildSelection_ConstructionTab_IncludesAllApplicableBuildings()
+        {
+            List<IManufacturable> templates = TestContent
+                .Data.Buildings.Cast<IManufacturable>()
+                .Where(template => template.ManufacturingFactionInstanceIDs?.Count > 0)
+                .ToList();
+            string ownerId = templates
+                .SelectMany(template =>
+                    template.ManufacturingFactionInstanceIDs.Select(factionId =>
+                        (FactionId: factionId, Building: (Building)template)
+                    )
+                )
+                .GroupBy(candidate => candidate.FactionId)
+                .First(group =>
+                    group.Any(candidate =>
+                        candidate.Building.GetBuildingType() == BuildingType.Defense
+                    )
+                    && group.Any(candidate =>
+                        candidate.Building.GetBuildingType() == BuildingType.Weapon
+                    )
+                )
+                .Key;
+            IManufacturable[] applicableTemplates = templates
+                .Where(template => template.ManufacturingFactionInstanceIDs.Contains(ownerId))
+                .ToArray();
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction owner = new Faction { InstanceID = ownerId };
+            owner.SetHighestUnlockedOrder(
+                ManufacturingType.Building,
+                applicableTemplates.Max(template => template.GetResearchOrder())
+            );
+            owner.RebuildResearchCatalog(applicableTemplates);
+            game.GetFactions().Add(owner);
+            FleetSystem fleetSystem = new FleetSystem(game);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                fleetSystem
+            );
+            ConstructionOrderController controller = new ConstructionOrderController(
+                () => game,
+                () => new ManufacturingSystem(game, fleetSystem, movement),
+                () => movement
+            );
+
+            IReadOnlyList<IManufacturable> selection = controller.GetBuildSelection(
+                FacilityWindowTab.Construction,
+                ownerId
+            );
+
+            CollectionAssert.AreEquivalent(applicableTemplates, selection);
+            Assert.IsTrue(
+                selection
+                    .Cast<Building>()
+                    .Any(building => building.GetBuildingType() == BuildingType.Defense)
+            );
+            Assert.IsTrue(
+                selection
+                    .Cast<Building>()
+                    .Any(building => building.GetBuildingType() == BuildingType.Weapon)
+            );
+        }
+
+        [Test]
         public void GetBuildEstimates_StationaryTemplate_ReturnsCompletionWithoutDeployment()
         {
             const string ownerId = "owner";

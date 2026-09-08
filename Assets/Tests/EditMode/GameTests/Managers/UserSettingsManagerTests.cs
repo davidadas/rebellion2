@@ -77,6 +77,44 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        [Test]
+        public void SaveThenLoad_RestoresMissionOddsVisibilityFromDisk()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                $"rebellion2-settings-{Guid.NewGuid():N}"
+            );
+            string path = Path.Combine(directory, "user-settings.json");
+            try
+            {
+                DisplayManager display = CreateDisplayManager();
+                UserSettingsManager firstSettings = new UserSettingsManager(
+                    null,
+                    display,
+                    null,
+                    path
+                );
+                firstSettings.Load();
+                firstSettings.Settings.Gameplay.ShowMissionOdds = false;
+                firstSettings.Save();
+
+                UserSettingsManager secondSettings = new UserSettingsManager(
+                    null,
+                    display,
+                    null,
+                    path
+                );
+                secondSettings.Load();
+
+                Assert.IsFalse(secondSettings.Settings.Gameplay.ShowMissionOdds);
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
         /// <summary>
         /// Creates a deterministic display manager that does not mutate the test runner display.
         /// </summary>

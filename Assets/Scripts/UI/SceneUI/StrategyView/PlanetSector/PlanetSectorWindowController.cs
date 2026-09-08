@@ -88,6 +88,7 @@ public sealed class PlanetSectorWindowController
     private IPlanetSectorWindowActions actions;
     private IStrategyWindowCommandActions commandActions;
     private IStrategyConfirmationActions confirmationActions;
+    private IIdleBarTrackingActions idleBarTrackingActions;
     private Action<UIWindow, PointerEventData> startItemDrag;
 
     /// <summary>
@@ -144,11 +145,13 @@ public sealed class PlanetSectorWindowController
     /// <param name="windowActions">The feature-specific planet-sector actions.</param>
     /// <param name="windowCommandActions">The shared mission and movement actions.</param>
     /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
+    /// <param name="trackingActions">Reads and changes idle-bar tracking state.</param>
     /// <param name="beginItemDrag">Begins a strategy item-drag candidate.</param>
     public void Initialize(
         IPlanetSectorWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
         IStrategyConfirmationActions windowConfirmationActions,
+        IIdleBarTrackingActions trackingActions,
         Action<UIWindow, PointerEventData> beginItemDrag
     )
     {
@@ -158,6 +161,8 @@ public sealed class PlanetSectorWindowController
         confirmationActions =
             windowConfirmationActions
             ?? throw new ArgumentNullException(nameof(windowConfirmationActions));
+        idleBarTrackingActions =
+            trackingActions ?? throw new ArgumentNullException(nameof(trackingActions));
         startItemDrag = beginItemDrag ?? throw new ArgumentNullException(nameof(beginItemDrag));
     }
 
@@ -484,10 +489,11 @@ public sealed class PlanetSectorWindowController
             mobileHeadquarters != null
                 ? new List<ISceneNode> { mobileHeadquarters }
                 : GetPlayerFleetItems(hit?.Planet);
+        string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
         List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
             hit,
             items,
-            GetUIContext().GetPlayerFactionInstanceID(),
+            playerFactionId,
             mobileHeadquarters,
             fleetCommandController.CanExecutePlanetaryCombat(
                 items,
@@ -505,6 +511,30 @@ public sealed class PlanetSectorWindowController
                 StrategyMenuAction.PlanetaryAssault
             )
         );
+        StrategyStatusTarget statusTarget =
+            mobileHeadquarters == null
+                ? GetStatusTarget(view)
+                : new StrategyStatusTarget(hit.GalaxyMapPlanet, mobileHeadquarters);
+        ISceneNode trackingItem = statusTarget?.Item;
+        if (
+            StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                trackingItem,
+                playerFactionId,
+                idleBarTrackingActions?.IsIdleBarEnabled == true
+            )
+        )
+        {
+            commands.Add(
+                new StrategyMenuCommand(
+                    StrategyMenuAction.ToggleIdleBarTracking,
+                    "Tracked",
+                    true,
+                    idleBarTrackingActions.IsIdleBarTracked(trackingItem)
+                        ? StrategyContextMenuIconKeys.CheckMark
+                        : StrategyContextMenuIconKeys.None
+                )
+            );
+        }
         if (commands.Count == 0)
             return false;
 
@@ -513,9 +543,7 @@ public sealed class PlanetSectorWindowController
             context.X,
             context.Y,
             items,
-            mobileHeadquarters == null
-                ? GetStatusTarget(view)
-                : new StrategyStatusTarget(hit.GalaxyMapPlanet, mobileHeadquarters)
+            statusTarget
         );
         request = new ContextMenuRequest(
             source,
@@ -572,6 +600,9 @@ public sealed class PlanetSectorWindowController
 
         switch (strategyCommand.Action)
         {
+            case StrategyMenuAction.ToggleIdleBarTracking:
+                idleBarTrackingActions.ToggleIdleBarTracking(source.Target?.Item);
+                break;
             case StrategyMenuAction.BombardMilitaryFacilities:
             case StrategyMenuAction.BombardCivilianFacilities:
             case StrategyMenuAction.GeneralBombardment:
@@ -813,7 +844,7 @@ public sealed class PlanetSectorWindowController
         if (hit.Icon == PlanetIcon.Fleet && IsMoveTargetingRequest(request))
             return new StrategyMissionTarget(hit.GalaxyMapPlanet, fleetTarget);
         if (hit.Icon != PlanetIcon.None || hit.PlanetImage)
-            return new StrategyMissionTarget(hit.GalaxyMapPlanet, null);
+            return new StrategyMissionTarget(hit.GalaxyMapPlanet, hit.GalaxyMapPlanet.Planet);
         return null;
     }
 

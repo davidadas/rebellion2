@@ -7,11 +7,13 @@ namespace Rebellion.Tests.UserSettings
     public sealed class UserGameplaySettingsTests
     {
         [Test]
-        public void JsonUtility_GameplayPauseOptions_RoundTripState()
+        public void JsonUtility_GameplayOptions_RoundTripState()
         {
             global::UserSettings settings = new global::UserSettings();
             settings.Gameplay.PauseAfterEnemyBombardment = true;
             settings.Gameplay.PauseWhenSpaceBattleBegins = true;
+            settings.Gameplay.ShowIdleBar = true;
+            settings.Gameplay.ShowMissionOdds = false;
 
             string json = JsonUtility.ToJson(settings);
             global::UserSettings restored = JsonUtility.FromJson<global::UserSettings>(json);
@@ -19,6 +21,8 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.IsTrue(restored.Gameplay.PauseAfterEnemyBombardment);
             Assert.IsTrue(restored.Gameplay.PauseWhenSpaceBattleBegins);
+            Assert.IsTrue(restored.Gameplay.ShowIdleBar);
+            Assert.IsFalse(restored.Gameplay.ShowMissionOdds);
         }
 
         [Test]
@@ -28,13 +32,35 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.IsTrue(settings.PauseAfterEnemyBombardment);
             Assert.IsTrue(settings.PauseWhenSpaceBattleBegins);
+            Assert.IsFalse(settings.ShowIdleBar);
+            Assert.IsTrue(settings.ShowMissionOdds);
 
             settings.PauseAfterEnemyBombardment = false;
             settings.PauseWhenSpaceBattleBegins = false;
+            settings.ShowIdleBar = true;
+            settings.ShowMissionOdds = false;
             settings.RestoreDefaults();
 
             Assert.IsTrue(settings.PauseAfterEnemyBombardment);
             Assert.IsTrue(settings.PauseWhenSpaceBattleBegins);
+            Assert.IsFalse(settings.ShowIdleBar);
+            Assert.IsTrue(settings.ShowMissionOdds);
+        }
+
+        [Test]
+        public void JsonUtility_OmittedMissionOddsPreference_DefaultsEnabled()
+        {
+            UserGameplaySettings settings = JsonUtility.FromJson<UserGameplaySettings>("{}");
+
+            Assert.IsTrue(settings.ShowMissionOdds);
+        }
+
+        [Test]
+        public void JsonUtility_OmittedIdleBarPreference_DefaultsDisabled()
+        {
+            UserGameplaySettings settings = JsonUtility.FromJson<UserGameplaySettings>("{}");
+
+            Assert.IsFalse(settings.ShowIdleBar);
         }
 
         [Test]

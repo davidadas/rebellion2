@@ -78,11 +78,14 @@ namespace Rebellion.Game.Missions
         /// Returns the participant's raw score for inciting the target planet.
         /// </summary>
         /// <param name="agent">The participant whose leadership rating is evaluated.</param>
-        /// <param name="game">The current game state.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The participant's raw incite-uprising score.</returns>
-        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
+        protected override int? GetAgentScore(
+            IMissionParticipant agent,
+            MissionEvaluationContext context
+        )
         {
-            Planet planet = GetMissionPlanet(game);
+            Planet planet = GetMissionPlanet(context);
             if (planet == null)
                 throw new InvalidOperationException(
                     "InciteUprisingMission must be attached to a Planet."

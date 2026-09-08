@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
@@ -661,7 +662,7 @@ namespace Rebellion.AI.Director
             if (planet == null || _context?.Game?.Config == null)
                 return 0;
 
-            int leadershipBonus = PlanetaryAssaultSystem.GetLeadershipBonus(
+            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
                 planet.GetAllOfficers(),
                 OfficerRank.General,
                 planet.GetOwnerInstanceID(),
@@ -1224,7 +1225,7 @@ namespace Rebellion.AI.Director
             if (planet == null || _context?.Game?.Config == null)
                 return false;
 
-            return PlanetaryAssaultSystem.IsBlockedByShields(
+            return PlanetaryAssaultResolver.IsBlockedByShields(
                 planet,
                 _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
             );
@@ -1483,7 +1484,7 @@ namespace Rebellion.AI.Director
             if (fleet == null || targetPlanet == null || _context?.Game?.Config == null)
                 return 0;
 
-            return PlanetaryAssaultSystem.EstimateSuccessPercent(
+            return PlanetaryAssaultResolver.EstimateSuccessPercent(
                 new List<Fleet> { fleet },
                 targetPlanet,
                 _context.Game.Config.Combat.PlanetaryAssault
@@ -1693,7 +1694,7 @@ namespace Rebellion.AI.Director
             if (fleet == null || _context?.Game?.Config == null)
                 return 0;
 
-            int leadershipBonus = PlanetaryAssaultSystem.GetLeadershipBonus(
+            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
                 fleet.GetOfficers(),
                 OfficerRank.General,
                 fleet.GetOwnerInstanceID(),
@@ -1717,7 +1718,7 @@ namespace Rebellion.AI.Director
             if (fleet == null || _context?.Game?.Config == null)
                 return 0;
 
-            int leadershipBonus = PlanetaryAssaultSystem.GetLeadershipBonus(
+            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
                 fleet.GetOfficers(),
                 OfficerRank.General,
                 fleet.GetOwnerInstanceID(),
@@ -1773,7 +1774,7 @@ namespace Rebellion.AI.Director
             )
                 return 0;
 
-            int leadershipBonus = PlanetaryAssaultSystem.GetLeadershipBonus(
+            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
                 targetFleet.GetOfficers(),
                 OfficerRank.General,
                 targetFleet.GetOwnerInstanceID(),

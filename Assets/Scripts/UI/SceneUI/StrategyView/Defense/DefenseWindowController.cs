@@ -46,6 +46,7 @@ public sealed class DefenseWindowController
     private IDefenseWindowActions actions;
     private IStrategyWindowCommandActions commandActions;
     private IStrategyConfirmationActions confirmationActions;
+    private IIdleBarTrackingActions idleBarTrackingActions;
     private Action<PointerEventData> moveItemDrag;
     private Action<UIWindow, PointerEventData> startItemDrag;
 
@@ -88,6 +89,7 @@ public sealed class DefenseWindowController
     /// <param name="windowActions">The feature-specific Defense actions.</param>
     /// <param name="windowCommandActions">The shared mission and movement actions.</param>
     /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
+    /// <param name="trackingActions">Reads and changes idle-bar tracking state.</param>
     /// <param name="beginItemDrag">Begins a strategy item-drag candidate.</param>
     /// <param name="continueItemDrag">Advances the active strategy item drag.</param>
     /// <param name="completeItemDrag">Completes the active strategy item drag.</param>
@@ -95,6 +97,7 @@ public sealed class DefenseWindowController
         IDefenseWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
         IStrategyConfirmationActions windowConfirmationActions,
+        IIdleBarTrackingActions trackingActions,
         Action<UIWindow, PointerEventData> beginItemDrag,
         Action<PointerEventData> continueItemDrag,
         Action<PointerEventData> completeItemDrag
@@ -106,6 +109,8 @@ public sealed class DefenseWindowController
         confirmationActions =
             windowConfirmationActions
             ?? throw new ArgumentNullException(nameof(windowConfirmationActions));
+        idleBarTrackingActions =
+            trackingActions ?? throw new ArgumentNullException(nameof(trackingActions));
         startItemDrag = beginItemDrag ?? throw new ArgumentNullException(nameof(beginItemDrag));
         moveItemDrag =
             continueItemDrag ?? throw new ArgumentNullException(nameof(continueItemDrag));
@@ -418,6 +423,26 @@ public sealed class DefenseWindowController
             StrategyContextMenuAvailability.CanCreateMission(items, playerFactionId),
             confirmationActions.CanRetire(items)
         );
+        ISceneNode trackingItem = items.Count == 1 ? items[0] : null;
+        if (
+            StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                trackingItem,
+                playerFactionId,
+                idleBarTrackingActions?.IsIdleBarEnabled == true
+            )
+        )
+        {
+            commands.Add(
+                new StrategyMenuCommand(
+                    StrategyMenuAction.ToggleIdleBarTracking,
+                    "Tracked",
+                    true,
+                    idleBarTrackingActions.IsIdleBarTracked(trackingItem)
+                        ? StrategyContextMenuIconKeys.CheckMark
+                        : StrategyContextMenuIconKeys.None
+                )
+            );
+        }
         if (commands.Count == 0)
             return false;
 
@@ -455,6 +480,10 @@ public sealed class DefenseWindowController
 
         switch (strategyCommand.Action)
         {
+            case StrategyMenuAction.ToggleIdleBarTracking:
+                if (source.Items.Count == 1)
+                    idleBarTrackingActions.ToggleIdleBarTracking(source.Items[0]);
+                break;
             case StrategyMenuAction.Encyclopedia:
                 actions.OpenDefenseInfoWindow(source.Target);
                 break;
@@ -634,6 +663,7 @@ public sealed class DefenseWindowController
             return;
 
         session.SelectItemForDrag(itemIndex, view.ItemColumnCount);
+        RenderSelection(view, session);
         if (
             session.CanDragSelectedItems()
             && session.SelectedItemIndexes.Contains(itemIndex)
@@ -643,8 +673,6 @@ public sealed class DefenseWindowController
             startItemDrag(session.Window, eventData);
             return;
         }
-
-        RenderSelection(view, session);
     }
 
     /// <summary>
@@ -832,7 +860,9 @@ public sealed class DefenseWindowController
         if (!targetingController.IsTargeting || session?.Planet == null)
             return false;
 
-        return targetingController.TrySelectTarget(new StrategyMissionTarget(session.Planet, item));
+        return targetingController.TrySelectTarget(
+            new StrategyMissionTarget(session.Planet, item ?? session.Planet.Planet)
+        );
     }
 
     /// <summary>

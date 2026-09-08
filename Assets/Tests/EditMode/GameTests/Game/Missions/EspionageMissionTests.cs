@@ -695,6 +695,7 @@ namespace Rebellion.Tests.Game.Missions
                 HasInitiated = true,
                 MaxProgress = 10,
                 CurrentProgress = 5,
+                DetectionResolved = true,
             };
 
             string xml = SerializationHelper.Serialize(mission);
@@ -707,6 +708,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(10, deserialized.MaxProgress);
             Assert.AreEqual(5, deserialized.CurrentProgress);
+            Assert.IsTrue(deserialized.DetectionResolved);
         }
 
         private static Mission CreateMission(

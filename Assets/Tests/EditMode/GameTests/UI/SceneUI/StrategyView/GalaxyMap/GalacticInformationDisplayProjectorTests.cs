@@ -133,6 +133,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsTrue(data.DisplayOffRow.Visible);
             Assert.AreEqual(theme.DisplayOffLabel, data.DisplayOffRow.Label.Text);
             Assert.AreEqual(Color.white, data.DisplayOffRow.Label.Color);
+            Assert.IsNull(data.DisplayOffRow.CheckMark.Texture);
         }
 
         [Test]

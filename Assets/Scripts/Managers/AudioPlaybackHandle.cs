@@ -7,6 +7,8 @@ public sealed class AudioPlaybackHandle
 {
     private AudioManager _owner;
 
+    internal bool IsActive => _owner != null;
+
     internal Coroutine LoadCoroutine { get; set; }
 
     internal bool Paused { get; set; }

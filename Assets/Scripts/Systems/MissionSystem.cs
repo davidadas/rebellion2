@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -225,12 +226,12 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Calculates mission success odds without resolving an outcome.
+        /// Calculates the objective success probability without resolving an outcome.
         /// </summary>
         /// <param name="mission">The mission whose probability rules apply.</param>
         /// <param name="participants">The participants to evaluate.</param>
-        /// <returns>The calculated mission odds.</returns>
-        public MissionOdds GetMissionOdds(
+        /// <returns>The chance that at least one participant succeeds if the objective is reached.</returns>
+        public double GetObjectiveSuccessProbability(
             Mission mission,
             IEnumerable<IMissionParticipant> participants
         )
@@ -238,7 +239,29 @@ namespace Rebellion.Systems
             if (mission == null)
                 throw new ArgumentNullException(nameof(mission));
 
-            return mission.GetMissionOdds(participants, _game);
+            return mission.GetObjectiveSuccessProbability(participants, _game);
+        }
+
+        /// <summary>
+        /// Estimates a mission's visible objective-roll and foiling chances without resolving an
+        /// outcome. Hidden betrayal and state changes produced during uprising resolution are
+        /// intentionally excluded. Foiling uses the caller's observed planet state.
+        /// </summary>
+        /// <param name="request">The mission configuration to evaluate.</param>
+        /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
+        public MissionOdds GetMissionOdds(MissionStartRequest request)
+        {
+            if (!TryCreateMission(request, out Mission mission))
+                return null;
+
+            double objectiveSuccessProbability = mission.GetObjectiveSuccessProbability(
+                mission.GetMainParticipants(),
+                _game,
+                request.Location as Planet,
+                request.SelectedTarget
+            );
+            double foilProbability = EstimateFoilProbability(mission, request.Location as Planet);
+            return new MissionOdds(objectiveSuccessProbability, foilProbability);
         }
 
         /// <summary>
@@ -447,7 +470,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves this tick's mission detection through the mission system's external services.
+        /// Resolves the mission's initial detection through the mission system's external services.
         /// </summary>
         /// <param name="mission">The mission executing its lifecycle.</param>
         /// <param name="results">The result collection receiving detection consequences.</param>
@@ -619,7 +642,12 @@ namespace Rebellion.Systems
                 if (unit is Officer officer)
                 {
                     if (!officer.IsCaptured)
-                        CaptureOfficer(officer, missionPlanet, results);
+                        CaptureOfficer(
+                            officer,
+                            missionPlanet?.GetOwnerInstanceID(),
+                            missionPlanet,
+                            results
+                        );
 
                     if (missionPlanet != null)
                         _movementManager.RequestMove(officer, missionPlanet);
@@ -701,14 +729,14 @@ namespace Rebellion.Systems
             if (mission.GetParent() is not Planet planet)
                 return false;
 
-            List<MissionDetector> activeDetectors = mission.GetDetectors();
+            List<ISceneNode> activeDetectors = GetDetectors(mission, planet);
             if (activeDetectors.Count == 0)
                 return false;
 
             ResolveDecoys(mission, activeDetectors, planet, results);
 
-            MissionDetector foilingDetector = activeDetectors.FirstOrDefault(detector =>
-                mission.RollFoilCheck(_provider, _game, detector)
+            ISceneNode foilingDetector = activeDetectors.FirstOrDefault(detector =>
+                DoesDetectorFoilMission(mission, detector)
             );
             if (foilingDetector == null)
                 return false;
@@ -717,9 +745,243 @@ namespace Rebellion.Systems
                 return true;
 
             foreach (IMissionParticipant participant in mission.GetMainParticipants().ToList())
-                ResolveFoiledParticipant(participant, activeDetectors, planet, results);
+                ResolveFoiledParticipant(mission, participant, activeDetectors, planet, results);
 
             return true;
+        }
+
+        /// <summary>
+        /// Rolls one hostile unit's attempt to foil a mission.
+        /// </summary>
+        /// <param name="mission">The mission attempting to remain undetected.</param>
+        /// <param name="detector">The hostile unit making the detection attempt.</param>
+        /// <returns>True when the detector foils the mission.</returns>
+        private bool DoesDetectorFoilMission(Mission mission, ISceneNode detector)
+        {
+            if (mission == null || detector == null)
+                return false;
+
+            return RollProbability(GetFoilProbability(mission, detector));
+        }
+
+        /// <summary>
+        /// Estimates the chance that at least one observed detector foils the mission.
+        /// </summary>
+        /// <param name="mission">The unstarted or active mission to evaluate.</param>
+        /// <param name="observedPlanet">The planet state currently known to the planning faction.</param>
+        /// <returns>The estimated foiling percentage.</returns>
+        private double EstimateFoilProbability(Mission mission, Planet observedPlanet)
+        {
+            if (mission == null || observedPlanet == null)
+                return 0;
+
+            List<ISceneNode> detectors = GetDetectors(mission, observedPlanet);
+            if (detectors.Count == 0)
+                return 0;
+
+            IReadOnlyList<IMissionParticipant> decoys = mission.GetDecoyParticipants();
+            var decoyGroups = decoys
+                .GroupBy(decoy => new
+                {
+                    Espionage = decoy.GetEffectiveRating(OfficerRating.Espionage),
+                    Combat = decoy.GetEffectiveRating(OfficerRating.Combat),
+                    CanBeRemoved = decoy is Officer or SpecialForces,
+                })
+                .Select(group => new { Decoy = group.First(), Count = group.Count() })
+                .ToList();
+
+            // Encode each group's surviving count as one digit in a mixed-radix number.
+            BigInteger[] groupPlaceValues = new BigInteger[decoyGroups.Count];
+            BigInteger allDecoys = BigInteger.Zero;
+            BigInteger nextPlaceValue = BigInteger.One;
+            for (int index = 0; index < decoyGroups.Count; index++)
+            {
+                groupPlaceValues[index] = nextPlaceValue;
+                allDecoys += decoyGroups[index].Count * nextPlaceValue;
+                nextPlaceValue *= decoyGroups[index].Count + 1;
+            }
+
+            Dictionary<BigInteger, double> unfoiledByDecoyPool = new Dictionary<BigInteger, double>
+            {
+                { allDecoys, 1d },
+            };
+            foreach (ISceneNode detector in detectors)
+            {
+                double noFoilProbability =
+                    1d - Math.Clamp(GetFoilProbability(mission, detector) / 100d, 0, 1);
+                Dictionary<BigInteger, double> next = new Dictionary<BigInteger, double>();
+                foreach ((BigInteger availableDecoys, double probability) in unfoiledByDecoyPool)
+                {
+                    int[] availableCounts = new int[decoyGroups.Count];
+                    int availableCount = 0;
+                    for (int index = 0; index < decoyGroups.Count; index++)
+                    {
+                        availableCounts[index] = (int)(
+                            availableDecoys
+                            / groupPlaceValues[index]
+                            % (decoyGroups[index].Count + 1)
+                        );
+                        availableCount += availableCounts[index];
+                    }
+
+                    if (availableCount == 0)
+                    {
+                        AddProbability(next, availableDecoys, probability * noFoilProbability);
+                        continue;
+                    }
+
+                    for (int index = 0; index < decoyGroups.Count; index++)
+                    {
+                        if (availableCounts[index] == 0)
+                            continue;
+
+                        IMissionParticipant decoy = decoyGroups[index].Decoy;
+                        double selectionProbability =
+                            probability * availableCounts[index] / availableCount;
+                        double diversionProbability = Math.Clamp(
+                            mission.GetDecoyProbability(decoy, detector, _game) / 100d,
+                            0,
+                            1
+                        );
+                        double evasionProbability = GetDecoyEvasionProbability(
+                            mission,
+                            decoy,
+                            detector
+                        );
+
+                        // A diversion or successful evasion leaves this decoy available.
+                        AddProbability(
+                            next,
+                            availableDecoys,
+                            selectionProbability
+                                * (
+                                    diversionProbability
+                                    + (1d - diversionProbability)
+                                        * evasionProbability
+                                        * noFoilProbability
+                                )
+                        );
+
+                        // A failed evasion removes this specific decoy from later checks.
+                        AddProbability(
+                            next,
+                            availableDecoys - groupPlaceValues[index],
+                            selectionProbability
+                                * (1d - diversionProbability)
+                                * (1d - evasionProbability)
+                                * noFoilProbability
+                        );
+                    }
+                }
+
+                unfoiledByDecoyPool = next;
+                if (unfoiledByDecoyPool.Count == 0)
+                    break;
+            }
+
+            return (1d - unfoiledByDecoyPool.Values.Sum()) * 100d;
+        }
+
+        /// <summary>Adds probability to an existing or new decoy-pool outcome.</summary>
+        private static void AddProbability(
+            Dictionary<BigInteger, double> probabilities,
+            BigInteger decoyPool,
+            double probability
+        )
+        {
+            if (probability <= 0)
+                return;
+
+            probabilities.TryGetValue(decoyPool, out double existingProbability);
+            probabilities[decoyPool] = existingProbability + probability;
+        }
+
+        /// <summary>
+        /// Returns the chance that a decoy remains available after a failed diversion.
+        /// </summary>
+        private double GetDecoyEvasionProbability(
+            Mission mission,
+            IMissionParticipant decoy,
+            ISceneNode detector
+        )
+        {
+            if (decoy is not Officer && decoy is not SpecialForces)
+                return 1d;
+
+            Officer commander = mission.FindDetectorCommander(detector);
+            int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
+            int score = decoy.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
+            return Math.Clamp(GetEvasionProbability(score) / 100d, 0, 1);
+        }
+
+        /// <summary>
+        /// Returns one detector's configured chance to foil a mission.
+        /// </summary>
+        /// <param name="mission">The mission attempting to remain undetected.</param>
+        /// <param name="detector">The hostile detector.</param>
+        /// <returns>The foiling percentage.</returns>
+        private int GetFoilProbability(Mission mission, ISceneNode detector)
+        {
+            if (mission == null || detector == null)
+                return 0;
+
+            int score = CalculateFoilScore(mission, detector);
+            return LookupProbability(GetMissionTables().Foil, score);
+        }
+
+        /// <summary>
+        /// Calculates one detector's score against a mission team.
+        /// </summary>
+        /// <param name="mission">The mission attempting to remain undetected.</param>
+        /// <param name="detector">The hostile unit making the detection attempt.</param>
+        /// <returns>The score used to look up the foiling probability.</returns>
+        private int CalculateFoilScore(Mission mission, ISceneNode detector)
+        {
+            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
+            IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
+            Officer commander = mission.FindDetectorCommander(detector);
+            return GetAverageEspionage(participants)
+                - GetScaledCommanderEspionage(commander, missionTables.FoilDefenderScalingPercent)
+                - GetDetectorRating(detector)
+                - participants.OfType<SpecialForces>().Count()
+                - missionTables.FoilFlatScoreAdjustment;
+        }
+
+        /// <summary>
+        /// Returns the mission team's average effective Espionage rating.
+        /// </summary>
+        /// <param name="participants">The mission's main participants.</param>
+        /// <returns>The average rating, or zero when the mission has no participants.</returns>
+        private static int GetAverageEspionage(IReadOnlyList<IMissionParticipant> participants)
+        {
+            return participants.Count == 0
+                ? 0
+                : participants.Sum(participant =>
+                    participant.GetEffectiveRating(OfficerRating.Espionage)
+                ) / participants.Count;
+        }
+
+        /// <summary>
+        /// Returns the configured portion of a detector commander's Espionage rating.
+        /// </summary>
+        /// <param name="commander">The detector commander, if one is assigned.</param>
+        /// <param name="scalingPercent">The percentage of the rating applied to detection.</param>
+        /// <returns>The scaled commander contribution.</returns>
+        private static int GetScaledCommanderEspionage(Officer commander, int scalingPercent)
+        {
+            return (commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
+                * scalingPercent
+                / 100;
+        }
+
+        /// <summary>
+        /// Rolls against a percentage probability.
+        /// </summary>
+        /// <param name="probability">The percentage chance of success.</param>
+        /// <returns>True when the random roll succeeds.</returns>
+        private bool RollProbability(int probability)
+        {
+            return probability > 0 && _provider.NextDouble() * 100 < probability;
         }
 
         /// <summary>
@@ -732,12 +994,12 @@ namespace Rebellion.Systems
         /// <param name="results">The result collection receiving confrontation outcomes.</param>
         private void ResolveDecoys(
             Mission mission,
-            List<MissionDetector> activeDetectors,
+            List<ISceneNode> activeDetectors,
             Planet planet,
             List<GameResult> results
         )
         {
-            foreach (MissionDetector detector in activeDetectors.ToList())
+            foreach (ISceneNode detector in activeDetectors.ToList())
             {
                 List<IMissionParticipant> decoys = mission
                     .GetDecoyParticipants()
@@ -753,20 +1015,22 @@ namespace Rebellion.Systems
                     continue;
                 }
 
-                ResolveEvasion(decoy, detector, planet, results);
+                ResolveEvasion(mission, decoy, detector, planet, results);
             }
         }
 
         /// <summary>
         /// Applies the post-foil confrontation to one mission participant.
         /// </summary>
+        /// <param name="mission">The mission whose participant was detected.</param>
         /// <param name="participant">The exposed participant.</param>
         /// <param name="detectors">The detectors that were not diverted.</param>
         /// <param name="planet">The mission planet.</param>
         /// <param name="results">Collection to append generated results to.</param>
         private void ResolveFoiledParticipant(
+            Mission mission,
             IMissionParticipant participant,
-            IReadOnlyList<MissionDetector> detectors,
+            IReadOnlyList<ISceneNode> detectors,
             Planet planet,
             List<GameResult> results
         )
@@ -774,33 +1038,38 @@ namespace Rebellion.Systems
             if (!IsFreeParticipant(participant))
                 return;
 
-            MissionDetector detector = Mission.SelectDetector(detectors, _provider);
+            ISceneNode detector =
+                detectors.Count == 0 ? null : detectors[_provider.NextInt(0, detectors.Count)];
             if (detector != null)
-                ResolveEvasion(participant, detector, planet, results);
+                ResolveEvasion(mission, participant, detector, planet, results);
         }
 
         /// <summary>
         /// Resolves whether a participant evades the detector that confronted them.
         /// </summary>
+        /// <param name="mission">The mission whose participant was detected.</param>
         /// <param name="participant">The participant attempting to evade.</param>
         /// <param name="detector">The detector confronting the participant.</param>
         /// <param name="planet">The planet where the confrontation occurs.</param>
         /// <param name="results">The result collection receiving capture or destruction outcomes.</param>
         private void ResolveEvasion(
+            Mission mission,
             IMissionParticipant participant,
-            MissionDetector detector,
+            ISceneNode detector,
             Planet planet,
             List<GameResult> results
         )
         {
-            int defenderCombat = detector.Commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
+            Officer commander = mission.FindDetectorCommander(detector);
+            int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
             int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
             bool evaded = _provider.NextDouble() * 100 < GetEvasionProbability(score);
+            if (evaded)
+                return;
 
             if (participant is SpecialForces specialForces)
             {
-                if (!evaded)
-                    DestroySpecialForces(specialForces, planet, results);
+                DestroySpecialForces(specialForces, planet, results);
                 return;
             }
 
@@ -810,7 +1079,7 @@ namespace Rebellion.Systems
             if (
                 Mission.ApplyCaptureEvasionInjury(
                     officer,
-                    detector.Unit,
+                    detector,
                     planet,
                     _game,
                     _provider,
@@ -822,9 +1091,83 @@ namespace Rebellion.Systems
                 return;
             }
 
-            if (!evaded)
-                CaptureOfficer(officer, planet, results);
+            CaptureOfficer(officer, detector.GetOwnerInstanceID(), planet, results, detector);
         }
+
+        /// <summary>
+        /// Returns hostile detector units in the original traversal order.
+        /// </summary>
+        /// <param name="mission">The mission being checked for detection.</param>
+        /// <param name="planet">The planet where the mission is operating.</param>
+        /// <returns>The ordered detector units.</returns>
+        private static List<ISceneNode> GetDetectors(Mission mission, Planet planet)
+        {
+            List<ISceneNode> detectors = new List<ISceneNode>();
+            AddEligibleDetectors(mission, planet.GetChildren<Starfighter>(), detectors);
+            AddEligibleDetectors(mission, planet.GetChildren<Regiment>(), detectors);
+
+            bool blocksFleetDetection = planet
+                .GetChildren<Building>()
+                .Any(building =>
+                    building.IsDetectionBlocker
+                    && building.OwnerInstanceID == mission.OwnerInstanceID
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.Movement == null
+                );
+            if (blocksFleetDetection)
+                return detectors;
+
+            foreach (Fleet fleet in planet.GetChildren<Fleet>())
+            {
+                foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
+                {
+                    if (mission.IsEligibleDetector(capitalShip))
+                        detectors.Add(capitalShip);
+
+                    AddEligibleDetectors(
+                        mission,
+                        capitalShip.GetChildren<Starfighter>(),
+                        detectors
+                    );
+                    AddEligibleDetectors(mission, capitalShip.GetChildren<Regiment>(), detectors);
+                }
+            }
+
+            return detectors;
+        }
+
+        /// <summary>
+        /// Appends eligible detector units without changing their scene order.
+        /// </summary>
+        /// <param name="mission">The mission being checked for detection.</param>
+        /// <param name="candidates">The candidate detector units.</param>
+        /// <param name="detectors">The collection receiving eligible detectors.</param>
+        private static void AddEligibleDetectors(
+            Mission mission,
+            IEnumerable<ISceneNode> candidates,
+            ICollection<ISceneNode> detectors
+        )
+        {
+            foreach (ISceneNode candidate in candidates)
+            {
+                if (mission.IsEligibleDetector(candidate))
+                    detectors.Add(candidate);
+            }
+        }
+
+        /// <summary>
+        /// Returns the authored detection rating for a detector unit.
+        /// </summary>
+        /// <param name="detector">The detector unit.</param>
+        /// <returns>The detector's authored rating.</returns>
+        private static int GetDetectorRating(ISceneNode detector) =>
+            detector switch
+            {
+                Regiment regiment => regiment.DetectionRating,
+                Starfighter starfighter => starfighter.DetectionRating,
+                CapitalShip capitalShip => capitalShip.DetectionRating,
+                _ => 0,
+            };
 
         /// <summary>
         /// Removes a special-forces unit and records its destruction.
@@ -853,18 +1196,27 @@ namespace Rebellion.Systems
         /// Marks an officer captured at a planet and records the capture state change.
         /// </summary>
         /// <param name="officer">The officer being captured.</param>
+        /// <param name="captorInstanceId">The faction taking the officer captive.</param>
         /// <param name="planet">The planet where the capture occurred.</param>
         /// <param name="results">Collection to append the capture result to.</param>
-        private void CaptureOfficer(Officer officer, Planet planet, List<GameResult> results)
+        /// <param name="capturingUnit">The unit responsible for the capture, when applicable.</param>
+        private void CaptureOfficer(
+            Officer officer,
+            string captorInstanceId,
+            Planet planet,
+            List<GameResult> results,
+            ISceneNode capturingUnit = null
+        )
         {
             officer.IsCaptured = true;
-            officer.CaptorInstanceID = planet?.OwnerInstanceID;
+            officer.CaptorInstanceID = captorInstanceId;
             officer.CanEscape = true;
             results.Add(
                 new OfficerCaptureStateResult
                 {
                     TargetOfficer = officer,
                     IsCaptured = true,
+                    CapturingUnit = capturingUnit,
                     Context = planet,
                     Tick = _game.CurrentTick,
                 }

@@ -36,6 +36,7 @@ namespace Rebellion.Tests.Sectors
                 .OfType<OfficerCaptureStateResult>()
                 .Single();
             Assert.AreSame(encountered, capture.TargetOfficer);
+            Assert.AreSame(opposing, capture.CapturingUnit);
             Assert.AreSame(opposing, capture.LinkedOfficer);
             Assert.AreEqual("event", capture.SourceEventInstanceID);
             Assert.IsTrue(results.OfType<DuelResult>().Single().EncounteredOfficerCaptured);
@@ -85,7 +86,7 @@ namespace Rebellion.Tests.Sectors
 
         private static (GameRoot game, Officer encountered, Officer opposing) BuildEncounter()
         {
-            GameConfig config = TestConfig.Create();
+            GameConfig config = new GameConfig();
             config.DuelResolution = new GameConfig.DuelResolutionConfig
             {
                 CombatCaptureAvoidance = new Dictionary<int, int> { { 0, 50 } },
@@ -95,6 +96,7 @@ namespace Rebellion.Tests.Sectors
                 InjurySecondaryRollMaximum = 29,
                 CombatReward = 1,
             };
+            config.Recovery.MaxInjuryPoints = 100;
             GameRoot game = new GameRoot(config);
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             game.GetFactions().Add(new Faction { InstanceID = "empire" });

@@ -600,6 +600,87 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TransferPlanet_CancelsRemoteOrdersForDestinationAndPreservesOtherOrders()
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.EnergyCapacity = 2;
+            _empirePlanet.IsColonized = true;
+            _empirePlanet.EnergyCapacity = 3;
+
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                _game,
+                new FleetSystem(_game)
+            );
+            Building remoteMine = new Building
+            {
+                InstanceID = "remote-mine",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = 100,
+            };
+            Building localMine = new Building
+            {
+                InstanceID = "local-mine",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = 100,
+            };
+            Assert.IsTrue(
+                manufacturing.Enqueue(_empirePlanet, remoteMine, _targetPlanet, ignoreCost: true)
+            );
+            Assert.IsTrue(
+                manufacturing.Enqueue(_empirePlanet, localMine, _empirePlanet, ignoreCost: true)
+            );
+
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            List<IManufacturable> queue = _empirePlanet.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreSame(localMine, queue[0]);
+            Assert.IsNull(remoteMine.GetParent());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(remoteMine.InstanceID));
+        }
+
+        [Test]
+        public void TransferPlanet_PreservesRegimentOrderAssignedToFriendlyFleet()
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            Fleet fleet = new Fleet(_empire.InstanceID, "Empire Fleet");
+            CapitalShip transport = new CapitalShip
+            {
+                InstanceID = "transport",
+                OwnerInstanceID = _empire.InstanceID,
+                RegimentCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, _targetPlanet);
+            _game.AttachNode(transport, fleet);
+
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                _game,
+                new FleetSystem(_game)
+            );
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "fleet-regiment",
+                OwnerInstanceID = _empire.InstanceID,
+                ConstructionCost = 100,
+            };
+            Assert.IsTrue(manufacturing.Enqueue(_empirePlanet, regiment, fleet, ignoreCost: true));
+
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            CollectionAssert.Contains(
+                _empirePlanet.GetManufacturingQueue()[ManufacturingType.Troop],
+                regiment
+            );
+            Assert.AreSame(fleet, regiment.GetParentOfType<Fleet>());
+            Assert.AreSame(regiment, _game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+        }
+
+        [Test]
         public void ClearPlanetOwnership_ActiveDiplomacyMission_PreservesMission()
         {
             _game.ChangeOwnership(_targetPlanet, _rebels.InstanceID);

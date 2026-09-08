@@ -10,9 +10,9 @@ namespace Rebellion.Tests.Systems
 {
     public abstract class CombatTestBase
     {
-        protected SpaceCombatSystem MakeSpaceCombat(GameRoot game, IRandomNumberProvider rng)
+        protected SpaceCombatSystem MakeSpaceCombat(GameRoot game)
         {
-            return new SpaceCombatSystem(game, rng, CreateMovement(game));
+            return new SpaceCombatSystem(game, CreateMovement(game));
         }
 
         protected BombardmentSystem MakeBombardment(GameRoot game, IRandomNumberProvider rng)

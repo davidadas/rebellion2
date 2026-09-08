@@ -416,6 +416,8 @@ namespace Rebellion.Systems
                     newOwner
                 );
 
+                _manufacturingSystem.InvalidatePlanetDestinationOrders(planet, newOwnerId);
+
                 if (newOwner != null)
                     TransferBuildings(planet, newOwner);
 

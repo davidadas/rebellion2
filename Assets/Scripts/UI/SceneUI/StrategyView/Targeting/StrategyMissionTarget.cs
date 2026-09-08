@@ -3,7 +3,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 /// <summary>
-/// Identifies a strategy planet and optional scene node selected by targeting.
+/// Identifies a strategy planet and the exact scene node selected by targeting.
 /// </summary>
 public sealed class StrategyMissionTarget : ITargetable
 {
@@ -14,10 +14,10 @@ public sealed class StrategyMissionTarget : ITargetable
     public object Target => this;
 
     /// <summary>
-    /// Creates a strategy target for one planet and optional contained item.
+    /// Creates a strategy target for one planet and selected scene node.
     /// </summary>
     /// <param name="planet">The selected galaxy-map planet.</param>
-    /// <param name="item">The optional selected scene node.</param>
+    /// <param name="item">The selected scene node.</param>
     public StrategyMissionTarget(GalaxyMapPlanet planet, ISceneNode item)
     {
         Planet = planet;
@@ -55,7 +55,7 @@ public sealed class StrategyMissionTarget : ITargetable
     {
         return targetKind switch
         {
-            MissionTargetKind.Planet => Planet?.Planet,
+            MissionTargetKind.Planet when Item is Rebellion.Game.Galaxy.Planet => Item,
             MissionTargetKind.Manufacturable when Item is IManufacturable => Item,
             MissionTargetKind.Officer when Item is Officer => Item,
             _ => null,

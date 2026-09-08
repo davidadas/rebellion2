@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Missions
@@ -90,27 +89,17 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Subdue Uprising missions are never foiled — they target own planets.
-        /// </summary>
-        /// <param name="detectorRating">The detector rating, unused because subdue uprising cannot be foiled.</param>
-        /// <param name="defender">The defender, unused because subdue uprising cannot be foiled.</param>
-        /// <param name="game">The current game state, unused because subdue uprising cannot be foiled.</param>
-        /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(
-            int detectorRating,
-            Officer defender,
-            GameRoot game
-        ) => 0;
-
-        /// <summary>
         /// Returns a participant's raw score for subduing the target uprising.
         /// </summary>
         /// <param name="agent">The participant attempting to subdue the uprising.</param>
-        /// <param name="game">The current game state.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The participant's raw subdue-uprising score.</returns>
-        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
+        protected override int? GetAgentScore(
+            IMissionParticipant agent,
+            MissionEvaluationContext context
+        )
         {
-            Planet planet = GetMissionPlanet(game);
+            Planet planet = GetMissionPlanet(context);
             if (planet == null)
                 throw new InvalidOperationException(
                     "SubdueUprisingMission must be attached to a Planet."

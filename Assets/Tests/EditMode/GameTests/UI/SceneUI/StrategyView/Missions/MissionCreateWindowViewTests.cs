@@ -25,6 +25,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _view = _viewObject.GetComponent<MissionCreateWindowView>();
             _texture = new Texture2D(80, 40);
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
+            UIComponentTestHelper.InvokeLifecycle(
+                FindComponent<UICheckboxView>("MissionOddsCheckbox"),
+                "Awake"
+            );
         }
 
         [TearDown]
@@ -121,6 +125,100 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(FindObject("TargetPreviewImage").activeSelf);
             Assert.IsFalse(FindObject("TargetPreviewNameTextField").activeSelf);
             Assert.IsFalse(FindObject("Dropdown").activeSelf);
+        }
+
+        [Test]
+        public void Render_MissionOdds_OverlaysSuccessAndFoilOnSelectedAndDropdownIcons()
+        {
+            MissionOddsRenderData odds = new MissionOddsRenderData(73.6, 41.2);
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                true,
+                new[]
+                {
+                    new StrategyDropdownItemRenderData(_texture, "Diplomacy", Color.white, odds),
+                },
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                selectedMissionOdds: odds
+            );
+
+            _view.Render(data);
+
+            RawImage selectedImage = FindComponent<RawImage>("SelectedMissionImage");
+            TextMeshProUGUI selectedSuccess = FindOddsText(
+                selectedImage.transform,
+                "OverallSuccessOddsTextField"
+            );
+            TextMeshProUGUI selectedFoil = FindOddsText(
+                selectedImage.transform,
+                "FoilOddsTextField"
+            );
+            StrategyDropdownItemView row = FindDropdownItems().Single();
+            RawImage rowImage = FindDropdownImage(row);
+            Assert.AreEqual("SUCCESS\n~74%", selectedSuccess.text);
+            Assert.AreEqual("FOILED\n~41%", selectedFoil.text);
+            Assert.AreEqual(
+                "SUCCESS\n~74%",
+                FindOddsText(rowImage.transform, "OverallSuccessOddsTextField").text
+            );
+            Assert.AreEqual(
+                "FOILED\n~41%",
+                FindOddsText(rowImage.transform, "FoilOddsTextField").text
+            );
+            Assert.Greater(selectedSuccess.color.g, selectedSuccess.color.r);
+            Assert.Greater(selectedFoil.color.r, selectedFoil.color.g);
+            Assert.AreEqual(0f, selectedFoil.rectTransform.anchorMin.x);
+            Assert.AreEqual(0.5f, selectedFoil.rectTransform.anchorMax.x);
+            Assert.AreEqual(0.5f, selectedSuccess.rectTransform.anchorMin.x);
+            Assert.AreEqual(1f, selectedSuccess.rectTransform.anchorMax.x);
+        }
+
+        [Test]
+        public void Render_MissionOddsVisibility_AppliesDarkCheckboxAndRaisesChanges()
+        {
+            MissionCreateWindowView changedView = null;
+            bool? requestedVisibility = null;
+            _view.MissionOddsVisibilityChanged += (view, visible) =>
+            {
+                changedView = view;
+                requestedVisibility = visible;
+            };
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                false,
+                Array.Empty<StrategyDropdownItemRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                showMissionOdds: false,
+                checkboxFrameTexture: _texture,
+                checkboxCheckMarkTexture: _texture
+            );
+
+            _view.Render(data);
+
+            UICheckboxView checkbox = FindComponent<UICheckboxView>("MissionOddsCheckbox");
+            Image background = checkbox.GetComponent<Image>();
+            Assert.IsFalse(checkbox.IsChecked);
+            Assert.AreSame(_texture, FindComponent<RawImage>("CheckboxFrameImage").texture);
+            Assert.AreSame(_texture, FindComponent<RawImage>("CheckMark").texture);
+            Assert.AreEqual(
+                new RectInt(3, 2, 12, 12),
+                UILayout.GetSourceRect(FindComponent<RectMask2D>("CheckMarkClip").rectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(-1, 1, 14, 14),
+                UILayout.GetSourceRect(FindComponent<RawImage>("CheckMark").rectTransform)
+            );
+            Assert.Less(background.color.r, 0.1f);
+            Assert.Less(background.color.a, 1f);
+            Assert.IsFalse(FindObject("CheckMarkClip").activeSelf);
+
+            checkbox.GetComponent<Toggle>().isOn = true;
+
+            Assert.AreSame(_view, changedView);
+            Assert.IsTrue(requestedVisibility);
+            Assert.IsTrue(FindObject("CheckMarkClip").activeSelf);
         }
 
         [Test]
@@ -672,7 +770,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             string targetName = "Corellia",
             MissionCreateTabRenderData[] tabs = null,
             bool showSelectedMission = true,
-            bool canConfirm = true
+            bool canConfirm = true,
+            MissionOddsRenderData selectedMissionOdds = null,
+            bool showMissionOdds = true,
+            Texture checkboxFrameTexture = null,
+            Texture checkboxCheckMarkTexture = null
         )
         {
             return new MissionCreateWindowRenderData(
@@ -692,7 +794,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 tabs ?? CreateTabs(),
                 dropdownItems,
                 agents,
-                decoys
+                decoys,
+                selectedMissionOdds,
+                showMissionOdds,
+                checkboxFrameTexture,
+                checkboxCheckMarkTexture
             );
         }
 
@@ -773,6 +879,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             return item.GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == "ItemTextField");
+        }
+
+        private static TextMeshProUGUI FindOddsText(Transform root, string objectName)
+        {
+            return root.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == objectName);
         }
 
         private static RawImage FindParticipantImage(

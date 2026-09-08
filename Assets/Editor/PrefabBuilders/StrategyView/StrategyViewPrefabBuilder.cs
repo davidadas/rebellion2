@@ -142,6 +142,10 @@ public static class StrategyViewPrefabBuilder
         "Application/Strategy/UI/Windows/ui_strategyview_construction_decrement_button_pressed.png";
     private const string _constructionDropdownBackgroundPreviewPath =
         "Application/Strategy/UI/Windows/ui_strategyview_construction_dropdown_background.png";
+    private const string _contextMenuCheckMarkPreviewPath =
+        "Pack/Shared/Strategy/UI/ContextMenus/context-menu-check-mark.png";
+    private const string _checkboxFramePreviewPath =
+        "Pack/Shared/Strategy/UI/Controls/checkbox-frame.png";
     private const string _defenseWindowBackgroundPreviewPath =
         "Application/Strategy/UI/Windows/ui_strategyview_defense_window_background.png";
     private const string _fleetWindowBackgroundPreviewPath =
@@ -802,6 +806,7 @@ public static class StrategyViewPrefabBuilder
         pressedMainButtonImage.raycastTarget = false;
         pressedMainButtonImage.gameObject.SetActive(false);
 
+        IdleBarView idleBar = CreateIdleBarView(root.transform);
         GameObject windows = CreateLayer(_windowLayerName, root.transform);
         RectTransform windowsRect = windows.GetComponent<RectTransform>();
         SetStrategySurfaceRect(windowsRect);
@@ -854,6 +859,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(controller, "strategyContextMenu", contextMenu);
         AssignReference(controller, "strategyOverlay", overlayView);
         AssignReference(controller, "strategyWindowLayerView", windowsView);
+        AssignReference(controller, "idleBar", idleBar);
         AssignReference(controller, "strategyWindowManager", windowManager);
         AssignReference(controller, "galacticInformationDisplay", galacticInformationDisplay);
         AssignReference(controller, "galacticInformationLegend", galacticInformationLegend);
@@ -911,6 +917,113 @@ public static class StrategyViewPrefabBuilder
         Object.DestroyImmediate(sceneRoot);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+    }
+
+    /// <summary>
+    /// Authors the compact idle-bar layer beneath strategy windows.
+    /// </summary>
+    /// <param name="parent">The strategy-view root.</param>
+    /// <returns>The authored idle-bar view.</returns>
+    private static IdleBarView CreateIdleBarView(Transform parent)
+    {
+        GameObject layerObject = CreateLayer("IdleBar", parent);
+        RectTransform layer = layerObject.GetComponent<RectTransform>();
+        SetStrategySurfaceRect(layer);
+        IdleBarView view = EnableRuntimeComponent(layer.gameObject.AddComponent<IdleBarView>());
+        Sprite circleSprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+
+        GameObject shelfObject = new GameObject(
+            "ShelfHitArea",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        shelfObject.transform.SetParent(layer, false);
+        Image shelfHitArea = shelfObject.GetComponent<Image>();
+        shelfHitArea.color = new Color(0.08f, 0.09f, 0.11f, 0.9f);
+        shelfHitArea.raycastTarget = true;
+        SetSourceRect(shelfHitArea.rectTransform, 0, 0, 1, 1);
+
+        GameObject slotObject = new GameObject(
+            "SlotTemplate",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Button),
+            typeof(IdleBarSlotView)
+        );
+        slotObject.transform.SetParent(layer, false);
+        SetSourceRect(slotObject.GetComponent<RectTransform>(), 0, 0, 28, 28);
+        Image hitArea = slotObject.GetComponent<Image>();
+        hitArea.color = Color.clear;
+        hitArea.raycastTarget = true;
+        Button button = slotObject.GetComponent<Button>();
+        IdleBarSlotView slotView = EnableRuntimeComponent(
+            slotObject.GetComponent<IdleBarSlotView>()
+        );
+
+        GameObject frameObject = new GameObject(
+            "CircleFrame",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        frameObject.transform.SetParent(slotObject.transform, false);
+        Image frame = frameObject.GetComponent<Image>();
+        frame.sprite = circleSprite;
+        frame.color = Color.black;
+        frame.preserveAspect = true;
+        frame.raycastTarget = false;
+        SetSourceRect(frame.rectTransform, 0, 0, 28, 28);
+        button.targetGraphic = frame;
+        button.transition = Selectable.Transition.None;
+
+        GameObject maskObject = new GameObject(
+            "PortraitMask",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Mask)
+        );
+        maskObject.transform.SetParent(slotObject.transform, false);
+        Image maskImage = maskObject.GetComponent<Image>();
+        maskImage.sprite = circleSprite;
+        maskImage.color = Color.white;
+        maskImage.preserveAspect = true;
+        maskImage.raycastTarget = false;
+        maskObject.GetComponent<Mask>().showMaskGraphic = false;
+        SetSourceRect(maskImage.rectTransform, 2, 2, 24, 24);
+
+        RawImage background = CreatePanelImage(
+            "PortraitBackground",
+            maskObject.transform,
+            Color.black
+        );
+        FillParent(background.rectTransform);
+        background.raycastTarget = false;
+
+        RawImage portrait = CreatePanelImage("PortraitImage", maskObject.transform, Color.white);
+        FillParent(portrait.rectTransform);
+        portrait.raycastTarget = false;
+
+        TextMeshProUGUI pageText = CreateTextLabel("PageTextField", layer);
+        pageText.text = string.Empty;
+        pageText.fontSize = 7;
+        pageText.alignment = TextAlignmentOptions.TopLeft;
+        pageText.raycastTarget = false;
+        SetSourceRect(pageText.rectTransform, 0, 0, 20, 8);
+        pageText.gameObject.SetActive(false);
+
+        AssignReference(slotView, "button", button);
+        AssignReference(slotView, "frameImage", frame);
+        AssignReference(slotView, "portraitMask", maskImage.rectTransform);
+        AssignReference(slotView, "portraitBackground", background);
+        AssignReference(slotView, "portraitImage", portrait);
+        AssignReference(view, "shelfHitArea", shelfHitArea);
+        AssignReference(view, "pageTextField", pageText);
+        AssignReference(view, "slotTemplate", slotView);
+        slotObject.SetActive(false);
+        return view;
     }
 
     /// <summary>
@@ -2825,7 +2938,7 @@ public static class StrategyViewPrefabBuilder
             missionSelection,
             _constructionOpenButtonPreviewPath,
             101,
-            174,
+            167,
             _constructionDropdownButtonWidth,
             _constructionDropdownButtonHeight
         );
@@ -2860,6 +2973,20 @@ public static class StrategyViewPrefabBuilder
         selectedMissionName.fontSize = 13;
         selectedMissionName.alignment = TextAlignmentOptions.Top;
         SetSourceRect(selectedMissionName.rectTransform, 60, 64, 150, 16);
+        MissionOddsOverlayView selectedMissionOddsOverlay = CreateMissionOddsOverlay(
+            selectedMission.rectTransform,
+            selectedMissionName
+        );
+        UICheckboxView missionOddsCheckbox = CreateCheckbox(
+            missionSelection,
+            "MissionOddsCheckbox",
+            "Show mission odds",
+            80,
+            185,
+            130,
+            16,
+            true
+        );
         RawImage targetPreview = CreateRawImage(
             "TargetPreviewImage",
             missionSelection,
@@ -3019,7 +3146,8 @@ public static class StrategyViewPrefabBuilder
             "Espionage",
             13,
             TextAlignmentOptions.Top,
-            false
+            false,
+            true
         );
         RectTransform dropdownContentPaddingTemplate = CreateChildLayer(
             "DropdownContentPaddingTemplate",
@@ -3075,6 +3203,8 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "dropdownButton", dropdownButtonComponent);
         AssignReference(view, "selectedMissionImage", selectedMission);
         AssignReference(view, "selectedMissionNameTextField", selectedMissionName);
+        AssignReference(view, "selectedMissionOddsOverlay", selectedMissionOddsOverlay);
+        AssignReference(view, "missionOddsCheckbox", missionOddsCheckbox);
         AssignReference(view, "targetPreviewImage", targetPreview);
         AssignReference(view, "targetPreviewNameTextField", targetPreviewName);
         AssignReference(view, "dropdownRoot", dropdown);
@@ -3131,6 +3261,192 @@ public static class StrategyViewPrefabBuilder
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         return saved.GetComponent<MissionCreateWindowView>();
+    }
+
+    /// <summary>
+    /// Authors a compact dark checkbox using the shared context-menu check artwork.
+    /// </summary>
+    /// <param name="parent">The checkbox parent.</param>
+    /// <param name="name">The checkbox object name.</param>
+    /// <param name="label">The displayed checkbox label.</param>
+    /// <param name="x">The source-space left position.</param>
+    /// <param name="y">The source-space top position.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <param name="isChecked">Whether the checkbox starts checked.</param>
+    /// <returns>The configured checkbox view.</returns>
+    private static UICheckboxView CreateCheckbox(
+        Transform parent,
+        string name,
+        string label,
+        int x,
+        int y,
+        int width,
+        int height,
+        bool isChecked
+    )
+    {
+        GameObject root = new GameObject(
+            name,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Toggle),
+            typeof(UICheckboxView)
+        );
+        root.transform.SetParent(parent, false);
+        SetSourceRect(root.GetComponent<RectTransform>(), x, y, width, height);
+
+        Image background = root.GetComponent<Image>();
+        background.color = Color.clear;
+        background.raycastTarget = true;
+        background.canvasRenderer.cullTransparentMesh = false;
+
+        RawImage frame = CreateRawImage(
+            "CheckboxFrameImage",
+            root.transform,
+            _checkboxFramePreviewPath,
+            2,
+            1,
+            14,
+            14
+        );
+        frame.raycastTarget = false;
+
+        RectTransform checkMarkClip = CreateChildLayer("CheckMarkClip", root.transform);
+        SetSourceRect(checkMarkClip, 3, 2, 12, 12);
+        checkMarkClip.gameObject.AddComponent<RectMask2D>();
+        RawImage checkMark = CreateRawImage(
+            "CheckMark",
+            checkMarkClip,
+            _contextMenuCheckMarkPreviewPath,
+            -1,
+            1,
+            14,
+            14
+        );
+        checkMark.raycastTarget = false;
+
+        TextMeshProUGUI labelField = CreateTextLabel("LabelTextField", root.transform);
+        labelField.text = label;
+        labelField.color = new Color32(225, 235, 240, 255);
+        labelField.fontSize = 9;
+        labelField.alignment = TextAlignmentOptions.MidlineLeft;
+        labelField.raycastTarget = false;
+        SetSourceRect(labelField.rectTransform, 21, 0, width - 23, height);
+
+        Toggle toggle = root.GetComponent<Toggle>();
+        toggle.targetGraphic = background;
+        toggle.graphic = null;
+        toggle.transition = Selectable.Transition.None;
+        toggle.isOn = isChecked;
+
+        UICheckboxView view = EnableRuntimeComponent(root.GetComponent<UICheckboxView>());
+        AssignReference(view, "toggle", toggle);
+        AssignReference(view, "backgroundImage", background);
+        AssignReference(view, "frameImage", frame);
+        AssignReference(view, "checkMarkImage", checkMark);
+        AssignReference(view, "checkMarkRoot", checkMarkClip);
+        AssignReference(view, "labelTextField", labelField);
+        checkMarkClip.gameObject.SetActive(isChecked);
+        return view;
+    }
+
+    /// <summary>
+    /// Authors a reusable mission-odds overlay inside a mission icon.
+    /// </summary>
+    /// <param name="iconRoot">The mission icon receiving the overlay.</param>
+    /// <param name="textStyleSource">The authored text component supplying the UI font.</param>
+    /// <returns>The configured overlay view.</returns>
+    private static MissionOddsOverlayView CreateMissionOddsOverlay(
+        RectTransform iconRoot,
+        TextMeshProUGUI textStyleSource
+    )
+    {
+        GameObject overlayObject = new GameObject(
+            "MissionOddsOverlay",
+            typeof(RectTransform),
+            typeof(Image),
+            typeof(MissionOddsOverlayView)
+        );
+        RectTransform overlayRect = overlayObject.GetComponent<RectTransform>();
+        overlayRect.SetParent(iconRoot, false);
+        overlayRect.anchorMin = new Vector2(0, 1);
+        overlayRect.anchorMax = new Vector2(1, 1);
+        overlayRect.pivot = new Vector2(0.5f, 1);
+        overlayRect.anchoredPosition = Vector2.zero;
+        overlayRect.sizeDelta = new Vector2(0, 24);
+
+        Image backdrop = overlayObject.GetComponent<Image>();
+        backdrop.color = new Color32(0, 0, 0, 205);
+        backdrop.raycastTarget = false;
+
+        TextMeshProUGUI foilText = CreateMissionOddsTextField(
+            "FoilOddsTextField",
+            overlayRect,
+            textStyleSource,
+            new Vector2(0, 0),
+            new Vector2(0.5f, 1),
+            new Color32(255, 105, 85, 255)
+        );
+        TextMeshProUGUI overallSuccessText = CreateMissionOddsTextField(
+            "OverallSuccessOddsTextField",
+            overlayRect,
+            textStyleSource,
+            new Vector2(0.5f, 0),
+            new Vector2(1, 1),
+            new Color32(90, 255, 125, 255)
+        );
+
+        MissionOddsOverlayView overlay = EnableRuntimeComponent(
+            overlayObject.GetComponent<MissionOddsOverlayView>()
+        );
+        AssignReference(overlay, "foilTextField", foilText);
+        AssignReference(overlay, "overallSuccessTextField", overallSuccessText);
+        overlayRect.SetAsLastSibling();
+        overlayObject.SetActive(false);
+        return overlay;
+    }
+
+    /// <summary>
+    /// Authors one half of the mission-odds overlay using the mission label's font styling.
+    /// </summary>
+    /// <param name="objectName">The generated child object name.</param>
+    /// <param name="parent">The overlay half receiving the text field.</param>
+    /// <param name="styleSource">The authored label supplying the font material.</param>
+    /// <param name="anchorMin">The lower normalized anchor.</param>
+    /// <param name="anchorMax">The upper normalized anchor.</param>
+    /// <param name="color">The semantic probability color.</param>
+    /// <returns>The configured odds text field.</returns>
+    private static TextMeshProUGUI CreateMissionOddsTextField(
+        string objectName,
+        RectTransform parent,
+        TextMeshProUGUI styleSource,
+        Vector2 anchorMin,
+        Vector2 anchorMax,
+        Color32 color
+    )
+    {
+        TextMeshProUGUI textField = CreateTextLabel(objectName, parent);
+        RectTransform rect = textField.rectTransform;
+        rect.anchorMin = anchorMin;
+        rect.anchorMax = anchorMax;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(-2, -2);
+
+        textField.font = styleSource.font;
+        textField.fontSharedMaterial = styleSource.fontSharedMaterial;
+        textField.color = color;
+        textField.alignment = TextAlignmentOptions.Center;
+        textField.fontStyle = FontStyles.Bold;
+        textField.enableAutoSizing = true;
+        textField.fontSizeMin = 5;
+        textField.fontSizeMax = 10;
+        textField.textWrappingMode = TextWrappingModes.NoWrap;
+        textField.overflowMode = TextOverflowModes.Overflow;
+        textField.raycastTarget = false;
+        return textField;
     }
 
     /// <summary>
@@ -3200,6 +3516,7 @@ public static class StrategyViewPrefabBuilder
     /// <param name="fontSize">The preview font size.</param>
     /// <param name="alignment">The preview text alignment.</param>
     /// <param name="preserveImageRect">Whether rendering preserves the authored image rectangle.</param>
+    /// <param name="includeMissionOddsOverlay">Whether the row includes a mission-odds overlay.</param>
     /// <returns>The configured dropdown item template.</returns>
     private static StrategyDropdownItemView CreateStrategyDropdownItemTemplate(
         Transform parent,
@@ -3211,7 +3528,8 @@ public static class StrategyViewPrefabBuilder
         string previewText,
         float fontSize,
         TextAlignmentOptions alignment,
-        bool preserveImageRect
+        bool preserveImageRect,
+        bool includeMissionOddsOverlay = false
     )
     {
         GameObject row = new GameObject(
@@ -3264,6 +3582,9 @@ public static class StrategyViewPrefabBuilder
             textRect.width,
             textRect.height
         );
+        MissionOddsOverlayView missionOddsOverlay = includeMissionOddsOverlay
+            ? CreateMissionOddsOverlay(itemImage.rectTransform, itemText)
+            : null;
 
         StrategyDropdownItemView view = EnableRuntimeComponent(
             row.GetComponent<StrategyDropdownItemView>()
@@ -3271,6 +3592,8 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "button", button);
         AssignReference(view, "itemImage", itemImage);
         AssignReference(view, "itemTextField", itemText);
+        if (missionOddsOverlay != null)
+            AssignReference(view, "missionOddsOverlay", missionOddsOverlay);
         AssignBool(view, "preserveAuthoredImageRect", preserveImageRect);
         AddTemplateLayoutElement(row.GetComponent<RectTransform>());
         row.SetActive(false);

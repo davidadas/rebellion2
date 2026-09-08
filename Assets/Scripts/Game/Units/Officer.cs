@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
@@ -233,8 +235,6 @@ namespace Rebellion.Game.Units
 
         // Injury Info.
         public int InjuryPoints { get; set; }
-        public bool CanHeal { get; set; }
-        public bool FastHeal { get; set; }
 
         // Force Info.
         public int JediProbability { get; set; }
@@ -354,8 +354,6 @@ namespace Rebellion.Game.Units
             copy.IsTraitor = IsTraitor;
             copy.Loyalty = Loyalty;
             copy.InjuryPoints = InjuryPoints;
-            copy.CanHeal = CanHeal;
-            copy.FastHeal = FastHeal;
             copy.JediProbability = JediProbability;
             copy.JediLevel = JediLevel;
             copy.JediLevelVariance = JediLevelVariance;
@@ -490,6 +488,46 @@ namespace Rebellion.Game.Units
         public bool IsOnMission()
         {
             return GetParent() is Mission;
+        }
+
+        /// <summary>
+        /// Returns whether the injured officer is resting at a location controlled by their faction.
+        /// </summary>
+        /// <returns>True when the officer can recover injury points; otherwise, false.</returns>
+        public bool CanHeal()
+        {
+            if (
+                InjuryPoints <= 0
+                || IsCaptured
+                || IsKilled
+                || IsOnMission()
+                || this.GetTransitMovement() != null
+            )
+                return false;
+
+            string ownerInstanceID = GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(ownerInstanceID))
+                return false;
+
+            CapitalShip ship = GetParentOfType<CapitalShip>();
+            if (ship?.GetOwnerInstanceID() == ownerInstanceID)
+                return true;
+
+            Fleet fleet = GetParentOfType<Fleet>();
+            if (fleet?.GetOwnerInstanceID() == ownerInstanceID)
+                return true;
+
+            return GetParentOfType<Planet>()?.GetOwnerInstanceID() == ownerInstanceID;
+        }
+
+        /// <summary>
+        /// Returns whether the officer qualifies for the accelerated Force-user healing rate.
+        /// </summary>
+        /// <param name="minimumForceRank">The minimum Force rank required for fast healing.</param>
+        /// <returns>True when the officer is Force-sensitive and meets the rank threshold; otherwise, false.</returns>
+        public bool HealsFast(int minimumForceRank)
+        {
+            return IsForceSensitive && ForceRank >= minimumForceRank;
         }
 
         /// <summary>

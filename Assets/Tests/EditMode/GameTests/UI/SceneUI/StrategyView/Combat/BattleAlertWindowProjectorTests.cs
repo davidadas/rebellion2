@@ -134,6 +134,50 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void Project_PendingSecondForces_ExcludesUnitsUnderConstruction()
+        {
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
+            CapitalShip unfinishedShip = CreateCapitalShip(
+                "unfinished-ship",
+                _opponentFactionId,
+                "Unfinished Ship"
+            );
+            unfinishedShip.ManufacturingStatus = ManufacturingStatus.Building;
+            scene.Game.AttachNode(unfinishedShip, scene.OpponentFleet);
+            PendingCombatResult pending = new PendingCombatResult
+            {
+                Planet = scene.Planet,
+                AttackerFleet = scene.PlayerFleet,
+                DefenderFleet = scene.OpponentFleet,
+            };
+            BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
+
+            BattleAlertWindowRenderData data = projector.Project(
+                BattleAlertWindowMode.Pending,
+                BattleAlertPanel.SecondForces,
+                BattleResultPanel.Summary,
+                BattleResultCategory.CapitalShips,
+                pending,
+                null,
+                _playerFactionId,
+                0,
+                0,
+                scene.Context
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Opponent Fleet", "Opponent Ship" },
+                data.Pending.Rows.Select(row => row.Text)
+            );
+        }
+
+        [Test]
         public void Project_PendingSecondForces_IncludesActivePlanetStarfighters()
         {
             (
@@ -722,6 +766,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DisplayName = displayName,
                 DisplayImagePath = definition.DisplayImagePath,
                 SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }
 

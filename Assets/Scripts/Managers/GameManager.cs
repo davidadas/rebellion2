@@ -46,6 +46,8 @@ public sealed class GameManager
     private MovementSystem _movementSystem;
     private HeadquartersSystem _headquartersSystem;
     private NamingSystem _namingSystem;
+    private RecoverySystem _recoverySystem;
+    private CaptiveSystem _captiveSystem;
 
     // Economy Systems.
     private ManufacturingSystem _manufacturingSystem;
@@ -327,6 +329,8 @@ public sealed class GameManager
         ProcessResults(_resourceProductionSystem.ProcessTick());
         ProcessResults(_manufacturingSystem.ProcessTick());
         ProcessResults(_maintenanceSystem.ProcessTick());
+        ProcessResults(_recoverySystem.ProcessTick());
+        ProcessResults(_captiveSystem.ProcessTick());
 
         List<GameResult> movementResults = ProcessResults(
             _movementSystem.ProcessTick(),
@@ -455,6 +459,13 @@ public sealed class GameManager
         _headquartersSystem = new HeadquartersSystem(_game, _movementSystem);
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
         _namingSystem = new NamingSystem(_game);
+        _recoverySystem = new RecoverySystem(_game);
+        _captiveSystem = new CaptiveSystem(
+            _game,
+            _randomProvider,
+            _movementSystem,
+            _fogOfWarSystem
+        );
         _factionAutomationSystem = new FactionAutomationSystem(
             _game,
             _gameData,
@@ -479,7 +490,7 @@ public sealed class GameManager
             _officerLoyaltySystem,
             _personnelSystem
         );
-        _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementSystem);
+        _spaceCombatSystem = new SpaceCombatSystem(_game, _movementSystem);
         _bombardmentSystem = new BombardmentSystem(
             _game,
             _randomProvider,
@@ -532,6 +543,7 @@ public sealed class GameManager
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
         _resultProcessor.Subscribe<OfficerCaptureStateResult>(_missionSystem);
+        _resultProcessor.Subscribe<OfficerCaptureStateResult>(_captiveSystem);
         _resultProcessor.Subscribe<IntelligenceRevealedResult>(_fogOfWarSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
 

@@ -48,6 +48,21 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Records selected game objects at their current logical locations.
+        /// </summary>
+        /// <param name="faction">The faction receiving the observations.</param>
+        /// <param name="observations">The game objects revealed to the faction.</param>
+        /// <param name="currentTick">The tick when the objects were observed.</param>
+        internal void RecordObservations(
+            Faction faction,
+            IEnumerable<ISceneNode> observations,
+            int currentTick
+        )
+        {
+            _recorder.RecordSelectedObservations(_game, faction, observations, currentTick);
+        }
+
+        /// <summary>
         /// Applies category-limited planet intelligence emitted by a simulation event.
         /// </summary>
         /// <param name="results">The intelligence results to record.</param>

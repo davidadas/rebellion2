@@ -227,7 +227,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNotNull(card.EntityTexture);
             Assert.IsNull(card.EnrouteOverlayTexture);
             Assert.IsNull(card.DamagedOverlayTexture);
-            Assert.IsTrue(card.HideBackgroundWhenSelected);
         }
 
         [Test]

@@ -46,7 +46,7 @@ public static class GameLaunchContext
             GalaxySize = GameSize.Large,
             VictoryCondition = GameVictoryCondition.Conquest,
             ResourceAvailability = GameResourceAvailability.Normal,
-            StartingResearchLevel = 1,
+            StartingResearchLevel = 0,
             PlayerFactionID = contentPack.Scenario.DefaultPlayerFactionID,
             StartingFactionIDs = startingFactionIds,
             PackID = contentPack.Definition.ID,

@@ -42,7 +42,7 @@ namespace Rebellion.Game
         public GameVictoryCondition VictoryCondition = GameVictoryCondition.Conquest;
         public GameResourceAvailability ResourceAvailability = GameResourceAvailability.Normal;
         public string[] StartingFactionIDs = Array.Empty<string>();
-        public int StartingResearchLevel = 1;
+        public int StartingResearchLevel;
         public string PlayerFactionID;
         public string PackID;
         public string PackVersion;

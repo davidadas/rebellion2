@@ -34,7 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 new Planet { InstanceID = "planet" },
                 string.Empty
             );
-            _target = new StrategyMissionTarget(planet, null);
+            _target = new StrategyMissionTarget(planet, planet.Planet);
             _choices = new List<StrategyMissionChoice>
             {
                 CreateChoice(MissionTypeIDs.Diplomacy, "Diplomacy"),
@@ -85,8 +85,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_choices[0], session.SelectedChoice);
             Assert.AreEqual(MissionCreateWindowTab.Mission, session.ActiveTab);
             Assert.IsFalse(session.DropdownOpen);
+            Assert.IsTrue(session.ShowMissionOdds);
             Assert.IsEmpty(session.SelectedAgents);
             Assert.IsEmpty(session.SelectedDecoys);
+        }
+
+        [Test]
+        public void SetShowMissionOdds_ChangedValue_UpdatesVisibility()
+        {
+            MissionCreateWindowSession session = CreateSession();
+
+            bool changed = session.SetShowMissionOdds(false);
+            bool changedAgain = session.SetShowMissionOdds(false);
+
+            Assert.IsTrue(changed);
+            Assert.IsFalse(changedAgain);
+            Assert.IsFalse(session.ShowMissionOdds);
         }
 
         [Test]

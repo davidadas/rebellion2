@@ -59,13 +59,7 @@ public sealed class GalacticInformationDisplayProjector
             theme.GetBackgroundColor(),
             ProjectFrame(theme.Frame, selector.Width, selector.Height, context),
             categories,
-            ProjectDisplayOffRow(
-                theme,
-                state.DisplayOffHovered,
-                state.SelectedFilterMode == GalacticInformationFilterMode.DisplayOff,
-                highlightColor,
-                checkMarkTexture
-            )
+            ProjectDisplayOffRow(theme, state.DisplayOffHovered, highlightColor)
         );
     }
 
@@ -332,16 +326,12 @@ public sealed class GalacticInformationDisplayProjector
     /// </summary>
     /// <param name="theme">The active galactic-information theme.</param>
     /// <param name="hovered">Whether the display-off row is hovered.</param>
-    /// <param name="selected">Whether the display-off row is currently selected.</param>
     /// <param name="highlightColor">The active faction highlight color.</param>
-    /// <param name="checkMarkTexture">The shared selected-state check-mark texture.</param>
     /// <returns>The immutable display-off row presentation.</returns>
     private static GalacticInformationTextRowRenderData ProjectDisplayOffRow(
         GalacticInformationDisplayTheme theme,
         bool hovered,
-        bool selected,
-        Color highlightColor,
-        Texture2D checkMarkTexture
+        Color highlightColor
     )
     {
         SourceRectLayout row = theme?.DisplayOffRowSourceLayout;
@@ -353,7 +343,7 @@ public sealed class GalacticInformationDisplayProjector
             true,
             bounds,
             new GalacticInformationImageRenderData(
-                selected ? checkMarkTexture : null,
+                null,
                 new RectInt(
                     row.X - theme.MenuIconSourceLayout.Width,
                     row.Y,

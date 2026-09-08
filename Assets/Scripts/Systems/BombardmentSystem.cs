@@ -1270,7 +1270,11 @@ namespace Rebellion.Systems
         /// <returns>The condition-adjusted value.</returns>
         private static int ScaleByCondition(int value, int current, int maximum)
         {
-            return maximum > 0 ? value * Math.Max(0, current) / maximum : value;
+            if (maximum <= 0)
+                return value;
+
+            int damage = maximum - Math.Min(maximum, Math.Max(0, current));
+            return value - value * damage / maximum;
         }
 
         /// <summary>

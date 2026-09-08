@@ -22,7 +22,7 @@ namespace Rebellion.Tests.Sectors
     public class MovementSystemTests
     {
         [Test]
-        public void RelocateUnits_NoCompatibleShip_MovesStarfighterToFriendlyPlanet()
+        public void RelocateUnits_NoCompatibleShip_MovesHyperdriveStarfighterToFriendlyPlanet()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };
@@ -58,6 +58,7 @@ namespace Rebellion.Tests.Sectors
             {
                 InstanceID = "fighter",
                 OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 1,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(fleet, combatPlanet);
@@ -73,6 +74,185 @@ namespace Rebellion.Tests.Sectors
             movement.RelocateUnits(new[] { starfighter });
 
             Assert.AreSame(friendlyPlanet, starfighter.GetParent());
+        }
+
+        [Test]
+        public void RelocateUnits_NoCompatibleShipAndNoHyperdrive_LeavesStarfighterWithCurrentShip()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet combatPlanet = new Planet { InstanceID = "combat" };
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(combatPlanet, sector);
+            game.AttachNode(friendlyPlanet, sector);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
+            CapitalShip destroyedShip = new CapitalShip
+            {
+                InstanceID = "destroyed",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, combatPlanet);
+            game.AttachNode(destroyedShip, fleet);
+            game.AttachNode(starfighter, destroyedShip);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+
+            movement.RelocateUnits(new[] { starfighter });
+
+            Assert.AreSame(destroyedShip, starfighter.GetParent());
+            Assert.IsNull(starfighter.Movement);
+        }
+
+        [Test]
+        public void RelocateUnits_LimitedRecoveryCapacity_PrioritizesNonHyperdriveStarfighter()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet combatPlanet = new Planet { InstanceID = "combat" };
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(combatPlanet, sector);
+            game.AttachNode(friendlyPlanet, sector);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
+            CapitalShip destroyedShip = new CapitalShip
+            {
+                InstanceID = "destroyed",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 2,
+            };
+            CapitalShip recoveryCarrier = new CapitalShip
+            {
+                InstanceID = "recovery",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+                StarfighterCapacity = 1,
+            };
+            Starfighter hyperdriveFighter = new Starfighter
+            {
+                InstanceID = "hyperdrive-fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter nonHyperdriveFighter = new Starfighter
+            {
+                InstanceID = "non-hyperdrive-fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, combatPlanet);
+            game.AttachNode(destroyedShip, fleet);
+            game.AttachNode(recoveryCarrier, fleet);
+            game.AttachNode(hyperdriveFighter, destroyedShip);
+            game.AttachNode(nonHyperdriveFighter, destroyedShip);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+
+            movement.RelocateUnits(new IMovable[] { hyperdriveFighter, nonHyperdriveFighter });
+
+            Assert.AreSame(recoveryCarrier, nonHyperdriveFighter.GetParent());
+            Assert.IsNull(nonHyperdriveFighter.Movement);
+            Assert.AreSame(friendlyPlanet, hyperdriveFighter.GetParent());
+            Assert.IsNotNull(hyperdriveFighter.Movement);
+        }
+
+        [Test]
+        public void RelocateUnits_HyperdriveFighterOccupiesRecoveryCapacity_EvacuatesHyperdriveFighterAndRecoversNonHyperdriveFighter()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet combatPlanet = new Planet { InstanceID = "combat" };
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(combatPlanet, sector);
+            game.AttachNode(friendlyPlanet, sector);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
+            CapitalShip destroyedShip = new CapitalShip
+            {
+                InstanceID = "destroyed",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            CapitalShip recoveryCarrier = new CapitalShip
+            {
+                InstanceID = "recovery",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+                StarfighterCapacity = 1,
+            };
+            Starfighter hyperdriveFighter = new Starfighter
+            {
+                InstanceID = "hyperdrive-fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter nonHyperdriveFighter = new Starfighter
+            {
+                InstanceID = "non-hyperdrive-fighter",
+                OwnerInstanceID = faction.InstanceID,
+                Hyperdrive = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, combatPlanet);
+            game.AttachNode(destroyedShip, fleet);
+            game.AttachNode(recoveryCarrier, fleet);
+            game.AttachNode(hyperdriveFighter, recoveryCarrier);
+            game.AttachNode(nonHyperdriveFighter, destroyedShip);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+
+            movement.RelocateUnits(new[] { nonHyperdriveFighter });
+
+            Assert.AreSame(recoveryCarrier, nonHyperdriveFighter.GetParent());
+            Assert.IsNull(nonHyperdriveFighter.Movement);
+            Assert.AreSame(friendlyPlanet, hyperdriveFighter.GetParent());
+            Assert.IsNotNull(hyperdriveFighter.Movement);
         }
 
         [Test]
@@ -2241,7 +2421,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ReturnFromMission_MissingRecordedLocation_ReturnsParticipantAsStranded()
+        public void ReturnFromMission_MissingRecordedLocation_ReturnsToNearestFriendlyPlanet()
         {
             (
                 GameRoot game,
@@ -2262,12 +2442,34 @@ namespace Rebellion.Tests.Sectors
                 new IMovable[0]
             );
 
-            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
-            Assert.AreEqual(mission, officer.GetParent());
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(origin, officer.GetParent());
         }
 
         [Test]
-        public void ReturnFromMission_RecordedPlanetCaptured_ReturnsParticipantAsStranded()
+        public void ReturnFromMission_MissingOwnerAndRecordedLocation_ReturnsParticipantAsStranded()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementSystem movement) =
+                BuildScene();
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            officer.OwnerInstanceID = null;
+            officer.MissionReturnParentInstanceID = "missing-parent";
+            officer.MissionReturnLocationInstanceID = "missing-location";
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0]
+            );
+
+            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
+            Assert.AreSame(mission, officer.GetParent());
+        }
+
+        [Test]
+        public void ReturnFromMission_RecordedPlanetCaptured_ReturnsToNearestFriendlyPlanet()
         {
             (
                 GameRoot game,
@@ -2281,18 +2483,27 @@ namespace Rebellion.Tests.Sectors
             movement.SendToMission(officer, mission);
             officer.Movement = null;
             origin.OwnerInstanceID = "rebels";
+            Planet fallback = new Planet
+            {
+                InstanceID = "fallback",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 200,
+            };
+            game.AttachNode(fallback, destination.GetParent());
 
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 new IMovable[0]
             );
 
-            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
-            Assert.AreSame(mission, officer.GetParent());
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(fallback, officer.GetParent());
         }
 
         [Test]
-        public void ReturnFromMission_MissingRecordedLocation_DoesNotChooseAnotherFleet()
+        public void ReturnFromMission_MissingRecordedLocation_UsesFriendlyPlanetInsteadOfUnrelatedFleet()
         {
             (
                 GameRoot game,
@@ -2323,8 +2534,8 @@ namespace Rebellion.Tests.Sectors
                 new IMovable[0]
             );
 
-            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
-            Assert.AreSame(mission, officer.GetParent());
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(origin, officer.GetParent());
         }
 
         [Test]
@@ -2365,7 +2576,7 @@ namespace Rebellion.Tests.Sectors
                 Planet destination,
                 Officer escort,
                 MovementSystem movement
-            ) = BuildScene();
+            ) = BuildScene(new GameConfig());
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
             movement.SendToMission(escort, mission);
@@ -4561,10 +4772,9 @@ namespace Rebellion.Tests.Sectors
             Planet destination,
             Officer officer,
             MovementSystem movement
-        ) BuildScene()
+        ) BuildScene(GameConfig config = null)
         {
-            GameConfig config = TestContent.Data.GameConfig;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = new GameRoot(config ?? TestContent.Data.GameConfig);
 
             Faction empire = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(empire);

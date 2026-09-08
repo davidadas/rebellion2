@@ -29,6 +29,7 @@ public sealed class StrategyController
         IStrategyHudActions,
         IGalacticInformationDisplayActions,
         IGalaxyMapActions,
+        IIdleBarActions,
         IConstructionWindowActions,
         IFacilityWindowActions,
         IFleetWindowActions,
@@ -62,6 +63,9 @@ public sealed class StrategyController
     private StrategyWindowLayerView strategyWindowLayerView;
 
     [SerializeField]
+    private IdleBarView idleBar;
+
+    [SerializeField]
     private UIWindowManager strategyWindowManager;
 
     [SerializeField]
@@ -90,7 +94,6 @@ public sealed class StrategyController
         InputAction action,
         Action<InputAction.CallbackContext> callback
     )> _boundInputActions = new List<(InputAction, Action<InputAction.CallbackContext>)>();
-
     private bool dirty = true;
     private bool contentReady;
     private bool initialized;
@@ -103,6 +106,7 @@ public sealed class StrategyController
     private StrategyMusicController strategyMusicController;
     private GalaxyMapController galaxyMapController;
     private GalacticInformationDisplayController galacticInformationDisplayController;
+    private IdleBarController idleBarController;
     private TargetingController targetingController;
     private ContextMenuController contextMenuController;
     private FleetWindowController fleetWindowController;
@@ -239,7 +243,9 @@ public sealed class StrategyController
             () => gameManager?.GetPlayerFaction(),
             () => uiContext?.GetPlayerFactionTheme(),
             path => uiContext?.GetTexture(path),
-            PlaySfx
+            PlaySfx,
+            PlaySfxInstance,
+            audioManager.GetLoadedSfxDuration
         );
         strategyHudController.Initialize(this);
         strategyHudController.BindView(strategyHud);
@@ -247,6 +253,16 @@ public sealed class StrategyController
         galaxyMapController = new GalaxyMapController(() => uiContext);
         galaxyMapController.Initialize(this);
         galaxyMapController.BindView(galaxyMap);
+        idleBarController = new IdleBarController(
+            () => gameManager?.GetPlayerFaction(),
+            () => uiContext,
+            () =>
+                AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowIdleBar
+                ?? false,
+            instanceId => gameManager?.GetGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
+        );
+        idleBarController.Initialize(this);
+        idleBarController.BindView(idleBar);
         briefingController = new StrategyBriefingController(
             gameManager.GetGame(),
             path => uiContext?.GetTexture(path),
@@ -473,7 +489,10 @@ public sealed class StrategyController
             windowPlacementController.GetMissionCreateWindowPosition,
             CloseWindow,
             MarkDirty,
-            () => bootstrap.GetInputManager().GetSelectionModifierState()
+            () => bootstrap.GetInputManager().GetSelectionModifierState(),
+            planetInstanceId => galaxyMapController.FindPlanet(planetInstanceId)?.Planet,
+            GetShowMissionOdds,
+            SetShowMissionOdds
         );
         confirmDialogWindowController = new ConfirmDialogWindowController(
             () => uiContext,
@@ -510,6 +529,7 @@ public sealed class StrategyController
             RebuildSnapshot,
             MarkDirty,
             () => gameManager.HeadquartersSystem,
+            strategyHudController.PlayInvalidOrderRejected,
             strategyHudController.PlayInTransitOrderRejected,
             strategyHudController.PlayUnitUnderConstructionOrderRejected
         );
@@ -526,6 +546,7 @@ public sealed class StrategyController
             this,
             windowCommandController,
             windowCommandController,
+            idleBarController,
             inputController.StartItemDrag,
             inputController.OnDrag,
             inputController.OnPointerUp
@@ -534,6 +555,7 @@ public sealed class StrategyController
             this,
             windowCommandController,
             windowCommandController,
+            idleBarController,
             inputController.StartItemDrag,
             inputController.OnDrag,
             inputController.OnPointerUp
@@ -542,6 +564,7 @@ public sealed class StrategyController
             this,
             windowCommandController,
             windowCommandController,
+            idleBarController,
             inputController.StartItemDrag
         );
         missionsWindowController.Initialize(this);
@@ -658,6 +681,16 @@ public sealed class StrategyController
     private static void PlaySfx(string resourcePath)
     {
         AudioManager.EnsureExists().PlaySfx(resourcePath);
+    }
+
+    /// <summary>
+    /// Plays an independently stoppable strategy sound effect through the shared audio manager.
+    /// </summary>
+    /// <param name="resourcePath">The content address of the sound effect.</param>
+    /// <returns>The playback handle, or null when the path is blank.</returns>
+    private static AudioPlaybackHandle PlaySfxInstance(string resourcePath)
+    {
+        return AudioManager.EnsureExists().PlaySfxInstance(resourcePath);
     }
 
     /// <summary>
@@ -975,6 +1008,7 @@ public sealed class StrategyController
         ValidateGalaxyMapLayer();
         ValidateGalacticInformationLayer();
         ValidateBookmarkLayer();
+        ValidateIdleBarLayer();
         ValidateContextMenuLayer();
 
         if (briefingSkipConfirmation == null)
@@ -1020,6 +1054,21 @@ public sealed class StrategyController
             );
 
         RequireRectTransform(strategyWindowLayerView, "Windows");
+    }
+
+    /// <summary>
+    /// Validates the authored idle-bar layer.
+    /// </summary>
+    private void ValidateIdleBarLayer()
+    {
+        if (idleBar == null)
+            throw new MissingReferenceException("IdleBar is missing IdleBarView.");
+
+        RequireRectTransform(idleBar, "IdleBar");
+        if (idleBar.GetComponent<UIWindow>() != null)
+            throw new MissingReferenceException("IdleBar must not use a strategy-window shell.");
+        if (idleBar.transform.parent != transform)
+            throw new MissingReferenceException("IdleBar must be a direct strategy-view layer.");
     }
 
     /// <summary>
@@ -1168,6 +1217,7 @@ public sealed class StrategyController
     {
         RenderGalaxyMap();
         RenderBookmarks();
+        idleBarController.Render();
         RenderWindows();
 
         RenderHud();
@@ -1614,11 +1664,36 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Returns the saved mission-odds visibility, defaulting to visible before settings initialize.
+    /// </summary>
+    private static bool GetShowMissionOdds()
+    {
+        return AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowMissionOdds
+            ?? true;
+    }
+
+    /// <summary>
+    /// Saves mission-odds visibility when the Mission Create checkbox changes.
+    /// </summary>
+    /// <param name="visible">Whether mission-planning estimates should be displayed.</param>
+    private static void SetShowMissionOdds(bool visible)
+    {
+        UserSettingsManager settingsManager = AppBootstrap.Instance?.GetUserSettingsManager();
+        UserGameplaySettings gameplay = settingsManager?.Settings?.Gameplay;
+        if (gameplay == null || gameplay.ShowMissionOdds == visible)
+            return;
+
+        gameplay.ShowMissionOdds = visible;
+        settingsManager.Save();
+    }
+
+    /// <summary>
     /// Rebinds strategy presentation and message delivery after a hot-loaded game replacement.
     /// </summary>
     /// <param name="game">The replacement active game.</param>
     private void HandleGameReplaced(GameRoot game)
     {
+        idleBarController.ResetSession();
         ResetStrategyPresentation();
         uiContext.ReplaceGame(game);
         PreloadStrategySfx();
@@ -2128,7 +2203,12 @@ public sealed class StrategyController
     /// <param name="sourceY">The source window's vertical coordinate.</param>
     void IBattleAlertWindowActions.OpenBattleResultFleet(Planet planet, int sourceX, int sourceY)
     {
-        OpenPlanetWindow(planet, PlanetIcon.Fleet, sourceX, sourceY);
+        GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planet?.InstanceID);
+        if (strategyPlanet == null || !OpenPlanetSectorWindow(strategyPlanet.Sector))
+            return;
+
+        OpenPlanetWindowAt(strategyPlanet, PlanetIcon.Fleet, sourceX, sourceY);
+        MarkDirty();
     }
 
     /// <summary>
@@ -2315,28 +2395,6 @@ public sealed class StrategyController
             PlayPlanetWindowOpenSound(bookmark != null);
 
         return window;
-    }
-
-    /// <summary>
-    /// Opens a category window for an authoritative planet entity.
-    /// </summary>
-    /// <param name="planet">The planet whose feature window should open.</param>
-    /// <param name="icon">The requested feature category.</param>
-    /// <param name="sourceX">The source-space horizontal position.</param>
-    /// <param name="sourceY">The source-space vertical position.</param>
-    private void OpenPlanetWindow(Planet planet, PlanetIcon icon, int sourceX, int sourceY)
-    {
-        if (planet == null || icon == PlanetIcon.None)
-            return;
-
-        GalaxyMapPlanet strategyPlanet = Sectors
-            .SelectMany(sector => sector.Planets)
-            .FirstOrDefault(item => item.Planet?.InstanceID == planet.InstanceID);
-        if (strategyPlanet == null)
-            return;
-
-        OpenPlanetWindowAt(strategyPlanet, icon, sourceX, sourceY);
-        MarkDirty();
     }
 
     /// <summary>
@@ -2754,9 +2812,7 @@ public sealed class StrategyController
     /// <returns>True when the sector was opened or focused.</returns>
     private bool OpenPlanetSectorWindow(PlanetSector planetSector)
     {
-        GalaxyMapSector sector = Sectors.FirstOrDefault(candidate =>
-            candidate.PlanetSector == planetSector
-        );
+        GalaxyMapSector sector = galaxyMapController.FindSector(planetSector?.InstanceID);
         return OpenPlanetSectorWindow(sector);
     }
 
@@ -2970,6 +3026,34 @@ public sealed class StrategyController
             default:
                 return true;
         }
+    }
+
+    /// <summary>
+    /// Opens the location or manufacturing window represented by an idle-bar entry.
+    /// </summary>
+    /// <param name="target">The selected strategy entity.</param>
+    void IIdleBarActions.OpenIdleBarTarget(ISceneNode target)
+    {
+        Planet planet = target as Planet ?? target?.GetParentOfType<Planet>();
+        GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planet?.InstanceID);
+        if (target == null || strategyPlanet == null)
+            return;
+
+        Vector2Int position = GetSectorSourcePosition(strategyPlanet.Sector);
+        OpenPlanetSectorWindow(strategyPlanet.Sector);
+        PlanetIcon icon = target is Planet ? PlanetIcon.Facility : GetMessageTargetIcon(target);
+        UIWindow window = OpenPlanetWindowAt(strategyPlanet, icon, position.x, position.y);
+        SelectMessageTarget(window, target);
+
+        MarkDirty();
+    }
+
+    /// <summary>
+    /// Requests a strategy render after idle-bar state changes.
+    /// </summary>
+    void IIdleBarActions.RequestIdleBarRender()
+    {
+        dirty = true;
     }
 
     /// <summary>

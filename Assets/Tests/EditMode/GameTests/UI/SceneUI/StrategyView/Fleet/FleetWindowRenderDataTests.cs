@@ -225,7 +225,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 null,
                 null,
                 null,
-                false,
                 true
             );
         }

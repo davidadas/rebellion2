@@ -297,9 +297,12 @@ public static class TestConfig
 public static class TestGameData
 {
     /// <summary>
-    /// Creates an empty catalog around the supplied runtime configuration.
+    /// Creates a synthetic catalog around the supplied configuration and message definitions.
     /// </summary>
-    public static GameDataCatalog Create(GameConfig config = null)
+    public static GameDataCatalog Create(
+        GameConfig config = null,
+        MessageDefinition[] messageDefinitions = null
+    )
     {
         return new GameDataCatalog(
             config ?? new GameConfig(),
@@ -313,7 +316,7 @@ public static class TestGameData
             Array.Empty<SpecialForces>(),
             Array.Empty<Officer>(),
             Array.Empty<GameEvent>(),
-            Array.Empty<MessageDefinition>(),
+            messageDefinitions ?? Array.Empty<MessageDefinition>(),
             new EncyclopediaEntries(),
             new FactionThemes()
         );
@@ -345,9 +348,9 @@ public static class MissionSceneBuilder
         Planet enemyPlanet,
         Officer officer,
         FogOfWarSystem fog
-    ) Build()
+    ) Build(GameConfig config = null)
     {
-        GameRoot game = new GameRoot(TestConfig.Create());
+        GameRoot game = new GameRoot(config ?? TestConfig.Create());
 
         Faction empire = new Faction { InstanceID = "empire" };
         Faction rebels = new Faction { InstanceID = "rebels" };

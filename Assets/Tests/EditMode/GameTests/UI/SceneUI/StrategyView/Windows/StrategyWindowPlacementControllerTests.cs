@@ -93,6 +93,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void GetSectorWindowPosition_ConfiguredSlots_DoNotOverlap()
+        {
+            int windowWidth = _windowLayer.GetWindowSize(_windowLayer.PlanetSectorWindowPrefab).x;
+            Vector2Int left = _controller.GetSectorWindowPosition(SectorWindowPositions.Left);
+            Vector2Int middle = _controller.GetSectorWindowPosition(SectorWindowPositions.Middle);
+            Vector2Int right = _controller.GetSectorWindowPosition(SectorWindowPositions.Right);
+
+            Assert.GreaterOrEqual(middle.x, left.x + windowWidth);
+            Assert.GreaterOrEqual(right.x, middle.x + windowWidth);
+        }
+
+        [Test]
         public void GetSectorWindowPosition_UnknownSlot_ThrowsArgumentOutOfRangeException()
         {
             Assert.Throws<ArgumentOutOfRangeException>(() =>

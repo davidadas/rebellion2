@@ -121,9 +121,12 @@ namespace Rebellion.Game.Missions
         /// Returns the participant's raw sabotage score from averaged espionage and combat.
         /// </summary>
         /// <param name="agent">The participant whose espionage and combat ratings are evaluated.</param>
-        /// <param name="game">The current game state.</param>
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
         /// <returns>The participant's raw sabotage score.</returns>
-        protected override int? GetAgentScore(IMissionParticipant agent, GameRoot game)
+        protected override int? GetAgentScore(
+            IMissionParticipant agent,
+            MissionEvaluationContext context
+        )
         {
             return (
                     agent.GetEffectiveRating(OfficerRating.Espionage)

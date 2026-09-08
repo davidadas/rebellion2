@@ -50,6 +50,8 @@ public class FactionTheme
 
     public StrategyContextMenuTheme StrategyContextMenuTheme { get; set; }
 
+    public StrategyCheckboxTheme StrategyCheckboxTheme { get; set; }
+
     public WindowTitleTheme WindowTitleTheme { get; set; }
 
     public StrategyWindowsTheme StrategyWindows { get; set; }

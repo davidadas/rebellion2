@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -81,7 +82,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         public void Build_MissingSessionOrWindow_ThrowsArgumentNullException()
         {
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 Array.Empty<IMissionParticipant>()
             );
 
@@ -94,7 +95,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             MissionCreateWindowProjector projector = new MissionCreateWindowProjector(() => null);
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 Array.Empty<IMissionParticipant>()
             );
 
@@ -105,12 +106,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         public void Build_MissionTabWithOpenDropdown_ReturnsMissionWorkflowPresentation()
         {
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 Array.Empty<IMissionParticipant>()
             );
             session.ToggleDropdown();
             FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
             MissionCreateWindowTheme theme = playerTheme.StrategyWindows.MissionCreate;
+            StrategyCheckboxTheme checkboxTheme = playerTheme.StrategyCheckboxTheme;
 
             MissionCreateWindowRenderData data = _projector.Build(session, _window);
 
@@ -138,6 +140,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 _uiContext.GetTexture(theme.DecoysHeaderImagePath),
                 data.DecoysHeaderTexture
             );
+            Assert.AreSame(
+                _uiContext.GetTexture(checkboxTheme.FrameImagePath),
+                data.CheckboxFrameTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(checkboxTheme.CheckMarkImagePath),
+                data.CheckboxCheckMarkTexture
+            );
             Assert.AreEqual(2, data.Tabs.Count);
             Assert.AreEqual(MissionCreateWindowTab.Mission, data.Tabs[0].Tab);
             Assert.AreSame(
@@ -163,11 +173,155 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
+        public void Build_MissionOdds_UsesCurrentAgentAndDecoySplitForEveryIcon()
+        {
+            Officer primary = CreateOfficer("primary", "Primary", false);
+            Officer decoy = CreateOfficer("decoy", "Decoy", false);
+            List<MissionStartRequest> requests = new List<MissionStartRequest>();
+            MissionCreateWindowProjector projector = new MissionCreateWindowProjector(
+                () => _uiContext,
+                request =>
+                {
+                    requests.Add(request);
+                    return request.MissionTypeID == MissionTypeIDs.Diplomacy
+                        ? new MissionOdds(80, 25)
+                        : new MissionOdds(50, 10);
+                }
+            );
+            MissionCreateWindowSession session = CreateSession(
+                new StrategyMissionTarget(_planet, _planet.Planet),
+                new IMissionParticipant[] { primary, decoy }
+            );
+            session.SelectParticipant(MissionParticipantRole.Agent, 1, 1);
+            session.MoveSelectedParticipants(MissionParticipantRole.Agent);
+            session.ToggleDropdown();
+
+            MissionCreateWindowRenderData data = projector.Build(session, _window);
+
+            Assert.AreEqual(60, data.SelectedMissionOdds.OverallSuccessPercent);
+            Assert.AreEqual(25, data.SelectedMissionOdds.FoilPercent);
+            Assert.AreEqual(60, data.DropdownItems[0].MissionOdds.OverallSuccessPercent);
+            Assert.AreEqual(25, data.DropdownItems[0].MissionOdds.FoilPercent);
+            Assert.AreEqual(45, data.DropdownItems[1].MissionOdds.OverallSuccessPercent);
+            Assert.AreEqual(10, data.DropdownItems[1].MissionOdds.FoilPercent);
+            Assert.AreEqual(2, requests.Count);
+            Assert.IsTrue(
+                requests.All(request => request.MainParticipants.SequenceEqual(new[] { primary }))
+            );
+            Assert.IsTrue(
+                requests.All(request => request.DecoyParticipants.SequenceEqual(new[] { decoy }))
+            );
+        }
+
+        [Test]
+        public void Build_MissionOdds_UsesLatestObservedPlanetFleetState()
+        {
+            Planet latestPlanet = new Planet
+            {
+                InstanceID = _planet.Planet.InstanceID,
+                DisplayName = _planet.Planet.DisplayName,
+            };
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "latest-visible-fleet",
+                OwnerInstanceID = "FNEMP1",
+            };
+            latestPlanet.AddChild(fleet);
+            MissionStartRequest capturedRequest = null;
+            MissionCreateWindowProjector projector = new MissionCreateWindowProjector(
+                () => _uiContext,
+                request =>
+                {
+                    capturedRequest = request;
+                    return new MissionOdds(50, 20);
+                },
+                planetInstanceId =>
+                    planetInstanceId == latestPlanet.InstanceID ? latestPlanet : null
+            );
+            MissionCreateWindowSession session = CreateSession(
+                new StrategyMissionTarget(_planet, _planet.Planet),
+                new[] { CreateOfficer("primary", "Primary", false) }
+            );
+
+            projector.Build(session, _window);
+
+            Assert.AreSame(latestPlanet, capturedRequest.Location);
+            Assert.AreSame(latestPlanet, capturedRequest.SelectedTarget);
+            Assert.AreSame(
+                fleet,
+                ((Planet)capturedRequest.Location).GetChildren<GameFleet>().Single()
+            );
+        }
+
+        [Test]
+        public void Build_MissionOdds_MissingFromLatestObservedPlanetOmitsTargetEstimate()
+        {
+            Officer primary = CreateOfficer("primary", "Primary", false);
+            Officer staleTarget = CreateOfficer("stale-target", "Stale Target", false);
+            Planet latestPlanet = new Planet { InstanceID = _planet.Planet.InstanceID };
+            int estimateCount = 0;
+            MissionCreateWindowProjector projector = new MissionCreateWindowProjector(
+                () => _uiContext,
+                _ =>
+                {
+                    estimateCount++;
+                    return new MissionOdds(50, 20);
+                },
+                _ => latestPlanet
+            );
+            MissionCreateWindowSession session = new MissionCreateWindowSession(
+                _window,
+                new StrategyMissionTarget(_planet, staleTarget),
+                new[]
+                {
+                    CreateChoice(
+                        MissionTypeIDs.Assassination,
+                        "Assassination",
+                        MissionTargetKind.Officer
+                    ),
+                },
+                new[] { primary }
+            );
+
+            MissionCreateWindowRenderData data = projector.Build(session, _window);
+
+            Assert.IsNull(data.SelectedMissionOdds);
+            Assert.AreEqual(0, estimateCount);
+        }
+
+        [Test]
+        public void Build_MissionOddsDisabled_OmitsEveryEstimate()
+        {
+            int estimateCount = 0;
+            MissionCreateWindowProjector projector = new MissionCreateWindowProjector(
+                () => _uiContext,
+                _ =>
+                {
+                    estimateCount++;
+                    return new MissionOdds(80, 25);
+                }
+            );
+            MissionCreateWindowSession session = CreateSession(
+                new StrategyMissionTarget(_planet, _planet.Planet),
+                new[] { CreateOfficer("primary", "Primary", false) }
+            );
+            session.ToggleDropdown();
+            session.SetShowMissionOdds(false);
+
+            MissionCreateWindowRenderData data = projector.Build(session, _window);
+
+            Assert.IsFalse(data.ShowMissionOdds);
+            Assert.IsNull(data.SelectedMissionOdds);
+            Assert.IsTrue(data.DropdownItems.All(item => item.MissionOdds == null));
+            Assert.AreEqual(0, estimateCount);
+        }
+
+        [Test]
         public void Build_PlanetTargetWithoutArtwork_UsesPlanetPreviewFallback()
         {
             _planet.Planet.PlanetIconPath = null;
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 Array.Empty<IMissionParticipant>()
             );
 
@@ -183,7 +337,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Officer selected = CreateOfficer("selected", "Selected", false);
             Officer inTransit = CreateOfficer("transit", "In Transit", true);
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 new IMissionParticipant[] { selected, inTransit }
             );
             session.SelectTab(MissionCreateWindowTab.Personnel);
@@ -228,7 +382,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             ship.SetParent(fleet);
             officer.SetParent(ship);
             MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 new IMissionParticipant[] { officer }
             );
             session.SelectTab(MissionCreateWindowTab.Personnel);
@@ -267,27 +421,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
-        public void Build_LocationMissionSelectedFromCapitalShip_ReturnsPlanetPreview()
-        {
-            CapitalShip ship = new CapitalShip { DisplayName = "Target Ship" };
-            MissionCreateWindowSession session = CreateSession(
-                new StrategyMissionTarget(_planet, ship),
-                Array.Empty<IMissionParticipant>()
-            );
-
-            MissionCreateWindowRenderData data = _projector.Build(session, _window);
-
-            Assert.AreEqual("Corellia", data.TargetName);
-            Assert.AreSame(_uiContext.GetTexture(_entityImagePath), data.TargetTexture);
-            Assert.IsTrue(data.UsePlanetTargetPreview);
-        }
-
-        [Test]
         public void Build_EmptyChoices_ReturnsEmptyMissionSelection()
         {
             MissionCreateWindowSession session = new MissionCreateWindowSession(
                 _window,
-                new StrategyMissionTarget(_planet, null),
+                new StrategyMissionTarget(_planet, _planet.Planet),
                 Array.Empty<StrategyMissionChoice>(),
                 Array.Empty<IMissionParticipant>()
             );

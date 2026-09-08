@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -199,9 +200,92 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessTick_EventCapturesMissionParticipant_TearsDownMission()
+        public void ProcessTick_FullyRecoveredUnits_DeliversRecoveryMessages()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            (GameManager manager, Officer officer, CapitalShip ship, Starfighter fighter) =
+                CreateRecoveryGame();
+            List<MessageResultType> deliveredResultTypes = new List<MessageResultType>();
+            manager.MessageDelivered += result =>
+                deliveredResultTypes.Add(result.Message.ResultType);
+
+            manager.ProcessTick();
+
+            Assert.AreEqual(0, officer.InjuryPoints);
+            Assert.AreEqual(ship.MaxHullStrength, ship.CurrentHullStrength);
+            Assert.AreEqual(fighter.MaxSquadronSize, fighter.CurrentSquadronSize);
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    MessageResultType.OfficerRecovered,
+                    MessageResultType.CapitalShipRepaired,
+                    MessageResultType.StarfighterRepaired,
+                },
+                deliveredResultTypes
+            );
+        }
+
+        [Test]
+        public void ProcessTick_InjuredOfficerAtFriendlyPlanet_Heals()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Recovery.NormalHealAmount = 1;
+            GameRoot game = new GameRoot(config);
+            Faction faction = new Faction { InstanceID = "FNALL1" };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            Officer officer = EntityFactory.CreateOfficer("OFFICER", faction.InstanceID);
+            officer.InjuryPoints = 2;
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            game.AttachNode(officer, planet);
+            GameManager manager = TestContent.CreateGameManager(game);
+
+            manager.ProcessTick();
+
+            Assert.AreEqual(1, officer.InjuryPoints);
+        }
+
+        [Test]
+        public void ProcessTick_CapturedOfficerCanEscape()
+        {
+            GameConfig config = new GameConfig();
+            config.Captive.EscapeTable = new Dictionary<int, int> { { 0, 100 } };
+            config.Smuggling.LossPercentByMinimumSupport[0] = 0;
+            GameRoot game = new GameRoot(config);
+            Faction owner = new Faction { InstanceID = "OWNER" };
+            Faction captor = new Faction { InstanceID = "CAPTOR" };
+            game.GetFactions().Add(owner);
+            game.GetFactions().Add(captor);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet ownerPlanet = CreatePlanet("OWNER_PLANET", owner.InstanceID, 0);
+            Planet captorPlanet = CreatePlanet("CAPTOR_PLANET", captor.InstanceID, 100);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(ownerPlanet, sector);
+            game.AttachNode(captorPlanet, sector);
+            Officer captive = EntityFactory.CreateOfficer("CAPTIVE", owner.InstanceID);
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = captor.InstanceID;
+            captive.CanEscape = true;
+            game.AttachNode(captive, captorPlanet);
+            GameManager manager = new GameManager(game, TestGameData.Create(config));
+
+            manager.ProcessTick();
+
+            Assert.IsFalse(captive.IsCaptured);
+        }
+
+        [Test]
+        public void ProcessTick_EventCapturesMissionParticipant_CompletesCaptureLifecycle()
+        {
+            GameConfig config = new GameConfig();
+            config.Smuggling.LossPercentByMinimumSupport[0] = 0;
+            GameRoot game = new GameRoot(config);
             Faction owner = new Faction { InstanceID = "OWNER" };
             Faction captor = new Faction { InstanceID = "CAPTOR" };
             game.GetFactions().Add(owner);
@@ -212,9 +296,20 @@ namespace Rebellion.Tests.Managers
                 InstanceID = "PLANET",
                 OwnerInstanceID = owner.InstanceID,
                 IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet captorPlanet = new Planet
+            {
+                InstanceID = "CAPTOR_PLANET",
+                OwnerInstanceID = captor.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
             };
             game.AttachNode(sector, game.GetGalaxyMap());
             game.AttachNode(planet, sector);
+            game.AttachNode(captorPlanet, sector);
             Officer officer = EntityFactory.CreateOfficer("OFFICER", owner.InstanceID);
             DiplomacyMission mission = new DiplomacyMission
             {
@@ -243,14 +338,23 @@ namespace Rebellion.Tests.Managers
                         },
                     }
                 );
-            GameManager manager = TestContent.CreateGameManager(game);
+            GameManager manager = new GameManager(game, TestGameData.Create(config));
 
             manager.ProcessTick();
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Mission>(mission.InstanceID));
-            Assert.AreSame(planet, officer.GetParent());
+            Assert.AreSame(captorPlanet, officer.GetParent());
+            Assert.IsNull(officer.Movement);
             Assert.IsTrue(officer.IsCaptured);
             Assert.AreEqual(captor.InstanceID, officer.CaptorInstanceID);
+            PlanetSnapshot snapshot = owner.Fog.Snapshots[sector.InstanceID].Planets[
+                captorPlanet.InstanceID
+            ];
+            Officer observed = snapshot.Officers.Single(candidate =>
+                candidate.InstanceID == officer.InstanceID
+            );
+            Assert.IsTrue(observed.IsCaptured);
+            Assert.IsNull(observed.Movement);
         }
 
         [Test]
@@ -1289,6 +1393,7 @@ namespace Rebellion.Tests.Managers
                     weaponPower,
                     weaponPower,
                     weaponPower,
+                    100,
                 };
             }
 
@@ -1307,6 +1412,90 @@ namespace Rebellion.Tests.Managers
                 IsColonized = true,
                 EnergyCapacity = 10,
                 PositionX = positionX,
+            };
+        }
+
+        private static (
+            GameManager manager,
+            Officer officer,
+            CapitalShip ship,
+            Starfighter fighter
+        ) CreateRecoveryGame()
+        {
+            GameConfig config = new GameConfig();
+            config.Recovery.NormalHealAmount = 1;
+            config.Recovery.FastRepairAmount = 1;
+            config.Recovery.FastReplacementAmount = 1;
+            config.Smuggling.LossPercentByMinimumSupport[0] = 0;
+            GameRoot game = new GameRoot(config);
+            Faction faction = new Faction
+            {
+                InstanceID = "FACTION",
+                DisplayName = "Faction",
+                PlayerID = "PLAYER",
+            };
+            game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                DisplayName = "Planet",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+
+            Officer officer = EntityFactory.CreateOfficer("OFFICER", faction.InstanceID);
+            officer.DisplayName = "Officer";
+            officer.InjuryPoints = 1;
+            Fleet fleet = EntityFactory.CreateFleet("FLEET", faction.InstanceID);
+            fleet.DisplayName = "Fleet";
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SHIP",
+                DisplayName = "Ship",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 99,
+                StarfighterCapacity = 1,
+            };
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "FIGHTER",
+                DisplayName = "Fighter",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 11,
+            };
+            game.AttachNode(officer, planet);
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(fighter, ship);
+
+            MessageDefinition[] definitions =
+            {
+                CreateMessageDefinition(MessageResultType.OfficerRecovered, MessageType.Mission),
+                CreateMessageDefinition(MessageResultType.CapitalShipRepaired, MessageType.Fleet),
+                CreateMessageDefinition(MessageResultType.StarfighterRepaired, MessageType.Fleet),
+            };
+            GameManager manager = new GameManager(game, TestGameData.Create(config, definitions));
+            return (manager, officer, ship, fighter);
+        }
+
+        private static MessageDefinition CreateMessageDefinition(
+            MessageResultType resultType,
+            MessageType messageType
+        )
+        {
+            return new MessageDefinition
+            {
+                ResultType = resultType,
+                MessageType = messageType,
+                Subject = resultType.ToString(),
+                Body = resultType.ToString(),
             };
         }
 

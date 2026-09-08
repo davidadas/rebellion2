@@ -172,37 +172,24 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Research missions target own planets and are never foiled.
-        /// </summary>
-        /// <param name="detectorRating">The detector rating (unused).</param>
-        /// <param name="defender">The defender (unused).</param>
-        /// <param name="game">The current game state, unused because research cannot be foiled.</param>
-        /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(
-            int detectorRating,
-            Officer defender,
-            GameRoot game
-        ) => 0;
-
-        /// <summary>
         /// Calculates the probability that at least one researcher produces research progress.
         /// </summary>
         /// <param name="participants">The researchers to evaluate.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The calculated research progress odds.</returns>
-        internal override MissionOdds GetMissionOdds(
+        /// <param name="context">The authoritative or observed state used for evaluation.</param>
+        /// <returns>The calculated research progress probability.</returns>
+        protected override double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
-            GameRoot game
+            MissionEvaluationContext context
         )
         {
-            GameConfig.ResearchConfig config = game?.Config?.Research;
+            GameConfig.ResearchConfig config = context.Game?.Config?.Research;
             double rewardProbability = GetPositiveRewardProbability(config);
             IEnumerable<double> probabilities = (
                 participants ?? Enumerable.Empty<IMissionParticipant>()
             )
                 .OfType<Officer>()
                 .Select(officer => officer.GetBaseRating(Discipline) * rewardProbability);
-            return new MissionOdds(CombineSuccessProbabilities(probabilities));
+            return CombineSuccessProbabilities(probabilities);
         }
 
         /// <summary>

@@ -30,6 +30,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private GalaxyMapPlanet _destination;
         private GameRoot _game;
         private GameManager _gameManager;
+        private int _invalidOrderRejectionCount;
         private GalaxyMapPlanet _missionTarget;
         private MissionCreateWindowController _missionCreateController;
         private Officer _officer;
@@ -49,6 +50,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         {
             _clearedWindow = null;
             _dirtyCount = 0;
+            _invalidOrderRejectionCount = 0;
             _rebuildCount = 0;
             _playedSfxCount = 0;
             _transitRejectionCount = 0;
@@ -114,6 +116,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 () => _rebuildCount++,
                 () => _dirtyCount++,
                 null,
+                () => _invalidOrderRejectionCount++,
                 () => _transitRejectionCount++,
                 () => _underConstructionRejectionCount++
             );
@@ -331,12 +334,61 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                     0,
                     new ISceneNode[] { _specialForces }
                 ),
-                new StrategyMissionTarget(_missionTarget, null)
+                new StrategyMissionTarget(_missionTarget, _missionTarget.Planet)
             );
 
             UIWindow window = _windowManager.Windows.Single();
             Assert.IsTrue(window.Modal);
             Assert.IsTrue(_windowManager.TryGetWindowView(window, out MissionCreateWindowView _));
+        }
+
+        [Test]
+        public void ExecuteTargetedCommand_CreateMissionWithoutItem_PlaysAdvisorRejection()
+        {
+            _controller.ExecuteTargetedCommand(
+                new StrategyWindowTargetingSource(
+                    _sourceWindow,
+                    StrategyMenuAction.CreateMission,
+                    0,
+                    0,
+                    new ISceneNode[] { _specialForces }
+                ),
+                new StrategyMissionTarget(_missionTarget, null)
+            );
+
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.AreEqual(1, _invalidOrderRejectionCount);
+        }
+
+        [Test]
+        public void ExecuteTargetedCommand_CreateMissionWithoutValidOption_PlaysAdvisorRejection()
+        {
+            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(
+                _opponentFactionId,
+                "target-fleet"
+            );
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "target-ship",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, _missionTarget.Planet);
+            _game.AttachNode(ship, fleet);
+
+            _controller.ExecuteTargetedCommand(
+                new StrategyWindowTargetingSource(
+                    _sourceWindow,
+                    StrategyMenuAction.CreateMission,
+                    0,
+                    0,
+                    new ISceneNode[] { _specialForces }
+                ),
+                new StrategyMissionTarget(_missionTarget, ship)
+            );
+
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.AreEqual(1, _invalidOrderRejectionCount);
         }
 
         [Test]

@@ -3295,7 +3295,8 @@ namespace Rebellion.Game.Messages
                 {
                     { "item", unit.GetDisplayName() ?? string.Empty },
                     { "attachment", unit.GetParent()?.GetDisplayName() ?? string.Empty },
-                }
+                },
+                imageOverride: unit.EncyclopediaImagePath
             );
             if (message != null)
             {

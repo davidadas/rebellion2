@@ -35,7 +35,7 @@ namespace Rebellion.Tests.Game
                 summary.StartingFactionIDs,
                 "StartingFactionIDs should be empty by default"
             );
-            Assert.AreEqual(1, summary.StartingResearchLevel, "StartingResearchLevel should be 1");
+            Assert.AreEqual(0, summary.StartingResearchLevel, "StartingResearchLevel should be 0");
         }
 
         [Test]

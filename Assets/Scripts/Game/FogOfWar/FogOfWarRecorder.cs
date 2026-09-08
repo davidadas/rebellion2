@@ -56,6 +56,10 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Records current information about explicitly selected scene objects.
         /// </summary>
+        /// <param name="game">The authoritative game state.</param>
+        /// <param name="faction">The faction receiving the observations.</param>
+        /// <param name="observations">The scene objects to record.</param>
+        /// <param name="currentTick">The tick when the objects were observed.</param>
         public void RecordSelectedObservations(
             GameRoot game,
             Faction faction,
@@ -454,7 +458,9 @@ namespace Rebellion.Game.FogOfWar
             snapshot.Officers.AddRange(
                 planet
                     .GetChildren<Officer>(recursive: true)
-                    .Where(officer => officer.OwnerInstanceID != faction.InstanceID)
+                    .Where(officer =>
+                        officer.OwnerInstanceID != faction.InstanceID || officer.IsCaptured
+                    )
                     .Select(CopyOfficerForSnapshot)
             );
         }
@@ -951,7 +957,7 @@ namespace Rebellion.Game.FogOfWar
         {
             foreach (Officer officer in planet.GetChildren<Officer>())
             {
-                if (officer.OwnerInstanceID == faction.InstanceID)
+                if (officer.OwnerInstanceID == faction.InstanceID && !officer.IsCaptured)
                 {
                     RemoveEntityFromSnapshotState(faction, officer.InstanceID);
                     continue;
