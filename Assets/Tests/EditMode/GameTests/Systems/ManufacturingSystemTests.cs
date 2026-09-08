@@ -1671,7 +1671,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_ManufacturingSpeedModifier_PreservesFractionalThroughput()
         {
             GameConfig config = TestConfig.Create();
-            config.DifficultyModifiers[GameDifficulty.Hard] = new GameModifier
+            config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
                 ManufacturingSpeedPercent = 150,
             };

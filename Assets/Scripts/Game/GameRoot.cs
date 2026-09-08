@@ -167,7 +167,7 @@ namespace Rebellion.Game
         /// </summary>
         /// <param name="faction">The faction whose modifier is requested.</param>
         /// <returns>The configured AI modifier, or a neutral modifier.</returns>
-        public GameModifier GetDifficultyModifier(Faction faction)
+        public DifficultyModifiers GetDifficultyModifier(Faction faction)
         {
             if (
                 faction?.IsAIControlled() == true
@@ -177,14 +177,14 @@ namespace Rebellion.Game
                 && Config?.DifficultyModifiers != null
                 && Config.DifficultyModifiers.TryGetValue(
                     Summary.Difficulty,
-                    out GameModifier modifier
+                    out DifficultyModifiers modifier
                 )
             )
             {
                 return modifier;
             }
 
-            return GameModifier.Neutral;
+            return new DifficultyModifiers();
         }
 
         /// <summary>
@@ -192,7 +192,7 @@ namespace Rebellion.Game
         /// </summary>
         /// <param name="ownerInstanceId">The owning faction identifier.</param>
         /// <returns>The configured AI modifier, or a neutral modifier.</returns>
-        public GameModifier GetDifficultyModifier(string ownerInstanceId)
+        public DifficultyModifiers GetDifficultyModifier(string ownerInstanceId)
         {
             Faction faction = _factions.Find(candidate => candidate.InstanceID == ownerInstanceId);
             return GetDifficultyModifier(faction);

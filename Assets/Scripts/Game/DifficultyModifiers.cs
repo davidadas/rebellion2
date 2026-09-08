@@ -3,13 +3,11 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game
 {
     /// <summary>
-    /// Modifies faction-wide simulation outcomes without changing saved game state.
+    /// Configures faction-wide AI bonuses for one game difficulty.
     /// </summary>
     [PersistableObject]
-    public sealed class GameModifier
+    public sealed class DifficultyModifiers
     {
-        public static GameModifier Neutral { get; } = new GameModifier();
-
         public int MissionSuccessChancePoints { get; set; }
 
         public int MineOutputPercent { get; set; } = 100;
