@@ -275,6 +275,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void CreatePlanetContextMenu_Planet_UsesNormalPlanetCommands()
+        {
+            ContextMenuRequest request = _controller.CreatePlanetContextMenu(_planet, 10, 20);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    StrategyMenuAction.Encyclopedia,
+                    StrategyMenuAction.Status,
+                    StrategyMenuAction.ToggleIdleBarTracking,
+                },
+                request
+                    .Commands.Cast<StrategyMenuCommand>()
+                    .Select(command => command.Action)
+                    .ToArray()
+            );
+            StrategyMenuCommand trackingCommand = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(command => command.Action == StrategyMenuAction.ToggleIdleBarTracking);
+
+            _controller.OnContextMenuCommandSelected(request, trackingCommand);
+
+            Assert.AreSame(_planet.Planet, _actions.LastTrackedEntity);
+            Assert.AreSame(_controller, request.Receiver);
+        }
+
+        [Test]
         public void TryCreateContextMenu_FacilityImage_DoesNotOfferPlanetTracking()
         {
             PlanetSectorWindowView view = OpenWindow(out UIWindow window);

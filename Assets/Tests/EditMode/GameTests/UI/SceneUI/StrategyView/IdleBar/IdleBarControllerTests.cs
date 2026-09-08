@@ -32,6 +32,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _actions = new TestActions();
             _controller = new IdleBarController(
                 () => null,
+                () => false,
                 () => null,
                 () => true,
                 instanceId => instanceId == _resolvedEntity?.InstanceID ? _resolvedEntity : null
@@ -51,6 +52,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             IdleBarController controller = new IdleBarController(
                 () => null,
+                () => false,
                 () => null,
                 () => false,
                 _ => null
@@ -89,7 +91,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void SecondaryClick_UntracksEntryAndRequestsRender()
+        public void SecondaryClick_ResolvesAndRoutesContextMenuWithoutUntracking()
         {
             RenderOfficerDirectly();
             IdleBarSlotView slot = _view.GetComponentInChildren<IdleBarSlotView>(false);
@@ -101,9 +103,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
             slot.OnPointerClick(rightClick);
 
-            Assert.IsFalse(_controller.IsIdleBarTracked(_officer));
-            Assert.AreEqual(1, _actions.RenderRequestCount);
-            Assert.IsNull(_actions.HighlightedTarget);
+            Assert.IsTrue(_controller.IsIdleBarTracked(_officer));
+            Assert.AreSame(_officer, _actions.ContextTarget);
+            Assert.AreSame(rightClick, _actions.ContextEventData);
+            Assert.AreEqual(0, _actions.RenderRequestCount);
         }
 
         [Test]
@@ -172,6 +175,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             IdleBarController controller = new IdleBarController(
                 () => null,
+                () => false,
                 () => null,
                 () => false,
                 _ => null
@@ -213,6 +217,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
             public ISceneNode OpenedTarget { get; private set; }
 
+            public ISceneNode ContextTarget { get; private set; }
+
+            public PointerEventData ContextEventData { get; private set; }
+
             public ISceneNode HighlightedTarget { get; private set; }
 
             public ISceneNode DraggedTarget { get; private set; }
@@ -224,6 +232,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             public void OpenIdleBarTarget(ISceneNode target)
             {
                 OpenedTarget = target;
+            }
+
+            public void OpenIdleBarContextMenu(ISceneNode target, PointerEventData eventData)
+            {
+                ContextTarget = target;
+                ContextEventData = eventData;
             }
 
             public void RequestIdleBarRender()

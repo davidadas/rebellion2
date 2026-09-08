@@ -44,8 +44,8 @@ public sealed class IdleBarSlotView
     /// <summary>Raised when the player selects this entry.</summary>
     internal event Action<string> Selected;
 
-    /// <summary>Raised when the player requests that this entry stop being tracked.</summary>
-    internal event Action<string> UntrackRequested;
+    /// <summary>Raised when the player requests this entry's normal context menu.</summary>
+    internal event Action<string, PointerEventData> ContextRequested;
 
     /// <summary>Raised when the pointer begins hovering this entity.</summary>
     internal event Action<string> Hovered;
@@ -162,7 +162,7 @@ public sealed class IdleBarSlotView
     }
 
     /// <summary>
-    /// Requests immediate removal from the idle bar on a secondary click.
+    /// Requests the entity's normal context menu on a secondary click.
     /// </summary>
     /// <param name="eventData">The source pointer event.</param>
     public void OnPointerClick(PointerEventData eventData)
@@ -179,7 +179,7 @@ public sealed class IdleBarSlotView
         )
         {
             eventData.Use();
-            UntrackRequested?.Invoke(instanceId);
+            ContextRequested?.Invoke(instanceId, eventData);
         }
     }
 

@@ -414,6 +414,65 @@ public sealed class DefenseWindowController
 
         CaptureContextTarget(view, session, context.EventData);
         List<ISceneNode> items = GetContextItems(session, out ISceneNode hitItem);
+        request = CreateContextMenuRequest(
+            context.Window,
+            context.X,
+            context.Y,
+            items,
+            hitItem,
+            GetStatusTarget(session)
+        );
+        width = context.Layout.DefenseMenuWidth;
+        return request.Commands.Count > 0;
+    }
+
+    /// <summary>
+    /// Builds the normal Defense context menu for a directly supplied personnel entity.
+    /// </summary>
+    /// <param name="planet">The strategy planet containing the entity.</param>
+    /// <param name="item">The personnel entity represented by the menu.</param>
+    /// <param name="hotspotX">The source-space horizontal menu position.</param>
+    /// <param name="hotspotY">The source-space vertical menu position.</param>
+    /// <returns>The normal Defense context-menu request.</returns>
+    internal ContextMenuRequest CreatePersonnelContextMenu(
+        GalaxyMapPlanet planet,
+        ISceneNode item,
+        int hotspotX,
+        int hotspotY
+    )
+    {
+        if (item == null)
+            throw new ArgumentNullException(nameof(item));
+
+        return CreateContextMenuRequest(
+            null,
+            hotspotX,
+            hotspotY,
+            new[] { item },
+            item,
+            new StrategyStatusTarget(planet, item)
+        );
+    }
+
+    /// <summary>
+    /// Builds the shared Defense command set and captures its immutable selection.
+    /// </summary>
+    /// <param name="window">The originating Defense window, when one exists.</param>
+    /// <param name="hotspotX">The source-space horizontal menu position.</param>
+    /// <param name="hotspotY">The source-space vertical menu position.</param>
+    /// <param name="items">The selected Defense entities.</param>
+    /// <param name="hitItem">The entity directly targeted by the request.</param>
+    /// <param name="target">The status target represented by the request.</param>
+    /// <returns>The normal Defense context-menu request.</returns>
+    private ContextMenuRequest CreateContextMenuRequest(
+        UIWindow window,
+        int hotspotX,
+        int hotspotY,
+        IReadOnlyList<ISceneNode> items,
+        ISceneNode hitItem,
+        StrategyStatusTarget target
+    )
+    {
         string playerFactionId = getUIContext()?.GetPlayerFactionInstanceID();
         List<StrategyMenuCommand> commands = DefenseWindowContextMenuBuilder.Build(
             items,
@@ -423,7 +482,7 @@ public sealed class DefenseWindowController
             StrategyContextMenuAvailability.CanCreateMission(items, playerFactionId),
             confirmationActions.CanRetire(items)
         );
-        ISceneNode trackingItem = items.Count == 1 ? items[0] : null;
+        ISceneNode trackingItem = items?.Count == 1 ? items[0] : null;
         if (
             StrategyContextMenuAvailability.CanToggleIdleBarTracking(
                 trackingItem,
@@ -443,23 +502,12 @@ public sealed class DefenseWindowController
                 )
             );
         }
-        if (commands.Count == 0)
-            return false;
 
-        DefenseContextMenuSource source = new DefenseContextMenuSource(
-            context.Window,
-            context.X,
-            context.Y,
-            items,
-            GetStatusTarget(session)
-        );
-        request = new ContextMenuRequest(
-            source,
+        return new ContextMenuRequest(
+            new DefenseContextMenuSource(window, hotspotX, hotspotY, items, target),
             commands.Cast<IContextMenuCommand>().ToList(),
             this
         );
-        width = context.Layout.DefenseMenuWidth;
-        return true;
     }
 
     /// <summary>
@@ -606,7 +654,7 @@ public sealed class DefenseWindowController
     /// <param name="action">The selected context-menu action.</param>
     private void BeginContextTargeting(DefenseContextMenuSource source, StrategyMenuAction action)
     {
-        if (source?.Window == null)
+        if (source == null)
             return;
 
         targetingController.Begin(

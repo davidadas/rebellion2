@@ -16,6 +16,11 @@ public interface IIdleBarActions
     /// <param name="target">The selected strategy entity.</param>
     void OpenIdleBarTarget(ISceneNode target);
 
+    /// <summary>Opens the normal strategy context menu for an idle-bar entry.</summary>
+    /// <param name="target">The context-clicked strategy entity.</param>
+    /// <param name="eventData">The source pointer event.</param>
+    void OpenIdleBarContextMenu(ISceneNode target, PointerEventData eventData);
+
     /// <summary>Requests a strategy render after idle-bar state changes.</summary>
     void RequestIdleBarRender();
 
@@ -67,6 +72,7 @@ public interface IIdleBarTrackingActions
 public sealed class IdleBarController : IIdleBarTrackingActions
 {
     private readonly Func<Faction> getPlayerFaction;
+    private readonly Func<bool> getContextMenuOpen;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<bool> getVisibility;
     private readonly HashSet<string> ignoredEntityIds = new HashSet<string>(StringComparer.Ordinal);
@@ -85,11 +91,13 @@ public sealed class IdleBarController : IIdleBarTrackingActions
     /// Creates an idle-bar controller backed by current strategy state.
     /// </summary>
     /// <param name="getPlayerFaction">Returns the current player faction.</param>
+    /// <param name="getContextMenuOpen">Reports whether this feature's context menu is open.</param>
     /// <param name="getUIContext">Returns the current strategy UI context.</param>
     /// <param name="getVisibility">Returns whether the experimental feature is enabled.</param>
     /// <param name="resolveEntity">Resolves an entity by its stable instance identifier.</param>
     public IdleBarController(
         Func<Faction> getPlayerFaction,
+        Func<bool> getContextMenuOpen,
         Func<UIContext> getUIContext,
         Func<bool> getVisibility,
         Func<string, ISceneNode> resolveEntity
@@ -97,6 +105,8 @@ public sealed class IdleBarController : IIdleBarTrackingActions
     {
         this.getPlayerFaction =
             getPlayerFaction ?? throw new ArgumentNullException(nameof(getPlayerFaction));
+        this.getContextMenuOpen =
+            getContextMenuOpen ?? throw new ArgumentNullException(nameof(getContextMenuOpen));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.getVisibility =
             getVisibility ?? throw new ArgumentNullException(nameof(getVisibility));
@@ -129,14 +139,15 @@ public sealed class IdleBarController : IIdleBarTrackingActions
 
         ReleaseView();
         view = nextView;
+        view.SetContextMenuOpenProvider(getContextMenuOpen);
         view.Destroyed += HandleViewDestroyed;
         view.EntryHoverCleared += HandleEntryHoverCleared;
         view.EntryHovered += HandleEntryHovered;
         view.EntryDragCandidateRequested += HandleEntryDragCandidateRequested;
         view.EntryDragEnded += HandleEntryDragEnded;
         view.EntryDragMoved += HandleEntryDragMoved;
+        view.EntryContextRequested += HandleEntryContextRequested;
         view.EntrySelected += HandleEntrySelected;
-        view.EntryUntrackRequested += HandleEntryUntrackRequested;
     }
 
     /// <summary>
@@ -229,17 +240,15 @@ public sealed class IdleBarController : IIdleBarTrackingActions
     }
 
     /// <summary>
-    /// Stops tracking the secondary-clicked idle-bar entity.
+    /// Opens the existing strategy context menu for the secondary-clicked entity.
     /// </summary>
-    /// <param name="instanceId">The untracked entity identifier.</param>
-    private void HandleEntryUntrackRequested(string instanceId)
+    /// <param name="instanceId">The context-clicked entity identifier.</param>
+    /// <param name="eventData">The source pointer event.</param>
+    private void HandleEntryContextRequested(string instanceId, PointerEventData eventData)
     {
-        if (string.IsNullOrEmpty(instanceId) || !ignoredEntityIds.Add(instanceId))
-            return;
-
-        if (highlightedEntityId == instanceId)
-            ClearLocationHighlight();
-        actions.RequestIdleBarRender();
+        ISceneNode target = string.IsNullOrEmpty(instanceId) ? null : resolveEntity(instanceId);
+        if (target != null)
+            actions.OpenIdleBarContextMenu(target, eventData);
     }
 
     /// <summary>
@@ -352,8 +361,9 @@ public sealed class IdleBarController : IIdleBarTrackingActions
         view.EntryDragCandidateRequested -= HandleEntryDragCandidateRequested;
         view.EntryDragEnded -= HandleEntryDragEnded;
         view.EntryDragMoved -= HandleEntryDragMoved;
+        view.EntryContextRequested -= HandleEntryContextRequested;
         view.EntrySelected -= HandleEntrySelected;
-        view.EntryUntrackRequested -= HandleEntryUntrackRequested;
+        view.SetContextMenuOpenProvider(null);
         ClearItemDrag();
         ClearLocationHighlight();
         view = null;

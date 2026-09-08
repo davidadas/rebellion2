@@ -190,7 +190,6 @@ public sealed class StrategyWindowCommandController
                 ? transitTicks
                 : -1;
         confirmDialogWindowController.OpenMove(
-            sourceWindow,
             sourceItems,
             transitTimeInDays,
             () =>
@@ -290,7 +289,6 @@ public sealed class StrategyWindowCommandController
     {
         List<ISceneNode> sourceItems = CopyItems(items);
         confirmDialogWindowController.OpenScrap(
-            sourceWindow,
             sourceItems,
             () =>
             {
@@ -321,7 +319,6 @@ public sealed class StrategyWindowCommandController
     {
         List<ISceneNode> sourceItems = CopyItems(items);
         confirmDialogWindowController.OpenStopConstruction(
-            sourceWindow,
             sourceItems,
             () =>
             {
@@ -352,7 +349,6 @@ public sealed class StrategyWindowCommandController
             return;
 
         confirmDialogWindowController.OpenRetire(
-            sourceWindow,
             sourceItems,
             () =>
             {

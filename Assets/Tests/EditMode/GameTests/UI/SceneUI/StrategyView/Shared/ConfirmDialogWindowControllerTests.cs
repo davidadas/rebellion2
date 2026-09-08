@@ -30,7 +30,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         private GameObject _rootObject;
         private List<string> _playedSounds;
         private UIWindow _requestedCloseWindow;
-        private UIWindow _sourceWindow;
         private CapitalShip _sourceShip;
         private UIContext _uiContext;
         private StrategyWindowLayerView _windowLayer;
@@ -51,7 +50,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
-            _sourceWindow = CreateSourceWindow();
             _sourceShip = CreateSourceShip(game);
             _playedSounds = new List<string>();
             _controller = CreateController();
@@ -99,7 +97,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         [Test]
         public void OpenScrap_ValidSelection_CreatesModalSessionPlaysPromptAndMarksDirty()
         {
-            _controller.OpenScrap(_sourceWindow, new ISceneNode[] { _sourceShip }, Confirm);
+            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, Confirm);
 
             UIWindow window = _windowManager.Windows.Single();
             Assert.AreEqual("ConfirmDialogWindow", window.Content.name);
@@ -118,7 +116,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         [Test]
         public void RenderWindows_OpenScrap_RendersPromptSelectionAndConfiguredArtwork()
         {
-            _controller.OpenScrap(_sourceWindow, new ISceneNode[] { _sourceShip }, Confirm);
+            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, Confirm);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -173,7 +171,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         [Test]
         public void OpenStopConstruction_NullAction_DoesNotKeepWindowOrPlayAudio()
         {
-            _controller.OpenStopConstruction(_sourceWindow, new ISceneNode[] { _sourceShip }, null);
+            _controller.OpenStopConstruction(new ISceneNode[] { _sourceShip }, null);
 
             Assert.IsEmpty(_windowManager.Windows);
             Assert.IsEmpty(_playedSounds);
@@ -184,7 +182,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         {
             Building building = new Building { DisplayName = "Shield Generator" };
 
-            _controller.OpenStopConstruction(_sourceWindow, new ISceneNode[] { building }, Confirm);
+            _controller.OpenStopConstruction(new ISceneNode[] { building }, Confirm);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -213,7 +211,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         {
             Officer officer = new Officer { DisplayName = "General Veers" };
 
-            _controller.OpenRetire(_sourceWindow, new ISceneNode[] { officer }, Confirm);
+            _controller.OpenRetire(new ISceneNode[] { officer }, Confirm);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -236,7 +234,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         [Test]
         public void OpenMove_Selection_RendersProvidedTransitTimeWithoutPromptSound()
         {
-            _controller.OpenMove(_sourceWindow, new ISceneNode[] { _sourceShip }, 12, Confirm);
+            _controller.OpenMove(new ISceneNode[] { _sourceShip }, 12, Confirm);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -255,7 +253,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         {
             Mission mission = new TestMission { DisplayName = "Diplomacy" };
 
-            _controller.OpenMissionAbort(_sourceWindow, mission, Confirm);
+            _controller.OpenMissionAbort(mission, Confirm);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -307,19 +305,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             return game;
         }
 
-        private UIWindow CreateSourceWindow()
-        {
-            GameObject sourceObject = new GameObject(
-                "SourceWindow",
-                typeof(RectTransform),
-                typeof(UIWindow)
-            );
-            sourceObject.transform.SetParent(_rootObject.transform, false);
-            UIWindow sourceWindow = sourceObject.GetComponent<UIWindow>();
-            sourceWindow.Configure(500, 10, 20, 100, 80, false, true, false);
-            return sourceWindow;
-        }
-
         private static CapitalShip CreateSourceShip(GameRoot game)
         {
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector { InstanceID = "sector" };
@@ -351,7 +336,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 
         private ConfirmDialogWindowView OpenScrapAndInitializeView(out UIWindow window)
         {
-            _controller.OpenScrap(_sourceWindow, new ISceneNode[] { _sourceShip }, Confirm);
+            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, Confirm);
             window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");

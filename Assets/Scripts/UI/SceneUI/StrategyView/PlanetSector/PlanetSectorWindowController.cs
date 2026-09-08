@@ -516,25 +516,7 @@ public sealed class PlanetSectorWindowController
                 ? GetStatusTarget(view)
                 : new StrategyStatusTarget(hit.GalaxyMapPlanet, mobileHeadquarters);
         ISceneNode trackingItem = hit?.PlanetImage == true ? hit.Planet : null;
-        if (
-            StrategyContextMenuAvailability.CanToggleIdleBarTracking(
-                trackingItem,
-                playerFactionId,
-                idleBarTrackingActions?.IsIdleBarEnabled == true
-            )
-        )
-        {
-            commands.Add(
-                new StrategyMenuCommand(
-                    StrategyMenuAction.ToggleIdleBarTracking,
-                    "Tracked",
-                    true,
-                    idleBarTrackingActions.IsIdleBarTracked(trackingItem)
-                        ? StrategyContextMenuIconKeys.CheckMark
-                        : StrategyContextMenuIconKeys.None
-                )
-            );
-        }
+        AddTrackingCommand(commands, trackingItem, playerFactionId);
         if (commands.Count == 0)
             return false;
 
@@ -553,6 +535,76 @@ public sealed class PlanetSectorWindowController
         );
         width = context.Layout.PlanetSectorMenuWidth;
         return true;
+    }
+
+    /// <summary>
+    /// Builds the normal planet-image context menu for a directly supplied strategy planet.
+    /// </summary>
+    /// <param name="strategyPlanet">The planet represented by the menu.</param>
+    /// <param name="hotspotX">The source-space horizontal menu position.</param>
+    /// <param name="hotspotY">The source-space vertical menu position.</param>
+    /// <returns>The normal planet context-menu request.</returns>
+    internal ContextMenuRequest CreatePlanetContextMenu(
+        GalaxyMapPlanet strategyPlanet,
+        int hotspotX,
+        int hotspotY
+    )
+    {
+        if (strategyPlanet?.Planet == null)
+            throw new ArgumentNullException(nameof(strategyPlanet));
+
+        string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
+        PlanetSectorWindowHit hit = new PlanetSectorWindowHit(
+            strategyPlanet,
+            PlanetIcon.None,
+            true
+        );
+        List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
+            hit,
+            new List<ISceneNode>(),
+            playerFactionId
+        );
+        AddTrackingCommand(commands, strategyPlanet.Planet, playerFactionId);
+        PlanetSectorContextMenuSource source = new PlanetSectorContextMenuSource(
+            null,
+            hotspotX,
+            hotspotY,
+            Array.Empty<ISceneNode>(),
+            new StrategyStatusTarget(strategyPlanet, strategyPlanet.Planet),
+            strategyPlanet.Planet
+        );
+        return new ContextMenuRequest(source, commands.Cast<IContextMenuCommand>().ToList(), this);
+    }
+
+    /// <summary>Adds the optional Idle Bar tracking command to a normal context menu.</summary>
+    /// <param name="commands">The menu receiving the command.</param>
+    /// <param name="trackingItem">The entity whose tracking state can change.</param>
+    /// <param name="playerFactionId">The current player faction identifier.</param>
+    private void AddTrackingCommand(
+        List<StrategyMenuCommand> commands,
+        ISceneNode trackingItem,
+        string playerFactionId
+    )
+    {
+        if (
+            !StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                trackingItem,
+                playerFactionId,
+                idleBarTrackingActions?.IsIdleBarEnabled == true
+            )
+        )
+            return;
+
+        commands.Add(
+            new StrategyMenuCommand(
+                StrategyMenuAction.ToggleIdleBarTracking,
+                "Tracked",
+                true,
+                idleBarTrackingActions.IsIdleBarTracked(trackingItem)
+                    ? StrategyContextMenuIconKeys.CheckMark
+                    : StrategyContextMenuIconKeys.None
+            )
+        );
     }
 
     /// <summary>

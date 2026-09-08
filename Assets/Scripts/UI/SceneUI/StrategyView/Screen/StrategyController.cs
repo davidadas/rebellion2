@@ -109,6 +109,7 @@ public sealed class StrategyController
     private IdleBarController idleBarController;
     private TargetingController targetingController;
     private ContextMenuController contextMenuController;
+    private ContextMenuRequest idleBarContextMenuRequest;
     private FleetWindowController fleetWindowController;
     private ConstructionWindowController constructionWindowController;
     private FacilityWindowController facilityWindowController;
@@ -255,6 +256,9 @@ public sealed class StrategyController
         galaxyMapController.BindView(galaxyMap);
         idleBarController = new IdleBarController(
             () => gameManager?.GetPlayerFaction(),
+            () =>
+                idleBarContextMenuRequest != null
+                && ReferenceEquals(contextMenuController?.ActiveRequest, idleBarContextMenuRequest),
             () => uiContext,
             () =>
                 AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowIdleBar
@@ -2116,7 +2120,6 @@ public sealed class StrategyController
             return;
 
         confirmDialogWindowController.OpenMissionAbort(
-            sourceWindow,
             mission,
             () =>
             {
@@ -3046,6 +3049,60 @@ public sealed class StrategyController
         SelectMessageTarget(window, target);
 
         MarkDirty();
+    }
+
+    /// <summary>
+    /// Opens the normal entity context menu for an idle-bar entry.
+    /// </summary>
+    /// <param name="target">The context-clicked strategy entity.</param>
+    /// <param name="eventData">The source pointer event.</param>
+    void IIdleBarActions.OpenIdleBarContextMenu(ISceneNode target, PointerEventData eventData)
+    {
+        Planet planet = target as Planet ?? target?.GetParentOfType<Planet>();
+        GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planet?.InstanceID);
+        if (
+            target == null
+            || strategyPlanet == null
+            || !TryGetSourcePosition(
+                eventData,
+                eventData?.position ?? Vector2.zero,
+                out int sourceX,
+                out int sourceY
+            )
+        )
+            return;
+
+        ContextMenuRequest request;
+        int width;
+        if (target is Officer or SpecialForces)
+        {
+            request = defenseWindowController.CreatePersonnelContextMenu(
+                strategyPlanet,
+                target,
+                sourceX,
+                sourceY
+            );
+            width = strategyContextMenu.Layout.DefenseMenuWidth;
+        }
+        else if (target is Planet)
+        {
+            request = planetSectorWindowController.CreatePlanetContextMenu(
+                strategyPlanet,
+                sourceX,
+                sourceY
+            );
+            width = strategyContextMenu.Layout.PlanetSectorMenuWidth;
+        }
+        else
+        {
+            return;
+        }
+
+        galacticInformationDisplayController?.Hide();
+        targetingController?.Cancel();
+        idleBarContextMenuRequest = request;
+        strategyContextMenuRouter.OpenRuntimeContextMenu(request, sourceX, sourceY, width);
+        dirty = true;
     }
 
     /// <summary>

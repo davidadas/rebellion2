@@ -35,16 +35,18 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     private readonly List<IdleBarSlotView> slots = new List<IdleBarSlotView>();
 
     private IdleBarRenderData currentData;
+    private bool contextMenuOpen;
     private bool hoverExitPending;
     private bool initialized;
+    private Func<bool> isContextMenuOpen;
     private IdleBarSlotView overflowSlot;
     private bool pointerOverShelf;
 
     /// <summary>Raised when the player selects an idle-bar entry.</summary>
     internal event Action<string> EntrySelected;
 
-    /// <summary>Raised when the player requests that an entry stop being tracked.</summary>
-    internal event Action<string> EntryUntrackRequested;
+    /// <summary>Raised when the player requests an entry's normal context menu.</summary>
+    internal event Action<string, PointerEventData> EntryContextRequested;
 
     /// <summary>Raised when an entity portrait begins receiving pointer hover.</summary>
     internal event Action<string> EntryHovered;
@@ -84,6 +86,16 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     }
 
     /// <summary>
+    /// Sets the provider used to keep the shelf expanded for its active context menu.
+    /// </summary>
+    /// <param name="provider">Reports whether this shelf's context menu is open.</param>
+    internal void SetContextMenuOpenProvider(Func<bool> provider)
+    {
+        isContextMenuOpen = provider;
+        RefreshContextMenuState();
+    }
+
+    /// <summary>
     /// Reveals the scrollable rows while the shelf is being inspected.
     /// </summary>
     /// <param name="eventData">The source pointer event.</param>
@@ -114,6 +126,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     /// </summary>
     private void LateUpdate()
     {
+        RefreshContextMenuState();
         if (!hoverExitPending)
             return;
 
@@ -137,7 +150,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
             if (slot != null)
             {
                 slot.Selected -= HandleSlotSelected;
-                slot.UntrackRequested -= HandleSlotUntrackRequested;
+                slot.ContextRequested -= HandleSlotContextRequested;
                 slot.Hovered -= HandleSlotHovered;
                 slot.HoverCleared -= HandleSlotHoverCleared;
                 slot.DragCandidateRequested -= HandleSlotDragCandidateRequested;
@@ -175,7 +188,9 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     /// <param name="resetScroll">Whether the scroll area should return to its first row.</param>
     private void RenderShelf(bool resetScroll)
     {
-        bool expanded = pointerOverShelf && currentData.Entries.Count > _collapsedEntryLimit;
+        bool expanded =
+            (pointerOverShelf || contextMenuOpen)
+            && currentData.Entries.Count > _collapsedEntryLimit;
         int visibleEntryCount = expanded
             ? currentData.Entries.Count
             : Math.Min(
@@ -271,7 +286,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
             IdleBarSlotView slot = Instantiate(slotTemplate, entriesScrollArea.ContentRoot);
             slot.gameObject.name = $"AvailabilitySlot{slots.Count + 1}";
             slot.Selected += HandleSlotSelected;
-            slot.UntrackRequested += HandleSlotUntrackRequested;
+            slot.ContextRequested += HandleSlotContextRequested;
             slot.Hovered += HandleSlotHovered;
             slot.HoverCleared += HandleSlotHoverCleared;
             slot.DragCandidateRequested += HandleSlotDragCandidateRequested;
@@ -293,6 +308,20 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
         pointerOverShelf = pointerOver;
         if (currentData?.Entries.Count > 0)
             RenderShelf(resetScroll: pointerOver);
+    }
+
+    /// <summary>
+    /// Refreshes the expansion pin from the active context-menu request.
+    /// </summary>
+    private void RefreshContextMenuState()
+    {
+        bool open = isContextMenuOpen?.Invoke() == true;
+        if (contextMenuOpen == open)
+            return;
+
+        contextMenuOpen = open;
+        if (currentData?.Entries.Count > 0)
+            RenderShelf(resetScroll: false);
     }
 
     /// <summary>
@@ -344,12 +373,13 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     }
 
     /// <summary>
-    /// Forwards one slot's untracking request through the desktop view boundary.
+    /// Forwards one slot's context-menu request through the desktop view boundary.
     /// </summary>
-    /// <param name="instanceId">The untracked entity identifier.</param>
-    private void HandleSlotUntrackRequested(string instanceId)
+    /// <param name="instanceId">The context-clicked entity identifier.</param>
+    /// <param name="eventData">The source pointer event.</param>
+    private void HandleSlotContextRequested(string instanceId, PointerEventData eventData)
     {
-        EntryUntrackRequested?.Invoke(instanceId);
+        EntryContextRequested?.Invoke(instanceId, eventData);
     }
 
     /// <summary>

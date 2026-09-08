@@ -299,12 +299,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void Render_ThenRightClick_RaisesUntrackRequestWithoutSelecting()
+        public void Render_ThenRightClick_RaisesContextRequestWithoutSelecting()
         {
             string selectedInstanceId = null;
-            string untrackedInstanceId = null;
+            string contextInstanceId = null;
+            PointerEventData contextEventData = null;
             _view.EntrySelected += instanceId => selectedInstanceId = instanceId;
-            _view.EntryUntrackRequested += instanceId => untrackedInstanceId = instanceId;
+            _view.EntryContextRequested += (instanceId, eventData) =>
+            {
+                contextInstanceId = instanceId;
+                contextEventData = eventData;
+            };
             _view.Render(
                 new IdleBarRenderData(
                     true,
@@ -320,8 +325,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             GetVisibleSlots()[0].OnPointerClick(rightClick);
 
             Assert.IsNull(selectedInstanceId);
-            Assert.AreEqual("Officer", untrackedInstanceId);
+            Assert.AreEqual("Officer", contextInstanceId);
+            Assert.AreSame(rightClick, contextEventData);
             Assert.IsTrue(rightClick.used);
+        }
+
+        [Test]
+        public void RightClick_OpenContextMenu_KeepsExpandedUntilMenuCloses()
+        {
+            bool contextMenuOpen = false;
+            _view.SetContextMenuOpenProvider(() => contextMenuOpen);
+            _view.EntryContextRequested += (_, _) => contextMenuOpen = true;
+            _view.Render(
+                new IdleBarRenderData(true, CreateEntries(8), new RectInt(50, 30, 400, 350))
+            );
+            _view.OnPointerEnter(new PointerEventData(null));
+            PointerEventData rightClick = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+            };
+
+            GetVisibleSlots()[0].OnPointerClick(rightClick);
+            _view.OnPointerExit(new PointerEventData(null));
+            InvokeViewMethod("LateUpdate");
+
+            Assert.AreEqual(8, GetVisibleSlots().Count);
+
+            contextMenuOpen = false;
+            InvokeViewMethod("LateUpdate");
+
+            Assert.AreEqual(5, GetVisibleSlots().Count);
+            Assert.AreEqual("+4", GetVisibleSlots()[4].name);
         }
 
         [Test]
