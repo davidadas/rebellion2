@@ -815,10 +815,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 "Under Construction",
                 info.Rows.Single(row => row.Left == "Status:").Right
             );
+            StrategyStatusRow productionRow = info.Rows.Single(row => row.Left == "Produced at:");
+            Assert.AreEqual("Corellia", productionRow.Right);
+            Assert.AreEqual(_planet.InstanceID, productionRow.ManufacturingPlanetId);
+            Assert.AreEqual(ManufacturingType.Ship, productionRow.ManufacturingType);
             Assert.AreEqual(
                 "Day 130",
                 info.Rows.Single(row => row.Left == "ETA Destination:").Right
             );
+        }
+
+        [Test]
+        public void Build_CompletedManufacturable_DoesNotReturnProducingPlanet()
+        {
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "completed-fighter",
+                OwnerInstanceID = _ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ProducerPlanetID = _planet.InstanceID,
+            };
+            _game.AttachNode(fighter, _planet);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, fighter));
+
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "Produced at:"));
         }
 
         [Test]

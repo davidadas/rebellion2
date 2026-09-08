@@ -11,15 +11,27 @@ public sealed class StatusWindowRowRenderData
 
     public string Right { get; }
 
+    public Texture2D LinkTexture { get; }
+
     /// <summary>
     /// Creates one status detail row.
     /// </summary>
     /// <param name="left">The left-column text.</param>
     /// <param name="right">The right-column text.</param>
     public StatusWindowRowRenderData(string left, string right)
+        : this(left, right, null) { }
+
+    /// <summary>
+    /// Creates one status detail row with an optional navigation link.
+    /// </summary>
+    /// <param name="left">The left-column text.</param>
+    /// <param name="right">The right-column text.</param>
+    /// <param name="linkTexture">The texture displayed for the optional row link.</param>
+    public StatusWindowRowRenderData(string left, string right, Texture2D linkTexture)
     {
         Left = left ?? string.Empty;
         Right = right ?? string.Empty;
+        LinkTexture = linkTexture;
     }
 }
 

@@ -508,6 +508,38 @@ public sealed class FacilityWindowController
     }
 
     /// <summary>
+    /// Opens construction for a specific manufacturing lane in a facility window.
+    /// </summary>
+    /// <param name="window">The source facility window.</param>
+    /// <param name="manufacturingType">The manufacturing category to open.</param>
+    public void OpenConstruction(UIWindow window, ManufacturingType manufacturingType)
+    {
+        if (
+            !windowManager.TryGetWindowView(window, out FacilityWindowView view)
+            || !TryGetSession(view, out FacilityWindowSession session)
+        )
+            return;
+
+        FacilityWindowTab? manufacturingTab = manufacturingType switch
+        {
+            ManufacturingType.Ship => FacilityWindowTab.Shipyards,
+            ManufacturingType.Troop => FacilityWindowTab.Training,
+            ManufacturingType.Building => FacilityWindowTab.Construction,
+            _ => null,
+        };
+        if (!manufacturingTab.HasValue)
+            return;
+
+        session.SetActiveTab(FacilityWindowTab.Manufacturing);
+        session.SelectManufacturingCardForContext(
+            manufacturingTab.Value,
+            (int)manufacturingTab.Value
+        );
+        OpenConstruction(window);
+        markDirty();
+    }
+
+    /// <summary>
     /// Gets construction destination identifiers for one manufacturing facility tab.
     /// </summary>
     /// <param name="view">The facility view.</param>

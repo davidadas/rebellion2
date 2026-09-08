@@ -2200,6 +2200,32 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Opens the producing planet and construction lane requested by a status row.
+    /// </summary>
+    /// <param name="planetInstanceId">The producing planet identifier.</param>
+    /// <param name="manufacturingType">The manufacturing lane to open.</param>
+    /// <param name="sourceX">The source window's horizontal coordinate.</param>
+    /// <param name="sourceY">The source window's vertical coordinate.</param>
+    void IStatusWindowActions.OpenStatusManufacturing(
+        string planetInstanceId,
+        ManufacturingType manufacturingType,
+        int sourceX,
+        int sourceY
+    )
+    {
+        GalaxyMapPlanet planet = galaxyMapController.FindPlanet(planetInstanceId);
+        if (planet == null || !OpenPlanetSectorWindow(planet.Sector))
+            return;
+
+        UIWindow facilityWindow = OpenPlanetWindowAt(planet, PlanetIcon.Facility, sourceX, sourceY);
+        if (facilityWindow == null)
+            return;
+
+        facilityWindowController.OpenConstruction(facilityWindow, manufacturingType);
+        MarkDirty();
+    }
+
+    /// <summary>
     /// Opens the fleet pane for a completed battle's planet.
     /// </summary>
     /// <param name="planet">The battle planet.</param>

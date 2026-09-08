@@ -3974,6 +3974,11 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(rightRowTemplate.rectTransform, 104, 0, 89, 14);
         rightRowTemplate.gameObject.SetActive(false);
 
+        RawImage rowLinkTemplate = CreateRawButton("RowLinkTemplate", rowsContent, null);
+        SetSourceRect(rowLinkTemplate.rectTransform, 185, 0, 13, 13);
+        CreateButton(rowLinkTemplate);
+        rowLinkTemplate.gameObject.SetActive(false);
+
         RawImage infoButton = CreateRawImage(
             "InfoButtonImage",
             window.transform,
@@ -4000,6 +4005,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "rowsScrollArea", rowsScrollArea);
         AssignReference(view, "leftRowTextTemplate", leftRowTemplate);
         AssignReference(view, "rightRowTextTemplate", rightRowTemplate);
+        AssignReference(view, "rowLinkTemplate", rowLinkTemplate);
         AssignReference(view, "infoButtonImage", infoButton);
         AssignReference(
             view,

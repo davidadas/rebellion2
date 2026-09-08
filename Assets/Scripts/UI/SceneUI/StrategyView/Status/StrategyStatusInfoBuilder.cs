@@ -224,6 +224,7 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(new StrategyStatusRow("Location:", GetStatusLocationName(target, building)));
         AddEtaDestinationRow(info, building);
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(building)));
+        AddManufacturingPlanetRow(info, building);
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", building.MaintenanceCost.ToString())
         );
@@ -276,6 +277,13 @@ internal sealed class StrategyStatusInfoBuilder
         int maxTorpedoRating = starfighter.Torpedoes * Math.Max(starfighter.MaxSquadronSize, 0);
 
         AddAttachedRow(info, target, starfighter);
+        if (starfighter.ManufacturingStatus == ManufacturingStatus.Building)
+        {
+            info.Rows.Add(
+                new StrategyStatusRow("Status:", GetManufacturingStatusText(starfighter))
+            );
+            AddManufacturingPlanetRow(info, starfighter);
+        }
         AddEtaDestinationRow(info, starfighter);
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", starfighter.MaintenanceCost.ToString())
@@ -334,6 +342,7 @@ internal sealed class StrategyStatusInfoBuilder
         );
         AddAttachedRow(info, target, regiment);
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(regiment)));
+        AddManufacturingPlanetRow(info, regiment);
         AddEtaDestinationRow(info, regiment);
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", regiment.MaintenanceCost.ToString())
@@ -370,6 +379,7 @@ internal sealed class StrategyStatusInfoBuilder
         );
         AddAttachedRow(info, target, specialForces);
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(specialForces)));
+        AddManufacturingPlanetRow(info, specialForces);
         AddEtaDestinationRow(info, specialForces);
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", specialForces.MaintenanceCost.ToString())
@@ -574,6 +584,7 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(new StrategyStatusRow("Class:", capitalShip.GetDisplayName()));
         info.Rows.Add(new StrategyStatusRow("Fleet:", fleet?.GetDisplayName() ?? "None"));
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(capitalShip)));
+        AddManufacturingPlanetRow(info, capitalShip);
         AddEtaDestinationRow(info, capitalShip);
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", capitalShip.MaintenanceCost.ToString())
@@ -809,6 +820,35 @@ internal sealed class StrategyStatusInfoBuilder
                 ? "Awaiting Orders"
                 : "Active"
             : "Idle";
+    }
+
+    /// <summary>
+    /// Adds the producing planet and manufacturing navigation for an unfinished item.
+    /// </summary>
+    /// <param name="info">The status information receiving the row.</param>
+    /// <param name="item">The item whose producing planet should be displayed.</param>
+    private void AddManufacturingPlanetRow(StrategyStatusInfo info, IManufacturable item)
+    {
+        if (
+            item?.GetManufacturingStatus() != ManufacturingStatus.Building
+            || string.IsNullOrWhiteSpace(item.ProducerPlanetID)
+            || findVisibleNode(item.ProducerPlanetID) is not Planet producer
+        )
+            return;
+
+        bool canOpen = string.Equals(
+            producer.OwnerInstanceID,
+            playerFactionId,
+            StringComparison.Ordinal
+        );
+        info.Rows.Add(
+            new StrategyStatusRow(
+                "Produced at:",
+                producer.GetDisplayName(),
+                canOpen ? producer.InstanceID : null,
+                canOpen ? item.GetManufacturingType() : null
+            )
+        );
     }
 
     /// <summary>

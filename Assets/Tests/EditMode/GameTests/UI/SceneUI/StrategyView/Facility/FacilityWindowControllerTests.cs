@@ -209,6 +209,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void OpenConstruction_RequestedManufacturingType_SelectsLaneAndOpensBuildWindow()
+        {
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+
+            _controller.OpenConstruction(window, ManufacturingType.Troop);
+
+            StrategyStatusTarget target = _controller.GetStatusTarget(view);
+            Assert.AreEqual(ManufacturingType.Troop, target.ManufacturingType);
+            Assert.AreEqual(
+                1,
+                _windowManager.Windows.Count(candidate =>
+                    _windowManager.TryGetWindowView(candidate, out ConstructionWindowView _)
+                )
+            );
+        }
+
+        [Test]
         public void ReconcileWindow_FreshProjection_RebindsPlanetAndSelectionByIdentity()
         {
             FacilityWindowView view = OpenWindow(out UIWindow _);
