@@ -167,33 +167,13 @@ public sealed class StrategyDragController
         int y
     )
     {
-        return TryStartItemCandidate(new[] { item }, preview, eventData, x, y);
-    }
-
-    /// <summary>
-    /// Begins tracking an item-drag candidate supplied directly by a non-window feature.
-    /// </summary>
-    /// <param name="items">The direct scene-node selection.</param>
-    /// <param name="preview">The optional direct drag preview.</param>
-    /// <param name="eventData">The originating pointer press.</param>
-    /// <param name="x">The source-space horizontal press coordinate.</param>
-    /// <param name="y">The source-space vertical press coordinate.</param>
-    /// <returns>True when the candidate was accepted.</returns>
-    public bool TryStartItemCandidate(
-        IReadOnlyList<ISceneNode> items,
-        DragPreview preview,
-        PointerEventData eventData,
-        int x,
-        int y
-    )
-    {
-        if (items == null || items.Count == 0 || !TryTrackItemPointer(eventData))
+        if (item == null || !TryTrackItemPointer(eventData))
         {
             ClearItemDrag();
             return false;
         }
 
-        itemDragController.StartCandidate(items, preview, x, y);
+        itemDragController.StartCandidate(item, preview, x, y);
         return true;
     }
 

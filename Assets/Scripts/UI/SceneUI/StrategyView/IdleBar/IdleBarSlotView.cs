@@ -39,7 +39,6 @@ public sealed class IdleBarSlotView
     private string instanceId;
     private bool hovered;
     private bool initialized;
-    private bool selected;
     private int currentSlotSize;
 
     /// <summary>Raised when the player selects this entry.</summary>
@@ -75,7 +74,6 @@ public sealed class IdleBarSlotView
         Initialize();
         currentSlotSize = slotSize;
         instanceId = entry.Entity?.InstanceID;
-        selected = entry.Selected;
         gameObject.name = entry.Name;
         SetSourceRect(transform as RectTransform, x, y, slotSize, slotSize);
         SetHovered(hovered);
@@ -102,7 +100,6 @@ public sealed class IdleBarSlotView
         Initialize();
         currentSlotSize = slotSize;
         instanceId = null;
-        selected = false;
         gameObject.name = $"+{hiddenCount}";
         SetSourceRect(transform as RectTransform, x, y, slotSize, slotSize);
         portraitMask.gameObject.SetActive(false);
@@ -262,7 +259,6 @@ public sealed class IdleBarSlotView
         int circlePosition = (currentSlotSize - circleSize) / 2;
         SetSourceRect(frameImage.rectTransform, 0, 0, currentSlotSize, currentSlotSize);
         SetSourceRect(portraitMask, circlePosition, circlePosition, circleSize, circleSize);
-        frameImage.color = selected ? Color.white : Color.black;
         portraitImage.rectTransform.localScale = hovered
             ? Vector3.one * _hoveredPortraitScale
             : Vector3.one;

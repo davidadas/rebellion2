@@ -223,34 +223,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         }
 
         [Test]
-        public void DirectCandidate_MultipleItems_MovesCompleteSelectionWithoutSourceWindow()
-        {
-            Officer officer = CreateOfficer(_playerFactionId);
-            SpecialForces specialForces = new SpecialForces
-            {
-                InstanceID = "special-forces",
-                OwnerInstanceID = _playerFactionId,
-            };
-            _dropTarget = CreateMissionTarget("destination", _playerFactionId);
-            StrategyWindowItemDragController controller = CreateController();
-            controller.StartCandidate(
-                new ISceneNode[] { officer, specialForces },
-                _preview,
-                10,
-                20
-            );
-            controller.TryStartMoveDragFromCandidate(13, 24);
-
-            bool handled = controller.TryHandleSourceDragPointerUp(null, 50, 60);
-
-            Assert.IsTrue(handled);
-            CollectionAssert.AreEqual(
-                new ISceneNode[] { officer, specialForces },
-                _commands.LastItems
-            );
-        }
-
-        [Test]
         public void DirectCandidate_EnemyPlanet_OpensMissionCreation()
         {
             Officer officer = CreateOfficer(_playerFactionId);
