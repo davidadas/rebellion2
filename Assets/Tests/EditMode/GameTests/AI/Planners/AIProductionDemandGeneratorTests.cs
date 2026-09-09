@@ -360,12 +360,12 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(item => item.Kind is AIDemandKind.Mine or AIDemandKind.Refinery)
                 .Max(item => item.Pressure);
 
-            Assert.AreSame(expansionWorld, demand.DestinationPlanet);
+            Assert.AreSame(hub, demand.DestinationPlanet);
             Assert.Greater(demand.Pressure, economyPressure);
         }
 
         [Test]
-        public void Generate_WithPendingShipyard_DoesNotAddDuplicateDemand()
+        public void Generate_WithPendingShipyard_AddsDemandTowardSectorHubTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -387,11 +387,16 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsFalse(demands.Any(demand => demand.Kind == AIDemandKind.Shipyard));
+            Assert.IsTrue(
+                demands.Any(demand =>
+                    demand.Kind == AIDemandKind.Shipyard
+                    && demand.DestinationPlanet == planet
+                )
+            );
         }
 
         [Test]
-        public void Generate_WithPendingShipyardAtAnotherPlanet_AddsShipyardAtDemandPlanet()
+        public void Generate_WithPendingShipyardAtAnotherPlanet_ExpandsExistingShipyardHub()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -423,7 +428,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Generate(context)
                 .Single(item => item.Kind == AIDemandKind.Shipyard);
 
-            Assert.AreSame(demandPlanet, demand.DestinationPlanet);
+            Assert.AreSame(pendingPlanet, demand.DestinationPlanet);
         }
 
         [Test]
@@ -597,6 +602,154 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_WithShipyardSectorsBelowHubTarget_AddsDemandInEachSector()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount = 6;
+            PlanetSector firstSector = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet firstHub = AITestSceneBuilder.AddPlanet(
+                game,
+                firstSector,
+                "first-hub",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            PlanetSector secondSector = AITestSceneBuilder.AddSector(game, "sys2");
+            Planet secondHub = AITestSceneBuilder.AddPlanet(
+                game,
+                secondSector,
+                "second-hub",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                firstHub,
+                "first-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                secondHub,
+                "second-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Where(demand => demand.Kind == AIDemandKind.Shipyard)
+                .ToList();
+
+            CollectionAssert.AreEquivalent(
+                new[] { firstHub, secondHub },
+                demands.Select(demand => demand.DestinationPlanet)
+            );
+        }
+
+        [Test]
+        public void Generate_WithEstablishedShipyardHub_AddsDemandTowardSectorHubTarget()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount = 6;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet hub = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "shipyard-hub",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            Planet colony = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "colony",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            for (int index = 0; index < 3; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    hub,
+                    $"hub-shipyard-{index}",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship
+                );
+            }
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                colony,
+                "colony-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Where(demand => demand.Kind == AIDemandKind.Shipyard)
+                .ToList();
+
+            CollectionAssert.AreEquivalent(
+                new[] { hub, colony },
+                demands.Select(demand => demand.DestinationPlanet)
+            );
+            Assert.Greater(
+                demands.Single(demand => demand.DestinationPlanet == hub).Pressure,
+                demands.Single(demand => demand.DestinationPlanet == colony).Pressure
+            );
+        }
+
+        [Test]
+        public void Generate_WithCompletedShipyardHub_ConsolidatesSmallerShipyardCluster()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount = 5;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet hub = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "shipyard-hub",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            Planet colony = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "colony",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            for (int index = 0; index < 5; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    hub,
+                    $"hub-shipyard-{index}",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship
+                );
+            }
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                colony,
+                "colony-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item => item.Kind == AIDemandKind.Shipyard);
+
+            Assert.AreSame(colony, demand.DestinationPlanet);
+        }
+
+        [Test]
         public void Generate_WithBusyShipyard_AddsShipyardAtExistingHub()
         {
             (GameRoot game, Faction empire, Planet hub, Planet _, Fleet _, CapitalShip ship) =
@@ -620,7 +773,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithAvailableCapacityAtStackedShipyard_DoesNotAddShipyardDemand()
+        public void Generate_WithAvailableCapacityAtStackedShipyard_AddsSectorHubDemand()
         {
             (GameRoot game, Faction empire, Planet hub, Planet _, Fleet _, CapitalShip ship) =
                 CreateBusyShipyardScene();
@@ -643,11 +796,15 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsFalse(demands.Any(demand => demand.Kind == AIDemandKind.Shipyard));
+            Assert.IsTrue(
+                demands.Any(demand =>
+                    demand.Kind == AIDemandKind.Shipyard && demand.DestinationPlanet == hub
+                )
+            );
         }
 
         [Test]
-        public void Generate_WithIdleTrainingFacility_DoesNotAddTrainingFacilityDemand()
+        public void Generate_WithIdleTrainingFacility_AddsDemandTowardLocalClusterTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -671,7 +828,12 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.TrainingFacility));
+            Assert.IsTrue(
+                demands.Any(item =>
+                    item.Kind == AIDemandKind.TrainingFacility
+                    && item.DestinationPlanet == hub
+                )
+            );
         }
 
         [Test]

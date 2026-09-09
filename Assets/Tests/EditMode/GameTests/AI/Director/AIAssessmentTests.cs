@@ -1106,11 +1106,26 @@ namespace Rebellion.Tests.AI.Director
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            int shieldPriority = context.SabotageTargets.GetPriorityBonus(target, shield);
-            int batteryPriority = context.SabotageTargets.GetPriorityBonus(target, battery);
-            int regimentPriority = context.SabotageTargets.GetPriorityBonus(target, regiment);
-            int starfighterPriority = context.SabotageTargets.GetPriorityBonus(target, starfighter);
-            int infrastructurePriority = context.SabotageTargets.GetPriorityBonus(target, shipyard);
+            int shieldPriority = context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+                target,
+                shield
+            );
+            int batteryPriority = context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+                target,
+                battery
+            );
+            int regimentPriority = context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+                target,
+                regiment
+            );
+            int starfighterPriority = context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+                target,
+                starfighter
+            );
+            int infrastructurePriority = context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+                target,
+                shipyard
+            );
 
             Assert.Greater(shieldPriority, batteryPriority);
             Assert.Greater(batteryPriority, regimentPriority);

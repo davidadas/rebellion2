@@ -1158,11 +1158,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(lineShip, proposal.Product.GetReference());
         }
 
-        [TestCase(false, TestName = "Plan_WithNoCommittedCombatShip_PrioritizesConstructionRate")]
-        [TestCase(true, TestName = "Plan_WithCommittedCombatShip_PrioritizesConstructionRate")]
-        public void Plan_GeneralRoleSelectionPrioritizesConstructionRate(
-            bool hasCommittedCombatShip
-        )
+        [TestCase(false, TestName = "Plan_WithNoCommittedCombatShip_SelectsEligibleWarship")]
+        [TestCase(true, TestName = "Plan_WithCommittedCombatShip_SelectsEligibleWarship")]
+        public void Plan_GeneralRoleSelectionSelectsEligibleWarship(bool hasCommittedCombatShip)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -1231,7 +1229,11 @@ namespace Rebellion.Tests.AI.Planners
                 new Technology(lowerMetricTemplate),
                 new Technology(higherMetricTemplate),
             };
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: new SequenceRNG(intValues: new[] { 0 })
+            );
 
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
@@ -1240,7 +1242,7 @@ namespace Rebellion.Tests.AI.Planners
                     item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
-            Assert.AreSame(lowerMetricTemplate, proposal.Product.GetReference());
+            Assert.AreSame(higherMetricTemplate, proposal.Product.GetReference());
         }
 
         [TestCase(false, TestName = "Plan_WithNoCarrier_SelectsCarrierCapableWarship")]
@@ -1251,8 +1253,6 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1500;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
-            game.Config.AI.Selection.CapitalStarfighterCapacityWeight = 10;
-            game.Config.AI.Selection.CapitalMissingStarfighterCapacityBoost = 50;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1303,7 +1303,11 @@ namespace Rebellion.Tests.AI.Planners
                 new Technology(warship),
                 new Technology(carrier),
             };
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: new SequenceRNG(intValues: new[] { 1 })
+            );
 
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
@@ -1419,7 +1423,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithInterdictionDemand_SelectsHighestRechargePerConstructionCost()
+        public void Plan_WithInterdictionDemand_SelectsEligibleInterdictionShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -1487,7 +1491,11 @@ namespace Rebellion.Tests.AI.Planners
                 new Technology(lowerRecharge),
                 new Technology(higherRecharge),
             };
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: new SequenceRNG(intValues: new[] { 1 })
+            );
 
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
@@ -1700,7 +1708,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithEqualGeneralMetricsAndLowTieRoll_SelectsEarlierCandidate()
+        public void Plan_WithMultipleGeneralCandidatesAndFirstRoll_SelectsFirstCandidate()
         {
             (GameRoot game, Faction empire, Fleet fleet) = CreateCapitalSelectionScene();
 
@@ -1730,7 +1738,7 @@ namespace Rebellion.Tests.AI.Planners
             AITurnContext context = AITestSceneBuilder.CreateContext(
                 game,
                 empire,
-                random: new SequenceRNG(intValues: new[] { 4 })
+                random: new SequenceRNG(intValues: new[] { 0 })
             );
 
             AIManufactureProposal proposal = new AIProductionPlanner()
@@ -1740,11 +1748,11 @@ namespace Rebellion.Tests.AI.Planners
                     item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
-            Assert.AreSame(strongTemplate, proposal.Product.GetReference());
+            Assert.AreSame(alternateTemplate, proposal.Product.GetReference());
         }
 
         [Test]
-        public void Plan_WithEqualGeneralMetricsAndHighTieRoll_SelectsLaterCandidate()
+        public void Plan_WithMultipleGeneralCandidatesAndSecondRoll_SelectsSecondCandidate()
         {
             (GameRoot game, Faction empire, Fleet fleet) = CreateCapitalSelectionScene();
 
@@ -1772,7 +1780,7 @@ namespace Rebellion.Tests.AI.Planners
             AITurnContext context = AITestSceneBuilder.CreateContext(
                 game,
                 empire,
-                random: new SequenceRNG(intValues: new[] { 5 })
+                random: new SequenceRNG(intValues: new[] { 1 })
             );
 
             AIManufactureProposal proposal = new AIProductionPlanner()
@@ -1786,7 +1794,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithUnaffordableEqualCandidate_RanksBeforeApplyingBudget()
+        public void Plan_WithUnaffordableCandidate_SelectsFromAffordableCandidates()
         {
             (GameRoot game, Faction empire, Fleet fleet) = CreateCapitalSelectionScene();
 
@@ -1823,7 +1831,7 @@ namespace Rebellion.Tests.AI.Planners
             AITurnContext context = AITestSceneBuilder.CreateContext(
                 game,
                 empire,
-                random: new SequenceRNG(intValues: new[] { 5, 4 })
+                random: new SequenceRNG(intValues: new[] { 1 })
             );
 
             AIManufactureProposal proposal = new AIProductionPlanner()
@@ -1833,7 +1841,7 @@ namespace Rebellion.Tests.AI.Planners
                     item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
                 );
 
-            Assert.AreSame(firstAffordableTemplate, proposal.Product.GetReference());
+            Assert.AreSame(secondAffordableTemplate, proposal.Product.GetReference());
         }
 
         [Test]

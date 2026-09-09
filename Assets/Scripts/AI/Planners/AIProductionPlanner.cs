@@ -17,7 +17,6 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionPlanner : IAIProposalPlanner
     {
-        private const int _productionRateMetricScale = 1000;
         private readonly AIProductionDemandGenerator _demandGenerator =
             new AIProductionDemandGenerator();
         private readonly Dictionary<ManufacturingType, List<Technology>> _unlockedTechnologies =
@@ -1002,11 +1001,11 @@ namespace Rebellion.AI.Planners
                 return null;
 
             int maintenanceBudget = GetCapitalShipMaintenanceBudget(context);
-            GameConfig.AISelectionConfig selectionConfig = context.Game.Config.AI.Selection;
             bool needsStarfighterCapacity =
                 demand.CapitalShipRole == AICapitalShipProductionRole.General
                 && demand.DestinationFleet?.GetStarfighterCapacity() <= 0;
-            List<Technology> rankedTechnologies = new List<Technology>();
+            List<Technology> eligibleTechnologies = new List<Technology>();
+            List<Technology> carrierTechnologies = new List<Technology>();
 
             foreach (
                 Technology technology in GetUnlockedTechnologies(context, ManufacturingType.Ship)
@@ -1021,89 +1020,28 @@ namespace Rebellion.AI.Planners
                 if (!CanFillCapitalShipRole(capitalShip, demand.CapitalShipRole))
                     continue;
 
-                InsertCapitalShipTechnology(
-                    context,
-                    rankedTechnologies,
-                    technology,
-                    demand.CapitalShipRole,
-                    needsStarfighterCapacity
-                );
+                if (capitalShip.MaintenanceCost > maintenanceBudget)
+                    continue;
+
+                eligibleTechnologies.Add(technology);
+                if (needsStarfighterCapacity && capitalShip.StarfighterCapacity > 0)
+                    carrierTechnologies.Add(technology);
             }
 
-            for (int index = rankedTechnologies.Count - 1; index >= 0; index--)
-            {
-                Technology technology = rankedTechnologies[index];
-                if (technology.GetReference().GetMaintenanceCost() <= maintenanceBudget)
-                    return technology;
-            }
+            if (eligibleTechnologies.Count == 0)
+                return null;
 
-            return null;
-        }
+            if (carrierTechnologies.Count > 0)
+                eligibleTechnologies = carrierTechnologies;
 
-        /// <summary>
-        /// Inserts a capital ship technology into the ascending role-metric ranking.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="rankedTechnologies">The ranked technologies.</param>
-        /// <param name="candidate">The candidate.</param>
-        /// <param name="role">The role.</param>
-        /// <param name="needsStarfighterCapacity">
-        /// Whether the receiving fleet lacks starfighter capacity.
-        /// </param>
-        private static void InsertCapitalShipTechnology(
-            AITurnContext context,
-            List<Technology> rankedTechnologies,
-            Technology candidate,
-            AICapitalShipProductionRole role,
-            bool needsStarfighterCapacity
-        )
-        {
-            CapitalShip candidateShip = (CapitalShip)candidate.GetReference();
-            GameConfig.SpaceCombatConfig combatConfig = context.Game.Config.Combat.SpaceCombat;
-            double candidateMetric = GetCapitalShipRoleMetric(
-                candidateShip,
-                role,
-                needsStarfighterCapacity,
-                context.Game.Config.AI.Selection,
-                combatConfig
-            );
-
-            for (int index = 0; index < rankedTechnologies.Count; index++)
-            {
-                CapitalShip rankedShip = (CapitalShip)rankedTechnologies[index].GetReference();
-                double rankedMetric = GetCapitalShipRoleMetric(
-                    rankedShip,
-                    role,
-                    needsStarfighterCapacity,
-                    context.Game.Config.AI.Selection,
-                    combatConfig
-                );
-                if (
-                    candidateMetric < rankedMetric
-                    || (
-                        candidateMetric == rankedMetric
-                        && ShouldInsertCapitalShipBeforeEqual(context)
+            eligibleTechnologies.Sort(
+                (left, right) =>
+                    string.CompareOrdinal(
+                        left.GetReference().GetTypeID(),
+                        right.GetReference().GetTypeID()
                     )
-                )
-                {
-                    rankedTechnologies.Insert(index, candidate);
-                    return;
-                }
-            }
-
-            rankedTechnologies.Add(candidate);
-        }
-
-        /// <summary>
-        /// Resolves the configured random ordering between equally ranked capital ships.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when the new candidate should precede the existing candidate.</returns>
-        private static bool ShouldInsertCapitalShipBeforeEqual(AITurnContext context)
-        {
-            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
-            return context.Random.NextInt(0, config.CapitalShipTieRollRange)
-                < config.CapitalShipTieInsertBeforeThreshold;
+            );
+            return eligibleTechnologies[context.Random.NextInt(0, eligibleTechnologies.Count)];
         }
 
         /// <summary>
@@ -1173,127 +1111,6 @@ namespace Rebellion.AI.Planners
                 AICapitalShipProductionRole.Interdiction => capitalShip.HasGravityWell,
                 _ => false,
             };
-        }
-
-        /// <summary>
-        /// Calculates a capital ship's production priority for a requested fleet role.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <param name="role">The role.</param>
-        /// <param name="needsStarfighterCapacity">
-        /// Whether the receiving fleet lacks starfighter capacity.
-        /// </param>
-        /// <param name="selectionConfig">Capital-ship selection weights.</param>
-        /// <param name="combatConfig">The configured space-combat weapon effectiveness.</param>
-        /// <returns>The ship's comparable role-priority metric.</returns>
-        private static double GetCapitalShipRoleMetric(
-            CapitalShip capitalShip,
-            AICapitalShipProductionRole role,
-            bool needsStarfighterCapacity,
-            GameConfig.AISelectionConfig selectionConfig,
-            GameConfig.SpaceCombatConfig combatConfig
-        )
-        {
-            int constructionCost = Math.Max(1, capitalShip.ConstructionCost);
-            double capabilityMetric = role switch
-            {
-                AICapitalShipProductionRole.General => GetGeneralCapitalShipMetric(
-                    capitalShip,
-                    needsStarfighterCapacity,
-                    selectionConfig,
-                    combatConfig
-                ),
-                AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity,
-                AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment,
-                AICapitalShipProductionRole.Interdiction => capitalShip.ShieldRechargeRate,
-                _ => 0,
-            };
-            return capabilityMetric * _productionRateMetricScale / constructionCost;
-        }
-
-        /// <summary>
-        /// Returns the combat and fleet-support value of a general-purpose capital ship.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <param name="needsStarfighterCapacity">
-        /// Whether the receiving fleet lacks starfighter capacity.
-        /// </param>
-        /// <param name="config">Capital-ship selection weights.</param>
-        /// <param name="combatConfig">The configured space-combat weapon effectiveness.</param>
-        /// <returns>The ship's weighted general-purpose value.</returns>
-        private static double GetGeneralCapitalShipMetric(
-            CapitalShip capitalShip,
-            bool needsStarfighterCapacity,
-            GameConfig.AISelectionConfig config,
-            GameConfig.SpaceCombatConfig combatConfig
-        )
-        {
-            double metric =
-                GetPrimaryWeaponMetric(capitalShip, combatConfig)
-                / Math.Max(1, capitalShip.MaintenanceCost);
-
-            if (capitalShip.StarfighterCapacity > 0 && needsStarfighterCapacity)
-            {
-                metric +=
-                    config.CapitalMissingStarfighterCapacityBoost
-                    + capitalShip.StarfighterCapacity * config.CapitalStarfighterCapacityWeight;
-            }
-
-            return metric;
-        }
-
-        /// <summary>
-        /// Returns a capital ship's effective primary-weapon recharge metric.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <param name="combatConfig">The configured space-combat weapon effectiveness.</param>
-        /// <returns>The effective recharge metric for the strongest firing arc.</returns>
-        private static double GetPrimaryWeaponMetric(
-            CapitalShip capitalShip,
-            GameConfig.SpaceCombatConfig combatConfig
-        )
-        {
-            double maximumEffectiveStrength = 0;
-            int selectedWeaponCount = 0;
-
-            foreach (PrimaryWeaponArc weaponArc in CapitalShip.PrimaryWeaponArcs)
-            {
-                int turbolasers = GetWeaponCount(
-                    capitalShip,
-                    PrimaryWeaponType.Turbolaser,
-                    weaponArc
-                );
-                int ionCannons = GetWeaponCount(
-                    capitalShip,
-                    PrimaryWeaponType.IonCannon,
-                    weaponArc
-                );
-                int laserCannons = GetWeaponCount(
-                    capitalShip,
-                    PrimaryWeaponType.LaserCannon,
-                    weaponArc
-                );
-                double effectiveStrength =
-                    turbolasers
-                    + ionCannons
-                    + laserCannons
-                        * Math.Max(
-                            combatConfig.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier,
-                            0
-                        );
-                if (effectiveStrength <= maximumEffectiveStrength)
-                    continue;
-
-                maximumEffectiveStrength = effectiveStrength;
-                selectedWeaponCount = turbolasers + ionCannons + laserCannons;
-            }
-
-            if (selectedWeaponCount <= 0)
-                return 0;
-
-            return (double)capitalShip.WeaponRecharge
-                * maximumEffectiveStrength
-                / selectedWeaponCount;
         }
 
         /// <summary>

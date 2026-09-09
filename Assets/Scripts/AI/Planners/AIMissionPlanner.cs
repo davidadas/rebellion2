@@ -709,7 +709,12 @@ namespace Rebellion.AI.Planners
                 .OrderByDescending(context.Assessment.IsAttackPreparationTarget)
                 .ThenByDescending(planet =>
                     GetSabotageTargets(context, planet)
-                        .Max(target => context.SabotageTargets.GetPriorityBonus(planet, target))
+                        .Max(target =>
+                            context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+                                planet,
+                                target
+                            )
+                        )
                 )
                 .ThenByDescending(context.Assessment.GetPlanetBuildingCount)
                 .ThenBy(planet => planet.InstanceID)
@@ -739,7 +744,7 @@ namespace Rebellion.AI.Planners
             targets = eligibleTargets
                 .Where(target => AISabotageTargetPolicy.GetTier(target) == highestPriority)
                 .OrderByDescending(target =>
-                    context.SabotageTargets.GetPriorityBonus(planet, target)
+                    context.StrategicPolicies.SabotageTargets.GetPriorityBonus(planet, target)
                 )
                 .ThenByDescending(target =>
                     target.GetConstructionCost() + target.GetMaintenanceCost()

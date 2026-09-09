@@ -239,23 +239,8 @@ namespace Rebellion.Game
             public int LocalDuplicatePenaltyPerSelection { get; set; }
             public int PreferredStarfighterTypeCountPerFleet { get; set; }
             public int PreferredRegimentTypeCountPerDestination { get; set; }
-            public int PremiumCapitalConstructionCostThreshold { get; set; }
-            public int CapitalConstructionCostWeight { get; set; }
-            public int CapitalMaintenanceCostWeight { get; set; }
-            public int CapitalCombatWeight { get; set; }
-            public int CapitalExcessCombatPenaltyWeight { get; set; } = 1;
-            public int CapitalStarfighterCapacityWeight { get; set; }
-            public int CapitalRegimentCapacityWeight { get; set; }
-            public int CapitalBombardmentWeight { get; set; }
-            public int CapitalGravityWellWeight { get; set; }
-            public int CapitalEmptyFleetCombatBoost { get; set; }
-            public int CapitalMissingStarfighterCapacityBoost { get; set; }
-            public int CapitalMissingRegimentCapacityBoost { get; set; }
-            public int CapitalMissingGravityWellBoost { get; set; }
             public int CapitalMaintenanceAllocationPercent { get; set; } = 30;
             public int CapitalMaintenanceSafetyPercent { get; set; } = 90;
-            public int CapitalShipTieRollRange { get; set; } = 10;
-            public int CapitalShipTieInsertBeforeThreshold { get; set; } = 5;
             public int StarfighterEscortWeight { get; set; }
             public int StarfighterInterceptorWeight { get; set; }
             public int StarfighterBomberWeight { get; set; }
@@ -293,6 +278,11 @@ namespace Rebellion.Game
             public int TrainingFacilityDemandPercent { get; set; } = 100;
             public int TrainingFacilityBacklogPressureBonus { get; set; } = 5;
             public int TrainingFacilitySecondFacilityWeight { get; set; } = 125;
+            public int FacilitySectorHubTargetCount { get; set; } = 5;
+            public int ShipyardSectorHubTargetCount { get; set; } = 6;
+            public int FacilitySectorSecondaryTargetCount { get; set; } = 3;
+            public int FacilitySectorCoveragePressureBonus { get; set; } = 100;
+            public int FacilitySectorPrimaryHubPressureBonus { get; set; } = 50;
             public int FacilitySystemCoverageWeight { get; set; } = 50;
             public int FacilityExistingHubWeight { get; set; } = 30;
             public int ConstructionFacilityHubWeight { get; set; } = 100;

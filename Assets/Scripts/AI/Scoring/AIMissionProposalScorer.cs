@@ -146,7 +146,7 @@ namespace Rebellion.AI.Scoring
         )
         {
             return successProbability
-                + context.SabotageTargets.GetPriorityBonus(
+                + context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
                     proposal.TargetPlanet,
                     proposal.SelectedTarget as IManufacturable
                 );
