@@ -390,6 +390,16 @@ namespace Rebellion.AI.Planners
                 && !fleet.IsInCombat
                 && fleet.HasOperationalCapitalShips()
                 && AIColonizationProposal.FindCarrier(fleet) != null
+                && context.Assessment.GetReadyFleetRegimentCount(fleet)
+                    >= Math.Max(
+                        1,
+                        context
+                            .Game
+                            .Config
+                            .AI
+                            .FleetDeployment
+                            .ColonizationFleetMinimumRegimentCount
+                    )
                 && context.Assessment.CanFleetDepartHeadquarters(fleet);
         }
 

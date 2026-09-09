@@ -37,7 +37,8 @@ namespace Rebellion.Systems
             BombardmentSystem bombardmentSystem,
             PlanetaryAssaultSystem planetaryAssaultSystem,
             IRandomNumberProvider randomProvider,
-            FogOfWarSystem fogOfWarManager
+            FogOfWarSystem fogOfWarManager,
+            MaintenanceSystem maintenanceSystem = null
         )
         {
             _game = game;
@@ -49,7 +50,8 @@ namespace Rebellion.Systems
                 manufacturingManager,
                 bombardmentSystem,
                 planetaryAssaultSystem,
-                randomProvider
+                randomProvider,
+                maintenanceSystem
             );
         }
 

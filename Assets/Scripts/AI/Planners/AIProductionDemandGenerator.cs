@@ -43,12 +43,14 @@ namespace Rebellion.AI.Planners
             AddFleetReinforcementDemands(context, demands);
             AddPlanetaryGarrisonDemands(context, demands);
             _specialForcesDemandSource.AddDemands(context, demands);
+            AIFacilityAllocationPolicy facilityPolicy = context.FacilityAllocation;
             AddProductionFacilityDemands(
                 context,
                 demands,
-                new AIInfrastructurePlacementScorer(context)
+                new AIInfrastructurePlacementScorer(context),
+                facilityPolicy
             );
-            AddProductionFacilityUpgradeDemands(context, demands);
+            AddProductionFacilityUpgradeDemands(context, demands, facilityPolicy);
 
             return demands;
         }
@@ -385,12 +387,15 @@ namespace Rebellion.AI.Planners
         /// <param name="demands">The demand list to update.</param>
         private void AddColonizationFleetSeedDemand(AITurnContext context, List<AIDemand> demands)
         {
-            if (
-                context.Assessment.KnownUncolonizedPlanets.Count == 0
-                || context.Assessment.OwnedFleets.Any(fleet =>
-                    fleet.RoleType == FleetRoleType.Colonization
-                )
-            )
+            int targetCount = Math.Max(
+                0,
+                context.Game.Config.AI.FleetDeployment.ColonizationFleetTargetCount
+            );
+            int committedCount = context.Assessment.OwnedFleets.Count(fleet =>
+                fleet.RoleType == FleetRoleType.Colonization
+            );
+            int deficit = targetCount - committedCount;
+            if (context.Assessment.KnownUncolonizedPlanets.Count == 0 || deficit <= 0)
                 return;
 
             Planet destination = FindFleetAssemblyPlanet(context);
@@ -407,8 +412,8 @@ namespace Rebellion.AI.Planners
                     ManufacturingType.Ship,
                     BuildingType.None,
                     destination,
-                    1,
-                    context.Game.Config.AI.Infrastructure.FleetSeedCapitalShipDemandPercent,
+                    deficit,
+                    context.Game.Config.AI.Infrastructure.ColonizationFleetDemandPercent,
                     capitalShipRole: AICapitalShipProductionRole.TroopTransport
                 )
             );
@@ -494,7 +499,8 @@ namespace Rebellion.AI.Planners
         private void AddProductionFacilityDemands(
             AITurnContext context,
             List<AIDemand> demands,
-            AIInfrastructurePlacementScorer placementScorer
+            AIInfrastructurePlacementScorer placementScorer,
+            AIFacilityAllocationPolicy facilityPolicy
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
@@ -505,16 +511,8 @@ namespace Rebellion.AI.Planners
                 AIDemandKind.Shipyard,
                 BuildingType.Shipyard,
                 config.ShipyardDemandPercent,
-                placementScorer
-            );
-            AddProductionFacilityDemand(
-                context,
-                demands,
-                ManufacturingType.Troop,
-                AIDemandKind.TrainingFacility,
-                BuildingType.TrainingFacility,
-                config.TrainingFacilityDemandPercent,
-                placementScorer
+                placementScorer,
+                facilityPolicy
             );
             AddProductionFacilityDemand(
                 context,
@@ -523,7 +521,8 @@ namespace Rebellion.AI.Planners
                 AIDemandKind.ConstructionFacility,
                 BuildingType.ConstructionFacility,
                 config.ConstructionFacilityDemandPercent,
-                placementScorer
+                placementScorer,
+                facilityPolicy
             );
         }
 
@@ -534,7 +533,8 @@ namespace Rebellion.AI.Planners
         /// <param name="demands">The demand list to update.</param>
         private void AddProductionFacilityUpgradeDemands(
             AITurnContext context,
-            List<AIDemand> demands
+            List<AIDemand> demands,
+            AIFacilityAllocationPolicy facilityPolicy
         )
         {
             foreach (
@@ -548,14 +548,15 @@ namespace Rebellion.AI.Planners
                     context,
                     demands,
                     planet,
-                    BuildingType.ConstructionFacility
+                    BuildingType.ConstructionFacility,
+                    facilityPolicy
                 );
-                AddProductionFacilityUpgradeDemand(context, demands, planet, BuildingType.Shipyard);
                 AddProductionFacilityUpgradeDemand(
                     context,
                     demands,
                     planet,
-                    BuildingType.TrainingFacility
+                    BuildingType.Shipyard,
+                    facilityPolicy
                 );
             }
         }
@@ -571,10 +572,14 @@ namespace Rebellion.AI.Planners
             AITurnContext context,
             List<AIDemand> demands,
             Planet planet,
-            BuildingType buildingType
+            BuildingType buildingType,
+            AIFacilityAllocationPolicy facilityPolicy
         )
         {
-            if (HasPendingFacility(context, planet, buildingType))
+            if (
+                facilityPolicy.GetCap(planet, buildingType) <= 0
+                || HasPendingFacility(context, planet, buildingType)
+            )
                 return;
 
             List<Building> activeFacilities = context
@@ -678,7 +683,8 @@ namespace Rebellion.AI.Planners
             AIDemandKind kind,
             BuildingType buildingType,
             int baseDemandPercent,
-            AIInfrastructurePlacementScorer placementScorer
+            AIInfrastructurePlacementScorer placementScorer,
+            AIFacilityAllocationPolicy facilityPolicy
         )
         {
             List<AIDemand> productionDemands = demands
@@ -709,7 +715,10 @@ namespace Rebellion.AI.Planners
             foreach (IGrouping<string, Planet> sector in sectors)
             {
                 List<Planet> sectorPlanets = sector
-                    .Where(planet => GetAvailableFacilityExpansionEnergy(context, planet) > 0)
+                    .Where(planet =>
+                        facilityPolicy.GetCap(planet, buildingType) > 0
+                        && GetAvailableFacilityExpansionEnergy(context, planet) > 0
+                    )
                     .ToList();
                 if (sectorPlanets.Count == 0)
                     continue;
@@ -730,12 +739,12 @@ namespace Rebellion.AI.Planners
                 if (rankedPlanets.Count == 0)
                     continue;
 
-                List<Planet> establishedSites = rankedPlanets
-                    .Where(planet => planet.GetTotalBuildingTypeCount(buildingType) > 0)
-                    .OrderByDescending(planet => planet.GetTotalBuildingTypeCount(buildingType))
-                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
-                    .ToList();
-                Planet hub = establishedSites.FirstOrDefault() ?? rankedPlanets[0];
+                Planet hub = rankedPlanets.FirstOrDefault(planet =>
+                    facilityPolicy.GetCap(planet, buildingType)
+                    == context.Game.Config.AI.Infrastructure.FacilitySectorHubMaximumCount
+                );
+                if (hub == null)
+                    continue;
                 int hubCount = hub.GetTotalBuildingTypeCount(buildingType);
                 if (hubCount < hubTarget)
                 {
@@ -766,18 +775,10 @@ namespace Rebellion.AI.Planners
                     .AI
                     .Infrastructure
                     .FacilitySectorSecondaryTargetCount;
-                Planet secondarySite = establishedSites
-                    .Skip(1)
-                    .Take(2)
-                    .FirstOrDefault(planet =>
-                        planet.GetTotalBuildingTypeCount(buildingType) < secondaryTarget
-                    );
-                if (secondarySite == null && establishedSites.Count < 3)
-                {
-                    secondarySite = rankedPlanets.FirstOrDefault(planet =>
-                        !establishedSites.Contains(planet)
-                    );
-                }
+                Planet secondarySite = rankedPlanets.FirstOrDefault(planet =>
+                    facilityPolicy.GetCap(planet, buildingType) == secondaryTarget
+                    && planet.GetTotalBuildingTypeCount(buildingType) < secondaryTarget
+                );
 
                 AddSectorFacilityDemand(
                     context,
@@ -1233,7 +1234,8 @@ namespace Rebellion.AI.Planners
             foreach (Fleet attackFleet in attackFleets)
                 AddPriorityFleet(fleets, attackFleet);
 
-            AddPriorityFleet(fleets, GetPrimaryColonizationFleet(context));
+            foreach (Fleet colonizationFleet in GetPriorityColonizationFleets(context))
+                AddPriorityFleet(fleets, colonizationFleet);
 
             foreach (Fleet assemblyFleet in GetFleetAssemblyFleets(context))
                 AddPriorityFleet(fleets, assemblyFleet);
@@ -1310,7 +1312,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <returns>The colonization fleet, or null.</returns>
-        private Fleet GetPrimaryColonizationFleet(AITurnContext context)
+        private IReadOnlyList<Fleet> GetPriorityColonizationFleets(AITurnContext context)
         {
             return context
                 .Assessment.OwnedFleets.Where(fleet =>
@@ -1319,7 +1321,7 @@ namespace Rebellion.AI.Planners
                 .OrderByDescending(fleet => fleet.GetCurrentRegimentCount())
                 .ThenByDescending(fleet => fleet.GetRegimentCapacity())
                 .ThenBy(fleet => fleet.InstanceID, StringComparer.Ordinal)
-                .FirstOrDefault();
+                .ToList();
         }
 
         /// <summary>
@@ -1430,7 +1432,9 @@ namespace Rebellion.AI.Planners
                     fleet,
                     deficit,
                     target,
-                    context.Game.Config.AI.Infrastructure.FleetCapitalShipDemandPercent,
+                    isColonizationFleet
+                        ? context.Game.Config.AI.Infrastructure.ColonizationFleetDemandPercent
+                        : context.Game.Config.AI.Infrastructure.FleetCapitalShipDemandPercent,
                     capitalShipRole
                 )
             );
@@ -1524,7 +1528,9 @@ namespace Rebellion.AI.Planners
                     fleet,
                     deficit,
                     targetCount,
-                    context.Game.Config.AI.Infrastructure.FleetRegimentDemandPercent
+                    fleet.RoleType == FleetRoleType.Colonization
+                        ? context.Game.Config.AI.Infrastructure.ColonizationFleetDemandPercent
+                        : context.Game.Config.AI.Infrastructure.FleetRegimentDemandPercent
                 )
             );
         }
@@ -2386,9 +2392,12 @@ namespace Rebellion.AI.Planners
             if (fleet.Order?.OrderType == FleetOrderType.Defend)
                 return 0;
 
-            if (fleet.Order?.OrderType == FleetOrderType.Colonize)
+            if (fleet.RoleType == FleetRoleType.Colonization)
             {
-                return context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount;
+                return Math.Max(
+                    context.Game.Config.AI.FleetDeployment.ColonizationFleetMinimumRegimentCount,
+                    context.Game.Config.AI.FleetDeployment.ColonizationFleetMaximumRegimentCount
+                );
             }
 
             int capacity = fleet.GetRegimentCapacity();

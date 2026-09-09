@@ -226,6 +226,12 @@ namespace Rebellion.Game
             public int ColonizationOpportunityCostPenaltyWeight { get; set; } = 20;
 
             public int ExistingColonizationOrderBonus { get; set; } = 100;
+
+            public int ColonizationFleetTargetCount { get; set; } = 2;
+
+            public int ColonizationFleetMinimumRegimentCount { get; set; } = 2;
+
+            public int ColonizationFleetMaximumRegimentCount { get; set; } = 4;
         }
 
         /// <summary>
@@ -283,6 +289,7 @@ namespace Rebellion.Game
             public int TrainingFacilitySecondFacilityWeight { get; set; } = 125;
             public int FacilitySectorHubTargetCount { get; set; } = 5;
             public int ShipyardSectorHubTargetCount { get; set; } = 6;
+            public int FacilitySectorHubMaximumCount { get; set; } = 7;
             public int FacilitySectorSecondaryTargetCount { get; set; } = 3;
             public int FacilitySectorCoveragePressureBonus { get; set; } = 100;
             public int FacilitySectorPrimaryHubPressureBonus { get; set; } = 50;
@@ -307,6 +314,7 @@ namespace Rebellion.Game
             public int FleetStarfighterDemandPercent { get; set; } = 50;
             public int FleetRegimentDemandPercent { get; set; } = 60;
             public int FleetSeedCapitalShipDemandPercent { get; set; } = 95;
+            public int ColonizationFleetDemandPercent { get; set; } = 110;
             public int SpecialForcesDemandPercent { get; set; } = 25;
 
             public int SpecialForcesMissionCoveragePercent { get; set; } = 10;

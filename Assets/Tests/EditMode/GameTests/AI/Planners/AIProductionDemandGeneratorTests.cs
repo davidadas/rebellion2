@@ -2450,13 +2450,13 @@ namespace Rebellion.Tests.AI.Planners
                 );
 
             Assert.AreEqual(
-                game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount,
+                game.Config.AI.FleetDeployment.ColonizationFleetMaximumRegimentCount,
                 demand.QuantityNeeded
             );
         }
 
         [Test]
-        public void Generate_WithColonizationFleetCapacity_AddsOnlyRequiredColonizationRegiment()
+        public void Generate_WithColonizationFleetCapacity_AddsTargetColonizationRegiments()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
@@ -2492,7 +2492,7 @@ namespace Rebellion.Tests.AI.Planners
                 );
 
             Assert.AreEqual(
-                game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount,
+                game.Config.AI.FleetDeployment.ColonizationFleetMaximumRegimentCount,
                 demand.QuantityNeeded
             );
         }
@@ -2788,11 +2788,14 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.AreSame(shipyardPlanet, demand.DestinationPlanet);
             Assert.AreEqual(AICapitalShipProductionRole.TroopTransport, demand.CapitalShipRole);
-            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(
+                game.Config.AI.FleetDeployment.ColonizationFleetTargetCount,
+                demand.QuantityNeeded
+            );
         }
 
         [Test]
-        public void Generate_WithExistingColonizationFleet_DoesNotAddColonizationFleetSeedDemand()
+        public void Generate_WithOneOfTwoColonizationFleets_AddsOneSeedDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -2805,11 +2808,11 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(fleet, owned);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            AIDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item => item.Kind == AIDemandKind.ColonizationFleetSeedCapitalShip);
 
-            Assert.IsFalse(
-                demands.Any(item => item.Kind == AIDemandKind.ColonizationFleetSeedCapitalShip)
-            );
+            Assert.AreEqual(1, demand.QuantityNeeded);
         }
 
         [Test]

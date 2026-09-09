@@ -526,7 +526,8 @@ public sealed class GameManager
             _bombardmentSystem,
             _planetaryAssaultSystem,
             _randomProvider,
-            _fogOfWarSystem
+            _fogOfWarSystem,
+            _maintenanceSystem
         );
 
         InitializeResultProcessing();

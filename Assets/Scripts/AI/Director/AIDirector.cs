@@ -19,6 +19,7 @@ namespace Rebellion.AI.Director
         private readonly MissionSystem _missions;
         private readonly MovementSystem _movement;
         private readonly ManufacturingSystem _manufacturing;
+        private readonly MaintenanceSystem _maintenance;
         private readonly BombardmentSystem _bombardment;
         private readonly PlanetaryAssaultSystem _planetaryAssault;
         private readonly IReadOnlyList<IAITurnPhase> _turnPhases;
@@ -40,7 +41,8 @@ namespace Rebellion.AI.Director
             ManufacturingSystem manufacturing,
             BombardmentSystem bombardment,
             PlanetaryAssaultSystem planetaryAssault,
-            IRandomNumberProvider random
+            IRandomNumberProvider random,
+            MaintenanceSystem maintenance = null
         )
         {
             _game = game;
@@ -48,11 +50,13 @@ namespace Rebellion.AI.Director
             _missions = missions;
             _movement = movement;
             _manufacturing = manufacturing;
+            _maintenance = maintenance;
             _bombardment = bombardment;
             _planetaryAssault = planetaryAssault;
             _turnPhases = new List<IAITurnPhase>
             {
                 new AISpecialForcesIntentPhase(),
+                new AIFacilityCleanupPhase(),
                 new AIPlanningPhase(),
                 new AIScoringPhase(),
                 new AISelectionPhase(),
@@ -97,7 +101,8 @@ namespace Rebellion.AI.Director
                 _bombardment,
                 _planetaryAssault,
                 _random,
-                factionView
+                factionView,
+                _maintenance
             );
             yield return null;
 

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -22,10 +24,13 @@ namespace Rebellion.AI.Director
         public MissionSystem Missions { get; }
         public MovementSystem Movement { get; }
         public ManufacturingSystem Manufacturing { get; }
+        public MaintenanceSystem Maintenance { get; }
         public BombardmentSystem Bombardment { get; }
         public PlanetaryAssaultSystem PlanetaryAssault { get; }
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
+        public AIFacilityAllocationPolicy FacilityAllocation =>
+            _facilityAllocation ??= new AIFacilityAllocationPolicy(this);
 
         // Turn Output.
         public IReadOnlyList<AIProposal> Proposals => _proposals;
@@ -37,6 +42,7 @@ namespace Rebellion.AI.Director
         private readonly List<GameResult> _results = new List<GameResult>();
         private readonly Dictionary<SpecialForces, SpecialForcesIntent> _specialForcesIntents =
             new Dictionary<SpecialForces, SpecialForcesIntent>();
+        private AIFacilityAllocationPolicy _facilityAllocation;
 
         /// <summary>
         /// Creates a turn context.
@@ -59,7 +65,8 @@ namespace Rebellion.AI.Director
             BombardmentSystem bombardment,
             PlanetaryAssaultSystem planetaryAssault,
             IRandomNumberProvider random,
-            GalaxyMap factionView = null
+            GalaxyMap factionView = null,
+            MaintenanceSystem maintenance = null
         )
         {
             Game = game;
@@ -67,6 +74,7 @@ namespace Rebellion.AI.Director
             Missions = missions;
             Movement = movement;
             Manufacturing = manufacturing;
+            Maintenance = maintenance;
             Bombardment = bombardment;
             PlanetaryAssault = planetaryAssault;
             Random = random;
@@ -160,5 +168,61 @@ namespace Rebellion.AI.Director
             foreach (GameResult result in results)
                 AddResult(result);
         }
+    }
+
+    /// <summary>
+    /// Assigns the only planets in each sector that may host production facilities.
+    /// The allocation is built once per AI turn and reused by construction and cleanup.
+    /// </summary>
+    public sealed class AIFacilityAllocationPolicy
+    {
+        private readonly Dictionary<BuildingType, Dictionary<string, int>> _capsByType = new();
+
+        public AIFacilityAllocationPolicy(AITurnContext context)
+        {
+            if (context?.Assessment == null)
+                return;
+
+            BuildCaps(context, BuildingType.Shipyard);
+            BuildCaps(context, BuildingType.ConstructionFacility);
+        }
+
+        public int GetCap(Planet planet, BuildingType buildingType)
+        {
+            return
+                planet != null
+                && _capsByType.TryGetValue(buildingType, out Dictionary<string, int> caps)
+                && caps.TryGetValue(planet.InstanceID, out int cap)
+                    ? cap
+                    : 0;
+        }
+
+        private void BuildCaps(AITurnContext context, BuildingType buildingType)
+        {
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            Dictionary<string, int> caps = new(StringComparer.Ordinal);
+            foreach (
+                IGrouping<string, Planet> sector in context
+                    .Assessment.OwnedPlanets.Where(IsUsable)
+                    .GroupBy(context.Assessment.GetPlanetSystemId)
+            )
+            {
+                List<Planet> ranked = sector
+                    .OrderByDescending(planet => planet.GetTotalBuildingTypeCount(buildingType))
+                    .ThenByDescending(context.Assessment.GetPlanetValue)
+                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                    .Take(3)
+                    .ToList();
+                if (ranked.Count > 0)
+                    caps[ranked[0].InstanceID] = config.FacilitySectorHubMaximumCount;
+                for (int index = 1; index < ranked.Count; index++)
+                    caps[ranked[index].InstanceID] = config.FacilitySectorSecondaryTargetCount;
+            }
+
+            _capsByType[buildingType] = caps;
+        }
+
+        private static bool IsUsable(Planet planet) =>
+            planet != null && planet.IsColonized && !planet.IsDestroyed;
     }
 }

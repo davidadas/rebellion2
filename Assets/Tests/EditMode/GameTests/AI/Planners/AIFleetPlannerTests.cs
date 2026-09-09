@@ -1388,6 +1388,7 @@ namespace Rebellion.Tests.AI.Planners
             Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID, "fleet");
             fleet.RoleType = FleetRoleType.Colonization;
             AddColonizationRegiment(game, fleet, empire.InstanceID);
+            AddColonizationRegiment(game, fleet, empire.InstanceID);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIProposal> proposals = new AIFleetPlanner().Plan(context);
@@ -1448,6 +1449,7 @@ namespace Rebellion.Tests.AI.Planners
             );
             colonizationFleet.RoleType = FleetRoleType.Colonization;
             AddColonizationRegiment(game, conquestFleet, empire.InstanceID);
+            AddColonizationRegiment(game, colonizationFleet, empire.InstanceID);
             AddColonizationRegiment(game, colonizationFleet, empire.InstanceID);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -1521,6 +1523,7 @@ namespace Rebellion.Tests.AI.Planners
             };
             Fleet idleFleet = AddBattleFleet(game, owned, empire.InstanceID, "idle");
             idleFleet.RoleType = FleetRoleType.Colonization;
+            AddColonizationRegiment(game, idleFleet, empire.InstanceID);
             AddColonizationRegiment(game, idleFleet, empire.InstanceID);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -2286,7 +2289,7 @@ namespace Rebellion.Tests.AI.Planners
         )
         {
             Regiment regiment = AITestSceneBuilder.CreateRegiment(
-                $"{fleet.InstanceID}-regiment",
+                $"{fleet.InstanceID}-regiment-{fleet.GetCurrentRegimentCount()}",
                 ownerInstanceId
             );
             game.AttachNode(regiment, fleet.GetChildren<CapitalShip>().First());

@@ -57,6 +57,12 @@ namespace Rebellion.AI.Proposals
 
         internal bool IsProductionFacilityExpansion => IsFacilityExpansionDemand();
 
+        internal override AIProposalPriority Priority =>
+            Demand?.Kind == AIDemandKind.ColonizationFleetSeedCapitalShip
+            || Demand?.DestinationFleet?.RoleType == FleetRoleType.Colonization
+                ? AIProposalPriority.Mandatory
+                : AIProposalPriority.Optional;
+
         /// <summary>
         /// Creates a manufacture proposal.
         /// </summary>

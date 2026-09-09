@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
@@ -111,6 +112,24 @@ namespace Rebellion.AI.Proposals
             }
 
             if (!context.Assessment.CanFleetDepartHeadquarters(Fleet))
+            {
+                Fleet.Order.Status = FleetOrderStatus.Staging;
+                return;
+            }
+
+            if (
+                Fleet.GetParentOfType<Planet>()?.InstanceID != TargetPlanet.InstanceID
+                && context.Assessment.GetReadyFleetRegimentCount(Fleet)
+                    < Math.Max(
+                        1,
+                        context
+                            .Game
+                            .Config
+                            .AI
+                            .FleetDeployment
+                            .ColonizationFleetMinimumRegimentCount
+                    )
+            )
             {
                 Fleet.Order.Status = FleetOrderStatus.Staging;
                 return;

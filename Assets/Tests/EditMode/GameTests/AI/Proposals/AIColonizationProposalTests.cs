@@ -33,6 +33,10 @@ namespace Rebellion.Tests.AI.Proposals
             game.AttachNode(combatShip, fleet);
             Regiment regiment = AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID);
             game.AttachNode(regiment, carrier);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("second-regiment", empire.InstanceID),
+                carrier
+            );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIColonizationProposal proposal = new AIColonizationProposal(
                 fleet,
@@ -163,6 +167,10 @@ namespace Rebellion.Tests.AI.Proposals
             game.AttachNode(combatShip, fleet);
             Regiment regiment = AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID);
             game.AttachNode(regiment, carrier);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("second-regiment", empire.InstanceID),
+                carrier
+            );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIColonizationProposal proposal = new AIColonizationProposal(
                 fleet,
