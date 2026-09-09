@@ -451,6 +451,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void Render_ResultRows_LeavesRoomBelowFinalName()
+        {
+            BattleResultTableRenderData table = new BattleResultTableRenderData(
+                new[]
+                {
+                    new BattleResultItemRenderData("First", _texture),
+                    new BattleResultItemRenderData("Second", _texture),
+                    new BattleResultItemRenderData("Third", _texture),
+                },
+                Array.Empty<BattleResultItemRenderData>()
+            );
+
+            _view.Render(
+                CreateWindowData(
+                    BattleAlertWindowMode.Result,
+                    null,
+                    CreateResult(
+                        BattleResultPanel.FirstForces,
+                        BattleResultCategory.CapitalShips,
+                        table
+                    )
+                )
+            );
+
+            ScrollAreaView scrollArea = FindComponent<ScrollAreaView>("ResultRowsScrollArea");
+            BattleResultItemView finalItem = FindResultItems("ResultStandardOperationalColumn")[2];
+            TextMeshProUGUI finalName = FindItemText(finalItem, "NameTextField");
+            RectInt nameRect = UILayout.GetSourceRect(finalName.rectTransform);
+            float requiredHeight =
+                UILayout.GetSourceRect(finalItem.transform as RectTransform).y
+                + nameRect.y
+                + finalName.fontSize;
+
+            Assert.GreaterOrEqual(scrollArea.ContentRoot.rect.height, requiredHeight);
+        }
+
+        [Test]
         public void Render_DirectResult_ShowsAuthoredNavigationPrompt()
         {
             BattleAlertResultRenderData result = CreateResult(BattleResultPanel.Direct);

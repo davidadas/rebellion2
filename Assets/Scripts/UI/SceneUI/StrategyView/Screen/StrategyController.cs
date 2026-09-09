@@ -271,8 +271,10 @@ public sealed class StrategyController
         galaxyMapController = new GalaxyMapController(() => uiContext);
         galaxyMapController.Initialize(this);
         galaxyMapController.BindView(galaxyMap);
+        contextMenuController = new ContextMenuController();
         idleBarController = new IdleBarController(
             () => gameManager?.GetPlayerFaction(),
+            contextMenuController,
             () => uiContext,
             () =>
                 AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowIdleBar
@@ -324,7 +326,6 @@ public sealed class StrategyController
     private void InitializeWindowInfrastructure()
     {
         targetingController = new TargetingController(strategyOverlay);
-        contextMenuController = new ContextMenuController();
         bookmarkController = new BookmarkController(uiContext);
         windowPlacementController = new StrategyWindowPlacementController(
             uiContext,
@@ -791,6 +792,7 @@ public sealed class StrategyController
         UnwireStrategyInputActions();
         UnregisterCancelHandlers();
         UnsubscribeViewEvents();
+        idleBarController?.Dispose();
         _optionsMenuController?.Dispose();
         if (_appInputController != null)
         {
@@ -1233,9 +1235,9 @@ public sealed class StrategyController
     /// </summary>
     private void Render()
     {
+        idleBarController.Render();
         RenderGalaxyMap();
         RenderBookmarks();
-        idleBarController.Render();
         RenderWindows();
 
         RenderHud();
@@ -1714,6 +1716,7 @@ public sealed class StrategyController
         idleBarController.ResetSession();
         ResetStrategyPresentation();
         uiContext.ReplaceGame(game);
+        windowPlacementController.RefreshMovementBounds();
         PreloadStrategySfx();
         strategyMusicController.Resume();
         RefreshStrategyState();
@@ -2134,7 +2137,6 @@ public sealed class StrategyController
             return;
 
         confirmDialogWindowController.OpenMissionAbort(
-            sourceWindow,
             mission,
             () =>
             {
@@ -3067,11 +3069,139 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Opens the normal entity context menu for an idle-bar entry.
+    /// </summary>
+    /// <param name="target">The context-clicked strategy entity.</param>
+    /// <param name="eventData">The source pointer event.</param>
+    ContextMenuRequest IIdleBarActions.OpenIdleBarContextMenu(
+        ISceneNode target,
+        PointerEventData eventData
+    )
+    {
+        Planet planet = target as Planet ?? target?.GetParentOfType<Planet>();
+        GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planet?.InstanceID);
+        if (
+            target == null
+            || strategyPlanet == null
+            || !TryGetSourcePosition(
+                eventData,
+                eventData?.position ?? Vector2.zero,
+                out int sourceX,
+                out int sourceY
+            )
+        )
+            return null;
+
+        ContextMenuRequest request;
+        int width;
+        if (target is Officer or SpecialForces)
+        {
+            request = defenseWindowController.CreateContextMenuForItem(
+                strategyPlanet,
+                target,
+                sourceX,
+                sourceY
+            );
+            width = strategyContextMenu.Layout.DefenseMenuWidth;
+        }
+        else if (target is Planet)
+        {
+            request = planetSectorWindowController.CreatePlanetContextMenu(
+                strategyPlanet,
+                sourceX,
+                sourceY
+            );
+            width = strategyContextMenu.Layout.PlanetSectorMenuWidth;
+        }
+        else
+        {
+            return null;
+        }
+
+        galacticInformationDisplayController?.Hide();
+        targetingController?.Cancel();
+        strategyContextMenuRouter.OpenRuntimeContextMenu(request, sourceX, sourceY, width);
+        dirty = true;
+        return request;
+    }
+
+    /// <summary>
     /// Requests a strategy render after idle-bar state changes.
     /// </summary>
     void IIdleBarActions.RequestIdleBarRender()
     {
         dirty = true;
+    }
+
+    /// <summary>
+    /// Temporarily emphasizes the hovered idle entity's location on the galaxy map.
+    /// </summary>
+    /// <param name="target">The hovered entity, or null to restore the selected display.</param>
+    void IIdleBarActions.SetIdleBarLocationHighlight(ISceneNode target)
+    {
+        Planet planet = target as Planet ?? target?.GetParentOfType<Planet>();
+        galaxyMapController.SetSpotlightPlanet(planet?.InstanceID);
+    }
+
+    /// <summary>
+    /// Begins a shared strategy drag directly from one movable idle-bar entity.
+    /// </summary>
+    /// <param name="target">The pressed idle entity.</param>
+    /// <param name="preview">The compact entity drag preview.</param>
+    /// <param name="eventData">The source pointer event.</param>
+    /// <returns>True when the drag candidate was accepted.</returns>
+    bool IIdleBarActions.TryStartIdleBarItemDrag(
+        ISceneNode target,
+        DragPreview preview,
+        PointerEventData eventData
+    )
+    {
+        IReadOnlyList<ISceneNode> items = new[] { target };
+        if (
+            targetingController.IsTargeting
+            || !StrategyContextMenuAvailability.CanMoveItems(items, PlayerFactionId)
+            || !TryGetSourcePosition(
+                eventData,
+                eventData?.position ?? Vector2.zero,
+                out int x,
+                out int y
+            )
+        )
+            return false;
+
+        return strategyDragController.TryStartItemCandidate(target, preview, eventData, x, y);
+    }
+
+    /// <summary>
+    /// Advances a shared strategy drag started from the idle bar.
+    /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
+    void IIdleBarActions.MoveIdleBarItemDrag(PointerEventData eventData)
+    {
+        if (strategyDragController.HasDirectItemInteraction)
+            inputController.OnDrag(eventData);
+    }
+
+    /// <summary>
+    /// Completes a shared strategy drag started from the idle bar.
+    /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
+    void IIdleBarActions.EndIdleBarItemDrag(PointerEventData eventData)
+    {
+        if (strategyDragController.HasDirectItemInteraction)
+            inputController.OnPointerUp(eventData);
+    }
+
+    /// <summary>
+    /// Cancels shared drag or targeting state owned directly by the idle bar.
+    /// </summary>
+    void IIdleBarActions.CancelIdleBarItemDrag()
+    {
+        if (!strategyDragController.TryCancelDirectItemInteraction())
+            return;
+
+        RenderOverlay();
+        MarkDirty();
     }
 
     /// <summary>

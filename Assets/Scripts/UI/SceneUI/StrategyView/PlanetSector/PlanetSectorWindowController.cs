@@ -515,26 +515,8 @@ public sealed class PlanetSectorWindowController
             mobileHeadquarters == null
                 ? GetStatusTarget(view)
                 : new StrategyStatusTarget(hit.GalaxyMapPlanet, mobileHeadquarters);
-        ISceneNode trackingItem = statusTarget?.Item;
-        if (
-            StrategyContextMenuAvailability.CanToggleIdleBarTracking(
-                trackingItem,
-                playerFactionId,
-                idleBarTrackingActions?.IsIdleBarEnabled == true
-            )
-        )
-        {
-            commands.Add(
-                new StrategyMenuCommand(
-                    StrategyMenuAction.ToggleIdleBarTracking,
-                    "Tracked",
-                    true,
-                    idleBarTrackingActions.IsIdleBarTracked(trackingItem)
-                        ? StrategyContextMenuIconKeys.CheckMark
-                        : StrategyContextMenuIconKeys.None
-                )
-            );
-        }
+        ISceneNode trackingItem = hit?.PlanetImage == true ? hit.Planet : null;
+        AddTrackingCommand(commands, trackingItem, playerFactionId);
         if (commands.Count == 0)
             return false;
 
@@ -543,7 +525,8 @@ public sealed class PlanetSectorWindowController
             context.X,
             context.Y,
             items,
-            statusTarget
+            statusTarget,
+            trackingItem
         );
         request = new ContextMenuRequest(
             source,
@@ -552,6 +535,78 @@ public sealed class PlanetSectorWindowController
         );
         width = context.Layout.PlanetSectorMenuWidth;
         return true;
+    }
+
+    /// <summary>
+    /// Builds the normal planet-image context menu for a directly supplied strategy planet.
+    /// </summary>
+    /// <param name="strategyPlanet">The planet represented by the menu.</param>
+    /// <param name="hotspotX">The source-space horizontal menu position.</param>
+    /// <param name="hotspotY">The source-space vertical menu position.</param>
+    /// <returns>The normal planet context-menu request.</returns>
+    internal ContextMenuRequest CreatePlanetContextMenu(
+        GalaxyMapPlanet strategyPlanet,
+        int hotspotX,
+        int hotspotY
+    )
+    {
+        if (strategyPlanet?.Planet == null)
+            throw new ArgumentNullException(nameof(strategyPlanet));
+
+        string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
+        PlanetSectorWindowHit hit = new PlanetSectorWindowHit(
+            strategyPlanet,
+            PlanetIcon.None,
+            true
+        );
+        List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
+            hit,
+            new List<ISceneNode>(),
+            playerFactionId
+        );
+        AddTrackingCommand(commands, strategyPlanet.Planet, playerFactionId);
+        PlanetSectorContextMenuSource source = new PlanetSectorContextMenuSource(
+            null,
+            hotspotX,
+            hotspotY,
+            Array.Empty<ISceneNode>(),
+            new StrategyStatusTarget(strategyPlanet, strategyPlanet.Planet),
+            strategyPlanet.Planet
+        );
+        return new ContextMenuRequest(source, commands.Cast<IContextMenuCommand>().ToList(), this);
+    }
+
+    /// <summary>
+    /// Adds the optional Idle Bar tracking command to a normal context menu.
+    /// </summary>
+    /// <param name="commands">The menu receiving the command.</param>
+    /// <param name="trackingItem">The entity whose tracking state can change.</param>
+    /// <param name="playerFactionId">The current player faction identifier.</param>
+    private void AddTrackingCommand(
+        List<StrategyMenuCommand> commands,
+        ISceneNode trackingItem,
+        string playerFactionId
+    )
+    {
+        if (
+            !StrategyContextMenuAvailability.CanToggleIdleBarTracking(
+                trackingItem,
+                playerFactionId,
+                idleBarTrackingActions?.IsIdleBarEnabled == true
+            )
+        )
+            return;
+
+        commands.Add(
+            new StrategyMenuCommand(
+                StrategyMenuAction.ToggleIdleBarTracking,
+                "Tracked",
+                true,
+                idleBarTrackingActions.IsIdleBarTracked(trackingItem)
+                    ? StrategyContextMenuIconKeys.CheckMark
+                    : StrategyContextMenuIconKeys.None
+            )
+        );
     }
 
     /// <summary>
@@ -601,7 +656,7 @@ public sealed class PlanetSectorWindowController
         switch (strategyCommand.Action)
         {
             case StrategyMenuAction.ToggleIdleBarTracking:
-                idleBarTrackingActions.ToggleIdleBarTracking(source.Target?.Item);
+                idleBarTrackingActions.ToggleIdleBarTracking(source.TrackingItem);
                 break;
             case StrategyMenuAction.BombardMilitaryFacilities:
             case StrategyMenuAction.BombardCivilianFacilities:
@@ -1263,6 +1318,8 @@ public sealed class PlanetSectorWindowController
 
         public StrategyStatusTarget Target { get; }
 
+        public ISceneNode TrackingItem { get; }
+
         public UIWindow Window { get; }
 
         /// <summary>
@@ -1273,12 +1330,14 @@ public sealed class PlanetSectorWindowController
         /// <param name="hotspotY">The menu hotspot vertical coordinate.</param>
         /// <param name="items">The selected fleet items.</param>
         /// <param name="target">The selected status target.</param>
+        /// <param name="trackingItem">The explicitly selected idle-bar tracking subject.</param>
         public PlanetSectorContextMenuSource(
             UIWindow window,
             int hotspotX,
             int hotspotY,
             IReadOnlyList<ISceneNode> items,
-            StrategyStatusTarget target
+            StrategyStatusTarget target,
+            ISceneNode trackingItem
         )
         {
             Window = window;
@@ -1286,6 +1345,7 @@ public sealed class PlanetSectorWindowController
             HotspotY = hotspotY;
             Items = new List<ISceneNode>(items ?? Array.Empty<ISceneNode>()).AsReadOnly();
             Target = target;
+            TrackingItem = trackingItem;
         }
     }
 

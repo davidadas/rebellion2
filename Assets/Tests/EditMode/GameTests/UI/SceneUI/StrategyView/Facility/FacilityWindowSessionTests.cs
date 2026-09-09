@@ -105,64 +105,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         [Test]
         public void SelectManufacturingCard_ValidCard_SelectsSemanticLane()
         {
-            _session.SelectManufacturingCard(
-                (int)FacilityWindowTab.Shipyards,
-                FacilityWindowRenderData.TabCount
-            );
+            _session.SelectManufacturingCard(0);
 
             Assert.AreEqual(FacilityWindowTab.Shipyards, _session.GetSelectedManufacturingTab());
             Assert.AreEqual(FacilityWindowTab.Shipyards, _session.GetContextManufacturingTab());
-            CollectionAssert.AreEqual(
-                new[] { (int)FacilityWindowTab.Shipyards },
-                _session.SelectedCards
-            );
+            CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedCards);
         }
 
         [Test]
         public void SelectManufacturingCard_InvalidCard_DoesNotChangeSelection()
         {
-            _session.SelectManufacturingCard(
-                (int)FacilityWindowTab.Shipyards,
-                FacilityWindowRenderData.TabCount
-            );
+            _session.SelectManufacturingCard(0);
 
-            _session.SelectManufacturingCard(-1, FacilityWindowRenderData.TabCount);
+            _session.SelectManufacturingCard(-1);
 
             Assert.AreEqual(FacilityWindowTab.Shipyards, _session.GetSelectedManufacturingTab());
-            CollectionAssert.AreEqual(
-                new[] { (int)FacilityWindowTab.Shipyards },
-                _session.SelectedCards
-            );
+            CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedCards);
         }
 
         [Test]
         public void SelectManufacturingCardForContext_DifferentLane_ReplacesSelection()
         {
-            _session.SelectManufacturingCard(
-                (int)FacilityWindowTab.Shipyards,
-                FacilityWindowRenderData.TabCount
-            );
+            _session.SelectManufacturingCard(0);
 
-            _session.SelectManufacturingCardForContext(
-                FacilityWindowTab.Training,
-                (int)FacilityWindowTab.Training
-            );
+            _session.SelectManufacturingCardForContext(FacilityWindowTab.Training);
 
             Assert.AreEqual(FacilityWindowTab.Training, _session.ContextManufacturingTab);
             Assert.AreEqual(FacilityWindowTab.Training, _session.GetContextManufacturingTab());
-            CollectionAssert.AreEqual(
-                new[] { (int)FacilityWindowTab.Training },
-                _session.SelectedCards
-            );
+            CollectionAssert.AreEqual(new[] { 1 }, _session.SelectedCards);
         }
 
         [Test]
         public void SetActiveTab_DifferentTab_ClearsManufacturingSelectionAndContext()
         {
-            _session.SelectManufacturingCardForContext(
-                FacilityWindowTab.Shipyards,
-                (int)FacilityWindowTab.Shipyards
-            );
+            _session.SelectManufacturingCardForContext(FacilityWindowTab.Shipyards);
 
             _session.SetActiveTab(FacilityWindowTab.Shipyards);
 

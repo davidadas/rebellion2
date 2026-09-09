@@ -423,6 +423,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
+        public void GetRows_KilledPlayerPersonnel_IncludesKilledOfficerWithoutNavigation()
+        {
+            Officer killedOfficer = new Officer
+            {
+                InstanceID = "killed-officer",
+                DisplayName = "Killed Officer",
+                OwnerInstanceID = _playerFactionId,
+                IsEnabled = false,
+                IsKilled = true,
+            };
+            _playerFaction.AddOwnedUnit(killedOfficer);
+
+            FinderWindowRow row = _builder
+                .GetRows(
+                    FinderMode.Personnel,
+                    false,
+                    FinderWindowTab.Faction(_playerFactionId, "Player")
+                )
+                .Single();
+
+            Assert.AreEqual("Killed Officer - Location Unknown ( Killed )", row.Name);
+            Assert.IsNull(row.Planet);
+            Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
+            Assert.IsNull(row.Fleet);
+            Assert.IsNull(row.Mission);
+        }
+
+        [Test]
         public void GetRows_DisabledPlayerPersonnelOutsideGalaxy_IncludesOwnedOfficer()
         {
             Officer inactiveOfficer = new Officer

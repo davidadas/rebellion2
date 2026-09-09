@@ -50,6 +50,7 @@ public sealed class GalaxyMapController
     private bool showFullGalaxy = true;
     private string hoveredSectorInstanceId;
     private string playerFactionId = string.Empty;
+    private string spotlightPlanetInstanceId;
 
     public string PlayerFactionId => playerFactionId;
 
@@ -169,9 +170,26 @@ public sealed class GalaxyMapController
                     hoveredSectorInstanceId,
                     briefingPresentation,
                     waypointPlan,
-                    selectedFleetInstanceIds
+                    selectedFleetInstanceIds,
+                    spotlightPlanetInstanceId
                 )
             );
+    }
+
+    /// <summary>
+    /// Temporarily emphasizes one planet without changing the selected information display.
+    /// </summary>
+    /// <param name="planetInstanceId">The planet to emphasize, or null to restore normal markers.</param>
+    public void SetSpotlightPlanet(string planetInstanceId)
+    {
+        string nextPlanetInstanceId = string.IsNullOrEmpty(planetInstanceId)
+            ? null
+            : planetInstanceId;
+        if (spotlightPlanetInstanceId == nextPlanetInstanceId)
+            return;
+
+        spotlightPlanetInstanceId = nextPlanetInstanceId;
+        actions.RequestGalaxyMapRender();
     }
 
     /// <summary>

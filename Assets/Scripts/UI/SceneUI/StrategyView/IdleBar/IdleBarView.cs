@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -8,17 +7,18 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders the idle bar in the strategy desktop's upper-right corner.
 /// </summary>
-public sealed class IdleBarView
-    : MonoBehaviour,
-        IPointerEnterHandler,
-        IPointerExitHandler,
-        IScrollHandler
+public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
+    private const int _collapsedEntryLimit = 5;
+    private const int _collapsedColumnCount = 5;
     private const int _columnGap = 1;
+    private const int _expandedColumnCount = 7;
+    private const int _expandedRowLimit = 3;
     private const int _horizontalPadding = 4;
-    private const int _maximumRows = 2;
     private const int _outerPadding = 5;
     private const int _rowGap = 1;
+    private const int _scrollbarGap = 1;
+    private const int _scrollbarWidth = 13;
     private const int _slotSize = 28;
     private const int _topPadding = 4;
     private const int _verticalPadding = 3;
@@ -27,7 +27,7 @@ public sealed class IdleBarView
     private Image shelfHitArea;
 
     [SerializeField]
-    private TextMeshProUGUI pageTextField;
+    private ScrollAreaView entriesScrollArea;
 
     [SerializeField]
     private IdleBarSlotView slotTemplate;
@@ -35,57 +35,87 @@ public sealed class IdleBarView
     private readonly List<IdleBarSlotView> slots = new List<IdleBarSlotView>();
 
     private IdleBarRenderData currentData;
-    private int columns;
-    private int firstVisibleIndex;
+    private bool contextMenuOpen;
     private bool hoverExitPending;
     private bool initialized;
+    private IdleBarSlotView overflowSlot;
     private bool pointerOverShelf;
 
-    /// <summary>Raised when the player selects an idle-bar entry.</summary>
+    /// <summary>
+    /// Raised when the player selects an idle-bar entry.
+    /// </summary>
     internal event Action<string> EntrySelected;
 
-    /// <summary>Raised when the player requests that an entry stop being tracked.</summary>
-    internal event Action<string> EntryUntrackRequested;
+    /// <summary>
+    /// Raised when the player requests an entry's normal context menu.
+    /// </summary>
+    internal event Action<string, PointerEventData> EntryContextRequested;
 
-    /// <summary>Raised when this authored view is destroyed.</summary>
+    /// <summary>
+    /// Raised when an entity portrait begins receiving pointer hover.
+    /// </summary>
+    internal event Action<string> EntryHovered;
+
+    /// <summary>
+    /// Raised when an entity portrait stops receiving pointer hover.
+    /// </summary>
+    internal event Action<string> EntryHoverCleared;
+
+    /// <summary>
+    /// Raised when an entity portrait may begin a direct item drag.
+    /// </summary>
+    internal event Action<string, DragPreview, PointerEventData> EntryDragCandidateRequested;
+
+    /// <summary>
+    /// Raised while a direct item drag advances.
+    /// </summary>
+    internal event Action<PointerEventData> EntryDragMoved;
+
+    /// <summary>
+    /// Raised when a direct item drag or pending candidate ends.
+    /// </summary>
+    internal event Action<PointerEventData> EntryDragEnded;
+
+    /// <summary>
+    /// Raised when this authored view is destroyed.
+    /// </summary>
     internal event Action<IdleBarView> Destroyed;
 
     /// <summary>
-    /// Applies current availability within a two-row shelf capped at half the desktop width.
+    /// Applies current availability within the compact idle-bar shelf.
     /// </summary>
     /// <param name="data">The complete idle-bar presentation.</param>
     internal void Render(IdleBarRenderData data)
     {
         Initialize();
+        bool resetScroll = !HasSameEntries(currentData, data);
         currentData = data;
         gameObject.SetActive(data?.Visible == true);
         if (data?.Visible != true || data.Entries.Count == 0)
         {
-            firstVisibleIndex = 0;
             HideShelf();
             return;
         }
 
-        int maximumShelfWidth = Mathf.Max(
-            _slotSize + 2 * _horizontalPadding,
-            data.DesktopBounds.width / 2
-        );
-        columns = Mathf.Max(
-            1,
-            (maximumShelfWidth - 2 * _horizontalPadding + _columnGap) / (_slotSize + _columnGap)
-        );
-        int capacity = GetVisibleCapacity();
-        firstVisibleIndex = Mathf.Clamp(
-            firstVisibleIndex,
-            0,
-            Mathf.Max(0, data.Entries.Count - capacity)
-        );
-
-        RenderVisiblePage();
+        RenderShelf(resetScroll);
     }
 
     /// <summary>
-    /// Reveals the unobtrusive page position while the shelf is being inspected.
+    /// Sets whether this shelf's context menu is keeping the expanded rows visible.
+    /// </summary>
+    /// <param name="open">Whether this shelf's context menu is open.</param>
+    internal void SetContextMenuOpen(bool open)
+    {
+        if (contextMenuOpen == open)
+            return;
+
+        contextMenuOpen = open;
+        if (currentData?.Entries.Count > 0)
+            RenderShelf(resetScroll: false);
+    }
+
+    /// <summary>
+    /// Reveals the scrollable rows while the shelf is being inspected.
     /// </summary>
     /// <param name="eventData">The source pointer event.</param>
     public void OnPointerEnter(PointerEventData eventData)
@@ -94,77 +124,20 @@ public sealed class IdleBarView
     }
 
     /// <summary>
-    /// Conceals paging chrome when the pointer leaves the shelf.
+    /// Returns the shelf to its compact summary when the pointer leaves.
     /// </summary>
     /// <param name="eventData">The source pointer event.</param>
     public void OnPointerExit(PointerEventData eventData)
     {
-        RequestPointerExit();
-    }
-
-    /// <summary>
-    /// Pages one row at a time when the pointer wheel is used over the shelf.
-    /// </summary>
-    /// <param name="eventData">The source scroll event.</param>
-    public void OnScroll(PointerEventData eventData)
-    {
-        if (currentData == null || columns <= 0 || Mathf.Approximately(eventData.scrollDelta.y, 0f))
-            return;
-
-        int capacity = GetVisibleCapacity();
-        int maximumStart = Mathf.Max(0, currentData.Entries.Count - capacity);
-        if (maximumStart == 0)
-            return;
-
-        eventData.Use();
-        int direction = eventData.scrollDelta.y < 0f ? 1 : -1;
-        int nextIndex = Mathf.Clamp(firstVisibleIndex + direction * columns, 0, maximumStart);
-        if (nextIndex == firstVisibleIndex)
-            return;
-
-        firstVisibleIndex = nextIndex;
-        RenderVisiblePage();
-    }
-
-    /// <summary>
-    /// Validates and conceals the authored shelf elements.
-    /// </summary>
-    private void Awake()
-    {
-        Initialize();
+        hoverExitPending = true;
     }
 
     /// <summary>
     /// Validates authored references exactly once.
     /// </summary>
-    private void Initialize()
+    private void Awake()
     {
-        if (initialized)
-            return;
-
-        if (shelfHitArea == null || pageTextField == null || slotTemplate == null)
-            throw new MissingReferenceException("IdleBarView has incomplete authored references.");
-
-        slotTemplate.gameObject.SetActive(false);
-        HideShelf();
-        initialized = true;
-    }
-
-    /// <summary>
-    /// Releases selection subscriptions from instantiated slots.
-    /// </summary>
-    private void OnDestroy()
-    {
-        foreach (IdleBarSlotView slot in slots)
-        {
-            if (slot != null)
-            {
-                slot.Selected -= HandleSlotSelected;
-                slot.UntrackRequested -= HandleSlotUntrackRequested;
-            }
-        }
-
-        Destroyed?.Invoke(this);
+        Initialize();
     }
 
     /// <summary>
@@ -176,142 +149,183 @@ public sealed class IdleBarView
             return;
 
         hoverExitPending = false;
-        pointerOverShelf = false;
-        if (currentData == null || currentData.Entries.Count == 0)
-            return;
-        RenderVisiblePage();
+        SetPointerOverShelf(false);
     }
 
     /// <summary>
-    /// Renders the current page right-aligned with source ordering preserved across both rows.
+    /// Releases selection subscriptions from instantiated slots.
     /// </summary>
-    private void RenderVisiblePage()
+    private void OnDestroy()
     {
-        int capacity = GetVisibleCapacity();
-        firstVisibleIndex = Mathf.Clamp(
-            firstVisibleIndex,
-            0,
-            Mathf.Max(0, currentData.Entries.Count - capacity)
-        );
-        int remaining = currentData.Entries.Count - firstVisibleIndex;
-        int visibleCount = Mathf.Min(remaining, capacity);
-        int rowCount = Mathf.CeilToInt((float)visibleCount / columns);
-        int occupiedColumns = Mathf.Min(columns, visibleCount);
+        if (entriesScrollArea != null)
+        {
+            entriesScrollArea.Dragged -= HandleEntryDragMoved;
+            entriesScrollArea.DragEnded -= HandleEntryDragEnded;
+        }
+
+        foreach (IdleBarSlotView slot in slots)
+        {
+            if (slot != null)
+            {
+                slot.Selected -= HandleSlotSelected;
+                slot.ContextRequested -= HandleSlotContextRequested;
+                slot.Hovered -= HandleSlotHovered;
+                slot.HoverCleared -= HandleSlotHoverCleared;
+                slot.DragCandidateRequested -= HandleSlotDragCandidateRequested;
+                slot.DragCandidateReleased -= HandleEntryDragEnded;
+            }
+        }
+
+        Destroyed?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Validates authored references and creates the non-entity overflow slot.
+    /// </summary>
+    private void Initialize()
+    {
+        if (initialized)
+            return;
+
+        if (shelfHitArea == null || entriesScrollArea == null || slotTemplate == null)
+            throw new MissingReferenceException("IdleBarView has incomplete authored references.");
+
+        slotTemplate.gameObject.SetActive(false);
+        overflowSlot = Instantiate(slotTemplate, entriesScrollArea.ContentRoot);
+        overflowSlot.gameObject.name = "OverflowSlot";
+        overflowSlot.gameObject.SetActive(false);
+        entriesScrollArea.Dragged += HandleEntryDragMoved;
+        entriesScrollArea.DragEnded += HandleEntryDragEnded;
+        HideShelf();
+        initialized = true;
+    }
+
+    /// <summary>
+    /// Renders either the compact summary or the expanded scrollable grid.
+    /// </summary>
+    /// <param name="resetScroll">Whether the scroll area should return to its first row.</param>
+    private void RenderShelf(bool resetScroll)
+    {
+        bool expanded =
+            (pointerOverShelf || contextMenuOpen)
+            && currentData.Entries.Count > _collapsedEntryLimit;
+        int visibleEntryCount = expanded
+            ? currentData.Entries.Count
+            : Math.Min(
+                currentData.Entries.Count,
+                currentData.Entries.Count > _collapsedEntryLimit
+                    ? _collapsedEntryLimit - 1
+                    : _collapsedEntryLimit
+            );
+        int rowCount = expanded
+            ? Mathf.CeilToInt((float)currentData.Entries.Count / _expandedColumnCount)
+            : 1;
+        int viewportRowCount = expanded ? Math.Min(rowCount, _expandedRowLimit) : 1;
+        bool scrollable = expanded && rowCount > _expandedRowLimit;
+        int columnCount = expanded ? _expandedColumnCount : _collapsedColumnCount;
+        int gridWidth = columnCount * _slotSize + (columnCount - 1) * _columnGap;
+        int viewportHeight = viewportRowCount * _slotSize + (viewportRowCount - 1) * _rowGap;
         int shelfWidth =
-            occupiedColumns * _slotSize
-            + Mathf.Max(0, occupiedColumns - 1) * _columnGap
-            + 2 * _horizontalPadding;
-        int shelfHeight =
-            rowCount * _slotSize + Mathf.Max(0, rowCount - 1) * _rowGap + 2 * _verticalPadding;
+            2 * _horizontalPadding + gridWidth + (scrollable ? _scrollbarWidth + _scrollbarGap : 0);
+        int shelfHeight = viewportHeight + 2 * _verticalPadding;
         int shelfX = currentData.DesktopBounds.xMax - _outerPadding - shelfWidth;
         int shelfY = currentData.DesktopBounds.yMin + _topPadding;
+        int gridX = _horizontalPadding;
+        int scrollbarX = _horizontalPadding + gridWidth + _scrollbarGap;
 
         SetSourceRect(shelfHitArea.rectTransform, shelfX, shelfY, shelfWidth, shelfHeight);
         shelfHitArea.gameObject.SetActive(true);
-        EnsureSlotCount(visibleCount);
+        SetSourceRect(
+            entriesScrollArea.transform as RectTransform,
+            shelfX,
+            shelfY,
+            shelfWidth,
+            shelfHeight
+        );
+        entriesScrollArea.gameObject.SetActive(true);
+        entriesScrollArea.SetLayout(
+            new Vector2(gridX, _verticalPadding),
+            new Vector2(gridWidth, viewportHeight),
+            new Vector2(scrollbarX, _verticalPadding),
+            new Vector2(_scrollbarWidth, viewportHeight)
+        );
 
+        EnsureSlotCount(visibleEntryCount);
         for (int index = 0; index < slots.Count; index++)
         {
-            bool visible = index < visibleCount;
+            bool visible = index < visibleEntryCount;
             slots[index].gameObject.SetActive(visible);
             if (!visible)
                 continue;
 
-            int row = index / columns;
-            int column = index % columns;
-            int entriesInRow = Mathf.Min(columns, visibleCount - row * columns);
-            int rowWidth = entriesInRow * _slotSize + Mathf.Max(0, entriesInRow - 1) * _columnGap;
-            int rowX =
-                row == 0
-                    ? currentData.DesktopBounds.xMax - _outerPadding - _horizontalPadding - rowWidth
-                    : shelfX + _horizontalPadding;
-            int visualColumn = column;
+            int row = expanded ? index / _expandedColumnCount : 0;
+            int entriesInRow = expanded
+                ? Math.Min(
+                    _expandedColumnCount,
+                    currentData.Entries.Count - row * _expandedColumnCount
+                )
+                : visibleEntryCount;
+            int firstColumn = expanded && row > 0 ? 0 : columnCount - entriesInRow;
+            int column = expanded ? index % _expandedColumnCount : index;
             slots[index]
                 .Render(
-                    currentData.Entries[firstVisibleIndex + index],
-                    rowX + visualColumn * (_slotSize + _columnGap),
-                    shelfY + _verticalPadding + row * (_slotSize + _rowGap),
+                    currentData.Entries[index],
+                    (firstColumn + column) * (_slotSize + _columnGap),
+                    row * (_slotSize + _rowGap),
                     _slotSize
                 );
         }
 
-        UpdateShelfPresentation();
+        bool showOverflow = !expanded && currentData.Entries.Count > _collapsedEntryLimit;
+        overflowSlot.gameObject.SetActive(showOverflow);
+        if (showOverflow)
+        {
+            overflowSlot.RenderOverflow(
+                currentData.Entries.Count - (_collapsedEntryLimit - 1),
+                (_collapsedEntryLimit - 1) * (_slotSize + _columnGap),
+                0,
+                _slotSize
+            );
+            overflowSlot.transform.SetAsLastSibling();
+        }
+
+        int contentHeight = rowCount * _slotSize + Math.Max(0, rowCount - 1) * _rowGap;
+        entriesScrollArea.SetContentHeight(contentHeight, _slotSize + _rowGap, resetScroll);
     }
 
     /// <summary>
-    /// Instantiates enough reusable slots for the visible page.
+    /// Instantiates enough reusable slots for the current presentation.
     /// </summary>
-    /// <param name="count">The required number of slots.</param>
+    /// <param name="count">The required number of entity slots.</param>
     private void EnsureSlotCount(int count)
     {
         while (slots.Count < count)
         {
-            IdleBarSlotView slot = Instantiate(slotTemplate, transform);
+            IdleBarSlotView slot = Instantiate(slotTemplate, entriesScrollArea.ContentRoot);
             slot.gameObject.name = $"AvailabilitySlot{slots.Count + 1}";
             slot.Selected += HandleSlotSelected;
-            slot.UntrackRequested += HandleSlotUntrackRequested;
+            slot.ContextRequested += HandleSlotContextRequested;
+            slot.Hovered += HandleSlotHovered;
+            slot.HoverCleared += HandleSlotHoverCleared;
+            slot.DragCandidateRequested += HandleSlotDragCandidateRequested;
+            slot.DragCandidateReleased += HandleEntryDragEnded;
             slots.Add(slot);
         }
     }
 
     /// <summary>
-    /// Returns the current one- or two-row page capacity.
-    /// </summary>
-    /// <returns>The number of entries that fit in the current presentation.</returns>
-    private int GetVisibleCapacity()
-    {
-        return columns * (pointerOverShelf ? _maximumRows : 1);
-    }
-
-    /// <summary>
-    /// Reveals the complete shelf while any of its interactive regions are hovered.
+    /// Applies the expanded state while preserving child-to-child pointer transitions.
     /// </summary>
     /// <param name="pointerOver">Whether the pointer is over the shelf.</param>
     private void SetPointerOverShelf(bool pointerOver)
     {
-        bool hoverChanged = pointerOverShelf != pointerOver;
         hoverExitPending = false;
+        if (pointerOverShelf == pointerOver)
+            return;
+
         pointerOverShelf = pointerOver;
-        if (hoverChanged)
-            RenderVisiblePage();
-        else
-            UpdateShelfPresentation();
-    }
-
-    /// <summary>
-    /// Defers the second-row concealment so moving between portraits does not flicker.
-    /// </summary>
-    private void RequestPointerExit()
-    {
-        hoverExitPending = true;
-    }
-
-    /// <summary>
-    /// Updates hover-only paging feedback.
-    /// </summary>
-    private void UpdateShelfPresentation()
-    {
-        if (currentData == null || currentData.Entries.Count == 0)
-            return;
-
-        int capacity = Mathf.Max(1, GetVisibleCapacity());
-        bool paged = currentData.Entries.Count > capacity;
-        pageTextField.gameObject.SetActive(pointerOverShelf && paged);
-        if (!paged)
-            return;
-
-        pageTextField.transform.SetAsLastSibling();
-        int maximumStart = currentData.Entries.Count - capacity;
-        int pageCount = Mathf.CeilToInt((float)maximumStart / columns) + 1;
-        int page = Mathf.CeilToInt((float)firstVisibleIndex / columns) + 1;
-        pageTextField.text = $"{page}/{pageCount}";
-        SetSourceRect(
-            pageTextField.rectTransform,
-            Mathf.RoundToInt(shelfHitArea.rectTransform.anchoredPosition.x) + 2,
-            -Mathf.RoundToInt(shelfHitArea.rectTransform.anchoredPosition.y) + 1,
-            20,
-            8
-        );
+        if (currentData?.Entries.Count > 0)
+            RenderShelf(resetScroll: pointerOver);
     }
 
     /// <summary>
@@ -323,10 +337,34 @@ public sealed class IdleBarView
         pointerOverShelf = false;
         if (shelfHitArea != null)
             shelfHitArea.gameObject.SetActive(false);
-        if (pageTextField != null)
-            pageTextField.gameObject.SetActive(false);
+        if (entriesScrollArea != null)
+            entriesScrollArea.gameObject.SetActive(false);
+        if (overflowSlot != null)
+            overflowSlot.gameObject.SetActive(false);
         foreach (IdleBarSlotView slot in slots)
             slot.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Returns whether two presentations contain the same ordered entities.
+    /// </summary>
+    /// <param name="previous">The previous presentation.</param>
+    /// <param name="next">The next presentation.</param>
+    /// <returns>True when the ordered entity identities match.</returns>
+    private static bool HasSameEntries(IdleBarRenderData previous, IdleBarRenderData next)
+    {
+        if (previous == null || next == null || previous.Entries.Count != next.Entries.Count)
+            return false;
+
+        for (int index = 0; index < previous.Entries.Count; index++)
+        {
+            if (
+                previous.Entries[index].Entity?.InstanceID != next.Entries[index].Entity?.InstanceID
+            )
+                return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -339,12 +377,64 @@ public sealed class IdleBarView
     }
 
     /// <summary>
-    /// Forwards one slot's untracking request through the desktop view boundary.
+    /// Forwards one slot's context-menu request through the desktop view boundary.
     /// </summary>
-    /// <param name="instanceId">The untracked entity identifier.</param>
-    private void HandleSlotUntrackRequested(string instanceId)
+    /// <param name="instanceId">The context-clicked entity identifier.</param>
+    /// <param name="eventData">The source pointer event.</param>
+    private void HandleSlotContextRequested(string instanceId, PointerEventData eventData)
     {
-        EntryUntrackRequested?.Invoke(instanceId);
+        EntryContextRequested?.Invoke(instanceId, eventData);
+    }
+
+    /// <summary>
+    /// Forwards one slot's hover through the desktop view boundary.
+    /// </summary>
+    /// <param name="instanceId">The hovered entity identifier.</param>
+    private void HandleSlotHovered(string instanceId)
+    {
+        EntryHovered?.Invoke(instanceId);
+    }
+
+    /// <summary>
+    /// Forwards one slot's hover exit through the desktop view boundary.
+    /// </summary>
+    /// <param name="instanceId">The entity identifier whose hover ended.</param>
+    private void HandleSlotHoverCleared(string instanceId)
+    {
+        EntryHoverCleared?.Invoke(instanceId);
+    }
+
+    /// <summary>
+    /// Forwards one slot's direct drag candidate through the desktop view boundary.
+    /// </summary>
+    /// <param name="instanceId">The pressed entity identifier.</param>
+    /// <param name="preview">The compact entity drag preview.</param>
+    /// <param name="eventData">The source pointer event.</param>
+    private void HandleSlotDragCandidateRequested(
+        string instanceId,
+        DragPreview preview,
+        PointerEventData eventData
+    )
+    {
+        EntryDragCandidateRequested?.Invoke(instanceId, preview, eventData);
+    }
+
+    /// <summary>
+    /// Forwards direct item-drag movement through the desktop view boundary.
+    /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
+    private void HandleEntryDragMoved(PointerEventData eventData)
+    {
+        EntryDragMoved?.Invoke(eventData);
+    }
+
+    /// <summary>
+    /// Forwards a completed direct item drag or released candidate.
+    /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
+    private void HandleEntryDragEnded(PointerEventData eventData)
+    {
+        EntryDragEnded?.Invoke(eventData);
     }
 
     /// <summary>

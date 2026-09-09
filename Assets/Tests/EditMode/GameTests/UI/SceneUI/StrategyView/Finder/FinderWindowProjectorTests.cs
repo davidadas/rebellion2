@@ -225,6 +225,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
+        public void CreateRenderData_OpponentSpecialForcesTab_UsesOpponentSpecialForcesBackground()
+        {
+            FinderWindowSession session = new FinderWindowSession(_window, FinderMode.Personnel);
+            List<FinderWindowTab> tabs = CreateTabs(FinderMode.Personnel);
+            session.SelectPanel(true);
+            session.SelectTab(1);
+            session.SetProjection(tabs, Array.Empty<FinderWindowRow>());
+            FinderWindowTheme opponentTheme = _uiContext
+                .GetTheme(_opponentFactionId)
+                .StrategyWindows.Finder;
+
+            FinderWindowRenderData data = FinderWindowProjector.CreateRenderData(
+                _uiContext,
+                _window,
+                false,
+                session,
+                tabs
+            );
+
+            Assert.AreSame(
+                _uiContext.GetTexture(opponentTheme.SpecialForcesFinderBackgroundImagePath),
+                data.Frame.BackgroundTexture
+            );
+        }
+
+        [Test]
         public void CreateRenderData_UpperButtonLayout_OmitsButtonStrip()
         {
             FinderWindowSession session = new FinderWindowSession(_window, FinderMode.Personnel);

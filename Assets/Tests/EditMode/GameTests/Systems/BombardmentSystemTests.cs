@@ -594,6 +594,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(20, secondPlanet.GetPopularSupport("alliance"));
             Assert.AreEqual(1, result.Events.OfType<OfficerInjuredResult>().Count());
             Assert.AreEqual(1, result.Events.OfType<OfficerKilledResult>().Count());
+            Assert.IsEmpty(result.Events.OfType<OfficerAssassinatedResult>());
         }
 
         [Test]

@@ -81,6 +81,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void RefreshMovementBounds_ChangedBounds_ReappliesMovementBoundsToManager()
+        {
+            SourceRectLayout replacementBounds = new SourceRectLayout
+            {
+                X = 127,
+                Y = 41,
+                Width = 693,
+                Height = 349,
+            };
+            _placements.WindowBounds = replacementBounds;
+            Vector2Int windowSize = new Vector2Int(100, 80);
+
+            _controller.RefreshMovementBounds();
+
+            Assert.AreEqual(
+                new Vector2Int(replacementBounds.X, replacementBounds.Y),
+                _windowManager.ClampPosition(int.MinValue, int.MinValue, windowSize)
+            );
+            Assert.AreEqual(
+                new Vector2Int(
+                    replacementBounds.X + replacementBounds.Width - windowSize.x,
+                    replacementBounds.Y + replacementBounds.Height - windowSize.y
+                ),
+                _windowManager.ClampPosition(int.MaxValue, int.MaxValue, windowSize)
+            );
+        }
+
+        [Test]
         public void GetSectorWindowPosition_ConfiguredSlots_ReturnsAuthoredPositions()
         {
             Vector2Int left = _controller.GetSectorWindowPosition(SectorWindowPositions.Left);

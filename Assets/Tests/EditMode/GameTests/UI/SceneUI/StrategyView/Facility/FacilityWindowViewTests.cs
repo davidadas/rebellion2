@@ -310,8 +310,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             relay.OnPointerClick(eventData);
             relay.OnDrop(eventData);
 
-            Assert.AreEqual((int)FacilityWindowTab.Shipyards, pressedIndex);
-            Assert.AreEqual((int)FacilityWindowTab.Shipyards, releasedIndex);
+            Assert.AreEqual(0, pressedIndex);
+            Assert.AreEqual(0, releasedIndex);
             Assert.AreEqual(2, releasedCount);
         }
 
@@ -390,7 +390,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             bool foundMissing = _view.TryGetInventoryItemIndex(null, out int missingIndex);
 
             Assert.IsTrue(foundCard);
-            Assert.AreEqual((int)FacilityWindowTab.Shipyards, cardIndex);
+            Assert.AreEqual(0, cardIndex);
             Assert.IsTrue(foundItem);
             Assert.AreEqual(0, itemIndex);
             Assert.IsFalse(foundMissing);

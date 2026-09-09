@@ -49,7 +49,8 @@ public sealed class ConstructionOrderController
     )
     {
         Faction faction = GetFaction(playerFactionId);
-        ManufacturingType? manufacturingType = GetManufacturingType(manufacturingTab);
+        ManufacturingType? manufacturingType =
+            FacilityManufacturingLaneCatalog.GetManufacturingType(manufacturingTab);
         if (faction == null || !manufacturingType.HasValue)
             return Array.Empty<IManufacturable>();
 
@@ -157,22 +158,6 @@ public sealed class ConstructionOrderController
     {
         return getManufacturingSystem()
             .StartManufacturing(producer, selected, destination, buildCount, playerFactionId);
-    }
-
-    /// <summary>
-    /// Maps an authored construction panel to its manufacturing category.
-    /// </summary>
-    /// <param name="manufacturingTab">The manufacturing facility tab.</param>
-    /// <returns>The matching manufacturing category, or null for an unknown panel.</returns>
-    public static ManufacturingType? GetManufacturingType(FacilityWindowTab manufacturingTab)
-    {
-        return manufacturingTab switch
-        {
-            FacilityWindowTab.Shipyards => ManufacturingType.Ship,
-            FacilityWindowTab.Training => ManufacturingType.Troop,
-            FacilityWindowTab.Construction => ManufacturingType.Building,
-            _ => null,
-        };
     }
 
     /// <summary>
