@@ -146,13 +146,15 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
-            AITestSceneBuilder.AddPlanet(
+            Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
                 system,
                 "resource-world",
                 empire.InstanceID,
                 rawResourceNodes: 4
             );
+            AddResourceFacilities(game, planet, 2);
+            empire.RefinedMaterialStockpile = 100;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
@@ -160,6 +162,31 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(
                 demands.Any(demand => demand.Kind is AIDemandKind.Mine or AIDemandKind.Refinery)
             );
+        }
+
+        [Test]
+        public void Generate_WithProjectedRefinedMaterialsNearReserve_AddsEconomyDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            empire.Settings.RefinementMultiplier = 10;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "resource-world",
+                empire.InstanceID,
+                rawResourceNodes: 4
+            );
+            AddResourceFacilities(game, planet, 2);
+            empire.RefinedMaterialStockpile = 7;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.Mine));
+            Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.Refinery));
         }
 
         [Test]
@@ -389,8 +416,7 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.IsTrue(
                 demands.Any(demand =>
-                    demand.Kind == AIDemandKind.Shipyard
-                    && demand.DestinationPlanet == planet
+                    demand.Kind == AIDemandKind.Shipyard && demand.DestinationPlanet == planet
                 )
             );
         }
@@ -830,8 +856,7 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.IsTrue(
                 demands.Any(item =>
-                    item.Kind == AIDemandKind.TrainingFacility
-                    && item.DestinationPlanet == hub
+                    item.Kind == AIDemandKind.TrainingFacility && item.DestinationPlanet == hub
                 )
             );
         }
@@ -3099,6 +3124,33 @@ namespace Rebellion.Tests.AI.Planners
                 fleet
             );
             return fleet;
+        }
+
+        /// <summary>
+        /// Adds matching completed mines and refineries to a planet.
+        /// </summary>
+        /// <param name="game">The game containing the planet.</param>
+        /// <param name="planet">The planet receiving the facilities.</param>
+        /// <param name="count">The number of each facility type to add.</param>
+        private static void AddResourceFacilities(GameRoot game, Planet planet, int count)
+        {
+            for (int index = 0; index < count; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"mine-{index}",
+                    BuildingType.Mine,
+                    ManufacturingType.None
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"refinery-{index}",
+                    BuildingType.Refinery,
+                    ManufacturingType.None
+                );
+            }
         }
 
         /// <summary>

@@ -92,7 +92,9 @@ namespace Rebellion.Systems
             faction.RefinedMaterialStockpile = ServicePendingMaterialRequests(
                 faction.PendingRefinedMaterialFacilityIDs,
                 faction.RefinedMaterialStockpile,
-                facilityId => GetPendingProductionFacility(faction, facilityId)
+                facilityId => GetPendingProductionFacility(faction, facilityId),
+                facility =>
+                    ManufacturingSystem.GetRefinedMaterialReserveFloor(_game, faction, facility)
             );
         }
 
@@ -102,20 +104,30 @@ namespace Rebellion.Systems
         /// <param name="pendingFacilityIDs">The ordered pending facility identifiers.</param>
         /// <param name="stockpile">The available material count.</param>
         /// <param name="resolveFacility">Resolves a pending identifier to an eligible facility.</param>
+        /// <param name="getMinimumStockpile">Returns the stockpile floor for a resolved facility.</param>
         /// <returns>The material count remaining after pending requests are serviced.</returns>
         private static int ServicePendingMaterialRequests(
             List<string> pendingFacilityIDs,
             int stockpile,
-            Func<string, Building> resolveFacility
+            Func<string, Building> resolveFacility,
+            Func<Building, int> getMinimumStockpile = null
         )
         {
-            while (pendingFacilityIDs.Count > 0 && stockpile > 0)
+            int requestCount = pendingFacilityIDs.Count;
+            while (requestCount-- > 0 && pendingFacilityIDs.Count > 0 && stockpile > 0)
             {
                 string facilityId = pendingFacilityIDs[0];
                 Building facility = resolveFacility(facilityId);
                 pendingFacilityIDs.RemoveAt(0);
                 if (facility == null)
                     continue;
+
+                int minimumStockpile = Math.Max(0, getMinimumStockpile?.Invoke(facility) ?? 0);
+                if (stockpile <= minimumStockpile)
+                {
+                    pendingFacilityIDs.Add(facilityId);
+                    continue;
+                }
 
                 stockpile--;
                 facility.ProductionInputReserved = true;

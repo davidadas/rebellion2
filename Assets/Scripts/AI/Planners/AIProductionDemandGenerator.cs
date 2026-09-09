@@ -1613,6 +1613,8 @@ namespace Rebellion.AI.Planners
         {
             return context.Assessment.PendingRawMaterialRequestCount > 0
                 || context.Assessment.PendingRefinedMaterialRequestCount > 0
+                || GetProjectedRefinedMaterialPercent(context)
+                    <= context.Game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
                 || context.Assessment.ProjectedMaintenanceHeadroom
                     < context.Game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction;
         }
@@ -1960,9 +1962,57 @@ namespace Rebellion.AI.Planners
             double pressure = GetBasePressure(baseDemandPercent, deficit, targetCount);
 
             if (kind is AIDemandKind.Mine or AIDemandKind.Refinery)
+            {
                 pressure += GetEconomyMaintenancePressure(context);
+                pressure += GetEconomyRefinedMaterialPressure(context);
+                return pressure;
+            }
 
             return ClampPressure(pressure);
+        }
+
+        /// <summary>
+        /// Returns extra economy pressure as uncommitted refined materials approach the reserve.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The refined-material economy pressure.</returns>
+        private double GetEconomyRefinedMaterialPressure(AITurnContext context)
+        {
+            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
+            int reservePercent = Math.Max(0, config.RefinedMaterialReservePercent);
+            int warningPercent = Math.Max(
+                reservePercent,
+                config.RefinedMaterialEconomyWarningPercent
+            );
+            int projectedPercent = GetProjectedRefinedMaterialPercent(context);
+            if (projectedPercent >= warningPercent)
+                return 0;
+
+            int pressureRange = Math.Max(1, warningPercent - reservePercent);
+            double urgency = Math.Min(
+                1,
+                Math.Max(0, warningPercent - projectedPercent) / (double)pressureRange
+            );
+            return Math.Max(0, config.RefinedMaterialEconomyPressureWeight) * urgency;
+        }
+
+        /// <summary>
+        /// Returns projected uncommitted refined materials as a percentage of supply.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The projected refined-material percentage.</returns>
+        private int GetProjectedRefinedMaterialPercent(AITurnContext context)
+        {
+            long projectedStockpile = Math.Max(
+                0,
+                (long)context.Assessment.RefinedMaterialStockpile
+                    - context.Assessment.NearTermRefinedMaterialCommitment
+            );
+            int supply = context.Assessment.RefinedMaterialSupply;
+            if (supply <= 0)
+                return projectedStockpile > 0 ? 100 : 0;
+
+            return (int)Math.Min(100, projectedStockpile * 100 / supply);
         }
 
         /// <summary>

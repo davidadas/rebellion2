@@ -674,6 +674,62 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_AtAIRefinedMaterialReserve_PausesNonEconomyProduction()
+        {
+            Building defense = new Building
+            {
+                InstanceID = "DEFENSE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 2,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Defense,
+            };
+            int reserve =
+                _empire.RefinedMaterialSupply
+                * _game.Config.AI.Selection.RefinedMaterialReservePercent
+                / 100;
+            _empire.RefinedMaterialStockpile = reserve;
+            _manager.Enqueue(_coruscant, defense, _coruscant, ignoreCost: true);
+
+            _manager.ProcessTick();
+
+            Assert.AreEqual(0, defense.ManufacturingProgress);
+            Assert.AreEqual(reserve, _empire.RefinedMaterialStockpile);
+            Assert.IsFalse(_shipyard.ProductionInputReserved);
+            CollectionAssert.AreEqual(
+                new[] { _shipyard.InstanceID },
+                _empire.PendingRefinedMaterialFacilityIDs
+            );
+        }
+
+        [Test]
+        public void ProcessTick_AtPlayerRefinedMaterialReserve_ContinuesProduction()
+        {
+            _empire.PlayerID = "PLAYER1";
+            Building defense = new Building
+            {
+                InstanceID = "DEFENSE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 2,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Defense,
+            };
+            int reserve =
+                _empire.RefinedMaterialSupply
+                * _game.Config.AI.Selection.RefinedMaterialReservePercent
+                / 100;
+            _empire.RefinedMaterialStockpile = reserve;
+            _manager.Enqueue(_coruscant, defense, _coruscant, ignoreCost: true);
+
+            _manager.ProcessTick();
+
+            Assert.AreEqual(1, defense.ManufacturingProgress);
+            Assert.AreEqual(reserve - 1, _empire.RefinedMaterialStockpile);
+        }
+
+        [Test]
         public void ProcessTick_AvailableRefinedMaterial_IsConsumedPerFacilityCycle()
         {
             _empire.RefinedMaterialStockpile = 1;

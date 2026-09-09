@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Phases
@@ -25,6 +26,7 @@ namespace Rebellion.AI.Phases
         >(StringComparer.Ordinal);
         private int _selectedProductionFacilityMaintenance;
         private int _selectedMaintenanceCost;
+        private long _selectedRefinedMaterialCommitment;
 
         /// <summary>
         /// Selects a valid proposal option and reserves the resources it consumes.
@@ -75,6 +77,7 @@ namespace Rebellion.AI.Phases
                 _claimedKeys.Add(claimKey);
 
             ReserveProducerCapacity(proposal);
+            _selectedRefinedMaterialCommitment += GetRefinedMaterialCommitment(proposal);
             int maintenanceCost = GetMaintenanceCost(proposal);
             _selectedMaintenanceCost += maintenanceCost;
             if (
@@ -203,10 +206,7 @@ namespace Rebellion.AI.Phases
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to inspect.</param>
         /// <returns>True when the configured reserve must be preserved.</returns>
-        private static bool IsBlockedByRefinedMaterialReserve(
-            AITurnContext context,
-            AIProposal proposal
-        )
+        private bool IsBlockedByRefinedMaterialReserve(AITurnContext context, AIProposal proposal)
         {
             if (
                 proposal is not AIManufactureProposal manufactureProposal
@@ -216,7 +216,27 @@ namespace Rebellion.AI.Phases
 
             int reservePercent = context.Game.Config.AI.Selection.RefinedMaterialReservePercent;
             long reserve = (long)context.Assessment.RefinedMaterialSupply * reservePercent / 100;
-            return context.Assessment.RefinedMaterialStockpile < reserve;
+            long projectedStockpile =
+                (long)context.Assessment.RefinedMaterialStockpile
+                - context.Assessment.NearTermRefinedMaterialCommitment
+                - _selectedRefinedMaterialCommitment
+                - GetRefinedMaterialCommitment(proposal);
+            return projectedStockpile < reserve;
+        }
+
+        /// <summary>
+        /// Returns the refined materials required to complete a production proposal.
+        /// </summary>
+        /// <param name="proposal">The proposal to inspect.</param>
+        /// <returns>The proposal's refined-material commitment.</returns>
+        private static long GetRefinedMaterialCommitment(AIProposal proposal)
+        {
+            if (proposal is not AIManufactureProposal manufactureProposal)
+                return 0;
+
+            IManufacturable product = manufactureProposal.Product?.GetReference();
+            return (long)Math.Max(0, product?.GetConstructionCost() ?? 0)
+                * Math.Max(0, manufactureProposal.GetManufacturingCount());
         }
 
         /// <summary>

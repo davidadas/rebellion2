@@ -78,15 +78,7 @@ namespace Rebellion.AI.Planners.Demand
 
         // Reserve Policy.
         public bool CanUseRefinedMaterialReserve =>
-            Kind
-                is AIDemandKind.Mine
-                    or AIDemandKind.Refinery
-                    or AIDemandKind.FleetCapitalShip
-                    or AIDemandKind.FleetSeedCapitalShip
-                    or AIDemandKind.ColonizationFleetSeedCapitalShip
-                    or AIDemandKind.FleetStarfighter
-                    or AIDemandKind.FleetRegiment
-                    or AIDemandKind.GarrisonRegimentReserve;
+            Kind is AIDemandKind.Mine or AIDemandKind.Refinery;
 
         public bool UsesDefensiveReserve =>
             Kind

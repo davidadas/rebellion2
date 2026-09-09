@@ -725,61 +725,6 @@ public static class HeadlessSimulationRunner
         summary.SelectedProductionMaintenanceCost = selected.Sum(proposal =>
             proposal.GetMaintenanceCost()
         );
-        int allocatedCapitalMaintenance = IntegerMath.ScaleByPercent(
-            context.Assessment.MaintenanceCapacity,
-            game.Config.AI.Selection.CapitalMaintenanceAllocationPercent
-        );
-        summary.CapitalShipMaintenanceTarget = IntegerMath.ScaleByPercent(
-            allocatedCapitalMaintenance,
-            game.Config.AI.Selection.CapitalMaintenanceSafetyPercent
-        );
-        summary.CommittedCapitalShipMaintenance = faction
-            .GetOwnedUnitsByType<CapitalShip>()
-            .Where(ship =>
-                ship.ManufacturingStatus
-                    is ManufacturingStatus.Complete
-                        or ManufacturingStatus.Building
-            )
-            .Sum(ship => ship.MaintenanceCost);
-        HashSet<AIManufactureProposal> selectedSet = new HashSet<AIManufactureProposal>(selected);
-        float minimumSelectableScore = game.Config.AI.Selection.MinimumSelectableScore;
-        long refinedMaterialReserve =
-            (long)context.Assessment.RefinedMaterialSupply
-            * game.Config.AI.Selection.RefinedMaterialReservePercent
-            / 100;
-        summary.ProductionPlanningByDemandKind = demands
-            .GroupBy(demand => (demand.Kind, demand.CapitalShipRole))
-            .OrderBy(group => group.Key.Kind)
-            .ThenBy(group => group.Key.CapitalShipRole)
-            .Select(group =>
-            {
-                List<AIManufactureProposal> kindProposals = proposals
-                    .Where(proposal =>
-                        proposal.Demand.Kind == group.Key.Kind
-                        && proposal.Demand.CapitalShipRole == group.Key.CapitalShipRole
-                    )
-                    .ToList();
-                return new ProductionPlanningDemandKindSummary
-                {
-                    DemandKind = group.Key.Kind.ToString(),
-                    CapitalShipRole = group.Key.CapitalShipRole.ToString(),
-                    DemandCount = group.Count(),
-                    DemandQuantity = group.Sum(demand => demand.QuantityNeeded),
-                    ProposalCount = kindProposals.Count,
-                    AboveMinimumScoreCount = kindProposals.Count(proposal =>
-                        proposal.HasScore && proposal.Score > minimumSelectableScore
-                    ),
-                    StructurallySelectableCount = kindProposals.Count(proposal =>
-                        proposal.CanSelect(context)
-                    ),
-                    RefinedReserveBlockedCount = kindProposals.Count(proposal =>
-                        proposal.Demand.CanUseRefinedMaterialReserve == false
-                        && context.Assessment.RefinedMaterialStockpile < refinedMaterialReserve
-                    ),
-                    SelectedCount = kindProposals.Count(selectedSet.Contains),
-                };
-            })
-            .ToArray();
         return summary;
     }
 
@@ -1610,9 +1555,6 @@ public static class HeadlessSimulationRunner
         public int BuildingProductionProposalCount;
         public int SelectedBuildingProductionProposalCount;
         public int SelectedProductionMaintenanceCost;
-        public int CapitalShipMaintenanceTarget;
-        public int CommittedCapitalShipMaintenance;
-        public ProductionPlanningDemandKindSummary[] ProductionPlanningByDemandKind;
         public ConstructionFacilityExpansionSimulationSummary ConstructionFacilityExpansion;
         public TroopProductionSimulationSummary TroopProduction;
         public TroopReinforcementPackageSimulationSummary TroopReinforcementPackages;
@@ -1626,20 +1568,6 @@ public static class HeadlessSimulationRunner
         public ProductionFacilityPlanetSummary[] ProductionFacilityPlanets;
         public CurrentIdlePlanetSummary[] CurrentIdlePlanets;
         public FleetSimulationSummary[] Fleets;
-    }
-
-    [Serializable]
-    private sealed class ProductionPlanningDemandKindSummary
-    {
-        public string DemandKind;
-        public string CapitalShipRole;
-        public int DemandCount;
-        public int DemandQuantity;
-        public int ProposalCount;
-        public int AboveMinimumScoreCount;
-        public int StructurallySelectableCount;
-        public int RefinedReserveBlockedCount;
-        public int SelectedCount;
     }
 
     [Serializable]

@@ -158,13 +158,15 @@ namespace Rebellion.Game.Factions
         /// Reserves one refined material for a facility or queues its request in arrival order.
         /// </summary>
         /// <param name="facility">The facility requesting refined material.</param>
+        /// <param name="minimumStockpile">The stockpile amount that must remain unspent.</param>
         /// <returns>True when the material is reserved immediately.</returns>
-        public bool RequestRefinedMaterial(Building facility)
+        public bool RequestRefinedMaterial(Building facility, int minimumStockpile = 0)
         {
             return RequestMaterial(
                 facility,
                 ref _refinedMaterialStockpile,
-                PendingRefinedMaterialFacilityIDs
+                PendingRefinedMaterialFacilityIDs,
+                minimumStockpile
             );
         }
 
@@ -174,11 +176,13 @@ namespace Rebellion.Game.Factions
         /// <param name="facility">The facility requesting material.</param>
         /// <param name="stockpile">The stockpile that supplies the request.</param>
         /// <param name="pendingFacilityIDs">The pending request queue for the material.</param>
+        /// <param name="minimumStockpile">The stockpile amount that must remain unspent.</param>
         /// <returns>True when the facility already has or immediately receives its material.</returns>
         private static bool RequestMaterial(
             Building facility,
             ref int stockpile,
-            List<string> pendingFacilityIDs
+            List<string> pendingFacilityIDs,
+            int minimumStockpile = 0
         )
         {
             if (facility == null || string.IsNullOrEmpty(facility.InstanceID))
@@ -187,7 +191,7 @@ namespace Rebellion.Game.Factions
             if (facility.ProductionInputReserved)
                 return true;
 
-            if (stockpile > 0)
+            if (stockpile > Math.Max(0, minimumStockpile))
             {
                 stockpile--;
                 facility.ProductionInputReserved = true;

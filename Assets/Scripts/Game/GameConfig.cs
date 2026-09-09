@@ -239,8 +239,8 @@ namespace Rebellion.Game
             public int LocalDuplicatePenaltyPerSelection { get; set; }
             public int PreferredStarfighterTypeCountPerFleet { get; set; }
             public int PreferredRegimentTypeCountPerDestination { get; set; }
-            public int CapitalMaintenanceAllocationPercent { get; set; } = 100;
-            public int CapitalMaintenanceSafetyPercent { get; set; } = 100;
+            public int CapitalMaintenanceAllocationPercent { get; set; } = 30;
+            public int CapitalMaintenanceSafetyPercent { get; set; } = 90;
             public int StarfighterEscortWeight { get; set; }
             public int StarfighterInterceptorWeight { get; set; }
             public int StarfighterBomberWeight { get; set; }
@@ -253,6 +253,9 @@ namespace Rebellion.Game
             public int RegimentGarrisonDefenseBoost { get; set; }
             public int RegimentFleetAttackBoost { get; set; }
             public int RefinedMaterialReservePercent { get; set; } = 20;
+            public int RefinedMaterialEconomyWarningPercent { get; set; } = 40;
+            public int RefinedMaterialEconomyPressureWeight { get; set; } = 100;
+            public int RefinedMaterialCommitmentHorizonTicks { get; set; } = 25;
             public int MinimumMaintenanceHeadroomAfterProduction { get; set; } = 200;
             public int MaintenanceHeadroomHardFloor { get; set; } = 0;
             public int MaintenanceHeadroomPenaltyWeight { get; set; }

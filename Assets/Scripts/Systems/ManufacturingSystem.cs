@@ -1046,7 +1046,7 @@ namespace Rebellion.Systems
         /// <param name="faction">The owning faction.</param>
         /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
         /// <param name="cycleIncrement">The production progress available this tick.</param>
-        private static void AdvanceProductionFacility(
+        private void AdvanceProductionFacility(
             Building facility,
             Faction faction,
             bool hasQueuedItems,
@@ -1061,7 +1061,8 @@ namespace Rebellion.Systems
 
             if (!facility.ProductionInputReserved)
             {
-                if (!hasQueuedItems || !faction.RequestRefinedMaterial(facility))
+                int reserve = GetRefinedMaterialReserveFloor(_game, faction, facility);
+                if (!hasQueuedItems || !faction.RequestRefinedMaterial(facility, reserve))
                     return;
             }
 
@@ -1088,7 +1089,7 @@ namespace Rebellion.Systems
         /// <param name="facilities">The facilities whose ready points were distributed.</param>
         /// <param name="faction">The faction supplying refined material.</param>
         /// <param name="hasQueuedItems">Whether work remains after point distribution.</param>
-        private static void ReserveInputsForSpentProductionPoints(
+        private void ReserveInputsForSpentProductionPoints(
             List<Building> facilities,
             Faction faction,
             bool hasQueuedItems
@@ -1100,8 +1101,46 @@ namespace Rebellion.Systems
             foreach (Building facility in facilities)
             {
                 if (!facility.ProductionPointReady && !facility.ProductionInputReserved)
-                    faction.RequestRefinedMaterial(facility);
+                {
+                    int reserve = GetRefinedMaterialReserveFloor(_game, faction, facility);
+                    faction.RequestRefinedMaterial(facility, reserve);
+                }
             }
+        }
+
+        /// <summary>
+        /// Returns the refined-material floor applied to a production facility.
+        /// </summary>
+        /// <param name="game">The current game.</param>
+        /// <param name="faction">The faction supplying the material.</param>
+        /// <param name="facility">The requesting production facility.</param>
+        /// <returns>The minimum stockpile preserved before granting the request.</returns>
+        internal static int GetRefinedMaterialReserveFloor(
+            GameRoot game,
+            Faction faction,
+            Building facility
+        )
+        {
+            if (game?.Config?.AI == null || faction?.IsAIControlled() != true)
+                return 0;
+
+            Planet planet = facility?.GetParent() as Planet;
+            if (
+                planet != null
+                && planet
+                    .GetManufacturingQueue()
+                    .TryGetValue(facility.ProductionType, out List<IManufacturable> queue)
+                && queue?.FirstOrDefault() is Building building
+                && building.BuildingType is BuildingType.Mine or BuildingType.Refinery
+            )
+                return 0;
+
+            int reservePercent = game.Config.AI.Selection.RefinedMaterialReservePercent;
+            return (int)
+                Math.Min(
+                    int.MaxValue,
+                    (long)faction.RefinedMaterialSupply * Math.Max(0, reservePercent) / 100
+                );
         }
 
         /// <summary>

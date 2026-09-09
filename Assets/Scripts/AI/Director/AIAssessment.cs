@@ -168,6 +168,8 @@ namespace Rebellion.AI.Director
 
         public int RefinedMaterialStockpile { get; }
 
+        public int NearTermRefinedMaterialCommitment { get; }
+
         public int PendingRawMaterialRequestCount { get; }
 
         public int PendingRefinedMaterialRequestCount { get; }
@@ -264,6 +266,7 @@ namespace Rebellion.AI.Director
                     _knownGarrisonedPlanetIds.Add(planet.InstanceID);
             }
             OwnedPlanets = BuildOwnedPlanets();
+            NearTermRefinedMaterialCommitment = GetNearTermRefinedMaterialCommitment();
             EnemyPlanets = BuildEnemyPlanets();
             NeutralPlanets = BuildNeutralPlanets();
             AvailableMissionParticipants = BuildAvailableMissionParticipants();
@@ -2303,6 +2306,44 @@ namespace Rebellion.AI.Director
                 type,
                 () => OwnedPlanets.Sum(planet => GetQueuedProductionWork(planet, type))
             );
+        }
+
+        /// <summary>
+        /// Returns refined materials queued facilities can consume during the planning horizon.
+        /// </summary>
+        /// <returns>The near-term refined-material commitment.</returns>
+        private int GetNearTermRefinedMaterialCommitment()
+        {
+            long commitment = 0;
+            int horizonTicks = Math.Max(
+                0,
+                _context.Game.Config.AI.Selection.RefinedMaterialCommitmentHorizonTicks
+            );
+            foreach (Planet planet in OwnedPlanets)
+            {
+                foreach (
+                    KeyValuePair<
+                        ManufacturingType,
+                        List<IManufacturable>
+                    > entry in planet.GetManufacturingQueue()
+                )
+                {
+                    long queuedWork = entry.Value.Sum(item =>
+                        (long)
+                            Math.Max(
+                                0,
+                                item.GetConstructionCost() - item.GetManufacturingProgress()
+                            )
+                    );
+                    long horizonCapacity = (long)
+                        Math.Ceiling(GetPlanetProductionRate(planet, entry.Key) * horizonTicks);
+                    commitment += Math.Min(queuedWork, Math.Max(0, horizonCapacity));
+                    if (commitment >= int.MaxValue)
+                        return int.MaxValue;
+                }
+            }
+
+            return (int)commitment;
         }
 
         /// <summary>

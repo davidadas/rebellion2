@@ -1069,10 +1069,8 @@ namespace Rebellion.AI.Planners
                 .Sum(capitalShip => capitalShip.MaintenanceCost);
             int budget = Math.Max(0, targetCapitalMaintenance - committedCapitalMaintenance);
 
-            _capitalShipMaintenanceBudget = Math.Min(
-                budget,
-                Math.Max(0, context.Assessment.ProjectedMaintenanceHeadroom)
-            );
+            _capitalShipMaintenanceBudget =
+                context.Assessment.ProjectedMaintenanceHeadroom < budget ? 0 : budget;
             return _capitalShipMaintenanceBudget.Value;
         }
 
