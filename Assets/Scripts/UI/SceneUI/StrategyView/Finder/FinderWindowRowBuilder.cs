@@ -270,9 +270,7 @@ public sealed class FinderWindowRowBuilder
                 seen,
                 null,
                 PlanetIcon.Defense,
-                ownedFaction
-                    ?.GetOwnedUnitsByType<Officer>(includeDisabled: true)
-                    .Where(officer => !officer.IsKilled)
+                ownedFaction?.GetOwnedUnitsByType<Officer>(includeDisabled: true)
             );
         }
 

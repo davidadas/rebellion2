@@ -211,6 +211,90 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void TryStartItemCandidate_DirectEntity_UsesSharedDragFlow()
+        {
+            Officer officer = new Officer();
+            DragPreview preview = new DragPreview(_texture, 20, 30, 2, 3);
+            StrategyDragController controller = CreateController();
+
+            bool accepted = controller.TryStartItemCandidate(
+                officer,
+                preview,
+                _pointerEvent,
+                10,
+                20
+            );
+            StrategyDragEventResult result = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                13,
+                24
+            );
+
+            Assert.IsTrue(accepted);
+            Assert.IsTrue(result.Handled);
+            Assert.IsTrue(result.RenderOverlay);
+            Assert.IsTrue(controller.TryGetOverlay(out Texture texture, out _));
+            Assert.AreSame(_texture, texture);
+        }
+
+        [Test]
+        public void TryCancelDirectItemInteraction_DirectCandidate_ClearsOnlyDirectState()
+        {
+            StrategyDragController controller = CreateController();
+            controller.TryStartItemCandidate(
+                new Officer(),
+                new DragPreview(_texture, 20, 30, 2, 3),
+                _pointerEvent,
+                10,
+                20
+            );
+
+            bool cancelled = controller.TryCancelDirectItemInteraction();
+            StrategyDragEventResult nextMove = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                13,
+                24
+            );
+
+            Assert.IsTrue(cancelled);
+            Assert.IsFalse(controller.HasDirectItemInteraction);
+            Assert.IsFalse(nextMove.Handled);
+        }
+
+        [Test]
+        public void TryCancelDirectItemInteraction_WindowCandidate_PreservesWindowState()
+        {
+            _contextItems = new ISceneNode[] { new Officer() };
+            StrategyDragController controller = CreateController();
+            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
+
+            bool cancelled = controller.TryCancelDirectItemInteraction();
+            StrategyDragEventResult nextMove = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                12,
+                22
+            );
+
+            Assert.IsFalse(cancelled);
+            Assert.IsFalse(controller.HasDirectItemInteraction);
+            Assert.IsTrue(nextMove.Handled);
+        }
+
+        [Test]
+        public void TryCancelDirectItemInteraction_DirectTargeting_CancelsTargeting()
+        {
+            StrategyDragController controller = CreateController();
+            controller.TryStartItemCandidate(new Officer(), null, _pointerEvent, 10, 20);
+            controller.TryHandleItemPointerMove(_pointerEvent, 13, 24);
+
+            bool cancelled = controller.TryCancelDirectItemInteraction();
+
+            Assert.IsTrue(cancelled);
+            Assert.IsFalse(controller.HasDirectItemInteraction);
+            Assert.IsFalse(_targetingController.IsTargeting);
+        }
+
+        [Test]
         public void TryHandleItemPointerMove_DifferentPress_ClearsCandidateWithoutDragging()
         {
             _contextItems = new ISceneNode[] { new Officer() };

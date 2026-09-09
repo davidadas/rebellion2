@@ -79,9 +79,8 @@ internal static class FacilityWindowContextMenuBuilder
             new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
         };
 
-        ManufacturingType? manufacturingType = ConstructionOrderController.GetManufacturingType(
-            manufacturingTab
-        );
+        ManufacturingType? manufacturingType =
+            FacilityManufacturingLaneCatalog.GetManufacturingType(manufacturingTab);
         if (manufacturingType.HasValue)
         {
             commands.Add(
@@ -112,7 +111,7 @@ internal static class FacilityWindowContextMenuBuilder
         bool playerControlsPlanet
     )
     {
-        ManufacturingType? type = ConstructionOrderController.GetManufacturingType(
+        ManufacturingType? type = FacilityManufacturingLaneCatalog.GetManufacturingType(
             manufacturingTab
         );
         return playerControlsPlanet
@@ -133,7 +132,7 @@ internal static class FacilityWindowContextMenuBuilder
         bool playerControlsPlanet
     )
     {
-        ManufacturingType? type = ConstructionOrderController.GetManufacturingType(
+        ManufacturingType? type = FacilityManufacturingLaneCatalog.GetManufacturingType(
             manufacturingTab
         );
         return playerControlsPlanet

@@ -202,6 +202,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         }
 
         [Test]
+        public void DirectCandidate_ValidPreview_MovesWithoutSourceWindow()
+        {
+            Officer officer = CreateOfficer(_playerFactionId);
+            _dropTarget = CreateMissionTarget("destination", _playerFactionId);
+            StrategyWindowItemDragController controller = CreateController();
+            controller.StartCandidate(officer, _preview, 10, 20);
+
+            StrategyWindowItemDragStartResult result = controller.TryStartMoveDragFromCandidate(
+                13,
+                24
+            );
+            bool handled = controller.TryHandleSourceDragPointerUp(null, 50, 60);
+
+            Assert.AreEqual(StrategyWindowItemDragStartResult.SourceDragStarted, result);
+            Assert.IsTrue(handled);
+            Assert.AreEqual(1, _commands.MoveCount);
+            Assert.IsNull(_commands.LastWindow);
+            Assert.AreSame(officer, _commands.LastItems[0]);
+        }
+
+        [Test]
+        public void DirectCandidate_EnemyPlanet_OpensMissionCreation()
+        {
+            Officer officer = CreateOfficer(_playerFactionId);
+            _dropTarget = CreateMissionTarget("destination", "opponent");
+            StrategyWindowItemDragController controller = CreateController();
+            controller.StartCandidate(officer, _preview, 10, 20);
+            controller.TryStartMoveDragFromCandidate(13, 24);
+
+            bool handled = controller.TryHandleSourceDragPointerUp(null, 50, 60);
+
+            Assert.IsTrue(handled);
+            Assert.AreEqual(1, _commands.MissionCount);
+            Assert.IsNull(_commands.LastWindow);
+            Assert.AreSame(officer, _commands.LastItems[0]);
+            Assert.AreEqual(0, _commands.MoveCount);
+        }
+
+        [Test]
         public void TryStartMoveDragFromCandidate_ItemsWithoutPreview_StartsTargeting()
         {
             Officer officer = CreateOfficer(_playerFactionId);

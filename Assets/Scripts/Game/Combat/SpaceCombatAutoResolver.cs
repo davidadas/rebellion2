@@ -971,7 +971,7 @@ namespace Rebellion.Game.Combat
             ];
             private readonly int[] _ionCannons;
             private readonly int[] _laserCannons;
-            private readonly double _laserCannonDamageAgainstCapitalShipsMultiplier;
+            private readonly double _laserCannonCapitalDamageMultiplier;
             private readonly double _maximumHull;
             private readonly double _maximumShields;
             private readonly double[] _maximumArcCharge = new double[
@@ -1028,8 +1028,8 @@ namespace Rebellion.Game.Combat
                 _turbolasers = GetWeaponValues(ship, PrimaryWeaponType.Turbolaser);
                 _laserCannons = GetWeaponValues(ship, PrimaryWeaponType.LaserCannon);
                 _ionCannons = GetWeaponValues(ship, PrimaryWeaponType.IonCannon);
-                _laserCannonDamageAgainstCapitalShipsMultiplier = Math.Max(
-                    config.CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier,
+                _laserCannonCapitalDamageMultiplier = Math.Max(
+                    config.LaserCannonCapitalDamageMultiplier,
                     0
                 );
                 CurrentHull = InitialHull;
@@ -1480,7 +1480,7 @@ namespace Rebellion.Game.Combat
                 if (type == PrimaryWeaponType.IonCannon && targetsFighters)
                     return 0;
                 if (type == PrimaryWeaponType.LaserCannon && !targetsFighters)
-                    return _laserCannonDamageAgainstCapitalShipsMultiplier;
+                    return _laserCannonCapitalDamageMultiplier;
                 return 1;
             }
 

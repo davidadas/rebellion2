@@ -311,7 +311,7 @@ public static class OptionsMenuPrefabBuilder
         {
             "Pause After Enemy Bombardment",
             "Pause on Space Battles",
-            "[Experimental] Show Idle Bar",
+            "Show Idle Bar",
         };
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length + 1];
         rows[0] = autosaveRow;

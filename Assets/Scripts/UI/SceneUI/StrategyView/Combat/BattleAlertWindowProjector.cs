@@ -6,6 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
@@ -546,7 +547,7 @@ internal sealed class BattleAlertWindowProjector
     }
 
     /// <summary>
-    /// Adds system assets and their descendants while excluding fleets.
+    /// Adds system assets and their descendants while excluding fleets and starfighters.
     /// </summary>
     /// <param name="rows">The destination row collection.</param>
     /// <param name="planet">The battle planet.</param>
@@ -562,9 +563,7 @@ internal sealed class BattleAlertWindowProjector
 
         foreach (ISceneNode child in planet.GetChildren())
         {
-            if (child is Fleet || child is Starfighter fighter && IsActiveStarfighter(fighter))
-                continue;
-            if (child is IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete })
+            if (child is Fleet or Starfighter || !ShouldIncludePendingUnit(child))
                 continue;
 
             rows.Add(
@@ -584,9 +583,18 @@ internal sealed class BattleAlertWindowProjector
     /// <returns>True when the squadron is complete, stationary, and has surviving fighters.</returns>
     private static bool IsActiveStarfighter(Starfighter fighter)
     {
-        return fighter.ManufacturingStatus == ManufacturingStatus.Complete
-            && fighter.Movement == null
-            && fighter.CurrentSquadronSize > 0;
+        return ShouldIncludePendingUnit(fighter) && fighter.CurrentSquadronSize > 0;
+    }
+
+    /// <summary>
+    /// Returns whether a scene node belongs in a pending-combat unit list.
+    /// </summary>
+    /// <param name="unit">The candidate battle unit.</param>
+    /// <returns>True when the unit is neither unfinished nor in transit.</returns>
+    private static bool ShouldIncludePendingUnit(ISceneNode unit)
+    {
+        return unit is not IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete }
+            && (unit is not IMovable movable || movable.GetTransitMovement() == null);
     }
 
     /// <summary>
@@ -606,7 +614,7 @@ internal sealed class BattleAlertWindowProjector
 
         foreach (ISceneNode child in node.GetChildren())
         {
-            if (child is IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete })
+            if (!ShouldIncludePendingUnit(child))
                 continue;
 
             rows.Add(

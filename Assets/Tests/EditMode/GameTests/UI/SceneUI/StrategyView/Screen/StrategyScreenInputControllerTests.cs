@@ -375,6 +375,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
+        public void TryCancel_ActiveItemDrag_ClearsTargetingAndOverlay()
+        {
+            _contextItems = new ISceneNode[] { new Officer() };
+            _hasDragPreview = true;
+            PointerEventData eventData = CreatePointerEvent(_window.gameObject);
+            _sourceX = 10;
+            _sourceY = 20;
+            _controller.StartItemDrag(_window, eventData);
+            _sourceX = 40;
+            _sourceY = 50;
+            _controller.OnDrag(eventData);
+
+            bool cancelled = _controller.TryCancel();
+
+            Assert.IsTrue(cancelled);
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsFalse(_dragController.TryGetOverlay(out _, out _));
+            Assert.AreEqual(2, _overlayCount);
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
         public void OnPointerMove_ActiveTargeting_MovesCursor()
         {
             BeginTargeting();

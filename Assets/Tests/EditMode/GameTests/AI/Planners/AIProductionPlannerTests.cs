@@ -835,10 +835,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithFleetDeficit_UsesConfiguredLaserCannonDamageMultiplier()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config
-                .Combat
-                .SpaceCombat
-                .CapitalShipLaserCannonDamageAgainstCapitalShipsMultiplier = 0.75;
+            game.Config.Combat.SpaceCombat.LaserCannonCapitalDamageMultiplier = 0.75;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
