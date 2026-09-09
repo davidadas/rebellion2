@@ -32,7 +32,7 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.IsTrue(settings.PauseAfterEnemyBombardment);
             Assert.IsTrue(settings.PauseWhenSpaceBattleBegins);
-            Assert.IsFalse(settings.ShowIdleBar);
+            Assert.IsTrue(settings.ShowIdleBar);
             Assert.IsTrue(settings.ShowMissionOdds);
 
             settings.PauseAfterEnemyBombardment = false;
@@ -43,7 +43,7 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.IsTrue(settings.PauseAfterEnemyBombardment);
             Assert.IsTrue(settings.PauseWhenSpaceBattleBegins);
-            Assert.IsFalse(settings.ShowIdleBar);
+            Assert.IsTrue(settings.ShowIdleBar);
             Assert.IsTrue(settings.ShowMissionOdds);
         }
 
@@ -56,11 +56,11 @@ namespace Rebellion.Tests.UserSettings
         }
 
         [Test]
-        public void JsonUtility_OmittedIdleBarPreference_DefaultsDisabled()
+        public void JsonUtility_OmittedIdleBarPreference_DefaultsEnabled()
         {
             UserGameplaySettings settings = JsonUtility.FromJson<UserGameplaySettings>("{}");
 
-            Assert.IsFalse(settings.ShowIdleBar);
+            Assert.IsTrue(settings.ShowIdleBar);
         }
 
         [Test]
