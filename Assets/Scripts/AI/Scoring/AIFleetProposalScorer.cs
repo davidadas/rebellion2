@@ -43,7 +43,8 @@ namespace Rebellion.AI.Scoring
 
             return proposal switch
             {
-                AIFleetAttackProposal { Status: FleetOrderStatus.Returning } => 1,
+                AIFleetAttackProposal { Status: FleetOrderStatus.Returning } returnProposal =>
+                    ScoreReturn(context, returnProposal),
                 AIFleetAttackProposal attackProposal => ScoreAttack(
                     context,
                     attackProposal.Fleet,
@@ -68,6 +69,24 @@ namespace Rebellion.AI.Scoring
                 ),
                 _ => 0,
             };
+        }
+
+        /// <summary>
+        /// Gives evacuation absolute precedence while an attack fleet is in hostile territory.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The return proposal to score.</param>
+        /// <returns>A mandatory-order score in hostile territory; otherwise the fallback score.</returns>
+        private static double ScoreReturn(
+            AITurnContext context,
+            AIFleetAttackProposal proposal
+        )
+        {
+            Planet currentPlanet = context.Assessment.GetFleetPlanet(proposal.Fleet);
+            return currentPlanet != null
+                && currentPlanet.GetOwnerInstanceID() != context.Faction.InstanceID
+                ? double.PositiveInfinity
+                : 1;
         }
 
         /// <summary>

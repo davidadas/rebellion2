@@ -124,9 +124,21 @@ namespace Rebellion.AI.Planners
             bool targetCannotBeAttacked =
                 currentPlanet?.InstanceID == targetPlanet.InstanceID
                 && !context.Assessment.CanFleetMakeImmediateAttackProgress(fleet, targetPlanet);
+            if (targetCannotBeAttacked)
+            {
+                proposals.Add(
+                    new AIFleetAttackProposal(
+                        fleet,
+                        order.OrderType,
+                        FleetOrderStatus.Returning,
+                        targetPlanet
+                    )
+                );
+                return;
+            }
+
             bool mayLeaveCampaign =
-                targetCannotBeAttacked
-                || context.Assessment.IsFleetBlockedByTargetShields(fleet, targetPlanet);
+                context.Assessment.IsFleetBlockedByTargetShields(fleet, targetPlanet);
             if (!mayLeaveCampaign)
                 proposals.Add(continuation);
 

@@ -16,7 +16,7 @@ namespace Rebellion.Tests.AI.Scoring
     public class AIFleetProposalScorerTests
     {
         [Test]
-        public void Score_ReturningAttackFleet_ReturnsFallbackScore()
+        public void Score_ReturningAttackFleetInHostileTerritory_ReturnsHighestScore()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -44,7 +44,7 @@ namespace Rebellion.Tests.AI.Scoring
 
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
-            Assert.AreEqual(1, score);
+            Assert.AreEqual(double.PositiveInfinity, score);
         }
 
         [Test]

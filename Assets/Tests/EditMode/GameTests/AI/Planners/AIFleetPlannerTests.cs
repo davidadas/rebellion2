@@ -388,7 +388,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithShieldBlockedAttack_AddsAlternativeTargetOutsideSystem()
+        public void Plan_WithShieldBlockedAttackAtHostileTarget_ReturnsWithoutRetargeting()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector blockedSystem = AITestSceneBuilder.AddSector(game, "blocked-system");
@@ -427,18 +427,9 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(proposal => proposal.Fleet == fleet)
                 .ToList();
 
-            CollectionAssert.Contains(
-                proposals
-                    .Where(proposal => proposal.Status != FleetOrderStatus.Returning)
-                    .Select(proposal => proposal.TargetPlanet.InstanceID),
-                alternativeTarget.InstanceID
-            );
-            Assert.IsTrue(
-                proposals.Any(proposal =>
-                    proposal.Status == FleetOrderStatus.Returning
-                    && proposal.TargetPlanet.InstanceID == blockedTarget.InstanceID
-                )
-            );
+            Assert.AreEqual(1, proposals.Count);
+            Assert.AreEqual(FleetOrderStatus.Returning, proposals[0].Status);
+            Assert.AreEqual(blockedTarget.InstanceID, proposals[0].TargetPlanet.InstanceID);
         }
 
         [Test]
