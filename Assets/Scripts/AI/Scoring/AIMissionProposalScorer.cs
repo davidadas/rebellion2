@@ -146,10 +146,100 @@ namespace Rebellion.AI.Scoring
         )
         {
             return successProbability
-                + context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+                + GetSabotagePriorityBonus(
+                    context,
                     proposal.TargetPlanet,
                     proposal.SelectedTarget as IManufacturable
                 );
+        }
+
+        /// <summary>
+        /// Calculates the configured scoring bonus for a sabotage target.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The target planet.</param>
+        /// <param name="target">The target unit or facility.</param>
+        /// <returns>The target's scoring bonus.</returns>
+        internal static int GetSabotagePriorityBonus(
+            AITurnContext context,
+            Planet planet,
+            IManufacturable target
+        )
+        {
+            GameConfig.AIMissionPlanningConfig config = context?.Game?.Config?.AI?.MissionPlanning;
+            if (config == null || planet == null || target == null)
+                return 0;
+
+            bool isAttackTarget = context.Assessment.IsAttackPreparationTarget(planet);
+            if (target is Building building)
+            {
+                int priorityBonus = config.SabotageInfrastructureBonus;
+                if (IsPlanetaryDefenseBuilding(building))
+                    priorityBonus += config.SabotageDefenseBonus;
+
+                if (building.IsShieldGenerator())
+                    priorityBonus += config.SabotageShieldBonus;
+
+                if (isAttackTarget && IsPlanetaryDefenseBuilding(building))
+                {
+                    priorityBonus +=
+                        config.SabotageAttackTargetBonus + config.SabotageAttackDefenseBonus;
+                }
+
+                return priorityBonus;
+            }
+
+            int unitPriorityBonus = target switch
+            {
+                Regiment when IsGarrisonedAtPlanet(planet, target) =>
+                    config.SabotageGarrisonRegimentBonus
+                        + (
+                            HasOppositionSupportMajority(context, planet)
+                                ? config.SabotageFavoredSupportRegimentBonus
+                                : 0
+                        ),
+                Starfighter when IsGarrisonedAtPlanet(planet, target) =>
+                    config.SabotageGarrisonStarfighterBonus,
+                _ => config.SabotageOtherUnitBonus,
+            };
+            return isAttackTarget
+                ? unitPriorityBonus + config.SabotageAttackTargetBonus
+                : unitPriorityBonus;
+        }
+
+        /// <summary>
+        /// Returns whether the AI faction has more support than the planet's owner.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when opposition support exceeds owner support.</returns>
+        private static bool HasOppositionSupportMajority(AITurnContext context, Planet planet)
+        {
+            string ownerInstanceId = planet?.GetOwnerInstanceID();
+            return !string.IsNullOrEmpty(ownerInstanceId)
+                && context.Assessment.GetFactionPopularSupport(planet)
+                    > planet.GetPopularSupport(ownerInstanceId);
+        }
+
+        /// <summary>
+        /// Returns whether a target is directly stationed on a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="target">The target unit.</param>
+        /// <returns>True when the target is a direct child of the planet.</returns>
+        private static bool IsGarrisonedAtPlanet(Planet planet, IManufacturable target)
+        {
+            return target.GetParent() is Planet parent && parent.InstanceID == planet.InstanceID;
+        }
+
+        /// <summary>
+        /// Returns whether a building contributes to planetary defense.
+        /// </summary>
+        /// <param name="building">The building to inspect.</param>
+        /// <returns>True for shield and weapon facilities.</returns>
+        private static bool IsPlanetaryDefenseBuilding(Building building)
+        {
+            return building?.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon;
         }
 
         /// <summary>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scoring;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -710,7 +711,8 @@ namespace Rebellion.AI.Planners
                 .ThenByDescending(planet =>
                     GetSabotageTargets(context, planet)
                         .Max(target =>
-                            context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+                            AIMissionProposalScorer.GetSabotagePriorityBonus(
+                                context,
                                 planet,
                                 target
                             )
@@ -722,7 +724,7 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns the highest-priority sabotage tier available on a planet.
+        /// Returns eligible sabotage targets in configured priority order.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to evaluate.</param>
@@ -735,16 +737,9 @@ namespace Rebellion.AI.Planners
             if (_sabotageTargets.TryGetValue(planet.InstanceID, out List<IManufacturable> targets))
                 return targets;
 
-            List<IManufacturable> eligibleTargets = GetEligibleSabotageTargets(context, planet)
-                .ToList();
-            AISabotageTargetTier highestPriority = eligibleTargets
-                .Select(AISabotageTargetPolicy.GetTier)
-                .DefaultIfEmpty(AISabotageTargetTier.Infrastructure)
-                .Max();
-            targets = eligibleTargets
-                .Where(target => AISabotageTargetPolicy.GetTier(target) == highestPriority)
+            targets = GetEligibleSabotageTargets(context, planet)
                 .OrderByDescending(target =>
-                    context.StrategicPolicies.SabotageTargets.GetPriorityBonus(planet, target)
+                    AIMissionProposalScorer.GetSabotagePriorityBonus(context, planet, target)
                 )
                 .ThenByDescending(target =>
                     target.GetConstructionCost() + target.GetMaintenanceCost()

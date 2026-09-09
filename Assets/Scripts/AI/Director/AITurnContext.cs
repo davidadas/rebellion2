@@ -26,7 +26,6 @@ namespace Rebellion.AI.Director
         public PlanetaryAssaultSystem PlanetaryAssault { get; }
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
-        internal AIStrategicPolicies StrategicPolicies { get; }
 
         // Turn Output.
         public IReadOnlyList<AIProposal> Proposals => _proposals;
@@ -73,7 +72,6 @@ namespace Rebellion.AI.Director
             Random = random;
             FactionView = factionView;
             Assessment = new AIAssessment(this);
-            StrategicPolicies = new AIStrategicPolicies(this);
         }
 
         /// <summary>

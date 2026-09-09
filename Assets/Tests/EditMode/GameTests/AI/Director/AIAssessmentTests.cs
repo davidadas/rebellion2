@@ -1,6 +1,7 @@
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI.Director;
+using Rebellion.AI.Scoring;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -1106,23 +1107,28 @@ namespace Rebellion.Tests.AI.Director
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            int shieldPriority = context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+            int shieldPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                context,
                 target,
                 shield
             );
-            int batteryPriority = context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+            int batteryPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                context,
                 target,
                 battery
             );
-            int regimentPriority = context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+            int regimentPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                context,
                 target,
                 regiment
             );
-            int starfighterPriority = context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+            int starfighterPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                context,
                 target,
                 starfighter
             );
-            int infrastructurePriority = context.StrategicPolicies.SabotageTargets.GetPriorityBonus(
+            int infrastructurePriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                context,
                 target,
                 shipyard
             );

@@ -507,8 +507,8 @@ namespace Rebellion.Tests.AI.Scoring
             );
 
             double expectedDifference =
-                context.StrategicPolicies.SabotageTargets.GetPriorityBonus(target, firstShield)
-                - context.StrategicPolicies.SabotageTargets.GetPriorityBonus(target, shipyard);
+                AIMissionProposalScorer.GetSabotagePriorityBonus(context, target, firstShield)
+                - AIMissionProposalScorer.GetSabotagePriorityBonus(context, target, shipyard);
 
             Assert.AreEqual(expectedDifference, shieldScore - shipyardScore);
         }

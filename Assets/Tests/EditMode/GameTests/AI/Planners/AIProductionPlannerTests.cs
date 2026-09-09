@@ -1632,6 +1632,41 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithHeadroomBelowCapitalAllocation_SelectsAffordableCapitalShip()
+        {
+            (GameRoot game, Faction empire, Fleet fleet) = CreateCapitalSelectionScene();
+            Regiment regiment = AITestSceneBuilder.CreateRegiment(
+                "maintenance-consuming-regiment",
+                empire.InstanceID
+            );
+            regiment.MaintenanceCost = 80;
+            game.AttachNode(regiment, fleet.GetParent());
+            CapitalShip template = AITestSceneBuilder.CreateCapitalShip(
+                "headroom-affordable-template",
+                empire.InstanceID,
+                combatStrength: 300
+            );
+            template.TypeID = "headroom-affordable";
+            template.MaintenanceCost = 20;
+            template.WeaponRecharge = 10;
+            empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new Technology(template),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item =>
+                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
+                );
+
+            Assert.AreEqual(20, empire.MaintenanceHeadroom);
+            Assert.AreSame(template, proposal.Product.GetReference());
+        }
+
+        [Test]
         public void Plan_WithCapitalShipOneOverMaintenanceBudget_SelectsAffordableCandidate()
         {
             (GameRoot game, Faction empire, Fleet fleet) = CreateCapitalSelectionScene();

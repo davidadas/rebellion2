@@ -239,8 +239,8 @@ namespace Rebellion.Game
             public int LocalDuplicatePenaltyPerSelection { get; set; }
             public int PreferredStarfighterTypeCountPerFleet { get; set; }
             public int PreferredRegimentTypeCountPerDestination { get; set; }
-            public int CapitalMaintenanceAllocationPercent { get; set; } = 30;
-            public int CapitalMaintenanceSafetyPercent { get; set; } = 90;
+            public int CapitalMaintenanceAllocationPercent { get; set; } = 100;
+            public int CapitalMaintenanceSafetyPercent { get; set; } = 100;
             public int StarfighterEscortWeight { get; set; }
             public int StarfighterInterceptorWeight { get; set; }
             public int StarfighterBomberWeight { get; set; }

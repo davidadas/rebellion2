@@ -212,7 +212,7 @@ namespace Rebellion.Tests.AI.Phases
         [TestCase(AIDemandKind.ConstructionFacility, BuildingType.ConstructionFacility)]
         [TestCase(AIDemandKind.Shipyard, BuildingType.Shipyard)]
         [TestCase(AIDemandKind.TrainingFacility, BuildingType.TrainingFacility)]
-        public void Select_WithStrategicFacilityBelowRefinedReserve_SelectsProposal(
+        public void Select_WithStrategicFacilityBelowRefinedReserve_DoesNotSelectProposal(
             AIDemandKind demandKind,
             BuildingType buildingType
         )
@@ -227,7 +227,7 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { proposal }, selected);
+            Assert.IsEmpty(selected);
         }
 
         [Test]

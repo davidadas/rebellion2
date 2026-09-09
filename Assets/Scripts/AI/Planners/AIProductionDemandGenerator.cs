@@ -690,22 +690,26 @@ namespace Rebellion.AI.Planners
             if (productionDemands.Count == 0)
                 return;
 
-            foreach (
-                IGrouping<string, Planet> sector in context
-                    .Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet)
-                    .GroupBy(context.Assessment.GetPlanetSystemId)
-                    .OrderBy(group => group.Key, StringComparer.Ordinal)
-            )
+            List<IGrouping<string, Planet>> sectors = context
+                .Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet)
+                .GroupBy(context.Assessment.GetPlanetSystemId)
+                .OrderBy(group => group.Key, StringComparer.Ordinal)
+                .ToList();
+            int hubTarget =
+                buildingType == BuildingType.Shipyard
+                    ? context.Game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount
+                    : context.Game.Config.AI.Infrastructure.FacilitySectorHubTargetCount;
+            double categoryBalancePressure = GetFacilityCategoryBalancePressure(
+                sectors,
+                buildingType,
+                hubTarget,
+                baseDemandPercent
+            );
+
+            foreach (IGrouping<string, Planet> sector in sectors)
             {
                 List<Planet> sectorPlanets = sector
-                    .Where(planet =>
-                        GetAvailableFacilityExpansionEnergy(context, planet) > 0
-                        && (
-                            planet.GetParentOfType<PlanetSector>()?.SectorType
-                                == PlanetSectorType.OuterRim
-                            || context.StrategicPolicies.ProductionSites.IsPreferred(planet)
-                        )
-                    )
+                    .Where(planet => GetAvailableFacilityExpansionEnergy(context, planet) > 0)
                     .ToList();
                 if (sectorPlanets.Count == 0)
                     continue;
@@ -726,47 +730,14 @@ namespace Rebellion.AI.Planners
                 if (rankedPlanets.Count == 0)
                     continue;
 
-                int largestFacilityCount = sectorPlanets.Max(planet =>
-                    planet.GetTotalBuildingTypeCount(buildingType)
-                );
-                Planet hub = rankedPlanets.First(planet =>
-                    planet.GetTotalBuildingTypeCount(buildingType) == largestFacilityCount
-                );
-                int hubTarget =
-                    buildingType == BuildingType.Shipyard
-                        ? context.Game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount
-                        : context.Game.Config.AI.Infrastructure.FacilitySectorHubTargetCount;
-                double coverageBonus =
-                    largestFacilityCount < hubTarget
-                        ? context.Game.Config.AI.Infrastructure.FacilitySectorCoveragePressureBonus
-                        : 0;
-
-                AddSectorFacilityDemand(
-                    context,
-                    demands,
-                    sectorDemand,
-                    kind,
-                    buildingType,
-                    hub,
-                    hubTarget,
-                    baseDemandPercent,
-                    coverageBonus
-                        + context
-                            .Game
-                            .Config
-                            .AI
-                            .Infrastructure
-                            .FacilitySectorPrimaryHubPressureBonus
-                );
-
-                foreach (
-                    Planet establishedPlanet in rankedPlanets.Where(planet =>
-                        planet != hub
-                        && planet.GetTotalBuildingTypeCount(buildingType) > 0
-                        && planet.GetTotalBuildingTypeCount(buildingType)
-                            < context.Game.Config.AI.Infrastructure.FacilitySectorHubTargetCount
-                    )
-                )
+                List<Planet> establishedSites = rankedPlanets
+                    .Where(planet => planet.GetTotalBuildingTypeCount(buildingType) > 0)
+                    .OrderByDescending(planet => planet.GetTotalBuildingTypeCount(buildingType))
+                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                    .ToList();
+                Planet hub = establishedSites.FirstOrDefault() ?? rankedPlanets[0];
+                int hubCount = hub.GetTotalBuildingTypeCount(buildingType);
+                if (hubCount < hubTarget)
                 {
                     AddSectorFacilityDemand(
                         context,
@@ -774,13 +745,82 @@ namespace Rebellion.AI.Planners
                         sectorDemand,
                         kind,
                         buildingType,
-                        establishedPlanet,
-                        context.Game.Config.AI.Infrastructure.FacilitySectorSecondaryTargetCount,
+                        hub,
+                        hubTarget,
                         baseDemandPercent,
-                        0
+                        context.Game.Config.AI.Infrastructure.FacilitySectorCoveragePressureBonus
+                            + context
+                                .Game
+                                .Config
+                                .AI
+                                .Infrastructure
+                                .FacilitySectorPrimaryHubPressureBonus
+                            + categoryBalancePressure
+                    );
+                    continue;
+                }
+
+                int secondaryTarget = context
+                    .Game
+                    .Config
+                    .AI
+                    .Infrastructure
+                    .FacilitySectorSecondaryTargetCount;
+                Planet secondarySite = establishedSites
+                    .Skip(1)
+                    .Take(2)
+                    .FirstOrDefault(planet =>
+                        planet.GetTotalBuildingTypeCount(buildingType) < secondaryTarget
+                    );
+                if (secondarySite == null && establishedSites.Count < 3)
+                {
+                    secondarySite = rankedPlanets.FirstOrDefault(planet =>
+                        !establishedSites.Contains(planet)
                     );
                 }
+
+                AddSectorFacilityDemand(
+                    context,
+                    demands,
+                    sectorDemand,
+                    kind,
+                    buildingType,
+                    secondarySite,
+                    secondaryTarget,
+                    baseDemandPercent,
+                    categoryBalancePressure
+                );
             }
+        }
+
+        /// <summary>
+        /// Returns pressure that keeps production-facility categories advancing at comparable
+        /// rates while their sector hubs are established.
+        /// </summary>
+        /// <param name="sectors">Owned planets grouped by system.</param>
+        /// <param name="buildingType">The production facility category.</param>
+        /// <param name="hubTarget">The desired facility count at each primary site.</param>
+        /// <param name="baseDemandPercent">The category's base demand pressure.</param>
+        /// <returns>The category balance pressure.</returns>
+        private static double GetFacilityCategoryBalancePressure(
+            IReadOnlyCollection<IGrouping<string, Planet>> sectors,
+            BuildingType buildingType,
+            int hubTarget,
+            int baseDemandPercent
+        )
+        {
+            if (sectors.Count == 0 || hubTarget <= 0)
+                return 0;
+
+            int completedHubProgress = sectors.Sum(sector =>
+                Math.Min(
+                    hubTarget,
+                    sector.Max(planet => planet.GetTotalBuildingTypeCount(buildingType))
+                )
+            );
+            double targetHubProgress = sectors.Count * (double)hubTarget;
+            double completion = completedHubProgress / targetHubProgress;
+            return baseDemandPercent * (0.5 - completion);
         }
 
         /// <summary>
@@ -794,7 +834,7 @@ namespace Rebellion.AI.Planners
         /// <param name="target">The destination planet.</param>
         /// <param name="targetCount">The desired facility count at the destination.</param>
         /// <param name="baseDemandPercent">The base demand pressure.</param>
-        /// <param name="coverageBonus">Additional pressure for a sector without a facility hub.</param>
+        /// <param name="strategicBonus">Additional pressure for the site's strategic role.</param>
         private void AddSectorFacilityDemand(
             AITurnContext context,
             List<AIDemand> demands,
@@ -804,7 +844,7 @@ namespace Rebellion.AI.Planners
             Planet target,
             int targetCount,
             int baseDemandPercent,
-            double coverageBonus
+            double strategicBonus
         )
         {
             if (target == null || target.GetAvailableEnergy() <= 0 || targetCount <= 0)
@@ -813,6 +853,8 @@ namespace Rebellion.AI.Planners
             int currentCount = target.GetTotalBuildingTypeCount(buildingType);
             if (currentCount >= targetCount)
                 return;
+
+            double concentrationBonus = baseDemandPercent * currentCount / targetCount;
 
             demands.Add(
                 new AIDemand(
@@ -829,7 +871,9 @@ namespace Rebellion.AI.Planners
                         targetCount,
                         baseDemandPercent,
                         0
-                    ) + coverageBonus,
+                    )
+                        + strategicBonus
+                        + concentrationBonus,
                     primaryDemand.ProductTypeId,
                     primaryDemand.CapitalShipRole
                 )
