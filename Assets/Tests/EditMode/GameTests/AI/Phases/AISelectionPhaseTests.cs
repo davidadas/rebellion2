@@ -195,7 +195,8 @@ namespace Rebellion.Tests.AI.Phases
 
         [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
         [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
-        public void Select_WithEconomyProductionBelowRefinedReserve_SelectsProposal(
+        [TestCase(AIDemandKind.ColonizationFleetSeedCapitalShip, BuildingType.None)]
+        public void Select_WithStrategicReserveExemptionBelowRefinedReserve_SelectsProposal(
             AIDemandKind demandKind,
             BuildingType buildingType
         )
@@ -215,7 +216,6 @@ namespace Rebellion.Tests.AI.Phases
 
         [TestCase(AIDemandKind.FleetCapitalShip)]
         [TestCase(AIDemandKind.FleetSeedCapitalShip)]
-        [TestCase(AIDemandKind.ColonizationFleetSeedCapitalShip)]
         [TestCase(AIDemandKind.FleetStarfighter)]
         [TestCase(AIDemandKind.FleetRegiment)]
         [TestCase(AIDemandKind.GarrisonRegimentReserve)]
