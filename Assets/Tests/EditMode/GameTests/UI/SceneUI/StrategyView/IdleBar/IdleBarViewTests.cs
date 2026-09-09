@@ -159,6 +159,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
+        public void Render_HoveredSlotChangesEntity_RebindsHoverIdentity()
+        {
+            List<string> hoverEvents = new List<string>();
+            _view.EntryHovered += instanceId => hoverEvents.Add($"Hovered:{instanceId}");
+            _view.EntryHoverCleared += instanceId => hoverEvents.Add($"Cleared:{instanceId}");
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(CreateOfficer("First Officer"), null) },
+                    new RectInt(0, 0, 800, 480)
+                )
+            );
+            IdleBarSlotView slot = GetVisibleSlots().Single();
+            slot.OnPointerEnter(null);
+            hoverEvents.Clear();
+
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(CreateOfficer("Second Officer"), null) },
+                    new RectInt(0, 0, 800, 480)
+                )
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Cleared:First Officer", "Hovered:Second Officer" },
+                hoverEvents
+            );
+        }
+
+        [Test]
         public void PointerHover_OverflowingEntries_RevealsThreeRowsUntilPointerLeaves()
         {
             _view.Render(

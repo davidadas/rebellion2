@@ -85,7 +85,7 @@ public sealed class IdleBarSlotView
 
         Initialize();
         currentSlotSize = slotSize;
-        instanceId = entry.Entity?.InstanceID;
+        SetInstanceId(entry.Entity?.InstanceID);
         gameObject.name = entry.Name;
         SetSourceRect(transform as RectTransform, x, y, slotSize, slotSize);
         SetHovered(hovered);
@@ -111,7 +111,7 @@ public sealed class IdleBarSlotView
 
         Initialize();
         currentSlotSize = slotSize;
-        instanceId = null;
+        SetInstanceId(null);
         gameObject.name = $"+{hiddenCount}";
         SetSourceRect(transform as RectTransform, x, y, slotSize, slotSize);
         portraitMask.gameObject.SetActive(false);
@@ -193,6 +193,26 @@ public sealed class IdleBarSlotView
             eventData.Use();
             ContextRequested?.Invoke(instanceId, eventData);
         }
+    }
+
+    /// <summary>
+    /// Rebinds the rendered entity and transfers an active hover to its new identity.
+    /// </summary>
+    /// <param name="value">The rendered entity identity, or null for an overflow slot.</param>
+    private void SetInstanceId(string value)
+    {
+        if (instanceId == value)
+            return;
+
+        string previousInstanceId = instanceId;
+        instanceId = value;
+        if (!hovered)
+            return;
+
+        if (!string.IsNullOrEmpty(previousInstanceId))
+            HoverCleared?.Invoke(previousInstanceId);
+        if (!string.IsNullOrEmpty(instanceId))
+            Hovered?.Invoke(instanceId);
     }
 
     /// <summary>
