@@ -28,7 +28,7 @@ public sealed class UserGameplaySettings
     public int AutosavesToKeep = DefaultAutosavesToKeep;
     public bool PauseAfterEnemyBombardment = true;
     public bool PauseWhenSpaceBattleBegins = true;
-    public bool ShowIdleBar;
+    public bool ShowIdleBar = true;
     public bool ShowMissionOdds = true;
 
     /// <summary>
@@ -116,7 +116,7 @@ public sealed class UserGameplaySettings
         AutosavesToKeep = DefaultAutosavesToKeep;
         PauseAfterEnemyBombardment = true;
         PauseWhenSpaceBattleBegins = true;
-        ShowIdleBar = false;
+        ShowIdleBar = true;
         ShowMissionOdds = true;
     }
 }
