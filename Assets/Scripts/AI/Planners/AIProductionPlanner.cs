@@ -1229,8 +1229,7 @@ namespace Rebellion.AI.Planners
                 double effectiveStrength =
                     turbolasers
                     + ionCannons
-                    + laserCannons
-                        * Math.Max(combatConfig.LaserCannonDamageAgainstCapitalShipsMultiplier, 0);
+                    + laserCannons * Math.Max(combatConfig.LaserCannonCapitalDamageMultiplier, 0);
                 if (effectiveStrength <= maximumEffectiveStrength)
                     continue;
 
