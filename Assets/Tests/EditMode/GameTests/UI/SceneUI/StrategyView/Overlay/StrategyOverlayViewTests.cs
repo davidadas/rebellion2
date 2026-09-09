@@ -109,10 +109,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
         [Test]
         public void Render_MultipleDragImages_TranslatesEveryImageWithoutChangingSpacing()
         {
+            Rect uvRect = new Rect(0.25f, 0f, 0.5f, 1f);
             DragPreview preview = new DragPreview(
                 new[]
                 {
-                    new DragPreviewImage(_itemTexture, new RectInt(10, 20, 24, 18)),
+                    new DragPreviewImage(_itemTexture, new RectInt(10, 20, 24, 18), uvRect),
                     new DragPreviewImage(_itemTexture, new RectInt(70, 90, 24, 18)),
                 },
                 15,
@@ -129,16 +130,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.IsTrue(images[1].gameObject.activeSelf);
             Assert.AreSame(_itemTexture, images[0].texture);
             Assert.AreSame(_itemTexture, images[1].texture);
+            Assert.AreEqual(uvRect, images[0].uvRect);
+            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), images[1].uvRect);
         }
 
         [Test]
         public void Show_TargetPosition_DisplaysGeneratedCursorAndOwnsCancellationSelection()
         {
+            GetField<RawImage>("destinationCursorImage").uvRect = new Rect(0.25f, 0f, 0.5f, 1f);
+
             _view.Show(250, 180);
 
             RawImage cursor = GetField<RawImage>("destinationCursorImage");
             int size = GetField<int>("destinationCursorSize");
             Assert.IsNotNull(cursor.texture);
+            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), cursor.uvRect);
             Assert.AreEqual(FilterMode.Point, cursor.texture.filterMode);
             Assert.AreEqual(TextureWrapMode.Clamp, cursor.texture.wrapMode);
             Assert.AreEqual(

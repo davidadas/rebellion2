@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 {
@@ -23,6 +24,83 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 FacilityWindowRenderData.OrderedTabs
             );
             Assert.AreEqual(6, FacilityWindowRenderData.TabCount);
+        }
+
+        [Test]
+        public void Count_DefaultCatalog_ReturnsManufacturingLaneCount()
+        {
+            Assert.AreEqual(3, FacilityManufacturingLaneCatalog.Count);
+        }
+
+        [TestCase(0, FacilityWindowTab.Shipyards)]
+        [TestCase(1, FacilityWindowTab.Training)]
+        [TestCase(2, FacilityWindowTab.Construction)]
+        public void GetTab_ManufacturingCardIndex_ReturnsAuthoredTab(
+            int cardIndex,
+            FacilityWindowTab expected
+        )
+        {
+            Assert.AreEqual(expected, FacilityManufacturingLaneCatalog.GetTab(cardIndex));
+        }
+
+        [TestCase(-1)]
+        [TestCase(3)]
+        public void GetTab_InvalidCardIndex_ReturnsNull(int cardIndex)
+        {
+            Assert.IsNull(FacilityManufacturingLaneCatalog.GetTab(cardIndex));
+        }
+
+        [TestCase(FacilityWindowTab.Shipyards, 0)]
+        [TestCase(FacilityWindowTab.Training, 1)]
+        [TestCase(FacilityWindowTab.Construction, 2)]
+        public void GetCardIndex_ManufacturingTab_ReturnsAuthoredCardIndex(
+            FacilityWindowTab tab,
+            int expected
+        )
+        {
+            Assert.AreEqual(expected, FacilityManufacturingLaneCatalog.GetCardIndex(tab));
+        }
+
+        [Test]
+        public void GetCardIndex_NonManufacturingTab_ReturnsNull()
+        {
+            Assert.IsNull(FacilityManufacturingLaneCatalog.GetCardIndex(FacilityWindowTab.Mines));
+        }
+
+        [TestCase(FacilityWindowTab.Shipyards, ManufacturingType.Ship)]
+        [TestCase(FacilityWindowTab.Training, ManufacturingType.Troop)]
+        [TestCase(FacilityWindowTab.Construction, ManufacturingType.Building)]
+        public void GetManufacturingType_ManufacturingTab_ReturnsMappedType(
+            FacilityWindowTab tab,
+            ManufacturingType expected
+        )
+        {
+            Assert.AreEqual(expected, FacilityManufacturingLaneCatalog.GetManufacturingType(tab));
+        }
+
+        [Test]
+        public void GetManufacturingType_NonManufacturingTab_ReturnsNull()
+        {
+            Assert.IsNull(
+                FacilityManufacturingLaneCatalog.GetManufacturingType(FacilityWindowTab.Mines)
+            );
+        }
+
+        [TestCase(ManufacturingType.Ship, FacilityWindowTab.Shipyards)]
+        [TestCase(ManufacturingType.Troop, FacilityWindowTab.Training)]
+        [TestCase(ManufacturingType.Building, FacilityWindowTab.Construction)]
+        public void GetTab_ManufacturingType_ReturnsMappedTab(
+            ManufacturingType type,
+            FacilityWindowTab expected
+        )
+        {
+            Assert.AreEqual(expected, FacilityManufacturingLaneCatalog.GetTab(type));
+        }
+
+        [Test]
+        public void GetTab_UnsupportedManufacturingType_ReturnsNull()
+        {
+            Assert.IsNull(FacilityManufacturingLaneCatalog.GetTab(ManufacturingType.None));
         }
 
         [Test]

@@ -88,6 +88,26 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
         }
 
         [Test]
+        public void TrySelectCommand_EnabledCommand_EmitsClosedRequestBeforeReceiver()
+        {
+            ContextMenuController controller = new ContextMenuController();
+            TestReceiver receiver = new TestReceiver();
+            TestCommand command = new TestCommand("Command", true);
+            ContextMenuRequest request = CreateRequest(receiver, command);
+            ContextMenuRequest closedRequest = null;
+            controller.RequestClosed += closed =>
+            {
+                closedRequest = closed;
+                Assert.AreEqual(0, receiver.SelectedCount);
+            };
+            controller.Open(request);
+
+            controller.TrySelectCommand(command);
+
+            Assert.AreSame(request, closedRequest);
+        }
+
+        [Test]
         public void TrySelectCommand_EnabledNestedCommand_CompletesRequest()
         {
             ContextMenuController controller = new ContextMenuController();
@@ -150,6 +170,25 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreSame(request, receiver.CancelledRequest);
             Assert.IsFalse(controller.IsOpen);
             Assert.IsNull(controller.ActiveRequest);
+        }
+
+        [Test]
+        public void Cancel_ActiveRequest_EmitsClosedRequestBeforeReceiver()
+        {
+            ContextMenuController controller = new ContextMenuController();
+            TestReceiver receiver = new TestReceiver();
+            ContextMenuRequest request = CreateRequest(receiver, new TestCommand("Command", true));
+            ContextMenuRequest closedRequest = null;
+            controller.RequestClosed += closed =>
+            {
+                closedRequest = closed;
+                Assert.AreEqual(0, receiver.CancelledCount);
+            };
+            controller.Open(request);
+
+            controller.Cancel();
+
+            Assert.AreSame(request, closedRequest);
         }
 
         [Test]

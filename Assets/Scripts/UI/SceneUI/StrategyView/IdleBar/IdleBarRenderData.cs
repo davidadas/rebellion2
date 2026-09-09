@@ -8,13 +8,10 @@ using UnityEngine;
 /// </summary>
 internal sealed class IdleBarEntry
 {
-    /// <summary>Gets the represented strategy entity.</summary>
     internal ISceneNode Entity { get; }
 
-    /// <summary>Gets the entry's display name.</summary>
     internal string Name { get; }
 
-    /// <summary>Gets the resolved portrait texture.</summary>
     internal Texture2D Texture { get; }
 
     /// <summary>
@@ -35,13 +32,10 @@ internal sealed class IdleBarEntry
 /// </summary>
 internal sealed class IdleBarRenderData
 {
-    /// <summary>Gets whether the idle bar is visible.</summary>
     internal bool Visible { get; }
 
-    /// <summary>Gets the ordered entries shown in the idle bar.</summary>
     internal IReadOnlyList<IdleBarEntry> Entries { get; }
 
-    /// <summary>Gets the strategy desktop bounds.</summary>
     internal RectInt DesktopBounds { get; }
 
     /// <summary>

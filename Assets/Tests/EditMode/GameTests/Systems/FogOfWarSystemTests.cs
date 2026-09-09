@@ -1309,7 +1309,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void BuildFactionView_BlockadedOwnPlanet_StationaryEnemyFleet_IsVisible()
+        public void BuildFactionView_BlockadedOwnPlanet_ShowsOnlyPresentCompletedEnemyShips()
         {
             // Alliance owns Hoth; empire fleet is sitting at Hoth (not in transit).
             // Alliance should see the enemy fleet in their live view.
@@ -1321,6 +1321,34 @@ namespace Rebellion.Tests.Sectors
                     InstanceID = "cs1",
                     OwnerInstanceID = _empire.InstanceID,
                     ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                empireFleet
+            );
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "building-ship",
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                },
+                empireFleet
+            );
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "delivering-ship",
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Delivering,
+                },
+                empireFleet
+            );
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "incoming-ship",
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
                 },
                 empireFleet
             );
@@ -1338,6 +1366,13 @@ namespace Rebellion.Tests.Sectors
                 "Stationary enemy fleet should be visible"
             );
             Assert.AreEqual("EMPIRE_FLEET", viewHoth.GetChildren<Fleet>()[0].InstanceID);
+            CollectionAssert.AreEqual(
+                new[] { "cs1" },
+                viewHoth
+                    .GetChildren<Fleet>()[0]
+                    .GetChildren<CapitalShip>()
+                    .Select(ship => ship.InstanceID)
+            );
         }
 
         [Test]

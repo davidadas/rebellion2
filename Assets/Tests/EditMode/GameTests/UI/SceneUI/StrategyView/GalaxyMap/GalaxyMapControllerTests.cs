@@ -205,6 +205,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void SetSpotlightPlanet_ChangedAndCleared_RequestsRender()
+        {
+            _controller.SetSpotlightPlanet("planet");
+            _controller.SetSpotlightPlanet("planet");
+            _controller.SetSpotlightPlanet(null);
+
+            Assert.AreEqual(2, _actions.RenderRequestCount);
+        }
+
+        [Test]
         public void GetSectorSourcePosition_NullSector_ReturnsZero()
         {
             Assert.AreEqual(Vector2Int.zero, _controller.GetSectorSourcePosition(null));

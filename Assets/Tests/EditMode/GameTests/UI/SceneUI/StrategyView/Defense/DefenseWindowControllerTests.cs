@@ -326,6 +326,60 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
+        public void CreateContextMenuForItem_Officer_UsesNormalDefenseCommands()
+        {
+            ContextMenuRequest request = _controller.CreateContextMenuForItem(
+                _planet,
+                _officer,
+                10,
+                20
+            );
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    StrategyMenuAction.Move,
+                    StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.CreateMission,
+                    StrategyMenuAction.Encyclopedia,
+                    StrategyMenuAction.Status,
+                    StrategyMenuAction.Retire,
+                    StrategyMenuAction.ToggleIdleBarTracking,
+                },
+                request
+                    .Commands.Cast<StrategyMenuCommand>()
+                    .Select(command => command.Action)
+                    .ToArray()
+            );
+            Assert.AreSame(_controller, request.Receiver);
+        }
+
+        [Test]
+        public void ContextMenu_DirectOfficerMoveConfirm_StartsTargetingWithoutSourceWindow()
+        {
+            ContextMenuRequest request = _controller.CreateContextMenuForItem(
+                _planet,
+                _officer,
+                10,
+                20
+            );
+            StrategyMenuCommand command = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.MoveConfirm);
+
+            _controller.OnContextMenuCommandSelected(request, command);
+
+            Assert.IsTrue(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyWindowTargetingSource>(
+                _targetingController.ActiveRequest.Source
+            );
+            StrategyWindowTargetingSource source = (StrategyWindowTargetingSource)
+                _targetingController.ActiveRequest.Source;
+            Assert.IsNull(source.Window);
+            CollectionAssert.AreEqual(new ISceneNode[] { _officer }, source.Items);
+        }
+
+        [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
             DefenseWindowView view = OpenWindow(out UIWindow _);

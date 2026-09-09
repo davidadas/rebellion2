@@ -305,11 +305,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
-        public void ExecuteTargetedCommand_MoveConfirm_OpensConfirmationWindow()
+        public void ExecuteTargetedCommand_MoveConfirmWithoutSourceWindow_OpensConfirmationWindow()
         {
             _controller.ExecuteTargetedCommand(
                 new StrategyWindowTargetingSource(
-                    _sourceWindow,
+                    null,
                     StrategyMenuAction.MoveConfirm,
                     0,
                     0,
@@ -435,9 +435,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
-        public void OpenRetireConfirmWindow_EligibleOfficer_OpensConfirmationWindow()
+        public void OpenRetireConfirmWindow_WithoutSourceWindow_OpensConfirmationWindow()
         {
-            _controller.OpenRetireConfirmWindow(_sourceWindow, new ISceneNode[] { _officer });
+            _controller.OpenRetireConfirmWindow(null, new ISceneNode[] { _officer });
 
             UIWindow window = _windowManager.Windows.Single();
             Assert.IsTrue(window.Modal);

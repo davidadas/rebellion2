@@ -24,6 +24,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private MissionsWindowController _controller;
         private Officer _decoy;
         private int _dirtyCount;
+        private Officer _firstAgent;
         private TestMission _firstMission;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
@@ -45,6 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
             _planet = CreatePlanet(game);
             _firstMission = CreateMission("first-mission", "First Mission", out Officer _);
+            _firstAgent = (Officer)_firstMission.GetMainParticipants().Single();
             _secondMission = CreateMission("second-mission", "Second Mission", out _decoy);
             _planet.Planet.AddChild(_firstMission);
             _planet.Planet.AddChild(_secondMission);
@@ -159,6 +161,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNotNull(target);
             Assert.AreSame(_planet, target.Planet);
             Assert.AreSame(_planet.Planet, target.Item);
+        }
+
+        [Test]
+        public void ParticipantReleased_ActiveTargeting_SelectsParticipantNode()
+        {
+            MissionsWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window, true);
+            MissionParticipantRowView participant =
+                view.GetComponentsInChildren<MissionParticipantRowView>(true)
+                    .Single(row => row.gameObject.activeSelf);
+            UIComponentTestHelper.InvokeLifecycle(participant, "Awake");
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Select target", null, receiver));
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            UIPointerGestureRelay relay = participant.GetComponent<UIPointerGestureRelay>();
+            relay.OnPointerDown(eventData);
+            relay.OnPointerClick(eventData);
+
+            StrategyMissionTarget target = receiver.Target as StrategyMissionTarget;
+            Assert.IsNotNull(target);
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(_firstAgent, target.Item);
         }
 
         [Test]

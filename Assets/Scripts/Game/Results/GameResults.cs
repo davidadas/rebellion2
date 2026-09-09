@@ -326,6 +326,11 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A character was killed by an assassination mission.
+    /// </summary>
+    public sealed class OfficerAssassinatedResult : OfficerKilledResult { }
+
+    /// <summary>
     /// A captured officer was rescued.
     /// </summary>
     public class OfficerRescuedResult : GameResult

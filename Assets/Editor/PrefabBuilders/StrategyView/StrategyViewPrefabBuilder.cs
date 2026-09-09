@@ -944,6 +944,25 @@ public static class StrategyViewPrefabBuilder
         shelfHitArea.raycastTarget = true;
         SetSourceRect(shelfHitArea.rectTransform, 0, 0, 1, 1);
 
+        ScrollAreaView entriesScrollArea = CreateScrollAreaView(
+            layer,
+            "EntriesScrollArea",
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            13,
+            28,
+            out RectTransform entriesRoot
+        );
+        entriesScrollArea.gameObject.SetActive(false);
+
         GameObject slotObject = new GameObject(
             "SlotTemplate",
             typeof(RectTransform),
@@ -952,7 +971,7 @@ public static class StrategyViewPrefabBuilder
             typeof(Button),
             typeof(IdleBarSlotView)
         );
-        slotObject.transform.SetParent(layer, false);
+        slotObject.transform.SetParent(entriesRoot, false);
         SetSourceRect(slotObject.GetComponent<RectTransform>(), 0, 0, 28, 28);
         Image hitArea = slotObject.GetComponent<Image>();
         hitArea.color = Color.clear;
@@ -1006,23 +1025,27 @@ public static class StrategyViewPrefabBuilder
         FillParent(portrait.rectTransform);
         portrait.raycastTarget = false;
 
-        TextMeshProUGUI pageText = CreateTextLabel("PageTextField", layer);
-        pageText.text = string.Empty;
-        pageText.fontSize = 7;
-        pageText.alignment = TextAlignmentOptions.TopLeft;
-        pageText.raycastTarget = false;
-        SetSourceRect(pageText.rectTransform, 0, 0, 20, 8);
-        pageText.gameObject.SetActive(false);
+        TextMeshProUGUI overflowText = CreateTextLabel("OverflowTextField", slotObject.transform);
+        overflowText.text = string.Empty;
+        overflowText.color = Color.white;
+        overflowText.fontSize = 8;
+        overflowText.fontStyle = FontStyles.Bold;
+        overflowText.alignment = TextAlignmentOptions.Center;
+        overflowText.raycastTarget = false;
+        FillParent(overflowText.rectTransform);
+        overflowText.gameObject.SetActive(false);
 
         AssignReference(slotView, "button", button);
         AssignReference(slotView, "frameImage", frame);
         AssignReference(slotView, "portraitMask", maskImage.rectTransform);
         AssignReference(slotView, "portraitBackground", background);
         AssignReference(slotView, "portraitImage", portrait);
+        AssignReference(slotView, "overflowTextField", overflowText);
         AssignReference(view, "shelfHitArea", shelfHitArea);
-        AssignReference(view, "pageTextField", pageText);
+        AssignReference(view, "entriesScrollArea", entriesScrollArea);
         AssignReference(view, "slotTemplate", slotView);
         slotObject.SetActive(false);
+        layerObject.SetActive(false);
         return view;
     }
 
@@ -6058,6 +6081,11 @@ public static class StrategyViewPrefabBuilder
             window.transform
         );
         resultLayoutTemplates.gameObject.SetActive(false);
+        RectTransform resultItemsScrollPaddingTemplate = CreateChildLayer(
+            "ResultItemsScrollPaddingTemplate",
+            resultLayoutTemplates
+        );
+        SetSourceRect(resultItemsScrollPaddingTemplate, 0, 0, 1, 18);
         BattleResultItemView resultStandardItemTemplate = CreateBattleResultItemTemplate(
             resultLayoutTemplates,
             "ResultStandardItemTemplate",
@@ -6278,6 +6306,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "resultPersonnelDestroyedColumn", resultPersonnelDestroyedColumn);
         AssignReference(view, "resultStandardItemTemplate", resultStandardItemTemplate);
         AssignReference(view, "resultPersonnelItemTemplate", resultPersonnelItemTemplate);
+        AssignReference(view, "resultItemsScrollPaddingTemplate", resultItemsScrollPaddingTemplate);
         AssignReferenceArray(view, "viewButtonImages", viewButtonImages);
         AssignReferenceArray(view, "viewButtonPressVisuals", viewButtonPressVisuals);
         AssignReferenceArray(view, "viewButtons", viewButtons);

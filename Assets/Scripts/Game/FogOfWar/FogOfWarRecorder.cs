@@ -1386,7 +1386,10 @@ namespace Rebellion.Game.FogOfWar
 
             copy.RemoveChildren<CapitalShip>(ship =>
                 (!includeInTransit && !IsObservableAtPlanet(ship, observerFactionInstanceID))
-                || (!includeManufacturing && IsManufacturingInProgress(ship))
+                || (
+                    !includeManufacturing
+                    && ship.ManufacturingStatus != ManufacturingStatus.Complete
+                )
             );
             foreach (CapitalShip ship in copy.GetChildren<CapitalShip>())
             {
@@ -1397,19 +1400,31 @@ namespace Rebellion.Game.FogOfWar
                     (
                         !includeInTransit
                         && !IsObservableAtPlanet(regiment, observerFactionInstanceID)
-                    ) || (!includeManufacturing && IsManufacturingInProgress(regiment))
+                    )
+                    || (
+                        !includeManufacturing
+                        && regiment.ManufacturingStatus != ManufacturingStatus.Complete
+                    )
                 );
                 ship.RemoveChildren<SpecialForces>(specialForces =>
                     (
                         !includeInTransit
                         && !IsObservableAtPlanet(specialForces, observerFactionInstanceID)
-                    ) || (!includeManufacturing && IsManufacturingInProgress(specialForces))
+                    )
+                    || (
+                        !includeManufacturing
+                        && specialForces.ManufacturingStatus != ManufacturingStatus.Complete
+                    )
                 );
                 ship.RemoveChildren<Starfighter>(starfighter =>
                     (
                         !includeInTransit
                         && !IsObservableAtPlanet(starfighter, observerFactionInstanceID)
-                    ) || (!includeManufacturing && IsManufacturingInProgress(starfighter))
+                    )
+                    || (
+                        !includeManufacturing
+                        && starfighter.ManufacturingStatus != ManufacturingStatus.Complete
+                    )
                 );
             }
 

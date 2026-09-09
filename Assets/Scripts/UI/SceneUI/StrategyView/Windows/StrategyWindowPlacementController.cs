@@ -26,7 +26,7 @@ public sealed class StrategyWindowPlacementController
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));
         this.windowManager =
             windowManager ?? throw new ArgumentNullException(nameof(windowManager));
-        ApplyMovementBounds();
+        RefreshMovementBounds();
     }
 
     /// <summary>
@@ -219,7 +219,7 @@ public sealed class StrategyWindowPlacementController
     /// <summary>
     /// Applies the active faction's movement bounds to the authoritative window registry.
     /// </summary>
-    private void ApplyMovementBounds()
+    public void RefreshMovementBounds()
     {
         windowManager.SetMovementBounds(GetWindowBounds());
     }
