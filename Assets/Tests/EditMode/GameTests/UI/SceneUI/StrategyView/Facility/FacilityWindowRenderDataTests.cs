@@ -26,6 +26,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void ManufacturingLaneCatalog_MapsCardOrderWithoutEnumIndexes()
+        {
+            Assert.AreEqual(3, FacilityManufacturingLaneCatalog.Count);
+            Assert.AreEqual(
+                FacilityWindowTab.Shipyards,
+                FacilityManufacturingLaneCatalog.GetTab(0)
+            );
+            Assert.AreEqual(FacilityWindowTab.Training, FacilityManufacturingLaneCatalog.GetTab(1));
+            Assert.AreEqual(
+                FacilityWindowTab.Construction,
+                FacilityManufacturingLaneCatalog.GetTab(2)
+            );
+            Assert.AreEqual(
+                0,
+                FacilityManufacturingLaneCatalog.GetCardIndex(FacilityWindowTab.Shipyards)
+            );
+            Assert.AreEqual(
+                1,
+                FacilityManufacturingLaneCatalog.GetCardIndex(FacilityWindowTab.Training)
+            );
+            Assert.AreEqual(
+                2,
+                FacilityManufacturingLaneCatalog.GetCardIndex(FacilityWindowTab.Construction)
+            );
+            Assert.IsNull(FacilityManufacturingLaneCatalog.GetTab(-1));
+            Assert.IsNull(FacilityManufacturingLaneCatalog.GetTab(3));
+            Assert.IsNull(FacilityManufacturingLaneCatalog.GetCardIndex(FacilityWindowTab.Mines));
+        }
+
+        [Test]
         public void Constructor_MutableCollections_CopiesInputCollections()
         {
             List<FacilityWindowTabRenderData> tabs = new List<FacilityWindowTabRenderData>

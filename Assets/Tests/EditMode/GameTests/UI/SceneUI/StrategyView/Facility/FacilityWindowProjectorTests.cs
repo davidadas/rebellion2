@@ -148,10 +148,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 queuedShip,
             };
             _session.Reconcile();
-            _session.SelectManufacturingCard(
-                (int)FacilityWindowTab.Shipyards,
-                FacilityWindowRenderData.TabCount
-            );
+            _session.SelectManufacturingCard(0);
             Dictionary<ManufacturingType, string> destinations = new Dictionary<
                 ManufacturingType,
                 string

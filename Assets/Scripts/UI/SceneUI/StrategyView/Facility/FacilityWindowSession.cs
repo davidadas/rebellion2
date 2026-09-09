@@ -84,7 +84,7 @@ internal sealed class FacilityWindowSession
             selectedBuildingIds.Clear();
             contextBuildingId = null;
             selectedCards.RemoveWhere(index =>
-                !ConstructionOrderController.GetManufacturingTab(index).HasValue
+                !FacilityManufacturingLaneCatalog.GetTab(index).HasValue
             );
             return;
         }
@@ -145,7 +145,7 @@ internal sealed class FacilityWindowSession
         if (ActiveTab != FacilityWindowTab.Manufacturing || selectedCards.Count != 1)
             return null;
 
-        return ConstructionOrderController.GetManufacturingTab(selectedCards.First());
+        return FacilityManufacturingLaneCatalog.GetTab(selectedCards.First());
     }
 
     /// <summary>
@@ -173,13 +173,12 @@ internal sealed class FacilityWindowSession
     /// Applies normal selection rules to one manufacturing lane.
     /// </summary>
     /// <param name="cardIndex">The manufacturing lane index.</param>
-    /// <param name="cardCount">The number of selectable manufacturing lanes.</param>
-    public void SelectManufacturingCard(int cardIndex, int cardCount)
+    public void SelectManufacturingCard(int cardIndex)
     {
         SelectableListSelection.SelectIndexedItem(
             selectedCards,
             cardIndex,
-            cardCount,
+            FacilityManufacturingLaneCatalog.Count,
             getSelectionModifiers()
         );
     }
@@ -188,11 +187,14 @@ internal sealed class FacilityWindowSession
     /// Selects one manufacturing lane for a context command.
     /// </summary>
     /// <param name="tab">The manufacturing facility tab.</param>
-    /// <param name="cardIndex">The manufacturing lane index.</param>
-    public void SelectManufacturingCardForContext(FacilityWindowTab tab, int cardIndex)
+    public void SelectManufacturingCardForContext(FacilityWindowTab tab)
     {
+        int? cardIndex = FacilityManufacturingLaneCatalog.GetCardIndex(tab);
+        if (!cardIndex.HasValue)
+            return;
+
         CaptureManufacturingContext(tab);
-        SelectContextItem(selectedCards, cardIndex);
+        SelectContextItem(selectedCards, cardIndex.Value);
     }
 
     /// <summary>

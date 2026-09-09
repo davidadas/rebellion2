@@ -38,7 +38,6 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     private bool contextMenuOpen;
     private bool hoverExitPending;
     private bool initialized;
-    private Func<bool> isContextMenuOpen;
     private IdleBarSlotView overflowSlot;
     private bool pointerOverShelf;
 
@@ -102,13 +101,17 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     }
 
     /// <summary>
-    /// Sets the provider used to keep the shelf expanded for its active context menu.
+    /// Sets whether this shelf's context menu is keeping the expanded rows visible.
     /// </summary>
-    /// <param name="provider">Reports whether this shelf's context menu is open.</param>
-    internal void SetContextMenuOpenProvider(Func<bool> provider)
+    /// <param name="open">Whether this shelf's context menu is open.</param>
+    internal void SetContextMenuOpen(bool open)
     {
-        isContextMenuOpen = provider;
-        RefreshContextMenuState();
+        if (contextMenuOpen == open)
+            return;
+
+        contextMenuOpen = open;
+        if (currentData?.Entries.Count > 0)
+            RenderShelf(resetScroll: false);
     }
 
     /// <summary>
@@ -142,7 +145,6 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     /// </summary>
     private void LateUpdate()
     {
-        RefreshContextMenuState();
         if (!hoverExitPending)
             return;
 
@@ -324,20 +326,6 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
         pointerOverShelf = pointerOver;
         if (currentData?.Entries.Count > 0)
             RenderShelf(resetScroll: pointerOver);
-    }
-
-    /// <summary>
-    /// Refreshes the expansion pin from the active context-menu request.
-    /// </summary>
-    private void RefreshContextMenuState()
-    {
-        bool open = isContextMenuOpen?.Invoke() == true;
-        if (contextMenuOpen == open)
-            return;
-
-        contextMenuOpen = open;
-        if (currentData?.Entries.Count > 0)
-            RenderShelf(resetScroll: false);
     }
 
     /// <summary>

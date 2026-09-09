@@ -963,6 +963,7 @@ namespace Rebellion.Systems
                     {
                         TargetOfficer = officer,
                         Context = planet,
+                        Cause = OfficerDeathCause.Bombardment,
                         Tick = _game.CurrentTick,
                     }
                 );

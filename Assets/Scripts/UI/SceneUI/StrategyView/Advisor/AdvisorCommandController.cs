@@ -81,7 +81,7 @@ public sealed class AdvisorCommandController : ITargetingReceiver
         if (producerView == null)
             return;
 
-        FacilityWindowTab? manufacturingTab = ConstructionOrderController.GetManufacturingTab(
+        FacilityWindowTab? manufacturingTab = FacilityManufacturingLaneCatalog.GetTab(
             manufacturingType
         );
         if (!manufacturingTab.HasValue)

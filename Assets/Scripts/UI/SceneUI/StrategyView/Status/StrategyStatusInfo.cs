@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 /// <summary>
@@ -53,35 +52,14 @@ public sealed class StrategyStatusRow
 
     public string Right { get; }
 
-    internal string ManufacturingPlanetId { get; }
-
-    internal ManufacturingType? ManufacturingType { get; }
-
     /// <summary>
     /// Creates one paired status value.
     /// </summary>
     /// <param name="left">The left-column value.</param>
     /// <param name="right">The right-column value.</param>
     public StrategyStatusRow(string left, string right)
-        : this(left, right, null, null) { }
-
-    /// <summary>
-    /// Creates one paired status value with optional manufacturing navigation.
-    /// </summary>
-    /// <param name="left">The left-column value.</param>
-    /// <param name="right">The right-column value.</param>
-    /// <param name="manufacturingPlanetId">The producing planet opened by the row link.</param>
-    /// <param name="manufacturingType">The manufacturing lane opened by the row link.</param>
-    internal StrategyStatusRow(
-        string left,
-        string right,
-        string manufacturingPlanetId,
-        ManufacturingType? manufacturingType
-    )
     {
         Left = left ?? string.Empty;
         Right = right ?? string.Empty;
-        ManufacturingPlanetId = manufacturingPlanetId;
-        ManufacturingType = manufacturingType;
     }
 }

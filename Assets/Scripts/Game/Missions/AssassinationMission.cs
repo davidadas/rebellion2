@@ -279,6 +279,7 @@ namespace Rebellion.Game.Missions
                         TargetOfficer = target,
                         Assassin = successfulParticipant,
                         Context = planet,
+                        Cause = OfficerDeathCause.Assassination,
                         Tick = game.CurrentTick,
                     }
                 );

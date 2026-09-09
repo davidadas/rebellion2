@@ -16,6 +16,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
         private TestActions _actions;
+        private ContextMenuController _contextMenuController;
         private IdleBarController _controller;
         private Officer _officer;
         private ISceneNode _resolvedEntity;
@@ -30,9 +31,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _officer = new Officer { InstanceID = "officer", DisplayName = "Officer" };
             _resolvedEntity = _officer;
             _actions = new TestActions();
+            _contextMenuController = new ContextMenuController();
             _controller = new IdleBarController(
                 () => null,
-                () => false,
+                _contextMenuController,
                 () => null,
                 () => true,
                 instanceId => instanceId == _resolvedEntity?.InstanceID ? _resolvedEntity : null
@@ -52,7 +54,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             IdleBarController controller = new IdleBarController(
                 () => null,
-                () => false,
+                new ContextMenuController(),
                 () => null,
                 () => false,
                 _ => null
@@ -175,7 +177,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             IdleBarController controller = new IdleBarController(
                 () => null,
-                () => false,
+                new ContextMenuController(),
                 () => null,
                 () => false,
                 _ => null
@@ -234,10 +236,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 OpenedTarget = target;
             }
 
-            public void OpenIdleBarContextMenu(ISceneNode target, PointerEventData eventData)
+            public ContextMenuRequest OpenIdleBarContextMenu(
+                ISceneNode target,
+                PointerEventData eventData
+            )
             {
                 ContextTarget = target;
                 ContextEventData = eventData;
+                return null;
             }
 
             public void RequestIdleBarRender()
@@ -269,6 +275,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             {
                 DragEndCount++;
             }
+
+            public void CancelIdleBarItemDrag() { }
         }
     }
 }

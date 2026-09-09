@@ -316,6 +316,17 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// Identifies the event that killed an officer.
+    /// </summary>
+    public enum OfficerDeathCause
+    {
+        Unknown,
+        Assassination,
+        CaptureEvasion,
+        Bombardment,
+    }
+
+    /// <summary>
     /// A character was killed.
     /// </summary>
     public class OfficerKilledResult : GameResult
@@ -323,6 +334,7 @@ namespace Rebellion.Game.Results
         public Officer TargetOfficer { get; set; }
         public IGameEntity Assassin { get; set; }
         public IGameEntity Context { get; set; }
+        public OfficerDeathCause Cause { get; set; }
     }
 
     /// <summary>

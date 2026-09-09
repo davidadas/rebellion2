@@ -324,7 +324,7 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
         for (int index = 0; index < manufacturingCardViews.Length; index++)
         {
             ManufacturingLaneCardView card = manufacturingCardViews[index];
-            card.SetIndex((int)FacilityWindowTab.Shipyards + index);
+            card.SetIndex(index);
             card.Pressed += HandleManufacturingCardPressed;
             card.Released += HandleManufacturingCardReleased;
             card.Dropped += HandleManufacturingCardReleased;

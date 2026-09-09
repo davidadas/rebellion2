@@ -109,7 +109,6 @@ public sealed class StrategyController
     private IdleBarController idleBarController;
     private TargetingController targetingController;
     private ContextMenuController contextMenuController;
-    private ContextMenuRequest idleBarContextMenuRequest;
     private FleetWindowController fleetWindowController;
     private ConstructionWindowController constructionWindowController;
     private FacilityWindowController facilityWindowController;
@@ -254,11 +253,10 @@ public sealed class StrategyController
         galaxyMapController = new GalaxyMapController(() => uiContext);
         galaxyMapController.Initialize(this);
         galaxyMapController.BindView(galaxyMap);
+        contextMenuController = new ContextMenuController();
         idleBarController = new IdleBarController(
             () => gameManager?.GetPlayerFaction(),
-            () =>
-                idleBarContextMenuRequest != null
-                && ReferenceEquals(contextMenuController?.ActiveRequest, idleBarContextMenuRequest),
+            contextMenuController,
             () => uiContext,
             () =>
                 AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowIdleBar
@@ -310,7 +308,6 @@ public sealed class StrategyController
     private void InitializeWindowInfrastructure()
     {
         targetingController = new TargetingController(strategyOverlay);
-        contextMenuController = new ContextMenuController();
         bookmarkController = new BookmarkController(uiContext);
         windowPlacementController = new StrategyWindowPlacementController(
             uiContext,
@@ -2200,32 +2197,6 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Opens the producing planet and construction lane requested by a status row.
-    /// </summary>
-    /// <param name="planetInstanceId">The producing planet identifier.</param>
-    /// <param name="manufacturingType">The manufacturing lane to open.</param>
-    /// <param name="sourceX">The source window's horizontal coordinate.</param>
-    /// <param name="sourceY">The source window's vertical coordinate.</param>
-    void IStatusWindowActions.OpenStatusManufacturing(
-        string planetInstanceId,
-        ManufacturingType manufacturingType,
-        int sourceX,
-        int sourceY
-    )
-    {
-        GalaxyMapPlanet planet = galaxyMapController.FindPlanet(planetInstanceId);
-        if (planet == null || !OpenPlanetSectorWindow(planet.Sector))
-            return;
-
-        UIWindow facilityWindow = OpenPlanetWindowAt(planet, PlanetIcon.Facility, sourceX, sourceY);
-        if (facilityWindow == null)
-            return;
-
-        facilityWindowController.OpenConstructionLane(facilityWindow, manufacturingType);
-        MarkDirty();
-    }
-
-    /// <summary>
     /// Opens the fleet pane for a completed battle's planet.
     /// </summary>
     /// <param name="planet">The battle planet.</param>
@@ -3083,7 +3054,10 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="target">The context-clicked strategy entity.</param>
     /// <param name="eventData">The source pointer event.</param>
-    void IIdleBarActions.OpenIdleBarContextMenu(ISceneNode target, PointerEventData eventData)
+    ContextMenuRequest IIdleBarActions.OpenIdleBarContextMenu(
+        ISceneNode target,
+        PointerEventData eventData
+    )
     {
         Planet planet = target as Planet ?? target?.GetParentOfType<Planet>();
         GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planet?.InstanceID);
@@ -3097,7 +3071,7 @@ public sealed class StrategyController
                 out int sourceY
             )
         )
-            return;
+            return null;
 
         ContextMenuRequest request;
         int width;
@@ -3122,14 +3096,14 @@ public sealed class StrategyController
         }
         else
         {
-            return;
+            return null;
         }
 
         galacticInformationDisplayController?.Hide();
         targetingController?.Cancel();
-        idleBarContextMenuRequest = request;
         strategyContextMenuRouter.OpenRuntimeContextMenu(request, sourceX, sourceY, width);
         dirty = true;
+        return request;
     }
 
     /// <summary>
@@ -3185,25 +3159,30 @@ public sealed class StrategyController
     /// <param name="eventData">The source pointer event.</param>
     void IIdleBarActions.MoveIdleBarItemDrag(PointerEventData eventData)
     {
-        inputController.OnDrag(eventData);
+        if (strategyDragController.HasDirectItemInteraction)
+            inputController.OnDrag(eventData);
     }
 
     /// <summary>
-    /// Completes or clears a shared strategy drag started from the idle bar.
+    /// Completes a shared strategy drag started from the idle bar.
     /// </summary>
     /// <param name="eventData">The source pointer event.</param>
     void IIdleBarActions.EndIdleBarItemDrag(PointerEventData eventData)
     {
-        if (eventData == null)
-        {
-            strategyDragController.ClearItemDrag();
-            targetingController.TryCancel();
-            RenderOverlay();
-            MarkDirty();
-            return;
-        }
+        if (strategyDragController.HasDirectItemInteraction)
+            inputController.OnPointerUp(eventData);
+    }
 
-        inputController.OnPointerUp(eventData);
+    /// <summary>
+    /// Cancels shared drag or targeting state owned directly by the idle bar.
+    /// </summary>
+    void IIdleBarActions.CancelIdleBarItemDrag()
+    {
+        if (!strategyDragController.TryCancelDirectItemInteraction())
+            return;
+
+        RenderOverlay();
+        MarkDirty();
     }
 
     /// <summary>

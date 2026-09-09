@@ -49,7 +49,8 @@ public sealed class ConstructionOrderController
     )
     {
         Faction faction = GetFaction(playerFactionId);
-        ManufacturingType? manufacturingType = GetManufacturingType(manufacturingTab);
+        ManufacturingType? manufacturingType =
+            FacilityManufacturingLaneCatalog.GetManufacturingType(manufacturingTab);
         if (faction == null || !manufacturingType.HasValue)
             return Array.Empty<IManufacturable>();
 
@@ -157,49 +158,6 @@ public sealed class ConstructionOrderController
     {
         return getManufacturingSystem()
             .StartManufacturing(producer, selected, destination, buildCount, playerFactionId);
-    }
-
-    /// <summary>
-    /// Maps an authored construction panel to its manufacturing category.
-    /// </summary>
-    /// <param name="manufacturingTab">The manufacturing facility tab.</param>
-    /// <returns>The matching manufacturing category, or null for an unknown panel.</returns>
-    public static ManufacturingType? GetManufacturingType(FacilityWindowTab manufacturingTab)
-    {
-        return manufacturingTab switch
-        {
-            FacilityWindowTab.Shipyards => ManufacturingType.Ship,
-            FacilityWindowTab.Training => ManufacturingType.Troop,
-            FacilityWindowTab.Construction => ManufacturingType.Building,
-            _ => null,
-        };
-    }
-
-    /// <summary>
-    /// Maps a manufacturing category to its authored facility panel.
-    /// </summary>
-    /// <param name="manufacturingType">The manufacturing category.</param>
-    /// <returns>The matching facility panel, or null for an unsupported category.</returns>
-    public static FacilityWindowTab? GetManufacturingTab(ManufacturingType manufacturingType)
-    {
-        return manufacturingType switch
-        {
-            ManufacturingType.Ship => FacilityWindowTab.Shipyards,
-            ManufacturingType.Troop => FacilityWindowTab.Training,
-            ManufacturingType.Building => FacilityWindowTab.Construction,
-            _ => null,
-        };
-    }
-
-    /// <summary>
-    /// Maps an authored manufacturing-card index to its facility panel.
-    /// </summary>
-    /// <param name="cardIndex">The manufacturing-card index.</param>
-    /// <returns>The matching facility panel, or null for a non-manufacturing index.</returns>
-    public static FacilityWindowTab? GetManufacturingTab(int cardIndex)
-    {
-        FacilityWindowTab tab = (FacilityWindowTab)cardIndex;
-        return GetManufacturingType(tab).HasValue ? tab : null;
     }
 
     /// <summary>

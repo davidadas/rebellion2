@@ -264,35 +264,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
-        public void Render_LinkedRow_DisplaysLinkAndEmitsItsRowIndex()
-        {
-            int requestedRow = -1;
-            _view.RowLinkRequested += (_, rowIndex) => requestedRow = rowIndex;
-            _view.Render(
-                CreateRenderData(
-                    false,
-                    false,
-                    "Status",
-                    Array.Empty<Texture2D>(),
-                    "Queued Ship",
-                    new[]
-                    {
-                        new StatusWindowRowRenderData("Status:", "Under Construction"),
-                        new StatusWindowRowRenderData("Produced at:", "Corellia", _firstTexture),
-                    }
-                )
-            );
-
-            RawImage link = FindComponent<RawImage>("RowLink1");
-            Assert.IsTrue(link.gameObject.activeSelf);
-            Assert.AreSame(_firstTexture, link.texture);
-
-            link.GetComponent<Button>().onClick.Invoke();
-
-            Assert.AreEqual(1, requestedRow);
-        }
-
-        [Test]
         public void RequestMethods_SubscribedHandlers_EmitSemanticRequests()
         {
             StatusWindowView closeView = null;

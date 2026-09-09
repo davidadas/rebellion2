@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Units;
 using UnityEngine;
 
 /// <summary>
@@ -23,6 +24,74 @@ public enum FacilityWindowTabState
     Active = 0,
     Inactive = 1,
     Disabled = 2,
+}
+
+/// <summary>
+/// Defines the authored manufacturing-card order and its semantic mappings.
+/// </summary>
+internal static class FacilityManufacturingLaneCatalog
+{
+    private static readonly FacilityWindowTab[] _tabs =
+    {
+        FacilityWindowTab.Shipyards,
+        FacilityWindowTab.Training,
+        FacilityWindowTab.Construction,
+    };
+
+    internal static int Count => _tabs.Length;
+
+    /// <summary>
+    /// Gets the manufacturing tab at one authored card index.
+    /// </summary>
+    /// <param name="cardIndex">The zero-based manufacturing-card index.</param>
+    /// <returns>The matching tab, or null when the index is outside the authored cards.</returns>
+    internal static FacilityWindowTab? GetTab(int cardIndex)
+    {
+        return cardIndex >= 0 && cardIndex < _tabs.Length ? _tabs[cardIndex] : null;
+    }
+
+    /// <summary>
+    /// Gets the authored card index for one manufacturing tab.
+    /// </summary>
+    /// <param name="tab">The manufacturing tab.</param>
+    /// <returns>The zero-based card index, or null for a non-manufacturing tab.</returns>
+    internal static int? GetCardIndex(FacilityWindowTab tab)
+    {
+        int index = Array.IndexOf(_tabs, tab);
+        return index >= 0 ? index : null;
+    }
+
+    /// <summary>
+    /// Maps a manufacturing tab to its domain category.
+    /// </summary>
+    /// <param name="tab">The manufacturing tab.</param>
+    /// <returns>The matching category, or null for a non-manufacturing tab.</returns>
+    internal static ManufacturingType? GetManufacturingType(FacilityWindowTab tab)
+    {
+        return tab switch
+        {
+            FacilityWindowTab.Shipyards => ManufacturingType.Ship,
+            FacilityWindowTab.Training => ManufacturingType.Troop,
+            FacilityWindowTab.Construction => ManufacturingType.Building,
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Maps a domain manufacturing category to its facility tab.
+    /// </summary>
+    /// <param name="type">The manufacturing category.</param>
+    /// <returns>The matching tab, or null for an unsupported category.</returns>
+    internal static FacilityWindowTab? GetTab(ManufacturingType type)
+    {
+        return type switch
+        {
+            ManufacturingType.Ship => FacilityWindowTab.Shipyards,
+            ManufacturingType.Troop => FacilityWindowTab.Training,
+            ManufacturingType.Building => FacilityWindowTab.Construction,
+            _ => null,
+        };
+    }
 }
 
 /// <summary>

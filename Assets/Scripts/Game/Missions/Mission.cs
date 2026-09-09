@@ -757,6 +757,7 @@ namespace Rebellion.Game.Missions
                     TargetOfficer = officer,
                     Assassin = opponent,
                     Context = planet,
+                    Cause = OfficerDeathCause.CaptureEvasion,
                     Tick = game.CurrentTick,
                 }
             );

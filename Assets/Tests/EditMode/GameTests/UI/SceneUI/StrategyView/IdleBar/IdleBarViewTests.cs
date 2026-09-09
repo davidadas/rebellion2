@@ -333,9 +333,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         [Test]
         public void RightClick_OpenContextMenu_KeepsExpandedUntilMenuCloses()
         {
-            bool contextMenuOpen = false;
-            _view.SetContextMenuOpenProvider(() => contextMenuOpen);
-            _view.EntryContextRequested += (_, _) => contextMenuOpen = true;
+            _view.EntryContextRequested += (_, _) => _view.SetContextMenuOpen(true);
             _view.Render(
                 new IdleBarRenderData(true, CreateEntries(8), new RectInt(50, 30, 400, 350))
             );
@@ -351,8 +349,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
             Assert.AreEqual(8, GetVisibleSlots().Count);
 
-            contextMenuOpen = false;
-            InvokeViewMethod("LateUpdate");
+            _view.SetContextMenuOpen(false);
 
             Assert.AreEqual(5, GetVisibleSlots().Count);
             Assert.AreEqual("+4", GetVisibleSlots()[4].name);

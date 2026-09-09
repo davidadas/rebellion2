@@ -40,7 +40,6 @@ public sealed class FacilityWindowController
         IContextMenuReceiver,
         ITargetingReceiver
 {
-    private const int _manufacturingCardIndexLimit = (int)FacilityWindowTab.Construction + 1;
     private readonly HashSet<FacilityWindowView> boundViews = new HashSet<FacilityWindowView>();
     private readonly ConstructionWindowController constructionWindowController;
     private readonly Func<GameRoot> getGame;
@@ -368,7 +367,7 @@ public sealed class FacilityWindowController
 
         FacilityWindowTab? manufacturingTab = session.GetContextManufacturingTab();
         ManufacturingType? manufacturingType = manufacturingTab.HasValue
-            ? ConstructionOrderController.GetManufacturingType(manufacturingTab.Value)
+            ? FacilityManufacturingLaneCatalog.GetManufacturingType(manufacturingTab.Value)
             : null;
         if (!manufacturingType.HasValue)
             return;
@@ -469,7 +468,7 @@ public sealed class FacilityWindowController
     {
         FacilityWindowTab? manufacturingTab = GetContextManufacturingTab(view);
         ManufacturingType? selected = manufacturingTab.HasValue
-            ? ConstructionOrderController.GetManufacturingType(manufacturingTab.Value)
+            ? FacilityManufacturingLaneCatalog.GetManufacturingType(manufacturingTab.Value)
             : null;
         type = selected ?? ManufacturingType.None;
         return selected.HasValue;
@@ -508,34 +507,6 @@ public sealed class FacilityWindowController
     }
 
     /// <summary>
-    /// Opens construction for a specific manufacturing lane in a facility window.
-    /// </summary>
-    /// <param name="window">The source facility window.</param>
-    /// <param name="manufacturingType">The manufacturing category to open.</param>
-    public void OpenConstructionLane(UIWindow window, ManufacturingType manufacturingType)
-    {
-        if (
-            !windowManager.TryGetWindowView(window, out FacilityWindowView view)
-            || !TryGetSession(view, out FacilityWindowSession session)
-        )
-            return;
-
-        FacilityWindowTab? manufacturingTab = ConstructionOrderController.GetManufacturingTab(
-            manufacturingType
-        );
-        if (!manufacturingTab.HasValue)
-            return;
-
-        session.SetActiveTab(FacilityWindowTab.Manufacturing);
-        session.SelectManufacturingCardForContext(
-            manufacturingTab.Value,
-            (int)manufacturingTab.Value
-        );
-        OpenConstruction(window);
-        markDirty();
-    }
-
-    /// <summary>
     /// Gets construction destination identifiers for one manufacturing facility tab.
     /// </summary>
     /// <param name="view">The facility view.</param>
@@ -555,7 +526,7 @@ public sealed class FacilityWindowController
         if (!TryGetSession(view, out FacilityWindowSession session))
             return false;
 
-        ManufacturingType? type = ConstructionOrderController.GetManufacturingType(
+        ManufacturingType? type = FacilityManufacturingLaneCatalog.GetManufacturingType(
             manufacturingTab
         );
         if (!type.HasValue)
@@ -595,7 +566,7 @@ public sealed class FacilityWindowController
         {
             FacilityWindowTab? manufacturingTab = session.GetContextManufacturingTab();
             ManufacturingType? type = manufacturingTab.HasValue
-                ? ConstructionOrderController.GetManufacturingType(manufacturingTab.Value)
+                ? FacilityManufacturingLaneCatalog.GetManufacturingType(manufacturingTab.Value)
                 : null;
             return type.HasValue ? new StrategyStatusTarget(strategyPlanet, null, type) : null;
         }
@@ -712,11 +683,11 @@ public sealed class FacilityWindowController
     {
         if (
             view.TryGetManufacturingCardIndex(eventData, out int cardIndex)
-            && ConstructionOrderController.GetManufacturingTab(cardIndex)
+            && FacilityManufacturingLaneCatalog.GetTab(cardIndex)
                 is FacilityWindowTab manufacturingTab
         )
         {
-            session.SelectManufacturingCardForContext(manufacturingTab, cardIndex);
+            session.SelectManufacturingCardForContext(manufacturingTab);
             return;
         }
 
@@ -745,7 +716,7 @@ public sealed class FacilityWindowController
         )
             return;
 
-        ManufacturingType? type = ConstructionOrderController.GetManufacturingType(
+        ManufacturingType? type = FacilityManufacturingLaneCatalog.GetManufacturingType(
             source.ManufacturingTab
         );
         string destinationPlanetId = target.Planet.Planet.InstanceID;
@@ -882,9 +853,7 @@ public sealed class FacilityWindowController
         PointerEventData eventData
     )
     {
-        FacilityWindowTab? manufacturingTab = ConstructionOrderController.GetManufacturingTab(
-            cardIndex
-        );
+        FacilityWindowTab? manufacturingTab = FacilityManufacturingLaneCatalog.GetTab(cardIndex);
         if (
             !manufacturingTab.HasValue
             || eventData == null
@@ -898,13 +867,13 @@ public sealed class FacilityWindowController
         session.CaptureManufacturingContext(manufacturingTab.Value);
         if (eventData.button == PointerEventData.InputButton.Right)
         {
-            session.SelectManufacturingCardForContext(manufacturingTab.Value, cardIndex);
+            session.SelectManufacturingCardForContext(manufacturingTab.Value);
             session.Window.RequestContext(eventData);
         }
         else if (eventData.button == PointerEventData.InputButton.Left)
         {
             session.Window.RequestFocus();
-            session.SelectManufacturingCard(cardIndex, _manufacturingCardIndexLimit);
+            session.SelectManufacturingCard(cardIndex);
         }
 
         markDirty();

@@ -5,12 +5,10 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 {
@@ -25,7 +23,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         private StatusWindowController _controller;
         private int _dirtyCount;
         private readonly List<string> _playedSfx = new List<string>();
-        private TestActions _actions;
         private GameObject _rootObject;
         private UIContext _uiContext;
         private ISceneNode _visibleNode;
@@ -57,8 +54,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 _windowManager.DestroyWindow(window);
             };
             _controller = CreateController();
-            _actions = new TestActions();
-            _controller.Initialize(_actions);
+            _controller.Initialize(new TestActions());
         }
 
         [TearDown]
@@ -204,41 +200,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(0, _closeCount);
         }
 
-        [Test]
-        public void RowLink_ProducingPlanet_RoutesManufacturingLaneAndWindowPosition()
-        {
-            Planet producer = new Planet
-            {
-                InstanceID = "producer",
-                DisplayName = "Corellia",
-                OwnerInstanceID = _playerFactionId,
-            };
-            CapitalShip ship = new CapitalShip
-            {
-                InstanceID = "queued-ship",
-                DisplayName = "Queued Ship",
-                OwnerInstanceID = _playerFactionId,
-                ManufacturingStatus = ManufacturingStatus.Building,
-                ProducerPlanetID = producer.InstanceID,
-            };
-            _visibleNode = producer;
-            _controller.Open(new StrategyStatusTarget(null, ship));
-            UIWindow window = _windowManager.Windows.Single();
-            _windowManager.TryGetWindowView(window, out StatusWindowView view);
-            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
-            _controller.RenderWindow(view, window);
-            Button link = view.GetComponentsInChildren<Button>(true)
-                .Single(candidate => candidate.name == "RowLink3");
-            Vector2Int sourcePosition = new Vector2Int(window.X, window.Y);
-
-            link.onClick.Invoke();
-
-            Assert.AreEqual(1, _closeCount);
-            Assert.AreEqual(producer.InstanceID, _actions.ManufacturingPlanetId);
-            Assert.AreEqual(ManufacturingType.Ship, _actions.ManufacturingType);
-            Assert.AreEqual(sourcePosition, _actions.SourcePosition);
-        }
-
         private StatusWindowController CreateController()
         {
             return new StatusWindowController(
@@ -262,25 +223,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 
         private sealed class TestActions : IStatusWindowActions
         {
-            public string ManufacturingPlanetId { get; private set; }
-
-            public ManufacturingType? ManufacturingType { get; private set; }
-
-            public Vector2Int SourcePosition { get; private set; }
-
             public void OpenStatusInfo(StrategyStatusTarget target) { }
-
-            public void OpenStatusManufacturing(
-                string planetInstanceId,
-                ManufacturingType manufacturingType,
-                int sourceX,
-                int sourceY
-            )
-            {
-                ManufacturingPlanetId = planetInstanceId;
-                ManufacturingType = manufacturingType;
-                SourcePosition = new Vector2Int(sourceX, sourceY);
-            }
         }
     }
 }

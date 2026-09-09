@@ -14,10 +14,6 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     private readonly List<TextMeshProUGUI> labelTextFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> leftRowTextFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> rightRowTextFields = new List<TextMeshProUGUI>();
-    private readonly List<Button> rowLinkButtons = new List<Button>();
-    private readonly List<RawImage> rowLinkImages = new List<RawImage>();
-    private readonly List<RawImagePressVisual> rowLinkPressVisuals =
-        new List<RawImagePressVisual>();
     private readonly List<StatusWindowRowRenderData> renderedRows =
         new List<StatusWindowRowRenderData>();
     private readonly List<RawImage> statusImageViews = new List<RawImage>();
@@ -51,9 +47,6 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
 
     [SerializeField]
     private TextMeshProUGUI rightRowTextTemplate;
-
-    [SerializeField]
-    private RawImage rowLinkTemplate;
 
     [Header("Commands")]
     [SerializeField]
@@ -107,11 +100,6 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     public event Action<StatusWindowView> InfoRequested;
 
     /// <summary>
-    /// Occurs when a linked status row is requested.
-    /// </summary>
-    public event Action<StatusWindowView, int> RowLinkRequested;
-
-    /// <summary>
     /// Raised when an authored status control enters its pressed state.
     /// </summary>
     internal event Action<StatusWindowView> ControlPressed;
@@ -141,10 +129,6 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
             infoButton.onClick.RemoveListener(RequestInfo);
         if (closeButton != null)
             closeButton.onClick.RemoveListener(RequestClose);
-        for (int i = 0; i < rowLinkButtons.Count; i++)
-            rowLinkButtons[i].onClick.RemoveAllListeners();
-        for (int i = 0; i < rowLinkPressVisuals.Count; i++)
-            rowLinkPressVisuals[i].Pressed -= RequestControlPress;
         Destroyed?.Invoke(this);
     }
 
@@ -301,7 +285,6 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
             rows ?? Array.Empty<StatusWindowRowRenderData>();
         RectInt leftTemplate = UILayout.GetSourceRect(leftRowTextTemplate.rectTransform);
         RectInt rightTemplate = UILayout.GetSourceRect(rightRowTextTemplate.rectTransform);
-        RectInt linkTemplate = UILayout.GetSourceRect(rowLinkTemplate.rectTransform);
         int contentHeight = 0;
         for (int i = 0; i < safeRows.Count; i++)
         {
@@ -315,15 +298,9 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
                 out RectInt leftRect,
                 out RectInt rightRect
             );
-            bool hasLink = row.LinkTexture != null;
-            if (hasLink)
-                rightRect.width = Mathf.Max(0, rightRect.width - linkTemplate.width - 2);
             int leftHeight = GetPreferredTextHeight(leftRowTextTemplate, row.Left, leftRect);
             int rightHeight = GetPreferredTextHeight(rightRowTextTemplate, row.Right, rightRect);
-            int rowHeight = Mathf.Max(
-                Mathf.Max(leftHeight, rightHeight),
-                hasLink ? linkTemplate.height : 0
-            );
+            int rowHeight = Mathf.Max(leftHeight, rightHeight);
             UILayout.SetTemplateText(
                 GetLeftRowTextField(i),
                 leftRowTextTemplate,
@@ -348,16 +325,6 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
                     rightHeight
                 )
             );
-            RenderRowLink(
-                i,
-                row.LinkTexture,
-                new RectInt(
-                    rightRect.xMax + 2,
-                    rightRect.y + contentHeight + (rowHeight - linkTemplate.height) / 2,
-                    linkTemplate.width,
-                    linkTemplate.height
-                )
-            );
             contentHeight += rowHeight;
         }
 
@@ -368,28 +335,7 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
         );
         HideTextFieldsFrom(leftRowTextFields, safeRows.Count);
         HideTextFieldsFrom(rightRowTextFields, safeRows.Count);
-        HideRowLinksFrom(safeRows.Count);
         StoreRenderedRows(safeRows);
-    }
-
-    /// <summary>
-    /// Renders the optional navigation link beside one status value.
-    /// </summary>
-    /// <param name="index">The represented status-row index.</param>
-    /// <param name="texture">The link texture, or null when the row is not linked.</param>
-    /// <param name="rect">The source-space link bounds.</param>
-    private void RenderRowLink(int index, Texture2D texture, RectInt rect)
-    {
-        RawImage image = GetRowLinkImage(index);
-        if (texture == null)
-        {
-            image.gameObject.SetActive(false);
-            return;
-        }
-
-        UILayout.SetImage(image, texture, rect.x, rect.y, rect.width, rect.height);
-        rowLinkPressVisuals[index].SetTextures(texture, texture);
-        image.gameObject.SetActive(true);
     }
 
     /// <summary>
@@ -511,39 +457,6 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Gets or creates the navigation image for one status row.
-    /// </summary>
-    /// <param name="index">The required row index.</param>
-    /// <returns>The reusable navigation image.</returns>
-    private RawImage GetRowLinkImage(int index)
-    {
-        while (rowLinkImages.Count <= index)
-        {
-            int rowIndex = rowLinkImages.Count;
-            RawImage image = Instantiate(rowLinkTemplate, rowsScrollArea.ContentRoot);
-            image.name = $"RowLink{rowIndex}";
-            Button button = image.GetComponent<Button>();
-            RawImagePressVisual pressVisual = image.GetComponent<RawImagePressVisual>();
-            button.onClick.AddListener(() => RequestRowLink(rowIndex));
-            pressVisual.Pressed += RequestControlPress;
-            rowLinkImages.Add(image);
-            rowLinkButtons.Add(button);
-            rowLinkPressVisuals.Add(pressVisual);
-        }
-
-        return rowLinkImages[index];
-    }
-
-    /// <summary>
-    /// Emits a semantic request for one linked status row.
-    /// </summary>
-    /// <param name="rowIndex">The requested row index.</param>
-    private void RequestRowLink(int rowIndex)
-    {
-        RowLinkRequested?.Invoke(this, rowIndex);
-    }
-
-    /// <summary>
     /// Gets or creates a reusable field in one row-column cache.
     /// </summary>
     /// <param name="fields">The row-column cache.</param>
@@ -580,11 +493,7 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
 
         for (int i = 0; i < rows.Count; i++)
         {
-            if (
-                renderedRows[i].Left != rows[i].Left
-                || renderedRows[i].Right != rows[i].Right
-                || renderedRows[i].LinkTexture != rows[i].LinkTexture
-            )
+            if (renderedRows[i].Left != rows[i].Left || renderedRows[i].Right != rows[i].Right)
                 return true;
         }
 
@@ -628,16 +537,6 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Hides cached navigation links beginning at the supplied index.
-    /// </summary>
-    /// <param name="firstHiddenIndex">The first row link to hide.</param>
-    private void HideRowLinksFrom(int firstHiddenIndex)
-    {
-        for (int i = firstHiddenIndex; i < rowLinkImages.Count; i++)
-            rowLinkImages[i].gameObject.SetActive(false);
-    }
-
-    /// <summary>
     /// Measures text using the authored TextMesh Pro field and width.
     /// </summary>
     /// <param name="template">The authored text field.</param>
@@ -673,8 +572,6 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
             throw new MissingReferenceException($"{name}/LeftRowTextTemplate is missing.");
         if (rightRowTextTemplate == null)
             throw new MissingReferenceException($"{name}/RightRowTextTemplate is missing.");
-        if (rowLinkTemplate == null)
-            throw new MissingReferenceException($"{name}/RowLinkTemplate is missing.");
         if (infoButtonImage == null)
             throw new MissingReferenceException($"{name}/InfoButtonImage is missing.");
         if (infoButtonPressVisual == null)
@@ -703,6 +600,5 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
         labelTextTemplate.gameObject.SetActive(false);
         leftRowTextTemplate.gameObject.SetActive(false);
         rightRowTextTemplate.gameObject.SetActive(false);
-        rowLinkTemplate.gameObject.SetActive(false);
     }
 }

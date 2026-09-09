@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 
@@ -16,20 +15,6 @@ public interface IStatusWindowActions
     /// </summary>
     /// <param name="target">The status target whose information should open.</param>
     void OpenStatusInfo(StrategyStatusTarget target);
-
-    /// <summary>
-    /// Opens the producing planet's construction lane from a status row.
-    /// </summary>
-    /// <param name="planetInstanceId">The producing planet identifier.</param>
-    /// <param name="manufacturingType">The manufacturing lane to open.</param>
-    /// <param name="sourceX">The source window's horizontal coordinate.</param>
-    /// <param name="sourceY">The source window's vertical coordinate.</param>
-    void OpenStatusManufacturing(
-        string planetInstanceId,
-        ManufacturingType manufacturingType,
-        int sourceX,
-        int sourceY
-    );
 }
 
 /// <summary>
@@ -262,7 +247,6 @@ public sealed class StatusWindowController
         view.ControlPressed += HandleControlPressed;
         view.Destroyed += HandleViewDestroyed;
         view.InfoRequested += HandleInfoRequested;
-        view.RowLinkRequested += HandleRowLinkRequested;
     }
 
     /// <summary>
@@ -280,7 +264,16 @@ public sealed class StatusWindowController
         StatusWindowSession session = GetSession(view);
 
         UIContext uiContext = GetUIContext();
-        StrategyStatusInfo info = BuildStatusInfo(session.Target, uiContext);
+        GameRoot game = uiContext.Game;
+        IReadOnlyList<GalaxyMapSector> sectors =
+            getSectors() ?? throw new InvalidOperationException("Status sectors are unavailable.");
+        StrategyStatusInfo info = new StrategyStatusInfoBuilder(
+            sectors,
+            findVisibleNode,
+            game.GetPlayerFaction()?.InstanceID,
+            game.CurrentTick,
+            game.Config?.Jedi
+        ).Build(session.Target);
         if (info == null)
             return;
 
@@ -295,54 +288,23 @@ public sealed class StatusWindowController
                 info.Header,
                 ResolveImageTextures(uiContext, theme, info),
                 info.Label,
-                CreateRows(uiContext, info)
+                CreateRows(info.Rows)
             )
         );
     }
 
     /// <summary>
-    /// Projects current status information for one semantic target.
-    /// </summary>
-    /// <param name="target">The target to project.</param>
-    /// <param name="uiContext">The active strategy presentation context.</param>
-    /// <returns>The current status information, or null for an unsupported target.</returns>
-    private StrategyStatusInfo BuildStatusInfo(StrategyStatusTarget target, UIContext uiContext)
-    {
-        GameRoot game = uiContext.Game;
-        IReadOnlyList<GalaxyMapSector> sectors =
-            getSectors() ?? throw new InvalidOperationException("Status sectors are unavailable.");
-        return new StrategyStatusInfoBuilder(
-            sectors,
-            findVisibleNode,
-            game.GetPlayerFaction()?.InstanceID,
-            game.CurrentTick,
-            game.Config?.Jedi
-        ).Build(target);
-    }
-
-    /// <summary>
     /// Copies projected status values into presentation-only row data.
     /// </summary>
-    /// <param name="uiContext">The active strategy presentation context.</param>
-    /// <param name="info">The projected status information.</param>
+    /// <param name="rows">The projected status values.</param>
     /// <returns>The immutable presentation rows.</returns>
     private static IReadOnlyList<StatusWindowRowRenderData> CreateRows(
-        UIContext uiContext,
-        StrategyStatusInfo info
+        IReadOnlyList<StrategyStatusRow> rows
     )
     {
         List<StatusWindowRowRenderData> result = new List<StatusWindowRowRenderData>();
-        Texture2D linkTexture = uiContext.GetTexture(
-            uiContext.GetTheme(info.OwnerFactionId)?.StrategyBookmarkIcons?.FacilityImagePath
-        );
-        foreach (StrategyStatusRow row in info.Rows)
-        {
-            bool hasLink =
-                !string.IsNullOrEmpty(row?.ManufacturingPlanetId) && row.ManufacturingType.HasValue;
-            result.Add(
-                new StatusWindowRowRenderData(row?.Left, row?.Right, hasLink ? linkTexture : null)
-            );
-        }
+        foreach (StrategyStatusRow row in rows ?? Array.Empty<StrategyStatusRow>())
+            result.Add(new StatusWindowRowRenderData(row?.Left, row?.Right));
         return result.AsReadOnly();
     }
 
@@ -411,35 +373,6 @@ public sealed class StatusWindowController
     }
 
     /// <summary>
-    /// Routes a producing-planet link from the requesting status row.
-    /// </summary>
-    /// <param name="view">The requesting status view.</param>
-    /// <param name="rowIndex">The requested detail-row index.</param>
-    private void HandleRowLinkRequested(StatusWindowView view, int rowIndex)
-    {
-        if (!sessions.TryGetValue(view, out StatusWindowSession session))
-            return;
-
-        StrategyStatusInfo info = BuildStatusInfo(session.Target, GetUIContext());
-        if (info == null || rowIndex < 0 || rowIndex >= info.Rows.Count)
-            return;
-
-        StrategyStatusRow row = info.Rows[rowIndex];
-        if (string.IsNullOrEmpty(row.ManufacturingPlanetId) || !row.ManufacturingType.HasValue)
-            return;
-
-        int sourceX = session.Window.X;
-        int sourceY = session.Window.Y;
-        closeWindow(session.Window);
-        actions.OpenStatusManufacturing(
-            row.ManufacturingPlanetId,
-            row.ManufacturingType.Value,
-            sourceX,
-            sourceY
-        );
-    }
-
-    /// <summary>
     /// Routes a semantic close request to the owning window controller.
     /// </summary>
     /// <param name="view">The requesting status view.</param>
@@ -472,7 +405,6 @@ public sealed class StatusWindowController
         view.ControlPressed -= HandleControlPressed;
         view.Destroyed -= HandleViewDestroyed;
         view.InfoRequested -= HandleInfoRequested;
-        view.RowLinkRequested -= HandleRowLinkRequested;
         sessions.Remove(view);
     }
 

@@ -247,7 +247,9 @@ namespace Rebellion.Tests.Game.Missions
             );
 
             Assert.AreEqual(2, results.OfType<OfficerInjuredResult>().Count());
-            Assert.AreSame(secondAssassin, results.OfType<OfficerKilledResult>().Single().Assassin);
+            OfficerKilledResult killed = results.OfType<OfficerKilledResult>().Single();
+            Assert.AreSame(secondAssassin, killed.Assassin);
+            Assert.AreEqual(OfficerDeathCause.Assassination, killed.Cause);
             Assert.AreEqual(firstRating, firstAssassin.GetBaseRating(OfficerRating.Combat));
             Assert.AreEqual(secondRating + 1, secondAssassin.GetBaseRating(OfficerRating.Combat));
             Assert.AreEqual(
@@ -361,6 +363,7 @@ namespace Rebellion.Tests.Game.Missions
 
             OfficerKilledResult killed = results.OfType<OfficerKilledResult>().First();
             Assert.AreEqual("target", killed.TargetOfficer.InstanceID);
+            Assert.AreEqual(OfficerDeathCause.Assassination, killed.Cause);
             Assert.AreEqual(
                 specialForces.InstanceID,
                 killed.Assassin.InstanceID,

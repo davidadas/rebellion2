@@ -593,7 +593,8 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, planet.GetPopularSupport("alliance"));
             Assert.AreEqual(20, secondPlanet.GetPopularSupport("alliance"));
             Assert.AreEqual(1, result.Events.OfType<OfficerInjuredResult>().Count());
-            Assert.AreEqual(1, result.Events.OfType<OfficerKilledResult>().Count());
+            OfficerKilledResult killedResult = result.Events.OfType<OfficerKilledResult>().Single();
+            Assert.AreEqual(OfficerDeathCause.Bombardment, killedResult.Cause);
         }
 
         [Test]

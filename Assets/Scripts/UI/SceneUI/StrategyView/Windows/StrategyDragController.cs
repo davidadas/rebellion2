@@ -96,6 +96,8 @@ public sealed class StrategyDragController
     private bool HasItemState =>
         itemDragController.HasCandidate || itemDragController.SourceDragActive;
 
+    public bool HasDirectItemInteraction => itemDragController.HasDirectInteraction;
+
     /// <summary>
     /// Creates the strategy item-drag coordinator.
     /// </summary>
@@ -301,6 +303,19 @@ public sealed class StrategyDragController
             return false;
 
         ClearItemDrag();
+        return true;
+    }
+
+    /// <summary>
+    /// Cancels item interaction state owned by a direct, non-window source.
+    /// </summary>
+    /// <returns>True when direct-source drag or targeting state was canceled.</returns>
+    public bool TryCancelDirectItemInteraction()
+    {
+        if (!itemDragController.TryCancelDirectInteraction())
+            return false;
+
+        ClearTrackedItemPointer();
         return true;
     }
 

@@ -693,16 +693,6 @@ namespace Rebellion.Game.Messages
                 .Select(result => GetMissionRelatedOfficerInstanceID(result.Mission))
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
-            HashSet<string> assassinatedOfficerIDs = (
-                missionResults ?? Enumerable.Empty<MissionCompletedResult>()
-            )
-                .Where(result => result?.Outcome == MissionOutcome.Success)
-                .Select(result => result.Mission)
-                .OfType<AssassinationMission>()
-                .Select(mission => mission.TargetOfficerInstanceID)
-                .Where(id => !string.IsNullOrEmpty(id))
-                .ToHashSet();
-
             foreach (OfficerRecruitedResult result in recruitedResults)
             {
                 if (
@@ -802,9 +792,7 @@ namespace Rebellion.Game.Messages
                     deliveries,
                     faction,
                     CreateOfficerMessage(
-                        assassinatedOfficerIDs.Contains(
-                            result.TargetOfficer?.InstanceID ?? string.Empty
-                        )
+                        result.Cause == OfficerDeathCause.Assassination
                             ? MessageResultType.OfficerAssassinated
                             : MessageResultType.OfficerKilled,
                         faction,

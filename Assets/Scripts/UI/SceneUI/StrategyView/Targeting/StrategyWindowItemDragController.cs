@@ -53,6 +53,13 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
 
     public bool SourceDragActive => dragController.IsDragging;
 
+    public bool HasDirectInteraction =>
+        dragController.CandidateRequest?.Source is ISceneNode
+        || dragController.ActiveRequest?.Source is ISceneNode
+        || targetingController.ActiveRequest?.Receiver == this
+            && targetingController.ActiveRequest.Source
+                is StrategyWindowTargetingSource { Window: null };
+
     /// <summary>
     /// Creates the strategy-window item-drag controller.
     /// </summary>
@@ -265,6 +272,29 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
         candidateHotspotX = 0;
         candidateHotspotY = 0;
         ClearCapturedCandidate();
+    }
+
+    /// <summary>
+    /// Cancels drag or targeting state whose source was supplied without a strategy window.
+    /// </summary>
+    /// <returns>True when direct-source interaction state was canceled.</returns>
+    public bool TryCancelDirectInteraction()
+    {
+        bool hasDirectDrag =
+            dragController.CandidateRequest?.Source is ISceneNode
+            || dragController.ActiveRequest?.Source is ISceneNode;
+        bool hasDirectTargeting =
+            targetingController.ActiveRequest?.Receiver == this
+            && targetingController.ActiveRequest.Source
+                is StrategyWindowTargetingSource { Window: null };
+        if (!hasDirectDrag && !hasDirectTargeting)
+            return false;
+
+        if (hasDirectDrag)
+            Clear();
+        if (hasDirectTargeting)
+            targetingController.Cancel();
+        return true;
     }
 
     /// <summary>

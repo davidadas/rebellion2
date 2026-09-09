@@ -2030,7 +2030,12 @@ namespace Rebellion.Tests.Game.Messages
                         MissionName = "Assassination",
                         Outcome = MissionOutcome.Success,
                     },
-                    new OfficerKilledResult { TargetOfficer = targetOfficer, Context = target }
+                    new OfficerKilledResult
+                    {
+                        TargetOfficer = targetOfficer,
+                        Context = target,
+                        Cause = OfficerDeathCause.Assassination,
+                    }
                 ),
                 alliance
             );
@@ -2699,6 +2704,7 @@ namespace Rebellion.Tests.Game.Messages
                         TargetOfficer = victim,
                         Assassin = assassin,
                         Context = target,
+                        Cause = OfficerDeathCause.Assassination,
                     },
                     new MissionCompletedResult
                     {
