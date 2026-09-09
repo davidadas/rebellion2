@@ -91,7 +91,7 @@ public interface IIdleBarTrackingActions
 /// <summary>
 /// Owns idle-bar projection, tracking state, and semantic action routing.
 /// </summary>
-public sealed class IdleBarController : IIdleBarTrackingActions
+public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
 {
     private readonly Func<Faction> getPlayerFaction;
     private readonly ContextMenuController contextMenuController;
@@ -103,6 +103,7 @@ public sealed class IdleBarController : IIdleBarTrackingActions
 
     private IIdleBarActions actions;
     private ContextMenuRequest activeContextMenuRequest;
+    private bool disposed;
     private string highlightedEntityId;
     private IdleBarView view;
 
@@ -227,6 +228,21 @@ public sealed class IdleBarController : IIdleBarTrackingActions
         actions.CancelIdleBarItemDrag();
         ClearLocationHighlight();
         ignoredEntityIds.Clear();
+    }
+
+    /// <summary>
+    /// Releases context-menu and authored-view subscriptions owned by this controller.
+    /// </summary>
+    public void Dispose()
+    {
+        if (disposed)
+            return;
+
+        disposed = true;
+        contextMenuController.RequestClosed -= HandleContextMenuClosed;
+        activeContextMenuRequest = null;
+        ReleaseView();
+        actions = null;
     }
 
     /// <inheritdoc />
@@ -399,6 +415,9 @@ public sealed class IdleBarController : IIdleBarTrackingActions
     /// </summary>
     private void EnsureInitialized()
     {
+        if (disposed)
+            throw new ObjectDisposedException(nameof(IdleBarController));
+
         if (actions == null)
         {
             throw new InvalidOperationException(

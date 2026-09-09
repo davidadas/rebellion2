@@ -31,14 +31,14 @@ public enum FacilityWindowTabState
 /// </summary>
 internal static class FacilityManufacturingLaneCatalog
 {
-    private static readonly FacilityWindowTab[] _tabs =
+    private static readonly (FacilityWindowTab Tab, ManufacturingType Type)[] _lanes =
     {
-        FacilityWindowTab.Shipyards,
-        FacilityWindowTab.Training,
-        FacilityWindowTab.Construction,
+        (FacilityWindowTab.Shipyards, ManufacturingType.Ship),
+        (FacilityWindowTab.Training, ManufacturingType.Troop),
+        (FacilityWindowTab.Construction, ManufacturingType.Building),
     };
 
-    internal static int Count => _tabs.Length;
+    internal static int Count => _lanes.Length;
 
     /// <summary>
     /// Gets the manufacturing tab at one authored card index.
@@ -47,7 +47,7 @@ internal static class FacilityManufacturingLaneCatalog
     /// <returns>The matching tab, or null when the index is outside the authored cards.</returns>
     internal static FacilityWindowTab? GetTab(int cardIndex)
     {
-        return cardIndex >= 0 && cardIndex < _tabs.Length ? _tabs[cardIndex] : null;
+        return cardIndex >= 0 && cardIndex < _lanes.Length ? _lanes[cardIndex].Tab : null;
     }
 
     /// <summary>
@@ -57,8 +57,13 @@ internal static class FacilityManufacturingLaneCatalog
     /// <returns>The zero-based card index, or null for a non-manufacturing tab.</returns>
     internal static int? GetCardIndex(FacilityWindowTab tab)
     {
-        int index = Array.IndexOf(_tabs, tab);
-        return index >= 0 ? index : null;
+        for (int index = 0; index < _lanes.Length; index++)
+        {
+            if (_lanes[index].Tab == tab)
+                return index;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -68,13 +73,13 @@ internal static class FacilityManufacturingLaneCatalog
     /// <returns>The matching category, or null for a non-manufacturing tab.</returns>
     internal static ManufacturingType? GetManufacturingType(FacilityWindowTab tab)
     {
-        return tab switch
+        for (int index = 0; index < _lanes.Length; index++)
         {
-            FacilityWindowTab.Shipyards => ManufacturingType.Ship,
-            FacilityWindowTab.Training => ManufacturingType.Troop,
-            FacilityWindowTab.Construction => ManufacturingType.Building,
-            _ => null,
-        };
+            if (_lanes[index].Tab == tab)
+                return _lanes[index].Type;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -84,13 +89,13 @@ internal static class FacilityManufacturingLaneCatalog
     /// <returns>The matching tab, or null for an unsupported category.</returns>
     internal static FacilityWindowTab? GetTab(ManufacturingType type)
     {
-        return type switch
+        for (int index = 0; index < _lanes.Length; index++)
         {
-            ManufacturingType.Ship => FacilityWindowTab.Shipyards,
-            ManufacturingType.Troop => FacilityWindowTab.Training,
-            ManufacturingType.Building => FacilityWindowTab.Construction,
-            _ => null,
-        };
+            if (_lanes[index].Type == type)
+                return _lanes[index].Tab;
+        }
+
+        return null;
     }
 }
 

@@ -46,6 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         [TearDown]
         public void TearDown()
         {
+            _controller?.Dispose();
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
@@ -188,6 +189,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             controller.Render();
 
             Assert.IsFalse(_view.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void Dispose_BoundView_ReleasesViewSubscriptions()
+        {
+            RenderOfficerDirectly();
+
+            _controller.Dispose();
+            _view
+                .GetComponentInChildren<IdleBarSlotView>(false)
+                .GetComponent<Button>()
+                .onClick.Invoke();
+
+            Assert.IsNull(_actions.OpenedTarget);
+        }
+
+        [Test]
+        public void BindView_DisposedController_ThrowsObjectDisposedException()
+        {
+            _controller.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() => _controller.BindView(_view));
         }
 
         private void RenderOfficerDirectly()

@@ -774,6 +774,7 @@ public sealed class StrategyController
         UnwireStrategyInputActions();
         UnregisterCancelHandlers();
         UnsubscribeViewEvents();
+        idleBarController?.Dispose();
         _optionsMenuController?.Dispose();
         if (_appInputController != null)
         {
