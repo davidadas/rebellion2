@@ -42,28 +42,44 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     private IdleBarSlotView overflowSlot;
     private bool pointerOverShelf;
 
-    /// <summary>Raised when the player selects an idle-bar entry.</summary>
+    /// <summary>
+    /// Raised when the player selects an idle-bar entry.
+    /// </summary>
     internal event Action<string> EntrySelected;
 
-    /// <summary>Raised when the player requests an entry's normal context menu.</summary>
+    /// <summary>
+    /// Raised when the player requests an entry's normal context menu.
+    /// </summary>
     internal event Action<string, PointerEventData> EntryContextRequested;
 
-    /// <summary>Raised when an entity portrait begins receiving pointer hover.</summary>
+    /// <summary>
+    /// Raised when an entity portrait begins receiving pointer hover.
+    /// </summary>
     internal event Action<string> EntryHovered;
 
-    /// <summary>Raised when an entity portrait stops receiving pointer hover.</summary>
+    /// <summary>
+    /// Raised when an entity portrait stops receiving pointer hover.
+    /// </summary>
     internal event Action<string> EntryHoverCleared;
 
-    /// <summary>Raised when an entity portrait may begin a direct item drag.</summary>
+    /// <summary>
+    /// Raised when an entity portrait may begin a direct item drag.
+    /// </summary>
     internal event Action<string, DragPreview, PointerEventData> EntryDragCandidateRequested;
 
-    /// <summary>Raised while a direct item drag advances.</summary>
+    /// <summary>
+    /// Raised while a direct item drag advances.
+    /// </summary>
     internal event Action<PointerEventData> EntryDragMoved;
 
-    /// <summary>Raised when a direct item drag or pending candidate ends.</summary>
+    /// <summary>
+    /// Raised when a direct item drag or pending candidate ends.
+    /// </summary>
     internal event Action<PointerEventData> EntryDragEnded;
 
-    /// <summary>Raised when this authored view is destroyed.</summary>
+    /// <summary>
+    /// Raised when this authored view is destroyed.
+    /// </summary>
     internal event Action<IdleBarView> Destroyed;
 
     /// <summary>

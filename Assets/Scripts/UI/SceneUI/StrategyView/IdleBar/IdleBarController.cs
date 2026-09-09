@@ -12,23 +12,33 @@ using UnityEngine.EventSystems;
 /// </summary>
 public interface IIdleBarActions
 {
-    /// <summary>Opens the strategy location represented by an idle-bar entry.</summary>
+    /// <summary>
+    /// Opens the strategy location represented by an idle-bar entry.
+    /// </summary>
     /// <param name="target">The selected strategy entity.</param>
     void OpenIdleBarTarget(ISceneNode target);
 
-    /// <summary>Opens the normal strategy context menu for an idle-bar entry.</summary>
+    /// <summary>
+    /// Opens the normal strategy context menu for an idle-bar entry.
+    /// </summary>
     /// <param name="target">The context-clicked strategy entity.</param>
     /// <param name="eventData">The source pointer event.</param>
     void OpenIdleBarContextMenu(ISceneNode target, PointerEventData eventData);
 
-    /// <summary>Requests a strategy render after idle-bar state changes.</summary>
+    /// <summary>
+    /// Requests a strategy render after idle-bar state changes.
+    /// </summary>
     void RequestIdleBarRender();
 
-    /// <summary>Temporarily emphasizes an idle entity's planet on the galaxy map.</summary>
+    /// <summary>
+    /// Temporarily emphasizes an idle entity's planet on the galaxy map.
+    /// </summary>
     /// <param name="target">The hovered entity, or null to restore the current display.</param>
     void SetIdleBarLocationHighlight(ISceneNode target);
 
-    /// <summary>Begins a direct drag candidate for one idle entity.</summary>
+    /// <summary>
+    /// Begins a direct drag candidate for one idle entity.
+    /// </summary>
     /// <param name="target">The pressed idle entity.</param>
     /// <param name="preview">The compact drag preview.</param>
     /// <param name="eventData">The source pointer event.</param>
@@ -39,11 +49,15 @@ public interface IIdleBarActions
         PointerEventData eventData
     );
 
-    /// <summary>Advances an accepted direct idle-bar item drag.</summary>
+    /// <summary>
+    /// Advances an accepted direct idle-bar item drag.
+    /// </summary>
     /// <param name="eventData">The source pointer event.</param>
     void MoveIdleBarItemDrag(PointerEventData eventData);
 
-    /// <summary>Completes or clears an accepted direct idle-bar item drag.</summary>
+    /// <summary>
+    /// Completes or clears an accepted direct idle-bar item drag.
+    /// </summary>
     /// <param name="eventData">The source pointer event.</param>
     void EndIdleBarItemDrag(PointerEventData eventData);
 }
@@ -53,15 +67,18 @@ public interface IIdleBarActions
 /// </summary>
 public interface IIdleBarTrackingActions
 {
-    /// <summary>Gets whether idle-bar controls should be exposed.</summary>
     bool IsIdleBarEnabled { get; }
 
-    /// <summary>Reports whether an entity appears in the idle bar.</summary>
+    /// <summary>
+    /// Reports whether an entity appears in the idle bar.
+    /// </summary>
     /// <param name="entity">The entity whose tracking state is requested.</param>
     /// <returns><see langword="true"/> when the entity is tracked.</returns>
     bool IsIdleBarTracked(ISceneNode entity);
 
-    /// <summary>Changes whether an entity appears in the idle bar.</summary>
+    /// <summary>
+    /// Changes whether an entity appears in the idle bar.
+    /// </summary>
     /// <param name="entity">The entity whose tracking state should change.</param>
     void ToggleIdleBarTracking(ISceneNode entity);
 }
@@ -293,7 +310,9 @@ public sealed class IdleBarController : IIdleBarTrackingActions
         actions.EndIdleBarItemDrag(eventData);
     }
 
-    /// <summary>Clears an unfinished direct item drag owned by the idle bar.</summary>
+    /// <summary>
+    /// Clears an unfinished direct item drag owned by the idle bar.
+    /// </summary>
     private void ClearItemDrag()
     {
         if (!itemDragCandidateActive)
@@ -327,7 +346,9 @@ public sealed class IdleBarController : IIdleBarTrackingActions
             ClearLocationHighlight();
     }
 
-    /// <summary>Clears any transient idle-bar location highlight.</summary>
+    /// <summary>
+    /// Clears any transient idle-bar location highlight.
+    /// </summary>
     private void ClearLocationHighlight()
     {
         if (string.IsNullOrEmpty(highlightedEntityId))

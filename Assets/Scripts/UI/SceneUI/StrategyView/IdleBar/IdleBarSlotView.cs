@@ -41,22 +41,34 @@ public sealed class IdleBarSlotView
     private bool initialized;
     private int currentSlotSize;
 
-    /// <summary>Raised when the player selects this entry.</summary>
+    /// <summary>
+    /// Raised when the player selects this entry.
+    /// </summary>
     internal event Action<string> Selected;
 
-    /// <summary>Raised when the player requests this entry's normal context menu.</summary>
+    /// <summary>
+    /// Raised when the player requests this entry's normal context menu.
+    /// </summary>
     internal event Action<string, PointerEventData> ContextRequested;
 
-    /// <summary>Raised when the pointer begins hovering this entity.</summary>
+    /// <summary>
+    /// Raised when the pointer begins hovering this entity.
+    /// </summary>
     internal event Action<string> Hovered;
 
-    /// <summary>Raised when the pointer stops hovering this entity.</summary>
+    /// <summary>
+    /// Raised when the pointer stops hovering this entity.
+    /// </summary>
     internal event Action<string> HoverCleared;
 
-    /// <summary>Raised when a primary press may begin dragging this entity.</summary>
+    /// <summary>
+    /// Raised when a primary press may begin dragging this entity.
+    /// </summary>
     internal event Action<string, DragPreview, PointerEventData> DragCandidateRequested;
 
-    /// <summary>Raised when a primary click releases a pending drag candidate.</summary>
+    /// <summary>
+    /// Raised when a primary click releases a pending drag candidate.
+    /// </summary>
     internal event Action<PointerEventData> DragCandidateReleased;
 
     /// <summary>

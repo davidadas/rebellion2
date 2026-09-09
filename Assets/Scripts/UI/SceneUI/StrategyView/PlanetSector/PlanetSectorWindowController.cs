@@ -576,7 +576,9 @@ public sealed class PlanetSectorWindowController
         return new ContextMenuRequest(source, commands.Cast<IContextMenuCommand>().ToList(), this);
     }
 
-    /// <summary>Adds the optional Idle Bar tracking command to a normal context menu.</summary>
+    /// <summary>
+    /// Adds the optional Idle Bar tracking command to a normal context menu.
+    /// </summary>
     /// <param name="commands">The menu receiving the command.</param>
     /// <param name="trackingItem">The entity whose tracking state can change.</param>
     /// <param name="playerFactionId">The current player faction identifier.</param>
