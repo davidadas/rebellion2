@@ -545,6 +545,9 @@ public sealed class GameManager
         _resultProcessor.Subscribe<OfficerCaptureStateResult>(_missionSystem);
         _resultProcessor.Subscribe<OfficerCaptureStateResult>(_captiveSystem);
         _resultProcessor.Subscribe<IntelligenceRevealedResult>(_fogOfWarSystem);
+        _resultProcessor.Subscribe<GameObjectDestroyedResult>(_manufacturingSystem);
+        _resultProcessor.Subscribe<BombardmentResult>(_manufacturingSystem);
+        _resultProcessor.Subscribe<PlanetaryAssaultResult>(_manufacturingSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
 
         _movementSystem.ResultsProduced += HandleSystemResultsProduced;
