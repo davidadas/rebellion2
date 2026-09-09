@@ -539,7 +539,7 @@ internal sealed class BattleAlertWindowProjector
     }
 
     /// <summary>
-    /// Adds system assets and their descendants while excluding fleets.
+    /// Adds system assets and their descendants while excluding fleets and starfighters.
     /// </summary>
     /// <param name="rows">The destination row collection.</param>
     /// <param name="planet">The battle planet.</param>
