@@ -274,12 +274,11 @@ namespace Rebellion.Game.Missions
             if (RollPostInjuryDeath(target, provider, game.Config.Assassination.KillProbability))
             {
                 results.Add(
-                    new OfficerKilledResult
+                    new OfficerAssassinatedResult
                     {
                         TargetOfficer = target,
                         Assassin = successfulParticipant,
                         Context = planet,
-                        Cause = OfficerDeathCause.Assassination,
                         Tick = game.CurrentTick,
                     }
                 );

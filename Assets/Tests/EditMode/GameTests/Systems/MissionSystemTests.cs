@@ -2178,10 +2178,7 @@ namespace Rebellion.Tests.Sectors
                 1,
                 results.OfType<OfficerKilledResult>().Count(result => result.TargetOfficer == decoy)
             );
-            Assert.AreEqual(
-                OfficerDeathCause.CaptureEvasion,
-                results.OfType<OfficerKilledResult>().Single().Cause
-            );
+            Assert.IsEmpty(results.OfType<OfficerAssassinatedResult>());
         }
 
         [Test]

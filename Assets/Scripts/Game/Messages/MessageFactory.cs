@@ -792,7 +792,7 @@ namespace Rebellion.Game.Messages
                     deliveries,
                     faction,
                     CreateOfficerMessage(
-                        result.Cause == OfficerDeathCause.Assassination
+                        result is OfficerAssassinatedResult
                             ? MessageResultType.OfficerAssassinated
                             : MessageResultType.OfficerKilled,
                         faction,
