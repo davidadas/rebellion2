@@ -550,6 +550,110 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_LastProductionBuildingDestroyed_CancelsQueuedWork()
+        {
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 10,
+                BuildingType = BuildingType.Mine,
+            };
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            _game.DetachNode(_shipyard);
+
+            _manager.HandleResults(
+                new List<GameObjectDestroyedResult>
+                {
+                    new GameObjectDestroyedResult
+                    {
+                        DestroyedObject = _shipyard,
+                        Context = _coruscant,
+                    },
+                }
+            );
+
+            Assert.IsFalse(
+                _coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
+            Assert.IsNull(mine.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_AnotherProductionBuildingSurvives_RetainsQueuedWork()
+        {
+            Building secondShipyard = new Building
+            {
+                InstanceID = "SHIPYARD2",
+                OwnerInstanceID = "EMPIRE",
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 4,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(secondShipyard, _coruscant);
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 10,
+                BuildingType = BuildingType.Mine,
+            };
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            _game.DetachNode(_shipyard);
+
+            _manager.HandleResults(
+                new List<GameObjectDestroyedResult>
+                {
+                    new GameObjectDestroyedResult
+                    {
+                        DestroyedObject = _shipyard,
+                        Context = _coruscant,
+                    },
+                }
+            );
+
+            CollectionAssert.Contains(
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Building],
+                mine
+            );
+            Assert.AreSame(_coruscant, mine.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_BombardmentDestroysLastProducer_CancelsQueuedWork()
+        {
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 10,
+                BuildingType = BuildingType.Mine,
+            };
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            _game.DetachNode(_shipyard);
+
+            _manager.HandleResults(
+                new List<BombardmentResult>
+                {
+                    new BombardmentResult
+                    {
+                        Planet = _coruscant,
+                        DestroyedBuildings = new List<Building> { _shipyard },
+                    },
+                }
+            );
+
+            Assert.IsFalse(
+                _coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
+            Assert.IsNull(mine.GetParent());
+        }
+
+        [Test]
         public void ProcessTick_MultipleProductionSources_StackCorrectly()
         {
             _shipyard.ProcessRate = 4;
@@ -3473,6 +3577,32 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(_shipyard.ProductionInputReserved);
             Assert.IsFalse(_shipyard.ProductionPointReady);
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+        }
+
+        [Test]
+        public void CancelManufacturing_QueuedItem_RestoresMaintenanceHeadroom()
+        {
+            const int maintenanceCost = 12;
+            int initialHeadroom = _empire.ProjectedMaintenanceHeadroom;
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 100,
+                MaintenanceCost = maintenanceCost,
+                BaseBuildSpeed = 10,
+                BuildingType = BuildingType.Mine,
+            };
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            Assert.AreEqual(
+                initialHeadroom - maintenanceCost,
+                _empire.ProjectedMaintenanceHeadroom
+            );
+
+            bool cancelled = _manager.CancelManufacturing(mine, _empire.InstanceID);
+
+            Assert.IsTrue(cancelled);
+            Assert.AreEqual(initialHeadroom, _empire.ProjectedMaintenanceHeadroom);
         }
 
         [Test]
