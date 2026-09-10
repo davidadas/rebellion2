@@ -251,18 +251,6 @@ internal abstract class BattleResultPresentation
     }
 
     /// <summary>
-    /// Gets the owner identifier represented by a result-window force panel.
-    /// </summary>
-    /// <param name="panel">The selected result-window panel.</param>
-    /// <returns>The represented attacker or defender owner identifier.</returns>
-    internal string GetOwnerInstanceID(BattleResultPanel panel)
-    {
-        return panel == BattleResultPanel.SecondForces
-            ? DefenderOwnerInstanceID
-            : AttackerOwnerInstanceID;
-    }
-
-    /// <summary>
     /// Returns the owner identifier represented by one combat side.
     /// </summary>
     /// <param name="result">The completed combat result.</param>

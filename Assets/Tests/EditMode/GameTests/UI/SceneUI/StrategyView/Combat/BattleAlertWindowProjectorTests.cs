@@ -135,6 +135,63 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void Project_PendingForces_WhenSecondFactionAttacks_IconsStillMatchFactionOrder()
+        {
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
+            PendingCombatResult pending = new PendingCombatResult
+            {
+                Planet = scene.Planet,
+                AttackerFleet = scene.OpponentFleet,
+                DefenderFleet = scene.PlayerFleet,
+                AttackerOwnerInstanceID = _opponentFactionId,
+                DefenderOwnerInstanceID = _playerFactionId,
+            };
+            BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
+
+            BattleAlertWindowRenderData alliance = projector.Project(
+                BattleAlertWindowMode.Pending,
+                BattleAlertPanel.FirstForces,
+                BattleResultPanel.Summary,
+                BattleResultCategory.CapitalShips,
+                pending,
+                null,
+                _playerFactionId,
+                0,
+                0,
+                scene.Context
+            );
+            BattleAlertWindowRenderData empire = projector.Project(
+                BattleAlertWindowMode.Pending,
+                BattleAlertPanel.SecondForces,
+                BattleResultPanel.Summary,
+                BattleResultCategory.CapitalShips,
+                pending,
+                null,
+                _playerFactionId,
+                0,
+                0,
+                scene.Context
+            );
+
+            Assert.AreEqual("Alliance Forces", alliance.Pending.Header);
+            CollectionAssert.AreEqual(
+                new[] { "Player Fleet", "Player Ship" },
+                alliance.Pending.Rows.Select(row => row.Text)
+            );
+            Assert.AreEqual("Imperial Forces", empire.Pending.Header);
+            CollectionAssert.AreEqual(
+                new[] { "Opponent Fleet", "Opponent Ship" },
+                empire.Pending.Rows.Select(row => row.Text)
+            );
+        }
+
+        [Test]
         public void Project_PendingSecondForces_ExcludesUnfinishedAndInTransitUnits()
         {
             (
@@ -608,6 +665,67 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsTrue(data.Result.UsesPersonnelColumns);
             Assert.AreEqual("Field Officer", data.Result.ResultTable.Operational[0].Text);
             Assert.AreEqual("No Casualties", data.Result.ResultTable.Destroyed[0].Text);
+        }
+
+        [Test]
+        public void Project_ResultForces_WhenSecondFactionAttacks_IconsStillMatchFactionOrder()
+        {
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                Planet = scene.Planet,
+                AttackerFleet = scene.OpponentFleet,
+                DefenderFleet = scene.PlayerFleet,
+                AttackerOwnerInstanceID = _opponentFactionId,
+                DefenderOwnerInstanceID = _playerFactionId,
+                Winner = CombatSide.Attacker,
+                AttackerOutcome = SpaceCombatSideOutcome.Active,
+                DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+            };
+            result.AttackingUnits.AddRange(
+                CombatUnitSnapshot.CaptureFleetUnits(new[] { scene.OpponentFleet })
+            );
+            result.DefendingUnits.AddRange(
+                CombatUnitSnapshot.CaptureFleetUnits(new[] { scene.PlayerFleet })
+            );
+            BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
+            BattleResultPresentation presentation = BattleResultPresentation.Create(result);
+
+            BattleAlertWindowRenderData alliance = projector.Project(
+                BattleAlertWindowMode.Result,
+                BattleAlertPanel.Summary,
+                BattleResultPanel.FirstForces,
+                BattleResultCategory.CapitalShips,
+                null,
+                presentation,
+                _playerFactionId,
+                0,
+                0,
+                scene.Context
+            );
+            BattleAlertWindowRenderData empire = projector.Project(
+                BattleAlertWindowMode.Result,
+                BattleAlertPanel.Summary,
+                BattleResultPanel.SecondForces,
+                BattleResultCategory.CapitalShips,
+                null,
+                presentation,
+                _playerFactionId,
+                0,
+                0,
+                scene.Context
+            );
+
+            Assert.AreEqual("Alliance Forces", alliance.Result.ResultForceHeader);
+            Assert.AreEqual("Player Ship", alliance.Result.ResultTable.Operational[0].Text);
+            Assert.AreEqual("Imperial Forces", empire.Result.ResultForceHeader);
+            Assert.AreEqual("Opponent Ship", empire.Result.ResultTable.Operational[0].Text);
         }
 
         [Test]

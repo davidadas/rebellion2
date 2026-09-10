@@ -16,6 +16,9 @@ namespace Rebellion.Systems
     /// Manages unit and facility production during each game tick.
     /// </summary>
     public class ManufacturingSystem
+        : IGameResultHandler<GameObjectDestroyedResult>,
+            IGameResultHandler<BombardmentResult>,
+            IGameResultHandler<PlanetaryAssaultResult>
     {
         private const int _productionRateScale = 100;
 
@@ -55,6 +58,68 @@ namespace Rebellion.Systems
                 results.AddRange(ProcessPlanetManufacturing(planet));
             }
             return results;
+        }
+
+        /// <summary>
+        /// Cancels affected production lanes after individually reported buildings are destroyed.
+        /// </summary>
+        /// <param name="results">The destruction results to inspect.</param>
+        /// <returns>No additional results.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameObjectDestroyedResult> results)
+        {
+            if (results == null)
+                return new List<GameResult>();
+
+            foreach (
+                IGrouping<Planet, GameObjectDestroyedResult> planetResults in results
+                    .Where(result =>
+                        result?.DestroyedObject is Building && result.Context is Planet
+                    )
+                    .GroupBy(result => (Planet)result.Context)
+            )
+            {
+                CancelUnsupportedProduction(
+                    planetResults.Key,
+                    planetResults.Select(result => (Building)result.DestroyedObject)
+                );
+            }
+
+            return new List<GameResult>();
+        }
+
+        /// <summary>
+        /// Cancels affected production lanes after orbital bombardment destroys buildings.
+        /// </summary>
+        /// <param name="results">The bombardment results to inspect.</param>
+        /// <returns>No additional results.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<BombardmentResult> results)
+        {
+            if (results != null)
+            {
+                foreach (BombardmentResult result in results)
+                    CancelUnsupportedProduction(result?.Planet, result?.DestroyedBuildings);
+            }
+
+            return new List<GameResult>();
+        }
+
+        /// <summary>
+        /// Cancels affected production lanes after a planetary assault destroys buildings.
+        /// </summary>
+        /// <param name="results">The assault results to inspect.</param>
+        /// <returns>No additional results.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<PlanetaryAssaultResult> results)
+        {
+            if (results != null)
+            {
+                foreach (PlanetaryAssaultResult result in results)
+                    CancelUnsupportedProduction(
+                        result?.Planet,
+                        result?.CollateralDestroyedBuildings
+                    );
+            }
+
+            return new List<GameResult>();
         }
 
         /// <summary>
@@ -1553,6 +1618,56 @@ namespace Rebellion.Systems
             }
 
             items.Clear();
+        }
+
+        /// <summary>
+        /// Cancels queued work for each destroyed production type that no surviving facility can
+        /// manufacture on the same planet.
+        /// </summary>
+        /// <param name="planet">The planet where the facilities were destroyed.</param>
+        /// <param name="destroyedBuildings">The buildings destroyed by the completed action.</param>
+        private void CancelUnsupportedProduction(
+            Planet planet,
+            IEnumerable<Building> destroyedBuildings
+        )
+        {
+            if (planet == null || destroyedBuildings == null)
+                return;
+
+            Dictionary<ManufacturingType, List<IManufacturable>> queues =
+                planet.GetManufacturingQueue();
+            foreach (
+                ManufacturingType type in destroyedBuildings
+                    .Where(building =>
+                        building != null
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                        && building.ProcessRate > 0
+                    )
+                    .Select(building => building.ProductionType)
+                    .Where(type => type != ManufacturingType.None)
+                    .Distinct()
+                    .ToList()
+            )
+            {
+                bool hasProducer = planet
+                    .GetChildren<Building>()
+                    .Any(facility =>
+                        facility.ProductionType == type
+                        && facility.ManufacturingStatus == ManufacturingStatus.Complete
+                        && facility.Movement == null
+                        && facility.ProcessRate > 0
+                    );
+                if (
+                    hasProducer
+                    || !queues.TryGetValue(type, out List<IManufacturable> items)
+                    || items == null
+                )
+                    continue;
+
+                ClearQueueItems(planet, items);
+                queues.Remove(type);
+            }
         }
 
         /// <summary>
