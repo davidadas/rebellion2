@@ -139,7 +139,7 @@ do_lint() {
         echo "=== GameAssembly ==="
         dotnet build GameAssembly.csproj -verbosity:normal "${extra_args[@]}"
         echo ""
-        for test_project in GameTests.csproj EditorTests.csproj; do
+        for test_project in UnitTests.csproj; do
             if [ ! -f "$test_project" ]; then
                 continue
             fi
