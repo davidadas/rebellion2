@@ -177,6 +177,9 @@ namespace Rebellion.AI.Director
     public sealed class AIFacilityAllocationPolicy
     {
         private readonly Dictionary<BuildingType, Dictionary<string, int>> _capsByType = new();
+        private readonly Dictionary<BuildingType, HashSet<string>> _primaryPlanetIdsByType = new();
+        private readonly Dictionary<BuildingType, Dictionary<string, int>> _primaryTargetsByType =
+            new();
 
         public AIFacilityAllocationPolicy(AITurnContext context)
         {
@@ -201,22 +204,38 @@ namespace Rebellion.AI.Director
         /// <summary>
         /// Returns whether a planet is the designated primary site and has not reached its target.
         /// </summary>
-        public bool IsIncompletePrimaryHub(
-            Planet planet,
-            BuildingType buildingType,
-            int targetCount
-        )
+        public bool IsIncompletePrimaryHub(Planet planet, BuildingType buildingType, int targetCount)
         {
             return planet != null
-                && targetCount > 0
-                && GetCap(planet, buildingType) > targetCount
-                && planet.GetTotalBuildingTypeCount(buildingType) < targetCount;
+                && IsPrimaryHub(planet, buildingType)
+                && planet.GetTotalBuildingTypeCount(buildingType)
+                    < GetPrimaryTarget(planet, buildingType, targetCount);
+        }
+
+        public bool IsPrimaryHub(Planet planet, BuildingType buildingType) =>
+            planet != null
+            && _primaryPlanetIdsByType.TryGetValue(buildingType, out HashSet<string> planetIds)
+            && planetIds.Contains(planet.InstanceID);
+
+        public int GetPrimaryTarget(Planet planet, BuildingType buildingType, int fallbackTarget)
+        {
+            return
+                planet != null
+                && _primaryTargetsByType.TryGetValue(
+                    buildingType,
+                    out Dictionary<string, int> targets
+                )
+                && targets.TryGetValue(planet.InstanceID, out int target)
+                    ? target
+                    : fallbackTarget;
         }
 
         private void BuildCaps(AITurnContext context, BuildingType buildingType)
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             Dictionary<string, int> caps = new(StringComparer.Ordinal);
+            HashSet<string> primaryPlanetIds = new(StringComparer.Ordinal);
+            Dictionary<string, int> primaryTargets = new(StringComparer.Ordinal);
             foreach (
                 IGrouping<string, Planet> sector in context
                     .Assessment.OwnedPlanets.Where(IsUsable)
@@ -224,18 +243,63 @@ namespace Rebellion.AI.Director
             )
             {
                 List<Planet> ranked = sector
-                    .OrderByDescending(planet => planet.GetTotalBuildingTypeCount(buildingType))
-                    .ThenByDescending(context.Assessment.GetPlanetValue)
-                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                    .Select(planet => new
+                    {
+                        Planet = planet,
+                        FeasibleCount = GetFeasibleFacilityCount(context, planet, buildingType),
+                    })
+                    .OrderByDescending(item =>
+                        buildingType != BuildingType.Shipyard
+                        || item.FeasibleCount >= config.ShipyardSectorHubTargetCount
+                    )
+                    .ThenByDescending(item => item.FeasibleCount)
+                    .ThenByDescending(item =>
+                        item.Planet.GetTotalBuildingTypeCount(buildingType)
+                    )
+                    .ThenByDescending(item => context.Assessment.GetPlanetValue(item.Planet))
+                    .ThenBy(item => item.Planet.InstanceID, StringComparer.Ordinal)
                     .Take(3)
+                    .Select(item => item.Planet)
                     .ToList();
                 if (ranked.Count > 0)
-                    caps[ranked[0].InstanceID] = config.FacilitySectorHubMaximumCount;
+                {
+                    Planet primary = ranked[0];
+                    int configuredTarget =
+                        buildingType == BuildingType.Shipyard
+                            ? config.ShipyardSectorHubTargetCount
+                            : config.FacilitySectorHubTargetCount;
+                    int feasibleTarget = Math.Max(
+                        primary.GetTotalBuildingTypeCount(buildingType),
+                        Math.Min(
+                            configuredTarget,
+                            GetFeasibleFacilityCount(context, primary, buildingType)
+                        )
+                    );
+                    caps[primary.InstanceID] = Math.Max(
+                        feasibleTarget,
+                        primary.GetTotalBuildingTypeCount(buildingType)
+                    );
+                    primaryPlanetIds.Add(primary.InstanceID);
+                    primaryTargets[primary.InstanceID] = feasibleTarget;
+                }
                 for (int index = 1; index < ranked.Count; index++)
                     caps[ranked[index].InstanceID] = config.FacilitySectorSecondaryTargetCount;
             }
 
             _capsByType[buildingType] = caps;
+            _primaryPlanetIdsByType[buildingType] = primaryPlanetIds;
+            _primaryTargetsByType[buildingType] = primaryTargets;
+        }
+
+        private static int GetFeasibleFacilityCount(
+            AITurnContext context,
+            Planet planet,
+            BuildingType buildingType
+        )
+        {
+            int defensiveReserve = context.Assessment.GetPlanetaryDefenseEnergyDeficit(planet);
+            int availableEnergy = Math.Max(0, planet.GetAvailableEnergy() - defensiveReserve);
+            return planet.GetTotalBuildingTypeCount(buildingType) + availableEnergy;
         }
 
         private static bool IsUsable(Planet planet) =>

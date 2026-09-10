@@ -755,15 +755,14 @@ namespace Rebellion.AI.Planners
                 buildingType == BuildingType.Shipyard
                 && sectors.Any(sector =>
                     sector.Any(planet =>
-                        facilityPolicy.GetCap(planet, buildingType)
-                            == context
-                                .Game
-                                .Config
-                                .AI
-                                .Infrastructure
-                                .FacilitySectorHubMaximumCount
+                        facilityPolicy.IsPrimaryHub(planet, buildingType)
                         && GetAvailableFacilityExpansionEnergy(context, planet) > 0
-                        && planet.GetTotalBuildingTypeCount(buildingType) < hubTarget
+                        && planet.GetTotalBuildingTypeCount(buildingType)
+                            < facilityPolicy.GetPrimaryTarget(
+                                planet,
+                                buildingType,
+                                hubTarget
+                            )
                     )
                 );
 
@@ -798,13 +797,17 @@ namespace Rebellion.AI.Planners
                     continue;
 
                 Planet hub = rankedPlanets.FirstOrDefault(planet =>
-                    facilityPolicy.GetCap(planet, buildingType)
-                    == context.Game.Config.AI.Infrastructure.FacilitySectorHubMaximumCount
+                    facilityPolicy.IsPrimaryHub(planet, buildingType)
                 );
                 if (hub == null)
                     continue;
+                int primaryTarget = facilityPolicy.GetPrimaryTarget(
+                    hub,
+                    buildingType,
+                    hubTarget
+                );
                 int hubCount = hub.GetTotalBuildingTypeCount(buildingType);
-                if (hubCount < hubTarget)
+                if (hubCount < primaryTarget)
                 {
                     int priorDemandCount = demands.Count;
                     AddSectorFacilityDemand(
@@ -814,7 +817,7 @@ namespace Rebellion.AI.Planners
                         kind,
                         buildingType,
                         hub,
-                        hubTarget,
+                        primaryTarget,
                         baseDemandPercent,
                         context.Game.Config.AI.Infrastructure.FacilitySectorCoveragePressureBonus
                             + context
