@@ -900,7 +900,6 @@ namespace Rebellion.AI.Planners
                     or AIDemandKind.FleetStarfighter
                     or AIDemandKind.PlanetaryStarfighterReserve
                     or AIDemandKind.FleetRegiment
-                    or AIDemandKind.GarrisonRegimentReserve
                     or AIDemandKind.SpecialForces;
         }
 

@@ -905,6 +905,9 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID
             );
             Planet colony = AITestSceneBuilder.AddPlanet(game, system, "colony", empire.InstanceID);
+            AITestSceneBuilder.AddPlanet(game, system, "colony-2", empire.InstanceID);
+            AITestSceneBuilder.AddPlanet(game, system, "colony-3", empire.InstanceID);
+            AITestSceneBuilder.AddPlanet(game, system, "colony-4", empire.InstanceID);
             hub.SetPopularSupport(empire.InstanceID, 100);
             colony.SetPopularSupport(empire.InstanceID, 100);
             AITestSceneBuilder.AddProductionFacility(

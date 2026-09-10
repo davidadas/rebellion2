@@ -185,6 +185,7 @@ namespace Rebellion.AI.Director
 
             BuildCaps(context, BuildingType.Shipyard);
             BuildCaps(context, BuildingType.ConstructionFacility);
+            BuildCaps(context, BuildingType.TrainingFacility);
         }
 
         public int GetCap(Planet planet, BuildingType buildingType)

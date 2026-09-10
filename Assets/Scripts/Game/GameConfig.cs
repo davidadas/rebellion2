@@ -281,6 +281,7 @@ namespace Rebellion.Game
             public int TrainingFacilityTargetClearTicks { get; set; } = 1;
             public int PlanetsPerShipyard { get; set; }
             public int PlanetsPerTrainingFacility { get; set; }
+            public int TrainingDemandsPerFacility { get; set; } = 4;
             public int ManufacturingFacilityBaseDemandPercent { get; set; }
             public int ConstructionFacilityDemandPercent { get; set; }
             public int ShipyardDemandPercent { get; set; }

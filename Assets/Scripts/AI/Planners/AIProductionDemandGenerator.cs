@@ -524,6 +524,16 @@ namespace Rebellion.AI.Planners
                 placementScorer,
                 facilityPolicy
             );
+            AddProductionFacilityDemand(
+                context,
+                demands,
+                ManufacturingType.Troop,
+                AIDemandKind.TrainingFacility,
+                BuildingType.TrainingFacility,
+                config.TrainingFacilityDemandPercent,
+                placementScorer,
+                facilityPolicy
+            );
         }
 
         /// <summary>
@@ -556,6 +566,13 @@ namespace Rebellion.AI.Planners
                     demands,
                     planet,
                     BuildingType.Shipyard,
+                    facilityPolicy
+                );
+                AddProductionFacilityUpgradeDemand(
+                    context,
+                    demands,
+                    planet,
+                    BuildingType.TrainingFacility,
                     facilityPolicy
                 );
             }
@@ -687,6 +704,7 @@ namespace Rebellion.AI.Planners
             AIFacilityAllocationPolicy facilityPolicy
         )
         {
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             List<AIDemand> productionDemands = demands
                 .Where(demand => demand.ManufacturingType == manufacturingType)
                 .Where(demand => demand.Kind != kind)
@@ -695,6 +713,25 @@ namespace Rebellion.AI.Planners
                 .ToList();
             if (productionDemands.Count == 0)
                 return;
+
+            int remainingTrainingFacilityCount = int.MaxValue;
+            if (buildingType == BuildingType.TrainingFacility)
+            {
+                int demandCapacityTarget = IntegerMath.DivideRoundedUp(
+                    productionDemands.Count,
+                    Math.Max(1, config.TrainingDemandsPerFacility)
+                );
+                remainingTrainingFacilityCount = Math.Max(
+                    0,
+                    Math.Max(
+                        GetDesiredProductionFacilityCount(context, buildingType),
+                        demandCapacityTarget
+                    )
+                        - GetOwnedFacilityCount(context, buildingType)
+                );
+                if (remainingTrainingFacilityCount == 0)
+                    return;
+            }
 
             List<IGrouping<string, Planet>> sectors = context
                 .Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet)
@@ -729,6 +766,9 @@ namespace Rebellion.AI.Planners
 
             foreach (IGrouping<string, Planet> sector in sectors)
             {
+                if (remainingTrainingFacilityCount == 0)
+                    break;
+
                 List<Planet> sectorPlanets = sector
                     .Where(planet =>
                         facilityPolicy.GetCap(planet, buildingType) > 0
@@ -763,6 +803,7 @@ namespace Rebellion.AI.Planners
                 int hubCount = hub.GetTotalBuildingTypeCount(buildingType);
                 if (hubCount < hubTarget)
                 {
+                    int priorDemandCount = demands.Count;
                     AddSectorFacilityDemand(
                         context,
                         demands,
@@ -781,6 +822,11 @@ namespace Rebellion.AI.Planners
                                 .FacilitySectorPrimaryHubPressureBonus
                             + categoryBalancePressure
                     );
+                    if (
+                        buildingType == BuildingType.TrainingFacility
+                        && demands.Count > priorDemandCount
+                    )
+                        remainingTrainingFacilityCount--;
                     continue;
                 }
 
@@ -798,6 +844,7 @@ namespace Rebellion.AI.Planners
                     && planet.GetTotalBuildingTypeCount(buildingType) < secondaryTarget
                 );
 
+                int priorSecondaryDemandCount = demands.Count;
                 AddSectorFacilityDemand(
                     context,
                     demands,
@@ -809,6 +856,11 @@ namespace Rebellion.AI.Planners
                     baseDemandPercent,
                     categoryBalancePressure
                 );
+                if (
+                    buildingType == BuildingType.TrainingFacility
+                    && demands.Count > priorSecondaryDemandCount
+                )
+                    remainingTrainingFacilityCount--;
             }
         }
 
