@@ -20,6 +20,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         private Texture2D _pressedTexture;
         private GameObject _rootObject;
         private Texture2D _speedTexture;
+        private Texture2D _upTexture;
         private StrategyHudView _view;
 
         [SetUp]
@@ -32,6 +33,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             _notificationTexture = new Texture2D(24, 24);
             _pressedTexture = new Texture2D(40, 40);
             _speedTexture = new Texture2D(50, 16);
+            _upTexture = new Texture2D(40, 40);
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
             Canvas.ForceUpdateCanvases();
         }
@@ -41,6 +43,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         {
             UnityEngine.Object.DestroyImmediate(_speedTexture);
             UnityEngine.Object.DestroyImmediate(_pressedTexture);
+            UnityEngine.Object.DestroyImmediate(_upTexture);
             UnityEngine.Object.DestroyImmediate(_notificationTexture);
             UnityEngine.Object.DestroyImmediate(_displayTexture);
             UnityEngine.Object.DestroyImmediate(_backgroundTexture);
@@ -84,9 +87,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 GetField<RawImage>("galacticInformationDisplayImage").texture
             );
             UIRaycastArea[] buttons = GetField<UIRaycastArea[]>("buttonViews");
+            RawImage[] buttonImages = GetField<RawImage[]>("mainButtonImages");
+            Assert.AreSame(_upTexture, buttonImages[0].texture);
+            Assert.AreSame(_upTexture, buttonImages[1].texture);
+            Assert.AreEqual(
+                new RectInt(30, 410, 40, 40),
+                UILayout.GetSourceRect(buttonImages[0].rectTransform)
+            );
             Assert.AreEqual(new RectInt(20, 400, 30, 30), GetSourceRect(buttons[0]));
             Assert.AreEqual(new RectInt(60, 400, 30, 30), GetSourceRect(buttons[1]));
             Assert.IsFalse(buttons[2].gameObject.activeSelf);
+            Assert.IsFalse(buttonImages[2].gameObject.activeSelf);
             Assert.AreEqual(
                 new RectInt(700, 10, 80, 20),
                 GetSourceRect(GetField<UIRaycastArea>("speedContextView"))
@@ -135,6 +146,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 GetField<RawImage>("galacticInformationDisplayImage").gameObject.activeSelf
             );
             Assert.IsFalse(GetField<RawImage>("pressedMainButtonImage").gameObject.activeSelf);
+            Assert.IsFalse(GetField<RawImage[]>("mainButtonImages")[0].gameObject.activeSelf);
             Assert.IsFalse(GetField<UIRaycastArea[]>("buttonViews")[0].gameObject.activeSelf);
             Assert.IsFalse(GetField<UIRaycastArea>("speedContextView").gameObject.activeSelf);
             Assert.IsFalse(
@@ -250,6 +262,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             StrategyHudButtonViewData noneButton = new StrategyHudButtonViewData(
                 StrategyHudAction.None,
                 new RectInt(20, 400, 30, 30),
+                _upTexture,
                 _pressedTexture,
                 new RectInt(30, 410, 40, 40)
             );
@@ -343,6 +356,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                         new StrategyHudButtonViewData(
                             action,
                             new RectInt(20 + index * 40, 400, 30, 30),
+                            _upTexture,
                             _pressedTexture,
                             new RectInt(30 + index * 40, 410, 40, 40)
                         )
