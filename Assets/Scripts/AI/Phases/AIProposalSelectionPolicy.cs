@@ -77,7 +77,7 @@ namespace Rebellion.AI.Phases
                 _claimedKeys.Add(claimKey);
 
             ReserveProducerCapacity(proposal);
-            _selectedRefinedMaterialCommitment += GetRefinedMaterialCommitment(proposal);
+            _selectedRefinedMaterialCommitment += GetRefinedMaterialCommitment(context, proposal);
             int maintenanceCost = GetMaintenanceCost(proposal);
             _selectedMaintenanceCost += maintenanceCost;
             if (
@@ -220,23 +220,41 @@ namespace Rebellion.AI.Phases
                 (long)context.Assessment.RefinedMaterialStockpile
                 - context.Assessment.NearTermRefinedMaterialCommitment
                 - _selectedRefinedMaterialCommitment
-                - GetRefinedMaterialCommitment(proposal);
+                - GetRefinedMaterialCommitment(context, proposal);
             return projectedStockpile < reserve;
         }
 
         /// <summary>
-        /// Returns the refined materials required to complete a production proposal.
+        /// Returns the refined materials a production proposal can consume during the planning
+        /// horizon, based on the producer's average throughput.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to inspect.</param>
         /// <returns>The proposal's refined-material commitment.</returns>
-        private static long GetRefinedMaterialCommitment(AIProposal proposal)
+        private static long GetRefinedMaterialCommitment(
+            AITurnContext context,
+            AIProposal proposal
+        )
         {
             if (proposal is not AIManufactureProposal manufactureProposal)
                 return 0;
 
             IManufacturable product = manufactureProposal.Product?.GetReference();
-            return (long)Math.Max(0, product?.GetConstructionCost() ?? 0)
+            long totalCost = (long)Math.Max(0, product?.GetConstructionCost() ?? 0)
                 * Math.Max(0, manufactureProposal.GetManufacturingCount());
+            if (totalCost <= 0)
+                return 0;
+
+            int horizonTicks = Math.Max(
+                0,
+                context.Game.Config.AI.Selection.RefinedMaterialCommitmentHorizonTicks
+            );
+            double averageConsumption = context.Assessment.GetPlanetProductionRate(
+                manufactureProposal.ProducerPlanet,
+                manufactureProposal.Demand.ManufacturingType
+            );
+            long horizonConsumption = (long)Math.Ceiling(averageConsumption * horizonTicks);
+            return Math.Min(totalCost, Math.Max(0, horizonConsumption));
         }
 
         /// <summary>

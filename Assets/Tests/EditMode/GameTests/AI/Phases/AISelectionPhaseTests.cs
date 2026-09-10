@@ -284,10 +284,10 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithUnaffordableHigherScoreProduction_SelectsAffordableProposal()
+        public void Select_WithHigherTotalCostButAffordableHorizon_SelectsHigherScoreProposal()
         {
             AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
-            AIManufactureProposal unaffordable = CreateManufactureProposal(
+            AIManufactureProposal higherTotalCost = CreateManufactureProposal(
                 producer,
                 AIDemandKind.PlanetaryDefense,
                 BuildingType.Defense,
@@ -301,12 +301,30 @@ namespace Rebellion.Tests.AI.Phases
                 constructionCost: 40,
                 score: 90
             );
-            context.AddProposal(unaffordable);
+            context.AddProposal(higherTotalCost);
             context.AddProposal(affordable);
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { affordable }, selected);
+            CollectionAssert.AreEqual(new[] { higherTotalCost }, selected);
+        }
+
+        [Test]
+        public void Select_WithLongProductionOrder_UsesAverageHorizonConsumption()
+        {
+            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
+            AIManufactureProposal proposal = CreateManufactureProposal(
+                producer,
+                AIDemandKind.PlanetaryDefense,
+                BuildingType.Defense,
+                constructionCost: 400,
+                score: 100
+            );
+            context.AddProposal(proposal);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
         [Test]

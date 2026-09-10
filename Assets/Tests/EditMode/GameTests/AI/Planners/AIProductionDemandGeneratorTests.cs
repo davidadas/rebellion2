@@ -776,6 +776,70 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_WithIncompleteShipyardHub_DoesNotExpandSecondaryInAnotherSector()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount = 6;
+            PlanetSector incompleteSector = AITestSceneBuilder.AddSector(game, "incomplete");
+            Planet incompleteHub = AITestSceneBuilder.AddPlanet(
+                game,
+                incompleteSector,
+                "incomplete-hub",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                incompleteHub,
+                "incomplete-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+
+            PlanetSector completedSector = AITestSceneBuilder.AddSector(game, "completed");
+            Planet completedHub = AITestSceneBuilder.AddPlanet(
+                game,
+                completedSector,
+                "completed-hub",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            Planet secondary = AITestSceneBuilder.AddPlanet(
+                game,
+                completedSector,
+                "secondary",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            for (int index = 0; index < 6; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    completedHub,
+                    $"completed-shipyard-{index}",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship
+                );
+            }
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                secondary,
+                "secondary-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Where(demand => demand.Kind == AIDemandKind.Shipyard)
+                .ToList();
+
+            Assert.IsTrue(demands.Any(demand => demand.DestinationPlanet == incompleteHub));
+            Assert.IsFalse(demands.Any(demand => demand.DestinationPlanet == secondary));
+        }
+
+        [Test]
         public void Generate_WithBusyShipyard_AddsShipyardAtExistingHub()
         {
             (GameRoot game, Faction empire, Planet hub, Planet _, Fleet _, CapitalShip ship) =

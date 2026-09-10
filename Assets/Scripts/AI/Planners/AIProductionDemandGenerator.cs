@@ -711,6 +711,21 @@ namespace Rebellion.AI.Planners
                 hubTarget,
                 baseDemandPercent
             );
+            bool hasIncompleteShipyardHub =
+                buildingType == BuildingType.Shipyard
+                && sectors.Any(sector =>
+                    sector.Any(planet =>
+                        facilityPolicy.GetCap(planet, buildingType)
+                            == context
+                                .Game
+                                .Config
+                                .AI
+                                .Infrastructure
+                                .FacilitySectorHubMaximumCount
+                        && GetAvailableFacilityExpansionEnergy(context, planet) > 0
+                        && planet.GetTotalBuildingTypeCount(buildingType) < hubTarget
+                    )
+                );
 
             foreach (IGrouping<string, Planet> sector in sectors)
             {
@@ -768,6 +783,9 @@ namespace Rebellion.AI.Planners
                     );
                     continue;
                 }
+
+                if (hasIncompleteShipyardHub)
+                    continue;
 
                 int secondaryTarget = context
                     .Game
