@@ -1454,7 +1454,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithUnthreatenedInfrastructure_AddsReducedStarfighterDemand()
+        public void Generate_WithUnthreatenedInfrastructure_AddsTwelveStarfighterMinimumDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
@@ -1494,7 +1494,7 @@ namespace Rebellion.Tests.AI.Planners
                     && item.DestinationPlanet == planet
                 );
 
-            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(10, demand.QuantityNeeded);
             Assert.IsTrue(demand.UsesDefensiveReserve);
         }
 
@@ -1518,7 +1518,11 @@ namespace Rebellion.Tests.AI.Planners
             );
             for (
                 int index = 0;
-                index < game.Config.AI.NonCapitalSummary.StarfighterRequirementInfrastructure;
+                index
+                    < System.Math.Max(
+                        12,
+                        game.Config.AI.NonCapitalSummary.StarfighterRequirementInfrastructure
+                    );
                 index++
             )
             {

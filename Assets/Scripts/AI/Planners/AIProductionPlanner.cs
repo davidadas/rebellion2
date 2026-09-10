@@ -427,6 +427,21 @@ namespace Rebellion.AI.Planners
         private int GetFacilityMaintenanceBudget(AITurnContext context, AIDemand demand)
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            int headroomBudget = Math.Max(
+                0,
+                context.Assessment.ProjectedMaintenanceHeadroom
+                    - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
+            );
+            if (
+                demand.Kind == AIDemandKind.Shipyard
+                && context.FacilityAllocation.IsIncompletePrimaryHub(
+                    demand.DestinationPlanet,
+                    BuildingType.Shipyard,
+                    config.ShipyardSectorHubTargetCount
+                )
+            )
+                return headroomBudget;
+
             int allocatedMaintenance = IntegerMath.ScaleByPercent(
                 context.Assessment.MaintenanceCapacity,
                 config.ProductionFacilityMaintenanceAllocationPercent
@@ -439,11 +454,6 @@ namespace Rebellion.AI.Planners
             )
                 return 0;
 
-            int headroomBudget = Math.Max(
-                0,
-                context.Assessment.ProjectedMaintenanceHeadroom
-                    - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
-            );
             return Math.Min(availableMaintenance, headroomBudget);
         }
 

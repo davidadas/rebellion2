@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
+using Rebellion.AI.Planners.Demand;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -26,7 +27,6 @@ namespace Rebellion.AI.Phases
         >(StringComparer.Ordinal);
         private int _selectedProductionFacilityMaintenance;
         private int _selectedMaintenanceCost;
-        private long _selectedRefinedMaterialCommitment;
 
         /// <summary>
         /// Selects a valid proposal option and reserves the resources it consumes.
@@ -63,9 +63,6 @@ namespace Rebellion.AI.Phases
             if (!TrySelectOption(context, proposal))
                 return false;
 
-            if (IsBlockedByRefinedMaterialReserve(context, proposal))
-                return false;
-
             if (WouldExceedMaintenanceHeadroom(context, proposal))
                 return false;
 
@@ -77,7 +74,6 @@ namespace Rebellion.AI.Phases
                 _claimedKeys.Add(claimKey);
 
             ReserveProducerCapacity(proposal);
-            _selectedRefinedMaterialCommitment += GetRefinedMaterialCommitment(context, proposal);
             int maintenanceCost = GetMaintenanceCost(proposal);
             _selectedMaintenanceCost += maintenanceCost;
             if (
@@ -201,63 +197,6 @@ namespace Rebellion.AI.Phases
         }
 
         /// <summary>
-        /// Returns whether the refined-material reserve blocks discretionary production.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal to inspect.</param>
-        /// <returns>True when the configured reserve must be preserved.</returns>
-        private bool IsBlockedByRefinedMaterialReserve(AITurnContext context, AIProposal proposal)
-        {
-            if (
-                proposal is not AIManufactureProposal manufactureProposal
-                || manufactureProposal.Demand?.CanUseRefinedMaterialReserve != false
-            )
-                return false;
-
-            int reservePercent = context.Game.Config.AI.Selection.RefinedMaterialReservePercent;
-            long reserve = (long)context.Assessment.RefinedMaterialSupply * reservePercent / 100;
-            long projectedStockpile =
-                (long)context.Assessment.RefinedMaterialStockpile
-                - context.Assessment.NearTermRefinedMaterialCommitment
-                - _selectedRefinedMaterialCommitment
-                - GetRefinedMaterialCommitment(context, proposal);
-            return projectedStockpile < reserve;
-        }
-
-        /// <summary>
-        /// Returns the refined materials a production proposal can consume during the planning
-        /// horizon, based on the producer's average throughput.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal to inspect.</param>
-        /// <returns>The proposal's refined-material commitment.</returns>
-        private static long GetRefinedMaterialCommitment(
-            AITurnContext context,
-            AIProposal proposal
-        )
-        {
-            if (proposal is not AIManufactureProposal manufactureProposal)
-                return 0;
-
-            IManufacturable product = manufactureProposal.Product?.GetReference();
-            long totalCost = (long)Math.Max(0, product?.GetConstructionCost() ?? 0)
-                * Math.Max(0, manufactureProposal.GetManufacturingCount());
-            if (totalCost <= 0)
-                return 0;
-
-            int horizonTicks = Math.Max(
-                0,
-                context.Game.Config.AI.Selection.RefinedMaterialCommitmentHorizonTicks
-            );
-            double averageConsumption = context.Assessment.GetPlanetProductionRate(
-                manufactureProposal.ProducerPlanet,
-                manufactureProposal.Demand.ManufacturingType
-            );
-            long horizonConsumption = (long)Math.Ceiling(averageConsumption * horizonTicks);
-            return Math.Min(totalCost, Math.Max(0, horizonConsumption));
-        }
-
-        /// <summary>
         /// Returns whether a proposal would exceed the configured maintenance reserve.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -291,6 +230,16 @@ namespace Rebellion.AI.Phases
             if (
                 proposal is not AIManufactureProposal manufactureProposal
                 || !manufactureProposal.IsProductionFacilityExpansion
+            )
+                return false;
+
+            if (
+                manufactureProposal.Demand.Kind == AIDemandKind.Shipyard
+                && context.FacilityAllocation.IsIncompletePrimaryHub(
+                    manufactureProposal.Demand.DestinationPlanet,
+                    BuildingType.Shipyard,
+                    context.Game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount
+                )
             )
                 return false;
 

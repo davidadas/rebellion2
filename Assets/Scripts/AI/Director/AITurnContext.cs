@@ -198,6 +198,21 @@ namespace Rebellion.AI.Director
                     : 0;
         }
 
+        /// <summary>
+        /// Returns whether a planet is the designated primary site and has not reached its target.
+        /// </summary>
+        public bool IsIncompletePrimaryHub(
+            Planet planet,
+            BuildingType buildingType,
+            int targetCount
+        )
+        {
+            return planet != null
+                && targetCount > 0
+                && GetCap(planet, buildingType) > targetCount
+                && planet.GetTotalBuildingTypeCount(buildingType) < targetCount;
+        }
+
         private void BuildCaps(AITurnContext context, BuildingType buildingType)
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;

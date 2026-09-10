@@ -228,6 +228,7 @@ namespace Rebellion.AI.Planners
             {
                 if (
                     context.Game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters
+                    && !HasProductionInfrastructure(context, planet)
                     && !HasCompletedStaticDefense(context, planet)
                 )
                     continue;
@@ -271,17 +272,19 @@ namespace Rebellion.AI.Planners
         private static int GetPlanetaryStarfighterRequirement(AITurnContext context, Planet planet)
         {
             GameConfig.AINonCapitalSummaryConfig config = context.Game.Config.AI.NonCapitalSummary;
-            int baseline =
-                planet.IsHeadquarters ? config.StarfighterRequirementHeadquarters
-                : HasProductionInfrastructure(context, planet)
-                    ? config.StarfighterRequirementInfrastructure
-                : config.StarfighterRequirementDefault;
+            bool hasProductionInfrastructure = HasProductionInfrastructure(context, planet);
+            int baseline = planet.IsHeadquarters
+                ? config.StarfighterRequirementHeadquarters
+                : hasProductionInfrastructure
+                    ? Math.Max(12, config.StarfighterRequirementInfrastructure)
+                    : config.StarfighterRequirementDefault;
             if (!planet.IsHeadquarters && !context.Assessment.IsPlanetThreatened(planet))
             {
-                int baselinePercent = HasProductionInfrastructure(context, planet)
-                    ? config.UnthreatenedInfrastructureStarfighterBaselinePercent
-                    : config.InteriorStarfighterBaselinePercent;
-                baseline = IntegerMath.ScaleByPercent(baseline, baselinePercent);
+                if (!hasProductionInfrastructure)
+                    baseline = IntegerMath.ScaleByPercent(
+                        baseline,
+                        config.InteriorStarfighterBaselinePercent
+                    );
             }
             int requiredDefenseStrength = context.Assessment.GetRequiredPlanetDefenseStrength(
                 planet

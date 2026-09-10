@@ -178,7 +178,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithDiscretionaryProductionBelowRefinedReserve_DoesNotSelectProposal()
+        public void Select_WithDiscretionaryProductionBelowRefinedReserve_SelectsProposal()
         {
             AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
             AIManufactureProposal proposal = CreateManufactureProposal(
@@ -190,7 +190,7 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            Assert.IsEmpty(selected);
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
         [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
@@ -219,7 +219,7 @@ namespace Rebellion.Tests.AI.Phases
         [TestCase(AIDemandKind.FleetStarfighter)]
         [TestCase(AIDemandKind.FleetRegiment)]
         [TestCase(AIDemandKind.GarrisonRegimentReserve)]
-        public void Select_WithMilitaryProductionBelowRefinedReserve_DoesNotSelectProposal(
+        public void Select_WithMilitaryProductionBelowRefinedReserve_SelectsProposal(
             AIDemandKind demandKind
         )
         {
@@ -233,13 +233,13 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            Assert.IsEmpty(selected);
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
         [TestCase(AIDemandKind.ConstructionFacility, BuildingType.ConstructionFacility)]
         [TestCase(AIDemandKind.Shipyard, BuildingType.Shipyard)]
         [TestCase(AIDemandKind.TrainingFacility, BuildingType.TrainingFacility)]
-        public void Select_WithStrategicFacilityBelowRefinedReserve_DoesNotSelectProposal(
+        public void Select_WithStrategicFacilityBelowRefinedReserve_SelectsProposal(
             AIDemandKind demandKind,
             BuildingType buildingType
         )
@@ -254,7 +254,7 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            Assert.IsEmpty(selected);
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
         [Test]
