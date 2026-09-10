@@ -61,7 +61,6 @@ namespace Rebellion.AI.Phases
                             && building.GetBuildingType()
                                 is BuildingType.Shipyard
                                     or BuildingType.ConstructionFacility
-                                    or BuildingType.TrainingFacility
                         )
                         .GroupBy(building => building.GetBuildingType())
                 )
