@@ -36,6 +36,9 @@ public sealed class StrategyHudView : MonoBehaviour
     private RawImage pressedMainButtonImage;
 
     [SerializeField]
+    private RawImage[] mainButtonImages = Array.Empty<RawImage>();
+
+    [SerializeField]
     private UIRaycastArea[] buttonViews = Array.Empty<UIRaycastArea>();
 
     [SerializeField]
@@ -258,11 +261,15 @@ public sealed class StrategyHudView : MonoBehaviour
         {
             StrategyHudButtonViewData button = buttons[i];
             renderedButtons.Add(button);
+            SetImageAtSourceRect(mainButtonImages[i], button.UpTexture, button.ImageBounds);
             buttonViews[i].Render(button.HitArea);
         }
 
         for (int i = renderedCount; i < buttonViews.Length; i++)
+        {
+            SetImageAtSourceRect(mainButtonImages[i], null, null);
             buttonViews[i].gameObject.SetActive(false);
+        }
 
         speedContextView.Render(speedContextBounds);
     }
@@ -302,7 +309,7 @@ public sealed class StrategyHudView : MonoBehaviour
             return;
         }
 
-        SetImageAtSourceRect(pressedMainButtonImage, button.PressedTexture, button.PressedBounds);
+        SetImageAtSourceRect(pressedMainButtonImage, button.PressedTexture, button.ImageBounds);
     }
 
     /// <summary>
@@ -483,6 +490,18 @@ public sealed class StrategyHudView : MonoBehaviour
         if (pressedMainButtonImage == null)
             throw new MissingReferenceException($"{name}/PressedMainButtonImage is missing.");
         if (
+            mainButtonImages == null
+            || buttonViews == null
+            || mainButtonImages.Length == 0
+            || mainButtonImages.Length != buttonViews.Length
+        )
+            throw new MissingReferenceException($"{name}/HUD button image slots are missing.");
+        for (int i = 0; i < mainButtonImages.Length; i++)
+        {
+            if (mainButtonImages[i] == null)
+                throw new MissingReferenceException($"{name}/MainButtonImage{i} is missing.");
+        }
+        if (
             messageNotificationImages == null
             || messageNotificationButtons == null
             || messageNotificationImages.Length == 0
@@ -501,7 +520,7 @@ public sealed class StrategyHudView : MonoBehaviour
                 );
         }
 
-        if (buttonViews == null || buttonViews.Length == 0)
+        if (buttonViews.Length == 0)
             throw new MissingReferenceException($"{name}/HUD button views are missing.");
         for (int i = 0; i < buttonViews.Length; i++)
         {
