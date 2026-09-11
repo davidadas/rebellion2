@@ -2358,6 +2358,9 @@ namespace Rebellion.AI.Director
         /// <returns>The near-term refined-material commitment.</returns>
         private int GetNearTermRefinedMaterialCommitment()
         {
+            if (_context?.Game?.Config == null)
+                return 0;
+
             long commitment = 0;
             int horizonTicks = Math.Max(
                 0,
