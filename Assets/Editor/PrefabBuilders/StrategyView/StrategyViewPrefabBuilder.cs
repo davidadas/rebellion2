@@ -365,6 +365,34 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
+    /// Authors the themed HUD command-button image slots in their configured order.
+    /// </summary>
+    /// <param name="parent">The HUD button-image container.</param>
+    /// <returns>The authored HUD button images.</returns>
+    private static List<RawImage> CreateHudButtonImages(Transform parent)
+    {
+        List<RawImage> images = new List<RawImage>();
+        List<StrategyHudButtonTheme> buttons = PreviewTheme?.TacticalHUDLayout?.Buttons;
+        if (buttons == null)
+            return images;
+
+        for (int i = 0; i < buttons.Count; i++)
+        {
+            StrategyHudButtonTheme button = buttons[i];
+            RawImage image = CreateRawImage(
+                $"{button.Action}ButtonImage",
+                parent,
+                button.UpImagePath,
+                button.PressedImageLayout ?? button.HitArea
+            );
+            image.raycastTarget = false;
+            images.Add(image);
+        }
+
+        return images;
+    }
+
+    /// <summary>
     /// Authors the themed HUD message-notification image slots.
     /// </summary>
     /// <param name="parent">The HUD notification container.</param>
@@ -789,6 +817,7 @@ public static class StrategyViewPrefabBuilder
             hud.transform
         );
         List<Button> messageNotificationButtons = CreateButtons(messageNotificationImages);
+        List<RawImage> mainButtonImages = CreateHudButtonImages(hud.transform);
         List<UIRaycastArea> hudButtonViews = CreateHudButtonViews(hud.transform);
         UIRaycastArea speedContextView = CreateHudButtonView(
             "GameSpeedButton",
@@ -902,6 +931,7 @@ public static class StrategyViewPrefabBuilder
             galacticInformationDisplayImage
         );
         AssignReference(hudView, "pressedMainButtonImage", pressedMainButtonImage);
+        AssignReferenceArray(hudView, "mainButtonImages", mainButtonImages);
         AssignReferenceArray(hudView, "messageNotificationImages", messageNotificationImages);
         AssignReferenceArray(hudView, "messageNotificationButtons", messageNotificationButtons);
         AssignReferenceArray(hudView, "buttonViews", hudButtonViews);

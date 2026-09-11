@@ -1,10 +1,13 @@
 {
-    "name": "EditorTests",
-    "rootNamespace": "Rebellion.Tests.Editor",
+    "name": "UnitTests",
     "includePlatforms": [
         "Editor"
     ],
     "references": [
+        "GameAssembly",
+        "Unity.InputSystem",
+        "Unity.InputSystem.TestFramework",
+        "Unity.TextMeshPro",
         "UnityEditor.TestRunner",
         "UnityEngine.TestRunner"
     ],

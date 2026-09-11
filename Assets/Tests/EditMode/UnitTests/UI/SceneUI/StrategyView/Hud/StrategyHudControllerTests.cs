@@ -114,6 +114,65 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void CreateViewData_ConfiguredButton_ResolvesReleasedAndPressedArtwork()
+        {
+            Texture2D upTexture = new Texture2D(2, 2);
+            Texture2D pressedTexture = new Texture2D(2, 2);
+            try
+            {
+                StrategyHudController controller = new StrategyHudController(
+                    () => new Faction(),
+                    () => new FactionTheme(),
+                    path => path == "up" ? upTexture : pressedTexture,
+                    _ => { }
+                );
+                FactionTheme theme = new FactionTheme
+                {
+                    TacticalHUDLayout = new TacticalHUDLayout
+                    {
+                        Buttons = new List<StrategyHudButtonTheme>
+                        {
+                            new StrategyHudButtonTheme
+                            {
+                                Action = StrategyHudAction.SystemFinder,
+                                UpImagePath = "up",
+                                PressedImagePath = "pressed",
+                                PressedImageLayout = new SourceRectLayout
+                                {
+                                    X = 10,
+                                    Y = 20,
+                                    Width = 30,
+                                    Height = 40,
+                                },
+                                HitArea = new SourceRectLayout
+                                {
+                                    X = 10,
+                                    Y = 20,
+                                    Width = 30,
+                                    Height = 40,
+                                },
+                            },
+                        },
+                    },
+                };
+
+                StrategyHudViewData data = controller.CreateViewData(
+                    new StrategyHudRenderData("42", "100", "200", "300", TickSpeed.Medium, null),
+                    theme
+                );
+
+                Assert.AreSame(upTexture, data.Buttons[0].UpTexture);
+                Assert.AreSame(pressedTexture, data.Buttons[0].PressedTexture);
+                Assert.AreEqual(new RectInt(10, 20, 30, 40), data.Buttons[0].ImageBounds);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(upTexture);
+                UnityEngine.Object.DestroyImmediate(pressedTexture);
+            }
+        }
+
+        [Test]
         public void BuildSpeedMenuCommands_DefaultCatalog_ReturnsOrderedEnabledCommands()
         {
             IReadOnlyList<StrategyMenuCommand> commands =
