@@ -156,6 +156,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void Render_LegacyPrefabWithoutButtonImages_CreatesButtonImageSlots()
+        {
+            SetField("mainButtonImages", Array.Empty<RawImage>());
+
+            _view.Render(CreateViewData(CreateButtons(2), CreateNotifications(0), null));
+
+            RawImage[] buttonImages = GetField<RawImage[]>("mainButtonImages");
+            Assert.AreEqual(GetField<UIRaycastArea[]>("buttonViews").Length, buttonImages.Length);
+            Assert.IsTrue(buttonImages.All(image => image != null));
+            Assert.AreSame(_upTexture, buttonImages[0].texture);
+            Assert.AreSame(_upTexture, buttonImages[1].texture);
+        }
+
+        [Test]
         public void ButtonPointer_PressAndRelease_EmitsControlCueAndTogglesPressedArtwork()
         {
             _view.Render(CreateViewData(CreateButtons(1), CreateNotifications(0), null));
@@ -405,6 +419,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 typeof(StrategyHudView)
                     .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                     .GetValue(_view);
+        }
+
+        private void SetField(string fieldName, object value)
+        {
+            typeof(StrategyHudView)
+                .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(_view, value);
         }
 
         private static RectInt GetSourceRect(UIRaycastArea area)
