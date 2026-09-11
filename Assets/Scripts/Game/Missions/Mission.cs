@@ -822,10 +822,24 @@ namespace Rebellion.Game.Missions
         /// <returns>True for a completed, stationary hostile unit with a detection rating.</returns>
         internal bool IsEligibleDetector(ISceneNode candidate)
         {
+            return IsEligibleDetectorForOwner(candidate, OwnerInstanceID);
+        }
+
+        /// <summary>
+        /// Returns whether a scene object may detect a mission owned by the supplied faction.
+        /// </summary>
+        /// <param name="candidate">The potential hostile detector.</param>
+        /// <param name="missionOwnerInstanceId">The mission owner's instance identifier.</param>
+        /// <returns>True when the candidate is an eligible hostile detector.</returns>
+        internal static bool IsEligibleDetectorForOwner(
+            ISceneNode candidate,
+            string missionOwnerInstanceId
+        )
+        {
             string candidateOwnerId = candidate?.GetOwnerInstanceID();
             if (
                 string.IsNullOrEmpty(candidateOwnerId)
-                || candidateOwnerId == OwnerInstanceID
+                || candidateOwnerId == missionOwnerInstanceId
                 || candidate
                     is not IManufacturable { ManufacturingStatus: ManufacturingStatus.Complete }
                 || candidate is IMovable movable && movable.GetTransitMovement() != null

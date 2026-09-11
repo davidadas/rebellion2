@@ -880,8 +880,8 @@ namespace Rebellion.AI.Director
         private IReadOnlyList<ISceneNode> BuildMissionDetectorCandidates(Planet planet)
         {
             List<ISceneNode> detectors = new List<ISceneNode>();
-            detectors.AddRange(planet.GetChildren<Starfighter>());
-            detectors.AddRange(planet.GetChildren<Regiment>());
+            AddMissionDetectorCandidates(planet.GetChildren<Starfighter>(), detectors);
+            AddMissionDetectorCandidates(planet.GetChildren<Regiment>(), detectors);
 
             bool blocksFleetDetection = planet
                 .GetChildren<Building>()
@@ -898,13 +898,38 @@ namespace Rebellion.AI.Director
             {
                 foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
                 {
-                    detectors.Add(capitalShip);
-                    detectors.AddRange(capitalShip.GetChildren<Starfighter>());
-                    detectors.AddRange(capitalShip.GetChildren<Regiment>());
+                    AddMissionDetectorCandidate(capitalShip, detectors);
+                    AddMissionDetectorCandidates(
+                        capitalShip.GetChildren<Starfighter>(),
+                        detectors
+                    );
+                    AddMissionDetectorCandidates(
+                        capitalShip.GetChildren<Regiment>(),
+                        detectors
+                    );
                 }
             }
 
             return detectors;
+        }
+
+        private void AddMissionDetectorCandidates<T>(
+            IEnumerable<T> candidates,
+            ICollection<ISceneNode> detectors
+        )
+            where T : ISceneNode
+        {
+            foreach (T candidate in candidates)
+                AddMissionDetectorCandidate(candidate, detectors);
+        }
+
+        private void AddMissionDetectorCandidate(
+            ISceneNode candidate,
+            ICollection<ISceneNode> detectors
+        )
+        {
+            if (Mission.IsEligibleDetectorForOwner(candidate, _context.Faction.InstanceID))
+                detectors.Add(candidate);
         }
 
         /// <summary>

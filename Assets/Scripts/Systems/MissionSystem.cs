@@ -248,8 +248,14 @@ namespace Rebellion.Systems
         /// intentionally excluded. Foiling uses the caller's observed planet state.
         /// </summary>
         /// <param name="request">The mission configuration to evaluate.</param>
+        /// <param name="observedDetectors">
+        /// Optional detector snapshot already filtered for the mission owner.
+        /// </param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
-        public MissionOdds GetMissionOdds(MissionStartRequest request)
+        public MissionOdds GetMissionOdds(
+            MissionStartRequest request,
+            IReadOnlyList<ISceneNode> observedDetectors = null
+        )
         {
             if (!TryCreateMission(request, out Mission mission))
                 return null;
@@ -261,10 +267,10 @@ namespace Rebellion.Systems
                 request.SelectedTarget
             );
             Planet observedPlanet = request.Location as Planet;
-            List<ISceneNode> detectors =
+            IReadOnlyList<ISceneNode> detectors =
                 observedPlanet == null
-                    ? new List<ISceneNode>()
-                    : GetDetectors(mission, observedPlanet);
+                    ? Array.Empty<ISceneNode>()
+                    : observedDetectors ?? GetDetectors(mission, observedPlanet);
             double foilProbability = EstimateFoilProbability(mission, detectors);
             double personnelLossProbability = EstimatePersonnelLossProbability(
                 mission,
@@ -790,6 +796,18 @@ namespace Rebellion.Systems
                 return 0;
 
             IReadOnlyList<IMissionParticipant> decoys = mission.GetDecoyParticipants();
+            if (decoys.Count == 0)
+            {
+                double unfoiledProbability = 1d;
+                foreach (ISceneNode detector in detectors)
+                {
+                    unfoiledProbability *=
+                        1d - Math.Clamp(GetFoilProbability(mission, detector) / 100d, 0, 1);
+                }
+
+                return (1d - unfoiledProbability) * 100d;
+            }
+
             var decoyGroups = decoys
                 .GroupBy(decoy => new
                 {
