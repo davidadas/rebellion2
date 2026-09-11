@@ -238,6 +238,5 @@ namespace Rebellion.AI.Phases
                     StringComparison.Ordinal
                 ) < 0;
         }
-
     }
 }

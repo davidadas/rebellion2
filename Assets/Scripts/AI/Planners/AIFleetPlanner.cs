@@ -137,8 +137,10 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
-            bool mayLeaveCampaign =
-                context.Assessment.IsFleetBlockedByTargetShields(fleet, targetPlanet);
+            bool mayLeaveCampaign = context.Assessment.IsFleetBlockedByTargetShields(
+                fleet,
+                targetPlanet
+            );
             if (!mayLeaveCampaign)
                 proposals.Add(continuation);
 
@@ -393,12 +395,7 @@ namespace Rebellion.AI.Planners
                 && context.Assessment.GetReadyFleetRegimentCount(fleet)
                     >= Math.Max(
                         1,
-                        context
-                            .Game
-                            .Config
-                            .AI
-                            .FleetDeployment
-                            .ColonizationFleetMinimumRegimentCount
+                        context.Game.Config.AI.FleetDeployment.ColonizationFleetMinimumRegimentCount
                     )
                 && context.StrategicPlan.CanFleetDepart(fleet);
         }

@@ -594,8 +594,18 @@ namespace Rebellion.Tests.AI.Director
             game.Config.SupportShift.OwnershipTransferThreshold = 60;
             game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
-            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "captured", empire.InstanceID);
-            Planet exposed = AITestSceneBuilder.AddPlanet(game, sector, "exposed", empire.InstanceID);
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "captured",
+                empire.InstanceID
+            );
+            Planet exposed = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "exposed",
+                empire.InstanceID
+            );
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             game.AttachNode(fleet, planet);
             planet.SetPopularSupport(empire.InstanceID, 49);
@@ -622,7 +632,12 @@ namespace Rebellion.Tests.AI.Director
             game.Config.SupportShift.OwnershipTransferThreshold = 60;
             game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
-            Planet captured = AITestSceneBuilder.AddPlanet(game, sector, "captured", empire.InstanceID);
+            Planet captured = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "captured",
+                empire.InstanceID
+            );
             AITestSceneBuilder.AddPlanet(game, sector, "enemy-1", rebels.InstanceID);
             AITestSceneBuilder.AddPlanet(game, sector, "enemy-2", rebels.InstanceID);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
@@ -645,7 +660,12 @@ namespace Rebellion.Tests.AI.Director
             game.Config.SupportShift.OwnershipTransferThreshold = 60;
             game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
-            Planet captured = AITestSceneBuilder.AddPlanet(game, sector, "captured", empire.InstanceID);
+            Planet captured = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "captured",
+                empire.InstanceID
+            );
             Planet secure = AITestSceneBuilder.AddPlanet(game, sector, "secure", empire.InstanceID);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             game.AttachNode(fleet, captured);
@@ -685,7 +705,12 @@ namespace Rebellion.Tests.AI.Director
             game.Config.AI.Garrison.SupportThreshold = 50;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
-            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "captured", empire.InstanceID);
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "captured",
+                empire.InstanceID
+            );
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             game.AttachNode(fleet, planet);
             planet.SetPopularSupport(empire.InstanceID, 0);

@@ -122,12 +122,7 @@ namespace Rebellion.AI.Proposals
                 && context.Assessment.GetReadyFleetRegimentCount(Fleet)
                     < Math.Max(
                         1,
-                        context
-                            .Game
-                            .Config
-                            .AI
-                            .FleetDeployment
-                            .ColonizationFleetMinimumRegimentCount
+                        context.Game.Config.AI.FleetDeployment.ColonizationFleetMinimumRegimentCount
                     )
             )
             {

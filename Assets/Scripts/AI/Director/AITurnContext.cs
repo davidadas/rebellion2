@@ -199,14 +199,18 @@ namespace Rebellion.AI.Director
                 planet != null
                 && _capsByType.TryGetValue(buildingType, out Dictionary<string, int> caps)
                 && caps.TryGetValue(planet.InstanceID, out int cap)
-                    ? cap
-                    : 0;
+                ? cap
+                : 0;
         }
 
         /// <summary>
         /// Returns whether a planet is the designated primary site and has not reached its target.
         /// </summary>
-        public bool IsIncompletePrimaryHub(Planet planet, BuildingType buildingType, int targetCount)
+        public bool IsIncompletePrimaryHub(
+            Planet planet,
+            BuildingType buildingType,
+            int targetCount
+        )
         {
             return planet != null
                 && IsPrimaryHub(planet, buildingType)
@@ -228,8 +232,8 @@ namespace Rebellion.AI.Director
                     out Dictionary<string, int> targets
                 )
                 && targets.TryGetValue(planet.InstanceID, out int target)
-                    ? target
-                    : fallbackTarget;
+                ? target
+                : fallbackTarget;
         }
 
         private void BuildCaps(AITurnContext context, BuildingType buildingType)
@@ -255,9 +259,7 @@ namespace Rebellion.AI.Director
                         || item.FeasibleCount >= config.ShipyardSectorHubTargetCount
                     )
                     .ThenByDescending(item => item.FeasibleCount)
-                    .ThenByDescending(item =>
-                        item.Planet.GetTotalBuildingTypeCount(buildingType)
-                    )
+                    .ThenByDescending(item => item.Planet.GetTotalBuildingTypeCount(buildingType))
                     .ThenByDescending(item => context.Assessment.GetPlanetValue(item.Planet))
                     .ThenBy(item => item.Planet.InstanceID, StringComparer.Ordinal)
                     .Take(3)

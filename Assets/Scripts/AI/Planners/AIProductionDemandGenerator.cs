@@ -273,11 +273,11 @@ namespace Rebellion.AI.Planners
         {
             GameConfig.AINonCapitalSummaryConfig config = context.Game.Config.AI.NonCapitalSummary;
             bool hasProductionInfrastructure = HasProductionInfrastructure(context, planet);
-            int baseline = planet.IsHeadquarters
-                ? config.StarfighterRequirementHeadquarters
+            int baseline =
+                planet.IsHeadquarters ? config.StarfighterRequirementHeadquarters
                 : hasProductionInfrastructure
                     ? Math.Max(12, config.StarfighterRequirementInfrastructure)
-                    : config.StarfighterRequirementDefault;
+                : config.StarfighterRequirementDefault;
             if (!planet.IsHeadquarters && !context.Assessment.IsPlanetThreatened(planet))
             {
                 if (!hasProductionInfrastructure)
@@ -705,8 +705,7 @@ namespace Rebellion.AI.Planners
                     Math.Max(
                         GetDesiredProductionFacilityCount(context, buildingType),
                         demandCapacityTarget
-                    )
-                        - GetOwnedFacilityCount(context, buildingType)
+                    ) - GetOwnedFacilityCount(context, buildingType)
                 );
                 if (remainingTrainingFacilityCount == 0)
                     return;
@@ -734,11 +733,7 @@ namespace Rebellion.AI.Planners
                         facilityPolicy.IsPrimaryHub(planet, buildingType)
                         && GetAvailableFacilityExpansionEnergy(context, planet) > 0
                         && planet.GetTotalBuildingTypeCount(buildingType)
-                            < facilityPolicy.GetPrimaryTarget(
-                                planet,
-                                buildingType,
-                                hubTarget
-                            )
+                            < facilityPolicy.GetPrimaryTarget(planet, buildingType, hubTarget)
                     )
                 );
 
@@ -777,11 +772,7 @@ namespace Rebellion.AI.Planners
                 );
                 if (hub == null)
                     continue;
-                int primaryTarget = facilityPolicy.GetPrimaryTarget(
-                    hub,
-                    buildingType,
-                    hubTarget
-                );
+                int primaryTarget = facilityPolicy.GetPrimaryTarget(hub, buildingType, hubTarget);
                 int hubCount = hub.GetTotalBuildingTypeCount(buildingType);
                 if (hubCount < primaryTarget)
                 {

@@ -33,8 +33,10 @@ public static partial class HeadlessSimulationRunner
     private sealed class GarrisonRemovalBombardmentTracker
     {
         private readonly int _supportShift;
-        private readonly Dictionary<string, List<GarrisonRemovalBombardmentSimulationResult>>
-            _results = new(StringComparer.Ordinal);
+        private readonly Dictionary<
+            string,
+            List<GarrisonRemovalBombardmentSimulationResult>
+        > _results = new(StringComparer.Ordinal);
 
         public GarrisonRemovalBombardmentTracker(GameRoot game)
         {
@@ -68,10 +70,12 @@ public static partial class HeadlessSimulationRunner
                     _results[factionId] = items;
                 }
 
-                string[] additionalFlips = result.Events
-                    .OfType<PlanetOwnershipChangedResult>()
+                string[] additionalFlips = result
+                    .Events.OfType<PlanetOwnershipChangedResult>()
                     .Where(change => change.Planet != null && change.Planet != directChange.Planet)
-                    .Select(change => $"{change.Planet.InstanceID}:{change.Planet.GetDisplayName()}")
+                    .Select(change =>
+                        $"{change.Planet.InstanceID}:{change.Planet.GetDisplayName()}"
+                    )
                     .Distinct(StringComparer.Ordinal)
                     .OrderBy(value => value, StringComparer.Ordinal)
                     .ToArray();
@@ -226,5 +230,4 @@ public static partial class HeadlessSimulationRunner
             };
         }
     }
-
 }

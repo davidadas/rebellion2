@@ -34,10 +34,7 @@ namespace Rebellion.AI.Director
             );
             _targetBattleFleetCount = Math.Max(
                 config.MinimumBattleFleetCount,
-                IntegerMath.DivideRoundedUp(
-                    operationalPlanetCount,
-                    config.PlanetsPerBattleFleet
-                )
+                IntegerMath.DivideRoundedUp(operationalPlanetCount, config.PlanetsPerBattleFleet)
             );
             int minimumMobileCombatStrength =
                 config.MinimumMobileCombatStrength > 0
@@ -72,10 +69,7 @@ namespace Rebellion.AI.Director
         /// </summary>
         public int AssemblyFleetCombatStrength =>
             _targetBattleFleetCount > 0
-                ? IntegerMath.DivideRoundedUp(
-                    _targetMobileCombatStrength,
-                    _targetBattleFleetCount
-                )
+                ? IntegerMath.DivideRoundedUp(_targetMobileCombatStrength, _targetBattleFleetCount)
                 : 0;
 
         /// <summary>
@@ -95,8 +89,8 @@ namespace Rebellion.AI.Director
             if (commitment.RequiredStrength <= 0)
                 return true;
 
-            int remainingStrength = _context.Assessment
-                .GetFriendlyFleets(planet)
+            int remainingStrength = _context
+                .Assessment.GetFriendlyFleets(planet)
                 .Where(candidate => candidate != fleet && candidate.Movement == null)
                 .Select(_context.Assessment.GetFleetCombatValue)
                 .DefaultIfEmpty()
@@ -156,7 +150,8 @@ namespace Rebellion.AI.Director
                 )
                     continue;
 
-                bool hasDefenseOrder = candidate.Order?.OrderType == FleetOrderType.Defend
+                bool hasDefenseOrder =
+                    candidate.Order?.OrderType == FleetOrderType.Defend
                     && candidate.Order.TargetPlanetId == planet.InstanceID;
                 int strength = _context.Assessment.GetFleetCombatValue(candidate);
                 if (
@@ -183,8 +178,11 @@ namespace Rebellion.AI.Director
 
         private readonly struct AIPlanetDefenseCommitment
         {
-            internal static readonly AIPlanetDefenseCommitment None =
-                new AIPlanetDefenseCommitment(false, 0, string.Empty);
+            internal static readonly AIPlanetDefenseCommitment None = new AIPlanetDefenseCommitment(
+                false,
+                0,
+                string.Empty
+            );
 
             internal bool HoldAllLocalFleets { get; }
             internal int RequiredStrength { get; }

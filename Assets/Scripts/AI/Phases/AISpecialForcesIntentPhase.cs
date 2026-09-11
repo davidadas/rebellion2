@@ -21,8 +21,9 @@ namespace Rebellion.AI.Phases
             if (context?.Assessment == null)
                 return;
 
-            IReadOnlyList<IMissionParticipant> availableParticipants =
-                context.Assessment.AvailableMissionParticipants;
+            IReadOnlyList<IMissionParticipant> availableParticipants = context
+                .Assessment
+                .AvailableMissionParticipants;
             List<SpecialForces> availableSpecialForces = availableParticipants
                 .OfType<SpecialForces>()
                 .ToList();

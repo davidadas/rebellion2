@@ -423,5 +423,4 @@ public static partial class HeadlessSimulationRunner
         public string[] Regiments;
         public string[] Officers;
     }
-
 }

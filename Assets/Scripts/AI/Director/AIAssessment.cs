@@ -70,8 +70,10 @@ namespace Rebellion.AI.Director
         >(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _hostilePlanetaryStarfighterStrengths =
             new Dictionary<string, int>(StringComparer.Ordinal);
-        private readonly Dictionary<string, bool> _activeHostileMilitaryTargets =
-            new Dictionary<string, bool>(StringComparer.Ordinal);
+        private readonly Dictionary<string, bool> _activeHostileMilitaryTargets = new Dictionary<
+            string,
+            bool
+        >(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _planetDefenseThreatStrengths = new Dictionary<
             string,
             int
@@ -899,14 +901,8 @@ namespace Rebellion.AI.Director
                 foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
                 {
                     AddMissionDetectorCandidate(capitalShip, detectors);
-                    AddMissionDetectorCandidates(
-                        capitalShip.GetChildren<Starfighter>(),
-                        detectors
-                    );
-                    AddMissionDetectorCandidates(
-                        capitalShip.GetChildren<Regiment>(),
-                        detectors
-                    );
+                    AddMissionDetectorCandidates(capitalShip.GetChildren<Starfighter>(), detectors);
+                    AddMissionDetectorCandidates(capitalShip.GetChildren<Regiment>(), detectors);
                 }
             }
 
@@ -1145,12 +1141,12 @@ namespace Rebellion.AI.Director
             int requiredCount = _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
             return requiredCount > 0
                 && GetPlanetBuildings(planet)
-                        .Count(building =>
-                            building.GetOwnerInstanceID() == _context.Faction.InstanceID
-                            && building.ManufacturingStatus == ManufacturingStatus.Complete
-                            && building.Movement == null
-                            && building.IsPlanetaryShieldGenerator()
-                        ) >= requiredCount;
+                    .Count(building =>
+                        building.GetOwnerInstanceID() == _context.Faction.InstanceID
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                        && building.IsPlanetaryShieldGenerator()
+                    ) >= requiredCount;
         }
 
         /// <summary>

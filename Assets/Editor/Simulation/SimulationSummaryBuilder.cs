@@ -245,8 +245,9 @@ public static partial class HeadlessSimulationRunner
                     MissionOutcomes = missionOutcomeTracker.BuildSummary(faction.InstanceID),
                     PersonnelOutcomes = personnelOutcomeTracker.BuildSummary(faction.InstanceID),
                     PlanetaryAssaults = planetaryAssaultTracker.BuildSummary(faction.InstanceID),
-                    GarrisonRemovalBombardments =
-                        garrisonRemovalBombardmentTracker.BuildSummary(faction.InstanceID),
+                    GarrisonRemovalBombardments = garrisonRemovalBombardmentTracker.BuildSummary(
+                        faction.InstanceID
+                    ),
                     AttackReadiness = attackReadinessTracker.BuildSummary(faction.InstanceID),
                     ProductionFacilityPlanets = BuildProductionFacilityPlanetSummaries(
                         game,

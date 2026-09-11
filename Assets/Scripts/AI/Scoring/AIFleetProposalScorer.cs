@@ -77,13 +77,11 @@ namespace Rebellion.AI.Scoring
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The return proposal to score.</param>
         /// <returns>A mandatory-order score in hostile territory; otherwise the fallback score.</returns>
-        private static double ScoreReturn(
-            AITurnContext context,
-            AIFleetAttackProposal proposal
-        )
+        private static double ScoreReturn(AITurnContext context, AIFleetAttackProposal proposal)
         {
             Planet currentPlanet = context.Assessment.GetFleetPlanet(proposal.Fleet);
-            return currentPlanet != null
+            return
+                currentPlanet != null
                 && currentPlanet.GetOwnerInstanceID() != context.Faction.InstanceID
                 ? double.PositiveInfinity
                 : 1;
@@ -281,12 +279,7 @@ namespace Rebellion.AI.Scoring
         {
             AIAssessment assessment = context.Assessment;
             double minimumOwnedPresence =
-                context
-                    .Game
-                    .Config
-                    .AI
-                    .FleetDeployment
-                    .ExposedSectorMinimumOwnedPresencePercent
+                context.Game.Config.AI.FleetDeployment.ExposedSectorMinimumOwnedPresencePercent
                 / 100.0;
             return assessment.GetOffensiveSupportLeverage(targetPlanet) > 0
                 && assessment.GetOwnedSystemPresenceRatio(

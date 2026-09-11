@@ -96,5 +96,4 @@ public static partial class HeadlessSimulationRunner
             return defaultValue;
         }
     }
-
 }

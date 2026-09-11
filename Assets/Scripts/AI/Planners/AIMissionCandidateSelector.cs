@@ -103,10 +103,7 @@ namespace Rebellion.AI.Planners
             AIMissionProposal lowestPriority = null;
             foreach (AIMissionProposal proposal in alternatives)
             {
-                if (
-                    lowestPriority == null
-                    || HasLowerRetentionPriority(proposal, lowestPriority)
-                )
+                if (lowestPriority == null || HasLowerRetentionPriority(proposal, lowestPriority))
                     lowestPriority = proposal;
             }
 

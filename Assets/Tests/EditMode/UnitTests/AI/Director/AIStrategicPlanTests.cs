@@ -23,12 +23,7 @@ namespace Rebellion.Tests.AI.Director
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             for (int index = 0; index < 40; index++)
             {
-                AITestSceneBuilder.AddPlanet(
-                    game,
-                    sector,
-                    $"planet-{index}",
-                    empire.InstanceID
-                );
+                AITestSceneBuilder.AddPlanet(game, sector, $"planet-{index}", empire.InstanceID);
             }
 
             AIStrategicPlan eightPlanetPlan = AITestSceneBuilder

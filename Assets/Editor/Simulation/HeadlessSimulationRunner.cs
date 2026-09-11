@@ -402,5 +402,4 @@ public static partial class HeadlessSimulationRunner
         int index = Math.Clamp(rank - 1, 0, ordered.Length - 1);
         return ordered[index] * 1000d / Stopwatch.Frequency;
     }
-
 }
