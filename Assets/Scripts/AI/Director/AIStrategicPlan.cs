@@ -19,6 +19,25 @@ namespace Rebellion.AI.Director
             new Dictionary<string, AIPlanetDefenseCommitment>(StringComparer.Ordinal);
 
         /// <summary>
+        /// Returns the number of independently deployable battle fleets allocated for this turn.
+        /// Fleet count is a deployment constraint; it does not define total desired combat power.
+        /// </summary>
+        public int TargetBattleFleetCount => _targetBattleFleetCount;
+
+        /// <summary>
+        /// Returns total desired mobile combat power, independently of deployment fleet count.
+        /// </summary>
+        public int TargetMobileCombatStrength => _targetMobileCombatStrength;
+
+        /// <summary>
+        /// Returns the combat allocation for one fleet assembling without a campaign target.
+        /// </summary>
+        public int AssemblyFleetCombatStrength =>
+            _targetBattleFleetCount > 0
+                ? IntegerMath.DivideRoundedUp(_targetMobileCombatStrength, _targetBattleFleetCount)
+                : 0;
+
+        /// <summary>
         /// Builds the allocations shared by one faction AI turn.
         /// </summary>
         /// <param name="context">The turn context and cached assessment facts.</param>
@@ -52,25 +71,6 @@ namespace Rebellion.AI.Director
                 operationalPlanetCount * mobileCombatStrengthPerPlanet
             );
         }
-
-        /// <summary>
-        /// Returns the number of independently deployable battle fleets allocated for this turn.
-        /// Fleet count is a deployment constraint; it does not define total desired combat power.
-        /// </summary>
-        public int TargetBattleFleetCount => _targetBattleFleetCount;
-
-        /// <summary>
-        /// Returns total desired mobile combat power, independently of deployment fleet count.
-        /// </summary>
-        public int TargetMobileCombatStrength => _targetMobileCombatStrength;
-
-        /// <summary>
-        /// Returns the combat allocation for one fleet assembling without a campaign target.
-        /// </summary>
-        public int AssemblyFleetCombatStrength =>
-            _targetBattleFleetCount > 0
-                ? IntegerMath.DivideRoundedUp(_targetMobileCombatStrength, _targetBattleFleetCount)
-                : 0;
 
         /// <summary>
         /// Returns whether the fleet may leave without violating this turn's defense allocation.

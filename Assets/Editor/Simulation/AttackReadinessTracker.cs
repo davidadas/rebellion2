@@ -1,25 +1,11 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using Rebellion.AI.Director;
-using Rebellion.AI.Phases;
-using Rebellion.AI.Planners;
-using Rebellion.AI.Planners.Demand;
-using Rebellion.AI.Proposals;
 using Rebellion.Game;
-using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
-using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
-using Rebellion.Game.Research;
-using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Generation;
-using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -123,6 +109,7 @@ public static partial class HeadlessSimulationRunner
         /// Gets the readiness gates currently blocking an attack fleet.
         /// </summary>
         /// <param name="assessment">The faction's current strategic assessment.</param>
+        /// <param name="strategicPlan">The faction's current strategic fleet targets.</param>
         /// <param name="fleet">The attack fleet to inspect.</param>
         /// <param name="planets">Known planets indexed by instance identifier.</param>
         /// <returns>The active readiness blocker names.</returns>

@@ -1,27 +1,13 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using Rebellion.AI.Director;
-using Rebellion.AI.Phases;
-using Rebellion.AI.Planners;
-using Rebellion.AI.Planners.Demand;
-using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
-using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
-using Rebellion.Game.Research;
-using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 public static partial class HeadlessSimulationRunner
 {

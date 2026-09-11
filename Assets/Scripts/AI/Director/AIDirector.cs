@@ -34,6 +34,7 @@ namespace Rebellion.AI.Director
         /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
         /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
+        /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         public AIDirector(
             GameRoot game,
             MissionSystem missions,

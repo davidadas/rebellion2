@@ -1,7 +1,5 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Rebellion.AI.Director;
@@ -10,16 +8,10 @@ using Rebellion.AI.Planners;
 using Rebellion.AI.Planners.Demand;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
-using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
-using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
-using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Generation;
-using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -39,6 +31,7 @@ public static partial class HeadlessSimulationRunner
     /// <param name="personnelOutcomeTracker">The personnel outcome tracker.</param>
     /// <param name="specialForcesLifecycleTracker">The special-forces lifecycle tracker.</param>
     /// <param name="planetaryAssaultTracker">The planetary-assault activity tracker.</param>
+    /// <param name="garrisonRemovalBombardmentTracker">The garrison-removal bombardment tracker.</param>
     /// <param name="attackReadinessTracker">The attack-readiness blocker tracker.</param>
     /// <param name="victory">The first victory reached during the simulation.</param>
     /// <returns>The simulation summary.</returns>

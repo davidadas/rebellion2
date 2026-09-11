@@ -57,6 +57,7 @@ namespace Rebellion.AI.Director
         /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic decisions.</param>
         /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
+        /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         public AITurnContext(
             GameRoot game,
             Faction faction,

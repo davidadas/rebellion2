@@ -788,7 +788,7 @@ namespace Rebellion.Systems
         /// Estimates the chance that at least one observed detector foils the mission.
         /// </summary>
         /// <param name="mission">The unstarted or active mission to evaluate.</param>
-        /// <param name="observedPlanet">The planet state currently known to the planning faction.</param>
+        /// <param name="detectors">The observed units that can confront mission participants.</param>
         /// <returns>The estimated foiling percentage.</returns>
         private double EstimateFoilProbability(Mission mission, IReadOnlyList<ISceneNode> detectors)
         {

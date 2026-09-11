@@ -6,7 +6,6 @@ using Rebellion.AI.Planners.Demand;
 using Rebellion.AI.Scoring;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -475,6 +474,8 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
+        /// <param name="placementScorer">The turn-scoped infrastructure placement scorer.</param>
+        /// <param name="facilityPolicy">The turn-scoped facility allocation policy.</param>
         private void AddProductionFacilityDemands(
             AITurnContext context,
             List<AIDemand> demands,
@@ -520,6 +521,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
+        /// <param name="facilityPolicy">The turn-scoped facility allocation policy.</param>
         private void AddProductionFacilityUpgradeDemands(
             AITurnContext context,
             List<AIDemand> demands,
@@ -564,6 +566,7 @@ namespace Rebellion.AI.Planners
         /// <param name="demands">The demand list to update.</param>
         /// <param name="planet">The planet whose facilities are evaluated.</param>
         /// <param name="buildingType">The production-facility type to upgrade.</param>
+        /// <param name="facilityPolicy">The turn-scoped facility allocation policy.</param>
         private void AddProductionFacilityUpgradeDemand(
             AITurnContext context,
             List<AIDemand> demands,
@@ -672,6 +675,8 @@ namespace Rebellion.AI.Planners
         /// <param name="kind">The facility demand kind.</param>
         /// <param name="buildingType">The required facility type.</param>
         /// <param name="baseDemandPercent">The base demand pressure.</param>
+        /// <param name="placementScorer">The turn-scoped infrastructure placement scorer.</param>
+        /// <param name="facilityPolicy">The turn-scoped facility allocation policy.</param>
         private void AddProductionFacilityDemand(
             AITurnContext context,
             List<AIDemand> demands,
