@@ -746,8 +746,38 @@ namespace Rebellion.AI.Planners
                 )
                 .ThenBy(target => target.InstanceID)
                 .ToList();
+            targets = SelectDistinctSabotageTargetTypes(targets);
             _sabotageTargets.Add(planet.InstanceID, targets);
             return targets;
+        }
+
+        /// <summary>
+        /// Keeps the highest-priority representative of each manufacturable definition. Destroying
+        /// another identical unit at the same planet has the same strategic value, so duplicate
+        /// definitions do not need separate mission candidates.
+        /// </summary>
+        /// <param name="orderedTargets">Targets in descending strategic-priority order.</param>
+        /// <returns>One deterministic representative per manufacturable definition.</returns>
+        private static List<IManufacturable> SelectDistinctSabotageTargetTypes(
+            IEnumerable<IManufacturable> orderedTargets
+        )
+        {
+            HashSet<string> seenTypeIds = new HashSet<string>(StringComparer.Ordinal);
+            List<IManufacturable> distinctTargets = new List<IManufacturable>();
+            foreach (IManufacturable target in orderedTargets)
+            {
+                string typeId = target?.TypeID;
+                if (string.IsNullOrEmpty(typeId))
+                {
+                    distinctTargets.Add(target);
+                    continue;
+                }
+
+                if (seenTypeIds.Add(typeId))
+                    distinctTargets.Add(target);
+            }
+
+            return distinctTargets;
         }
 
         /// <summary>

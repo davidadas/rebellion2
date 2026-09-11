@@ -259,6 +259,49 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithDuplicateSabotageTargetTypes_OffersOneRepresentative()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Building first = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "shipyard-a",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Building second = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "shipyard-b",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            first.TypeID = "SHIPYARD";
+            second.TypeID = first.TypeID;
+            SpecialForces participant = CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            participant.Ratings[OfficerRating.Espionage] = 100;
+            game.AttachNode(participant, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIMissionProposal[] proposals = new AIMissionPlanner()
+                .Plan(context)
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                .ToArray();
+
+            Assert.AreEqual(1, proposals.Length);
+            Assert.AreEqual(first.InstanceID, proposals[0].SelectedTarget.InstanceID);
+        }
+
+        [Test]
         public void Plan_WithSeveralActiveHostileMissions_AddsAdditionalSabotageProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
