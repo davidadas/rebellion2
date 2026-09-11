@@ -21,37 +21,55 @@ namespace Rebellion.AI.Phases
             if (context?.Assessment == null)
                 return;
 
-            IReadOnlyList<IMissionParticipant> participants = context
-                .Assessment
-                .AvailableMissionParticipants;
-            List<Officer> officers = participants.OfType<Officer>().ToList();
-            List<SpecialForces> specialForces = participants.OfType<SpecialForces>().ToList();
-            foreach (SpecialForces unit in specialForces)
-                context.SetSpecialForcesIntent(unit, SpecialForcesIntent.PrimaryAgent);
+            IReadOnlyList<IMissionParticipant> availableParticipants =
+                context.Assessment.AvailableMissionParticipants;
+            List<SpecialForces> availableSpecialForces = availableParticipants
+                .OfType<SpecialForces>()
+                .ToList();
+            AssignIntent(context, availableSpecialForces, SpecialForcesIntent.PrimaryAgent);
 
-            if (officers.Count == 0)
+            List<Officer> availableOfficers = availableParticipants.OfType<Officer>().ToList();
+            if (availableOfficers.Count == 0)
                 return;
 
+            AssignOfficerReplaceableUnitsAsDecoys(
+                context,
+                availableSpecialForces,
+                availableOfficers
+            );
+        }
+
+        /// <summary>
+        /// Reserves every special-forces role whose mission capabilities are fully covered by
+        /// available officers.
+        /// </summary>
+        private static void AssignOfficerReplaceableUnitsAsDecoys(
+            AITurnContext context,
+            IEnumerable<SpecialForces> specialForces,
+            IReadOnlyCollection<Officer> officers
+        )
+        {
             foreach (
-                IGrouping<string, SpecialForces> role in specialForces.GroupBy(
-                    GetRoleId,
+                IGrouping<string, SpecialForces> roleUnits in specialForces.GroupBy(
+                    GetMissionCapabilitySetKey,
                     StringComparer.Ordinal
                 )
             )
             {
-                if (!CanOfficersPerformRole(officers, role.First()))
-                    continue;
-
-                foreach (
-                    SpecialForces decoy in role.OrderByDescending(unit =>
-                            unit.GetEffectiveRating(OfficerRating.Espionage)
-                        )
-                        .ThenBy(unit => unit.InstanceID, StringComparer.Ordinal)
-                )
-                {
-                    context.SetSpecialForcesIntent(decoy, SpecialForcesIntent.Decoy);
-                }
+                if (OfficersCoverEveryMissionCapability(officers, roleUnits.First()))
+                    AssignIntent(context, roleUnits, SpecialForcesIntent.Decoy);
             }
+        }
+
+        /// <summary>Assigns one turn-scoped intent to each supplied special-forces unit.</summary>
+        private static void AssignIntent(
+            AITurnContext context,
+            IEnumerable<SpecialForces> units,
+            SpecialForcesIntent intent
+        )
+        {
+            foreach (SpecialForces unit in units)
+                context.SetSpecialForcesIntent(unit, intent);
         }
 
         /// <summary>
@@ -60,7 +78,7 @@ namespace Rebellion.AI.Phases
         /// <param name="officers">The officers available during this turn.</param>
         /// <param name="specialForces">A representative unit for the special-forces role.</param>
         /// <returns>True when every role mission can be performed by an officer.</returns>
-        private static bool CanOfficersPerformRole(
+        private static bool OfficersCoverEveryMissionCapability(
             IEnumerable<Officer> officers,
             SpecialForces specialForces
         )
@@ -76,7 +94,7 @@ namespace Rebellion.AI.Phases
         /// </summary>
         /// <param name="unit">The special-forces unit to inspect.</param>
         /// <returns>The ordered mission-capability identifier.</returns>
-        private static string GetRoleId(SpecialForces unit)
+        private static string GetMissionCapabilitySetKey(SpecialForces unit)
         {
             return string.Join(
                 "|",

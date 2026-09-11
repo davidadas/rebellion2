@@ -227,8 +227,8 @@ namespace Rebellion.AI.Phases
             if (ratingComparison != 0)
                 return ratingComparison > 0;
 
-            double candidateDistance = GetDistance(origins[candidate], mission.TargetPlanet);
-            double selectedDistance = GetDistance(origins[selected], mission.TargetPlanet);
+            double candidateDistance = origins[candidate].GetRawDistanceTo(mission.TargetPlanet);
+            double selectedDistance = origins[selected].GetRawDistanceTo(mission.TargetPlanet);
             int distanceComparison = candidateDistance.CompareTo(selectedDistance);
             return distanceComparison != 0
                 ? distanceComparison < 0
@@ -239,17 +239,5 @@ namespace Rebellion.AI.Phases
                 ) < 0;
         }
 
-        /// <summary>
-        /// Returns the raw distance between two planets.
-        /// </summary>
-        /// <param name="origin">The origin planet.</param>
-        /// <param name="target">The target planet.</param>
-        /// <returns>The raw distance, or the maximum value when either planet is absent.</returns>
-        private static double GetDistance(Planet origin, Planet target)
-        {
-            return origin != null && target != null
-                ? origin.GetRawDistanceTo(target)
-                : double.MaxValue;
-        }
     }
 }

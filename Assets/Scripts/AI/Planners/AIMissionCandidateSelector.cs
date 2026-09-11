@@ -47,10 +47,12 @@ namespace Rebellion.AI.Planners
                 context.Game.Config.AI.MissionPlanning.RetainedAlternativesPerMission
             );
             List<AIMissionProposal> alternatives = GetAlternatives(proposal);
-            AIMissionProposal weakest = GetWeakest(alternatives);
+            AIMissionProposal lowestPriorityAlternative = FindLowestPriorityAlternative(
+                alternatives
+            );
             if (
                 alternatives.Count >= retainedAlternatives
-                && _scorer.GetScoreUpperBound(context, proposal) < weakest.Score
+                && _scorer.GetScoreUpperBound(context, proposal) < lowestPriorityAlternative.Score
             )
                 return;
 
@@ -64,9 +66,9 @@ namespace Rebellion.AI.Planners
             if (alternatives.Count <= retainedAlternatives)
                 return;
 
-            weakest = GetWeakest(alternatives);
-            alternatives.Remove(weakest);
-            proposals.Remove(weakest);
+            lowestPriorityAlternative = FindLowestPriorityAlternative(alternatives);
+            alternatives.Remove(lowestPriorityAlternative);
+            proposals.Remove(lowestPriorityAlternative);
         }
 
         /// <summary>
@@ -90,36 +92,46 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns the weakest retained proposal using deterministic tie-breaking.
+        /// Finds the retained proposal with the lowest selection priority.
         /// </summary>
         /// <param name="alternatives">The alternatives to inspect.</param>
-        /// <returns>The weakest proposal, or null when the collection is empty.</returns>
-        private static AIMissionProposal GetWeakest(IEnumerable<AIMissionProposal> alternatives)
+        /// <returns>The lowest-priority proposal, or null when the collection is empty.</returns>
+        private static AIMissionProposal FindLowestPriorityAlternative(
+            IEnumerable<AIMissionProposal> alternatives
+        )
         {
-            AIMissionProposal weakest = null;
+            AIMissionProposal lowestPriority = null;
             foreach (AIMissionProposal proposal in alternatives)
             {
-                if (weakest == null || IsWeaker(proposal, weakest))
-                    weakest = proposal;
+                if (
+                    lowestPriority == null
+                    || HasLowerRetentionPriority(proposal, lowestPriority)
+                )
+                    lowestPriority = proposal;
             }
 
-            return weakest;
+            return lowestPriority;
         }
 
         /// <summary>
-        /// Returns whether a proposal precedes another in the deterministic weakest-first order.
+        /// Compares two proposals using the inverse of the final selection order.
         /// </summary>
         /// <param name="candidate">The proposal being compared.</param>
-        /// <param name="currentWeakest">The current weakest proposal.</param>
-        /// <returns>True when the candidate is the weaker retained alternative.</returns>
-        private static bool IsWeaker(AIMissionProposal candidate, AIMissionProposal currentWeakest)
+        /// <param name="other">The proposal currently considered lowest priority.</param>
+        /// <returns>
+        /// True when the candidate has a lower score, or loses the deterministic sort-key tie.
+        /// </returns>
+        private static bool HasLowerRetentionPriority(
+            AIMissionProposal candidate,
+            AIMissionProposal other
+        )
         {
-            int scoreComparison = candidate.Score.CompareTo(currentWeakest.Score);
+            int scoreComparison = candidate.Score.CompareTo(other.Score);
             return scoreComparison != 0
                 ? scoreComparison < 0
                 : string.Compare(
                     candidate.GetSortKey(),
-                    currentWeakest.GetSortKey(),
+                    other.GetSortKey(),
                     StringComparison.Ordinal
                 ) > 0;
         }
