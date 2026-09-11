@@ -67,7 +67,10 @@ namespace Rebellion.Systems
         /// <returns>Result describing the loss, or null if the unit survived.</returns>
         public EvacuationLossesResult ApplyEvacuationLosses(IMovable unit, Planet originPlanet)
         {
-            if (!originPlanet.IsBlockadedFor(unit.GetOwnerInstanceID()))
+            if (
+                !originPlanet.IsBlockadedFor(unit.GetOwnerInstanceID())
+                || HasOperationalIonCannon(originPlanet, unit.GetOwnerInstanceID())
+            )
                 return null;
 
             if (unit is Regiment regiment && RollEvacuationLoss())
@@ -89,6 +92,22 @@ namespace Rebellion.Systems
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Returns whether the departing faction has an operational ion cannon protecting the system.
+        /// </summary>
+        private static bool HasOperationalIonCannon(Planet planet, string ownerInstanceId)
+        {
+            return planet
+                .GetChildren<Building>()
+                .Any(building =>
+                    building.OwnerInstanceID == ownerInstanceId
+                    && building.IsActive()
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.BuildingType == BuildingType.Weapon
+                    && building.DefenseWeaponEffect == DefenseWeaponEffect.ShieldDamage
+                );
         }
 
         /// <summary>

@@ -4500,6 +4500,49 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void StartManufacturing_SameProject_AppendsRequestedCopies()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            Assert.IsTrue(manager.StartManufacturing(planet, template, planet, 2, "empire"));
+
+            bool started = manager.StartManufacturing(planet, template, planet, 1, "empire");
+
+            Assert.IsTrue(started);
+            List<IManufacturable> queue = planet.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            Assert.AreEqual(3, queue.Count);
+            Assert.IsTrue(queue.All(item => item.GetTypeID() == "mine"));
+        }
+
+        [Test]
+        public void StartManufacturing_DifferentProject_ReplacesEntireProductionLane()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
+            Building mines = CreateOrderTestBuildingTemplate("mine");
+            Building refineries = CreateOrderTestBuildingTemplate("refinery");
+            Assert.IsTrue(manager.StartManufacturing(planet, mines, planet, 3, "empire"));
+            List<IManufacturable> replacedItems = planet
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .ToList();
+
+            bool started = manager.StartManufacturing(planet, refineries, planet, 2, "empire");
+
+            Assert.IsTrue(started);
+            List<IManufacturable> queue = planet.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            Assert.AreEqual(2, queue.Count);
+            Assert.IsTrue(queue.All(item => item.GetTypeID() == "refinery"));
+            Assert.IsTrue(replacedItems.All(item => item.GetParent() == null));
+        }
+
+        [Test]
         public void RetargetManufacturingDestination_QueuedLaneMovesEveryItem()
         {
             GameRoot game = CreateOrderTestGame();

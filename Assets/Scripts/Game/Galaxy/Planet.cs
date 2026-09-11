@@ -76,6 +76,11 @@ namespace Rebellion.Game.Galaxy
         public int UprisingClearTimerOrder { get; set; }
         public int NextUprisingTimerOrder { get; set; }
 
+        // Periodic Support Status.
+        public int NextBlockadeSupportShiftTick { get; set; }
+        public int BlockadeSupportShiftIntervalTicks { get; set; }
+        public int NextGarrisonSupportShiftTick { get; set; }
+
         // Popular Support.
         public Dictionary<string, int> PopularSupport = new Dictionary<string, int>();
 
@@ -153,6 +158,9 @@ namespace Rebellion.Game.Galaxy
             copy.UprisingIncidentTimerOrder = UprisingIncidentTimerOrder;
             copy.UprisingClearTimerOrder = UprisingClearTimerOrder;
             copy.NextUprisingTimerOrder = NextUprisingTimerOrder;
+            copy.NextBlockadeSupportShiftTick = NextBlockadeSupportShiftTick;
+            copy.BlockadeSupportShiftIntervalTicks = BlockadeSupportShiftIntervalTicks;
+            copy.NextGarrisonSupportShiftTick = NextGarrisonSupportShiftTick;
             copy.PopularSupport = new Dictionary<string, int>(PopularSupport);
             copy._reservedManufacturingTypes = new List<ManufacturingType>(
                 _reservedManufacturingTypes

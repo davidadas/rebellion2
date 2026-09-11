@@ -53,10 +53,145 @@ namespace Rebellion.Systems
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
+            ApplyPeriodicSupportShifts();
             UpdateUncolonizedPlanets(results);
             CheckOwnershipTransfers(results);
 
             return results;
+        }
+
+        /// <summary>
+        /// Applies the original timed blockade and Imperial-garrison support rules.
+        /// </summary>
+        private void ApplyPeriodicSupportShifts()
+        {
+            GameConfig.SupportShiftConfig config = _game.Config.SupportShift;
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
+            {
+                ApplyBlockadeSupportShift(planet, config);
+                ApplyImperialGarrisonSupportShift(planet, config);
+            }
+        }
+
+        /// <summary>
+        /// Moves support toward the side already favored while a fleet blockades the planet.
+        /// </summary>
+        private void ApplyBlockadeSupportShift(Planet planet, GameConfig.SupportShiftConfig config)
+        {
+            if (!planet.IsBlockaded())
+            {
+                planet.NextBlockadeSupportShiftTick = 0;
+                planet.BlockadeSupportShiftIntervalTicks = 0;
+                return;
+            }
+
+            Fleet blockadingFleet = planet
+                .GetChildren<Fleet>()
+                .FirstOrDefault(fleet =>
+                    fleet.Movement == null
+                    && fleet.HasOperationalCapitalShips()
+                    && fleet.OwnerInstanceID != planet.OwnerInstanceID
+                );
+            Faction fleetFaction = _game.GetFactionByOwnerInstanceID(
+                blockadingFleet?.OwnerInstanceID
+            );
+            if (fleetFaction == null)
+                return;
+
+            Faction favoredFaction = _game
+                .GetFactions()
+                .OrderByDescending(faction => planet.GetPopularSupport(faction.InstanceID))
+                .FirstOrDefault();
+            if (favoredFaction == null)
+                return;
+
+            int favoredSupport = planet.GetPopularSupport(favoredFaction.InstanceID);
+            if (
+                _game
+                    .GetFactions()
+                    .Any(faction =>
+                        faction.InstanceID != favoredFaction.InstanceID
+                        && planet.GetPopularSupport(faction.InstanceID) == favoredSupport
+                    )
+            )
+            {
+                return;
+            }
+
+            bool fleetMatchesSupport = fleetFaction.InstanceID == favoredFaction.InstanceID;
+            int interval = fleetMatchesSupport
+                ? config.BlockadeMatchShiftIntervalTicks
+                : config.BlockadeOpposeShiftIntervalTicks;
+            if (interval <= 0)
+                return;
+
+            if (
+                planet.NextBlockadeSupportShiftTick <= 0
+                || planet.BlockadeSupportShiftIntervalTicks != interval
+            )
+            {
+                planet.NextBlockadeSupportShiftTick = _game.CurrentTick + interval;
+                planet.BlockadeSupportShiftIntervalTicks = interval;
+                return;
+            }
+
+            if (_game.CurrentTick < planet.NextBlockadeSupportShiftTick)
+                return;
+
+            int shift = fleetMatchesSupport
+                ? config.BlockadeMatchShift
+                : config.BlockadeOpposeShift;
+            ShiftPopularSupport(planet, fleetFaction, shift);
+            planet.NextBlockadeSupportShiftTick = _game.CurrentTick + interval;
+        }
+
+        /// <summary>
+        /// Applies the configured Imperial troop-presence drift on controlled, peaceful planets.
+        /// </summary>
+        private void ApplyImperialGarrisonSupportShift(
+            Planet planet,
+            GameConfig.SupportShiftConfig config
+        )
+        {
+            Faction garrisonFaction = _game
+                .GetFactions()
+                .FirstOrDefault(faction => faction.Settings?.GarrisonSupportShift != 0);
+            if (
+                garrisonFaction == null
+                || planet.OwnerInstanceID != garrisonFaction.InstanceID
+                || planet.IsInUprising
+                || !planet
+                    .GetAllRegiments()
+                    .Any(regiment =>
+                        regiment.OwnerInstanceID == garrisonFaction.InstanceID
+                        && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                        && regiment.Movement == null
+                    )
+            )
+            {
+                planet.NextGarrisonSupportShiftTick = 0;
+                return;
+            }
+
+            int interval = config.ImperialGarrisonSupportShiftIntervalTicks;
+            if (interval <= 0)
+                return;
+
+            if (planet.NextGarrisonSupportShiftTick <= 0)
+            {
+                planet.NextGarrisonSupportShiftTick = _game.CurrentTick + interval;
+                return;
+            }
+
+            if (_game.CurrentTick < planet.NextGarrisonSupportShiftTick)
+                return;
+
+            ShiftPopularSupport(
+                planet,
+                garrisonFaction,
+                garrisonFaction.Settings.GarrisonSupportShift
+            );
+            planet.NextGarrisonSupportShiftTick = _game.CurrentTick + interval;
         }
 
         /// <summary>

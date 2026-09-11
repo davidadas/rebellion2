@@ -247,6 +247,36 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
+        [Test]
+        public void ApplyEvacuationLosses_OperationalIonCannon_PreventsLoss()
+        {
+            (GameRoot game, Planet planet, _) = BuildScene();
+            planet.IsColonized = true;
+            planet.EnergyCapacity = 1;
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "r1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building ionCannon = new Building
+            {
+                InstanceID = "ion-cannon",
+                BuildingType = BuildingType.Weapon,
+                DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                OwnerInstanceID = "empire",
+            };
+            game.AttachNode(ionCannon, planet);
+            game.AttachNode(regiment, planet);
+            BlockadeSystem system = new BlockadeSystem(game, new FixedRNG());
+
+            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
+
+            Assert.IsNull(result);
+            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+        }
+
         private (GameRoot game, Planet planet, Fleet hostileFleet) BuildScene()
         {
             GameRoot game = new GameRoot(TestConfig.Create());

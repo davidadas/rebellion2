@@ -94,6 +94,11 @@ namespace Rebellion.Game.Factions
         /// </summary>
         public SupportChange SupportResistance { get; set; } = SupportChange.Increase;
 
+        /// <summary>
+        /// Periodic popular-support shift caused by this faction's peaceful troop garrisons.
+        /// </summary>
+        public int GarrisonSupportShift { get; set; }
+
         public HeadquartersSettings Headquarters
         {
             get => _headquarters ??= new HeadquartersSettings();

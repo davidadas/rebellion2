@@ -946,6 +946,66 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_BlockadeFleetOpposesFavoredSide_ShiftsTowardFavoredSide()
+        {
+            _game.Config.SupportShift.BlockadeOpposeShiftIntervalTicks = 30;
+            _game.Config.SupportShift.BlockadeOpposeShift = -1;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.SetPopularSupport(_empire.InstanceID, 60);
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 40);
+            Fleet fleet = EntityFactory.CreateFleet("rebel-fleet", _rebels.InstanceID);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "rebel-ship",
+                OwnerInstanceID = _rebels.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 1,
+                MaxHullStrength = 1,
+            };
+            _game.AttachNode(fleet, _targetPlanet);
+            _game.AttachNode(ship, fleet);
+            _game.CurrentTick = 30;
+
+            _ownershipSystem.ProcessTick();
+            _game.CurrentTick = 60;
+
+            _ownershipSystem.ProcessTick();
+
+            Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+            Assert.AreEqual(39, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+        }
+
+        [Test]
+        public void ProcessTick_BlockadeFleetMatchesFavoredSide_IncreasesFleetSupport()
+        {
+            _game.Config.SupportShift.BlockadeMatchShiftIntervalTicks = 30;
+            _game.Config.SupportShift.BlockadeMatchShift = 1;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.SetPopularSupport(_empire.InstanceID, 40);
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 60);
+            Fleet fleet = EntityFactory.CreateFleet("rebel-fleet", _rebels.InstanceID);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "rebel-ship",
+                OwnerInstanceID = _rebels.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 1,
+                MaxHullStrength = 1,
+            };
+            _game.AttachNode(fleet, _targetPlanet);
+            _game.AttachNode(ship, fleet);
+            _game.CurrentTick = 30;
+
+            _ownershipSystem.ProcessTick();
+            _game.CurrentTick = 60;
+
+            _ownershipSystem.ProcessTick();
+
+            Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(39, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+        }
+
+        [Test]
         public void ProcessTick_NeutralPlanetBelowThreshold_DoesNotTransferOwnership()
         {
             (Planet planet, PlanetaryControlSystem system) = BuildSupportScene(
