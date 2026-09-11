@@ -1442,6 +1442,7 @@ namespace Rebellion.Tests.Managers
                 DisplayName = "Planet",
                 OwnerInstanceID = faction.InstanceID,
                 IsColonized = true,
+                EnergyCapacity = 1,
             };
             game.AttachNode(sector, game.GetGalaxyMap());
             game.AttachNode(planet, sector);
@@ -1471,6 +1472,16 @@ namespace Rebellion.Tests.Managers
                 CurrentSquadronSize = 11,
             };
             game.AttachNode(officer, planet);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "SHIPYARD",
+                    OwnerInstanceID = faction.InstanceID,
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             game.AttachNode(fighter, ship);

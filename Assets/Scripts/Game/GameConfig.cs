@@ -610,10 +610,6 @@ namespace Rebellion.Game
         [PersistableObject]
         public class BlockadeConfig
         {
-            public int CapitalShipProductionPenaltyPercent { get; set; }
-
-            public int FighterProductionPenaltyPercent { get; set; }
-
             public int EvacuationLossPercent { get; set; }
         }
 

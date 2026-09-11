@@ -47,7 +47,6 @@ namespace Rebellion.Game.Galaxy
     public class Planet : ContainerNode
     {
         private const int _maximumPopularSupport = 100;
-        private const int _maximumProductionModifier = 100;
 
         // Planet Properties.
         public bool IsColonized { get; set; }
@@ -196,20 +195,20 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Checks if the planet is blockaded.
-        /// A planet is blockaded only when a stationary hostile fleet has an operational capital
-        /// ship and no equivalent defending fleet is present.
+        /// An owned planet is blockaded when a stationary hostile fleet has an operational
+        /// capital ship and no equivalent defending fleet is present. A neutral planet is
+        /// blockaded by any such fleet in orbit.
         /// </summary>
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
         public bool IsBlockaded()
         {
-            // Neutral planets cannot be blockaded.
-            if (string.IsNullOrEmpty(OwnerInstanceID))
-                return false;
-
             bool hasHostile = GetChildren<Fleet>()
                 .Any(f =>
                     f.Movement == null
-                    && f.OwnerInstanceID != OwnerInstanceID
+                    && (
+                        string.IsNullOrEmpty(OwnerInstanceID)
+                        || f.OwnerInstanceID != OwnerInstanceID
+                    )
                     && f.HasOperationalCapitalShips()
                 );
             bool hasDefender = GetChildren<Fleet>()
@@ -809,47 +808,6 @@ namespace Rebellion.Game.Galaxy
             return _buildings
                 .Where(building => building.GetProductionType() == productionType)
                 .ToList();
-        }
-
-        /// <summary>
-        /// Gets the manufacturing output percentage available during a blockade.
-        /// An active shield-disrupting defense prevents the blockade penalty.
-        /// </summary>
-        /// <param name="capitalShipPenalty">The percentage removed per active capital ship.</param>
-        /// <param name="fighterPenalty">The percentage removed per active fighter squadron.</param>
-        /// <returns>The available manufacturing percentage from zero through one hundred.</returns>
-        public int GetBlockadeModifier(int capitalShipPenalty, int fighterPenalty)
-        {
-            if (!IsBlockaded() || HasActiveShieldDisruptingDefense())
-                return _maximumProductionModifier;
-
-            List<CapitalShip> activeCapitalShips = _fleets
-                .Where(fleet => fleet.Movement == null)
-                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
-                .Where(IsEntityActive)
-                .ToList();
-            int activeFighterCount = activeCapitalShips.Sum(capitalShip =>
-                capitalShip.GetChildren<Starfighter>().Count(IsEntityActive)
-            );
-
-            int modifier =
-                _maximumProductionModifier
-                - activeCapitalShips.Count * capitalShipPenalty
-                - activeFighterCount * fighterPenalty;
-            return Math.Clamp(modifier, 0, _maximumProductionModifier);
-        }
-
-        /// <summary>
-        /// Returns whether a complete, stationary shield-disrupting defense is active.
-        /// </summary>
-        /// <returns>True when an active shield-disrupting defense is present.</returns>
-        private bool HasActiveShieldDisruptingDefense()
-        {
-            return _buildings.Any(building =>
-                building.BuildingType == BuildingType.Weapon
-                && building.DefenseWeaponEffect == DefenseWeaponEffect.ShieldDamage
-                && IsEntityActive(building)
-            );
         }
 
         /// <summary>

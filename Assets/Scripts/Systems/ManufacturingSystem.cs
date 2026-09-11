@@ -20,8 +20,6 @@ namespace Rebellion.Systems
             IGameResultHandler<BombardmentResult>,
             IGameResultHandler<PlanetaryAssaultResult>
     {
-        private const int _productionRateScale = 100;
-
         private readonly GameRoot _game;
         private readonly MovementSystem _movementSystem;
         private readonly FleetSystem _fleetSystem;
@@ -1104,15 +1102,10 @@ namespace Rebellion.Systems
         /// <returns>The progress available after uprising and blockade effects.</returns>
         private double GetProductionCycleIncrement(Planet planet)
         {
-            if (planet.IsInUprising)
+            if (planet.IsInUprising || planet.IsBlockaded())
                 return 0;
 
-            GameConfig.BlockadeConfig config = _game.Config.Blockade;
-            int modifier = planet.GetBlockadeModifier(
-                config.CapitalShipProductionPenaltyPercent,
-                config.FighterProductionPenaltyPercent
-            );
-            return (double)modifier / _productionRateScale;
+            return 1;
         }
 
         /// <summary>

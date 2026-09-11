@@ -1680,7 +1680,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_Blockade_AppliesGraduatedRateAndKdyRestoresFullRate()
+        public void ProcessTick_Blockade_HaltsProductionEvenWithIonCannon()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -1737,19 +1737,9 @@ namespace Rebellion.Tests.Systems
 
             manufacturing.ProcessTick();
 
-            double expectedBlockadeProgress =
-                1.0
-                - (
-                    config.Blockade.CapitalShipProductionPenaltyPercent
-                    + config.Blockade.FighterProductionPenaltyPercent
-                ) / 100.0;
-            Assert.AreEqual(
-                expectedBlockadeProgress,
-                constructionYard.ProductionCycleProgress,
-                0.0001
-            );
-            Assert.AreEqual(0, empire.RefinedMaterialStockpile);
-            Assert.IsTrue(constructionYard.ProductionInputReserved);
+            Assert.AreEqual(0, constructionYard.ProductionCycleProgress);
+            Assert.AreEqual(1, empire.RefinedMaterialStockpile);
+            Assert.IsFalse(constructionYard.ProductionInputReserved);
 
             game.AttachNode(
                 new Building
@@ -1764,18 +1754,15 @@ namespace Rebellion.Tests.Systems
             );
             manufacturing.ProcessTick();
 
-            Assert.AreEqual(
-                expectedBlockadeProgress + 1,
-                constructionYard.ProductionCycleProgress,
-                0.0001
-            );
+            Assert.AreEqual(0, constructionYard.ProductionCycleProgress);
+            Assert.AreEqual(1, empire.RefinedMaterialStockpile);
+            Assert.IsFalse(constructionYard.ProductionInputReserved);
         }
 
         [Test]
-        public void ProcessTick_FullBlockade_HaltsProductionWithoutReservingInput()
+        public void ProcessTick_Blockade_HaltsProductionWithoutReservingInput()
         {
             GameConfig config = TestConfig.Create();
-            config.Blockade.CapitalShipProductionPenaltyPercent = 100;
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };

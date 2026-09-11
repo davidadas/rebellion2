@@ -35,6 +35,23 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void ProcessTick_NewNeutralPlanetBlockade_EmitsBlockadeStarted()
+        {
+            (GameRoot game, Planet planet, Fleet blockadingFleet) = BuildScene();
+            planet.OwnerInstanceID = null;
+            BlockadeSystem manager = new BlockadeSystem(game, new StubRNG());
+
+            BlockadeChangedResult result = manager
+                .ProcessTick()
+                .OfType<BlockadeChangedResult>()
+                .Single();
+
+            Assert.IsTrue(result.Blockaded);
+            Assert.AreEqual(planet, result.Planet);
+            Assert.AreEqual(blockadingFleet, result.BlockadingFleet);
+        }
+
+        [Test]
         public void ProcessTick_HostileFleetInTransit_EmitsBlockadeOnlyAfterArrival()
         {
             (GameRoot game, _, Fleet hostileFleet) = BuildScene();
@@ -208,6 +225,26 @@ namespace Rebellion.Tests.Sectors
             BlockadeSystem system = new BlockadeSystem(game, new MaximumRNG());
 
             Assert.IsTrue(system.RollEvacuationLoss());
+        }
+
+        [Test]
+        public void ApplyEvacuationLosses_NeutralPlanetBlockadingFaction_ReturnsNoLoss()
+        {
+            (GameRoot game, Planet planet, _) = BuildScene();
+            planet.OwnerInstanceID = null;
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "r1",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, planet);
+            BlockadeSystem system = new BlockadeSystem(game, new FixedRNG());
+
+            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
+
+            Assert.IsNull(result);
+            Assert.AreEqual(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
         private (GameRoot game, Planet planet, Fleet hostileFleet) BuildScene()
