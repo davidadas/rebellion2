@@ -146,6 +146,54 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
+        public void Score_ExposedBombardmentTargetWithSectorLeverage_PrioritizesCapableFleet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;
+            config.AttackStrategicValueWeight = 0;
+            config.AttackSectorSupportLeverageWeight = 0;
+            config.AttackSystemPresenceWeight = 0;
+            config.AttackReadinessWeight = 0;
+            config.AttackCaptureViabilityWeight = 0;
+            config.AttackTravelEfficiencyWeight = 0;
+            config.AttackExpectedLossPenaltyWeight = 0;
+            config.AttackOpportunityCostPenaltyWeight = 0;
+            config.OrbitalResponseBonus = 0;
+            config.ExposedSectorBombardmentBonus = 500;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, 1);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("defender", rebels.InstanceID),
+                target
+            );
+            Fleet fleet = AddBattleFleet(
+                game,
+                owned,
+                "fleet",
+                empire.InstanceID,
+                combatStrength: 1000
+            );
+            fleet.GetChildren<CapitalShip>().Single().Bombardment = 1;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+
+            double score = scorer.Score(
+                context,
+                new AIFleetAttackProposal(
+                    fleet,
+                    FleetOrderType.Attack,
+                    FleetOrderStatus.Staging,
+                    target
+                )
+            );
+
+            Assert.AreEqual(config.ExposedSectorBombardmentBonus, score);
+            Assert.GreaterOrEqual(scorer.GetNewAttackScoreUpperBound(context, target), score);
+        }
+
+        [Test]
         public void GetNewAttackScoreUpperBound_WithAttackProposal_DoesNotUnderestimateScore()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

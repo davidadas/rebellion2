@@ -70,6 +70,8 @@ namespace Rebellion.AI.Director
         >(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _hostilePlanetaryStarfighterStrengths =
             new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, bool> _activeHostileMilitaryTargets =
+            new Dictionary<string, bool>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _planetDefenseThreatStrengths = new Dictionary<
             string,
             int
@@ -88,6 +90,10 @@ namespace Rebellion.AI.Director
         private readonly Dictionary<string, int> _fleetCombatValues = new Dictionary<string, int>(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<string, string> _reservedDefenseFleetIds = new Dictionary<
+            string,
+            string
+        >(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _fleetBombardmentStrengths = new Dictionary<
             string,
             int
@@ -1046,15 +1052,7 @@ namespace Rebellion.AI.Director
                 return false;
 
             return GetFriendlyFleets(planet)
-                .Any(fleet =>
-                    fleet
-                        .GetChildren<CapitalShip>()
-                        .Any(capitalShip =>
-                            capitalShip.ManufacturingStatus
-                                is ManufacturingStatus.Complete
-                                    or ManufacturingStatus.Building
-                        )
-                );
+                .Any(fleet => fleet.GetChildren<CapitalShip>().Count > 0);
         }
 
         /// <summary>
@@ -1113,15 +1111,31 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns whether a fleet can leave without compromising headquarters defense.
+        /// Returns whether a fleet can leave its current planet without abandoning an unstable
+        /// friendly planet or compromising priority-planet defense. Fleets on hostile planets are
+        /// always allowed to evacuate.
         /// </summary>
         /// <param name="fleet">Fleet to inspect.</param>
         /// <returns>True when the fleet can depart.</returns>
         public bool CanFleetDepartHeadquarters(Fleet fleet)
         {
             Planet planet = GetFleetPlanet(fleet);
+            if (
+                IsOwnedPlanet(planet)
+                && _context?.Game?.Config != null
+                && GetFactionPopularSupport(planet)
+                    < _context.Game.Config.AI.Garrison.SupportThreshold
+                && !HasFullOperationalPlanetaryShields(planet)
+                && GetDefensiveSupportRisk(planet) > 1
+            )
+                return false;
+
             if (!IsPriorityDefensePlanet(planet))
                 return true;
+
+            string reservedFleetId = GetReservedDefenseFleetId(planet);
+            if (reservedFleetId == fleet?.InstanceID)
+                return false;
 
             int remainingDefense = GetFriendlyFleets(planet)
                 .Where(localFleet => localFleet != fleet && localFleet.Movement == null)
@@ -1130,6 +1144,80 @@ namespace Rebellion.AI.Director
                 .Max();
             int requiredDefense = GetRequiredHeadquartersDefenseStrength(planet);
             return remainingDefense >= requiredDefense;
+        }
+
+        /// <summary>
+        /// Returns the stable fleet reservation that prevents simultaneous departure proposals
+        /// from each assuming another fleet will remain behind.
+        /// </summary>
+        private string GetReservedDefenseFleetId(Planet planet)
+        {
+            if (planet == null)
+                return string.Empty;
+
+            if (_reservedDefenseFleetIds.TryGetValue(planet.InstanceID, out string reservedId))
+                return reservedId;
+
+            Fleet reservedFleet = null;
+            bool reservedHasDefenseOrder = false;
+            int reservedStrength = int.MinValue;
+            foreach (Fleet candidate in GetFriendlyFleets(planet))
+            {
+                if (
+                    candidate.Movement != null
+                    || candidate.IsInCombat
+                    || !candidate.HasOperationalCapitalShips()
+                )
+                    continue;
+
+                bool hasDefenseOrder = candidate.Order?.OrderType == FleetOrderType.Defend
+                    && candidate.Order.TargetPlanetId == planet.InstanceID;
+                int strength = GetFleetCombatValue(candidate);
+                if (
+                    reservedFleet != null
+                    && (!hasDefenseOrder || reservedHasDefenseOrder)
+                    && (hasDefenseOrder != reservedHasDefenseOrder || strength < reservedStrength)
+                )
+                    continue;
+
+                if (
+                    reservedFleet != null
+                    && hasDefenseOrder == reservedHasDefenseOrder
+                    && strength == reservedStrength
+                    && string.CompareOrdinal(candidate.InstanceID, reservedFleet.InstanceID) >= 0
+                )
+                    continue;
+
+                reservedFleet = candidate;
+                reservedHasDefenseOrder = hasDefenseOrder;
+                reservedStrength = strength;
+            }
+
+            reservedId = reservedFleet?.InstanceID ?? string.Empty;
+            _reservedDefenseFleetIds[planet.InstanceID] = reservedId;
+            return reservedId;
+        }
+
+        /// <summary>
+        /// Returns whether an owned planet has enough active shield generators to block a
+        /// planetary assault under the configured combat rules.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True when the active shield count meets the configured limit.</returns>
+        private bool HasFullOperationalPlanetaryShields(Planet planet)
+        {
+            if (!IsOwnedPlanet(planet) || _context?.Game?.Config == null)
+                return false;
+
+            int requiredCount = _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            return requiredCount > 0
+                && GetPlanetBuildings(planet)
+                        .Count(building =>
+                            building.GetOwnerInstanceID() == _context.Faction.InstanceID
+                            && building.ManufacturingStatus == ManufacturingStatus.Complete
+                            && building.Movement == null
+                            && building.IsPlanetaryShieldGenerator()
+                        ) >= requiredCount;
         }
 
         /// <summary>
@@ -1831,6 +1919,40 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns whether a fleet can immediately bombard military targets on a planet.
+        /// </summary>
+        /// <param name="fleet">Fleet being evaluated.</param>
+        /// <param name="targetPlanet">Prospective bombardment target.</param>
+        /// <returns>True when hostile military targets remain below the fleet's bombardment limit.</returns>
+        public bool CanFleetBombardMilitaryTargets(Fleet fleet, Planet targetPlanet)
+        {
+            return fleet != null
+                && targetPlanet != null
+                && GetFleetBombardmentStrength(fleet)
+                    > BombardmentSystem.GetBombardmentShieldStrength(targetPlanet)
+                && HasActiveHostileMilitaryTargets(targetPlanet);
+        }
+
+        /// <summary>
+        /// Returns whether hostile military bombardment targets remain on a planet.
+        /// </summary>
+        public bool HasActiveHostileMilitaryTargets(Planet targetPlanet)
+        {
+            if (targetPlanet == null)
+                return false;
+
+            return GetOrAdd(
+                _activeHostileMilitaryTargets,
+                targetPlanet.InstanceID,
+                () =>
+                    BombardmentSystem.HasActiveMilitaryTargets(
+                        targetPlanet,
+                        targetPlanet.GetOwnerInstanceID()
+                    )
+            );
+        }
+
+        /// <summary>
         /// Returns whether a fleet can weaken a planet before evaluating a ground assault.
         /// </summary>
         /// <param name="fleet">Fleet assigned to the attack.</param>
@@ -1838,14 +1960,7 @@ namespace Rebellion.AI.Director
         /// <returns>True when military targets remain within the fleet's bombardment capability.</returns>
         private bool CanBombardMilitaryTargets(Fleet fleet, Planet targetPlanet)
         {
-            return fleet != null
-                && targetPlanet != null
-                && GetFleetBombardmentStrength(fleet)
-                    > BombardmentSystem.GetBombardmentShieldStrength(targetPlanet)
-                && BombardmentSystem.HasActiveMilitaryTargets(
-                    targetPlanet,
-                    targetPlanet.GetOwnerInstanceID()
-                );
+            return CanFleetBombardMilitaryTargets(fleet, targetPlanet);
         }
 
         /// <summary>

@@ -1074,25 +1074,12 @@ namespace Rebellion.AI.Planners
             );
             int committedCapitalMaintenance = context
                 .Faction.GetOwnedUnitsByType<CapitalShip>()
-                .Where(IsCommittedCapitalShip)
                 .Sum(capitalShip => capitalShip.MaintenanceCost);
             int budget = Math.Max(0, targetCapitalMaintenance - committedCapitalMaintenance);
 
             _capitalShipMaintenanceBudget =
                 context.Assessment.ProjectedMaintenanceHeadroom < budget ? 0 : budget;
             return _capitalShipMaintenanceBudget.Value;
-        }
-
-        /// <summary>
-        /// Returns whether a capital ship is complete or already under construction.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <returns>True when production planning must account for the ship.</returns>
-        private static bool IsCommittedCapitalShip(CapitalShip capitalShip)
-        {
-            return capitalShip?.ManufacturingStatus
-                is ManufacturingStatus.Complete
-                    or ManufacturingStatus.Building;
         }
 
         /// <summary>

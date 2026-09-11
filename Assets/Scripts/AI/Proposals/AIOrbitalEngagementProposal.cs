@@ -100,6 +100,9 @@ namespace Rebellion.AI.Proposals
             Planet knownTarget = context.Assessment.GetKnownPlanet(TargetPlanet.InstanceID);
             if (currentPlanet?.InstanceID != TargetPlanet.InstanceID)
             {
+                if (!context.Assessment.CanFleetDepartHeadquarters(Fleet))
+                    return;
+
                 if (context.Assessment.GetStrongestHostileFleetStrength(knownTarget) <= 0)
                 {
                     if (currentPlanet?.GetOwnerInstanceID() == context.Faction.InstanceID)

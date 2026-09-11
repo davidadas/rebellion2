@@ -134,9 +134,12 @@ public static class HeadlessSimulationRunner
             SpecialForcesLifecycleTracker specialForcesLifecycleTracker =
                 new SpecialForcesLifecycleTracker();
             PlanetaryAssaultTracker planetaryAssaultTracker = new PlanetaryAssaultTracker(game);
+            GarrisonRemovalBombardmentTracker garrisonRemovalBombardmentTracker =
+                new GarrisonRemovalBombardmentTracker(game);
             AttackReadinessTracker attackReadinessTracker = new AttackReadinessTracker();
             VictoryResult victory = null;
             manager.ResultsResolved += planetaryAssaultTracker.Record;
+            manager.ResultsResolved += garrisonRemovalBombardmentTracker.Record;
             manager.VictoriesResolved += results => victory ??= results.FirstOrDefault();
             manager.ResultsResolved += missionOutcomeTracker.Record;
             manager.ResultsResolved += manufacturedUnitTracker.Record;
@@ -219,6 +222,7 @@ public static class HeadlessSimulationRunner
                 personnelOutcomeTracker,
                 specialForcesLifecycleTracker,
                 planetaryAssaultTracker,
+                garrisonRemovalBombardmentTracker,
                 attackReadinessTracker,
                 victory
             );
@@ -428,6 +432,7 @@ public static class HeadlessSimulationRunner
         PersonnelOutcomeTracker personnelOutcomeTracker,
         SpecialForcesLifecycleTracker specialForcesLifecycleTracker,
         PlanetaryAssaultTracker planetaryAssaultTracker,
+        GarrisonRemovalBombardmentTracker garrisonRemovalBombardmentTracker,
         AttackReadinessTracker attackReadinessTracker,
         VictoryResult victory
     )
@@ -618,6 +623,8 @@ public static class HeadlessSimulationRunner
                     MissionOutcomes = missionOutcomeTracker.BuildSummary(faction.InstanceID),
                     PersonnelOutcomes = personnelOutcomeTracker.BuildSummary(faction.InstanceID),
                     PlanetaryAssaults = planetaryAssaultTracker.BuildSummary(faction.InstanceID),
+                    GarrisonRemovalBombardments =
+                        garrisonRemovalBombardmentTracker.BuildSummary(faction.InstanceID),
                     AttackReadiness = attackReadinessTracker.BuildSummary(faction.InstanceID),
                     ProductionFacilityPlanets = BuildProductionFacilityPlanetSummaries(
                         game,
@@ -1564,6 +1571,7 @@ public static class HeadlessSimulationRunner
         public MissionOutcomeSimulationSummary MissionOutcomes;
         public PersonnelOutcomeSimulationSummary PersonnelOutcomes;
         public PlanetaryAssaultSimulationSummary PlanetaryAssaults;
+        public GarrisonRemovalBombardmentSimulationSummary GarrisonRemovalBombardments;
         public AttackReadinessSimulationSummary AttackReadiness;
         public ProductionFacilityPlanetSummary[] ProductionFacilityPlanets;
         public CurrentIdlePlanetSummary[] CurrentIdlePlanets;
@@ -1865,6 +1873,27 @@ public static class HeadlessSimulationRunner
         public bool ImmediateUprising;
         public int RequiredGarrisonCount;
         public int GarrisonDeficit;
+    }
+
+    [Serializable]
+    private sealed class GarrisonRemovalBombardmentSimulationSummary
+    {
+        public int Triggered;
+        public int SupportShiftPerAffectedPlanet;
+        public int AdditionalPlanetsFlipped;
+        public GarrisonRemovalBombardmentSimulationResult[] Results;
+    }
+
+    [Serializable]
+    private sealed class GarrisonRemovalBombardmentSimulationResult
+    {
+        public int Tick;
+        public string AttackerFactionId;
+        public string PlanetId;
+        public string PlanetName;
+        public string PreviousOwnerFactionId;
+        public string NewOwnerFactionId;
+        public string[] AdditionalFlippedPlanets;
     }
 
     [Serializable]
@@ -3303,6 +3332,91 @@ public static class HeadlessSimulationRunner
             {
                 counters[key] = counters.TryGetValue(key, out int count) ? count + 1 : 1;
             }
+        }
+    }
+
+    /// <summary>
+    /// Records the existing bombardment results that prove the final defending garrison was
+    /// removed and the sector-wide support shift was applied. This is event-backed and performs
+    /// no scene-graph polling.
+    /// </summary>
+    private sealed class GarrisonRemovalBombardmentTracker
+    {
+        private readonly int _supportShift;
+        private readonly Dictionary<string, List<GarrisonRemovalBombardmentSimulationResult>>
+            _results = new(StringComparer.Ordinal);
+
+        public GarrisonRemovalBombardmentTracker(GameRoot game)
+        {
+            _supportShift = game.Config.SupportShift.GarrisonRemovalSupportShift;
+        }
+
+        public void Record(IReadOnlyList<GameResult> results)
+        {
+            if (results == null)
+                return;
+
+            foreach (BombardmentResult result in results.OfType<BombardmentResult>())
+            {
+                PlanetOwnershipChangedResult directChange = result.OwnershipChange;
+                if (
+                    directChange?.Planet == null
+                    || result.DestroyedRegiments == null
+                    || result.DestroyedRegiments.Count == 0
+                )
+                    continue;
+
+                string factionId = result.AttackerOwnerInstanceID ?? string.Empty;
+                if (
+                    !_results.TryGetValue(
+                        factionId,
+                        out List<GarrisonRemovalBombardmentSimulationResult> items
+                    )
+                )
+                {
+                    items = new List<GarrisonRemovalBombardmentSimulationResult>();
+                    _results[factionId] = items;
+                }
+
+                string[] additionalFlips = result.Events
+                    .OfType<PlanetOwnershipChangedResult>()
+                    .Where(change => change.Planet != null && change.Planet != directChange.Planet)
+                    .Select(change => $"{change.Planet.InstanceID}:{change.Planet.GetDisplayName()}")
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(value => value, StringComparer.Ordinal)
+                    .ToArray();
+                items.Add(
+                    new GarrisonRemovalBombardmentSimulationResult
+                    {
+                        Tick = result.Tick,
+                        AttackerFactionId = factionId,
+                        PlanetId = directChange.Planet.InstanceID,
+                        PlanetName = directChange.Planet.GetDisplayName(),
+                        PreviousOwnerFactionId = directChange.PreviousOwner?.InstanceID,
+                        NewOwnerFactionId = directChange.NewOwner?.InstanceID,
+                        AdditionalFlippedPlanets = additionalFlips,
+                    }
+                );
+            }
+        }
+
+        public GarrisonRemovalBombardmentSimulationSummary BuildSummary(string factionId)
+        {
+            GarrisonRemovalBombardmentSimulationResult[] results = _results.TryGetValue(
+                factionId ?? string.Empty,
+                out List<GarrisonRemovalBombardmentSimulationResult> items
+            )
+                ? items.ToArray()
+                : Array.Empty<GarrisonRemovalBombardmentSimulationResult>();
+            return new GarrisonRemovalBombardmentSimulationSummary
+            {
+                Triggered = results.Length,
+                SupportShiftPerAffectedPlanet = _supportShift,
+                AdditionalPlanetsFlipped = results.Sum(result =>
+                    result.AdditionalFlippedPlanets?.Length ?? 0
+                ),
+                Results = results,
+            };
         }
     }
 

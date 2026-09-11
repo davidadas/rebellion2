@@ -213,6 +213,10 @@ namespace Rebellion.Game
 
             public int OrbitalResponseBonus { get; set; } = 250;
 
+            public int ExposedSectorBombardmentBonus { get; set; } = 100;
+
+            public int ExposedSectorMinimumOwnedPresencePercent { get; set; } = 50;
+
             public int DefenseSectorSupportRiskWeight { get; set; } = 30;
 
             public int ColonizationBaseScore { get; set; } = 45;

@@ -201,6 +201,12 @@ namespace Rebellion.AI.Scoring
             if (assessment.CanWinOrbitalCombat(fleet, targetPlanet))
                 score += config.OrbitalResponseBonus;
 
+            if (
+                IsExposedSectorBombardmentTarget(context, targetPlanet)
+                && assessment.CanFleetBombardMilitaryTargets(fleet, targetPlanet)
+            )
+                score += config.ExposedSectorBombardmentBonus;
+
             score = Math.Max(0, score);
             return existingOrder ? score + config.ExistingAttackOrderBonus : score;
         }
@@ -255,10 +261,40 @@ namespace Rebellion.AI.Scoring
                 + Math.Max(0, config.AttackTravelEfficiencyWeight)
                 + Math.Max(0, config.OrbitalResponseBonus);
 
+            if (IsExposedSectorBombardmentTarget(context, targetPlanet))
+                score += Math.Max(0, config.ExposedSectorBombardmentBonus);
+
             if (targetPlanet.IsHeadquarters)
                 score += config.HeadquartersAttackBonus;
 
             return Math.Max(0, score);
+        }
+
+        /// <summary>
+        /// Returns whether an undefended enemy orbit exposes military targets whose removal can
+        /// produce a sector-wide support gain.
+        /// </summary>
+        private static bool IsExposedSectorBombardmentTarget(
+            AITurnContext context,
+            Planet targetPlanet
+        )
+        {
+            AIAssessment assessment = context.Assessment;
+            double minimumOwnedPresence =
+                context
+                    .Game
+                    .Config
+                    .AI
+                    .FleetDeployment
+                    .ExposedSectorMinimumOwnedPresencePercent
+                / 100.0;
+            return assessment.GetOffensiveSupportLeverage(targetPlanet) > 0
+                && assessment.GetOwnedSystemPresenceRatio(
+                    assessment.GetPlanetSystemId(targetPlanet)
+                ) >= minimumOwnedPresence
+                && assessment.GetStrongestHostileFleetStrength(targetPlanet) <= 0
+                && assessment.GetHostilePlanetaryStarfighterStrength(targetPlanet) <= 0
+                && assessment.HasActiveHostileMilitaryTargets(targetPlanet);
         }
 
         /// <summary>

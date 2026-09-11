@@ -485,13 +485,7 @@ namespace Rebellion.AI.Planners
         private static bool IsCommittedBattleFleet(Fleet fleet)
         {
             return fleet?.RoleType == FleetRoleType.Battle
-                && fleet
-                    .GetChildren<CapitalShip>()
-                    .Any(ship =>
-                        ship.ManufacturingStatus
-                            is ManufacturingStatus.Complete
-                                or ManufacturingStatus.Building
-                    );
+                && fleet.GetChildren<CapitalShip>().Count > 0;
         }
 
         /// <summary>
@@ -2424,19 +2418,7 @@ namespace Rebellion.AI.Planners
         /// <returns>True if the fleet has present or under-construction capital ships.</returns>
         private static bool HasPresentOrUnderConstructionCapitalShips(Fleet fleet)
         {
-            return fleet?.GetChildren<CapitalShip>().Any(IsCommittedCapitalShip) == true;
-        }
-
-        /// <summary>
-        /// Returns whether a capital ship is present or being built.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to inspect.</param>
-        /// <returns>True if the capital ship is present or under construction.</returns>
-        private static bool IsCommittedCapitalShip(CapitalShip capitalShip)
-        {
-            return capitalShip?.ManufacturingStatus
-                is ManufacturingStatus.Complete
-                    or ManufacturingStatus.Building;
+            return fleet?.GetChildren<CapitalShip>().Count > 0;
         }
 
         /// <summary>

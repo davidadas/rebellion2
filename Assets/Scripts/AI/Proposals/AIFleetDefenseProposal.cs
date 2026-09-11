@@ -97,6 +97,12 @@ namespace Rebellion.AI.Proposals
             if (context.Movement == null)
                 return;
 
+            if (!context.Assessment.CanFleetDepartHeadquarters(Fleet))
+            {
+                Fleet.Order.Status = FleetOrderStatus.Staging;
+                return;
+            }
+
             Fleet.Order.Status = FleetOrderStatus.Readying;
             context.Movement.RequestMove(Fleet, TargetPlanet);
         }

@@ -2838,6 +2838,37 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_WithDeliveringFleetSeed_CountsFleetAsCommitted()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
+            game.Config.AI.FleetDeployment.PlanetsPerBattleFleet = 100;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-world",
+                empire.InstanceID
+            );
+            planet.IsHeadquarters = true;
+            empire.HQInstanceID = planet.InstanceID;
+            Fleet fleet = EntityFactory.CreateFleet("seeded-fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            CapitalShip deliveringShip = AITestSceneBuilder.CreateCapitalShip(
+                "delivering-ship",
+                empire.InstanceID
+            );
+            deliveringShip.ManufacturingStatus = ManufacturingStatus.Delivering;
+            game.AttachNode(fleet, planet);
+            game.AttachNode(deliveringShip, fleet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.FleetSeedCapitalShip));
+        }
+
+        [Test]
         public void Generate_WithKnownUncolonizedPlanet_AddsColonizationFleetSeedDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
