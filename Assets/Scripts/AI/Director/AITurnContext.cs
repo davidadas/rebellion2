@@ -29,6 +29,7 @@ namespace Rebellion.AI.Director
         public PlanetaryAssaultSystem PlanetaryAssault { get; }
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
+        public AIStrategicPlan StrategicPlan { get; }
         public AIFacilityAllocationPolicy FacilityAllocation =>
             _facilityAllocation ??= new AIFacilityAllocationPolicy(this);
 
@@ -80,6 +81,7 @@ namespace Rebellion.AI.Director
             Random = random;
             FactionView = factionView;
             Assessment = new AIAssessment(this);
+            StrategicPlan = new AIStrategicPlan(this);
         }
 
         /// <summary>

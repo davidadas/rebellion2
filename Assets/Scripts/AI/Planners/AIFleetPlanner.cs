@@ -84,7 +84,7 @@ namespace Rebellion.AI.Planners
             if (
                 currentPlanet != null
                 && context.Assessment.IsFactionHeadquarters(currentPlanet)
-                && !context.Assessment.CanFleetDepartHeadquarters(fleet)
+                && !context.StrategicPlan.CanFleetDepart(fleet)
             )
             {
                 proposals.Add(new AIClearFleetOrderProposal(fleet, order));
@@ -221,7 +221,7 @@ namespace Rebellion.AI.Planners
                 && !fleet.IsInCombat
                 && fleet.HasOperationalCapitalShips()
                 && context.Assessment.GetReadyFleetCombatValue(fleet) > 0
-                && context.Assessment.CanFleetDepartHeadquarters(fleet);
+                && context.StrategicPlan.CanFleetDepart(fleet);
         }
 
         /// <summary>
@@ -333,7 +333,7 @@ namespace Rebellion.AI.Planners
                 && !fleet.IsInCombat
                 && fleet.HasOperationalCapitalShips()
                 && context.Assessment.GetReadyFleetCombatValue(fleet) > 0
-                && context.Assessment.CanFleetDepartHeadquarters(fleet);
+                && context.StrategicPlan.CanFleetDepart(fleet);
         }
 
         /// <summary>
@@ -400,7 +400,7 @@ namespace Rebellion.AI.Planners
                             .FleetDeployment
                             .ColonizationFleetMinimumRegimentCount
                     )
-                && context.Assessment.CanFleetDepartHeadquarters(fleet);
+                && context.StrategicPlan.CanFleetDepart(fleet);
         }
 
         /// <summary>

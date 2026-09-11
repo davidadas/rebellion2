@@ -82,7 +82,7 @@ namespace Rebellion.AI.Planners
             Planet origin
         )
         {
-            if (origin == null || !context.Assessment.CanFleetDepartHeadquarters(fleet))
+            if (origin == null || !context.StrategicPlan.CanFleetDepart(fleet))
                 return Enumerable.Empty<Planet>();
 
             return context

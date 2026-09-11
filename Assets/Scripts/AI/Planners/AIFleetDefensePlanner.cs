@@ -140,7 +140,7 @@ namespace Rebellion.AI.Planners
                 || fleet.Movement != null
                 || fleet.IsInCombat
                 || !fleet.HasOperationalCapitalShips()
-                || !context.Assessment.CanFleetDepartHeadquarters(fleet)
+                || !context.StrategicPlan.CanFleetDepart(fleet)
             )
                 return false;
 

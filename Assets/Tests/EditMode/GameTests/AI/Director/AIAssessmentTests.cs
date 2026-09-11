@@ -380,7 +380,9 @@ namespace Rebellion.Tests.AI.Director
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.IsFalse(assessment.CanFleetDepartHeadquarters(fleet));
+            Assert.IsFalse(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
         }
 
         [Test]
@@ -431,7 +433,11 @@ namespace Rebellion.Tests.AI.Director
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.IsFalse(assessment.CanFleetDepartHeadquarters(departingFleet));
+            Assert.IsFalse(
+                AITestSceneBuilder
+                    .CreateContext(game, empire)
+                    .StrategicPlan.CanFleetDepart(departingFleet)
+            );
         }
 
         [Test]
@@ -534,7 +540,9 @@ namespace Rebellion.Tests.AI.Director
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.IsFalse(assessment.CanFleetDepartHeadquarters(fleet));
+            Assert.IsFalse(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
         }
 
         [Test]
@@ -573,8 +581,9 @@ namespace Rebellion.Tests.AI.Director
             );
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.IsFalse(assessment.CanFleetDepartHeadquarters(strongest));
-            Assert.IsTrue(assessment.CanFleetDepartHeadquarters(other));
+            AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, empire).StrategicPlan;
+            Assert.IsFalse(plan.CanFleetDepart(strongest));
+            Assert.IsTrue(plan.CanFleetDepart(other));
         }
 
         [Test]
@@ -594,11 +603,15 @@ namespace Rebellion.Tests.AI.Director
             exposed.SetPopularSupport(rebels.InstanceID, 55);
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.IsFalse(assessment.CanFleetDepartHeadquarters(fleet));
+            Assert.IsFalse(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
 
             planet.SetPopularSupport(empire.InstanceID, 50);
 
-            Assert.IsTrue(assessment.CanFleetDepartHeadquarters(fleet));
+            Assert.IsTrue(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
         }
 
         [Test]
@@ -619,7 +632,9 @@ namespace Rebellion.Tests.AI.Director
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
             Assert.AreEqual(1, assessment.GetDefensiveSupportRisk(captured));
-            Assert.IsTrue(assessment.CanFleetDepartHeadquarters(fleet));
+            Assert.IsTrue(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
         }
 
         [Test]
@@ -641,7 +656,9 @@ namespace Rebellion.Tests.AI.Director
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
             Assert.AreEqual(1, assessment.GetDefensiveSupportRisk(captured));
-            Assert.IsTrue(assessment.CanFleetDepartHeadquarters(fleet));
+            Assert.IsTrue(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
         }
 
         [Test]
@@ -656,7 +673,9 @@ namespace Rebellion.Tests.AI.Director
             planet.SetPopularSupport(empire.InstanceID, 0);
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.IsTrue(assessment.CanFleetDepartHeadquarters(fleet));
+            Assert.IsTrue(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
         }
 
         [Test]
@@ -674,7 +693,9 @@ namespace Rebellion.Tests.AI.Director
             AddShield(game, planet, "shield-2", empire.InstanceID, 5);
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.IsTrue(assessment.CanFleetDepartHeadquarters(fleet));
+            Assert.IsTrue(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
         }
 
         [Test]

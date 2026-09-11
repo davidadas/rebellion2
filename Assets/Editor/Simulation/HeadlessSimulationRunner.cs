@@ -3169,7 +3169,7 @@ public static class HeadlessSimulationRunner
                 if (buildingAttackFleets.Count == 0)
                     continue;
 
-                AIAssessment assessment = new AITurnContext(
+                AITurnContext context = new AITurnContext(
                     game,
                     faction,
                     null,
@@ -3179,12 +3179,18 @@ public static class HeadlessSimulationRunner
                     null,
                     new SystemRandomProvider(0),
                     new FogOfWarSystem(game).BuildFactionView(faction)
-                ).Assessment;
+                );
+                AIAssessment assessment = context.Assessment;
                 AttackReadinessFactionCounters counters = GetCounters(faction.InstanceID);
 
                 foreach (Fleet fleet in buildingAttackFleets)
                 {
-                    List<string> blockers = GetBlockers(assessment, fleet, planets);
+                    List<string> blockers = GetBlockers(
+                        assessment,
+                        context.StrategicPlan,
+                        fleet,
+                        planets
+                    );
                     counters.Record(blockers);
                 }
             }
@@ -3226,6 +3232,7 @@ public static class HeadlessSimulationRunner
         /// <returns>The active readiness blocker names.</returns>
         private static List<string> GetBlockers(
             AIAssessment assessment,
+            AIStrategicPlan strategicPlan,
             Fleet fleet,
             IReadOnlyDictionary<string, Planet> planets
         )
@@ -3240,7 +3247,7 @@ public static class HeadlessSimulationRunner
                 return blockers;
             }
 
-            if (!assessment.CanFleetDepartHeadquarters(fleet))
+            if (!strategicPlan.CanFleetDepart(fleet))
                 blockers.Add("HeadquartersReserve");
             if (!fleet.HasOperationalCapitalShips())
                 blockers.Add("OperationalCapitalShips");

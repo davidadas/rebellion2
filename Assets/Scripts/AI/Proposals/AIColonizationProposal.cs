@@ -111,7 +111,7 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (!context.Assessment.CanFleetDepartHeadquarters(Fleet))
+            if (!context.StrategicPlan.CanFleetDepart(Fleet))
             {
                 Fleet.Order.Status = FleetOrderStatus.Staging;
                 return;

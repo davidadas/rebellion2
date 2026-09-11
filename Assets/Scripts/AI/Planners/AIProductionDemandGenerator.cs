@@ -347,7 +347,7 @@ namespace Rebellion.AI.Planners
         /// <param name="demands">The demand list to update.</param>
         private void AddFleetSeedDemand(AITurnContext context, List<AIDemand> demands)
         {
-            int targetCount = GetTargetBattleFleetCount(context);
+            int targetCount = context.StrategicPlan.TargetBattleFleetCount;
             int committedCount = context.Assessment.OwnedFleets.Count(IsCommittedBattleFleet);
             int deficit = targetCount - committedCount;
             Planet unguardedHeadquarters = FindUnguardedHeadquarters(context);
@@ -420,24 +420,6 @@ namespace Rebellion.AI.Planners
                     capitalShipRole: AICapitalShipProductionRole.TroopTransport
                 )
             );
-        }
-
-        /// <summary>
-        /// Returns the desired battle-fleet count.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The desired fleet count.</returns>
-        private int GetTargetBattleFleetCount(AITurnContext context)
-        {
-            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
-            int operationalPlanetCount = context.Assessment.OwnedPlanets.Count(planet =>
-                planet.IsColonized && !planet.IsDestroyed
-            );
-            int scaledTarget = IntegerMath.DivideRoundedUp(
-                operationalPlanetCount,
-                config.PlanetsPerBattleFleet
-            );
-            return Math.Max(config.MinimumBattleFleetCount, scaledTarget);
         }
 
         /// <summary>
@@ -1406,7 +1388,7 @@ namespace Rebellion.AI.Planners
                     fleet.RoleType == FleetRoleType.Battle
                     && CanReinforceFleet(fleet)
                     && fleet.Order == null
-                    && context.Assessment.CanFleetDepartHeadquarters(fleet)
+                    && context.StrategicPlan.CanFleetDepart(fleet)
                 )
                 .OrderBy(context.Assessment.GetProjectedFleetCombatValue)
                 .ThenBy(fleet => fleet.GetRegimentCapacity())
@@ -1446,7 +1428,7 @@ namespace Rebellion.AI.Planners
                 : defenseTarget != null
                     ? context.Assessment.GetRequiredDefenseStrength(defenseTarget)
                 : isColonizationFleet || isColonizationOrder ? projectedCombat
-                : context.Game.Config.AI.FleetDeployment.MinimumAttackStrength;
+                : context.StrategicPlan.AssemblyFleetCombatStrength;
             int combatDeficit = targetCombat - projectedCombat;
             int targetRegimentCapacity =
                 isDefenseOrder ? 0

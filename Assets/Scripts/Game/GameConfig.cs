@@ -177,6 +177,10 @@ namespace Rebellion.Game
 
             public int MinimumAttackStrength { get; set; }
 
+            public int MinimumMobileCombatStrength { get; set; }
+
+            public int MobileCombatStrengthPerPlanet { get; set; }
+
             public int MinimumDefenseStrength { get; set; } = 1000;
 
             public int FleetDefenseScore { get; set; } = 1000;

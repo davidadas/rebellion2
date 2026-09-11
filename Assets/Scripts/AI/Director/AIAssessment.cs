@@ -90,10 +90,6 @@ namespace Rebellion.AI.Director
         private readonly Dictionary<string, int> _fleetCombatValues = new Dictionary<string, int>(
             StringComparer.Ordinal
         );
-        private readonly Dictionary<string, string> _reservedDefenseFleetIds = new Dictionary<
-            string,
-            string
-        >(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _fleetBombardmentStrengths = new Dictionary<
             string,
             int
@@ -1111,100 +1107,12 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns whether a fleet can leave its current planet without abandoning an unstable
-        /// friendly planet or compromising priority-planet defense. Fleets on hostile planets are
-        /// always allowed to evacuate.
-        /// </summary>
-        /// <param name="fleet">Fleet to inspect.</param>
-        /// <returns>True when the fleet can depart.</returns>
-        public bool CanFleetDepartHeadquarters(Fleet fleet)
-        {
-            Planet planet = GetFleetPlanet(fleet);
-            if (
-                IsOwnedPlanet(planet)
-                && _context?.Game?.Config != null
-                && GetFactionPopularSupport(planet)
-                    < _context.Game.Config.AI.Garrison.SupportThreshold
-                && !HasFullOperationalPlanetaryShields(planet)
-                && GetDefensiveSupportRisk(planet) > 1
-            )
-                return false;
-
-            if (!IsPriorityDefensePlanet(planet))
-                return true;
-
-            string reservedFleetId = GetReservedDefenseFleetId(planet);
-            if (reservedFleetId == fleet?.InstanceID)
-                return false;
-
-            int remainingDefense = GetFriendlyFleets(planet)
-                .Where(localFleet => localFleet != fleet && localFleet.Movement == null)
-                .Select(GetFleetCombatValue)
-                .DefaultIfEmpty()
-                .Max();
-            int requiredDefense = GetRequiredHeadquartersDefenseStrength(planet);
-            return remainingDefense >= requiredDefense;
-        }
-
-        /// <summary>
-        /// Returns the stable fleet reservation that prevents simultaneous departure proposals
-        /// from each assuming another fleet will remain behind.
-        /// </summary>
-        private string GetReservedDefenseFleetId(Planet planet)
-        {
-            if (planet == null)
-                return string.Empty;
-
-            if (_reservedDefenseFleetIds.TryGetValue(planet.InstanceID, out string reservedId))
-                return reservedId;
-
-            Fleet reservedFleet = null;
-            bool reservedHasDefenseOrder = false;
-            int reservedStrength = int.MinValue;
-            foreach (Fleet candidate in GetFriendlyFleets(planet))
-            {
-                if (
-                    candidate.Movement != null
-                    || candidate.IsInCombat
-                    || !candidate.HasOperationalCapitalShips()
-                )
-                    continue;
-
-                bool hasDefenseOrder = candidate.Order?.OrderType == FleetOrderType.Defend
-                    && candidate.Order.TargetPlanetId == planet.InstanceID;
-                int strength = GetFleetCombatValue(candidate);
-                if (
-                    reservedFleet != null
-                    && (!hasDefenseOrder || reservedHasDefenseOrder)
-                    && (hasDefenseOrder != reservedHasDefenseOrder || strength < reservedStrength)
-                )
-                    continue;
-
-                if (
-                    reservedFleet != null
-                    && hasDefenseOrder == reservedHasDefenseOrder
-                    && strength == reservedStrength
-                    && string.CompareOrdinal(candidate.InstanceID, reservedFleet.InstanceID) >= 0
-                )
-                    continue;
-
-                reservedFleet = candidate;
-                reservedHasDefenseOrder = hasDefenseOrder;
-                reservedStrength = strength;
-            }
-
-            reservedId = reservedFleet?.InstanceID ?? string.Empty;
-            _reservedDefenseFleetIds[planet.InstanceID] = reservedId;
-            return reservedId;
-        }
-
-        /// <summary>
         /// Returns whether an owned planet has enough active shield generators to block a
         /// planetary assault under the configured combat rules.
         /// </summary>
         /// <param name="planet">Planet to inspect.</param>
         /// <returns>True when the active shield count meets the configured limit.</returns>
-        private bool HasFullOperationalPlanetaryShields(Planet planet)
+        public bool HasFullOperationalPlanetaryShields(Planet planet)
         {
             if (!IsOwnedPlanet(planet) || _context?.Game?.Config == null)
                 return false;
