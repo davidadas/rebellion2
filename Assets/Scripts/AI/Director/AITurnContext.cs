@@ -307,6 +307,6 @@ namespace Rebellion.AI.Director
         }
 
         private static bool IsUsable(Planet planet) =>
-            planet != null && planet.IsColonized && !planet.IsDestroyed;
+            planet?.IsColonized == true && !planet.IsDestroyed;
     }
 }

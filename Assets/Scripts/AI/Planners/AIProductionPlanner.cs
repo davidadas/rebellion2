@@ -1110,32 +1110,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns capital ship role metric.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <param name="role">The role.</param>
-        /// <param name="combatConfig">The configured space-combat weapon effectiveness.</param>
-        /// <returns>The calculated value.</returns>
-        private static double GetCapitalShipRoleMetric(
-            CapitalShip capitalShip,
-            AICapitalShipProductionRole role,
-            GameConfig.SpaceCombatConfig combatConfig
-        )
-        {
-            return role switch
-            {
-                AICapitalShipProductionRole.General => GetPrimaryWeaponMetric(
-                    capitalShip,
-                    combatConfig
-                ) / Math.Max(1, capitalShip.MaintenanceCost),
-                AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity,
-                AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0 ? 1 : 0,
-                AICapitalShipProductionRole.Interdiction => capitalShip.ShieldRechargeRate,
-                _ => 0,
-            };
-        }
-
-        /// <summary>
         /// Returns primary weapon metric.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>

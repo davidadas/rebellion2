@@ -685,31 +685,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether another fleet is attacking a system.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="systemId">System identifier.</param>
-        /// <param name="ignoredFleet">Fleet excluded from the check.</param>
-        /// <returns>True when another fleet has an attack campaign there.</returns>
-        private bool HasAttackFleetForSystem(
-            AITurnContext context,
-            string systemId,
-            Fleet ignoredFleet
-        )
-        {
-            return context.Assessment.AttackOrderedFleets.Any(fleet =>
-            {
-                if (fleet == ignoredFleet)
-                    return false;
-
-                Planet targetPlanet = context.Assessment.GetKnownPlanet(
-                    fleet.Order?.TargetPlanetId
-                );
-                return context.Assessment.GetPlanetSystemId(targetPlanet) == systemId;
-            });
-        }
-
-        /// <summary>
         /// Returns whether a fleet has an active attack order for a planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>

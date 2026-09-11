@@ -924,8 +924,7 @@ namespace Rebellion.Systems
         )
         {
             if (
-                mission == null
-                || !mission.AppliesFoiledParticipantConsequences
+                mission?.AppliesFoiledParticipantConsequences != true
                 || detectors == null
                 || detectors.Count == 0
                 || foilProbability <= 0
