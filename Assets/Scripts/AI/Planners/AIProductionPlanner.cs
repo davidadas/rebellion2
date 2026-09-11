@@ -1110,56 +1110,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns primary weapon metric.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <param name="combatConfig">The configured space-combat weapon effectiveness.</param>
-        /// <returns>The calculated value.</returns>
-        private static double GetPrimaryWeaponMetric(
-            CapitalShip capitalShip,
-            GameConfig.SpaceCombatConfig combatConfig
-        )
-        {
-            double maximumEffectiveStrength = 0;
-            int selectedWeaponCount = 0;
-
-            foreach (PrimaryWeaponArc weaponArc in CapitalShip.PrimaryWeaponArcs)
-            {
-                int turbolasers = GetWeaponCount(
-                    capitalShip,
-                    PrimaryWeaponType.Turbolaser,
-                    weaponArc
-                );
-                int ionCannons = GetWeaponCount(
-                    capitalShip,
-                    PrimaryWeaponType.IonCannon,
-                    weaponArc
-                );
-                int laserCannons = GetWeaponCount(
-                    capitalShip,
-                    PrimaryWeaponType.LaserCannon,
-                    weaponArc
-                );
-                double effectiveStrength =
-                    turbolasers
-                    + ionCannons
-                    + laserCannons * Math.Max(combatConfig.LaserCannonCapitalDamageMultiplier, 0);
-                if (effectiveStrength <= maximumEffectiveStrength)
-                    continue;
-
-                maximumEffectiveStrength = effectiveStrength;
-                selectedWeaponCount = turbolasers + ionCannons + laserCannons;
-            }
-
-            if (selectedWeaponCount <= 0)
-                return 0;
-
-            return (double)capitalShip.WeaponRecharge
-                * maximumEffectiveStrength
-                / selectedWeaponCount;
-        }
-
-        /// <summary>
         /// Returns the largest primary-weapon count on any firing arc.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>

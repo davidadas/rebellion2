@@ -963,21 +963,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether projected capacity is below its strategic minimum.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="buildingType">The production facility type.</param>
-        /// <returns>True when more facilities are required to meet the minimum.</returns>
-        private bool IsBelowProductionFacilityFloor(
-            AITurnContext context,
-            BuildingType buildingType
-        )
-        {
-            return GetOwnedFacilityCount(context, buildingType)
-                < GetDesiredProductionFacilityCount(context, buildingType);
-        }
-
-        /// <summary>
         /// Returns the strategic minimum for a production-facility type.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
