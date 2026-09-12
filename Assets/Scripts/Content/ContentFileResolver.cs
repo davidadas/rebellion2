@@ -75,9 +75,9 @@ public sealed class ContentFileResolver
                 continue;
 
             ContentModDefinition definition = DeserializeDefinition(definitionPath);
-            ValidateDefinition(definition, definitionPath);
             if (!string.Equals(definition.BasePackID, basePackID, StringComparison.Ordinal))
                 continue;
+            ValidateDefinition(definition, definitionPath);
             if (!ids.Add(definition.ID))
                 throw new InvalidDataException(
                     $"Multiple content mods declare ID '{definition.ID}'."
@@ -206,6 +206,11 @@ public sealed class ContentFileResolver
             && !normalized.StartsWith(_packAddressPrefix, StringComparison.Ordinal)
         )
             throw new ArgumentException("A scoped content address is required.", nameof(address));
+        if (normalized.Split('/').Any(segment => segment == ".."))
+            throw new ArgumentException(
+                "Content addresses cannot contain parent-directory segments.",
+                nameof(address)
+            );
         return normalized;
     }
 

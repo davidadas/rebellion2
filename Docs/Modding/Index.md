@@ -5,9 +5,9 @@ content can therefore be changed without rebuilding the game.
 
 ## Mods and redistribution
 
-Install all user-created content in the player-managed `Mods` directory. On Windows that directory
-is inside the game's installation directory. On macOS it is
-`~/Library/Application Support/Rebellion 2/Mods`.
+Install all user-created content in the player-managed `Mods` directory beside the installed
+`Content` directory. This is inside the game's installation directory on Windows and beside the
+Rebellion 2 application bundle on macOS.
 
 **Only distribute files you have the right to distribute.** For mods based on the classic pack,
 distribute only your mod definition and replacement files. Players and mod developers must own
@@ -41,9 +41,10 @@ The minimal mod definition is:
 </ContentModDefinition>
 ```
 
-A mod replaces a complete file at the matching logical path. It does not merge individual objects
-or XML fields within that file. Files beneath the mod's `Content/Pack` directory replace files from
-the selected base pack; files beneath `Content/Application` replace shared application files. The
+A mod replaces a complete file at the matching logical path. It does not normally merge individual
+objects or XML fields within that file. Files beneath the mod's `Content/Pack` directory replace
+files from the selected base pack; files beneath `Content/Application` replace shared application
+files. The pack `game.xml` remains a sparse override merged over the application `game.xml`. The
 installer, launcher, application updater, and content updater do not overwrite the `Mods` directory.
 
 ## Messages
@@ -75,7 +76,6 @@ overlay precedence.
 
 ## Compatibility
 
-Saves require the active pack ID, version, and scenario to match. Increment the pack version when
-publishing changes, then test both new games and existing saves.
-
-The enabled mod list is not yet recorded in saves, and there is not yet an in-game mod manager.
+Saves require the active pack ID, version, scenario, and ordered mod IDs and versions to match.
+Increment a mod's version when publishing compatibility-breaking changes, then test both new games
+and existing saves. There is not yet an in-game mod manager.

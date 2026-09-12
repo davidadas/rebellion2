@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Rebellion.Game;
 
 /// <summary>
@@ -52,6 +53,8 @@ public static class GameLaunchContext
             PackID = contentPack.Definition.ID,
             PackVersion = contentPack.Definition.Version,
             ScenarioID = contentPack.Scenario.ID,
+            ModIDs = contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray(),
+            ModVersions = contentPack.FileResolver.Mods.Select(mod => mod.Version).ToArray(),
         };
     }
 }

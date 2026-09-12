@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Rebellion.Game;
 
 /// <summary>
@@ -105,20 +106,38 @@ public sealed class ContentPack
     public bool MatchesContentIdentity(GameSummary summary)
     {
         return summary != null
-            && MatchesContentIdentity(summary.PackID, summary.PackVersion, summary.ScenarioID);
+            && MatchesContentIdentity(
+                summary.PackID,
+                summary.PackVersion,
+                summary.ScenarioID,
+                summary.ModIDs,
+                summary.ModVersions
+            );
     }
 
     /// <summary>
-    /// Checks three serialized identity values against this pack.
+    /// Checks serialized identity values against this pack and its active mods.
     /// </summary>
     /// <param name="packID">The serialized pack identifier.</param>
     /// <param name="packVersion">The serialized pack version.</param>
     /// <param name="scenarioID">The serialized scenario identifier.</param>
+    /// <param name="modIDs">The serialized mod identifiers in load order.</param>
+    /// <param name="modVersions">The serialized mod versions in load order.</param>
     /// <returns>True when the serialized identity exactly matches this pack.</returns>
-    private bool MatchesContentIdentity(string packID, string packVersion, string scenarioID)
+    private bool MatchesContentIdentity(
+        string packID,
+        string packVersion,
+        string scenarioID,
+        IReadOnlyList<string> modIDs,
+        IReadOnlyList<string> modVersions
+    )
     {
+        string[] activeModIDs = FileResolver.Mods.Select(mod => mod.ID).ToArray();
+        string[] activeModVersions = FileResolver.Mods.Select(mod => mod.Version).ToArray();
         return string.Equals(packID, Definition.ID, StringComparison.Ordinal)
             && string.Equals(packVersion, Definition.Version, StringComparison.Ordinal)
-            && string.Equals(scenarioID, Scenario.ID, StringComparison.Ordinal);
+            && string.Equals(scenarioID, Scenario.ID, StringComparison.Ordinal)
+            && (modIDs ?? Array.Empty<string>()).SequenceEqual(activeModIDs)
+            && (modVersions ?? Array.Empty<string>()).SequenceEqual(activeModVersions);
     }
 }

@@ -263,6 +263,8 @@ public class SaveGameManager
         game.Metadata.PackID = game.Summary?.PackID;
         game.Metadata.PackVersion = game.Summary?.PackVersion;
         game.Metadata.ScenarioID = game.Summary?.ScenarioID;
+        game.Metadata.ModIDs = game.Summary?.ModIDs ?? Array.Empty<string>();
+        game.Metadata.ModVersions = game.Summary?.ModVersions ?? Array.Empty<string>();
         string normalizedDisplayName = NormalizeDisplayName(displayName);
         if (normalizedDisplayName.Length > 0)
             game.Metadata.SaveDisplayName = normalizedDisplayName;

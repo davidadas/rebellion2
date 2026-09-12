@@ -129,6 +129,36 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(modFile, resolver.ResolveFile("Pack/Data/ships.xml"));
         }
 
+        [Test]
+        public void ResolveFile_AddressCrossesScope_ThrowsArgumentException()
+        {
+            ContentFileResolver resolver = new ContentFileResolver(contentRoot, packRoot);
+
+            Assert.Throws<ArgumentException>(() =>
+                resolver.ResolveFile("Application/../Pack/Data/ships.xml")
+            );
+        }
+
+        [Test]
+        public void Discover_UnrelatedIncompleteMod_IgnoresDefinition()
+        {
+            string modRoot = Path.Combine(root, "Mods", "Unrelated");
+            WriteFile(
+                modRoot,
+                "mod.xml",
+                "<ContentModDefinition><BasePackID>other-pack</BasePackID>"
+                    + "</ContentModDefinition>"
+            );
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                contentRoot,
+                packRoot,
+                "base-pack"
+            );
+
+            Assert.IsEmpty(resolver.Mods);
+        }
+
         private static string WriteFile(string basePath, string relativePath, string contents)
         {
             string path = Path.Combine(basePath, relativePath);

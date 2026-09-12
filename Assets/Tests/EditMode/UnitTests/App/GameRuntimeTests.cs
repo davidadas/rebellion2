@@ -152,6 +152,16 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
+        [Test]
+        public void ValidateGameContent_SaveHasDifferentMods_ThrowsInvalidOperationException()
+        {
+            GameRoot game = CreateGame();
+            game.Summary.ModIDs = new[] { "missing-mod" };
+            game.Summary.ModVersions = new[] { "1.0.0" };
+
+            Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
+        }
+
         private GameRoot CreateGame()
         {
             return new GameRoot
