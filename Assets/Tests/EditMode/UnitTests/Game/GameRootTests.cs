@@ -96,6 +96,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetDifficultyModifier_PlayerControlledFaction_ReturnsNeutralModifier()
         {
+            _faction1.PlayerID = "PLAYER1";
             _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
             {
                 MissionSuccessChancePoints = 15,
@@ -105,6 +106,20 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(0, actual.MissionSuccessChancePoints);
             Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_AutomatedPlayerFaction_ReturnsSelectedDifficultyModifier()
+        {
+            DifficultyModifiers expected = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = expected;
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
+
+            Assert.AreSame(expected, actual);
         }
 
         [Test]

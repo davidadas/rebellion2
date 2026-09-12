@@ -172,8 +172,6 @@ namespace Rebellion.Game
             if (
                 faction?.IsAIControlled() == true
                 && Summary != null
-                && !string.IsNullOrEmpty(Summary.PlayerFactionID)
-                && faction.InstanceID != Summary.PlayerFactionID
                 && Config?.DifficultyModifiers != null
                 && Config.DifficultyModifiers.TryGetValue(
                     Summary.Difficulty,
