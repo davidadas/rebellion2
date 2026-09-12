@@ -3801,11 +3801,11 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void ClearFleetWaypoints_ActiveRoute_PreservesCurrentMovementAndStopsContinuation()
+        public void CancelFleetWaypointMoves_ActiveRoute_ReturnsFleetToDeparturePlanet()
         {
             (
                 _,
-                _,
+                Planet origin,
                 Planet firstDestination,
                 Planet secondDestination,
                 Fleet fleet,
@@ -3816,21 +3816,94 @@ namespace Rebellion.Tests.Sectors
                 new[] { firstDestination.InstanceID, secondDestination.InstanceID },
                 "empire"
             );
-            MovementState activeMovement = fleet.Movement;
+            fleet.Movement.TransitTicks = 10;
+            fleet.Movement.TicksElapsed = 1;
+            movement.ProcessTick();
+            Point cancellationPosition = fleet.Movement.CurrentPosition;
 
-            bool cleared = movement.ClearFleetWaypoints(new ISceneNode[] { fleet }, "empire");
+            bool canceled = movement.CancelFleetWaypointMoves(new ISceneNode[] { fleet }, "empire");
 
-            Assert.IsTrue(cleared);
-            Assert.AreSame(activeMovement, fleet.Movement);
-            Assert.AreSame(firstDestination, fleet.GetParent());
+            Assert.IsTrue(canceled);
+            Assert.AreSame(origin, fleet.GetParent());
             Assert.IsEmpty(fleet.Waypoints);
+            Assert.IsNotNull(fleet.Movement);
+            Assert.IsFalse(fleet.Movement.IsWaypointLeg);
+            Assert.AreEqual(cancellationPosition, fleet.Movement.OriginPosition);
+            Assert.AreEqual(cancellationPosition, fleet.Movement.CurrentPosition);
 
             fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
             movement.ProcessTick();
             movement.ContinueFleetWaypointRoutes();
 
             Assert.IsNull(fleet.Movement);
+            Assert.AreSame(origin, fleet.GetParent());
+        }
+
+        [Test]
+        public void CancelFleetWaypointMoves_LegLoadedWithoutOriginId_ResolvesOriginPosition()
+        {
+            (
+                _,
+                Planet origin,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+            movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+            fleet.Movement.OriginPlanetInstanceID = null;
+
+            bool canceled = movement.CancelFleetWaypointMoves(new ISceneNode[] { fleet }, "empire");
+
+            Assert.IsTrue(canceled);
+            Assert.AreSame(origin, fleet.GetParent());
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [Test]
+        public void CancelFleetWaypointMoves_StationaryRoute_ClearsRemainingWaypoints()
+        {
+            (_, Planet origin, _, Planet secondDestination, Fleet fleet, MovementSystem movement) =
+                BuildWaypointScene();
+            fleet.Waypoints.Add(secondDestination.InstanceID);
+
+            bool canceled = movement.CancelFleetWaypointMoves(new ISceneNode[] { fleet }, "empire");
+
+            Assert.IsTrue(canceled);
+            Assert.AreSame(origin, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [Test]
+        public void CancelFleetWaypointMoves_RouteQueuedDuringNormalTransit_PreservesActiveLeg()
+        {
+            (
+                _,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+            movement.RequestMove(fleet, firstDestination);
+            MovementState activeMovement = fleet.Movement;
+            movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { fleet },
+                new[] { secondDestination.InstanceID },
+                "empire"
+            );
+
+            bool canceled = movement.CancelFleetWaypointMoves(new ISceneNode[] { fleet }, "empire");
+
+            Assert.IsTrue(canceled);
+            Assert.AreSame(activeMovement, fleet.Movement);
             Assert.AreSame(firstDestination, fleet.GetParent());
+            Assert.IsEmpty(fleet.Waypoints);
         }
 
         [Test]

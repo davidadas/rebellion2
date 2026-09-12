@@ -166,7 +166,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             StrategyMenuCommand command = commands.Single(candidate =>
                 candidate.Action == StrategyMenuAction.WaypointMove
             );
-            Assert.AreEqual("Clear Waypoints", command.Text);
+            Assert.AreEqual("Cancel Waypoint Move", command.Text);
             Assert.IsTrue(command.Enabled);
         }
 

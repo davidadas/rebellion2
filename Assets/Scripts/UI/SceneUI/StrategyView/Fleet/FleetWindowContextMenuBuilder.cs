@@ -97,7 +97,7 @@ internal static class FleetWindowContextMenuBuilder
         commands.Add(
             new StrategyMenuCommand(
                 StrategyMenuAction.WaypointMove,
-                hasWaypoints ? "Clear Waypoints" : "Waypoint Move",
+                hasWaypoints ? "Cancel Waypoint Move" : "Waypoint Move",
                 playerControlsItems && (canMove || allFleetsAreMoving || hasWaypoints)
             )
         );

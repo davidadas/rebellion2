@@ -686,7 +686,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 
             public bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
-            public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
+            public bool CancelFleetWaypointMoves(IReadOnlyList<ISceneNode> items) => false;
         }
 
         private sealed class StatusDoubleClickTarget

@@ -383,6 +383,7 @@ namespace Rebellion.Systems
                 TransitTicks = transitTicks,
                 TicksElapsed = 0,
                 MovementGroupID = Guid.NewGuid().ToString("N"),
+                OriginPlanetInstanceID = origin.InstanceID,
                 OriginPosition = origin.GetPosition(),
                 CurrentPosition = origin.GetPosition(),
             };
@@ -835,32 +836,117 @@ namespace Rebellion.Systems
                 return false;
             }
 
+            foreach (Fleet fleet in fleets)
+                fleet.Movement.IsWaypointLeg = true;
+
             ResultsProduced?.Invoke(results);
             return true;
         }
 
         /// <summary>
-        /// Clears queued waypoint continuation without changing an active movement leg.
+        /// Cancels waypoint routes, returning fleets in transit to their departure planets.
         /// </summary>
         /// <param name="items">The selected fleets or their visible snapshots.</param>
         /// <param name="ownerInstanceId">The faction authorized to command the fleets.</param>
-        /// <returns>True when at least one waypoint was removed.</returns>
-        public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items, string ownerInstanceId)
+        /// <returns>True when at least one waypoint route was canceled.</returns>
+        public bool CancelFleetWaypointMoves(
+            IReadOnlyList<ISceneNode> items,
+            string ownerInstanceId
+        )
         {
             if (!TryResolveControlledFleets(items, ownerInstanceId, out List<Fleet> fleets))
                 return false;
 
-            bool cleared = false;
-            foreach (Fleet fleet in fleets)
-            {
-                if (!fleet.HasWaypoints())
-                    continue;
+            List<Fleet> routedFleets = fleets.Where(fleet => fleet.HasWaypoints()).ToList();
+            if (routedFleets.Count == 0)
+                return false;
 
-                fleet.Waypoints.Clear();
-                cleared = true;
+            Dictionary<Fleet, Planet> returnDestinations = new Dictionary<Fleet, Planet>();
+            foreach (
+                Fleet fleet in routedFleets.Where(fleet => fleet.Movement?.IsWaypointLeg == true)
+            )
+            {
+                Planet origin = ResolveWaypointOrigin(fleet.Movement);
+                if (origin?.IsDestroyed != false)
+                    return false;
+
+                returnDestinations.Add(fleet, origin);
             }
 
-            return cleared;
+            foreach (Fleet fleet in routedFleets)
+            {
+                fleet.Waypoints.Clear();
+                if (returnDestinations.TryGetValue(fleet, out Planet origin))
+                    ReturnFleetToWaypointOrigin(fleet, origin);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves the departure planet recorded for a waypoint leg, including movement loaded
+        /// from saves created before departure identifiers were persisted.
+        /// </summary>
+        /// <param name="movement">The active waypoint movement.</param>
+        /// <returns>The unique live departure planet, or null when it cannot be resolved.</returns>
+        private Planet ResolveWaypointOrigin(MovementState movement)
+        {
+            if (movement == null)
+                return null;
+
+            Planet recordedOrigin = _game.GetSceneNodeByInstanceID<Planet>(
+                movement.OriginPlanetInstanceID
+            );
+            if (recordedOrigin != null)
+                return recordedOrigin;
+
+            List<Planet> matchingPlanets = _game
+                .GetSceneNodesByType<Planet>()
+                .Where(planet => planet.GetPosition() == movement.OriginPosition)
+                .Take(2)
+                .ToList();
+            return matchingPlanets.Count == 1 ? matchingPlanets[0] : null;
+        }
+
+        /// <summary>
+        /// Reverses an active waypoint leg from its current position to its departure planet.
+        /// </summary>
+        /// <param name="fleet">The fleet whose active waypoint leg is being canceled.</param>
+        /// <param name="origin">The planet from which that leg departed.</param>
+        private void ReturnFleetToWaypointOrigin(Fleet fleet, Planet origin)
+        {
+            MovementState canceledMovement = fleet.Movement;
+            Point currentPosition = canceledMovement.CurrentPosition;
+            Planet canceledDestination = fleet.GetParentOfType<Planet>();
+
+            _game.MoveNode(fleet, origin);
+            fleet.SetPosition(currentPosition);
+
+            if (currentPosition == origin.GetPosition())
+            {
+                fleet.Movement = null;
+            }
+            else
+            {
+                fleet.Movement = new MovementState
+                {
+                    TransitTicks = CalculateTransitTicks(
+                        fleet,
+                        currentPosition,
+                        origin,
+                        sameSector: IsSameSector(canceledDestination, origin)
+                    ),
+                    TicksElapsed = 0,
+                    MovementGroupID = canceledMovement.MovementGroupID,
+                    SourceEventInstanceID = canceledMovement.SourceEventInstanceID,
+                    OriginPlanetInstanceID = canceledDestination?.InstanceID,
+                    IsWaypointLeg = false,
+                    OriginPosition = currentPosition,
+                    CurrentPosition = currentPosition,
+                };
+            }
+
+            RetargetInTransitFleetJoiners(fleet, origin);
         }
 
         /// <summary>
@@ -2109,6 +2195,8 @@ namespace Rebellion.Systems
                 );
                 if (!accepted)
                     fleet.Waypoints.Clear();
+                else
+                    fleet.Movement.IsWaypointLeg = true;
                 return;
             }
         }
@@ -2796,6 +2884,7 @@ namespace Rebellion.Systems
                 TicksElapsed = 0,
                 MovementGroupID = movementGroupID,
                 SourceEventInstanceID = sourceEventInstanceID,
+                OriginPlanetInstanceID = originPlanet.InstanceID,
                 OriginPosition = originPosition,
                 CurrentPosition = originPosition,
             };
@@ -2859,6 +2948,7 @@ namespace Rebellion.Systems
                 TicksElapsed = 0,
                 MovementGroupID = movementGroupID,
                 SourceEventInstanceID = sourceEventInstanceID,
+                OriginPlanetInstanceID = movable.GetParentOfType<Planet>()?.InstanceID,
                 OriginPosition = currentPosition,
                 CurrentPosition = currentPosition,
             };

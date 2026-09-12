@@ -267,13 +267,13 @@ public sealed class StrategyWindowCommandController
     }
 
     /// <summary>
-    /// Clears selected fleet waypoint routes while preserving any active movement leg.
+    /// Cancels selected fleet waypoint routes and reverses any active waypoint legs.
     /// </summary>
     /// <param name="items">The selected fleets or their visible snapshots.</param>
-    /// <returns>True when at least one waypoint was cleared.</returns>
-    public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items)
+    /// <returns>True when at least one waypoint route was canceled.</returns>
+    public bool CancelFleetWaypointMoves(IReadOnlyList<ISceneNode> items)
     {
-        if (getMovementSystem()?.ClearFleetWaypoints(items, GetPlayerFactionID()) != true)
+        if (getMovementSystem()?.CancelFleetWaypointMoves(items, GetPlayerFactionID()) != true)
             return false;
 
         RefreshAfterWaypointMutation();
