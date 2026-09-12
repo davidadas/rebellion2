@@ -280,17 +280,14 @@ namespace Rebellion.Systems
                 faction,
                 template,
                 count,
-                GetReleasedMaintenanceForReplacement(producer, template)
+                GetMaintenanceRefund(producer, template)
             );
         }
 
         /// <summary>
         /// Returns maintenance reserved by the active lane when the requested template would replace it.
         /// </summary>
-        private static int GetReleasedMaintenanceForReplacement(
-            Planet producer,
-            IManufacturable template
-        )
+        private static int GetMaintenanceRefund(Planet producer, IManufacturable template)
         {
             if (
                 producer
