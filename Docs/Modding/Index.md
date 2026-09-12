@@ -1,95 +1,50 @@
 # Modding
 
-Rebellion 2 loads its art, audio, video, configuration, and game data from an external `Content`
-directory. Most content can therefore be changed without rebuilding the game.
+Rebellion 2 loads modded art, audio, video, configuration, and game data from loose files. Most
+content can therefore be changed without rebuilding the game.
 
-## Limitations and redistribution
+## Mods and redistribution
 
-The game currently loads complete packs from `Content/Packs/`. It does not support derived packs,
-sparse overlays, base-pack fallback, or a separate `Mods` directory.
+Install all user-created content in the player-managed `Mods` directory. On Windows that directory
+is inside the game's installation directory. On macOS it is
+`~/Library/Application Support/Rebellion 2/Mods`.
 
 **Only distribute files you have the right to distribute.** For mods based on the classic pack,
-distribute your changes rather than the modified pack, and have players apply them to their installed
-content. Players and mod developers must own *Star Wars: Rebellion* or
+distribute only your mod definition and replacement files. Players and mod developers must own
+*Star Wars: Rebellion* or
 *Star Wars: Empire at War: Gold Pack* and obtain the content through the ownership-verifying
 installer.
 
-## Create a private development workspace
-
-Installer updates and repairs own the installed `Content` directory and may remove additional packs
-placed there. Keep your mod source outside the installation. Copy the installed content to a private
-workspace, then copy the base pack inside that workspace:
+Each immediate subdirectory containing a `mod.xml` is loaded when its `BasePackID` matches the
+selected content pack. Mods load by folder name in ordinal order; when multiple mods contain the
+same logical file, the later mod wins. A missing mod file falls back to the selected content pack.
 
 ```text
-MyModWorkspace/
-  Content/
-    catalog.xml
-    Application/
-    Packs/
-      ClassicGalacticCivilWar/
-      MyPack/
+Mods/
+  CapitalShipRebalance/
+    mod.xml
+    Content/
+      Pack/
+        Factions/Alliance/Data/capital-ships.xml
+      Application/
+        MainMenu/UI/optional-replacement.png
 ```
 
-Give `MyPack/pack.xml` a unique `ID`, `DisplayName`, and `Version`. The declared `ID`, not the folder
-name, identifies the pack in settings and saves.
-
-Launch against the workspace:
-
-```bash
-"/path/to/Rebellion 2" -contentPath "/path/to/MyModWorkspace/Content"
-```
-
-## Select a pack and scenario
-
-`Content/catalog.xml` declares the default pack and scenario for a content root:
+The minimal mod definition is:
 
 ```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<ContentCatalog>
-  <ActivePackID>my-content-pack</ActivePackID>
-  <ActiveScenarioID>standard</ActiveScenarioID>
-</ContentCatalog>
+<ContentModDefinition>
+  <ID>capital-ship-rebalance</ID>
+  <Version>1.0.0</Version>
+  <DisplayName>Capital Ship Rebalance</DisplayName>
+  <BasePackID>classic-galactic-civil-war</BasePackID>
+</ContentModDefinition>
 ```
 
-The catalog selection is the fallback. At startup, a non-empty selection in
-`user-settings.json` overrides it:
-
-```json
-{
-  "Content": {
-    "ActivePackID": "my-content-pack",
-    "ActiveScenarioID": "standard"
-  }
-}
-```
-
-IDs must match the selected pack and one of its scenarios. An empty scenario ID uses the pack's
-`DefaultScenarioID`; an unavailable saved pack falls back to the catalog. There is no in-game pack
-selector yet, so edit `user-settings.json` only while the game is closed.
-
-For development, leave the saved selection empty and make the working pack the workspace catalog
-default. Pack-loading errors will then remain visible instead of triggering fallback.
-
-## Pack structure
-
-```text
-Content/
-  catalog.xml
-  Application/                 Shared application UI, audio, video, and preload manifests
-    Rules/                     Application-level game-config defaults
-  Packs/
-    MyPack/
-      pack.xml                 Pack identity and definition paths
-      Rules/                   Optional game-config overrides
-      Shared/                  Shared data and presentation
-      Factions/                Faction data, units, UI themes, and media
-      Scenarios/               Scenario definitions and generation settings
-      Preload/                 Assets loaded before each major screen
-```
-
-Paths in `pack.xml`, faction definitions, and scenario definitions are relative to the pack root.
-Content addresses beginning with `Application/` resolve from the shared application directory;
-addresses beginning with `Pack/` resolve from the active pack.
+A mod replaces a complete file at the matching logical path. It does not merge individual objects
+or XML fields within that file. Files beneath the mod's `Content/Pack` directory replace files from
+the selected base pack; files beneath `Content/Application` replace shared application files. The
+installer, launcher, application updater, and content updater do not overwrite the `Mods` directory.
 
 ## Messages
 
@@ -122,3 +77,5 @@ overlay precedence.
 
 Saves require the active pack ID, version, and scenario to match. Increment the pack version when
 publishing changes, then test both new games and existing saves.
+
+The enabled mod list is not yet recorded in saves, and there is not yet an in-game mod manager.

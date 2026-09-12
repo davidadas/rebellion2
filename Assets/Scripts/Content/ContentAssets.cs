@@ -11,9 +11,6 @@ using UnityEngine.Networking;
 /// </summary>
 public sealed class ContentAssets : IContentAssetSource, IDisposable
 {
-    private const string _packAddressPrefix = "Pack/";
-    private const string _applicationAddressPrefix = "Application/";
-
     private static readonly string[] _textureExtensions = { ".png", ".jpg", ".jpeg" };
     private readonly Dictionary<string, AudioClip> audioClips = new Dictionary<string, AudioClip>(
         StringComparer.Ordinal
@@ -35,6 +32,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     private readonly HashSet<string> unavailableTextures = new HashSet<string>(
         StringComparer.Ordinal
     );
+    private readonly ContentFileResolver fileResolver;
 
     private bool disposed;
 
@@ -54,13 +52,16 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <param name="contentRootPath">The absolute external content root.</param>
     /// <param name="packRootPath">The absolute active pack root.</param>
     public ContentAssets(string contentRootPath, string packRootPath)
+        : this(new ContentFileResolver(contentRootPath, packRootPath)) { }
+
+    /// <summary>
+    /// Creates an asset store backed by a layered content resolver.
+    /// </summary>
+    public ContentAssets(ContentFileResolver resolver)
     {
-        ContentRootPath = Path.GetFullPath(
-            contentRootPath ?? throw new ArgumentNullException(nameof(contentRootPath))
-        );
-        PackRootPath = Path.GetFullPath(
-            packRootPath ?? throw new ArgumentNullException(nameof(packRootPath))
-        );
+        fileResolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+        ContentRootPath = fileResolver.ContentRootPath;
+        PackRootPath = fileResolver.PackRootPath;
     }
 
     /// <summary>
@@ -105,27 +106,20 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     private IEnumerable<string> GetTextureAddresses(string directoryAddress)
     {
         string normalizedAddress = NormalizeAddress(directoryAddress);
-        string directoryPath = ResolveAddressPath(normalizedAddress);
-        if (!Directory.Exists(directoryPath))
+        if (!fileResolver.DirectoryExists(normalizedAddress))
             throw new DirectoryNotFoundException(
                 $"Content directory not found: {directoryAddress}"
             );
 
-        return Directory
-            .EnumerateFiles(directoryPath, "*", SearchOption.AllDirectories)
-            .Where(path =>
+        return fileResolver
+            .EnumerateFileAddresses(normalizedAddress)
+            .Where(address =>
                 _textureExtensions.Contains(
-                    Path.GetExtension(path),
+                    Path.GetExtension(address),
                     StringComparer.OrdinalIgnoreCase
                 )
             )
-            .OrderBy(path => path, StringComparer.Ordinal)
-            .Select(path =>
-            {
-                string relativePath = Path.GetRelativePath(directoryPath, path).Replace('\\', '/');
-                relativePath = relativePath[..^Path.GetExtension(relativePath).Length];
-                return normalizedAddress.TrimEnd('/') + "/" + relativePath;
-            });
+            .Select(address => address[..^Path.GetExtension(address).Length]);
     }
 
     /// <summary>
@@ -425,54 +419,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         if (string.IsNullOrEmpty(normalizedPath))
             return null;
 
-        string exactPath = ResolveAddressPath(normalizedPath);
-        if (File.Exists(exactPath))
-            return exactPath;
-
-        foreach (string extension in extensions)
-        {
-            string candidatePath = ResolveAddressPath(normalizedPath + extension);
-            if (File.Exists(candidatePath))
-                return candidatePath;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Resolves an application or pack address to its absolute path boundary.
-    /// </summary>
-    /// <param name="path">The normalized, explicitly scoped address.</param>
-    /// <returns>The resolved absolute path.</returns>
-    private string ResolveAddressPath(string path)
-    {
-        if (path.StartsWith(_applicationAddressPrefix, StringComparison.Ordinal))
-            return ResolveSafePath(ContentRootPath, path);
-        if (path.StartsWith(_packAddressPrefix, StringComparison.Ordinal))
-            return ResolveSafePath(PackRootPath, path[_packAddressPrefix.Length..]);
-
-        throw new ArgumentException(
-            $"Content addresses must begin with '{_applicationAddressPrefix}' or '{_packAddressPrefix}'.",
-            nameof(path)
-        );
-    }
-
-    /// <summary>
-    /// Resolves a relative path while preventing traversal outside its root.
-    /// </summary>
-    /// <param name="rootPath">The absolute path boundary.</param>
-    /// <param name="relativePath">The relative content path.</param>
-    /// <returns>The resolved absolute path.</returns>
-    private static string ResolveSafePath(string rootPath, string relativePath)
-    {
-        string absoluteRoot = Path.GetFullPath(rootPath);
-        string candidatePath = Path.GetFullPath(Path.Combine(absoluteRoot, relativePath));
-        string requiredPrefix =
-            absoluteRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        if (!candidatePath.StartsWith(requiredPrefix, StringComparison.Ordinal))
-            throw new ArgumentException("Content paths cannot leave their content root.");
-
-        return candidatePath;
+        return fileResolver.ResolveFile(normalizedPath, extensions);
     }
 
     /// <summary>

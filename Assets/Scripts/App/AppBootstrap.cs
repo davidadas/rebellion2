@@ -116,14 +116,14 @@ public sealed class AppBootstrap : MonoBehaviour
         );
         _contentPack = ContentPackLoader.OpenActive(selectedPackID, selectedScenarioID);
         _mainMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
-            _contentPack.ContentRootPath,
+            _contentPack.FileResolver,
             _mainMenuPreloadID
         );
         _strategyApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
-            _contentPack.ContentRootPath,
+            _contentPack.FileResolver,
             _strategyPreloadID
         );
-        _contentAssets = new ContentAssets(_contentPack.ContentRootPath, _contentPack.PackRootPath);
+        _contentAssets = new ContentAssets(_contentPack.FileResolver);
         Texture2D cursorTexture =
             _contentAssets.GetCursor(_defaultCursorAddress)
             ?? throw new System.InvalidOperationException(

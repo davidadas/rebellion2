@@ -34,7 +34,6 @@ public static class ContentPackLoader
     private const string _packsDirectoryName = "Packs";
     private const string _packFileName = "pack.xml";
     private const string _applicationAddressPrefix = "Application/";
-    private const string _applicationDirectoryName = "Application";
     private const string _preloadDirectoryName = "Preload";
 
     /// <summary>
@@ -140,12 +139,18 @@ public static class ContentPackLoader
             );
         }
 
-        List<ContentFactionDefinition> factions = LoadDefinitions<ContentFactionDefinition>(
+        ContentFileResolver fileResolver = ContentFileResolver.Discover(
+            absoluteContentRoot,
             packRoot,
+            pack.ID
+        );
+
+        List<ContentFactionDefinition> factions = LoadDefinitions<ContentFactionDefinition>(
+            fileResolver,
             pack.FactionPaths
         );
         List<ContentScenarioDefinition> scenarios = LoadDefinitions<ContentScenarioDefinition>(
-            packRoot,
+            fileResolver,
             pack.ScenarioPaths
         );
         string resolvedScenarioID = string.IsNullOrWhiteSpace(scenarioID)
@@ -160,21 +165,16 @@ public static class ContentPackLoader
             );
 
         ValidateDefinitions(pack, factions, scenarios, scenario);
-        GameDataCatalog gameData = LoadGameData(
-            absoluteContentRoot,
-            packRoot,
-            pack,
-            factions,
-            scenario
-        );
+        GameDataCatalog gameData = LoadGameData(fileResolver, pack, factions, scenario);
         return new ContentPack(
             absoluteContentRoot,
             packRoot,
+            fileResolver,
             pack,
             scenario,
             factions,
             gameData,
-            LoadPreloadManifests(packRoot, pack.Preloads)
+            LoadPreloadManifests(fileResolver, pack.Preloads)
         );
     }
 
@@ -237,27 +237,24 @@ public static class ContentPackLoader
     /// <summary>
     /// Loads one application-level preload manifest.
     /// </summary>
-    /// <param name="contentRootPath">The external content root.</param>
+    /// <param name="fileResolver">The layered content file resolver.</param>
     /// <param name="preloadID">The application preload identifier.</param>
     /// <returns>The validated preload manifest.</returns>
     internal static ContentPreloadManifest LoadApplicationPreloadManifest(
-        string contentRootPath,
+        ContentFileResolver fileResolver,
         string preloadID
     )
     {
         if (string.IsNullOrWhiteSpace(preloadID))
             throw new ArgumentException("A preload ID is required.", nameof(preloadID));
 
-        string absoluteContentRoot = Path.GetFullPath(
-            contentRootPath ?? throw new ArgumentNullException(nameof(contentRootPath))
-        );
-        string preloadRoot = Path.Combine(
-            absoluteContentRoot,
-            _applicationDirectoryName,
-            _preloadDirectoryName
-        );
         ContentPreloadManifest manifest = DeserializeXml<ContentPreloadManifest>(
-            ResolveSafePath(preloadRoot, preloadID + ".xml")
+            fileResolver.ResolveFile(
+                _applicationAddressPrefix + _preloadDirectoryName + "/" + preloadID + ".xml"
+            )
+                ?? throw new FileNotFoundException(
+                    $"Application preload '{preloadID}' was not found."
+                )
         );
         ValidatePreloadManifest(
             manifest,
@@ -270,56 +267,54 @@ public static class ContentPackLoader
     /// <summary>
     /// Loads and composes the typed game-data catalogs declared by a pack and scenario.
     /// </summary>
-    /// <param name="contentRootPath">The absolute application content root.</param>
-    /// <param name="packRoot">The absolute selected pack root.</param>
+    /// <param name="fileResolver">The layered content file resolver.</param>
     /// <param name="pack">The selected pack definition.</param>
     /// <param name="factions">The pack's faction definitions.</param>
     /// <param name="scenario">The selected scenario definition.</param>
     /// <returns>The composed typed game-data catalog.</returns>
     private static GameDataCatalog LoadGameData(
-        string contentRootPath,
-        string packRoot,
+        ContentFileResolver fileResolver,
         ContentPackDefinition pack,
         IReadOnlyList<ContentFactionDefinition> factions,
         ContentScenarioDefinition scenario
     )
     {
-        GameConfig gameConfig = LoadGameConfig(contentRootPath, packRoot, pack.GameConfigPath);
+        GameConfig gameConfig = LoadGameConfig(fileResolver, pack.GameConfigPath);
         GameGenerationConfig generationConfig = DeserializeGameData<GameGenerationConfig>(
-            packRoot,
+            fileResolver,
             scenario.GenerationConfigPath,
             nameof(GameGenerationConfig),
-            ResolveSafePath(contentRootPath, _generationConfigSchemaRelativePath)
+            RequireFile(fileResolver, _generationConfigSchemaRelativePath)
         );
         PlanetSector[] planetSectors = DeserializeGameData<PlanetSector[]>(
-            packRoot,
+            fileResolver,
             pack.PlanetSectorsPath,
             "PlanetSectors"
         );
         Building[] buildings = DeserializeGameData<Building[]>(
-            packRoot,
+            fileResolver,
             pack.BuildingsPath,
             "Buildings"
         );
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(
-            packRoot,
+            fileResolver,
             pack.GameEventsPath,
             "GameEvents",
-            ResolveSafePath(contentRootPath, _gameEventsSchemaRelativePath)
+            RequireFile(fileResolver, _gameEventsSchemaRelativePath)
         );
         MessageDefinition[] messageDefinitions = DeserializeGameData<MessageDefinition[]>(
-            packRoot,
+            fileResolver,
             pack.MessageDefinitionsPath,
             "MessageDefinitions",
-            ResolveSafePath(contentRootPath, _messageDefinitionsSchemaRelativePath)
+            RequireFile(fileResolver, _messageDefinitionsSchemaRelativePath)
         );
         EncyclopediaEntries encyclopediaEntries = DeserializeGameData<EncyclopediaEntries>(
-            packRoot,
+            fileResolver,
             pack.EncyclopediaEntriesPath,
             nameof(EncyclopediaEntries)
         );
         FactionThemes themes = DeserializeGameData<FactionThemes>(
-            packRoot,
+            fileResolver,
             pack.NeutralThemePath,
             nameof(FactionThemes)
         );
@@ -333,38 +328,38 @@ public static class ContentPackLoader
         foreach (ContentFactionDefinition faction in factions)
         {
             factionData.AddRange(
-                DeserializeGameData<Faction[]>(packRoot, faction.FactionDataPath, "Factions")
+                DeserializeGameData<Faction[]>(fileResolver, faction.FactionDataPath, "Factions")
             );
             capitalShips.AddRange(
                 DeserializeGameData<CapitalShip[]>(
-                    packRoot,
+                    fileResolver,
                     faction.CapitalShipsPath,
                     "CapitalShips"
                 )
             );
             starfighters.AddRange(
                 DeserializeGameData<Starfighter[]>(
-                    packRoot,
+                    fileResolver,
                     faction.StarfightersPath,
                     "Starfighters"
                 )
             );
             regiments.AddRange(
-                DeserializeGameData<Regiment[]>(packRoot, faction.RegimentsPath, "Regiments")
+                DeserializeGameData<Regiment[]>(fileResolver, faction.RegimentsPath, "Regiments")
             );
             specialForces.AddRange(
                 DeserializeGameData<SpecialForces[]>(
-                    packRoot,
+                    fileResolver,
                     faction.SpecialForcesPath,
                     "SpecialForces"
                 )
             );
             officers.AddRange(
-                DeserializeGameData<Officer[]>(packRoot, faction.OfficersPath, "Officers")
+                DeserializeGameData<Officer[]>(fileResolver, faction.OfficersPath, "Officers")
             );
             foreach (
                 EncyclopediaEntry entry in DeserializeGameData<EncyclopediaEntries>(
-                    packRoot,
+                    fileResolver,
                     faction.EncyclopediaEntriesPath,
                     nameof(EncyclopediaEntries)
                 )
@@ -372,7 +367,7 @@ public static class ContentPackLoader
                 encyclopediaEntries.Add(entry);
             foreach (
                 FactionTheme theme in DeserializeGameData<FactionThemes>(
-                    packRoot,
+                    fileResolver,
                     faction.ThemePath,
                     nameof(FactionThemes)
                 )
@@ -412,14 +407,25 @@ public static class ContentPackLoader
         string packGameConfigPath
     )
     {
+        return LoadGameConfig(
+            new ContentFileResolver(contentRootPath, packRoot),
+            packGameConfigPath
+        );
+    }
+
+    private static GameConfig LoadGameConfig(
+        ContentFileResolver fileResolver,
+        string packGameConfigPath
+    )
+    {
         XmlDocument defaults = LoadXmlDocument(
-            ResolveSafePath(contentRootPath, _applicationGameConfigRelativePath)
+            RequireFile(fileResolver, _applicationGameConfigRelativePath)
         );
 
         XmlSchemaSet schemas = new XmlSchemaSet();
         using (
             XmlReader schemaReader = XmlReader.Create(
-                ResolveSafePath(contentRootPath, _gameConfigSchemaRelativePath)
+                RequireFile(fileResolver, _gameConfigSchemaRelativePath)
             )
         )
             schemas.Add(null, schemaReader);
@@ -432,7 +438,7 @@ public static class ContentPackLoader
             ? serializer.Deserialize(defaults)
             : serializer.Deserialize(
                 defaults,
-                LoadXmlDocument(ResolveSafePath(packRoot, packGameConfigPath))
+                LoadXmlDocument(RequirePackFile(fileResolver, packGameConfigPath))
             );
         return gameConfig as GameConfig
             ?? throw new InvalidDataException("Failed to deserialize the merged game config.");
@@ -454,24 +460,35 @@ public static class ContentPackLoader
         return document;
     }
 
+    private static string RequirePackFile(ContentFileResolver fileResolver, string relativePath)
+    {
+        return RequireFile(fileResolver, _packAddressPrefix + relativePath);
+    }
+
+    private static string RequireFile(ContentFileResolver fileResolver, string address)
+    {
+        return fileResolver.ResolveFile(address)
+            ?? throw new FileNotFoundException($"Content definition not found: {address}");
+    }
+
     /// <summary>
     /// Deserializes one typed game-data file with optional schema validation.
     /// </summary>
     /// <typeparam name="T">The expected data type.</typeparam>
-    /// <param name="packRoot">The absolute selected pack root.</param>
+    /// <param name="fileResolver">The layered content file resolver.</param>
     /// <param name="relativePath">The pack-relative XML file path.</param>
     /// <param name="rootName">The serialized XML root name.</param>
     /// <param name="schemaFilePath">The optional absolute schema file path.</param>
     /// <returns>The deserialized game data.</returns>
     private static T DeserializeGameData<T>(
-        string packRoot,
+        ContentFileResolver fileResolver,
         string relativePath,
         string rootName,
         string schemaFilePath = null
     )
         where T : class
     {
-        string filePath = ResolveSafePath(packRoot, relativePath);
+        string filePath = RequirePackFile(fileResolver, relativePath);
         GameSerializerSettings settings = new GameSerializerSettings { RootName = rootName };
         if (!string.IsNullOrWhiteSpace(schemaFilePath))
         {
@@ -498,26 +515,31 @@ public static class ContentPackLoader
     /// Loads a sequence of XML definition files from a selected pack.
     /// </summary>
     /// <typeparam name="T">The expected definition type.</typeparam>
-    /// <param name="packRoot">The absolute selected pack root.</param>
+    /// <param name="fileResolver">The layered content file resolver.</param>
     /// <param name="paths">The pack-relative definition paths.</param>
     /// <returns>The deserialized definitions in declared order.</returns>
-    private static List<T> LoadDefinitions<T>(string packRoot, IEnumerable<string> paths)
+    private static List<T> LoadDefinitions<T>(
+        ContentFileResolver fileResolver,
+        IEnumerable<string> paths
+    )
         where T : class
     {
         if (paths == null)
             return new List<T>();
 
-        return paths.Select(path => DeserializeXml<T>(ResolveSafePath(packRoot, path))).ToList();
+        return paths
+            .Select(path => DeserializeXml<T>(RequirePackFile(fileResolver, path)))
+            .ToList();
     }
 
     /// <summary>
     /// Loads every preload manifest declared by a pack.
     /// </summary>
-    /// <param name="packRoot">The absolute pack root.</param>
+    /// <param name="fileResolver">The layered content file resolver.</param>
     /// <param name="preloads">The declared preload definitions.</param>
     /// <returns>The loaded preload manifests by identifier.</returns>
     private static IReadOnlyDictionary<string, ContentPreloadManifest> LoadPreloadManifests(
-        string packRoot,
+        ContentFileResolver fileResolver,
         IEnumerable<ContentPreloadDefinition> preloads
     )
     {
@@ -540,7 +562,7 @@ public static class ContentPackLoader
                 throw new InvalidDataException($"Duplicate content preload ID '{preload.ID}'.");
 
             ContentPreloadManifest manifest = DeserializeXml<ContentPreloadManifest>(
-                ResolveSafePath(packRoot, preload.Path)
+                RequirePackFile(fileResolver, preload.Path)
             );
             ValidatePreloadManifest(manifest, _packAddressPrefix, $"Pack preload '{preload.ID}'");
             manifests.Add(preload.ID, manifest);
@@ -757,30 +779,5 @@ public static class ContentPackLoader
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Resolves a relative content path while preventing traversal outside its root.
-    /// </summary>
-    /// <param name="rootPath">The absolute path boundary.</param>
-    /// <param name="relativePath">The relative content path.</param>
-    /// <returns>The resolved absolute path.</returns>
-    private static string ResolveSafePath(string rootPath, string relativePath)
-    {
-        if (Path.IsPathRooted(relativePath?.Trim() ?? string.Empty))
-            throw new ArgumentException("Content paths must be relative.", nameof(relativePath));
-
-        string normalizedPath = relativePath?.Trim().Replace('\\', '/');
-        if (string.IsNullOrEmpty(normalizedPath))
-            throw new ArgumentException("A content path is required.", nameof(relativePath));
-
-        string absoluteRoot = Path.GetFullPath(rootPath);
-        string candidatePath = Path.GetFullPath(Path.Combine(absoluteRoot, normalizedPath));
-        string requiredPrefix =
-            absoluteRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        if (!candidatePath.StartsWith(requiredPrefix, StringComparison.Ordinal))
-            throw new ArgumentException("Content paths cannot leave their content root.");
-
-        return candidatePath;
     }
 }

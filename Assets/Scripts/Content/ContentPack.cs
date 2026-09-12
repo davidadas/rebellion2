@@ -21,6 +21,11 @@ public sealed class ContentPack
     public string PackRootPath { get; }
 
     /// <summary>
+    /// Gets the layered file resolver for this pack and its active mods.
+    /// </summary>
+    public ContentFileResolver FileResolver { get; }
+
+    /// <summary>
     /// Gets this pack's definition.
     /// </summary>
     public ContentPackDefinition Definition { get; }
@@ -45,6 +50,7 @@ public sealed class ContentPack
     /// </summary>
     /// <param name="contentRootPath">The absolute external content root.</param>
     /// <param name="packRootPath">The absolute pack root.</param>
+    /// <param name="fileResolver">The layered resolver for the pack and its mods.</param>
     /// <param name="definition">The pack definition.</param>
     /// <param name="scenario">The selected scenario definition.</param>
     /// <param name="factions">The pack's faction definitions.</param>
@@ -53,6 +59,7 @@ public sealed class ContentPack
     internal ContentPack(
         string contentRootPath,
         string packRootPath,
+        ContentFileResolver fileResolver,
         ContentPackDefinition definition,
         ContentScenarioDefinition scenario,
         IReadOnlyList<ContentFactionDefinition> factions,
@@ -63,6 +70,7 @@ public sealed class ContentPack
         ContentRootPath =
             contentRootPath ?? throw new ArgumentNullException(nameof(contentRootPath));
         PackRootPath = packRootPath ?? throw new ArgumentNullException(nameof(packRootPath));
+        FileResolver = fileResolver ?? throw new ArgumentNullException(nameof(fileResolver));
         Definition = definition ?? throw new ArgumentNullException(nameof(definition));
         Scenario = scenario ?? throw new ArgumentNullException(nameof(scenario));
         Factions = factions ?? throw new ArgumentNullException(nameof(factions));
