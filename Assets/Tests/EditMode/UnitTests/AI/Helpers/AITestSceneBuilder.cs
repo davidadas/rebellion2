@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -174,7 +175,11 @@ namespace Rebellion.Tests.AI.Helpers
             };
         }
 
-        public static SpecialForces CreateSpecialForces(string typeId, string ownerInstanceId)
+        public static SpecialForces CreateSpecialForces(
+            string typeId,
+            string ownerInstanceId,
+            params string[] allowedMissionTypeIds
+        )
         {
             SpecialForces specialForces = new SpecialForces
             {
@@ -186,6 +191,7 @@ namespace Rebellion.Tests.AI.Helpers
                 MaintenanceCost = 0,
                 BaseBuildSpeed = 1,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string>(allowedMissionTypeIds),
             };
             return specialForces;
         }
@@ -198,7 +204,8 @@ namespace Rebellion.Tests.AI.Helpers
             ManufacturingSystem manufacturing = null,
             BombardmentSystem bombardment = null,
             PlanetaryAssaultSystem planetaryAssault = null,
-            IRandomNumberProvider random = null
+            IRandomNumberProvider random = null,
+            MaintenanceSystem maintenance = null
         )
         {
             IRandomNumberProvider provider = random ?? new StubRNG();
@@ -230,14 +237,20 @@ namespace Rebellion.Tests.AI.Helpers
                 bombardmentSystem,
                 planetaryAssaultSystem,
                 provider,
-                fog.BuildFactionView(faction)
+                fog.BuildFactionView(faction),
+                maintenance
             );
         }
 
         public static void RevealPlanet(GameRoot game, Faction faction, Planet planet)
         {
             PlanetSector system = planet.GetParentOfType<PlanetSector>();
-            new FogOfWarSystem(game).CaptureSnapshot(faction, planet, system, game.CurrentTick);
+            new FogOfWarRecorder().RecordEspionageSnapshot(
+                faction,
+                planet,
+                system,
+                game.CurrentTick
+            );
         }
     }
 }

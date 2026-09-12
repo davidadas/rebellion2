@@ -81,9 +81,8 @@ namespace Rebellion.AI.Planners.Demand
             Kind
                 is AIDemandKind.Mine
                     or AIDemandKind.Refinery
-                    or AIDemandKind.TrainingFacility
-                    or AIDemandKind.FleetRegiment
-                    or AIDemandKind.GarrisonRegimentReserve;
+                    or AIDemandKind.ColonizationFleetSeedCapitalShip
+            || DestinationFleet?.RoleType == FleetRoleType.Colonization;
 
         public bool UsesDefensiveReserve =>
             Kind

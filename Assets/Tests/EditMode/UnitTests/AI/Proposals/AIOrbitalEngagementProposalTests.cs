@@ -140,6 +140,37 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNotNull(scenario.Fleet.Movement);
         }
 
+        [Test]
+        public void Execute_ExistingEngagementCanNoLongerWin_ReturnsToOrigin()
+        {
+            EngagementScenario scenario = CreateScenario(includeHostileFleet: true);
+            scenario.Context.Game.MoveNode(scenario.Fleet, scenario.Target);
+            scenario.Fleet.Order = CreateOrder(scenario);
+            Fleet hostileFleet = scenario.Target.GetChildren<Fleet>()[0];
+            for (int index = 0; index < 20; index++)
+            {
+                scenario.Context.Game.AttachNode(
+                    AITestSceneBuilder.CreateCapitalShip(
+                        $"hostile-reinforcement-{index}",
+                        hostileFleet.OwnerInstanceID,
+                        100
+                    ),
+                    hostileFleet
+                );
+            }
+            RefreshContext(scenario);
+            AIOrbitalEngagementProposal proposal = new AIOrbitalEngagementProposal(
+                scenario.Fleet,
+                scenario.Context.Assessment.GetKnownPlanet(scenario.Target.InstanceID),
+                scenario.Origin
+            );
+
+            proposal.Execute(scenario.Context);
+
+            Assert.AreEqual(FleetOrderStatus.Returning, scenario.Fleet.Order.Status);
+            Assert.IsNotNull(scenario.Fleet.Movement);
+        }
+
         /// <summary>
         /// Creates an engagement scenario with optional hostile orbital forces.
         /// </summary>

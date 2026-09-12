@@ -169,7 +169,11 @@ namespace Rebellion.Systems
                 result.ShieldStrength = GetBombardmentShieldStrength(targetPlanet);
                 result.StrikeAttempts = Math.Max(
                     0,
-                    result.BombardmentStrength - result.ShieldStrength
+                    result.BombardmentStrength
+                        - GetBombardmentShieldResistance(
+                            result.ShieldStrength,
+                            _game.Config.Combat.Bombardment
+                        )
                 );
 
                 bool civilianTargetsDestroyed = ResolveStrikes(
@@ -415,6 +419,23 @@ namespace Rebellion.Systems
                     IsActiveBombardmentUnit(building) && building.IsPlanetaryShieldGenerator()
                 )
                 .Sum(building => building.ShieldStrength);
+        }
+
+        /// <summary>
+        /// Converts planetary shield strength to the scale used by unit bombardment ratings.
+        /// </summary>
+        /// <param name="shieldStrength">Combined active planetary shield strength.</param>
+        /// <param name="config">Bombardment configuration.</param>
+        /// <returns>The number of bombardment points absorbed by the shields.</returns>
+        public static int GetBombardmentShieldResistance(
+            int shieldStrength,
+            GameConfig.BombardmentConfig config
+        )
+        {
+            if (shieldStrength <= 0 || config?.ShieldStrengthDivisor <= 0)
+                return 0;
+
+            return (int)Math.Ceiling((double)shieldStrength / config.ShieldStrengthDivisor);
         }
 
         /// <summary>

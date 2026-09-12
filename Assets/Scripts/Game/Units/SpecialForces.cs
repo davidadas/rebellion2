@@ -6,6 +6,16 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Game.Units
 {
     /// <summary>
+    /// Describes how the AI intends to use an available special-forces unit this turn.
+    /// </summary>
+    public enum SpecialForcesIntent
+    {
+        PrimaryAgent,
+        Decoy,
+        Reserve,
+    }
+
+    /// <summary>
     /// Represents a special forces unit that can be used in missions.
     /// </summary>
     public class SpecialForces : LeafNode, IMissionParticipant, IManufacturable, IMovable

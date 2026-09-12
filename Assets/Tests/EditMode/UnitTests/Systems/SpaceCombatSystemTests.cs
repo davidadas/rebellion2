@@ -2400,6 +2400,12 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+            empireFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = combatPlanet.InstanceID,
+            };
             SpaceCombatSystem manager = MakeSpaceCombat(game);
 
             manager.ProcessTick();
@@ -2408,6 +2414,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(results);
             Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(empireFleet.Movement);
+            Assert.IsNull(empireFleet.Order);
             SpaceCombatResult combatResult = results.OfType<SpaceCombatResult>().Single();
             Assert.AreSame(combatPlanet, combatResult.Planet);
             bool empireWasAttacker = ReferenceEquals(combatResult.AttackerFleet, empireFleet);

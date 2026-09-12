@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scoring;
@@ -48,15 +47,17 @@ namespace Rebellion.AI.Planners
                 context.Game.Config.AI.MissionPlanning.RetainedAlternativesPerMission
             );
             List<AIMissionProposal> alternatives = GetAlternatives(proposal);
-            AIMissionProposal weakest = GetWeakest(alternatives);
+            AIMissionProposal lowestPriorityAlternative = FindLowestPriorityAlternative(
+                alternatives
+            );
             if (
                 alternatives.Count >= retainedAlternatives
-                && _scorer.GetScoreUpperBound(context, proposal) < weakest.Score
+                && _scorer.GetScoreUpperBound(context, proposal) < lowestPriorityAlternative.Score
             )
                 return;
 
             double score = _scorer.Score(context, proposal);
-            if (score <= 0 && !proposal.CanExecute(context))
+            if (score <= 0)
                 return;
 
             proposal.SetScore(score);
@@ -65,9 +66,9 @@ namespace Rebellion.AI.Planners
             if (alternatives.Count <= retainedAlternatives)
                 return;
 
-            weakest = GetWeakest(alternatives);
-            alternatives.Remove(weakest);
-            proposals.Remove(weakest);
+            lowestPriorityAlternative = FindLowestPriorityAlternative(alternatives);
+            alternatives.Remove(lowestPriorityAlternative);
+            proposals.Remove(lowestPriorityAlternative);
         }
 
         /// <summary>
@@ -91,16 +92,43 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns the weakest retained proposal using deterministic tie-breaking.
+        /// Finds the retained proposal with the lowest selection priority.
         /// </summary>
         /// <param name="alternatives">The alternatives to inspect.</param>
-        /// <returns>The weakest proposal, or null when the collection is empty.</returns>
-        private static AIMissionProposal GetWeakest(IEnumerable<AIMissionProposal> alternatives)
+        /// <returns>The lowest-priority proposal, or null when the collection is empty.</returns>
+        private static AIMissionProposal FindLowestPriorityAlternative(
+            IEnumerable<AIMissionProposal> alternatives
+        )
         {
-            return alternatives
-                .OrderBy(proposal => proposal.Score)
-                .ThenByDescending(proposal => proposal.GetSortKey(), StringComparer.Ordinal)
-                .FirstOrDefault();
+            AIMissionProposal lowestPriority = null;
+            foreach (AIMissionProposal proposal in alternatives)
+            {
+                if (lowestPriority == null || HasLowerRetentionPriority(proposal, lowestPriority))
+                    lowestPriority = proposal;
+            }
+
+            return lowestPriority;
+        }
+
+        /// <summary>
+        /// Compares two proposals using the inverse of the final selection order.
+        /// </summary>
+        /// <param name="candidate">The proposal being compared.</param>
+        /// <param name="other">The proposal currently considered lowest priority.</param>
+        /// <returns>True when the candidate has a lower score, or loses the deterministic sort-key tie.</returns>
+        private static bool HasLowerRetentionPriority(
+            AIMissionProposal candidate,
+            AIMissionProposal other
+        )
+        {
+            int scoreComparison = candidate.Score.CompareTo(other.Score);
+            return scoreComparison != 0
+                ? scoreComparison < 0
+                : string.Compare(
+                    candidate.GetSortKey(),
+                    other.GetSortKey(),
+                    StringComparison.Ordinal
+                ) > 0;
         }
     }
 }

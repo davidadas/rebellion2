@@ -750,7 +750,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_WithNoRefinedMaterials_QueuesFacilityWithoutProgress()
+        public void ProcessTick_WithNoRefinedMaterials_ContinuesProduction()
         {
             _empire.RefinedMaterialStockpile = 0;
             Building mine = new Building
@@ -768,17 +768,67 @@ namespace Rebellion.Tests.Systems
 
             _manager.ProcessTick();
 
-            Assert.AreEqual(0, mine.ManufacturingProgress);
+            Assert.AreEqual(1, mine.ManufacturingProgress);
             Assert.IsFalse(_shipyard.ProductionPointReady);
             Assert.IsFalse(_shipyard.ProductionInputReserved);
-            CollectionAssert.AreEqual(
-                new[] { _shipyard.InstanceID },
-                _empire.PendingRefinedMaterialFacilityIDs
-            );
+            CollectionAssert.IsEmpty(_empire.PendingRefinedMaterialFacilityIDs);
         }
 
         [Test]
-        public void ProcessTick_AvailableRefinedMaterial_IsConsumedPerFacilityCycle()
+        public void ProcessTick_AtFormerAIRefinedMaterialReserve_ContinuesProduction()
+        {
+            Building defense = new Building
+            {
+                InstanceID = "DEFENSE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 2,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Defense,
+            };
+            int reserve =
+                _empire.RefinedMaterialSupply
+                * _game.Config.AI.Selection.RefinedMaterialReservePercent
+                / 100;
+            _empire.RefinedMaterialStockpile = reserve;
+            _manager.Enqueue(_coruscant, defense, _coruscant, ignoreCost: true);
+
+            _manager.ProcessTick();
+
+            Assert.AreEqual(1, defense.ManufacturingProgress);
+            Assert.AreEqual(reserve, _empire.RefinedMaterialStockpile);
+            Assert.IsFalse(_shipyard.ProductionInputReserved);
+            CollectionAssert.IsEmpty(_empire.PendingRefinedMaterialFacilityIDs);
+        }
+
+        [Test]
+        public void ProcessTick_AtPlayerRefinedMaterialReserve_ContinuesProduction()
+        {
+            _empire.PlayerID = "PLAYER1";
+            Building defense = new Building
+            {
+                InstanceID = "DEFENSE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 2,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Defense,
+            };
+            int reserve =
+                _empire.RefinedMaterialSupply
+                * _game.Config.AI.Selection.RefinedMaterialReservePercent
+                / 100;
+            _empire.RefinedMaterialStockpile = reserve;
+            _manager.Enqueue(_coruscant, defense, _coruscant, ignoreCost: true);
+
+            _manager.ProcessTick();
+
+            Assert.AreEqual(1, defense.ManufacturingProgress);
+            Assert.AreEqual(reserve, _empire.RefinedMaterialStockpile);
+        }
+
+        [Test]
+        public void ProcessTick_AvailableRefinedMaterial_IsNotConsumedByManufacturing()
         {
             _empire.RefinedMaterialStockpile = 1;
             Building mine = new Building
@@ -797,13 +847,10 @@ namespace Rebellion.Tests.Systems
             _manager.ProcessTick();
 
             Assert.AreEqual(1, mine.ManufacturingProgress);
-            Assert.AreEqual(0, _empire.RefinedMaterialStockpile);
+            Assert.AreEqual(1, _empire.RefinedMaterialStockpile);
             Assert.IsFalse(_shipyard.ProductionPointReady);
             Assert.IsFalse(_shipyard.ProductionInputReserved);
-            CollectionAssert.AreEqual(
-                new[] { _shipyard.InstanceID },
-                _empire.PendingRefinedMaterialFacilityIDs
-            );
+            CollectionAssert.IsEmpty(_empire.PendingRefinedMaterialFacilityIDs);
         }
 
         [Test]
@@ -960,7 +1007,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_CapitalShip_ConsumesOneRefinedMaterialPerFacilityCycle()
+        public void ProcessTick_CapitalShip_UsesEveryReadyFacilityWithoutConsumingMaterial()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -1004,12 +1051,9 @@ namespace Rebellion.Tests.Systems
 
             manufacturing.ProcessTick();
 
-            Assert.AreEqual(0, faction.RefinedMaterialStockpile);
+            Assert.AreEqual(2, faction.RefinedMaterialStockpile);
             Assert.AreEqual(2, ship.ManufacturingProgress);
-            CollectionAssert.AreEquivalent(
-                new[] { "p1__shipyard", secondShipyard.InstanceID },
-                faction.PendingRefinedMaterialFacilityIDs
-            );
+            CollectionAssert.IsEmpty(faction.PendingRefinedMaterialFacilityIDs);
         }
 
         [Test]
@@ -1748,8 +1792,8 @@ namespace Rebellion.Tests.Systems
                 constructionYard.ProductionCycleProgress,
                 0.0001
             );
-            Assert.AreEqual(0, empire.RefinedMaterialStockpile);
-            Assert.IsTrue(constructionYard.ProductionInputReserved);
+            Assert.AreEqual(1, empire.RefinedMaterialStockpile);
+            Assert.IsFalse(constructionYard.ProductionInputReserved);
 
             game.AttachNode(
                 new Building
@@ -3573,7 +3617,7 @@ namespace Rebellion.Tests.Systems
             _manager.ProcessTick();
 
             Assert.IsTrue(cancelled);
-            Assert.AreEqual(0, _empire.RefinedMaterialStockpile);
+            Assert.AreEqual(1, _empire.RefinedMaterialStockpile);
             Assert.IsFalse(_shipyard.ProductionInputReserved);
             Assert.IsFalse(_shipyard.ProductionPointReady);
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));

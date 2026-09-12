@@ -136,5 +136,47 @@ namespace Rebellion.Tests.AI.Proposals
                 (System.Collections.ICollection)claimKeys
             );
         }
+
+        [Test]
+        public void Execute_WithPlanetRegimentTransfer_LoadsRegimentIntoTargetFleet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet source = AITestSceneBuilder.AddPlanet(game, system, "source", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Fleet targetFleet = EntityFactory.CreateFleet("target-fleet", empire.InstanceID);
+            targetFleet.RoleType = FleetRoleType.Battle;
+            targetFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = target.InstanceID,
+            };
+            CapitalShip transport = AITestSceneBuilder.CreateCapitalShip(
+                "transport",
+                empire.InstanceID,
+                regimentCapacity: 1
+            );
+            Regiment regiment = AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID);
+            game.AttachNode(targetFleet, source);
+            game.AttachNode(transport, targetFleet);
+            game.AttachNode(regiment, source);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AITransferUnitProposal proposal = new AITransferUnitProposal(
+                source,
+                targetFleet,
+                regiment,
+                targetFleet,
+                target
+            );
+
+            proposal.Execute(context);
+
+            Assert.AreSame(transport, regiment.GetParent());
+            CollectionAssert.Contains(
+                proposal.GetClaimKeys(),
+                "fleet:reinforcement:FleetRegiment:target-fleet"
+            );
+        }
     }
 }

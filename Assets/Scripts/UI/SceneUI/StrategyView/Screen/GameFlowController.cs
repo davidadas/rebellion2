@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Rebellion.Game;
@@ -25,6 +26,7 @@ public sealed class GameFlowController : MonoBehaviour
     private bool campaignEnding;
     private bool cutscenePlaying;
     private bool finishCampaignAfterCutscenes;
+    private IEnumerator activeTick;
     private readonly Queue<string> cutsceneQueue = new Queue<string>();
 
     /// <summary>
@@ -95,7 +97,17 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        activeGameManager?.AdvanceTime(Time.deltaTime);
+        if (activeTick != null)
+        {
+            AdvanceActiveTick();
+            return;
+        }
+
+        if (activeGameManager?.TryAdvanceTickTimer(Time.deltaTime) == true)
+        {
+            activeTick = activeGameManager.ProcessTickIncrementally();
+            AdvanceActiveTick();
+        }
     }
 
     /// <summary>
@@ -103,11 +115,33 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        DisposeActiveTick();
+
         if (activeGameManager != null)
         {
             activeGameManager.HeadquartersLost -= HandleHeadquartersLost;
             activeGameManager.VictoryDeclared -= HandleVictoryDeclared;
         }
+    }
+
+    /// <summary>
+    /// Advances the current game tick by one scheduled step.
+    /// </summary>
+    private void AdvanceActiveTick()
+    {
+        if (activeTick?.MoveNext() != false)
+            return;
+
+        DisposeActiveTick();
+    }
+
+    /// <summary>
+    /// Disposes the current tick enumerator and clears it.
+    /// </summary>
+    private void DisposeActiveTick()
+    {
+        (activeTick as IDisposable)?.Dispose();
+        activeTick = null;
     }
 
     /// <summary>

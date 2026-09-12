@@ -98,6 +98,7 @@ public sealed class StrategyHudView : MonoBehaviour
     /// </summary>
     private void Awake()
     {
+        EnsureMainButtonImages();
         VerifyReferences();
         BindEvents();
     }
@@ -120,6 +121,7 @@ public sealed class StrategyHudView : MonoBehaviour
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
+        EnsureMainButtonImages();
         VerifyReferences();
         SetBackground(data.BackgroundTexture);
         SetCounter(tickTextField, data.TickCounter);
@@ -464,6 +466,46 @@ public sealed class StrategyHudView : MonoBehaviour
 
         RectInt rect = bounds.Value;
         UILayout.SetSourceRect(image.rectTransform, rect.x, rect.y, rect.width, rect.height);
+    }
+
+    /// <summary>
+    /// Upgrades strategy HUD prefabs generated before command-button image slots were introduced.
+    /// </summary>
+    private void EnsureMainButtonImages()
+    {
+        if (buttonViews == null || buttonViews.Length == 0)
+            return;
+
+        bool hasCompleteImageSet =
+            mainButtonImages != null
+            && mainButtonImages.Length == buttonViews.Length
+            && Array.TrueForAll(mainButtonImages, image => image != null);
+        if (hasCompleteImageSet)
+            return;
+
+        RawImage[] existingImages = mainButtonImages ?? Array.Empty<RawImage>();
+        mainButtonImages = new RawImage[buttonViews.Length];
+        for (int i = 0; i < buttonViews.Length; i++)
+        {
+            if (i < existingImages.Length && existingImages[i] != null)
+            {
+                mainButtonImages[i] = existingImages[i];
+                continue;
+            }
+
+            GameObject imageObject = new GameObject(
+                $"HudButton{i}Image",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(RawImage)
+            );
+            imageObject.transform.SetParent(transform, false);
+            imageObject.transform.SetSiblingIndex(buttonViews[i].transform.GetSiblingIndex());
+            RawImage image = imageObject.GetComponent<RawImage>();
+            image.raycastTarget = false;
+            image.enabled = false;
+            mainButtonImages[i] = image;
+        }
     }
 
     /// <summary>

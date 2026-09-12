@@ -1,6 +1,7 @@
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI.Director;
+using Rebellion.AI.Scoring;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -145,6 +146,45 @@ namespace Rebellion.Tests.AI.Director
             int value = assessment.GetDiplomacyTargetStrategicValue(target);
 
             Assert.AreEqual(20, value);
+        }
+
+        [Test]
+        public void GetOffensiveSupportLeverage_WithFavoredTargetAndExposedPlanet_ReturnsBoth()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, 55);
+            target.SetPopularSupport(rebels.InstanceID, 45);
+            Planet exposed = AITestSceneBuilder.AddPlanet(game, system, "exposed", null);
+            exposed.SetPopularSupport(empire.InstanceID, 55);
+            exposed.SetPopularSupport(rebels.InstanceID, 45);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITestSceneBuilder.RevealPlanet(game, empire, exposed);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(2, assessment.GetOffensiveSupportLeverage(target));
+        }
+
+        [Test]
+        public void GetDefensiveSupportRisk_WithFavoredEnemyAndExposedPlanet_ReturnsBoth()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", empire.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, 45);
+            target.SetPopularSupport(rebels.InstanceID, 55);
+            Planet exposed = AITestSceneBuilder.AddPlanet(game, system, "exposed", null);
+            exposed.SetPopularSupport(empire.InstanceID, 45);
+            exposed.SetPopularSupport(rebels.InstanceID, 55);
+            AITestSceneBuilder.RevealPlanet(game, empire, exposed);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(2, assessment.GetDefensiveSupportRisk(target));
         }
 
         [Test]
@@ -340,7 +380,9 @@ namespace Rebellion.Tests.AI.Director
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.IsFalse(assessment.CanFleetDepartHeadquarters(fleet));
+            Assert.IsFalse(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
         }
 
         [Test]
@@ -391,11 +433,15 @@ namespace Rebellion.Tests.AI.Director
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.IsFalse(assessment.CanFleetDepartHeadquarters(departingFleet));
+            Assert.IsFalse(
+                AITestSceneBuilder
+                    .CreateContext(game, empire)
+                    .StrategicPlan.CanFleetDepart(departingFleet)
+            );
         }
 
         [Test]
-        public void GetRequiredHeadquartersDefenseStrength_WithUncommittedRemoteHostileFleet_UsesMinimum()
+        public void GetRequiredHeadquartersDefenseStrength_WithKnownHostileFleet_UsesAffordableShare()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
@@ -409,6 +455,16 @@ namespace Rebellion.Tests.AI.Director
             );
             headquarters.IsHeadquarters = true;
             empire.HQInstanceID = headquarters.InstanceID;
+            Fleet friendlyFleet = EntityFactory.CreateFleet("friendly", empire.InstanceID);
+            game.AttachNode(friendlyFleet, headquarters);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "friendly-ship",
+                    empire.InstanceID,
+                    combatStrength: 4000
+                ),
+                friendlyFleet
+            );
             Planet enemyPlanet = AITestSceneBuilder.AddPlanet(
                 game,
                 system,
@@ -429,7 +485,58 @@ namespace Rebellion.Tests.AI.Director
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.AreEqual(1000, assessment.GetRequiredHeadquartersDefenseStrength(headquarters));
+            Assert.AreEqual(1400, assessment.GetRequiredHeadquartersDefenseStrength(headquarters));
+        }
+
+        [Test]
+        public void GetCommittedHeadquartersDefenseStrength_SumsLocalAndInboundFleets()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "staging",
+                empire.InstanceID
+            );
+            Fleet localFleet = EntityFactory.CreateFleet("local", empire.InstanceID);
+            game.AttachNode(localFleet, headquarters);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "local-ship",
+                    empire.InstanceID,
+                    combatStrength: 700
+                ),
+                localFleet
+            );
+            Fleet inboundFleet = EntityFactory.CreateFleet("inbound", empire.InstanceID);
+            inboundFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                TargetPlanetId = headquarters.InstanceID,
+            };
+            inboundFleet.Movement = new MovementState { TransitTicks = 5 };
+            game.AttachNode(inboundFleet, staging);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "inbound-ship",
+                    empire.InstanceID,
+                    combatStrength: 600
+                ),
+                inboundFleet
+            );
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(1300, assessment.GetCommittedHeadquartersDefenseStrength(headquarters));
         }
 
         [Test]
@@ -494,7 +601,187 @@ namespace Rebellion.Tests.AI.Director
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.IsFalse(assessment.CanFleetDepartHeadquarters(fleet));
+            Assert.IsFalse(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
+        }
+
+        [Test]
+        public void CanFleetDepartHeadquarters_WhenEitherFleetLeavesEnoughDefense_ReturnsTrue()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            Fleet strongest = EntityFactory.CreateFleet("strongest", empire.InstanceID);
+            Fleet other = EntityFactory.CreateFleet("other", empire.InstanceID);
+            game.AttachNode(strongest, headquarters);
+            game.AttachNode(other, headquarters);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "strongest-ship",
+                    empire.InstanceID,
+                    combatStrength: 1500
+                ),
+                strongest
+            );
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "other-ship",
+                    empire.InstanceID,
+                    combatStrength: 1200
+                ),
+                other
+            );
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, empire).StrategicPlan;
+            Assert.IsTrue(plan.CanFleetDepart(strongest));
+            Assert.IsTrue(plan.CanFleetDepart(other));
+        }
+
+        [Test]
+        public void CanFleetDepartHeadquarters_FromUnstableOwnedPlanet_ReturnsFalseUntilThreshold()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Garrison.SupportThreshold = 50;
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "captured",
+                empire.InstanceID
+            );
+            Planet exposed = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "exposed",
+                empire.InstanceID
+            );
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, planet);
+            planet.SetPopularSupport(empire.InstanceID, 49);
+            planet.SetPopularSupport(rebels.InstanceID, 51);
+            exposed.SetPopularSupport(rebels.InstanceID, 55);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.IsFalse(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
+
+            planet.SetPopularSupport(empire.InstanceID, 50);
+
+            Assert.IsTrue(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
+        }
+
+        [Test]
+        public void CanFleetDepartHeadquarters_FromLowLeverageEnemyDominatedSystem_ReturnsTrue()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Garrison.SupportThreshold = 50;
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet captured = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "captured",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddPlanet(game, sector, "enemy-1", rebels.InstanceID);
+            AITestSceneBuilder.AddPlanet(game, sector, "enemy-2", rebels.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, captured);
+            captured.SetPopularSupport(empire.InstanceID, 10);
+            captured.SetPopularSupport(rebels.InstanceID, 90);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(1, assessment.GetDefensiveSupportRisk(captured));
+            Assert.IsTrue(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
+        }
+
+        [Test]
+        public void CanFleetDepartHeadquarters_FromLowLeverageFriendlySystem_ReturnsTrue()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Garrison.SupportThreshold = 50;
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet captured = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "captured",
+                empire.InstanceID
+            );
+            Planet secure = AITestSceneBuilder.AddPlanet(game, sector, "secure", empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, captured);
+            captured.SetPopularSupport(empire.InstanceID, 10);
+            captured.SetPopularSupport(rebels.InstanceID, 90);
+            secure.SetPopularSupport(empire.InstanceID, 90);
+            secure.SetPopularSupport(rebels.InstanceID, 20);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(1, assessment.GetDefensiveSupportRisk(captured));
+            Assert.IsTrue(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
+        }
+
+        [Test]
+        public void CanFleetDepartHeadquarters_FromHostilePlanet_AllowsImmediateEvacuation()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Garrison.SupportThreshold = 50;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, planet);
+            planet.SetPopularSupport(empire.InstanceID, 0);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.IsTrue(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
+        }
+
+        [Test]
+        public void CanFleetDepartHeadquarters_FromUnstableFullyShieldedPlanet_ReturnsTrue()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out _);
+            game.Config.AI.Garrison.SupportThreshold = 50;
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "captured",
+                empire.InstanceID
+            );
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, planet);
+            planet.SetPopularSupport(empire.InstanceID, 0);
+            AddShield(game, planet, "shield-1", empire.InstanceID, 5);
+            AddShield(game, planet, "shield-2", empire.InstanceID, 5);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.IsTrue(
+                AITestSceneBuilder.CreateContext(game, empire).StrategicPlan.CanFleetDepart(fleet)
+            );
         }
 
         [Test]
@@ -647,8 +934,8 @@ namespace Rebellion.Tests.AI.Director
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
             target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
-            AddShield(game, target, "shield-1", rebels.InstanceID, 5);
-            AddShield(game, target, "shield-2", rebels.InstanceID, 5);
+            AddShield(game, target, "shield-1", rebels.InstanceID, 50);
+            AddShield(game, target, "shield-2", rebels.InstanceID, 50);
 
             Fleet blockedFleet = CreateAssaultFleet(game, origin, "blocked", empire.InstanceID, 10);
             Fleet readyFleet = CreateAssaultFleet(game, origin, "ready", empire.InstanceID, 10);
@@ -840,6 +1127,25 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
+        public void GetRequiredAttackRegimentCount_WithoutDefenders_RequiresStableOccupation()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.AI.Garrison.GarrisonDivisor = 10;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, 20);
+            Fleet fleet = CreateAssaultFleet(game, origin, "attacker", empire.InstanceID, 4);
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(fleet, target));
+        }
+
+        [Test]
         public void GetDefendingRegimentDefenseStrength_WithDifferentBombardmentDefense_ReturnsEqualStrength()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -872,10 +1178,13 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
-        public void GetRequiredAttackRegimentCount_WithDefendersAndLowSupport_RequiresOccupier()
+        public void GetRequiredAttackRegimentCount_WithDefendersAndLowSupport_AddsOccupationForce()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 2;
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.AI.Garrison.GarrisonDivisor = 10;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
             enemy.SetPopularSupport(empire.InstanceID, 0);
@@ -903,11 +1212,11 @@ namespace Rebellion.Tests.AI.Director
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(enemy));
+            Assert.AreEqual(10, assessment.GetRequiredAttackRegimentCount(enemy));
         }
 
         [Test]
-        public void GetRequiredAttackCampaignPackage_WithMultipleEnemyPlanets_AggregatesEntireSystem()
+        public void GetRequiredAttackPackage_WithMultipleEnemyPlanets_UsesStrongestSystemFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
@@ -985,12 +1294,35 @@ namespace Rebellion.Tests.AI.Director
             AITestSceneBuilder.RevealPlanet(game, empire, firstEnemy);
             AITestSceneBuilder.RevealPlanet(game, empire, secondEnemy);
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
-            Planet target = assessment.GetKnownPlanet(firstEnemy.InstanceID);
+            Planet firstTarget = assessment.GetKnownPlanet(firstEnemy.InstanceID);
+            Planet secondTarget = assessment.GetKnownPlanet(secondEnemy.InstanceID);
 
-            Assert.AreEqual(500, assessment.GetRequiredAttackCampaignCombatStrength(target));
-            Assert.AreEqual(5, assessment.GetRequiredAttackCampaignRegimentCount(target));
-            Assert.AreEqual(40, assessment.GetRequiredAttackCampaignRegimentStrength(target));
-            Assert.AreEqual(11, assessment.GetRequiredAttackCampaignBombardmentStrength(target));
+            Assert.AreEqual(300, assessment.GetRequiredAttackCombatStrength(firstTarget));
+            Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(firstTarget));
+            Assert.AreEqual(20, assessment.GetRequiredAttackRegimentStrength(firstTarget));
+            Assert.AreEqual(2, assessment.GetRequiredBombardmentStrength(firstTarget));
+            Assert.AreEqual(300, assessment.GetRequiredAttackCombatStrength(secondTarget));
+            Assert.AreEqual(3, assessment.GetRequiredAttackRegimentCount(secondTarget));
+            Assert.AreEqual(20, assessment.GetRequiredAttackRegimentStrength(secondTarget));
+            Assert.AreEqual(0, assessment.GetRequiredBombardmentStrength(secondTarget));
+        }
+
+        [Test]
+        public void GetRequiredAttackCombatStrength_WithoutOrbitalDefenders_ReturnsMinimumStrength()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1400;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(
+                1400,
+                assessment.GetRequiredAttackCombatStrength(
+                    assessment.GetKnownPlanet(target.InstanceID)
+                )
+            );
         }
 
         [Test]
@@ -1020,16 +1352,30 @@ namespace Rebellion.Tests.AI.Director
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            int shieldPriority = assessment.GetSabotageTargetPriorityBonus(target, shield);
-            int batteryPriority = assessment.GetSabotageTargetPriorityBonus(target, battery);
-            int regimentPriority = assessment.GetSabotageTargetPriorityBonus(target, regiment);
-            int starfighterPriority = assessment.GetSabotageTargetPriorityBonus(
+            int shieldPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                context,
+                target,
+                shield
+            );
+            int batteryPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                context,
+                target,
+                battery
+            );
+            int regimentPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                context,
+                target,
+                regiment
+            );
+            int starfighterPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                context,
                 target,
                 starfighter
             );
-            int infrastructurePriority = assessment.GetSabotageTargetPriorityBonus(
+            int infrastructurePriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                context,
                 target,
                 shipyard
             );
@@ -1095,11 +1441,37 @@ namespace Rebellion.Tests.AI.Director
                 TargetPlanetId = enemy.InstanceID,
             };
             game.AttachNode(fleet, owned);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
             Planet target = assessment.GetAttackTargetPlanet(fleet);
 
-            Assert.AreSame(enemy, target);
+            Assert.AreEqual(enemy.InstanceID, target.InstanceID);
+            Assert.AreEqual(rebels.InstanceID, target.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void GetAttackTargetPlanet_StaleEnemySnapshot_ReturnsKnownTarget()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                TargetPlanetId = enemy.InstanceID,
+            };
+            game.AttachNode(fleet, owned);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
+            enemy.OwnerInstanceID = null;
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Planet target = assessment.GetAttackTargetPlanet(fleet);
+
+            Assert.IsNotNull(target);
+            Assert.AreEqual(rebels.InstanceID, target.GetOwnerInstanceID());
         }
 
         [Test]

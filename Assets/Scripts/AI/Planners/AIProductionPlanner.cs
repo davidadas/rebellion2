@@ -41,8 +41,7 @@ namespace Rebellion.AI.Planners
                 ),
                 Technology
             >();
-        private readonly Dictionary<BuildingType, int> _committedFacilityMaintenance =
-            new Dictionary<BuildingType, int>();
+        private int? _committedProductionFacilityMaintenance;
         private readonly Dictionary<
             (string DestinationId, ManufacturingType ManufacturingType, ProducerMode Mode),
             List<Planet>
@@ -72,8 +71,6 @@ namespace Rebellion.AI.Planners
             bool
         >(StringComparer.Ordinal);
 
-        private int? _capitalShipMaintenanceBudget;
-
         /// <summary>
         /// Returns production proposals for the current AI turn.
         /// </summary>
@@ -93,13 +90,12 @@ namespace Rebellion.AI.Planners
         {
             _unlockedTechnologies.Clear();
             _selectedTechnologies.Clear();
-            _committedFacilityMaintenance.Clear();
+            _committedProductionFacilityMaintenance = null;
             _producerPlanets.Clear();
             _queueWork.Clear();
             _fleetUnitCounts.Clear();
             _fleetHasIonStarfighters.Clear();
             _fleetHasTorpedoStarfighters.Clear();
-            _capitalShipMaintenanceBudget = null;
         }
 
         /// <summary>
@@ -373,11 +369,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether eligible building upgrade.
+        /// Returns whether a building can satisfy an ordinary or upgrade demand.
         /// </summary>
         /// <param name="demand">The production demand.</param>
         /// <param name="building">The building to evaluate.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when no replacement is required or the building is its declared upgrade.</returns>
         private static bool IsEligibleBuildingUpgrade(AIDemand demand, Building building)
         {
             return demand.Kind != AIDemandKind.BuildingUpgrade
@@ -385,11 +381,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns building maintenance cost.
+        /// Returns the additional maintenance incurred by constructing or upgrading a building.
         /// </summary>
         /// <param name="demand">The production demand.</param>
         /// <param name="building">The building to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The net maintenance cost.</returns>
         private static int GetBuildingMaintenanceCost(AIDemand demand, Building building)
         {
             if (demand.Kind != AIDemandKind.BuildingUpgrade || demand.BuildingToReplace == null)
@@ -399,11 +395,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns building maintenance budget.
+        /// Returns the maintenance budget available to a building demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The available maintenance budget.</returns>
         private int GetBuildingMaintenanceBudget(AITurnContext context, AIDemand demand)
         {
             if (IsFacilityExpansionDemand(demand))
@@ -420,91 +416,68 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns facility maintenance budget.
+        /// Returns the maintenance budget allocated to production-facility expansion.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The remaining facility maintenance budget.</returns>
         private int GetFacilityMaintenanceBudget(AITurnContext context, AIDemand demand)
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            int allocatedMaintenance = demand.Kind switch
-            {
-                AIDemandKind.Shipyard => IntegerMath.ScaleByPercent(
-                    IntegerMath.ScaleByPercent(
-                        context.Assessment.MaintenanceCapacity,
-                        config.ShipyardMaintenanceAllocationPercent
-                    ),
-                    config.ShipyardMaintenanceAllocationScalePercent
-                ),
-                AIDemandKind.TrainingFacility => IntegerMath.ScaleByPercent(
-                    IntegerMath.ScaleByPercent(
-                        context.Assessment.MaintenanceCapacity,
-                        config.TrainingFacilityMaintenanceAllocationPercent
-                    ),
-                    config.TrainingFacilityMaintenanceAllocationScalePercent
-                ),
-                AIDemandKind.ConstructionFacility => IntegerMath.ScaleByPercent(
-                    context.Assessment.MaintenanceCapacity,
-                    config.ConstructionFacilityMaintenanceAllocationPercent
-                ),
-                _ => 0,
-            };
+            int headroomBudget = Math.Max(
+                0,
+                context.Assessment.ProjectedMaintenanceHeadroom
+                    - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
+            );
+            if (
+                demand.Kind == AIDemandKind.Shipyard
+                && context.FacilityAllocation.IsIncompletePrimaryHub(
+                    demand.DestinationPlanet,
+                    BuildingType.Shipyard,
+                    config.ShipyardSectorHubTargetCount
+                )
+            )
+                return headroomBudget;
+
+            int allocatedMaintenance = IntegerMath.ScaleByPercent(
+                context.Assessment.MaintenanceCapacity,
+                config.ProductionFacilityMaintenanceAllocationPercent
+            );
             int availableMaintenance =
-                allocatedMaintenance - GetCommittedFacilityMaintenance(context, demand);
+                allocatedMaintenance - GetCommittedProductionFacilityMaintenance(context);
             if (
                 availableMaintenance <= 0
                 || context.Assessment.ProjectedMaintenanceHeadroom < availableMaintenance
             )
                 return 0;
 
-            int headroomBudget = Math.Max(
-                0,
-                context.Assessment.ProjectedMaintenanceHeadroom
-                    - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
-            );
             return Math.Min(availableMaintenance, headroomBudget);
         }
 
         /// <summary>
-        /// Returns committed facility maintenance.
+        /// Returns maintenance committed to production facilities.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="demand">The production demand.</param>
         /// <returns>The calculated value.</returns>
-        private int GetCommittedFacilityMaintenance(AITurnContext context, AIDemand demand)
+        private int GetCommittedProductionFacilityMaintenance(AITurnContext context)
         {
-            BuildingType buildingType = demand.Kind switch
-            {
-                AIDemandKind.Shipyard => BuildingType.Shipyard,
-                AIDemandKind.TrainingFacility => BuildingType.TrainingFacility,
-                AIDemandKind.ConstructionFacility => BuildingType.ConstructionFacility,
-                _ => BuildingType.None,
-            };
+            if (_committedProductionFacilityMaintenance.HasValue)
+                return _committedProductionFacilityMaintenance.Value;
 
-            if (_committedFacilityMaintenance.TryGetValue(buildingType, out int maintenance))
-                return maintenance;
-
-            maintenance = context
-                .Assessment.OwnedPlanets.SelectMany(context.Assessment.GetPlanetBuildings)
-                .Where(building =>
-                    building.GetOwnerInstanceID() == context.Faction.InstanceID
-                    && building.GetBuildingType() == buildingType
-                )
-                .Sum(building => building.MaintenanceCost);
-            _committedFacilityMaintenance.Add(buildingType, maintenance);
-            return maintenance;
+            _committedProductionFacilityMaintenance =
+                context.Assessment.GetProductionFacilityMaintenance();
+            return _committedProductionFacilityMaintenance.Value;
         }
 
         /// <summary>
-        /// Returns proposal demand.
+        /// Creates the producer-specific demand represented by one proposal.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
         /// <param name="producerPlanet">The producing planet.</param>
         /// <param name="product">The manufacturable product.</param>
         /// <param name="remainingQuantity">The remaining requested quantity.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The adjusted demand, or null when this producer cannot accept a batch.</returns>
         private AIDemand GetProposalDemand(
             AITurnContext context,
             AIDemand demand,
@@ -552,11 +525,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Creates proposal demand.
+        /// Copies a demand with a producer-specific quantity.
         /// </summary>
         /// <param name="demand">The production demand.</param>
         /// <param name="quantity">The requested quantity.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The copied demand.</returns>
         private static AIDemand CreateProposalDemand(AIDemand demand, int quantity)
         {
             AIDemand proposalDemand = new AIDemand(
@@ -575,12 +548,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns requested manufacturing count.
+        /// Returns the requested batch size for a demand and product.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
         /// <param name="product">The manufacturable product.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The requested unit count.</returns>
         private int GetRequestedManufacturingCount(
             AITurnContext context,
             AIDemand demand,
@@ -636,14 +609,7 @@ namespace Rebellion.AI.Planners
             if (contribution <= 0)
                 return 0;
 
-            int requestedCount = IntegerMath.DivideRoundedUp(demand.QuantityNeeded, contribution);
-            if (capitalShip.MaintenanceCost <= 0)
-                return requestedCount;
-
-            return Math.Min(
-                requestedCount,
-                GetCapitalShipMaintenanceBudget(context) / capitalShip.MaintenanceCost
-            );
+            return IntegerMath.DivideRoundedUp(demand.QuantityNeeded, contribution);
         }
 
         /// <summary>
@@ -757,6 +723,18 @@ namespace Rebellion.AI.Planners
             return int.MaxValue;
         }
 
+        /// <summary>
+        /// Returns the remaining number of one unit type allowed before another available type
+        /// should be selected for fleet diversity.
+        /// </summary>
+        /// <typeparam name="T">The manufacturable fleet-unit type.</typeparam>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The destination fleet.</param>
+        /// <param name="selectedTypeId">The selected unit type identifier.</param>
+        /// <param name="manufacturingType">The manufacturing category.</param>
+        /// <param name="maximumDuplicateCount">The preferred duplicate limit.</param>
+        /// <param name="getUnit">Resolves the unit represented by a technology.</param>
+        /// <returns>The remaining allowed quantity, or no effective limit when diversity is unavailable.</returns>
         private int GetFleetUnitDiversityLimit<T>(
             AITurnContext context,
             Fleet fleet,
@@ -888,14 +866,20 @@ namespace Rebellion.AI.Planners
                     - context.Assessment.GetPlanetaryDefenseEnergyDeficit(demand.DestinationPlanet)
             );
 
-            return Math.Max(0, Math.Min(maintenanceLimit, Math.Min(laneLimit, energyLimit)));
+            return Math.Max(
+                0,
+                Math.Min(
+                    demand.QuantityNeeded,
+                    Math.Min(maintenanceLimit, Math.Min(laneLimit, energyLimit))
+                )
+            );
         }
 
         /// <summary>
-        /// Returns whether facility expansion demand.
+        /// Returns whether a demand expands a production facility category.
         /// </summary>
         /// <param name="demand">The production demand.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True for construction-facility, shipyard, and training-facility demand.</returns>
         private static bool IsFacilityExpansionDemand(AIDemand demand)
         {
             return demand?.Kind
@@ -905,10 +889,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether distributed production demand.
+        /// Returns whether a demand can be divided among multiple producers.
         /// </summary>
         /// <param name="demand">The production demand.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when separate producers may manufacture portions of the demand.</returns>
         private static bool IsDistributedProductionDemand(AIDemand demand)
         {
             return demand?.Kind
@@ -916,15 +900,14 @@ namespace Rebellion.AI.Planners
                     or AIDemandKind.FleetStarfighter
                     or AIDemandKind.PlanetaryStarfighterReserve
                     or AIDemandKind.FleetRegiment
-                    or AIDemandKind.GarrisonRegimentReserve
                     or AIDemandKind.SpecialForces;
         }
 
         /// <summary>
-        /// Returns building capability.
+        /// Returns the comparable production or defensive capability of a building.
         /// </summary>
         /// <param name="building">The building to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The building capability used for technology selection.</returns>
         private static int GetBuildingCapability(Building building)
         {
             return building.GetBuildingType() switch
@@ -981,11 +964,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns unlocked special forces technology.
+        /// Returns the unlocked special-forces technology matching a requested type.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="productTypeId">The product type id.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The matching technology, or null when it is unavailable.</returns>
         private Technology GetUnlockedSpecialForcesTechnology(
             AITurnContext context,
             string productTypeId
@@ -1006,18 +989,21 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns unlocked capital ship technology.
+        /// Selects an unlocked capital ship technology for a fleet-production demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The selected technology, or null when no eligible ship is affordable.</returns>
         private Technology GetUnlockedCapitalShipTechnology(AITurnContext context, AIDemand demand)
         {
             if (context?.Faction == null || demand == null)
                 return null;
 
-            int maintenanceBudget = GetCapitalShipMaintenanceBudget(context);
-            List<Technology> rankedTechnologies = new List<Technology>();
+            bool needsStarfighterCapacity =
+                demand.CapitalShipRole == AICapitalShipProductionRole.General
+                && demand.DestinationFleet?.GetStarfighterCapacity() <= 0;
+            List<Technology> eligibleTechnologies = new List<Technology>();
+            List<Technology> carrierTechnologies = new List<Technology>();
 
             foreach (
                 Technology technology in GetUnlockedTechnologies(context, ManufacturingType.Ship)
@@ -1032,122 +1018,33 @@ namespace Rebellion.AI.Planners
                 if (!CanFillCapitalShipRole(capitalShip, demand.CapitalShipRole))
                     continue;
 
-                InsertCapitalShipTechnology(
-                    context,
-                    rankedTechnologies,
-                    technology,
-                    demand.CapitalShipRole
-                );
+                eligibleTechnologies.Add(technology);
+                if (needsStarfighterCapacity && capitalShip.StarfighterCapacity > 0)
+                    carrierTechnologies.Add(technology);
             }
 
-            for (int index = rankedTechnologies.Count - 1; index >= 0; index--)
-            {
-                Technology technology = rankedTechnologies[index];
-                if (technology.GetReference().GetMaintenanceCost() <= maintenanceBudget)
-                    return technology;
-            }
+            if (eligibleTechnologies.Count == 0)
+                return null;
 
-            return null;
-        }
+            if (carrierTechnologies.Count > 0)
+                eligibleTechnologies = carrierTechnologies;
 
-        /// <summary>
-        /// Inserts capital ship technology.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="rankedTechnologies">The ranked technologies.</param>
-        /// <param name="candidate">The candidate.</param>
-        /// <param name="role">The role.</param>
-        private static void InsertCapitalShipTechnology(
-            AITurnContext context,
-            List<Technology> rankedTechnologies,
-            Technology candidate,
-            AICapitalShipProductionRole role
-        )
-        {
-            CapitalShip candidateShip = (CapitalShip)candidate.GetReference();
-            GameConfig.SpaceCombatConfig combatConfig = context.Game.Config.Combat.SpaceCombat;
-            double candidateMetric = GetCapitalShipRoleMetric(candidateShip, role, combatConfig);
-
-            for (int index = 0; index < rankedTechnologies.Count; index++)
-            {
-                CapitalShip rankedShip = (CapitalShip)rankedTechnologies[index].GetReference();
-                double rankedMetric = GetCapitalShipRoleMetric(rankedShip, role, combatConfig);
-                if (
-                    candidateMetric < rankedMetric
-                    || (
-                        candidateMetric == rankedMetric
-                        && ShouldInsertCapitalShipBeforeEqual(context)
+            eligibleTechnologies.Sort(
+                (left, right) =>
+                    string.CompareOrdinal(
+                        left.GetReference().GetTypeID(),
+                        right.GetReference().GetTypeID()
                     )
-                )
-                {
-                    rankedTechnologies.Insert(index, candidate);
-                    return;
-                }
-            }
-
-            rankedTechnologies.Add(candidate);
-        }
-
-        /// <summary>
-        /// Returns whether insert capital ship before equal.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when the condition is satisfied.</returns>
-        private static bool ShouldInsertCapitalShipBeforeEqual(AITurnContext context)
-        {
-            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
-            return context.Random.NextInt(0, config.CapitalShipTieRollRange)
-                < config.CapitalShipTieInsertBeforeThreshold;
-        }
-
-        /// <summary>
-        /// Returns capital ship maintenance budget.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The calculated value.</returns>
-        private int GetCapitalShipMaintenanceBudget(AITurnContext context)
-        {
-            if (_capitalShipMaintenanceBudget.HasValue)
-                return _capitalShipMaintenanceBudget.Value;
-
-            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
-            int allocatedMaintenance = IntegerMath.ScaleByPercent(
-                context.Assessment.MaintenanceCapacity,
-                config.CapitalMaintenanceAllocationPercent
             );
-            int targetCapitalMaintenance = IntegerMath.ScaleByPercent(
-                allocatedMaintenance,
-                config.CapitalMaintenanceSafetyPercent
-            );
-            int committedCapitalMaintenance = context
-                .Faction.GetOwnedUnitsByType<CapitalShip>()
-                .Where(IsCommittedCapitalShip)
-                .Sum(capitalShip => capitalShip.MaintenanceCost);
-            int budget = Math.Max(0, targetCapitalMaintenance - committedCapitalMaintenance);
-
-            _capitalShipMaintenanceBudget =
-                context.Assessment.ProjectedMaintenanceHeadroom < budget ? 0 : budget;
-            return _capitalShipMaintenanceBudget.Value;
+            return eligibleTechnologies[context.Random.NextInt(0, eligibleTechnologies.Count)];
         }
 
         /// <summary>
-        /// Returns whether committed capital ship.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <returns>True when the condition is satisfied.</returns>
-        private static bool IsCommittedCapitalShip(CapitalShip capitalShip)
-        {
-            return capitalShip?.ManufacturingStatus
-                is ManufacturingStatus.Complete
-                    or ManufacturingStatus.Building;
-        }
-
-        /// <summary>
-        /// Returns whether fill capital ship role.
+        /// Returns whether a capital ship is eligible for a production role.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <param name="role">The role.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the ship satisfies the role requirements.</returns>
         private static bool CanFillCapitalShipRole(
             CapitalShip capitalShip,
             AICapitalShipProductionRole role
@@ -1170,86 +1067,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns capital ship role metric.
+        /// Returns the largest primary-weapon count on any firing arc.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <param name="role">The role.</param>
-        /// <param name="combatConfig">The configured space-combat weapon effectiveness.</param>
-        /// <returns>The calculated value.</returns>
-        private static double GetCapitalShipRoleMetric(
-            CapitalShip capitalShip,
-            AICapitalShipProductionRole role,
-            GameConfig.SpaceCombatConfig combatConfig
-        )
-        {
-            return role switch
-            {
-                AICapitalShipProductionRole.General => GetPrimaryWeaponMetric(
-                    capitalShip,
-                    combatConfig
-                ) / Math.Max(1, capitalShip.MaintenanceCost),
-                AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity,
-                AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0 ? 1 : 0,
-                AICapitalShipProductionRole.Interdiction => capitalShip.ShieldRechargeRate,
-                _ => 0,
-            };
-        }
-
-        /// <summary>
-        /// Returns primary weapon metric.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <param name="combatConfig">The configured space-combat weapon effectiveness.</param>
-        /// <returns>The calculated value.</returns>
-        private static double GetPrimaryWeaponMetric(
-            CapitalShip capitalShip,
-            GameConfig.SpaceCombatConfig combatConfig
-        )
-        {
-            double maximumEffectiveStrength = 0;
-            int selectedWeaponCount = 0;
-
-            foreach (PrimaryWeaponArc weaponArc in CapitalShip.PrimaryWeaponArcs)
-            {
-                int turbolasers = GetWeaponCount(
-                    capitalShip,
-                    PrimaryWeaponType.Turbolaser,
-                    weaponArc
-                );
-                int ionCannons = GetWeaponCount(
-                    capitalShip,
-                    PrimaryWeaponType.IonCannon,
-                    weaponArc
-                );
-                int laserCannons = GetWeaponCount(
-                    capitalShip,
-                    PrimaryWeaponType.LaserCannon,
-                    weaponArc
-                );
-                double effectiveStrength =
-                    turbolasers
-                    + ionCannons
-                    + laserCannons * Math.Max(combatConfig.LaserCannonCapitalDamageMultiplier, 0);
-                if (effectiveStrength <= maximumEffectiveStrength)
-                    continue;
-
-                maximumEffectiveStrength = effectiveStrength;
-                selectedWeaponCount = turbolasers + ionCannons + laserCannons;
-            }
-
-            if (selectedWeaponCount <= 0)
-                return 0;
-
-            return (double)capitalShip.WeaponRecharge
-                * maximumEffectiveStrength
-                / selectedWeaponCount;
-        }
-
-        /// <summary>
-        /// Returns maximum primary weapon strength.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The maximum weapon count.</returns>
         private static int GetMaximumPrimaryWeaponStrength(CapitalShip capitalShip)
         {
             int maximumStrength = 0;
@@ -1266,12 +1087,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns weapon count.
+        /// Returns the weapon count for a type and firing arc.
         /// </summary>
         /// <param name="capitalShip">The capital ship to evaluate.</param>
         /// <param name="weaponType">The weapon type.</param>
         /// <param name="weaponArc">The weapon arc.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The weapon count, or zero when no value is defined.</returns>
         private static int GetWeaponCount(
             CapitalShip capitalShip,
             PrimaryWeaponType weaponType,
@@ -1309,10 +1130,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns unlocked planetary starfighter technology.
+        /// Returns the most efficient unlocked starfighter for planetary defense.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The selected technology, or null when none is affordable.</returns>
         private Technology GetUnlockedPlanetaryStarfighterTechnology(AITurnContext context)
         {
             int maintenanceBudget = GetDefensiveMaintenanceBudget(context);
@@ -1337,10 +1158,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns planetary starfighter defense efficiency.
+        /// Returns a starfighter's defensive strength per maintenance point.
         /// </summary>
         /// <param name="starfighter">The starfighter.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The defensive efficiency.</returns>
         private static double GetPlanetaryStarfighterDefenseEfficiency(Starfighter starfighter)
         {
             int strength = starfighter.GetWeaponStrength();
@@ -1404,10 +1225,10 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns unlocked garrison regiment technology.
+        /// Returns the strongest affordable unlocked regiment for planetary defense.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The selected value, or null when none is available.</returns>
+        /// <returns>The selected technology, or null when none is affordable.</returns>
         private Technology GetUnlockedGarrisonRegimentTechnology(AITurnContext context)
         {
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
@@ -1502,32 +1323,58 @@ namespace Rebellion.AI.Planners
             if (_producerPlanets.TryGetValue(key, out List<Planet> producers))
                 return producers;
 
-            producers = context
-                .Assessment.OwnedPlanets.Where(planet =>
-                    mode == ProducerMode.FacilityExpansion
-                        ? CanQueueFacilityExpansion(context, planet)
-                    : mode == ProducerMode.Distributed
-                        ? HasProductionFacility(context, planet, demand.ManufacturingType)
-                    : CanProduce(planet, demand.ManufacturingType)
-                )
-                .OrderBy(planet =>
-                    destinationPlanet == null ? 0 : destinationPlanet.GetRawDistanceTo(planet)
-                )
-                .ThenByDescending(planet =>
-                    context.Assessment.GetPlanetProductionRate(planet, demand.ManufacturingType)
-                )
-                .ThenBy(planet => planet.InstanceID)
-                .ToList();
+            IEnumerable<Planet> eligibleProducers = context.Assessment.OwnedPlanets.Where(planet =>
+                mode == ProducerMode.FacilityExpansion ? CanQueueFacilityExpansion(context, planet)
+                : mode == ProducerMode.Distributed
+                    ? HasProductionFacility(context, planet, demand.ManufacturingType)
+                : CanProduce(planet, demand.ManufacturingType)
+            );
+            producers =
+                mode == ProducerMode.FacilityExpansion
+                    ? eligibleProducers
+                        .OrderBy(planet =>
+                            context.Assessment.GetProductionBacklogTicks(
+                                planet,
+                                ManufacturingType.Building
+                            )
+                        )
+                        .ThenByDescending(planet =>
+                            context.Assessment.GetPlanetProductionRate(
+                                planet,
+                                ManufacturingType.Building
+                            )
+                        )
+                        .ThenBy(planet =>
+                            destinationPlanet == null
+                                ? 0
+                                : destinationPlanet.GetRawDistanceTo(planet)
+                        )
+                        .ThenBy(planet => planet.InstanceID)
+                        .ToList()
+                    : eligibleProducers
+                        .OrderBy(planet =>
+                            destinationPlanet == null
+                                ? 0
+                                : destinationPlanet.GetRawDistanceTo(planet)
+                        )
+                        .ThenByDescending(planet =>
+                            context.Assessment.GetPlanetProductionRate(
+                                planet,
+                                demand.ManufacturingType
+                            )
+                        )
+                        .ThenBy(planet => planet.InstanceID)
+                        .ToList();
             _producerPlanets.Add(key, producers);
             return producers;
         }
 
         /// <summary>
-        /// Returns whether queue facility expansion.
+        /// Returns whether a planet can queue additional production facilities.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the planet is operational and has construction capacity.</returns>
         private bool CanQueueFacilityExpansion(AITurnContext context, Planet planet)
         {
             return planet?.IsColonized == true
@@ -1572,12 +1419,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether production facility.
+        /// Returns whether a planet has an operational facility for a manufacturing category.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to evaluate.</param>
         /// <param name="manufacturingType">The manufacturing category.</param>
-        /// <returns>True when the condition is satisfied.</returns>
+        /// <returns>True when the planet can distribute this production category.</returns>
         private static bool HasProductionFacility(
             AITurnContext context,
             Planet planet,
@@ -1699,13 +1546,19 @@ namespace Rebellion.AI.Planners
         /// </summary>
         private enum ProducerMode
         {
-            /// <summary>Requires currently available manufacturing capacity.</summary>
+            /// <summary>
+            /// Requires currently available manufacturing capacity.
+            /// </summary>
             AvailableCapacity,
 
-            /// <summary>Requires an appropriate manufacturing facility.</summary>
+            /// <summary>
+            /// Requires an appropriate manufacturing facility.
+            /// </summary>
             Distributed,
 
-            /// <summary>Requires a planet eligible for facility expansion.</summary>
+            /// <summary>
+            /// Requires a planet eligible for facility expansion.
+            /// </summary>
             FacilityExpansion,
         }
     }

@@ -43,19 +43,50 @@ namespace Rebellion.AI.Scoring
             )
                 return 0;
 
-            if (!TryCreateMission(context, missionProposal, out Mission mission))
+            MissionOdds odds = context.Missions.GetMissionOdds(
+                missionProposal.CreateRequest(),
+                context.Assessment.GetMissionDetectorCandidates(missionProposal.TargetPlanet)
+            );
+            if (odds == null)
                 return 0;
 
-            double successProbability = context.Missions.GetObjectiveSuccessProbability(
-                mission,
-                missionProposal.MainParticipants
-            );
+            double successProbability = odds.ObjectiveSuccessProbability;
+            if (!MeetsUprisingMissionProbabilityFloor(context, missionProposal, successProbability))
+                return 0;
+
+            double foilProbability = odds.FoilProbability;
+            missionProposal.SetFoilProbability(foilProbability);
+            missionProposal.SetPersonnelLossProbability(odds.PersonnelLossProbability);
             double score = GetMissionScore(context, missionProposal, successProbability);
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, missionProposal);
+            score -= foilProbability * context.Game.Config.AI.MissionPlanning.MissionFoilRiskWeight;
             score -= GetTravelPenalty(context, missionProposal);
             score -= GetOfficerReplacementPenalty(context, missionProposal);
 
             return score >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? score : 0;
+        }
+
+        /// <summary>
+        /// Returns whether an uprising mission is viable before strategic priority is applied.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The mission proposal being evaluated.</param>
+        /// <param name="successProbability">The calculated mission success probability.</param>
+        /// <returns>True when the mission meets its feasibility requirement.</returns>
+        private static bool MeetsUprisingMissionProbabilityFloor(
+            AITurnContext context,
+            AIMissionProposal proposal,
+            double successProbability
+        )
+        {
+            if (
+                proposal.MissionTypeID != MissionTypeIDs.InciteUprising
+                && proposal.MissionTypeID != MissionTypeIDs.SubdueUprising
+            )
+                return true;
+
+            return successProbability
+                >= context.Game.Config.AI.MissionPlanning.MinimumUprisingMissionSuccessPercent;
         }
 
         /// <summary>
@@ -72,17 +103,16 @@ namespace Rebellion.AI.Scoring
             double score = GetMissionScore(context, proposal, _maximumSuccessProbability);
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, proposal);
             score -= GetTravelPenalty(context, proposal);
-            score -= GetOfficerReplacementPenalty(context, proposal);
             return score;
         }
 
         /// <summary>
-        /// Returns mission score.
+        /// Returns the mission-specific objective score.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <param name="successProbability">The calculated success probability.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The objective score before general bonuses and penalties.</returns>
         private double GetMissionScore(
             AITurnContext context,
             AIMissionProposal proposal,
@@ -101,12 +131,12 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
-        /// Scores sabotage.
+        /// Scores sabotage success and the strategic value of its selected target.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <param name="successProbability">The calculated success probability.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The sabotage objective score.</returns>
         private double ScoreSabotage(
             AITurnContext context,
             AIMissionProposal proposal,
@@ -114,19 +144,109 @@ namespace Rebellion.AI.Scoring
         )
         {
             return successProbability
-                + context.Assessment.GetSabotageTargetPriorityBonus(
+                + GetSabotagePriorityBonus(
+                    context,
                     proposal.TargetPlanet,
                     proposal.SelectedTarget as IManufacturable
                 );
         }
 
         /// <summary>
-        /// Scores diplomacy.
+        /// Calculates the configured scoring bonus for a sabotage target.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The target planet.</param>
+        /// <param name="target">The target unit or facility.</param>
+        /// <returns>The target's scoring bonus.</returns>
+        internal static int GetSabotagePriorityBonus(
+            AITurnContext context,
+            Planet planet,
+            IManufacturable target
+        )
+        {
+            GameConfig.AIMissionPlanningConfig config = context?.Game?.Config?.AI?.MissionPlanning;
+            if (config == null || planet == null || target == null)
+                return 0;
+
+            bool isAttackTarget = context.Assessment.IsAttackPreparationTarget(planet);
+            if (target is Building building)
+            {
+                int priorityBonus = config.SabotageInfrastructureBonus;
+                if (IsPlanetaryDefenseBuilding(building))
+                    priorityBonus += config.SabotageDefenseBonus;
+
+                if (building.IsShieldGenerator())
+                    priorityBonus += config.SabotageShieldBonus;
+
+                if (isAttackTarget && IsPlanetaryDefenseBuilding(building))
+                {
+                    priorityBonus +=
+                        config.SabotageAttackTargetBonus + config.SabotageAttackDefenseBonus;
+                }
+
+                return priorityBonus;
+            }
+
+            int unitPriorityBonus = target switch
+            {
+                Regiment when IsGarrisonedAtPlanet(planet, target) =>
+                    config.SabotageGarrisonRegimentBonus
+                        + (
+                            HasOppositionSupportMajority(context, planet)
+                                ? config.SabotageFavoredSupportRegimentBonus
+                                : 0
+                        ),
+                Starfighter when IsGarrisonedAtPlanet(planet, target) =>
+                    config.SabotageGarrisonStarfighterBonus,
+                _ => config.SabotageOtherUnitBonus,
+            };
+            return isAttackTarget
+                ? unitPriorityBonus + config.SabotageAttackTargetBonus
+                : unitPriorityBonus;
+        }
+
+        /// <summary>
+        /// Returns whether the AI faction has more support than the planet's owner.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when opposition support exceeds owner support.</returns>
+        private static bool HasOppositionSupportMajority(AITurnContext context, Planet planet)
+        {
+            string ownerInstanceId = planet?.GetOwnerInstanceID();
+            return !string.IsNullOrEmpty(ownerInstanceId)
+                && context.Assessment.GetFactionPopularSupport(planet)
+                    > planet.GetPopularSupport(ownerInstanceId);
+        }
+
+        /// <summary>
+        /// Returns whether a target is directly stationed on a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="target">The target unit.</param>
+        /// <returns>True when the target is a direct child of the planet.</returns>
+        private static bool IsGarrisonedAtPlanet(Planet planet, IManufacturable target)
+        {
+            return target.GetParent() is Planet parent && parent.InstanceID == planet.InstanceID;
+        }
+
+        /// <summary>
+        /// Returns whether a building contributes to planetary defense.
+        /// </summary>
+        /// <param name="building">The building to inspect.</param>
+        /// <returns>True for shield and weapon facilities.</returns>
+        private static bool IsPlanetaryDefenseBuilding(Building building)
+        {
+            return building?.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon;
+        }
+
+        /// <summary>
+        /// Scores diplomacy success and the support deficit it can reduce.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <param name="successProbability">The calculated success probability.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The diplomacy objective score.</returns>
         private double ScoreDiplomacy(
             AITurnContext context,
             AIMissionProposal proposal,
@@ -141,10 +261,10 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
-        /// Returns jedi training value.
+        /// Returns the total Force-rank improvement available to training students.
         /// </summary>
         /// <param name="proposal">The proposal to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The potential Force-rank gain.</returns>
         private double GetJediTrainingValue(AIMissionProposal proposal)
         {
             List<Officer> officers = proposal.Participants.OfType<Officer>().ToList();
@@ -160,27 +280,11 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
-        /// Attempts to create mission.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal to evaluate.</param>
-        /// <param name="mission">The mission.</param>
-        /// <returns>True when the condition is satisfied.</returns>
-        private static bool TryCreateMission(
-            AITurnContext context,
-            AIMissionProposal proposal,
-            out Mission mission
-        )
-        {
-            return context.Missions.TryCreateMission(proposal.CreateRequest(), out mission);
-        }
-
-        /// <summary>
-        /// Returns priority bonus.
+        /// Returns the configured strategic-priority bonus for a mission type.
         /// </summary>
         /// <param name="config">The applicable configuration.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The mission-type priority bonus.</returns>
         private int GetPriorityBonus(
             GameConfig.AIMissionPlanningConfig config,
             AIMissionProposal proposal
@@ -201,11 +305,30 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
-        /// Returns travel penalty.
+        /// Penalizes risking an officer on hostile work that unlocked special forces can perform.
+        /// </summary>
+        private static int GetOfficerReplacementPenalty(
+            AITurnContext context,
+            AIMissionProposal proposal
+        )
+        {
+            if (
+                proposal.Participant is not Officer
+                || proposal.TargetPlanet?.GetOwnerInstanceID() == null
+                || proposal.TargetPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
+                || !context.HasUnlockedSpecialForcesForMission(proposal.MissionTypeID)
+            )
+                return 0;
+
+            return context.Game.Config.AI.MissionPlanning.HostileOfficerReplacementPenalty;
+        }
+
+        /// <summary>
+        /// Returns the longest participant travel distance as a score penalty.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The normalized travel penalty.</returns>
         private double GetTravelPenalty(AITurnContext context, AIMissionProposal proposal)
         {
             double distanceScale = context.Game.Config.Movement.DistanceScale;
@@ -224,45 +347,11 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
-        /// Returns officer replacement penalty.
+        /// Returns the value of refreshing stale intelligence for an espionage mission.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
-        /// <returns>The calculated value.</returns>
-        private int GetOfficerReplacementPenalty(AITurnContext context, AIMissionProposal proposal)
-        {
-            if (proposal.Participant is not Officer || !IsHostileMission(proposal.MissionTypeID))
-                return 0;
-
-            bool hasSpecialForcesReplacement = context
-                .Faction.GetUnlockedTechnologies(ManufacturingType.Troop)
-                .Select(technology => technology.GetReference())
-                .OfType<SpecialForces>()
-                .Any(specialForces => specialForces.CanPerformMission(proposal.MissionTypeID));
-            return hasSpecialForcesReplacement
-                ? context.Game.Config.AI.MissionPlanning.HostileOfficerReplacementPenalty
-                : 0;
-        }
-
-        /// <summary>
-        /// Returns whether hostile mission.
-        /// </summary>
-        /// <param name="missionTypeId">The mission type identifier.</param>
-        /// <returns>True when the condition is satisfied.</returns>
-        private bool IsHostileMission(string missionTypeId)
-        {
-            return missionTypeId == MissionTypeIDs.Sabotage
-                || missionTypeId == MissionTypeIDs.Abduction
-                || missionTypeId == MissionTypeIDs.Assassination
-                || missionTypeId == MissionTypeIDs.InciteUprising;
-        }
-
-        /// <summary>
-        /// Returns intel age score.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal to evaluate.</param>
-        /// <returns>The calculated value.</returns>
+        /// <returns>The intelligence age measured in AI-turn intervals.</returns>
         private double GetIntelAgeScore(AITurnContext context, AIMissionProposal proposal)
         {
             int tickInterval = context.Game.Config.AI.TickInterval;

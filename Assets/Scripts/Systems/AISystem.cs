@@ -29,6 +29,7 @@ namespace Rebellion.Systems
         /// <param name="planetaryAssaultSystem">The planetary-assault system.</param>
         /// <param name="randomProvider">Random number provider for AI choices.</param>
         /// <param name="fogOfWarManager">Fog-of-war system used to limit AI knowledge.</param>
+        /// <param name="maintenanceSystem">Maintenance system used to project production capacity.</param>
         public AISystem(
             GameRoot game,
             MissionSystem missionManager,
@@ -37,7 +38,8 @@ namespace Rebellion.Systems
             BombardmentSystem bombardmentSystem,
             PlanetaryAssaultSystem planetaryAssaultSystem,
             IRandomNumberProvider randomProvider,
-            FogOfWarSystem fogOfWarManager
+            FogOfWarSystem fogOfWarManager,
+            MaintenanceSystem maintenanceSystem = null
         )
         {
             _game = game;
@@ -49,7 +51,8 @@ namespace Rebellion.Systems
                 manufacturingManager,
                 bombardmentSystem,
                 planetaryAssaultSystem,
-                randomProvider
+                randomProvider,
+                maintenanceSystem
             );
         }
 

@@ -8,6 +8,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -20,12 +21,19 @@ namespace Rebellion.AI.Director
     {
         // Turn Context.
         private readonly AITurnContext _context;
-        private readonly AISabotageTargetPolicy _sabotageTargets;
 
         // Cached Assessments.
         private readonly Dictionary<string, double> _planetValues = new Dictionary<string, double>(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<string, double> _farthestEnemyPlanetDistances = new Dictionary<
+            string,
+            double
+        >(StringComparer.Ordinal);
+        private double? _highestEnemyPlanetValue;
+        private double? _highestOwnedPlanetValue;
+        private int? _strongestKnownHostileFleetStrength;
+        private int? _totalFleetCombatStrength;
         private readonly Dictionary<string, int> _planetBuildingCounts = new Dictionary<
             string,
             int
@@ -36,6 +44,8 @@ namespace Rebellion.AI.Director
             new Dictionary<string, IReadOnlyList<Regiment>>(StringComparer.Ordinal);
         private readonly Dictionary<string, IReadOnlyList<Starfighter>> _planetStarfighters =
             new Dictionary<string, IReadOnlyList<Starfighter>>(StringComparer.Ordinal);
+        private readonly Dictionary<string, IReadOnlyList<ISceneNode>> _planetMissionDetectors =
+            new Dictionary<string, IReadOnlyList<ISceneNode>>(StringComparer.Ordinal);
         private readonly Dictionary<
             (string PlanetId, ManufacturingType ManufacturingType),
             int
@@ -52,6 +62,8 @@ namespace Rebellion.AI.Director
         >(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _planetRequiredAttackCombatStrengths =
             new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _systemRequiredAttackCombatStrengths =
+            new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _planetRequiredAttackRegimentCounts =
             new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _strongestHostileFleetStrengths = new Dictionary<
@@ -60,6 +72,10 @@ namespace Rebellion.AI.Director
         >(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _hostilePlanetaryStarfighterStrengths =
             new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, bool> _activeHostileMilitaryTargets = new Dictionary<
+            string,
+            bool
+        >(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _planetDefenseThreatStrengths = new Dictionary<
             string,
             int
@@ -95,9 +111,44 @@ namespace Rebellion.AI.Director
             new Dictionary<ManufacturingType, int>();
         private readonly Dictionary<ManufacturingType, double> _queuedProductionClearTicks =
             new Dictionary<ManufacturingType, double>();
+        private int? _productionFacilityMaintenance;
+        private readonly Dictionary<
+            (string PlanetId, ManufacturingType ManufacturingType),
+            int
+        > _planetQueuedProductionWork =
+            new Dictionary<(string PlanetId, ManufacturingType ManufacturingType), int>();
+        private readonly Dictionary<
+            (string PlanetId, ManufacturingType ManufacturingType),
+            double
+        > _planetQueuedProductionClearTicks =
+            new Dictionary<(string PlanetId, ManufacturingType ManufacturingType), double>();
         private readonly Dictionary<string, Planet> _knownPlanets = new Dictionary<string, Planet>(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<string, IReadOnlyList<Planet>> _knownPlanetsBySystemId =
+            new Dictionary<string, IReadOnlyList<Planet>>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _offensiveSupportLeverage = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _defensiveSupportRisks = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<
+            string,
+            IReadOnlyList<Planet>
+        > _attackCampaignPlanetsBySystemId = new Dictionary<string, IReadOnlyList<Planet>>(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, int> _enemySystemSupportLeverage = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly HashSet<string> _knownGarrisonedPlanetIds = new HashSet<string>(
+            StringComparer.Ordinal
+        );
+        private readonly IReadOnlyList<string> _opposingFactionIds;
 
         // Planet Intelligence.
         public IReadOnlyList<Planet> KnownColonizedPlanets { get; }
@@ -122,6 +173,12 @@ namespace Rebellion.AI.Director
         public int RefinedMaterialSupply { get; }
 
         public int RefinedMaterialStockpile { get; }
+
+        public int NearTermRefinedMaterialCommitment { get; }
+
+        public int PendingRawMaterialRequestCount { get; }
+
+        public int PendingRefinedMaterialRequestCount { get; }
 
         // Missions.
         public IReadOnlyList<IMissionParticipant> AvailableMissionParticipants { get; }
@@ -149,10 +206,13 @@ namespace Rebellion.AI.Director
         public AIAssessment(AITurnContext context)
         {
             _context = context;
-            _sabotageTargets = new AISabotageTargetPolicy(
-                this,
-                context?.Game?.Config?.AI?.MissionPlanning
-            );
+            _opposingFactionIds =
+                context
+                    ?.Game?.GetFactions()
+                    .Where(candidate => candidate.InstanceID != context.Faction?.InstanceID)
+                    .Select(candidate => candidate.InstanceID)
+                    .ToList()
+                ?? new List<string>();
             Faction faction = context?.Faction;
             int availableMaterials = faction?.GetTotalAvailableMaterialsRaw() ?? 0;
             MaintenanceCapacity =
@@ -162,6 +222,9 @@ namespace Rebellion.AI.Director
             RefinedMaterialSupply =
                 availableMaterials * (faction?.Settings?.RefinementMultiplier ?? 0);
             RefinedMaterialStockpile = faction?.RefinedMaterialStockpile ?? 0;
+            PendingRawMaterialRequestCount = faction?.PendingRawMaterialFacilityIDs?.Count ?? 0;
+            PendingRefinedMaterialRequestCount =
+                faction?.PendingRefinedMaterialFacilityIDs?.Count ?? 0;
             ActiveMissions = BuildActiveMissions();
             FactionViewPlanets = BuildFactionViewPlanets();
             UnexploredPlanets = FactionViewPlanets
@@ -186,7 +249,30 @@ namespace Rebellion.AI.Director
                 )
             )
                 _knownPlanets[planet.InstanceID] = planet;
+            foreach (
+                IGrouping<string, Planet> system in _knownPlanets
+                    .Values.GroupBy(GetPlanetSystemId)
+                    .Where(system => !string.IsNullOrEmpty(system.Key))
+            )
+            {
+                _knownPlanetsBySystemId[system.Key] = system
+                    .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                    .ToList();
+            }
+            foreach (Planet planet in _knownPlanets.Values)
+            {
+                if (
+                    planet
+                        .GetAllRegiments()
+                        .Any(regiment =>
+                            regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                            && regiment.Movement == null
+                        )
+                )
+                    _knownGarrisonedPlanetIds.Add(planet.InstanceID);
+            }
             OwnedPlanets = BuildOwnedPlanets();
+            NearTermRefinedMaterialCommitment = GetNearTermRefinedMaterialCommitment();
             EnemyPlanets = BuildEnemyPlanets();
             NeutralPlanets = BuildNeutralPlanets();
             AvailableMissionParticipants = BuildAvailableMissionParticipants();
@@ -291,6 +377,39 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns whether the faction snapshot contains each requested intelligence category.
+        /// </summary>
+        /// <param name="planet">Planet whose snapshot should be inspected.</param>
+        /// <param name="categories">Intelligence categories required by the caller.</param>
+        /// <returns>True when all requested categories are available.</returns>
+        public bool HasPlanetIntelligence(Planet planet, PlanetIntelligenceCategory categories)
+        {
+            if (planet == null || _context?.Faction?.Fog == null)
+                return false;
+
+            if (
+                IsOwnedPlanet(planet)
+                || GetFriendlyFleets(planet)
+                    .Any(fleet => fleet.Movement == null && fleet.HasOperationalCapitalShips())
+            )
+                return true;
+
+            return _context.Faction.Fog.PlanetToSector.TryGetValue(
+                    planet.InstanceID,
+                    out string sectorId
+                )
+                && _context.Faction.Fog.Snapshots.TryGetValue(
+                    sectorId,
+                    out PlanetSectorSnapshot sectorSnapshot
+                )
+                && sectorSnapshot.Planets.TryGetValue(
+                    planet.InstanceID,
+                    out PlanetSnapshot snapshot
+                )
+                && snapshot.RevealedCategories.HasFlag(categories);
+        }
+
+        /// <summary>
         /// Returns whether a planet is owned by the faction.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -382,7 +501,36 @@ namespace Rebellion.AI.Director
         /// <returns>The highest enemy planet value.</returns>
         public double GetHighestEnemyPlanetValue()
         {
-            return EnemyPlanets.Select(GetPlanetValue).DefaultIfEmpty().Max();
+            if (!_highestEnemyPlanetValue.HasValue)
+            {
+                _highestEnemyPlanetValue = EnemyPlanets
+                    .Select(GetPlanetValue)
+                    .DefaultIfEmpty()
+                    .Max();
+            }
+
+            return _highestEnemyPlanetValue.Value;
+        }
+
+        /// <summary>
+        /// Returns the distance from an origin to its farthest known enemy planet.
+        /// </summary>
+        /// <param name="origin">The origin planet.</param>
+        /// <returns>The farthest enemy-planet distance.</returns>
+        public double GetFarthestEnemyPlanetDistance(Planet origin)
+        {
+            if (origin == null)
+                return 0;
+
+            return GetOrAdd(
+                _farthestEnemyPlanetDistances,
+                origin.InstanceID,
+                () =>
+                    EnemyPlanets
+                        .Select(planet => origin.GetRawDistanceTo(planet))
+                        .DefaultIfEmpty()
+                        .Max()
+            );
         }
 
         /// <summary>
@@ -405,10 +553,15 @@ namespace Rebellion.AI.Director
             if (string.IsNullOrEmpty(systemId))
                 return Array.Empty<Planet>();
 
-            return EnemyPlanets
-                .Where(planet => GetPlanetSystemId(planet) == systemId)
-                .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
-                .ToList();
+            return GetOrAdd(
+                _attackCampaignPlanetsBySystemId,
+                systemId,
+                () =>
+                    EnemyPlanets
+                        .Where(planet => GetPlanetSystemId(planet) == systemId)
+                        .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                        .ToList()
+            );
         }
 
         /// <summary>
@@ -477,7 +630,15 @@ namespace Rebellion.AI.Director
         /// <returns>The highest owned planet value.</returns>
         public double GetHighestOwnedPlanetValue()
         {
-            return OwnedPlanets.Select(GetPlanetValue).DefaultIfEmpty().Max();
+            if (!_highestOwnedPlanetValue.HasValue)
+            {
+                _highestOwnedPlanetValue = OwnedPlanets
+                    .Select(GetPlanetValue)
+                    .DefaultIfEmpty()
+                    .Max();
+            }
+
+            return _highestOwnedPlanetValue.Value;
         }
 
         /// <summary>
@@ -500,6 +661,134 @@ namespace Rebellion.AI.Director
                 return 0;
 
             return planet.GetPopularSupport(_context.Faction.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns the known support leverage gained by capturing a planet.
+        /// </summary>
+        /// <param name="planet">The prospective attack target.</param>
+        /// <returns>The target and follow-on planets exposed by the resulting support shift.</returns>
+        public int GetOffensiveSupportLeverage(Planet planet)
+        {
+            if (planet == null || _context?.Faction == null)
+                return 0;
+
+            return GetOrAdd(
+                _offensiveSupportLeverage,
+                planet.InstanceID,
+                () => CalculateSupportLeverage(planet, _context.Faction.InstanceID)
+            );
+        }
+
+        /// <summary>
+        /// Returns the known sector-wide support risk created by losing an owned planet.
+        /// </summary>
+        /// <param name="planet">The owned planet being evaluated.</param>
+        /// <returns>The target and follow-on planets exposed to the opposing faction.</returns>
+        public int GetDefensiveSupportRisk(Planet planet)
+        {
+            if (planet == null || _context?.Faction == null || _context.Game == null)
+                return 0;
+
+            return GetOrAdd(
+                _defensiveSupportRisks,
+                planet.InstanceID,
+                () => CalculateSupportLeverage(planet, GetLeadingOpposingFactionId(planet))
+            );
+        }
+
+        /// <summary>
+        /// Returns the combined offensive support leverage for known enemy planets in a system.
+        /// </summary>
+        /// <param name="systemId">The system identifier.</param>
+        /// <returns>The combined support leverage.</returns>
+        public int GetEnemySystemSupportLeverage(string systemId)
+        {
+            if (string.IsNullOrEmpty(systemId))
+                return 0;
+
+            return GetOrAdd(
+                _enemySystemSupportLeverage,
+                systemId,
+                () => GetAttackCampaignPlanets(systemId).Sum(GetOffensiveSupportLeverage)
+            );
+        }
+
+        /// <summary>
+        /// Returns the opposing faction with the greatest known support on a planet.
+        /// </summary>
+        /// <param name="planet">The planet being evaluated.</param>
+        /// <returns>The leading opposing faction identifier, or null when none exists.</returns>
+        private string GetLeadingOpposingFactionId(Planet planet)
+        {
+            string leadingFactionId = null;
+            int leadingSupport = int.MinValue;
+            foreach (string factionId in _opposingFactionIds)
+            {
+                int support = planet.GetPopularSupport(factionId);
+                if (support <= leadingSupport)
+                    continue;
+
+                leadingFactionId = factionId;
+                leadingSupport = support;
+            }
+
+            return leadingFactionId;
+        }
+
+        /// <summary>
+        /// Calculates how many known planets a change of control places within one support shift
+        /// of the beneficiary's ownership threshold.
+        /// </summary>
+        /// <param name="planet">The planet whose control may change.</param>
+        /// <param name="beneficiaryFactionId">The faction receiving the support shift.</param>
+        /// <returns>The number of directly and indirectly exposed planets.</returns>
+        private int CalculateSupportLeverage(Planet planet, string beneficiaryFactionId)
+        {
+            if (
+                planet == null
+                || string.IsNullOrEmpty(beneficiaryFactionId)
+                || _context?.Game?.Config?.SupportShift == null
+            )
+                return 0;
+
+            int leverage = 0;
+            string ownerId = planet.GetOwnerInstanceID();
+            int ownerSupport = string.IsNullOrEmpty(ownerId)
+                ? 0
+                : planet.GetPopularSupport(ownerId);
+            if (
+                ownerId != beneficiaryFactionId
+                && planet.GetPopularSupport(beneficiaryFactionId) > ownerSupport
+            )
+                leverage++;
+
+            string systemId = GetPlanetSystemId(planet);
+            if (
+                !_knownPlanetsBySystemId.TryGetValue(
+                    systemId,
+                    out IReadOnlyList<Planet> systemPlanets
+                )
+            )
+                return leverage;
+
+            int threshold = _context.Game.Config.SupportShift.OwnershipTransferThreshold;
+            int shift = _context.Game.Config.SupportShift.GarrisonRemovalSupportShift;
+            foreach (Planet candidate in systemPlanets)
+            {
+                if (
+                    candidate.InstanceID == planet.InstanceID
+                    || candidate.GetOwnerInstanceID() == beneficiaryFactionId
+                    || _knownGarrisonedPlanetIds.Contains(candidate.InstanceID)
+                )
+                    continue;
+
+                int support = candidate.GetPopularSupport(beneficiaryFactionId);
+                if (support < threshold && support + shift >= threshold)
+                    leverage++;
+            }
+
+            return leverage;
         }
 
         /// <summary>
@@ -568,6 +857,77 @@ namespace Rebellion.AI.Director
                 planet.InstanceID,
                 () => planet.GetAllStarfighters().ToList()
             );
+        }
+
+        /// <summary>
+        /// Returns the known units that can attempt to detect this faction's missions at a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The detector candidates indexed for this AI turn.</returns>
+        public IReadOnlyList<ISceneNode> GetMissionDetectorCandidates(Planet planet)
+        {
+            if (planet == null)
+                return Array.Empty<ISceneNode>();
+
+            return GetOrAdd(
+                _planetMissionDetectors,
+                planet.InstanceID,
+                () => BuildMissionDetectorCandidates(planet)
+            );
+        }
+
+        /// <summary>
+        /// Builds detector candidates once from the faction's current view of a planet.
+        /// </summary>
+        /// <param name="planet">The planet whose known forces are indexed.</param>
+        /// <returns>The ordered detector candidates.</returns>
+        private IReadOnlyList<ISceneNode> BuildMissionDetectorCandidates(Planet planet)
+        {
+            List<ISceneNode> detectors = new List<ISceneNode>();
+            AddMissionDetectorCandidates(planet.GetChildren<Starfighter>(), detectors);
+            AddMissionDetectorCandidates(planet.GetChildren<Regiment>(), detectors);
+
+            bool blocksFleetDetection = planet
+                .GetChildren<Building>()
+                .Any(building =>
+                    building.IsDetectionBlocker
+                    && building.OwnerInstanceID == _context.Faction.InstanceID
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.Movement == null
+                );
+            if (blocksFleetDetection)
+                return detectors;
+
+            foreach (Fleet fleet in planet.GetChildren<Fleet>())
+            {
+                foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
+                {
+                    AddMissionDetectorCandidate(capitalShip, detectors);
+                    AddMissionDetectorCandidates(capitalShip.GetChildren<Starfighter>(), detectors);
+                    AddMissionDetectorCandidates(capitalShip.GetChildren<Regiment>(), detectors);
+                }
+            }
+
+            return detectors;
+        }
+
+        private void AddMissionDetectorCandidates<T>(
+            IEnumerable<T> candidates,
+            ICollection<ISceneNode> detectors
+        )
+            where T : ISceneNode
+        {
+            foreach (T candidate in candidates)
+                AddMissionDetectorCandidate(candidate, detectors);
+        }
+
+        private void AddMissionDetectorCandidate(
+            ISceneNode candidate,
+            ICollection<ISceneNode> detectors
+        )
+        {
+            if (Mission.IsEligibleDetectorForOwner(candidate, _context.Faction.InstanceID))
+                detectors.Add(candidate);
         }
 
         /// <summary>
@@ -711,15 +1071,7 @@ namespace Rebellion.AI.Director
                 return false;
 
             return GetFriendlyFleets(planet)
-                .Any(fleet =>
-                    fleet
-                        .GetChildren<CapitalShip>()
-                        .Any(capitalShip =>
-                            capitalShip.ManufacturingStatus
-                                is ManufacturingStatus.Complete
-                                    or ManufacturingStatus.Building
-                        )
-                );
+                .Any(fleet => fleet.GetChildren<CapitalShip>().Count > 0);
         }
 
         /// <summary>
@@ -732,7 +1084,14 @@ namespace Rebellion.AI.Director
             if (!IsPriorityDefensePlanet(planet))
                 return 0;
 
-            return GetFriendlyFleets(planet).Select(GetFleetCombatValue).DefaultIfEmpty().Max();
+            return OwnedFleets
+                .Where(fleet =>
+                    GetFleetPlanet(fleet)?.InstanceID == planet.InstanceID
+                    || fleet.Order?.OrderType == FleetOrderType.Defend
+                        && fleet.Order.TargetPlanetId == planet.InstanceID
+                        && fleet.Movement != null
+                )
+                .Sum(GetFleetCombatValue);
         }
 
         /// <summary>
@@ -747,54 +1106,70 @@ namespace Rebellion.AI.Director
 
             GameConfig.AIFleetDeploymentConfig config = _context.Game.Config.AI.FleetDeployment;
             int hostileFleetRequirement = IntegerMath.ScaleByPercent(
-                GetHeadquartersThreatStrength(planet),
+                GetStrongestKnownHostileFleetStrength(),
                 config.AttackStrengthPercentOfStrongestHostileFleet
             );
-            return Math.Max(config.MinimumDefenseStrength, hostileFleetRequirement);
+            int affordableDefense = IntegerMath.ScaleByPercent(
+                GetTotalFleetCombatStrength(),
+                config.HeadquartersDefenseCombatPercent
+            );
+            int defenseTarget = Math.Min(
+                hostileFleetRequirement,
+                Math.Max(config.MinimumDefenseStrength, affordableDefense)
+            );
+            return Math.Max(config.MinimumDefenseStrength, defenseTarget);
         }
 
         /// <summary>
-        /// Returns the strongest known threat to a headquarters planet.
+        /// Returns the strongest hostile fleet visible to the faction.
         /// </summary>
-        /// <param name="headquarters">Headquarters planet to inspect.</param>
         /// <returns>The hostile fleet strength.</returns>
-        private int GetHeadquartersThreatStrength(Planet headquarters)
+        private int GetStrongestKnownHostileFleetStrength()
         {
-            return FactionViewPlanets
-                .SelectMany(planet => GetHostileFleets(planet))
-                .Where(fleet =>
-                    (
-                        fleet.Movement == null
-                        && GetFleetPlanet(fleet)?.InstanceID == headquarters.InstanceID
-                    )
-                    || (
-                        fleet.Order?.OrderType == FleetOrderType.Attack
-                        && fleet.Order.TargetPlanetId == headquarters.InstanceID
-                    )
-                )
-                .Select(GetFleetCombatValue)
-                .DefaultIfEmpty()
-                .Max();
+            if (!_strongestKnownHostileFleetStrength.HasValue)
+            {
+                _strongestKnownHostileFleetStrength = FactionViewPlanets
+                    .SelectMany(planet => GetHostileFleets(planet))
+                    .Select(GetFleetCombatValue)
+                    .DefaultIfEmpty()
+                    .Max();
+            }
+
+            return _strongestKnownHostileFleetStrength.Value;
         }
 
         /// <summary>
-        /// Returns whether a fleet can leave without compromising headquarters defense.
+        /// Returns the faction's total fleet combat strength.
         /// </summary>
-        /// <param name="fleet">Fleet to inspect.</param>
-        /// <returns>True when the fleet can depart.</returns>
-        public bool CanFleetDepartHeadquarters(Fleet fleet)
+        /// <returns>Total fleet combat strength.</returns>
+        private int GetTotalFleetCombatStrength()
         {
-            Planet planet = GetFleetPlanet(fleet);
-            if (!IsPriorityDefensePlanet(planet))
-                return true;
+            if (!_totalFleetCombatStrength.HasValue)
+                _totalFleetCombatStrength = OwnedFleets.Sum(GetFleetCombatValue);
 
-            int remainingDefense = GetFriendlyFleets(planet)
-                .Where(localFleet => localFleet != fleet && localFleet.Movement == null)
-                .Select(GetFleetCombatValue)
-                .DefaultIfEmpty()
-                .Max();
-            int requiredDefense = GetRequiredHeadquartersDefenseStrength(planet);
-            return remainingDefense >= requiredDefense;
+            return _totalFleetCombatStrength.Value;
+        }
+
+        /// <summary>
+        /// Returns whether an owned planet has enough active shield generators to block a
+        /// planetary assault under the configured combat rules.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True when the active shield count meets the configured limit.</returns>
+        public bool HasFullShields(Planet planet)
+        {
+            if (!IsOwnedPlanet(planet) || _context?.Game?.Config == null)
+                return false;
+
+            int requiredCount = _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            return requiredCount > 0
+                && GetPlanetBuildings(planet)
+                    .Count(building =>
+                        building.GetOwnerInstanceID() == _context.Faction.InstanceID
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                        && building.IsPlanetaryShieldGenerator()
+                    ) >= requiredCount;
         }
 
         /// <summary>
@@ -857,108 +1232,33 @@ namespace Rebellion.AI.Director
             return GetOrAdd(
                 _planetRequiredAttackCombatStrengths,
                 planet.InstanceID,
-                () => GetRequiredOrbitalStrength(planet)
+                () =>
+                    Math.Max(
+                        _context.Game.Config.AI.FleetDeployment.MinimumAttackStrength,
+                        GetRequiredSystemOrbitalStrength(planet)
+                    )
             );
         }
 
         /// <summary>
-        /// Returns the orbital strength required for a system campaign.
+        /// Returns the strength required against the strongest known orbital opposition in a system.
         /// </summary>
-        /// <param name="systemId">Target system identifier.</param>
-        /// <returns>The required combat strength.</returns>
-        public int GetRequiredAttackCampaignCombatStrength(string systemId)
+        /// <param name="targetPlanet">Planet identifying the target system.</param>
+        /// <returns>The largest orbital strength requirement in the system.</returns>
+        private int GetRequiredSystemOrbitalStrength(Planet targetPlanet)
         {
-            return GetRequiredAttackCampaignCombatStrength(GetAttackCampaignPlanets(systemId));
-        }
+            string systemId = GetPlanetSystemId(targetPlanet);
+            if (
+                string.IsNullOrEmpty(systemId)
+                || !_knownPlanetsBySystemId.TryGetValue(systemId, out IReadOnlyList<Planet> planets)
+            )
+                return GetRequiredOrbitalStrength(targetPlanet);
 
-        /// <summary>
-        /// Returns the orbital strength required for a target planet's campaign.
-        /// </summary>
-        /// <param name="targetPlanet">Primary campaign target.</param>
-        /// <returns>The required combat strength.</returns>
-        public int GetRequiredAttackCampaignCombatStrength(Planet targetPlanet)
-        {
-            return GetRequiredAttackCampaignCombatStrength(GetAttackCampaignPlanets(targetPlanet));
-        }
-
-        /// <summary>
-        /// Returns the orbital strength required for a set of campaign planets.
-        /// </summary>
-        /// <param name="targetPlanets">Campaign planets to evaluate.</param>
-        /// <returns>The required combat strength.</returns>
-        private int GetRequiredAttackCampaignCombatStrength(
-            IReadOnlyCollection<Planet> targetPlanets
-        )
-        {
-            if (targetPlanets == null || targetPlanets.Count == 0 || _context?.Game?.Config == null)
-                return 0;
-
-            return SumRequirements(targetPlanets, GetRequiredOrbitalStrength);
-        }
-
-        /// <summary>
-        /// Returns the regiment count required for a target planet's campaign.
-        /// </summary>
-        /// <param name="targetPlanet">Primary campaign target.</param>
-        /// <returns>The required regiment count.</returns>
-        public int GetRequiredAttackCampaignRegimentCount(Planet targetPlanet)
-        {
-            return SumRequirements(
-                GetAttackCampaignPlanets(targetPlanet),
-                GetRequiredAttackRegimentCount
+            return GetOrAdd(
+                _systemRequiredAttackCombatStrengths,
+                systemId,
+                () => planets.Select(GetRequiredOrbitalStrength).DefaultIfEmpty().Max()
             );
-        }
-
-        /// <summary>
-        /// Returns the regiment count required for a system campaign.
-        /// </summary>
-        /// <param name="systemId">Target system identifier.</param>
-        /// <returns>The required regiment count.</returns>
-        public int GetRequiredAttackCampaignRegimentCount(string systemId)
-        {
-            return SumRequirements(
-                GetAttackCampaignPlanets(systemId),
-                GetRequiredAttackRegimentCount
-            );
-        }
-
-        /// <summary>
-        /// Returns the regiment strength required for a target planet's campaign.
-        /// </summary>
-        /// <param name="targetPlanet">Primary campaign target.</param>
-        /// <returns>The required regiment strength.</returns>
-        public int GetRequiredAttackCampaignRegimentStrength(Planet targetPlanet)
-        {
-            return SumRequirements(
-                GetAttackCampaignPlanets(targetPlanet),
-                GetRequiredAttackRegimentStrength
-            );
-        }
-
-        /// <summary>
-        /// Returns the bombardment strength required for a target planet's campaign.
-        /// </summary>
-        /// <param name="targetPlanet">Primary campaign target.</param>
-        /// <returns>The required bombardment strength.</returns>
-        public int GetRequiredAttackCampaignBombardmentStrength(Planet targetPlanet)
-        {
-            return GetAttackCampaignPlanets(targetPlanet)
-                .Select(GetRequiredBombardmentStrength)
-                .DefaultIfEmpty()
-                .Max();
-        }
-
-        /// <summary>
-        /// Returns the bombardment strength required for a system campaign.
-        /// </summary>
-        /// <param name="systemId">Target system identifier.</param>
-        /// <returns>The required bombardment strength.</returns>
-        public int GetRequiredAttackCampaignBombardmentStrength(string systemId)
-        {
-            return GetAttackCampaignPlanets(systemId)
-                .Select(GetRequiredBombardmentStrength)
-                .DefaultIfEmpty()
-                .Max();
         }
 
         /// <summary>
@@ -1120,27 +1420,78 @@ namespace Rebellion.AI.Director
             if (!IsOwnedPlanet(planet) || _context?.Game?.Config == null)
                 return 0;
 
-            int shieldCount = planet
-                .GetAllBuildings()
-                .Count(building =>
-                    building.GetOwnerInstanceID() == _context.Faction.InstanceID
-                    && building.IsPlanetaryShieldGenerator()
-                );
-            int weaponCount = planet
-                .GetAllBuildings()
-                .Count(building =>
-                    building.GetOwnerInstanceID() == _context.Faction.InstanceID
-                    && building.GetBuildingType() == BuildingType.Weapon
-                );
-            int shieldDeficit = Math.Max(
-                0,
-                _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit - shieldCount
-            );
+            int shieldCount = 0;
+            int weaponCount = 0;
+            foreach (Building building in GetPlanetBuildings(planet))
+            {
+                if (building.GetOwnerInstanceID() != _context.Faction.InstanceID)
+                    continue;
+
+                if (building.IsPlanetaryShieldGenerator())
+                    shieldCount++;
+                else if (building.GetBuildingType() == BuildingType.Weapon)
+                    weaponCount++;
+            }
+            int shieldDeficit = Math.Max(0, GetPlanetaryShieldTargetCount(planet) - shieldCount);
             int weaponDeficit = Math.Max(
                 0,
-                _context.Game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount - weaponCount
+                GetPlanetaryWeaponTargetCount(planet, weaponCount) - weaponCount
             );
             return shieldDeficit + weaponDeficit;
+        }
+
+        /// <summary>
+        /// Returns the number of shield generators warranted by a planet's strategic exposure.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>The required shield-generator count.</returns>
+        public int GetPlanetaryShieldTargetCount(Planet planet)
+        {
+            if (!IsOwnedPlanet(planet) || _context?.Game?.Config == null)
+                return 0;
+
+            int limit = _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            if (IsPriorityDefensePlanet(planet) || IsPlanetThreatened(planet))
+                return limit;
+
+            bool hasSupportRisk =
+                GetFactionPopularSupport(planet) < _context.Game.Config.AI.Garrison.SupportThreshold
+                || GetDefensiveSupportRisk(planet) > 0;
+            return hasSupportRisk || HasProductionInfrastructure(planet) ? Math.Min(1, limit) : 0;
+        }
+
+        /// <summary>
+        /// Returns the number of weapon emplacements warranted by a planet's strategic exposure.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <param name="currentCount">The current weapon-emplacement count.</param>
+        /// <returns>The required weapon-emplacement count.</returns>
+        public int GetPlanetaryWeaponTargetCount(Planet planet, int currentCount)
+        {
+            if (
+                !IsOwnedPlanet(planet)
+                || _context?.Game?.Config == null
+                || !IsPriorityDefensePlanet(planet) && !IsPlanetThreatened(planet)
+            )
+                return 0;
+
+            GameConfig.AIInfrastructureConfig config = _context.Game.Config.AI.Infrastructure;
+            return Math.Max(
+                config.PlanetaryWeaponTargetCount,
+                currentCount + config.PlanetaryDefenseSurplusBatchSize
+            );
+        }
+
+        /// <summary>
+        /// Returns whether a planet contains strategic production infrastructure.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True when the planet has at least one production facility.</returns>
+        public bool HasProductionInfrastructure(Planet planet)
+        {
+            return GetPlanetProductionFacilityCount(planet, ManufacturingType.Building) > 0
+                || GetPlanetProductionFacilityCount(planet, ManufacturingType.Ship) > 0
+                || GetPlanetProductionFacilityCount(planet, ManufacturingType.Troop) > 0;
         }
 
         /// <summary>
@@ -1155,6 +1506,19 @@ namespace Rebellion.AI.Director
             return requiredStrength > 0
                 && fleet?.HasOperationalCapitalShips() == true
                 && GetReadyFleetCombatValue(fleet) >= requiredStrength;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet can defeat known orbital defenders after its committed
+        /// reinforcements finish production and delivery.
+        /// </summary>
+        /// <param name="fleet">Attacking fleet.</param>
+        /// <param name="planet">Target planet.</param>
+        /// <returns>True when projected fleet strength is sufficient.</returns>
+        public bool CanWinProjectedOrbitalCombat(Fleet fleet, Planet planet)
+        {
+            int requiredStrength = GetRequiredOrbitalStrength(planet);
+            return requiredStrength > 0 && GetProjectedFleetCombatValue(fleet) >= requiredStrength;
         }
 
         /// <summary>
@@ -1212,7 +1576,7 @@ namespace Rebellion.AI.Director
             if (!IsAssaultBlockedByShields(planet))
                 return 0;
 
-            return BombardmentSystem.GetBombardmentShieldStrength(planet) + 1;
+            return GetBombardmentShieldResistance(planet) + 1;
         }
 
         /// <summary>
@@ -1229,6 +1593,18 @@ namespace Rebellion.AI.Director
                 planet,
                 _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
             );
+        }
+
+        /// <summary>
+        /// Returns whether a fleet cannot penetrate shields that prevent its ground assault.
+        /// </summary>
+        /// <param name="fleet">Fleet assigned to the attack.</param>
+        /// <param name="planet">Target planet.</param>
+        /// <returns>True when the fleet must wait for sabotage or choose another target.</returns>
+        public bool IsBlockedByShields(Fleet fleet, Planet planet)
+        {
+            return IsAssaultBlockedByShields(planet)
+                && GetFleetBombardmentStrength(fleet) < GetRequiredBombardmentStrength(planet);
         }
 
         /// <summary>
@@ -1255,27 +1631,6 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns the contextual priority bonus for a sabotage target.
-        /// </summary>
-        /// <param name="planet">Planet containing the target.</param>
-        /// <param name="target">Target to evaluate.</param>
-        /// <returns>The priority bonus.</returns>
-        public int GetSabotageTargetPriorityBonus(Planet planet, IManufacturable target)
-        {
-            return _sabotageTargets.GetPriorityBonus(planet, target);
-        }
-
-        /// <summary>
-        /// Returns the tactical priority tier for a sabotage target.
-        /// </summary>
-        /// <param name="target">The sabotage target to classify.</param>
-        /// <returns>A larger value for targets that must be destroyed first.</returns>
-        public static int GetSabotageTargetPriority(IManufacturable target)
-        {
-            return AISabotageTargetPolicy.GetPriority(target);
-        }
-
-        /// <summary>
         /// Returns regiment count required to attack a planet.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -1289,9 +1644,8 @@ namespace Rebellion.AI.Director
                 _planetRequiredAttackRegimentCounts,
                 planet.InstanceID,
                 () =>
-                {
-                    return GetDefendingRegimentCount(planet) + 1;
-                }
+                    GetRequiredCombatRegimentCount(planet)
+                    + GetRequiredOccupationRegimentCount(planet)
             );
         }
 
@@ -1319,6 +1673,17 @@ namespace Rebellion.AI.Director
             return CanBombardDefendingRegiments(fleet, planet, projected: true)
                 ? GetRequiredOccupationRegimentCount(planet)
                 : GetRequiredAttackRegimentCount(planet);
+        }
+
+        /// <summary>
+        /// Returns the regiment count needed to defeat the target's current ground force.
+        /// </summary>
+        /// <param name="planet">Planet being attacked.</param>
+        /// <returns>The required combat regiment count.</returns>
+        private int GetRequiredCombatRegimentCount(Planet planet)
+        {
+            int defenderCount = GetDefendingRegimentCount(planet);
+            return defenderCount == 0 ? 0 : defenderCount + 1;
         }
 
         /// <summary>
@@ -1359,7 +1724,7 @@ namespace Rebellion.AI.Director
             int bombardmentStrength = projected
                 ? GetProjectedFleetBombardmentStrength(fleet)
                 : GetFleetBombardmentStrength(fleet);
-            return bombardmentStrength > BombardmentSystem.GetBombardmentShieldStrength(planet);
+            return bombardmentStrength > GetBombardmentShieldResistance(planet);
         }
 
         /// <summary>
@@ -1389,7 +1754,7 @@ namespace Rebellion.AI.Director
             )
                 return null;
 
-            Planet targetPlanet = _context?.Game?.GetSceneNodeByInstanceID<Planet>(targetPlanetId);
+            Planet targetPlanet = GetKnownPlanet(targetPlanetId);
             return IsEnemyPlanet(targetPlanet) ? targetPlanet : null;
         }
 
@@ -1492,61 +1857,91 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns whether a fleet can weaken a planet before evaluating a ground assault.
+        /// Returns whether a fleet can immediately bombard or assault its current target.
         /// </summary>
         /// <param name="fleet">Fleet assigned to the attack.</param>
         /// <param name="targetPlanet">Planet being attacked.</param>
-        /// <returns>True when military targets remain within the fleet's bombardment capability.</returns>
-        private bool CanBombardMilitaryTargets(Fleet fleet, Planet targetPlanet)
+        /// <returns>True when the fleet can make immediate progress against the planet.</returns>
+        public bool CanAdvanceAttack(Fleet fleet, Planet targetPlanet)
+        {
+            if (CanBombardMilitaryTargets(fleet, targetPlanet))
+                return true;
+
+            if (IsAssaultBlockedByShields(targetPlanet))
+                return false;
+
+            return GetReadyFleetRegimentCount(fleet)
+                    >= GetRequiredAttackRegimentCount(fleet, targetPlanet)
+                && GetReadyFleetRegimentAttackStrength(fleet)
+                    >= GetRequiredAttackRegimentStrength(fleet, targetPlanet)
+                && GetPlanetaryAssaultSuccessPercent(fleet, targetPlanet)
+                    >= _context
+                        .Game
+                        .Config
+                        .AI
+                        .FleetDeployment
+                        .MinimumPlanetaryAssaultSuccessPercent;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet can immediately bombard military targets on a planet.
+        /// </summary>
+        /// <param name="fleet">Fleet being evaluated.</param>
+        /// <param name="targetPlanet">Prospective bombardment target.</param>
+        /// <returns>True when hostile military targets remain below the fleet's bombardment limit.</returns>
+        public bool CanBombardMilitaryTargets(Fleet fleet, Planet targetPlanet)
         {
             return fleet != null
                 && targetPlanet != null
-                && GetFleetBombardmentStrength(fleet)
-                    > BombardmentSystem.GetBombardmentShieldStrength(targetPlanet)
-                && BombardmentSystem.HasActiveMilitaryTargets(
-                    targetPlanet,
-                    targetPlanet.GetOwnerInstanceID()
-                );
+                && GetFleetBombardmentStrength(fleet) > GetBombardmentShieldResistance(targetPlanet)
+                && HasBombardmentTargets(targetPlanet);
         }
 
         /// <summary>
-        /// Returns whether projected fleet strength satisfies one attack target.
+        /// Returns planetary shield resistance on the bombardment-rating scale.
+        /// </summary>
+        /// <param name="planet">The planet whose shields are evaluated.</param>
+        /// <returns>The bombardment strength absorbed by the shields.</returns>
+        public int GetBombardmentShieldResistance(Planet planet)
+        {
+            return BombardmentSystem.GetBombardmentShieldResistance(
+                BombardmentSystem.GetBombardmentShieldStrength(planet),
+                _context.Game.Config.Combat.Bombardment
+            );
+        }
+
+        /// <summary>
+        /// Returns whether hostile military bombardment targets remain on a planet.
+        /// </summary>
+        public bool HasBombardmentTargets(Planet targetPlanet)
+        {
+            if (targetPlanet == null)
+                return false;
+
+            return GetOrAdd(
+                _activeHostileMilitaryTargets,
+                targetPlanet.InstanceID,
+                () =>
+                    BombardmentSystem.HasActiveMilitaryTargets(
+                        targetPlanet,
+                        targetPlanet.GetOwnerInstanceID()
+                    )
+            );
+        }
+
+        /// <summary>
+        /// Returns whether committed fleet strength will satisfy an attack target.
         /// </summary>
         /// <param name="fleet">Fleet to inspect.</param>
-        /// <param name="targetPlanet">Target planet.</param>
+        /// <param name="targetPlanet">The next attack target.</param>
         /// <returns>True when projected strength is sufficient.</returns>
-        public bool IsFleetProjectedReadyToAttack(Fleet fleet, Planet targetPlanet)
+        public bool WillMeetAttackRequirements(Fleet fleet, Planet targetPlanet)
         {
             int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
             int availableCombat = GetProjectedFleetCombatValue(fleet);
-            int requiredRegiments = GetProjectedRequiredAttackRegimentCount(fleet, targetPlanet);
-            int requiredRegimentStrength = GetProjectedRequiredAttackRegimentStrength(
-                fleet,
-                targetPlanet
-            );
+            int requiredRegiments = GetRequiredAttackRegimentCount(targetPlanet);
+            int requiredRegimentStrength = GetRequiredAttackRegimentStrength(targetPlanet);
             int requiredBombardment = GetRequiredBombardmentStrength(targetPlanet);
-            return fleet?.GetChildren<CapitalShip>().Any(capitalShip => capitalShip != null) == true
-                && availableCombat > 0
-                && availableCombat >= requiredCombat
-                && GetFleetLoadedRegimentCount(fleet) >= requiredRegiments
-                && GetFleetRegimentCapacity(fleet) >= requiredRegiments
-                && GetProjectedFleetRegimentAttackStrength(fleet) >= requiredRegimentStrength
-                && GetProjectedFleetBombardmentStrength(fleet) >= requiredBombardment;
-        }
-
-        /// <summary>
-        /// Returns whether projected fleet strength satisfies the target campaign.
-        /// </summary>
-        /// <param name="fleet">Fleet to inspect.</param>
-        /// <param name="targetPlanet">Primary campaign target.</param>
-        /// <returns>True when projected strength is sufficient.</returns>
-        public bool IsFleetProjectedReadyToAttackCampaign(Fleet fleet, Planet targetPlanet)
-        {
-            int requiredCombat = GetRequiredAttackCampaignCombatStrength(targetPlanet);
-            int availableCombat = GetProjectedFleetCombatValue(fleet);
-            int requiredRegiments = GetRequiredAttackCampaignRegimentCount(targetPlanet);
-            int requiredRegimentStrength = GetRequiredAttackCampaignRegimentStrength(targetPlanet);
-            int requiredBombardment = GetRequiredAttackCampaignBombardmentStrength(targetPlanet);
             return fleet?.GetChildren<CapitalShip>().Any(capitalShip => capitalShip != null) == true
                 && availableCombat > 0
                 && availableCombat >= requiredCombat
@@ -1562,7 +1957,7 @@ namespace Rebellion.AI.Director
         /// <param name="fleet">The fleet to inspect.</param>
         /// <param name="targetPlanet">The attack target.</param>
         /// <returns>The satisfied readiness gate count.</returns>
-        public int GetFleetAttackReadinessGateCount(Fleet fleet, Planet targetPlanet)
+        public int CountCurrentAttackRequirementsMet(Fleet fleet, Planet targetPlanet)
         {
             int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
             int requiredRegiments = GetRequiredAttackRegimentCount(fleet, targetPlanet);
@@ -1593,17 +1988,17 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns the number of campaign readiness requirements a fleet satisfies.
+        /// Returns the number of projected attack-readiness requirements a fleet satisfies.
         /// </summary>
         /// <param name="fleet">Fleet to inspect.</param>
-        /// <param name="targetPlanet">Primary campaign target.</param>
+        /// <param name="targetPlanet">The next attack target.</param>
         /// <returns>The satisfied requirement count.</returns>
-        public int GetFleetAttackCampaignReadinessGateCount(Fleet fleet, Planet targetPlanet)
+        public int CountTargetAttackRequirementsMet(Fleet fleet, Planet targetPlanet)
         {
-            int requiredCombat = GetRequiredAttackCampaignCombatStrength(targetPlanet);
-            int requiredRegiments = GetRequiredAttackCampaignRegimentCount(targetPlanet);
-            int requiredRegimentStrength = GetRequiredAttackCampaignRegimentStrength(targetPlanet);
-            int requiredBombardment = GetRequiredAttackCampaignBombardmentStrength(targetPlanet);
+            int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredRegiments = GetRequiredAttackRegimentCount(targetPlanet);
+            int requiredRegimentStrength = GetRequiredAttackRegimentStrength(targetPlanet);
+            int requiredBombardment = GetRequiredBombardmentStrength(targetPlanet);
             int gateCount = 0;
 
             if (fleet?.HasOperationalCapitalShips() == true)
@@ -1911,6 +2306,28 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns maintenance committed to complete and constructing production facilities.
+        /// </summary>
+        /// <returns>The committed production-facility maintenance.</returns>
+        public int GetProductionFacilityMaintenance()
+        {
+            if (_productionFacilityMaintenance.HasValue)
+                return _productionFacilityMaintenance.Value;
+
+            _productionFacilityMaintenance = OwnedPlanets
+                .SelectMany(GetPlanetBuildings)
+                .Where(building =>
+                    building.GetOwnerInstanceID() == _context.Faction.InstanceID
+                    && building.GetBuildingType()
+                        is BuildingType.ConstructionFacility
+                            or BuildingType.Shipyard
+                            or BuildingType.TrainingFacility
+                )
+                .Sum(building => building.MaintenanceCost);
+            return _productionFacilityMaintenance.Value;
+        }
+
+        /// <summary>
         /// Returns idle production throughput for a manufacturing type.
         /// </summary>
         /// <param name="type">Manufacturing type to inspect.</param>
@@ -1948,6 +2365,47 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns refined materials queued facilities can consume during the planning horizon.
+        /// </summary>
+        /// <returns>The near-term refined-material commitment.</returns>
+        private int GetNearTermRefinedMaterialCommitment()
+        {
+            if (_context?.Game?.Config == null)
+                return 0;
+
+            long commitment = 0;
+            int horizonTicks = Math.Max(
+                0,
+                _context.Game.Config.AI.Selection.RefinedMaterialCommitmentHorizonTicks
+            );
+            foreach (Planet planet in OwnedPlanets)
+            {
+                foreach (
+                    KeyValuePair<
+                        ManufacturingType,
+                        List<IManufacturable>
+                    > entry in planet.GetManufacturingQueue()
+                )
+                {
+                    long queuedWork = entry.Value.Sum(item =>
+                        (long)
+                            Math.Max(
+                                0,
+                                item.GetConstructionCost() - item.GetManufacturingProgress()
+                            )
+                    );
+                    long horizonCapacity = (long)
+                        Math.Ceiling(GetPlanetProductionRate(planet, entry.Key) * horizonTicks);
+                    commitment += Math.Min(queuedWork, Math.Max(0, horizonCapacity));
+                    if (commitment >= int.MaxValue)
+                        return int.MaxValue;
+                }
+            }
+
+            return (int)commitment;
+        }
+
+        /// <summary>
         /// Returns estimated queue clear time for a manufacturing type.
         /// </summary>
         /// <param name="type">Manufacturing type to inspect.</param>
@@ -1971,6 +2429,37 @@ namespace Rebellion.AI.Director
                         return double.PositiveInfinity;
 
                     return work / throughput;
+                }
+            );
+        }
+
+        /// <summary>
+        /// Returns estimated queue clear time for one planet and manufacturing type.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="type">The manufacturing category.</param>
+        /// <returns>The queued production clear ticks.</returns>
+        public double GetProductionBacklogTicks(Planet planet, ManufacturingType type)
+        {
+            if (planet == null || type == ManufacturingType.None)
+                return 0;
+
+            (string PlanetId, ManufacturingType ManufacturingType) key = (planet.InstanceID, type);
+            return GetOrAdd(
+                _planetQueuedProductionClearTicks,
+                key,
+                () =>
+                {
+                    int work = GetOrAdd(
+                        _planetQueuedProductionWork,
+                        key,
+                        () => GetQueuedProductionWork(planet, type)
+                    );
+                    if (work <= 0)
+                        return 0;
+
+                    double throughput = GetPlanetProductionRate(planet, type);
+                    return throughput <= 0 ? double.PositiveInfinity : work / throughput;
                 }
             );
         }
@@ -2163,21 +2652,6 @@ namespace Rebellion.AI.Director
             return manufacturingQueue.Sum(item =>
                 Math.Max(0, item.GetConstructionCost() - item.ManufacturingProgress)
             );
-        }
-
-        /// <summary>
-        /// Sums nonnegative requirements across target planets.
-        /// </summary>
-        /// <param name="planets">Planets to evaluate.</param>
-        /// <param name="getRequirement">Requirement selector.</param>
-        /// <returns>The bounded requirement total.</returns>
-        private static int SumRequirements(
-            IEnumerable<Planet> planets,
-            Func<Planet, int> getRequirement
-        )
-        {
-            long total = planets?.Sum(planet => (long)getRequirement(planet)) ?? 0;
-            return total > int.MaxValue ? int.MaxValue : (int)total;
         }
 
         /// <summary>

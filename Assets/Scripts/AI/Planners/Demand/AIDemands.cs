@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 
 namespace Rebellion.AI.Planners.Demand
@@ -20,6 +21,8 @@ namespace Rebellion.AI.Planners.Demand
         /// <param name="demands">The demand collection to update.</param>
         internal override void AddDemands(AITurnContext context, ICollection<AIDemand> demands)
         {
+            int plannedMines = context.Faction.GetTotalRawMinedResources();
+            int plannedRefineries = context.Faction.GetTotalRawRefinementCapacity();
             foreach (
                 Planet planet in context
                     .Assessment.OwnedPlanets.Where(planet =>
@@ -29,10 +32,11 @@ namespace Rebellion.AI.Planners.Demand
                     .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
-                BuildingType buildingType =
-                    planet.GetUnminedResourceNodeCount() > 0
-                        ? BuildingType.Mine
-                        : BuildingType.Refinery;
+                BuildingType buildingType = SelectInitialColonyBuildingType(
+                    planet,
+                    plannedMines,
+                    plannedRefineries
+                );
                 demands.Add(
                     new AIDemand(
                         AIDemand.CreateId(
@@ -48,7 +52,30 @@ namespace Rebellion.AI.Planners.Demand
                         context.Game.Config.AI.Infrastructure.EconomySevereDemandPercent
                     )
                 );
+
+                if (buildingType == BuildingType.Mine)
+                    plannedMines++;
+                else
+                    plannedRefineries++;
             }
+        }
+
+        /// <summary>
+        /// Selects a colony's founding facility without worsening the faction's resource balance.
+        /// </summary>
+        /// <param name="planet">Planet receiving its first economic facility.</param>
+        /// <param name="plannedMines">Current and queued mine output.</param>
+        /// <param name="plannedRefineries">Current and queued refinery capacity.</param>
+        /// <returns>The preferred founding facility type.</returns>
+        private static BuildingType SelectInitialColonyBuildingType(
+            Planet planet,
+            int plannedMines,
+            int plannedRefineries
+        )
+        {
+            return planet.GetUnminedResourceNodeCount() > 0 && plannedMines <= plannedRefineries
+                ? BuildingType.Mine
+                : BuildingType.Refinery;
         }
 
         /// <summary>
@@ -87,19 +114,48 @@ namespace Rebellion.AI.Planners.Demand
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             List<SpecialForces> existingUnits =
                 context.Faction.GetOwnedUnitsByType<SpecialForces>();
+            Dictionary<string, int> decoySupplyByRole = new Dictionary<string, int>(
+                StringComparer.Ordinal
+            );
+            Dictionary<string, int> activeOfficerMissionsByType =
+                GetActiveHostileOfficerMissionCounts(context);
+            foreach (SpecialForces unit in existingUnits)
+            {
+                if (
+                    context.Faction.IsAvailableMissionParticipant(unit)
+                    || unit.ManufacturingStatus != ManufacturingStatus.Complete
+                    || IsAssignedAsDecoy(unit)
+                )
+                {
+                    IncrementCount(decoySupplyByRole, GetRoleId(unit));
+                }
+            }
 
             foreach (
-                SpecialForces template in context
+                IGrouping<string, SpecialForces> role in context
                     .Faction.GetUnlockedTechnologies(ManufacturingType.Troop)
                     .Select(technology => technology.GetReference())
                     .OfType<SpecialForces>()
-                    .OrderBy(template => template.GetTypeID(), StringComparer.Ordinal)
+                    .Where(template => template.AllowedMissionTypeIDs.Count > 0)
+                    .GroupBy(GetRoleId, StringComparer.Ordinal)
+                    .OrderBy(group => group.Key, StringComparer.Ordinal)
             )
             {
-                int currentCount = existingUnits.Count(unit =>
-                    unit.GetTypeID() == template.GetTypeID()
+                SpecialForces template = role.OrderBy(candidate => candidate.ConstructionCost)
+                    .ThenBy(candidate => candidate.MaintenanceCost)
+                    .ThenBy(candidate => candidate.GetTypeID(), StringComparer.Ordinal)
+                    .First();
+                decoySupplyByRole.TryGetValue(role.Key, out int decoySupply);
+                int activeMissionDemand = template.AllowedMissionTypeIDs.Sum(missionTypeId =>
+                    activeOfficerMissionsByType.TryGetValue(missionTypeId, out int count)
+                        ? count
+                        : 0
                 );
-                int deficit = config.SpecialForcesTargetCountPerType - currentCount;
+                int desiredSupply = GetDesiredSupply(
+                    activeMissionDemand,
+                    config.SpecialForcesMissionCoveragePercent
+                );
+                int deficit = desiredSupply - decoySupply;
                 if (deficit <= 0)
                     continue;
 
@@ -119,15 +175,89 @@ namespace Rebellion.AI.Planners.Demand
                         BuildingType.None,
                         destination,
                         deficit,
-                        GetPressure(
-                            deficit,
-                            config.SpecialForcesTargetCountPerType,
-                            config.SpecialForcesDemandPercent
-                        ),
+                        GetPressure(deficit, desiredSupply, config.SpecialForcesDemandPercent),
                         template.GetTypeID()
                     )
                 );
             }
+        }
+
+        /// <summary>
+        /// Calculates decoy supply from current hostile officer-mission workload.
+        /// </summary>
+        /// <param name="activeMissionCount">The active officer-led hostile mission count.</param>
+        /// <param name="coveragePercent">The portion of that workload to cover with decoys.</param>
+        /// <returns>The required decoy supply.</returns>
+        private static int GetDesiredSupply(int activeMissionCount, int coveragePercent)
+        {
+            int boundedCoveragePercent = Math.Max(0, Math.Min(100, coveragePercent));
+            return (activeMissionCount * boundedCoveragePercent + 99) / 100;
+        }
+
+        /// <summary>
+        /// Returns whether a special-forces unit is currently assigned as a mission decoy.
+        /// </summary>
+        /// <param name="unit">The special-forces unit to inspect.</param>
+        /// <returns>True when the unit belongs to a mission's decoy team.</returns>
+        private static bool IsAssignedAsDecoy(SpecialForces unit)
+        {
+            Mission mission = unit?.GetParentOfType<Mission>();
+            return mission?.GetDecoyParticipants().Contains(unit) == true;
+        }
+
+        /// <summary>
+        /// Counts active officer-led missions in enemy territory by mission type.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>Active hostile officer-mission counts keyed by mission type.</returns>
+        private static Dictionary<string, int> GetActiveHostileOfficerMissionCounts(
+            AITurnContext context
+        )
+        {
+            Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (Mission mission in context.Assessment.ActiveMissions)
+            {
+                Planet target = mission.GetParentOfType<Planet>();
+                if (
+                    target == null
+                    || !context.Assessment.IsEnemyPlanet(target)
+                    || !mission.GetMainParticipants().OfType<Officer>().Any()
+                )
+                    continue;
+
+                string missionTypeId = mission.ConfigKey;
+                counts.TryGetValue(missionTypeId, out int count);
+                counts[missionTypeId] = count + 1;
+            }
+
+            return counts;
+        }
+
+        /// <summary>
+        /// Increments the count stored for a special-forces role.
+        /// </summary>
+        /// <param name="counts">The role counts to update.</param>
+        /// <param name="roleId">The role identifier to increment.</param>
+        private static void IncrementCount(IDictionary<string, int> counts, string roleId)
+        {
+            counts.TryGetValue(roleId, out int count);
+            counts[roleId] = count + 1;
+        }
+
+        /// <summary>
+        /// Returns the stable role represented by a special-forces unit's mission capabilities.
+        /// </summary>
+        /// <param name="unit">The special-forces unit or template to inspect.</param>
+        /// <returns>The ordered mission-capability identifier.</returns>
+        private static string GetRoleId(SpecialForces unit)
+        {
+            return string.Join(
+                "|",
+                unit.AllowedMissionTypeIDs.OrderBy(
+                    missionTypeId => missionTypeId,
+                    StringComparer.Ordinal
+                )
+            );
         }
 
         /// <summary>

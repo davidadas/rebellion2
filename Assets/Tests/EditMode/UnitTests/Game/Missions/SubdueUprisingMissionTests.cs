@@ -104,6 +104,37 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void GetAbortReason_TargetCapturedBeforeExecution_ReturnsFailure()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            empirePlanet.BeginUprising();
+
+            Mission mission = CreateSubdueUprisingMission(
+                "empire",
+                empirePlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empirePlanet);
+            mission.Initiate(0);
+
+            empirePlanet.OwnerInstanceID = "rebels";
+
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
+                "Mission should be canceled when its target is captured before execution"
+            );
+        }
+
+        [Test]
         public void UpdateMission_SuccessfulRollWithInsufficientGarrison_LeavesUprisingAndFails()
         {
             (
