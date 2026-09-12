@@ -185,6 +185,8 @@ namespace Rebellion.Game
 
             public int MinimumDefenseStrength { get; set; } = 1000;
 
+            public int HeadquartersDefenseCombatPercent { get; set; } = 35;
+
             public int FleetDefenseScore { get; set; } = 1000;
 
             public int MinimumPlanetaryAssaultRegimentCount { get; set; } = 1;

@@ -32,6 +32,8 @@ namespace Rebellion.AI.Director
         >(StringComparer.Ordinal);
         private double? _highestEnemyPlanetValue;
         private double? _highestOwnedPlanetValue;
+        private int? _strongestKnownHostileFleetStrength;
+        private int? _totalFleetCombatStrength;
         private readonly Dictionary<string, int> _planetBuildingCounts = new Dictionary<
             string,
             int
@@ -1082,7 +1084,13 @@ namespace Rebellion.AI.Director
             if (!IsPriorityDefensePlanet(planet))
                 return 0;
 
-            return GetFriendlyFleets(planet).Select(GetFleetCombatValue).DefaultIfEmpty().Max();
+            return OwnedFleets
+                .Where(fleet =>
+                    GetFleetPlanet(fleet)?.InstanceID == planet.InstanceID
+                    || fleet.Order?.OrderType == FleetOrderType.Defend
+                        && fleet.Order.TargetPlanetId == planet.InstanceID
+                )
+                .Sum(GetFleetCombatValue);
         }
 
         /// <summary>
@@ -1097,34 +1105,48 @@ namespace Rebellion.AI.Director
 
             GameConfig.AIFleetDeploymentConfig config = _context.Game.Config.AI.FleetDeployment;
             int hostileFleetRequirement = IntegerMath.ScaleByPercent(
-                GetHeadquartersThreatStrength(planet),
+                GetStrongestKnownHostileFleetStrength(),
                 config.AttackStrengthPercentOfStrongestHostileFleet
             );
-            return Math.Max(config.MinimumDefenseStrength, hostileFleetRequirement);
+            int affordableDefense = IntegerMath.ScaleByPercent(
+                GetTotalFleetCombatStrength(),
+                config.HeadquartersDefenseCombatPercent
+            );
+            int defenseTarget = Math.Min(
+                hostileFleetRequirement,
+                Math.Max(config.MinimumDefenseStrength, affordableDefense)
+            );
+            return Math.Max(config.MinimumDefenseStrength, defenseTarget);
         }
 
         /// <summary>
-        /// Returns the strongest known threat to a headquarters planet.
+        /// Returns the strongest hostile fleet visible to the faction.
         /// </summary>
-        /// <param name="headquarters">Headquarters planet to inspect.</param>
         /// <returns>The hostile fleet strength.</returns>
-        private int GetHeadquartersThreatStrength(Planet headquarters)
+        private int GetStrongestKnownHostileFleetStrength()
         {
-            return FactionViewPlanets
-                .SelectMany(planet => GetHostileFleets(planet))
-                .Where(fleet =>
-                    (
-                        fleet.Movement == null
-                        && GetFleetPlanet(fleet)?.InstanceID == headquarters.InstanceID
-                    )
-                    || (
-                        fleet.Order?.OrderType == FleetOrderType.Attack
-                        && fleet.Order.TargetPlanetId == headquarters.InstanceID
-                    )
-                )
-                .Select(GetFleetCombatValue)
-                .DefaultIfEmpty()
-                .Max();
+            if (!_strongestKnownHostileFleetStrength.HasValue)
+            {
+                _strongestKnownHostileFleetStrength = FactionViewPlanets
+                    .SelectMany(planet => GetHostileFleets(planet))
+                    .Select(GetFleetCombatValue)
+                    .DefaultIfEmpty()
+                    .Max();
+            }
+
+            return _strongestKnownHostileFleetStrength.Value;
+        }
+
+        /// <summary>
+        /// Returns the faction's total fleet combat strength.
+        /// </summary>
+        /// <returns>Total fleet combat strength.</returns>
+        private int GetTotalFleetCombatStrength()
+        {
+            if (!_totalFleetCombatStrength.HasValue)
+                _totalFleetCombatStrength = OwnedFleets.Sum(GetFleetCombatValue);
+
+            return _totalFleetCombatStrength.Value;
         }
 
         /// <summary>

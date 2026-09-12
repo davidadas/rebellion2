@@ -51,10 +51,7 @@ namespace Rebellion.AI.Planners
             int committedDefense = context.Assessment.GetCommittedHeadquartersDefenseStrength(
                 headquarters
             );
-            if (
-                committedDefense >= requiredDefense
-                || HasHeadquartersDefenseOrder(context, headquarters)
-            )
+            if (committedDefense >= requiredDefense)
                 return null;
 
             Fleet fleet = FindHeadquartersDefenseFleet(context, headquarters, requiredDefense);
@@ -193,20 +190,6 @@ namespace Rebellion.AI.Planners
                 && fleet.Movement == null
                 && !fleet.IsInCombat
                 && fleet.HasOperationalCapitalShips();
-        }
-
-        /// <summary>
-        /// Returns whether a fleet is already ordered to defend headquarters.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="headquarters">The headquarters planet.</param>
-        /// <returns>True when a matching defense order exists.</returns>
-        private static bool HasHeadquartersDefenseOrder(AITurnContext context, Planet headquarters)
-        {
-            return context.Assessment.OwnedFleets.Any(fleet =>
-                fleet.Order?.OrderType == FleetOrderType.Defend
-                && fleet.Order.TargetPlanetId == headquarters.InstanceID
-            );
         }
 
         /// <summary>

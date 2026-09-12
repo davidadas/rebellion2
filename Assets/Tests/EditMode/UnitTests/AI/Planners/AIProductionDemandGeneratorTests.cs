@@ -2403,6 +2403,17 @@ namespace Rebellion.Tests.AI.Planners
             );
             game.AttachNode(fleet, fleetPlanet);
             game.AttachNode(ship, fleet);
+            Fleet mobileFleet = EntityFactory.CreateFleet("mobile-fleet", empire.InstanceID);
+            mobileFleet.RoleType = FleetRoleType.Battle;
+            game.AttachNode(mobileFleet, fleetPlanet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "mobile-ship",
+                    empire.InstanceID,
+                    combatStrength: 2000
+                ),
+                mobileFleet
+            );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             AIDemand demand = new AIProductionDemandGenerator()
@@ -2411,7 +2422,7 @@ namespace Rebellion.Tests.AI.Planners
                     item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(1500, demand.QuantityNeeded);
+            Assert.AreEqual(50, demand.QuantityNeeded);
         }
 
         [Test]

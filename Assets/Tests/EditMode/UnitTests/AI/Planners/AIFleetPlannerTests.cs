@@ -1746,6 +1746,56 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithUnderstrengthHeadquartersOrder_AddsAnotherDefenseFleet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            Fleet assignedFleet = AddBattleFleet(
+                game,
+                headquarters,
+                empire.InstanceID,
+                "assigned-fleet",
+                combatStrength: 400
+            );
+            assignedFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = headquarters.InstanceID,
+            };
+            Planet reservePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "reserve",
+                empire.InstanceID
+            );
+            Fleet reserveFleet = AddBattleFleet(
+                game,
+                reservePlanet,
+                empire.InstanceID,
+                "reserve-fleet",
+                combatStrength: 600
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIFleetDefenseProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetDefenseProposal>()
+                .Single(candidate => candidate.Fleet == reserveFleet);
+
+            Assert.AreSame(headquarters, proposal.TargetPlanet);
+        }
+
+        [Test]
         public void Plan_WithThreatenedOwnedPlanet_AddsNearestSufficientDefenseProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

@@ -441,7 +441,7 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
-        public void GetRequiredHeadquartersDefenseStrength_WithUncommittedRemoteHostileFleet_UsesMinimum()
+        public void GetRequiredHeadquartersDefenseStrength_WithKnownHostileFleet_UsesAffordableShare()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
@@ -455,6 +455,16 @@ namespace Rebellion.Tests.AI.Director
             );
             headquarters.IsHeadquarters = true;
             empire.HQInstanceID = headquarters.InstanceID;
+            Fleet friendlyFleet = EntityFactory.CreateFleet("friendly", empire.InstanceID);
+            game.AttachNode(friendlyFleet, headquarters);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "friendly-ship",
+                    empire.InstanceID,
+                    combatStrength: 4000
+                ),
+                friendlyFleet
+            );
             Planet enemyPlanet = AITestSceneBuilder.AddPlanet(
                 game,
                 system,
@@ -475,7 +485,57 @@ namespace Rebellion.Tests.AI.Director
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.AreEqual(1000, assessment.GetRequiredHeadquartersDefenseStrength(headquarters));
+            Assert.AreEqual(1400, assessment.GetRequiredHeadquartersDefenseStrength(headquarters));
+        }
+
+        [Test]
+        public void GetCommittedHeadquartersDefenseStrength_SumsLocalAndInboundFleets()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "staging",
+                empire.InstanceID
+            );
+            Fleet localFleet = EntityFactory.CreateFleet("local", empire.InstanceID);
+            game.AttachNode(localFleet, headquarters);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "local-ship",
+                    empire.InstanceID,
+                    combatStrength: 700
+                ),
+                localFleet
+            );
+            Fleet inboundFleet = EntityFactory.CreateFleet("inbound", empire.InstanceID);
+            inboundFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                TargetPlanetId = headquarters.InstanceID,
+            };
+            game.AttachNode(inboundFleet, staging);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "inbound-ship",
+                    empire.InstanceID,
+                    combatStrength: 600
+                ),
+                inboundFleet
+            );
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(1300, assessment.GetCommittedHeadquartersDefenseStrength(headquarters));
         }
 
         [Test]
@@ -546,7 +606,7 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
-        public void CanFleetDepartHeadquarters_WithMultipleStrongFleets_ReservesOneStableDefender()
+        public void CanFleetDepartHeadquarters_WhenEitherFleetLeavesEnoughDefense_ReturnsTrue()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
@@ -582,7 +642,7 @@ namespace Rebellion.Tests.AI.Director
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
             AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, empire).StrategicPlan;
-            Assert.IsFalse(plan.CanFleetDepart(strongest));
+            Assert.IsTrue(plan.CanFleetDepart(strongest));
             Assert.IsTrue(plan.CanFleetDepart(other));
         }
 

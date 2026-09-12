@@ -83,7 +83,7 @@ namespace Rebellion.AI.Director
                 return true;
 
             AIPlanetDefenseCommitment commitment = GetDefenseCommitment(planet);
-            if (commitment.HoldAllLocalFleets || commitment.ReservedFleetId == fleet?.InstanceID)
+            if (commitment.HoldAllLocalFleets)
                 return false;
 
             if (commitment.RequiredStrength <= 0)
@@ -92,9 +92,7 @@ namespace Rebellion.AI.Director
             int remainingStrength = _context
                 .Assessment.GetFriendlyFleets(planet)
                 .Where(candidate => candidate != fleet && candidate.Movement == null)
-                .Select(_context.Assessment.GetFleetCombatValue)
-                .DefaultIfEmpty()
-                .Max();
+                .Sum(_context.Assessment.GetFleetCombatValue);
             return remainingStrength >= commitment.RequiredStrength;
         }
 
@@ -120,83 +118,25 @@ namespace Rebellion.AI.Director
             int requiredStrength = _context.Assessment.GetRequiredHeadquartersDefenseStrength(
                 planet
             );
-            string reservedFleetId =
-                requiredStrength > 0 ? ChooseReservedFleetId(planet) : string.Empty;
-            commitment = new AIPlanetDefenseCommitment(
-                holdAllLocalFleets,
-                requiredStrength,
-                reservedFleetId
-            );
+            commitment = new AIPlanetDefenseCommitment(holdAllLocalFleets, requiredStrength);
             _defenseByPlanetId[planet.InstanceID] = commitment;
             return commitment;
-        }
-
-        /// <summary>
-        /// Chooses one stable local fleet to satisfy the planet's defense commitment.
-        /// </summary>
-        /// <param name="planet">The defended planet.</param>
-        /// <returns>The reserved fleet identifier, or an empty string.</returns>
-        private string ChooseReservedFleetId(Planet planet)
-        {
-            Fleet reservedFleet = null;
-            bool reservedHasDefenseOrder = false;
-            int reservedStrength = int.MinValue;
-            foreach (Fleet candidate in _context.Assessment.GetFriendlyFleets(planet))
-            {
-                if (
-                    candidate.Movement != null
-                    || candidate.IsInCombat
-                    || !candidate.HasOperationalCapitalShips()
-                )
-                    continue;
-
-                bool hasDefenseOrder =
-                    candidate.Order?.OrderType == FleetOrderType.Defend
-                    && candidate.Order.TargetPlanetId == planet.InstanceID;
-                int strength = _context.Assessment.GetFleetCombatValue(candidate);
-                if (
-                    reservedFleet != null
-                    && (!hasDefenseOrder || reservedHasDefenseOrder)
-                    && (hasDefenseOrder != reservedHasDefenseOrder || strength < reservedStrength)
-                )
-                    continue;
-                if (
-                    reservedFleet != null
-                    && hasDefenseOrder == reservedHasDefenseOrder
-                    && strength == reservedStrength
-                    && string.CompareOrdinal(candidate.InstanceID, reservedFleet.InstanceID) >= 0
-                )
-                    continue;
-
-                reservedFleet = candidate;
-                reservedHasDefenseOrder = hasDefenseOrder;
-                reservedStrength = strength;
-            }
-
-            return reservedFleet?.InstanceID ?? string.Empty;
         }
 
         private readonly struct AIPlanetDefenseCommitment
         {
             internal static readonly AIPlanetDefenseCommitment None = new AIPlanetDefenseCommitment(
                 false,
-                0,
-                string.Empty
+                0
             );
 
             internal bool HoldAllLocalFleets { get; }
             internal int RequiredStrength { get; }
-            internal string ReservedFleetId { get; }
 
-            internal AIPlanetDefenseCommitment(
-                bool holdAllLocalFleets,
-                int requiredStrength,
-                string reservedFleetId
-            )
+            internal AIPlanetDefenseCommitment(bool holdAllLocalFleets, int requiredStrength)
             {
                 HoldAllLocalFleets = holdAllLocalFleets;
                 RequiredStrength = requiredStrength;
-                ReservedFleetId = reservedFleetId;
             }
         }
     }
