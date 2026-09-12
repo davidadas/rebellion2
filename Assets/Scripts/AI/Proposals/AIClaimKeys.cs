@@ -185,6 +185,15 @@ namespace Rebellion.AI.Proposals
             $"production:building-destination:{planetId}";
 
         /// <summary>
+        /// Creates a claim for changing one facility allocation at a planet.
+        /// </summary>
+        /// <param name="planetId">The planet instance ID.</param>
+        /// <param name="buildingType">The production-facility type.</param>
+        /// <returns>The facility-allocation claim.</returns>
+        internal static string FacilityAllocation(string planetId, BuildingType buildingType) =>
+            $"facility-allocation:{planetId}:{buildingType}";
+
+        /// <summary>
         /// Creates a claim for replacing a building.
         /// </summary>
         /// <param name="buildingId">The replaced building instance ID.</param>

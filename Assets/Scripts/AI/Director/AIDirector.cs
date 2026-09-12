@@ -57,7 +57,6 @@ namespace Rebellion.AI.Director
             _turnPhases = new List<IAITurnPhase>
             {
                 new AISpecialForcesIntentPhase(),
-                new AIFacilityCleanupPhase(),
                 new AIPlanningPhase(),
                 new AIScoringPhase(),
                 new AISelectionPhase(),

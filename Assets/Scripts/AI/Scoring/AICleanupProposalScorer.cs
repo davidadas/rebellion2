@@ -4,9 +4,9 @@ using Rebellion.AI.Proposals;
 namespace Rebellion.AI.Scoring
 {
     /// <summary>
-    /// Scores mission-abort proposals selected through mandatory proposal priority.
+    /// Scores mandatory cleanup proposals.
     /// </summary>
-    public sealed class AIAbortMissionProposalScorer : IAIProposalScorer
+    public sealed class AICleanupProposalScorer : IAIProposalScorer
     {
         /// <summary>
         /// Returns whether this scorer can score the proposal.
@@ -15,11 +15,11 @@ namespace Rebellion.AI.Scoring
         /// <returns>True when the proposal aborts a mission.</returns>
         public bool CanScore(AIProposal proposal)
         {
-            return proposal is AIAbortMissionProposal;
+            return proposal is AIAbortMissionProposal or AIFacilityRemovalProposal;
         }
 
         /// <summary>
-        /// Returns the neutral score for a mandatory mission-abort proposal.
+        /// Returns the neutral score for a mandatory cleanup proposal.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to score.</param>

@@ -115,9 +115,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="candidate">The proposal being compared.</param>
         /// <param name="other">The proposal currently considered lowest priority.</param>
-        /// <returns>
-        /// True when the candidate has a lower score, or loses the deterministic sort-key tie.
-        /// </returns>
+        /// <returns>True when the candidate has a lower score, or loses the deterministic sort-key tie.</returns>
         private static bool HasLowerRetentionPriority(
             AIMissionProposal candidate,
             AIMissionProposal other

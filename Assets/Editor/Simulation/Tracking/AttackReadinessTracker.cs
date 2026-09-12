@@ -13,9 +13,7 @@ public static partial class HeadlessSimulationRunner
 {
     private sealed class AttackReadinessTracker
     {
-        // Readiness blockers persist across construction and travel, making every 25th AI turn a
-        // representative sample without polling all planets and fleets on every turn.
-        private const int _aiTurnSampleInterval = 25;
+        private const int _readinessSampleIntervalInAITurns = 25;
         private readonly Dictionary<string, AttackReadinessFactionCounters> _counters = new(
             StringComparer.Ordinal
         );
@@ -24,12 +22,18 @@ public static partial class HeadlessSimulationRunner
         /// Records failed readiness gates for attack fleets waiting to launch.
         /// </summary>
         /// <param name="game">The game state to inspect.</param>
+        /// <remarks>
+        /// Readiness blockers persist across construction and travel, so sampling every 25th AI
+        /// turn captures their duration without scanning every planet and fleet on every turn.
+        /// </remarks>
         public void RecordTick(GameRoot game)
         {
             if (
                 game?.Config?.AI == null
                 || game.Config.AI.TickInterval <= 0
-                || game.CurrentTick % (game.Config.AI.TickInterval * _aiTurnSampleInterval) != 0
+                || game.CurrentTick
+                    % (game.Config.AI.TickInterval * _readinessSampleIntervalInAITurns)
+                    != 0
             )
                 return;
 

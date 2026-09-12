@@ -161,10 +161,28 @@ namespace Rebellion.AI.Proposals
             if (ProducerPlanet != null && !UsesSharedProducerCapacity)
                 claimKeys.Add(GetProducerCapacityKey());
 
-            if (Product?.GetReference() is Building && Destination is Planet destinationPlanet)
+            if (
+                Product?.GetReference() is Building building
+                && Destination is Planet destinationPlanet
+            )
+            {
                 claimKeys.Add(
                     AIClaimKeys.ProductionBuildingDestination(destinationPlanet.InstanceID)
                 );
+                if (
+                    building.GetBuildingType()
+                    is BuildingType.Shipyard
+                        or BuildingType.ConstructionFacility
+                )
+                {
+                    claimKeys.Add(
+                        AIClaimKeys.FacilityAllocation(
+                            destinationPlanet.InstanceID,
+                            building.GetBuildingType()
+                        )
+                    );
+                }
+            }
 
             if (Demand?.BuildingToReplace != null)
                 claimKeys.Add(

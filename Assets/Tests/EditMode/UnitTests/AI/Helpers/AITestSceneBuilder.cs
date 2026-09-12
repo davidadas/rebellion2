@@ -204,7 +204,8 @@ namespace Rebellion.Tests.AI.Helpers
             ManufacturingSystem manufacturing = null,
             BombardmentSystem bombardment = null,
             PlanetaryAssaultSystem planetaryAssault = null,
-            IRandomNumberProvider random = null
+            IRandomNumberProvider random = null,
+            MaintenanceSystem maintenance = null
         )
         {
             IRandomNumberProvider provider = random ?? new StubRNG();
@@ -236,7 +237,8 @@ namespace Rebellion.Tests.AI.Helpers
                 bombardmentSystem,
                 planetaryAssaultSystem,
                 provider,
-                fog.BuildFactionView(faction)
+                fog.BuildFactionView(faction),
+                maintenance
             );
         }
 
