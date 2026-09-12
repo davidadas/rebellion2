@@ -77,6 +77,10 @@ namespace Rebellion.Game.Galaxy
         public int UprisingClearTimerOrder { get; set; }
         public int NextUprisingTimerOrder { get; set; }
 
+        // Periodic Support Status.
+        public int NextBlockadeSupportShiftTick { get; set; }
+        public int BlockadeSupportShiftIntervalTicks { get; set; }
+
         // Popular Support.
         public Dictionary<string, int> PopularSupport = new Dictionary<string, int>();
 
@@ -154,6 +158,8 @@ namespace Rebellion.Game.Galaxy
             copy.UprisingIncidentTimerOrder = UprisingIncidentTimerOrder;
             copy.UprisingClearTimerOrder = UprisingClearTimerOrder;
             copy.NextUprisingTimerOrder = NextUprisingTimerOrder;
+            copy.NextBlockadeSupportShiftTick = NextBlockadeSupportShiftTick;
+            copy.BlockadeSupportShiftIntervalTicks = BlockadeSupportShiftIntervalTicks;
             copy.PopularSupport = new Dictionary<string, int>(PopularSupport);
             copy._reservedManufacturingTypes = new List<ManufacturingType>(
                 _reservedManufacturingTypes
@@ -196,20 +202,20 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Checks if the planet is blockaded.
-        /// A planet is blockaded only when a stationary hostile fleet has an operational capital
-        /// ship and no equivalent defending fleet is present.
+        /// An owned planet is blockaded when a stationary hostile fleet has an operational
+        /// capital ship and no equivalent defending fleet is present. A neutral planet is
+        /// blockaded by any such fleet in orbit.
         /// </summary>
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
         public bool IsBlockaded()
         {
-            // Neutral planets cannot be blockaded.
-            if (string.IsNullOrEmpty(OwnerInstanceID))
-                return false;
-
             bool hasHostile = GetChildren<Fleet>()
                 .Any(f =>
                     f.Movement == null
-                    && f.OwnerInstanceID != OwnerInstanceID
+                    && (
+                        string.IsNullOrEmpty(OwnerInstanceID)
+                        || f.OwnerInstanceID != OwnerInstanceID
+                    )
                     && f.HasOperationalCapitalShips()
                 );
             bool hasDefender = GetChildren<Fleet>()
@@ -813,37 +819,39 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Gets the manufacturing output percentage available during a blockade.
-        /// An active shield-disrupting defense prevents the blockade penalty.
+        /// An operational KDY-150 ion cannon prevents the blockade penalty.
         /// </summary>
-        /// <param name="capitalShipPenalty">The percentage removed per active capital ship.</param>
-        /// <param name="fighterPenalty">The percentage removed per active fighter squadron.</param>
+        /// <param name="capitalShipPenalty">The percentage removed per capital ship.</param>
+        /// <param name="fighterPenalty">The percentage removed per fighter squadron.</param>
         /// <returns>The available manufacturing percentage from zero through one hundred.</returns>
-        public int GetBlockadeModifier(int capitalShipPenalty, int fighterPenalty)
+        public int GetBlockadeProductionModifier(int capitalShipPenalty, int fighterPenalty)
         {
-            if (!IsBlockaded() || HasActiveShieldDisruptingDefense())
+            if (!IsBlockaded() || HasOperationalIonCannon())
                 return _maximumProductionModifier;
 
-            List<CapitalShip> activeCapitalShips = _fleets
+            List<CapitalShip> capitalShips = _fleets
                 .Where(fleet => fleet.Movement == null)
                 .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
                 .Where(IsEntityActive)
                 .ToList();
-            int activeFighterCount = activeCapitalShips.Sum(capitalShip =>
+            int fighterCount = capitalShips.Sum(capitalShip =>
                 capitalShip.GetChildren<Starfighter>().Count(IsEntityActive)
             );
+            fighterCount += GetChildren<Starfighter>().Count(IsEntityActive);
 
-            int modifier =
+            return Math.Clamp(
                 _maximumProductionModifier
-                - activeCapitalShips.Count * capitalShipPenalty
-                - activeFighterCount * fighterPenalty;
-            return Math.Clamp(modifier, 0, _maximumProductionModifier);
+                    - capitalShips.Count * capitalShipPenalty
+                    - fighterCount * fighterPenalty,
+                0,
+                _maximumProductionModifier
+            );
         }
 
         /// <summary>
-        /// Returns whether a complete, stationary shield-disrupting defense is active.
+        /// Returns whether the planet has a completed, operational KDY-150 ion cannon.
         /// </summary>
-        /// <returns>True when an active shield-disrupting defense is present.</returns>
-        private bool HasActiveShieldDisruptingDefense()
+        public bool HasOperationalIonCannon()
         {
             return _buildings.Any(building =>
                 building.BuildingType == BuildingType.Weapon

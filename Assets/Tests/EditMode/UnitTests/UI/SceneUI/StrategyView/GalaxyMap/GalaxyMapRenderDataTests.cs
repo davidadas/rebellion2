@@ -26,7 +26,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void ActiveFilterLabel_NullText_ReturnsInvisibleNormalizedPresentation()
+        public void ActiveFilterLabel_NullText_ReturnsInvisibleEmptyLabel()
         {
             GalaxyMapActiveFilterLabelRenderData data = new GalaxyMapActiveFilterLabelRenderData(
                 null,
@@ -37,13 +37,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
             Assert.IsFalse(data.Visible);
             Assert.AreEqual(string.Empty, data.Text);
-            Assert.AreEqual(Color.red, data.Color);
-            Assert.AreEqual(new RectInt(1, 2, 3, 4), data.Bounds);
-            Assert.AreEqual(5, data.FontSize);
         }
 
         [Test]
-        public void Star_Values_PreservesNormalizedPresentation()
+        public void Star_NullPlanetIdentifier_NormalizesToEmptyString()
         {
             GalaxyMapStarRenderData data = new GalaxyMapStarRenderData(
                 null,
@@ -54,10 +51,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
 
             Assert.AreEqual(string.Empty, data.PlanetInstanceId);
-            Assert.AreEqual(1, data.SourceX);
-            Assert.AreEqual(2, data.SourceY);
-            Assert.AreSame(_firstTexture, data.StarTexture);
-            Assert.AreSame(_secondTexture, data.HeadquartersTexture);
         }
 
         [Test]

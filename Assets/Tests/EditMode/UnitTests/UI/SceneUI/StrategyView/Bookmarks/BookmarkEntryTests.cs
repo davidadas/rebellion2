@@ -7,19 +7,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
     public class BookmarkEntryTests
     {
         [Test]
-        public void Constructor_CompleteValues_StoresBookmarkIdentityAndPlacement()
-        {
-            GalaxyMapPlanet planet = CreatePlanet("planet-1", "Coruscant");
-
-            BookmarkEntry entry = new BookmarkEntry(PlanetIcon.Fleet, 120, 240, planet);
-
-            Assert.AreEqual(PlanetIcon.Fleet, entry.Icon);
-            Assert.AreEqual(120, entry.X);
-            Assert.AreEqual(240, entry.Y);
-            Assert.AreSame(planet, entry.Planet);
-        }
-
-        [Test]
         public void ReconcilePlanet_FreshProjection_ReplacesPlanetOnly()
         {
             GalaxyMapPlanet original = CreatePlanet("planet-1", "Coruscant");

@@ -1029,7 +1029,7 @@ namespace Rebellion.Systems
         )
         {
             int shift = _game.Config.Combat.Bombardment.CivilianSupportPenalty;
-            shift = PlanetaryControlSystem.ApplyCoreWeakSupportPenalty(
+            shift = PlanetaryControlSystem.ApplyCoreSupportResistance(
                 planet,
                 attacker,
                 shift,

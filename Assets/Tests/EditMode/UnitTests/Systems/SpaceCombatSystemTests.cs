@@ -1010,9 +1010,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(allianceFleet, planet);
             SpaceCombatSystem manager = MakeSpaceCombat(game);
 
-            RunCombat(manager);
+            bool detected = RunCombat(manager);
 
-            Assert.Pass("Empty fleets should not cause combat");
+            Assert.IsFalse(detected);
+            Assert.IsFalse(empireFleet.IsInCombat);
+            Assert.IsFalse(allianceFleet.IsInCombat);
         }
 
         [Test]

@@ -142,6 +142,8 @@ namespace Rebellion.Systems
             if (!CanStartManufacturing(producer, template, destination, count, ownerInstanceId))
                 return false;
 
+            CancelConflictingProject(producer, template);
+
             bool started = false;
             Fleet capitalShipDestination = null;
             Planet destinationPlanet = destination as Planet;
@@ -276,7 +278,57 @@ namespace Rebellion.Systems
                 return false;
 
             Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
-            return HasMaintenanceHeadroom(faction, template, count);
+            return HasMaintenanceHeadroom(
+                faction,
+                template,
+                count,
+                GetMaintenanceRefund(producer, template)
+            );
+        }
+
+        /// <summary>
+        /// Returns maintenance reserved by the active lane when the requested template would replace it.
+        /// </summary>
+        private static int GetMaintenanceRefund(Planet producer, IManufacturable template)
+        {
+            if (
+                producer
+                    ?.GetManufacturingQueue()
+                    .TryGetValue(
+                        template.GetManufacturingType(),
+                        out List<IManufacturable> activeProject
+                    ) != true
+                || activeProject == null
+                || activeProject.Count == 0
+                || activeProject.All(item => item.GetTypeID() == template.GetTypeID())
+            )
+            {
+                return 0;
+            }
+
+            return activeProject.Sum(item => Math.Max(0, item.GetMaintenanceCost()));
+        }
+
+        /// <summary>
+        /// Cancels the active project in a production lane when a different unit type is ordered.
+        /// </summary>
+        private void CancelConflictingProject(Planet producer, IManufacturable template)
+        {
+            ManufacturingType type = template.GetManufacturingType();
+            if (
+                producer
+                    .GetManufacturingQueue()
+                    .TryGetValue(type, out List<IManufacturable> activeProject) != true
+                || activeProject == null
+                || activeProject.Count == 0
+                || activeProject.All(item => item.GetTypeID() == template.GetTypeID())
+            )
+            {
+                return;
+            }
+
+            ClearQueueItems(producer, activeProject);
+            producer.GetManufacturingQueue().Remove(type);
         }
 
         /// <summary>
@@ -870,8 +922,14 @@ namespace Rebellion.Systems
         /// <param name="faction">The faction committing the order.</param>
         /// <param name="item">The item template being manufactured.</param>
         /// <param name="count">The number of copies to queue.</param>
+        /// <param name="releasedMaintenance">Maintenance released by a replaced project.</param>
         /// <returns>True when the complete order remains within maintenance capacity.</returns>
-        private bool HasMaintenanceHeadroom(Faction faction, IManufacturable item, int count)
+        private bool HasMaintenanceHeadroom(
+            Faction faction,
+            IManufacturable item,
+            int count,
+            int releasedMaintenance = 0
+        )
         {
             if (faction == null)
                 return false;
@@ -880,7 +938,10 @@ namespace Rebellion.Systems
             if (maintenanceCost <= 0)
                 return true;
 
-            return faction.ProjectedMaintenanceHeadroom - maintenanceCost * count >= 0;
+            return faction.ProjectedMaintenanceHeadroom
+                    + releasedMaintenance
+                    - maintenanceCost * count
+                >= 0;
         }
 
         /// <summary>
@@ -1092,7 +1153,7 @@ namespace Rebellion.Systems
                 return 0;
 
             GameConfig.BlockadeConfig config = _game.Config.Blockade;
-            int modifier = planet.GetBlockadeModifier(
+            int modifier = planet.GetBlockadeProductionModifier(
                 config.CapitalShipProductionPenaltyPercent,
                 config.FighterProductionPenaltyPercent
             );

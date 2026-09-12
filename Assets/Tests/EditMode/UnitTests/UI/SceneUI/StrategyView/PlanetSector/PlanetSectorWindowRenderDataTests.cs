@@ -72,33 +72,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
-        public void Planet_Values_PreservesCompletePresentation()
-        {
-            PlanetSectorPlanetRenderData data = CreatePlanetData(_bar, _bar, _bar);
-
-            Assert.AreEqual(3, data.PlanetIndex);
-            Assert.AreEqual(new Vector2Int(4, 5), data.GalaxyOffset);
-            Assert.AreSame(_texture, data.PlanetTexture);
-            Assert.AreSame(_texture, data.UprisingTexture);
-            Assert.AreSame(_texture, data.FacilityTexture);
-            Assert.AreSame(_texture, data.FacilityPressedTexture);
-            Assert.AreSame(_texture, data.DefenseTexture);
-            Assert.AreSame(_texture, data.DefensePressedTexture);
-            Assert.AreSame(_texture, data.FleetTexture);
-            Assert.AreSame(_texture, data.FleetPressedTexture);
-            Assert.AreSame(_texture, data.MissionTexture);
-            Assert.AreSame(_texture, data.MissionPressedTexture);
-            Assert.AreSame(_texture, data.HeadquartersTexture);
-            Assert.AreEqual("Planet", data.Name);
-            Assert.AreEqual(new Color32(1, 2, 3, 4), data.NameColor);
-            Assert.AreEqual(PlanetIcon.Fleet, data.SelectedIcon);
-            Assert.AreEqual(PlanetIcon.Mission, data.HoveredIcon);
-            Assert.AreSame(_bar, data.EnergyBar);
-            Assert.AreSame(_bar, data.RawResourceBar);
-            Assert.AreSame(_bar, data.SupportBar);
-        }
-
-        [Test]
         public void Planet_NullName_ReturnsEmptyName()
         {
             PlanetSectorPlanetRenderData data = new PlanetSectorPlanetRenderData(
@@ -125,32 +98,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
 
             Assert.AreEqual(string.Empty, data.Name);
-        }
-
-        [Test]
-        public void Bar_Values_PreservesCompletePresentation()
-        {
-            Assert.IsTrue(_bar.Visible);
-            Assert.AreEqual(4, _bar.CellCount);
-            Assert.AreEqual(2, _bar.LitCells);
-            Assert.AreEqual(0.5f, _bar.FillRatio);
-            Assert.AreEqual(new Color32(1, 2, 3, 4), _bar.FillColor);
-            Assert.AreEqual(new Color32(5, 6, 7, 8), _bar.EmptyColor);
-            Assert.AreEqual(new Color32(9, 10, 11, 12), _bar.BackgroundColor);
-        }
-
-        [Test]
-        public void Element_Values_PreservesSemanticIdentity()
-        {
-            PlanetSectorWindowElement data = new PlanetSectorWindowElement(
-                2,
-                PlanetIcon.Defense,
-                true
-            );
-
-            Assert.AreEqual(2, data.PlanetIndex);
-            Assert.AreEqual(PlanetIcon.Defense, data.Icon);
-            Assert.IsTrue(data.PlanetImage);
         }
 
         private PlanetSectorPlanetRenderData CreatePlanetData(

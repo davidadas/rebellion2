@@ -496,6 +496,10 @@ namespace Rebellion.Game
 
             public int BlockadeOpposeShift { get; set; }
 
+            public int BlockadeMatchShiftIntervalTicks { get; set; }
+
+            public int BlockadeOpposeShiftIntervalTicks { get; set; }
+
             public int DiplomacyOwnedPlanetSupportBase { get; set; }
 
             public int DiplomacyOwnedPlanetSupportRange { get; set; }

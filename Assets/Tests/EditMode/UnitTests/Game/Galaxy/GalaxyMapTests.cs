@@ -47,9 +47,11 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void AddChild_WithNullPlanetSector_DoesNotThrowException()
+        public void AddChild_WithNullPlanetSector_LeavesChildrenEmpty()
         {
-            Assert.DoesNotThrow(() => _galaxyMap.AddChild(null));
+            _galaxyMap.AddChild(null);
+
+            Assert.IsEmpty(_galaxyMap.GetChildren<PlanetSector>());
         }
 
         [Test]
@@ -107,9 +109,16 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void RemoveChild_WithNullPlanetSector_DoesNotThrowException()
+        public void RemoveChild_WithNullPlanetSector_LeavesChildrenUnchanged()
         {
-            Assert.DoesNotThrow(() => _galaxyMap.RemoveChild(null));
+            _galaxyMap.AddChild(_planetSector1);
+
+            _galaxyMap.RemoveChild(null);
+
+            CollectionAssert.AreEqual(
+                new[] { _planetSector1 },
+                _galaxyMap.GetChildren<PlanetSector>()
+            );
         }
 
         [Test]
