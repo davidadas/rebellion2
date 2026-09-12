@@ -12,7 +12,11 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIOrbitalEngagementPlanner : IAIProposalPlanner
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns proposals for favorable orbital engagements.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>Orbital-engagement proposals.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
             List<AIProposal> proposals = new List<AIProposal>();
@@ -78,7 +82,7 @@ namespace Rebellion.AI.Planners
             Planet origin
         )
         {
-            if (origin == null || !context.Assessment.CanFleetDepartHeadquarters(fleet))
+            if (origin == null || !context.StrategicPlan.CanFleetDepart(fleet))
                 return Enumerable.Empty<Planet>();
 
             return context

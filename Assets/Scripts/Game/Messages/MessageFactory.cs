@@ -265,13 +265,13 @@ namespace Rebellion.Game.Messages
             MissionCompletionReason completionReason = GetMissionCompletionReason(result);
             string missionName = GetMissionName(result);
             Officer jediTrainer = (result.Mission as JediTrainingMission)?.Trainer;
+            OfficerVoiceLineType voiceLineType = GetMissionVoiceLineType(result);
+            Officer reporter = jediTrainer ?? GetMissionReporter(result, voiceLineType);
             string participantName =
-                jediTrainer?.GetDisplayName() ?? GetMissionParticipantName(result);
+                reporter?.GetDisplayName() ?? GetMissionParticipantName(result);
             string officerName = GetMissionOfficerName(result, game, killedResults);
             string targetName = GetMissionObjectTargetName(result, game, sabotageResults);
             string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
-            OfficerVoiceLineType voiceLineType = GetMissionVoiceLineType(result);
-            Officer reporter = jediTrainer ?? GetMissionParticipantOfficer(result, voiceLineType);
             MessageDefinition definition = GetMissionDefinition(
                 MessageResultType.MissionReport,
                 outcome,
@@ -300,9 +300,9 @@ namespace Rebellion.Game.Messages
                         { "assassination_result", assassinationResult },
                         { "details", missionDetails },
                     },
-                    overlayImagePath: jediTrainer == null
+                    overlayImagePath: reporter == null
                         ? GetMissionParticipantOverlayImagePath(result)
-                        : GetMessageImagePath(jediTrainer),
+                        : GetMessageImagePath(reporter),
                     officerVoicePath: reporter?.GetVoicePath(voiceLineType, game?.Random)
                 ),
                 target,
@@ -693,7 +693,6 @@ namespace Rebellion.Game.Messages
                 .Select(result => GetMissionRelatedOfficerInstanceID(result.Mission))
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
-
             foreach (OfficerRecruitedResult result in recruitedResults)
             {
                 if (
@@ -793,9 +792,9 @@ namespace Rebellion.Game.Messages
                     deliveries,
                     faction,
                     CreateOfficerMessage(
-                        result.Assassin == null
-                            ? MessageResultType.OfficerKilled
-                            : MessageResultType.OfficerAssassinated,
+                        result is OfficerAssassinatedResult
+                            ? MessageResultType.OfficerAssassinated
+                            : MessageResultType.OfficerKilled,
                         faction,
                         result.TargetOfficer,
                         planet,
@@ -1177,18 +1176,21 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Finds the first mission participant with audio for the requested outcome.
+        /// Finds the preferred officer to present a mission report.
         /// </summary>
         /// <param name="result">The completed mission result.</param>
-        /// <param name="voiceLineType">The requested officer voice line type.</param>
-        /// <returns>The matching officer, or null when none is available.</returns>
-        private static Officer GetMissionParticipantOfficer(
+        /// <param name="voiceLineType">The requested voice line when no main character is present.</param>
+        /// <returns>The preferred reporting officer, or null when none is available.</returns>
+        private static Officer GetMissionReporter(
             MissionCompletedResult result,
             OfficerVoiceLineType voiceLineType
         )
         {
-            return GetFirstParticipantOfficer(result?.Participants, voiceLineType)
-                ?? GetFirstParticipantOfficer(result?.Mission?.GetAllParticipants(), voiceLineType);
+            return GetPreferredParticipantOfficer(result?.Participants, voiceLineType)
+                ?? GetPreferredParticipantOfficer(
+                    result?.Mission?.GetAllParticipants(),
+                    voiceLineType
+                );
         }
 
         /// <summary>
@@ -1265,19 +1267,22 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Gets the first officer participant with a configured voice line.
+        /// Gets the preferred reporting officer from a participant collection.
+        /// Main characters take priority, followed by the first officer with matching audio.
         /// </summary>
         /// <param name="participants">The mission participants to inspect.</param>
         /// <param name="voiceLineType">The voice line type to require.</param>
-        /// <returns>The first matching officer, or null when none is available.</returns>
-        private static Officer GetFirstParticipantOfficer(
+        /// <returns>The preferred reporting officer, or null when none is available.</returns>
+        private static Officer GetPreferredParticipantOfficer(
             IEnumerable<IMissionParticipant> participants,
             OfficerVoiceLineType voiceLineType
         )
         {
-            return (participants ?? Enumerable.Empty<IMissionParticipant>())
+            Officer[] officers = (participants ?? Enumerable.Empty<IMissionParticipant>())
                 .OfType<Officer>()
-                .FirstOrDefault(officer => officer.HasVoicePath(voiceLineType));
+                .ToArray();
+            return officers.FirstOrDefault(officer => officer.IsMain)
+                ?? officers.FirstOrDefault(officer => officer.HasVoicePath(voiceLineType));
         }
 
         /// <summary>

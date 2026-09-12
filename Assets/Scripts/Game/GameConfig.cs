@@ -103,9 +103,9 @@ namespace Rebellion.Game
         {
             public int RetainedAlternativesPerMission { get; set; } = 3;
 
-            public int EspionageRefreshIntervalTicks { get; set; } = 70;
+            public int EspionageRefreshIntervalTicks { get; set; } = 20;
 
-            public int HostileMissionMaximumIntelAgeTicks { get; set; } = 70;
+            public int HostileMissionMaximumIntelAgeTicks { get; set; } = 40;
 
             public int MaximumJediTrainingStudents { get; set; } = 3;
 
@@ -113,7 +113,7 @@ namespace Rebellion.Game
 
             public int SabotageDefenseBonus { get; set; } = 125;
 
-            public int SabotageAttackTargetBonus { get; set; } = 50;
+            public int SabotageAttackTargetBonus { get; set; } = 150;
 
             public int SabotageAttackDefenseBonus { get; set; } = 200;
 
@@ -128,6 +128,16 @@ namespace Rebellion.Game
             public int SabotageInfrastructureBonus { get; set; } = 0;
 
             public int MinimumMissionScore { get; set; } = 20;
+
+            public int MinimumUprisingMissionSuccessPercent { get; set; } = 20;
+
+            public int MissionFoilRiskWeight { get; set; } = 1;
+
+            public int MaximumOfficerMissionLossProbability { get; set; } = 20;
+
+            public int HostileMissionIntelAgeFoilPenaltyPerRefreshInterval { get; set; } = 5;
+
+            public int MaximumUnprotectedOfficerMissionFoilProbability { get; set; } = 20;
 
             public int ReconnaissancePriorityBonus { get; set; } = 50;
 
@@ -147,13 +157,15 @@ namespace Rebellion.Game
 
             public int DiplomacySupportDeficitWeight { get; set; } = 1;
 
-            public int DiplomacyConstructionFacilityWeight { get; set; } = 20;
+            public int DiplomacyConstructionFacilityWeight { get; set; } = 25;
 
-            public int DiplomacyShipyardWeight { get; set; } = 25;
+            public int DiplomacyShipyardWeight { get; set; } = 20;
 
             public int DiplomacyTrainingFacilityWeight { get; set; } = 5;
 
             public int DiplomacyResourceNodeWeight { get; set; } = 5;
+
+            public int DiplomacySectorSupportRiskWeight { get; set; } = 25;
 
             public int HostileOfficerReplacementPenalty { get; set; } = 100;
         }
@@ -170,7 +182,13 @@ namespace Rebellion.Game
 
             public int MinimumAttackStrength { get; set; }
 
+            public int MinimumMobileCombatStrength { get; set; }
+
+            public int MobileCombatStrengthPerPlanet { get; set; }
+
             public int MinimumDefenseStrength { get; set; } = 1000;
+
+            public int HeadquartersDefenseCombatPercent { get; set; } = 35;
 
             public int FleetDefenseScore { get; set; } = 1000;
 
@@ -184,7 +202,15 @@ namespace Rebellion.Game
 
             public int AttackStrategicValueWeight { get; set; } = 55;
 
+            public int AttackSectorSupportLeverageWeight { get; set; } = 30;
+
+            public int AttackSystemPresenceWeight { get; set; } = 30;
+
             public int AttackReadinessWeight { get; set; } = 35;
+
+            public double AttackReadinessFloorWeight { get; set; } = 4;
+
+            public double ReadyAttackBonus { get; set; } = 10;
 
             public int AttackCaptureViabilityWeight { get; set; } = 45;
 
@@ -194,11 +220,19 @@ namespace Rebellion.Game
 
             public int AttackOpportunityCostPenaltyWeight { get; set; } = 30;
 
-            public int ExistingAttackOrderBonus { get; set; } = 25;
+            public int AttackIntelAgePenaltyPerRefreshInterval { get; set; } = 1;
+
+            public int ExistingAttackOrderBonus { get; set; } = 300;
 
             public int HeadquartersAttackBonus { get; set; } = 45;
 
             public int OrbitalResponseBonus { get; set; } = 250;
+
+            public int ExposedSectorBombardmentBonus { get; set; } = 100;
+
+            public int ExposedSectorMinimumOwnedPresencePercent { get; set; } = 50;
+
+            public int DefenseSectorSupportRiskWeight { get; set; } = 30;
 
             public int ColonizationBaseScore { get; set; } = 45;
 
@@ -211,6 +245,12 @@ namespace Rebellion.Game
             public int ColonizationOpportunityCostPenaltyWeight { get; set; } = 20;
 
             public int ExistingColonizationOrderBonus { get; set; } = 100;
+
+            public int ColonizationFleetTargetCount { get; set; } = 2;
+
+            public int ColonizationFleetMinimumRegimentCount { get; set; } = 2;
+
+            public int ColonizationFleetMaximumRegimentCount { get; set; } = 4;
         }
 
         /// <summary>
@@ -224,23 +264,6 @@ namespace Rebellion.Game
             public int LocalDuplicatePenaltyPerSelection { get; set; }
             public int PreferredStarfighterTypeCountPerFleet { get; set; }
             public int PreferredRegimentTypeCountPerDestination { get; set; }
-            public int PremiumCapitalConstructionCostThreshold { get; set; }
-            public int CapitalConstructionCostWeight { get; set; }
-            public int CapitalMaintenanceCostWeight { get; set; }
-            public int CapitalCombatWeight { get; set; }
-            public int CapitalExcessCombatPenaltyWeight { get; set; } = 1;
-            public int CapitalStarfighterCapacityWeight { get; set; }
-            public int CapitalRegimentCapacityWeight { get; set; }
-            public int CapitalBombardmentWeight { get; set; }
-            public int CapitalGravityWellWeight { get; set; }
-            public int CapitalEmptyFleetCombatBoost { get; set; }
-            public int CapitalMissingStarfighterCapacityBoost { get; set; }
-            public int CapitalMissingRegimentCapacityBoost { get; set; }
-            public int CapitalMissingGravityWellBoost { get; set; }
-            public int CapitalMaintenanceAllocationPercent { get; set; } = 30;
-            public int CapitalMaintenanceSafetyPercent { get; set; } = 90;
-            public int CapitalShipTieRollRange { get; set; } = 10;
-            public int CapitalShipTieInsertBeforeThreshold { get; set; } = 5;
             public int StarfighterEscortWeight { get; set; }
             public int StarfighterInterceptorWeight { get; set; }
             public int StarfighterBomberWeight { get; set; }
@@ -253,6 +276,9 @@ namespace Rebellion.Game
             public int RegimentGarrisonDefenseBoost { get; set; }
             public int RegimentFleetAttackBoost { get; set; }
             public int RefinedMaterialReservePercent { get; set; } = 20;
+            public int RefinedMaterialEconomyWarningPercent { get; set; } = 40;
+            public int RefinedMaterialEconomyPressureWeight { get; set; } = 100;
+            public int RefinedMaterialCommitmentHorizonTicks { get; set; } = 25;
             public int MinimumMaintenanceHeadroomAfterProduction { get; set; } = 200;
             public int MaintenanceHeadroomHardFloor { get; set; } = 0;
             public int MaintenanceHeadroomPenaltyWeight { get; set; }
@@ -268,18 +294,35 @@ namespace Rebellion.Game
             public int PlanetsPerConstructionFacility { get; set; }
             public int MinimumConstructionFacilityLanes { get; set; } = 1;
             public int ConstructionFacilityTargetClearTicks { get; set; } = 80;
+            public int ShipyardTargetClearTicks { get; set; } = 80;
+            public int TrainingFacilityTargetClearTicks { get; set; } = 1;
             public int PlanetsPerShipyard { get; set; }
             public int PlanetsPerTrainingFacility { get; set; }
+            public int TrainingDemandsPerFacility { get; set; } = 4;
             public int ManufacturingFacilityBaseDemandPercent { get; set; }
             public int ConstructionFacilityDemandPercent { get; set; }
             public int ShipyardDemandPercent { get; set; }
             public int TrainingFacilityDemandPercent { get; set; } = 100;
             public int TrainingFacilityBacklogPressureBonus { get; set; } = 5;
-            public int ShipyardMaintenanceAllocationPercent { get; set; } = 30;
-            public int ShipyardMaintenanceAllocationScalePercent { get; set; } = 20;
-            public int TrainingFacilityMaintenanceAllocationPercent { get; set; } = 4;
-            public int TrainingFacilityMaintenanceAllocationScalePercent { get; set; } = 50;
-            public int ConstructionFacilityMaintenanceAllocationPercent { get; set; } = 4;
+            public int TrainingFacilitySecondFacilityWeight { get; set; } = 125;
+            public int FacilitySectorHubTargetCount { get; set; } = 5;
+            public int ShipyardSectorHubTargetCount { get; set; } = 6;
+            public int FacilitySectorHubMaximumCount { get; set; } = 7;
+            public int FacilityPlanetsPerSector { get; set; } = 3;
+            public int FacilitySectorSecondaryTargetCount { get; set; } = 3;
+            public int FacilitySectorCoveragePressureBonus { get; set; } = 100;
+            public int FacilitySectorPrimaryHubPressureBonus { get; set; } = 50;
+            public int FacilitySystemCoverageWeight { get; set; } = 50;
+            public int FacilityExistingHubWeight { get; set; } = 30;
+            public int ConstructionFacilityHubWeight { get; set; } = 100;
+            public int FacilityAvailableEnergyWeight { get; set; } = 20;
+            public int FacilityPlanetValueWeight { get; set; } = 15;
+            public int FacilitySystemSecurityWeight { get; set; } = 20;
+            public int FacilityDemandProximityWeight { get; set; } = 15;
+            public int FacilityResourceOpportunityCostWeight { get; set; } = 25;
+            public int ProductionFacilityMaintenanceAllocationPercent { get; set; } = 30;
+            public int ProductionFacilityInvestmentHorizonTicks { get; set; } = 70;
+            public int ProductionFacilityInvestmentPressureWeight { get; set; } = 100;
             public int FacilityConstructionLaneReserve { get; set; } = 1;
             public int ProductionQueueTargetPlanningIntervals { get; set; } = 1;
             public int ProductionFacilityUpgradeMinimumRemainingCount { get; set; } = 1;
@@ -290,8 +333,11 @@ namespace Rebellion.Game
             public int FleetStarfighterDemandPercent { get; set; } = 50;
             public int FleetRegimentDemandPercent { get; set; } = 60;
             public int FleetSeedCapitalShipDemandPercent { get; set; } = 95;
-            public int SpecialForcesTargetCountPerType { get; set; } = 4;
+            public int ColonizationFleetDemandPercent { get; set; } = 110;
             public int SpecialForcesDemandPercent { get; set; } = 25;
+
+            public int SpecialForcesMissionCoveragePercent { get; set; } = 10;
+
             public int StarfighterParentFillPercent { get; set; } = 100;
             public int StarfighterLocalReservePercent { get; set; }
             public int AssaultRegimentLoadPercent { get; set; } = 100;
@@ -316,6 +362,7 @@ namespace Rebellion.Game
             public int EconomyMaintenanceShortfallPressure { get; set; } = 40;
             public int EconomyMaintenanceReservePressure { get; set; } = 20;
             public int FleetTargetValuePressureWeight { get; set; } = 20;
+            public int AttackFleetReinforcementPressureBonus { get; set; } = 25;
             public int FleetReadinessPressureWeight { get; set; } = 35;
             public int FleetFinalReadinessGatePressure { get; set; } = 35;
             public int FleetFinalReadinessGateUnitCount { get; set; } = 2;
@@ -360,6 +407,8 @@ namespace Rebellion.Game
             public int StarfighterRequirementInfrastructure { get; set; }
 
             public int StarfighterRequirementHeadquarters { get; set; }
+
+            public int UnthreatenedInfrastructureStarfighterBaselinePercent { get; set; } = 50;
 
             public int InteriorStarfighterBaselinePercent { get; set; } = 100;
 
@@ -449,6 +498,10 @@ namespace Rebellion.Game
             public int BlockadeMatchShift { get; set; }
 
             public int BlockadeOpposeShift { get; set; }
+
+            public int BlockadeMatchShiftIntervalTicks { get; set; }
+
+            public int BlockadeOpposeShiftIntervalTicks { get; set; }
 
             public int DiplomacyOwnedPlanetSupportBase { get; set; }
 
@@ -542,6 +595,7 @@ namespace Rebellion.Game
         {
             public int AttackerLeadershipDivisor { get; set; }
             public int DefenderLeadershipDivisor { get; set; }
+            public int ShieldStrengthDivisor { get; set; }
             public int StrikeRollMinimum { get; set; }
             public int StrikeRollMaximum { get; set; }
             public int EnergyResistance { get; set; }
@@ -578,7 +632,7 @@ namespace Rebellion.Game
         [PersistableObject]
         public class SpaceCombatConfig
         {
-            public double LaserCannonDamageAgainstCapitalShipsMultiplier { get; set; }
+            public double LaserCannonCapitalDamageMultiplier { get; set; }
 
             public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
 

@@ -1,0 +1,954 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Events;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
+
+namespace Rebellion.Tests.Game
+{
+    [TestFixture]
+    public class GameRootTests
+    {
+        private GameRoot _game;
+        private GameSummary _summary;
+        private Faction _faction1;
+        private Faction _faction2;
+        private GalaxyMap _galaxyMap;
+        private PlanetSector _planetSector;
+        private Planet _planet;
+        private Fleet _fleet;
+
+        [SetUp]
+        public void SetUp()
+        {
+            // Initialize game _summary.
+            _summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Conquest,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FACTION1",
+            };
+
+            // Create factions.
+            _faction1 = new Faction { InstanceID = "FACTION1", DisplayName = "Alliance" };
+            _faction1.Settings.ResourceProcessingPointsPerFacility = 50;
+            _faction2 = new Faction { InstanceID = "FACTION2", DisplayName = "Empire" };
+            _faction2.Settings.ResourceProcessingPointsPerFacility = 50;
+
+            // Create game objects.
+            _galaxyMap = new GalaxyMap();
+            _planetSector = new PlanetSector { InstanceID = "SECTOR1" };
+            _planet = new Planet
+            {
+                InstanceID = "PLANET1",
+                OwnerInstanceID = "FACTION1",
+                IsColonized = true,
+            };
+            _fleet = new Fleet { InstanceID = "FLEET1", OwnerInstanceID = "FACTION1" };
+
+            // Initialize the _game.
+            GameConfig config = new GameConfig();
+            _game = new GameRoot(_summary, config);
+            _game.GetFactions().Add(_faction1);
+            _game.GetFactions().Add(_faction2);
+        }
+
+        [Test]
+        public void GetConfig_ConfigNotSet_ThrowsException()
+        {
+            GameRoot game = new GameRoot();
+
+            Assert.Throws<InvalidOperationException>(() => game.GetConfig());
+        }
+
+        [Test]
+        public void Constructor_ConfigProvided_SetsConfig()
+        {
+            GameConfig config = new GameConfig();
+
+            GameRoot game = new GameRoot(config);
+
+            Assert.AreSame(config, game.Config);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_AIControlledFaction_ReturnsSelectedDifficultyModifier()
+        {
+            DifficultyModifiers expected = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = expected;
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
+
+            Assert.AreSame(expected, actual);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_PlayerControlledFaction_ReturnsNeutralModifier()
+        {
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
+
+            Assert.AreEqual(0, actual.MissionSuccessChancePoints);
+            Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_MissingDifficulty_ReturnsNeutralModifier()
+        {
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
+
+            Assert.AreEqual(0, actual.MissionSuccessChancePoints);
+            Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
+        }
+
+        [Test]
+        public void Serialize_RuntimeDifficultyModifiers_DoesNotPersistConfiguration()
+        {
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            string xml = SerializationHelper.Serialize(_game);
+
+            StringAssert.DoesNotContain("DifficultyModifiers", xml);
+            StringAssert.DoesNotContain("MissionSuccessChancePoints", xml);
+        }
+
+        [Test]
+        public void Constructor_WithSummary_InitializesCorrectly()
+        {
+            // Verify game initialization.
+            Assert.AreEqual(
+                _summary,
+                _game.Summary,
+                "Game summary should match the provided summary"
+            );
+            Assert.IsNotNull(_game.Galaxy, "Galaxy should be initialized");
+            Assert.AreEqual(0, _game.CurrentTick, "Current tick should be initialized to 0");
+            Assert.IsEmpty(_game.GetEventPool(), "Event pool should be empty initially");
+            Assert.IsEmpty(_game.EventRuntime.States, "Event states should be empty initially");
+        }
+
+        [Test]
+        public void SetConfig_ValidConfig_SetsConfig()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot();
+
+            game.SetConfig(config);
+
+            Assert.AreSame(config, game.GetConfig());
+        }
+
+        [Test]
+        public void GetFactions_GameWithMultipleFactions_ReturnsAllFactions()
+        {
+            // Get factions and verify the count and contents.
+            List<Faction> factions = _game.GetFactions();
+            Assert.AreEqual(2, factions.Count, "Should return two factions");
+            Assert.Contains(_faction1, factions, "Should contain faction1");
+            Assert.Contains(_faction2, factions, "Should contain faction2");
+        }
+
+        [Test]
+        public void GetFactionByOwnerInstanceID_RegisteredFaction_ReturnsCorrectFaction()
+        {
+            // Get faction by ID and verify.
+            Faction retrievedFaction = _game.GetFactionByOwnerInstanceID("FACTION1");
+            Assert.AreEqual(_faction1, retrievedFaction, "Should return the correct faction");
+        }
+
+        [Test]
+        public void GetFactionByOwnerInstanceID_ThrowsException_WhenFactionNotFound()
+        {
+            // Attempt to get non-existent faction.
+            Assert.Throws<SceneNodeNotFoundException>(
+                () => _game.GetFactionByOwnerInstanceID("NONEXISTENT"),
+                "Should throw exception for non-existent faction"
+            );
+        }
+
+        [Test]
+        public void GetGalaxyMap_InitializedGame_ReturnsGalaxyMap()
+        {
+            // Get galaxy map and verify.
+            GalaxyMap retrievedGalaxyMap = _game.GetGalaxyMap();
+            Assert.AreEqual(
+                _game.Galaxy,
+                retrievedGalaxyMap,
+                "Should return the correct galaxy map"
+            );
+        }
+
+        [Test]
+        public void AttachNode_ResourceBuildings_UpdatesFactionMaterialSupplies()
+        {
+            _planet.NumRawResourceNodes = 10;
+            _planet.IsColonized = true;
+            _planet.EnergyCapacity = 10;
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(CreateBuilding("MINE1", BuildingType.Mine, 0), _planet);
+            _game.AttachNode(CreateBuilding("MINE2", BuildingType.Mine, 0), _planet);
+            _game.AttachNode(CreateBuilding("MINE3", BuildingType.Mine, 0), _planet);
+            _game.AttachNode(CreateBuilding("REFINERY1", BuildingType.Refinery, 0), _planet);
+
+            Assert.AreEqual(3, _faction1.RawMaterialSupply);
+            Assert.AreEqual(1, _faction1.RefinedMaterialSupply);
+            Assert.AreEqual(50, _faction1.MaintenanceCapacity);
+        }
+
+        [Test]
+        public void AttachNode_InProgressUnit_UpdatesFactionMaintenanceHeadroom()
+        {
+            _planet.NumRawResourceNodes = 10;
+            _planet.IsColonized = true;
+            _planet.EnergyCapacity = 10;
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(CreateBuilding("MINE1", BuildingType.Mine, 0), _planet);
+            _game.AttachNode(CreateBuilding("REFINERY1", BuildingType.Refinery, 0), _planet);
+            _game.AttachNode(
+                CreateBuilding(
+                    "SHIPYARD1",
+                    BuildingType.Shipyard,
+                    12,
+                    ManufacturingStatus.Building
+                ),
+                _planet
+            );
+
+            Assert.AreEqual(38, _faction1.MaintenanceHeadroom);
+        }
+
+        [Test]
+        public void AttachNode_ValidNode_AddsToSceneGraph()
+        {
+            // Attach node and verify.
+            _game.AttachNode(_planet, _planetSector);
+
+            Assert.AreEqual(
+                _planetSector,
+                _planet.GetParent(),
+                "Planet should have planetSector as parent"
+            );
+            Assert.Contains(
+                _planet,
+                _planetSector.GetChildren().ToList(),
+                "PlanetSector should contain planet as child"
+            );
+            Assert.IsTrue(
+                _game.NodesByInstanceID.ContainsKey(_planet.InstanceID),
+                "Game should contain planet in NodesByInstanceID"
+            );
+            Assert.IsTrue(
+                _game
+                    .GetFactionByOwnerInstanceID(_planet.OwnerInstanceID)
+                    .GetOwnedUnitsByType<Planet>()
+                    .Contains(_planet),
+                "Faction should contain planet in owned units"
+            );
+        }
+
+        [Test]
+        public void AttachNode_ThrowsException_WhenNodeAlreadyHasParent()
+        {
+            // Attach node to a parent.
+            _game.AttachNode(_planet, _planetSector);
+
+            // Attempt to attach the same node to another parent.
+            Assert.Throws<InvalidOperationException>(
+                () => _game.AttachNode(_planet, new PlanetSector()),
+                "Should throw exception when attaching a node that already has a parent"
+            );
+        }
+
+        [Test]
+        public void DetachNode_AttachedNode_RemovesFromSceneGraph()
+        {
+            // Attach and then detach node.
+            _game.AttachNode(_planet, _planetSector);
+            _game.DetachNode(_planet);
+
+            // Verify detachment is successful and node is removed from all relevant structures.
+            Assert.IsNull(_planet.GetParent(), "Planet should have no parent after detachment");
+            Assert.IsFalse(
+                _planetSector.GetChildren().Contains(_planet),
+                "PlanetSector should not contain planet as child"
+            );
+            Assert.IsFalse(
+                _game.NodesByInstanceID.ContainsKey(_planet.InstanceID),
+                "Game should not contain planet in NodesByInstanceID"
+            );
+            Assert.IsFalse(
+                _game
+                    .GetFactionByOwnerInstanceID(_planet.OwnerInstanceID)
+                    .GetOwnedUnitsByType<Planet>()
+                    .Contains(_planet),
+                "Faction should not contain planet in owned units"
+            );
+        }
+
+        [Test]
+        public void DetachNode_ThrowsException_WhenNodeHasNoParent()
+        {
+            // Attempt to detach a node with no parent.
+            Assert.Throws<InvalidOperationException>(
+                () => _game.DetachNode(_planet),
+                "Should throw exception when detaching a node with no parent"
+            );
+        }
+
+        [Test]
+        public void AddSceneNodeByInstanceID_ValidNode_AddsToRegistry()
+        {
+            // Add node and verify that it is added to the _game.
+            _game.AddSceneNodeByInstanceID(_planet);
+            Assert.IsTrue(
+                _game.NodesByInstanceID.ContainsKey(_planet.InstanceID),
+                "Game should contain planet in NodesByInstanceID"
+            );
+        }
+
+        [Test]
+        public void AddSceneNodeByInstanceID_ThrowsException_WhenDuplicateNodeAdded()
+        {
+            // Add node to the _game.
+            _game.AddSceneNodeByInstanceID(_planet);
+
+            // Attempt to add the same node again.
+            Assert.Throws<InvalidOperationException>(
+                () => _game.AddSceneNodeByInstanceID(_planet),
+                "Should throw exception when adding a duplicate node"
+            );
+        }
+
+        [Test]
+        public void RemoveSceneNodeByInstanceID_RegisteredNode_RemovesFromRegistry()
+        {
+            // Add and then remove node from the _game.
+            _game.AddSceneNodeByInstanceID(_planet);
+            _game.RemoveSceneNodeByInstanceID(_planet);
+
+            // Verify removal from all relevant structures.
+            Assert.IsFalse(
+                _game.NodesByInstanceID.ContainsKey(_planet.InstanceID),
+                "Game should not contain planet in NodesByInstanceID after removal"
+            );
+        }
+
+        [Test]
+        public void GetSceneNodeByInstanceID_RegisteredNode_ReturnsNode()
+        {
+            // Add node and retrieve it.
+            _game.AddSceneNodeByInstanceID(_planet);
+            Planet retrievedNode = _game.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID);
+
+            // Verify retrieval of the correct node.
+            Assert.AreEqual(_planet, retrievedNode, "Should return the correct node");
+        }
+
+        [Test]
+        public void GetSceneNodeByInstanceID_ReturnsNull_WhenNodeNotFound()
+        {
+            // Attempt to retrieve non-existent node.
+            Planet retrievedNode = _game.GetSceneNodeByInstanceID<Planet>("NONEXISTENT");
+            Assert.IsNull(retrievedNode, "Should return null for non-existent node");
+        }
+
+        [Test]
+        public void GetSceneNodesByInstanceIDs_MultipleRegisteredNodes_ReturnsNodes()
+        {
+            // Add nodes to the _game.
+            _game.AddSceneNodeByInstanceID(_planet);
+            _game.AddSceneNodeByInstanceID(_fleet);
+
+            // Retrieve nodes by IDs.
+            List<ISceneNode> retrievedNodes = _game.GetSceneNodesByInstanceIDs(
+                new List<string> { _planet.InstanceID, _fleet.InstanceID }
+            );
+
+            // Verify retrieval of planets and fleets.
+            Assert.AreEqual(2, retrievedNodes.Count, "Should return two nodes");
+            Assert.Contains(_planet, retrievedNodes, "Should contain planet");
+            Assert.Contains(_fleet, retrievedNodes, "Should contain fleet");
+        }
+
+        [Test]
+        public void GetSceneNodesByOwnerInstanceID_NodesWithMatchingOwner_ReturnsNodes()
+        {
+            // Add nodes to the _game.
+            _game.AddSceneNodeByInstanceID(_planet);
+            _game.AddSceneNodeByInstanceID(_fleet);
+            _game.RegisterOwnedUnit(_planet);
+            _game.RegisterOwnedUnit(_fleet);
+
+            // Retrieve nodes by owner ID.
+            List<ISceneNode> retrievedNodes = _game.GetSceneNodesByOwnerInstanceID<ISceneNode>(
+                "FACTION1"
+            );
+
+            // Verify retrieval of planets and fleets.
+            Assert.AreEqual(2, retrievedNodes.Count, "Should return two nodes");
+            Assert.Contains(_planet, retrievedNodes, "Should contain planet");
+            Assert.Contains(_fleet, retrievedNodes, "Should contain fleet");
+        }
+
+        [Test]
+        public void GetSceneNodesByType_GameWithMixedNodes_ReturnsNodesOfType()
+        {
+            // Set up galaxy structure.
+            _game.Galaxy = _galaxyMap;
+            _game.AttachNode(_planetSector, _galaxyMap);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(_fleet, _planet);
+
+            // Retrieve planets and verify the count and contents.
+            List<Planet> retrievedPlanets = _game.GetSceneNodesByType<Planet>();
+            Assert.AreEqual(1, retrievedPlanets.Count, "Should return one planet");
+            Assert.Contains(_planet, retrievedPlanets, "Should contain the specific planet");
+
+            // Retrieve fleets and verify the count and contents.
+            List<Fleet> retrievedFleets = _game.GetSceneNodesByType<Fleet>();
+            Assert.AreEqual(1, retrievedFleets.Count, "Should return one fleet");
+            Assert.Contains(_fleet, retrievedFleets, "Should contain the specific fleet");
+        }
+
+        [Test]
+        public void GetSceneNodesByType_InactiveOfficer_ExcludesOfficerFromActiveGalaxy()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "INACTIVE_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+            officer.IsEnabled = false;
+
+            List<Officer> activeOfficers = _game.GetSceneNodesByType<Officer>();
+
+            CollectionAssert.DoesNotContain(activeOfficers, officer);
+        }
+
+        [Test]
+        public void RegisterOwnedUnit_ValidUnit_AddsUnitToFaction()
+        {
+            // Register unit.
+            _game.RegisterOwnedUnit(_planet);
+
+            // Verify registration is successful.
+            Assert.IsTrue(
+                _game
+                    .GetFactionByOwnerInstanceID(_planet.OwnerInstanceID)
+                    .GetOwnedUnitsByType<Planet>()
+                    .Contains(_planet),
+                "Faction should contain planet in owned units after registration"
+            );
+        }
+
+        [Test]
+        public void DeregisterOwnedUnit_RegisteredUnit_RemovesUnitFromFaction()
+        {
+            // Register and then deregister unit.
+            _game.RegisterOwnedUnit(_planet);
+            _game.DeregsiterOwnedUnit(_planet);
+
+            // Verify deregistration was successful.
+            Assert.IsFalse(
+                _game
+                    .GetFactionByOwnerInstanceID(_planet.OwnerInstanceID)
+                    .GetOwnedUnitsByType<Planet>()
+                    .Contains(_planet),
+                "Faction should not contain planet in owned units after deregistration"
+            );
+        }
+
+        [Test]
+        public void GetEventPool_InitializedGame_ReturnsEventPool()
+        {
+            // Add events to pool.
+            GameEvent event1 = new GameEvent { InstanceID = "EVENT1" };
+            GameEvent event2 = new GameEvent { InstanceID = "EVENT2" };
+            _game.GetEventPool().Add(event1);
+            _game.GetEventPool().Add(event2);
+
+            // Retrieve event pool and verify the count and contents.
+            List<GameEvent> eventPool = _game.GetEventPool();
+            Assert.AreEqual(2, eventPool.Count, "Should return two events");
+            Assert.Contains(event1, eventPool, "Should contain event1");
+            Assert.Contains(event2, eventPool, "Should contain event2");
+        }
+
+        [Test]
+        public void RemoveEvent_EventInPool_RemovesEventFromPool()
+        {
+            // Add event and then remove it.
+            GameEvent event1 = new GameEvent { InstanceID = "EVENT1" };
+            _game.GetEventPool().Add(event1);
+            _game.RemoveEvent(event1);
+
+            // Verify removal from the event pool.
+            Assert.IsFalse(
+                _game.GetEventPool().Contains(event1),
+                "Event pool should not contain the removed event"
+            );
+        }
+
+        [Test]
+        public void GetEventByInstanceID_EventInPool_ReturnsMatchingEvent()
+        {
+            // Add event and retrieve it.
+            GameEvent event1 = new GameEvent { InstanceID = "EVENT1" };
+            _game.GetEventPool().Add(event1);
+
+            // Retrieve event and verify.
+            GameEvent retrievedEvent = _game.GetEventByInstanceID("EVENT1");
+            Assert.AreEqual(event1, retrievedEvent, "Should return the correct event");
+        }
+
+        [Test]
+        public void Galaxy_Setter_InitializesGalaxyCorrectly()
+        {
+            // Set up galaxy structure.
+            _game.Galaxy = _galaxyMap;
+            _game.AttachNode(_planetSector, _galaxyMap);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(_fleet, _planetSector);
+
+            // Verify galaxy initialization.
+            Assert.IsTrue(
+                _game.NodesByInstanceID.ContainsKey(_galaxyMap.InstanceID),
+                "Game should contain galaxyMap in NodesByInstanceID"
+            );
+            Assert.IsTrue(
+                _game.NodesByInstanceID.ContainsKey(_planetSector.InstanceID),
+                "Game should contain planetSector in NodesByInstanceID"
+            );
+            Assert.IsTrue(
+                _game.NodesByInstanceID.ContainsKey(_planet.InstanceID),
+                "Game should contain planet in NodesByInstanceID"
+            );
+            Assert.IsTrue(
+                _game.NodesByInstanceID.ContainsKey(_fleet.InstanceID),
+                "Game should contain fleet in NodesByInstanceID"
+            );
+
+            Assert.AreEqual(
+                _galaxyMap,
+                _planetSector.GetParent(),
+                "PlanetSector should have galaxyMap as parent"
+            );
+            Assert.AreEqual(
+                _planetSector,
+                _planet.GetParent(),
+                "Planet should have planetSector as parent"
+            );
+            Assert.AreEqual(
+                _planetSector,
+                _fleet.GetParent(),
+                "Fleet should have planetSector as parent"
+            );
+
+            Assert.IsTrue(
+                _game
+                    .GetFactionByOwnerInstanceID(_planet.OwnerInstanceID)
+                    .GetOwnedUnitsByType<Planet>()
+                    .Contains(_planet),
+                "Faction should contain planet in owned units"
+            );
+            Assert.IsTrue(
+                _game
+                    .GetFactionByOwnerInstanceID(_fleet.OwnerInstanceID)
+                    .GetOwnedUnitsByType<Fleet>()
+                    .Contains(_fleet),
+                "Faction should contain fleet in owned units"
+            );
+        }
+
+        [Test]
+        public void GetPlayerFaction_MultiFactionalGame_ReturnsPlayerFaction()
+        {
+            // Get player faction and verify.
+            Faction playerFaction = _game.GetPlayerFaction();
+            Assert.AreEqual(_faction1, playerFaction, "Should return the correct player faction");
+            Assert.AreEqual(
+                "FACTION1",
+                playerFaction.InstanceID,
+                "Player faction should have correct ID"
+            );
+        }
+
+        [Test]
+        public void GetPlayerFaction_ThrowsException_WhenSummaryIsNull()
+        {
+            // Create game without _summary.
+            GameRoot gameWithoutSummary = new GameRoot();
+
+            // Attempt to get player faction.
+            Assert.Throws<InvalidOperationException>(
+                () => gameWithoutSummary.GetPlayerFaction(),
+                "Should throw exception when GameSummary is null"
+            );
+        }
+
+        [Test]
+        public void GetPlayerFaction_ThrowsException_WhenPlayerFactionIDIsNull()
+        {
+            // Create game with summary but no player faction ID.
+            GameSummary summaryWithoutPlayer = new GameSummary();
+            GameConfig config = TestContent.Data.GameConfig;
+            GameRoot gameWithoutPlayerId = new GameRoot(summaryWithoutPlayer, config);
+
+            // Attempt to get player faction.
+            Assert.Throws<InvalidOperationException>(
+                () => gameWithoutPlayerId.GetPlayerFaction(),
+                "Should throw exception when PlayerFactionID is null or empty"
+            );
+        }
+
+        [Test]
+        public void GetPlayerFaction_ThrowsException_WhenPlayerFactionNotFound()
+        {
+            // Create game with invalid player faction ID.
+            GameSummary summaryWithInvalidPlayer = new GameSummary
+            {
+                PlayerFactionID = "NONEXISTENT",
+            };
+            GameConfig config = TestContent.Data.GameConfig;
+            GameRoot gameWithInvalidPlayer = new GameRoot(summaryWithInvalidPlayer, config);
+            gameWithInvalidPlayer.GetFactions().Add(_faction1);
+
+            // Attempt to get player faction.
+            Assert.Throws<InvalidOperationException>(
+                () => gameWithInvalidPlayer.GetPlayerFaction(),
+                "Should throw exception when player faction does not exist"
+            );
+        }
+
+        [Test]
+        public void SetGameSpeed_ValidSpeed_UpdatesGameSpeed()
+        {
+            // Set game speed and verify.
+            _game.SetGameSpeed(TickSpeed.Fast);
+            Assert.AreEqual(TickSpeed.Fast, _game.GameSpeed, "Game speed should be set to Fast");
+
+            _game.SetGameSpeed(TickSpeed.Medium);
+            Assert.AreEqual(
+                TickSpeed.Medium,
+                _game.GameSpeed,
+                "Game speed should be set to Medium"
+            );
+
+            _game.SetGameSpeed(TickSpeed.Slow);
+            Assert.AreEqual(TickSpeed.Slow, _game.GameSpeed, "Game speed should be set to Slow");
+
+            _game.SetGameSpeed(TickSpeed.Paused);
+            Assert.AreEqual(
+                TickSpeed.Paused,
+                _game.GameSpeed,
+                "Game speed should be set to Paused"
+            );
+        }
+
+        [Test]
+        public void GetGameSpeed_DefaultGame_ReturnsDefaultSpeed()
+        {
+            // Set game speed and verify getter returns correct value.
+            _game.SetGameSpeed(TickSpeed.Fast);
+            TickSpeed speed = _game.GetGameSpeed();
+            Assert.AreEqual(TickSpeed.Fast, speed, "GetGameSpeed should return Fast");
+
+            _game.SetGameSpeed(TickSpeed.Medium);
+            speed = _game.GetGameSpeed();
+            Assert.AreEqual(TickSpeed.Medium, speed, "GetGameSpeed should return Medium");
+        }
+
+        [Test]
+        public void GetGameSpeed_InitialState_ReturnsDefaultSpeed()
+        {
+            TickSpeed speed = _game.GetGameSpeed();
+            Assert.AreEqual(TickSpeed.Slow, speed, "Default game speed should be Slow");
+        }
+
+        [Test]
+        public void GetUnrecruitedOfficers_GameWithUnrecruitedOfficers_ReturnsOfficers()
+        {
+            // Create officers available to different recruiting factions.
+            Officer officer1 = new Officer
+            {
+                InstanceID = "OFFICER1",
+                RecruitingFactionInstanceIDs = new List<string> { "FACTION1", "FACTION2" },
+            };
+            Officer officer2 = new Officer
+            {
+                InstanceID = "OFFICER2",
+                RecruitingFactionInstanceIDs = new List<string> { "FACTION1" },
+            };
+            Officer officer3 = new Officer
+            {
+                InstanceID = "OFFICER3",
+                RecruitingFactionInstanceIDs = new List<string> { "FACTION2" },
+            };
+
+            _game.GetUnrecruitedOfficers().Add(officer1);
+            _game.GetUnrecruitedOfficers().Add(officer2);
+            _game.GetUnrecruitedOfficers().Add(officer3);
+
+            // Get unrecruited officers for _faction1.
+            List<Officer> faction1Officers = _game.GetUnrecruitedOfficers("FACTION1");
+            Assert.AreEqual(2, faction1Officers.Count, "Faction1 should have access to 2 officers");
+            Assert.Contains(officer1, faction1Officers, "Should contain officer1");
+            Assert.Contains(officer2, faction1Officers, "Should contain officer2");
+
+            // Get unrecruited officers for _faction2.
+            List<Officer> faction2Officers = _game.GetUnrecruitedOfficers("FACTION2");
+            Assert.AreEqual(2, faction2Officers.Count, "Faction2 should have access to 2 officers");
+            Assert.Contains(officer1, faction2Officers, "Should contain officer1");
+            Assert.Contains(officer3, faction2Officers, "Should contain officer3");
+        }
+
+        [Test]
+        public void GetUnrecruitedOfficers_ReturnsEmptyList_WhenNoOfficersAvailable()
+        {
+            // Get unrecruited officers for faction with no available officers.
+            List<Officer> officers = _game.GetUnrecruitedOfficers("FACTION1");
+            Assert.IsEmpty(officers, "Should return empty list when no officers are available");
+        }
+
+        [Test]
+        public void RemoveUnrecruitedOfficer_OfficerInList_RemovesOfficer()
+        {
+            // Create and add officer.
+            Officer officer = new Officer
+            {
+                InstanceID = "OFFICER1",
+                RecruitingFactionInstanceIDs = new List<string> { "FACTION1" },
+            };
+            _game.GetUnrecruitedOfficers().Add(officer);
+
+            // Verify officer is in the list.
+            Assert.Contains(
+                officer,
+                _game.GetUnrecruitedOfficers(),
+                "Officer should be in unrecruited list"
+            );
+
+            // Remove officer.
+            _game.RemoveUnrecruitedOfficer(officer);
+
+            // Verify officer is removed.
+            Assert.IsFalse(
+                _game.GetUnrecruitedOfficers().Contains(officer),
+                "Officer should be removed from unrecruited list"
+            );
+        }
+
+        [Test]
+        public void RemoveUnrecruitedOfficer_OfficerNotInList_LeavesListUnchanged()
+        {
+            // Create officer that is not in the list.
+            Officer officer = new Officer
+            {
+                InstanceID = "OFFICER1",
+                RecruitingFactionInstanceIDs = new List<string> { "FACTION1" },
+            };
+
+            int countBefore = _game.GetUnrecruitedOfficers().Count;
+
+            _game.RemoveUnrecruitedOfficer(officer);
+
+            Assert.AreEqual(countBefore, _game.GetUnrecruitedOfficers().Count);
+        }
+
+        [Test]
+        public void Random_NotPreviouslySet_LazyConstructsFromSummarySeed()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary { Seed = 12345 } };
+
+            int firstRoll = game.Random.NextInt(0, int.MaxValue);
+            int expected = new Random(12345).Next(0, int.MaxValue);
+
+            Assert.AreEqual(expected, firstRoll);
+        }
+
+        [Test]
+        public void RandomIndex_AfterRandomCalls_ReadsLiveCallCount()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary { Seed = 12345 } };
+
+            game.Random.NextInt(0, 10);
+            game.Random.NextInt(0, 10);
+            game.Random.NextInt(0, 10);
+
+            Assert.AreEqual(3, game.RandomIndex);
+        }
+
+        [Test]
+        public void RandomIndex_SetAfterRandomConstructed_RebuildsToMatchPosition()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary { Seed = 12345 } };
+            // Force lazy construction at position 0.
+            _ = game.Random;
+
+            game.RandomIndex = 7;
+
+            Assert.AreEqual(7, game.RandomIndex);
+            // Next roll should match what a fresh provider at position 7 would yield.
+            int expected = new SystemRandomProvider(12345, advanceTo: 7).NextInt(0, int.MaxValue);
+            Assert.AreEqual(expected, game.Random.NextInt(0, int.MaxValue));
+        }
+
+        [Test]
+        public void IsEnabled_False_DisablesOfficerWithoutDetachingIt()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "INACTIVE_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+
+            officer.IsEnabled = false;
+
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.IsFalse(officer.IsActive());
+            Assert.IsNull(officer.LastParentInstanceID);
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
+            CollectionAssert.DoesNotContain(_planet.GetChildren<Officer>(), officer);
+            CollectionAssert.Contains(_planet.GetChildren<Officer>(includeDisabled: true), officer);
+            CollectionAssert.DoesNotContain(_faction1.GetOwnedUnitsByType<Officer>(), officer);
+        }
+
+        [Test]
+        public void IsEnabled_True_EnablesOfficerAtExistingParent()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "RETURNING_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+            officer.IsEnabled = false;
+
+            officer.IsEnabled = true;
+
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.IsNull(officer.LastParentInstanceID);
+            Assert.IsTrue(officer.IsActive());
+            CollectionAssert.Contains(_planet.GetChildren<Officer>(), officer);
+        }
+
+        [Test]
+        public void ChangeOwnership_OfficerInVoid_PreservesRetentionAndChangesOwner()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "DEFECTING_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+                RecruitingFactionInstanceIDs = new List<string> { _faction1.InstanceID },
+            };
+            _game.AttachNode(officer, _planet);
+            officer.IsEnabled = false;
+
+            _game.ChangeOwnership(officer, _faction2.InstanceID);
+
+            Assert.AreEqual(_faction2.InstanceID, officer.OwnerInstanceID);
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.IsFalse(officer.IsActive());
+        }
+
+        [Test]
+        public void DeleteNode_RegisteredOfficer_RemovesOfficerFromGameState()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "DELETED_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+
+            _game.DeleteNode(officer);
+
+            Assert.IsNull(officer.GetParent());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
+            Assert.IsFalse(_faction1.GetOwnedUnitsByType<Officer>().Contains(officer));
+        }
+
+        [Test]
+        public void RebuildSceneState_SerializedDisabledFleet_RestoresDisabledHierarchy()
+        {
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "INACTIVE_FLEET",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "INACTIVE_SHIP",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(ship, fleet);
+            fleet.IsEnabled = false;
+
+            string xml = SerializationHelper.Serialize(_game);
+            StringAssert.Contains("<IsEnabled>False</IsEnabled>", xml);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
+            restored.SetConfig(TestContent.Data.GameConfig);
+            restored.RebuildSceneState();
+
+            Fleet restoredFleet = restored.GetSceneNodeByInstanceID<Fleet>(
+                fleet.InstanceID,
+                includeDisabled: true
+            );
+            CapitalShip restoredShip = restored.GetSceneNodeByInstanceID<CapitalShip>(
+                ship.InstanceID,
+                includeDisabled: true
+            );
+            Assert.IsFalse(restoredFleet.IsActive());
+            Assert.AreSame(restoredFleet, restoredShip.GetParent());
+            Assert.IsInstanceOf<Planet>(restoredFleet.GetParent());
+            CollectionAssert.DoesNotContain(
+                restored
+                    .GetFactionByOwnerInstanceID(_faction1.InstanceID)
+                    .GetOwnedUnitsByType<Fleet>(),
+                restoredFleet
+            );
+        }
+
+        private static Building CreateBuilding(
+            string instanceId,
+            BuildingType buildingType,
+            int maintenanceCost,
+            ManufacturingStatus manufacturingStatus = ManufacturingStatus.Complete
+        )
+        {
+            return new Building
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = "FACTION1",
+                BuildingType = buildingType,
+                MaintenanceCost = maintenanceCost,
+                ManufacturingStatus = manufacturingStatus,
+            };
+        }
+    }
+} // namespace Rebellion.Tests.Game

@@ -16,6 +16,9 @@ namespace Rebellion.Systems
     /// Manages unit and facility production during each game tick.
     /// </summary>
     public class ManufacturingSystem
+        : IGameResultHandler<GameObjectDestroyedResult>,
+            IGameResultHandler<BombardmentResult>,
+            IGameResultHandler<PlanetaryAssaultResult>
     {
         private const int _productionRateScale = 100;
 
@@ -58,6 +61,68 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Cancels affected production lanes after individually reported buildings are destroyed.
+        /// </summary>
+        /// <param name="results">The destruction results to inspect.</param>
+        /// <returns>No additional results.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameObjectDestroyedResult> results)
+        {
+            if (results == null)
+                return new List<GameResult>();
+
+            foreach (
+                IGrouping<Planet, GameObjectDestroyedResult> planetResults in results
+                    .Where(result =>
+                        result?.DestroyedObject is Building && result.Context is Planet
+                    )
+                    .GroupBy(result => (Planet)result.Context)
+            )
+            {
+                CancelUnsupportedProduction(
+                    planetResults.Key,
+                    planetResults.Select(result => (Building)result.DestroyedObject)
+                );
+            }
+
+            return new List<GameResult>();
+        }
+
+        /// <summary>
+        /// Cancels affected production lanes after orbital bombardment destroys buildings.
+        /// </summary>
+        /// <param name="results">The bombardment results to inspect.</param>
+        /// <returns>No additional results.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<BombardmentResult> results)
+        {
+            if (results != null)
+            {
+                foreach (BombardmentResult result in results)
+                    CancelUnsupportedProduction(result?.Planet, result?.DestroyedBuildings);
+            }
+
+            return new List<GameResult>();
+        }
+
+        /// <summary>
+        /// Cancels affected production lanes after a planetary assault destroys buildings.
+        /// </summary>
+        /// <param name="results">The assault results to inspect.</param>
+        /// <returns>No additional results.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<PlanetaryAssaultResult> results)
+        {
+            if (results != null)
+            {
+                foreach (PlanetaryAssaultResult result in results)
+                    CancelUnsupportedProduction(
+                        result?.Planet,
+                        result?.CollateralDestroyedBuildings
+                    );
+            }
+
+            return new List<GameResult>();
+        }
+
+        /// <summary>
         /// Creates and queues copies of a manufacturing template for one destination.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>
@@ -76,6 +141,8 @@ namespace Rebellion.Systems
         {
             if (!CanStartManufacturing(producer, template, destination, count, ownerInstanceId))
                 return false;
+
+            CancelConflictingProject(producer, template);
 
             bool started = false;
             Fleet capitalShipDestination = null;
@@ -211,7 +278,57 @@ namespace Rebellion.Systems
                 return false;
 
             Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
-            return HasMaintenanceHeadroom(faction, template, count);
+            return HasMaintenanceHeadroom(
+                faction,
+                template,
+                count,
+                GetMaintenanceRefund(producer, template)
+            );
+        }
+
+        /// <summary>
+        /// Returns maintenance reserved by the active lane when the requested template would replace it.
+        /// </summary>
+        private static int GetMaintenanceRefund(Planet producer, IManufacturable template)
+        {
+            if (
+                producer
+                    ?.GetManufacturingQueue()
+                    .TryGetValue(
+                        template.GetManufacturingType(),
+                        out List<IManufacturable> activeProject
+                    ) != true
+                || activeProject == null
+                || activeProject.Count == 0
+                || activeProject.All(item => item.GetTypeID() == template.GetTypeID())
+            )
+            {
+                return 0;
+            }
+
+            return activeProject.Sum(item => Math.Max(0, item.GetMaintenanceCost()));
+        }
+
+        /// <summary>
+        /// Cancels the active project in a production lane when a different unit type is ordered.
+        /// </summary>
+        private void CancelConflictingProject(Planet producer, IManufacturable template)
+        {
+            ManufacturingType type = template.GetManufacturingType();
+            if (
+                producer
+                    .GetManufacturingQueue()
+                    .TryGetValue(type, out List<IManufacturable> activeProject) != true
+                || activeProject == null
+                || activeProject.Count == 0
+                || activeProject.All(item => item.GetTypeID() == template.GetTypeID())
+            )
+            {
+                return;
+            }
+
+            ClearQueueItems(producer, activeProject);
+            producer.GetManufacturingQueue().Remove(type);
         }
 
         /// <summary>
@@ -267,10 +384,27 @@ namespace Rebellion.Systems
                 if (template is CapitalShip)
                     return true;
 
-                ISceneNode candidate = CreateManufacturingCandidate(ownerInstanceId, template);
-                return candidate != null
-                    && planet.CanAcceptChild(candidate)
-                    && (template is not Building || planet.GetAvailableEnergy() >= count);
+                if (
+                    !string.Equals(
+                        planet.GetOwnerInstanceID(),
+                        ownerInstanceId,
+                        StringComparison.Ordinal
+                    )
+                )
+                {
+                    return template is Regiment
+                        && !planet.IsColonized
+                        && string.IsNullOrEmpty(planet.GetOwnerInstanceID());
+                }
+
+                return template switch
+                {
+                    Regiment _ => true,
+                    SpecialForces _ => planet.IsColonized,
+                    Starfighter _ => planet.IsColonized,
+                    Building _ => planet.GetAvailableEnergy() >= count,
+                    _ => false,
+                };
             }
 
             if (destination is Fleet fleet)
@@ -308,14 +442,13 @@ namespace Rebellion.Systems
             if (template is CapitalShip)
                 return true;
 
-            ISceneNode candidate = CreateManufacturingCandidate(ownerInstanceId, template);
             IEnumerable<CapitalShip> carriers = fleet
                 .GetChildren<CapitalShip>()
                 .Where(IsManufacturingCarrierAvailable);
-            if (candidate is Starfighter)
+            if (template is Starfighter)
                 return carriers.Sum(ship => ship.GetExcessStarfighterCapacity()) >= count;
 
-            return candidate is Regiment
+            return template is Regiment
                 && carriers.Sum(ship => ship.GetExcessRegimentCapacity()) >= count;
         }
 
@@ -343,37 +476,10 @@ namespace Rebellion.Systems
             )
                 return false;
 
-            ISceneNode candidate = CreateManufacturingCandidate(ownerInstanceId, template);
-            if (candidate is Starfighter)
+            if (template is Starfighter)
                 return capitalShip.GetExcessStarfighterCapacity() >= count;
 
-            return candidate is Regiment && capitalShip.GetExcessRegimentCapacity() >= count;
-        }
-
-        /// <summary>
-        /// Creates a detached manufactured item for destination-capacity validation.
-        /// </summary>
-        /// <param name="ownerInstanceId">The owner assigned to the candidate.</param>
-        /// <param name="template">The manufacturing template to copy.</param>
-        /// <returns>The detached scene node, or null when the template is not a scene node.</returns>
-        private static ISceneNode CreateManufacturingCandidate(
-            string ownerInstanceId,
-            IManufacturable template
-        )
-        {
-            IManufacturable item = template.GetDeepCopy();
-            if (item is not ISceneNode sceneNode)
-                return null;
-
-            sceneNode.OwnerInstanceID = ownerInstanceId;
-            item.ManufacturingStatus = ManufacturingStatus.Building;
-            item.ManufacturingProgress = 0;
-            if (item is IMovable movable)
-            {
-                movable.Movement = null;
-            }
-
-            return sceneNode;
+            return template is Regiment && capitalShip.GetExcessRegimentCapacity() >= count;
         }
 
         /// <summary>
@@ -816,8 +922,14 @@ namespace Rebellion.Systems
         /// <param name="faction">The faction committing the order.</param>
         /// <param name="item">The item template being manufactured.</param>
         /// <param name="count">The number of copies to queue.</param>
+        /// <param name="releasedMaintenance">Maintenance released by a replaced project.</param>
         /// <returns>True when the complete order remains within maintenance capacity.</returns>
-        private bool HasMaintenanceHeadroom(Faction faction, IManufacturable item, int count)
+        private bool HasMaintenanceHeadroom(
+            Faction faction,
+            IManufacturable item,
+            int count,
+            int releasedMaintenance = 0
+        )
         {
             if (faction == null)
                 return false;
@@ -826,7 +938,10 @@ namespace Rebellion.Systems
             if (maintenanceCost <= 0)
                 return true;
 
-            return faction.ProjectedMaintenanceHeadroom - maintenanceCost * count >= 0;
+            return faction.ProjectedMaintenanceHeadroom
+                    + releasedMaintenance
+                    - maintenanceCost * count
+                >= 0;
         }
 
         /// <summary>
@@ -871,7 +986,6 @@ namespace Rebellion.Systems
             if (string.IsNullOrEmpty(ownerInstanceId))
                 return results;
 
-            Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
             foreach (ManufacturingType type in GetActiveManufacturingTypes(planet, queue))
             {
                 queue.TryGetValue(type, out List<IManufacturable> items);
@@ -883,7 +997,6 @@ namespace Rebellion.Systems
                 List<Building> readyFacilities = AdvanceProductionFacilities(
                     planet,
                     type,
-                    faction,
                     hasQueuedItems
                 );
                 if (!hasQueuedItems)
@@ -901,7 +1014,6 @@ namespace Rebellion.Systems
                     planet,
                     results
                 );
-                ReserveInputsForSpentProductionPoints(readyFacilities, faction, items.Count > 0);
                 CompleteManufacturedItems(planet, type, completed, results);
                 if (items.Count == 0)
                     DiscardReadyProductionPoints(readyFacilities);
@@ -1005,13 +1117,11 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The production planet.</param>
         /// <param name="type">The manufacturing type being processed.</param>
-        /// <param name="faction">The owning faction.</param>
         /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
         /// <returns>Facilities with a ready production point.</returns>
         private List<Building> AdvanceProductionFacilities(
             Planet planet,
             ManufacturingType type,
-            Faction faction,
             bool hasQueuedItems
         )
         {
@@ -1027,7 +1137,7 @@ namespace Rebellion.Systems
 
             double cycleIncrement = GetProductionCycleIncrement(planet);
             foreach (Building facility in productionFacilities)
-                AdvanceProductionFacility(facility, faction, hasQueuedItems, cycleIncrement);
+                AdvanceProductionFacility(facility, hasQueuedItems, cycleIncrement);
 
             return productionFacilities.Where(facility => facility.ProductionPointReady).ToList();
         }
@@ -1043,7 +1153,7 @@ namespace Rebellion.Systems
                 return 0;
 
             GameConfig.BlockadeConfig config = _game.Config.Blockade;
-            int modifier = planet.GetBlockadeModifier(
+            int modifier = planet.GetBlockadeProductionModifier(
                 config.CapitalShipProductionPenaltyPercent,
                 config.FighterProductionPenaltyPercent
             );
@@ -1059,12 +1169,10 @@ namespace Rebellion.Systems
         /// Advances one production facility toward its next production point.
         /// </summary>
         /// <param name="facility">The facility to advance.</param>
-        /// <param name="faction">The owning faction.</param>
         /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
         /// <param name="cycleIncrement">The production progress available this tick.</param>
-        private static void AdvanceProductionFacility(
+        private void AdvanceProductionFacility(
             Building facility,
-            Faction faction,
             bool hasQueuedItems,
             double cycleIncrement
         )
@@ -1075,11 +1183,8 @@ namespace Rebellion.Systems
             if (cycleIncrement <= 0)
                 return;
 
-            if (!facility.ProductionInputReserved)
-            {
-                if (!hasQueuedItems || !faction.RequestRefinedMaterial(facility))
-                    return;
-            }
+            if (!hasQueuedItems)
+                return;
 
             int processRate = facility.GetProcessRate();
             if (processRate <= 0)
@@ -1093,30 +1198,7 @@ namespace Rebellion.Systems
             if (facility.ProductionCycleProgress >= processRate)
             {
                 facility.ProductionCycleProgress -= processRate;
-                facility.ProductionInputReserved = false;
                 facility.ProductionPointReady = true;
-            }
-        }
-
-        /// <summary>
-        /// Reserves replacement inputs for production points spent during this tick.
-        /// </summary>
-        /// <param name="facilities">The facilities whose ready points were distributed.</param>
-        /// <param name="faction">The faction supplying refined material.</param>
-        /// <param name="hasQueuedItems">Whether work remains after point distribution.</param>
-        private static void ReserveInputsForSpentProductionPoints(
-            List<Building> facilities,
-            Faction faction,
-            bool hasQueuedItems
-        )
-        {
-            if (!hasQueuedItems)
-                return;
-
-            foreach (Building facility in facilities)
-            {
-                if (!facility.ProductionPointReady && !facility.ProductionInputReserved)
-                    faction.RequestRefinedMaterial(facility);
             }
         }
 
@@ -1530,6 +1612,56 @@ namespace Rebellion.Systems
             }
 
             items.Clear();
+        }
+
+        /// <summary>
+        /// Cancels queued work for each destroyed production type that no surviving facility can
+        /// manufacture on the same planet.
+        /// </summary>
+        /// <param name="planet">The planet where the facilities were destroyed.</param>
+        /// <param name="destroyedBuildings">The buildings destroyed by the completed action.</param>
+        private void CancelUnsupportedProduction(
+            Planet planet,
+            IEnumerable<Building> destroyedBuildings
+        )
+        {
+            if (planet == null || destroyedBuildings == null)
+                return;
+
+            Dictionary<ManufacturingType, List<IManufacturable>> queues =
+                planet.GetManufacturingQueue();
+            foreach (
+                ManufacturingType type in destroyedBuildings
+                    .Where(building =>
+                        building != null
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                        && building.ProcessRate > 0
+                    )
+                    .Select(building => building.ProductionType)
+                    .Where(type => type != ManufacturingType.None)
+                    .Distinct()
+                    .ToList()
+            )
+            {
+                bool hasProducer = planet
+                    .GetChildren<Building>()
+                    .Any(facility =>
+                        facility.ProductionType == type
+                        && facility.ManufacturingStatus == ManufacturingStatus.Complete
+                        && facility.Movement == null
+                        && facility.ProcessRate > 0
+                    );
+                if (
+                    hasProducer
+                    || !queues.TryGetValue(type, out List<IManufacturable> items)
+                    || items == null
+                )
+                    continue;
+
+                ClearQueueItems(planet, items);
+                queues.Remove(type);
+            }
         }
 
         /// <summary>

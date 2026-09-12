@@ -1,0 +1,294 @@
+using System;
+using NUnit.Framework;
+using UnityEngine;
+
+namespace Rebellion.Tests.UI.Components
+{
+    [TestFixture]
+    public class DragControllerTests
+    {
+        private Texture2D _texture;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _texture = new Texture2D(1, 1);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            UnityEngine.Object.DestroyImmediate(_texture);
+        }
+
+        [Test]
+        public void Constructor_NegativeStartDistance_ThrowsArgumentOutOfRangeException()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => new DragController(-1));
+        }
+
+        [Test]
+        public void DragRequest_NullSource_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new DragRequest(null));
+        }
+
+        [Test]
+        public void DragPreview_MultipleImages_PreservesImageBoundsAndHotspot()
+        {
+            Rect uvRect = new Rect(0.25f, 0f, 0.5f, 1f);
+            DragPreviewImage[] images =
+            {
+                new DragPreviewImage(_texture, new RectInt(10, 20, 30, 40), uvRect),
+                new DragPreviewImage(_texture, new RectInt(60, 80, 20, 10)),
+            };
+            DragPreview preview = new DragPreview(images, 17, 29);
+
+            images[0] = default;
+
+            Assert.AreEqual(2, preview.Images.Count);
+            Assert.AreEqual(new RectInt(10, 20, 30, 40), preview.Images[0].Bounds);
+            Assert.AreEqual(new RectInt(60, 80, 20, 10), preview.Images[1].Bounds);
+            Assert.AreEqual(uvRect, preview.Images[0].UvRect);
+            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), preview.Images[1].UvRect);
+            Assert.AreEqual(17, preview.HotspotX);
+            Assert.AreEqual(29, preview.HotspotY);
+            Assert.IsTrue(preview.HasDrawableImages);
+        }
+
+        [Test]
+        public void StartCandidate_NullRequest_ThrowsArgumentNullException()
+        {
+            DragController controller = new DragController(5);
+
+            Assert.Throws<ArgumentNullException>(() => controller.StartCandidate(null, 0, 0));
+        }
+
+        [Test]
+        public void HasCandidateDragStarted_DistanceBelowThreshold_ReturnsFalse()
+        {
+            DragController controller = new DragController(5);
+            DragRequest request = new DragRequest(new object());
+            controller.StartCandidate(request, 10, 20);
+
+            bool started = controller.HasCandidateDragStarted(13, 23);
+
+            Assert.IsFalse(started);
+            Assert.IsTrue(controller.HasCandidate);
+            Assert.AreSame(request, controller.CandidateRequest);
+        }
+
+        [Test]
+        public void HasCandidateDragStarted_DistanceAtThreshold_ReturnsTrue()
+        {
+            DragController controller = new DragController(5);
+            controller.StartCandidate(new DragRequest(new object()), 10, 20);
+
+            bool started = controller.HasCandidateDragStarted(13, 24);
+
+            Assert.IsTrue(started);
+        }
+
+        [Test]
+        public void HasCandidateDragStarted_MissingCandidate_ReturnsFalse()
+        {
+            DragController controller = new DragController(0);
+
+            bool started = controller.HasCandidateDragStarted(0, 0);
+
+            Assert.IsFalse(started);
+        }
+
+        [Test]
+        public void BeginDrag_MissingCandidate_ThrowsInvalidOperationException()
+        {
+            DragController controller = new DragController(0);
+            DragPreview preview = new DragPreview(_texture, 10, 20, 3, 4);
+
+            Assert.Throws<InvalidOperationException>(() => controller.BeginDrag(preview, 0, 0));
+        }
+
+        [Test]
+        public void BeginDrag_NullPreview_ThrowsArgumentNullException()
+        {
+            DragController controller = new DragController(0);
+            controller.StartCandidate(new DragRequest(new object()), 0, 0);
+
+            Assert.Throws<ArgumentNullException>(() => controller.BeginDrag(null, 0, 0));
+        }
+
+        [Test]
+        public void BeginMovePreviewAndEnd_ActiveDrag_TracksCompleteFlow()
+        {
+            object source = new object();
+            DragController controller = new DragController(5);
+            DragRequest request = new DragRequest(source);
+            DragPreview preview = new DragPreview(_texture, 10, 20, 3, 4);
+            controller.StartCandidate(request, 1, 2);
+
+            controller.BeginDrag(preview, 10, 20);
+            bool moved = controller.Move(30, 40);
+            bool hasPreview = controller.TryGetPreview(
+                out Texture texture,
+                out int x,
+                out int y,
+                out int width,
+                out int height
+            );
+            bool ended = controller.End(50, 60, out DragRequest completedRequest);
+
+            Assert.IsTrue(moved);
+            Assert.IsTrue(hasPreview);
+            Assert.AreSame(_texture, texture);
+            Assert.AreEqual(27, x);
+            Assert.AreEqual(36, y);
+            Assert.AreEqual(10, width);
+            Assert.AreEqual(20, height);
+            Assert.IsTrue(ended);
+            Assert.AreSame(request, completedRequest);
+            Assert.IsFalse(controller.HasCandidate);
+            Assert.IsFalse(controller.IsDragging);
+            Assert.IsNull(controller.ActiveRequest);
+        }
+
+        [Test]
+        public void TryGetPreview_MultipleImages_ReturnsPreviewAndCurrentPointer()
+        {
+            DragController controller = new DragController(0);
+            DragPreview preview = new DragPreview(
+                new[]
+                {
+                    new DragPreviewImage(_texture, new RectInt(10, 20, 30, 40)),
+                    new DragPreviewImage(_texture, new RectInt(60, 80, 20, 10)),
+                },
+                17,
+                29
+            );
+            controller.StartCandidate(new DragRequest(new object()), 17, 29);
+            controller.BeginDrag(preview, 20, 30);
+            controller.Move(50, 70);
+
+            bool available = controller.TryGetPreview(
+                out DragPreview activePreview,
+                out int pointerX,
+                out int pointerY
+            );
+
+            Assert.IsTrue(available);
+            Assert.AreSame(preview, activePreview);
+            Assert.AreEqual(50, pointerX);
+            Assert.AreEqual(70, pointerY);
+        }
+
+        [Test]
+        public void TryGetPreview_MissingActiveDrag_ReturnsClearedOutputs()
+        {
+            DragController controller = new DragController(0);
+
+            bool hasPreview = controller.TryGetPreview(
+                out Texture texture,
+                out int x,
+                out int y,
+                out int width,
+                out int height
+            );
+
+            Assert.IsFalse(hasPreview);
+            Assert.IsNull(texture);
+            Assert.AreEqual(0, x);
+            Assert.AreEqual(0, y);
+            Assert.AreEqual(0, width);
+            Assert.AreEqual(0, height);
+        }
+
+        [Test]
+        public void TryGetPreview_NullPreviewTexture_ReturnsFalseWithGeometry()
+        {
+            DragController controller = new DragController(0);
+            controller.StartCandidate(new DragRequest(new object()), 0, 0);
+            controller.BeginDrag(new DragPreview(null, 10, 20, 3, 4), 30, 40);
+
+            bool hasPreview = controller.TryGetPreview(
+                out Texture texture,
+                out int x,
+                out int y,
+                out int width,
+                out int height
+            );
+
+            Assert.IsFalse(hasPreview);
+            Assert.IsNull(texture);
+            Assert.AreEqual(27, x);
+            Assert.AreEqual(36, y);
+            Assert.AreEqual(10, width);
+            Assert.AreEqual(20, height);
+        }
+
+        [Test]
+        public void MoveAndEnd_MissingActiveDrag_ReturnFalse()
+        {
+            DragController controller = new DragController(0);
+
+            bool moved = controller.Move(1, 2);
+            bool ended = controller.End(1, 2, out DragRequest request);
+
+            Assert.IsFalse(moved);
+            Assert.IsFalse(ended);
+            Assert.IsNull(request);
+        }
+
+        [Test]
+        public void ClearSource_MatchingCandidate_ClearsCandidateOnly()
+        {
+            object source = new object();
+            DragController controller = new DragController(0);
+            controller.StartCandidate(new DragRequest(source), 0, 0);
+
+            controller.ClearSource(source);
+
+            Assert.IsFalse(controller.HasCandidate);
+            Assert.IsFalse(controller.IsDragging);
+        }
+
+        [Test]
+        public void ClearSource_MatchingActiveDrag_ClearsActiveDragOnly()
+        {
+            object source = new object();
+            DragController controller = new DragController(0);
+            controller.StartCandidate(new DragRequest(source), 0, 0);
+            controller.BeginDrag(new DragPreview(_texture, 1, 1, 0, 0), 0, 0);
+
+            controller.ClearSource(source);
+
+            Assert.IsFalse(controller.HasCandidate);
+            Assert.IsFalse(controller.IsDragging);
+        }
+
+        [Test]
+        public void ClearSource_NonmatchingOrNullSource_PreservesState()
+        {
+            object source = new object();
+            DragController controller = new DragController(0);
+            controller.StartCandidate(new DragRequest(source), 0, 0);
+
+            controller.ClearSource(null);
+            controller.ClearSource(new object());
+
+            Assert.IsTrue(controller.HasCandidate);
+        }
+
+        [Test]
+        public void Clear_CandidateAndActiveState_ClearsBoth()
+        {
+            DragController controller = new DragController(0);
+            controller.StartCandidate(new DragRequest(new object()), 0, 0);
+            controller.BeginDrag(new DragPreview(_texture, 1, 1, 0, 0), 0, 0);
+            controller.StartCandidate(new DragRequest(new object()), 0, 0);
+
+            controller.Clear();
+
+            Assert.IsFalse(controller.HasCandidate);
+            Assert.IsFalse(controller.IsDragging);
+        }
+    }
+}

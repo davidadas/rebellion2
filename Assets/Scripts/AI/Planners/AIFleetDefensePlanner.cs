@@ -51,10 +51,7 @@ namespace Rebellion.AI.Planners
             int committedDefense = context.Assessment.GetCommittedHeadquartersDefenseStrength(
                 headquarters
             );
-            if (
-                committedDefense >= requiredDefense
-                || HasHeadquartersDefenseOrder(context, headquarters)
-            )
+            if (committedDefense >= requiredDefense)
                 return null;
 
             Fleet fleet = FindHeadquartersDefenseFleet(context, headquarters, requiredDefense);
@@ -87,7 +84,8 @@ namespace Rebellion.AI.Planners
                         && context.Assessment.GetRequiredPlanetDefenseStrength(planet) > 0
                         && !HasDefenseOrder(context, planet)
                     )
-                    .OrderByDescending(context.Assessment.GetPlanetValue)
+                    .OrderByDescending(context.Assessment.GetDefensiveSupportRisk)
+                    .ThenByDescending(context.Assessment.GetPlanetValue)
                     .ThenByDescending(context.Assessment.GetRequiredPlanetDefenseStrength)
                     .ThenBy(planet => planet.InstanceID)
             )
@@ -139,7 +137,7 @@ namespace Rebellion.AI.Planners
                 || fleet.Movement != null
                 || fleet.IsInCombat
                 || !fleet.HasOperationalCapitalShips()
-                || !context.Assessment.CanFleetDepartHeadquarters(fleet)
+                || !context.StrategicPlan.CanFleetDepart(fleet)
             )
                 return false;
 
@@ -162,7 +160,9 @@ namespace Rebellion.AI.Planners
         )
         {
             List<Fleet> candidates = context
-                .Assessment.OwnedFleets.Where(CanAssignHeadquartersDefense)
+                .Assessment.OwnedFleets.Where(fleet =>
+                    CanAssignHeadquartersDefense(context, fleet, headquarters)
+                )
                 .ToList();
             Fleet sufficientFleet = candidates
                 .Where(fleet => context.Assessment.GetFleetCombatValue(fleet) >= requiredDefense)
@@ -183,29 +183,25 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Returns whether a fleet can be assigned to headquarters defense.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="headquarters">The headquarters planet.</param>
         /// <returns>True when the fleet is idle and combat-capable.</returns>
-        private static bool CanAssignHeadquartersDefense(Fleet fleet)
+        private static bool CanAssignHeadquartersDefense(
+            AITurnContext context,
+            Fleet fleet,
+            Planet headquarters
+        )
         {
             return fleet?.RoleType == FleetRoleType.Battle
                 && fleet.Order == null
                 && fleet.Movement == null
                 && !fleet.IsInCombat
-                && fleet.HasOperationalCapitalShips();
-        }
-
-        /// <summary>
-        /// Returns whether a fleet is already ordered to defend headquarters.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="headquarters">The headquarters planet.</param>
-        /// <returns>True when a matching defense order exists.</returns>
-        private static bool HasHeadquartersDefenseOrder(AITurnContext context, Planet headquarters)
-        {
-            return context.Assessment.OwnedFleets.Any(fleet =>
-                fleet.Order?.OrderType == FleetOrderType.Defend
-                && fleet.Order.TargetPlanetId == headquarters.InstanceID
-            );
+                && fleet.HasOperationalCapitalShips()
+                && (
+                    context.Assessment.GetFleetPlanet(fleet)?.InstanceID == headquarters.InstanceID
+                    || context.StrategicPlan.CanFleetDepart(fleet)
+                );
         }
 
         /// <summary>

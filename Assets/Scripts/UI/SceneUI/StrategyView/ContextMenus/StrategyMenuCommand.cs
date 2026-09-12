@@ -246,7 +246,7 @@ public static class StrategyContextMenuAvailability
     /// </summary>
     /// <param name="item">The context-targeted scene node.</param>
     /// <param name="playerFactionId">The player faction identifier.</param>
-    /// <param name="idleBarEnabled">Whether the experimental idle bar is enabled.</param>
+    /// <param name="idleBarEnabled">Whether the idle bar is enabled.</param>
     /// <returns><see langword="true"/> when tracking can be changed for the item.</returns>
     public static bool CanToggleIdleBarTracking(
         ISceneNode item,
