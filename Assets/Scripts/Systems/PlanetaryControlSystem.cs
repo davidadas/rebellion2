@@ -148,10 +148,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Applies the configured troop-presence drift on controlled, peaceful planets.
         /// </summary>
-        private void ApplyGarrisonSupportShift(
-            Planet planet,
-            GameConfig.SupportShiftConfig config
-        )
+        private void ApplyGarrisonSupportShift(Planet planet, GameConfig.SupportShiftConfig config)
         {
             Faction garrisonFaction = _game
                 .GetFactions()
