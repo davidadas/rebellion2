@@ -1486,6 +1486,20 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns whether a fleet can defeat known orbital defenders after its committed
+        /// reinforcements finish production and delivery.
+        /// </summary>
+        /// <param name="fleet">Attacking fleet.</param>
+        /// <param name="planet">Target planet.</param>
+        /// <returns>True when projected fleet strength is sufficient.</returns>
+        public bool CanProjectedFleetWinOrbitalCombat(Fleet fleet, Planet planet)
+        {
+            int requiredStrength = GetRequiredOrbitalStrength(planet);
+            return requiredStrength > 0
+                && GetProjectedFleetCombatValue(fleet) >= requiredStrength;
+        }
+
+        /// <summary>
         /// Returns regiment strength required to capture a planet.
         /// </summary>
         /// <param name="planet">Target planet.</param>
