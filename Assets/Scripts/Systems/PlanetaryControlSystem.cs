@@ -69,7 +69,7 @@ namespace Rebellion.Systems
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
                 ApplyBlockadeSupportShift(planet, config);
-                ApplyImperialGarrisonSupportShift(planet, config);
+                ApplyPeacefulGarrisonSupportShift(planet, config);
             }
         }
 
@@ -146,16 +146,16 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies the configured Imperial troop-presence drift on controlled, peaceful planets.
+        /// Applies the configured troop-presence drift on controlled, peaceful planets.
         /// </summary>
-        private void ApplyImperialGarrisonSupportShift(
+        private void ApplyPeacefulGarrisonSupportShift(
             Planet planet,
             GameConfig.SupportShiftConfig config
         )
         {
             Faction garrisonFaction = _game
                 .GetFactions()
-                .FirstOrDefault(faction => faction.Settings?.GarrisonSupportShift != 0);
+                .FirstOrDefault(faction => faction.Settings?.PeacefulGarrisonSupportShift != 0);
             if (
                 garrisonFaction == null
                 || planet.OwnerInstanceID != garrisonFaction.InstanceID
@@ -173,7 +173,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            int interval = config.ImperialGarrisonSupportShiftIntervalTicks;
+            int interval = config.PeacefulGarrisonSupportShiftIntervalTicks;
             if (interval <= 0)
                 return;
 
@@ -189,7 +189,7 @@ namespace Rebellion.Systems
             ShiftPopularSupport(
                 planet,
                 garrisonFaction,
-                garrisonFaction.Settings.GarrisonSupportShift
+                garrisonFaction.Settings.PeacefulGarrisonSupportShift
             );
             planet.NextGarrisonSupportShiftTick = _game.CurrentTick + interval;
         }
