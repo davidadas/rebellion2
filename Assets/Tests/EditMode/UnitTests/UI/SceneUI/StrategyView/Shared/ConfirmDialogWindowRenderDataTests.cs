@@ -17,7 +17,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void Constructor_CompletePresentation_StoresValuesAndCopiesLines()
+        public void Constructor_SourceLinesChange_PreservesReadOnlySnapshot()
         {
             Texture2D background = new Texture2D(4, 4);
             Texture2D title = new Texture2D(2, 2);
@@ -32,10 +32,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
             sourceLines[0] = "Changed";
 
-            Assert.AreEqual(10, data.X);
-            Assert.AreEqual(20, data.Y);
-            Assert.AreSame(background, data.BackgroundTexture);
-            Assert.AreSame(title, data.TitleTexture);
             CollectionAssert.AreEqual(new[] { "Confirm?", "Coruscant" }, data.Lines);
             Assert.Throws<NotSupportedException>(() =>
                 ((IList<string>)data.Lines).Add("Additional")

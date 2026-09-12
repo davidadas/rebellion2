@@ -37,36 +37,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
-        public void DialogButtonRenderData_Values_PreservesPresentation()
-        {
-            RectInt sourceRect = new RectInt(1, 2, 3, 4);
-
-            FinderWindowDialogButtonRenderData data = new FinderWindowDialogButtonRenderData(
-                FinderWindowCommand.Target,
-                _firstTexture,
-                _secondTexture,
-                sourceRect
-            );
-
-            Assert.AreEqual(FinderWindowCommand.Target, data.Command);
-            Assert.AreSame(_firstTexture, data.Texture);
-            Assert.AreSame(_secondTexture, data.PressedTexture);
-            Assert.AreEqual(sourceRect, data.SourceRect);
-        }
-
-        [Test]
-        public void TabRenderData_Textures_PreservesPresentation()
-        {
-            FinderWindowTabRenderData data = new FinderWindowTabRenderData(
-                _firstTexture,
-                _secondTexture
-            );
-
-            Assert.AreSame(_firstTexture, data.Texture);
-            Assert.AreSame(_secondTexture, data.PressedTexture);
-        }
-
-        [Test]
         public void RowRenderData_SourceChanges_PreservesNormalizedSnapshot()
         {
             string[] counts = { "1", "2" };

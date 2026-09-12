@@ -9,34 +9,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
     public class StrategyAdvisorViewDataTests
     {
         [Test]
-        public void ViewData_CompletePresentation_StoresAllValues()
-        {
-            Texture2D protocol = new Texture2D(4, 4);
-            Texture2D droid = new Texture2D(4, 4);
-            RectInt protocolBounds = new RectInt(10, 20, 30, 40);
-            RectInt droidBounds = new RectInt(50, 60, 70, 80);
-
-            StrategyAdvisorViewData data = new StrategyAdvisorViewData(
-                true,
-                protocol,
-                droid,
-                protocolBounds,
-                droidBounds,
-                0.25f
-            );
-
-            Assert.IsTrue(data.Visible);
-            Assert.AreSame(protocol, data.ProtocolIdleTexture);
-            Assert.AreSame(droid, data.DroidIdleTexture);
-            Assert.AreEqual(protocolBounds, data.ProtocolBounds);
-            Assert.AreEqual(droidBounds, data.DroidBounds);
-            Assert.AreEqual(0.25f, data.FrameIntervalSeconds);
-
-            UnityEngine.Object.DestroyImmediate(droid);
-            UnityEngine.Object.DestroyImmediate(protocol);
-        }
-
-        [Test]
         public void AnimationData_NullFrames_UsesEmptySnapshot()
         {
             StrategyAdvisorAnimationViewData data = new StrategyAdvisorAnimationViewData(

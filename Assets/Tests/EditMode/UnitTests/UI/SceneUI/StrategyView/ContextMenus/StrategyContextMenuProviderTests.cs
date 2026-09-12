@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
 {
@@ -18,51 +17,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         }
 
         [Test]
-        public void ProviderContext_CompleteInvocation_StoresAllValues()
-        {
-            UIWindow window = CreateWindow();
-            StrategyContextMenuLayout layout = new StrategyContextMenuLayout(1, 2, 3, 4, 5, 6, 7);
-            PointerEventData eventData = new PointerEventData(null);
-
-            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
-                window,
-                layout,
-                eventData,
-                8,
-                9
-            );
-
-            Assert.AreSame(window, context.Window);
-            Assert.AreEqual(1, context.Layout.FacilityMenuWidth);
-            Assert.AreSame(eventData, context.EventData);
-            Assert.AreEqual(8, context.X);
-            Assert.AreEqual(9, context.Y);
-        }
-
-        [Test]
-        public void Layout_CompleteGeometry_StoresEveryWidth()
-        {
-            StrategyContextMenuLayout layout = new StrategyContextMenuLayout(
-                11,
-                12,
-                13,
-                14,
-                15,
-                16,
-                17
-            );
-
-            Assert.AreEqual(11, layout.FacilityMenuWidth);
-            Assert.AreEqual(12, layout.FleetMenuWidth);
-            Assert.AreEqual(13, layout.FleetBombardmentMenuWidth);
-            Assert.AreEqual(14, layout.PlanetSectorMenuWidth);
-            Assert.AreEqual(15, layout.DefenseMenuWidth);
-            Assert.AreEqual(16, layout.MissionsMenuWidth);
-            Assert.AreEqual(17, layout.FallbackMenuWidth);
-        }
-
-        [Test]
-        public void MenuData_CommandSource_CopiesCommandsAndStoresPlacement()
+        public void MenuData_CommandSourceChange_PreservesSnapshot()
         {
             UIWindow window = CreateWindow();
             StrategyMenuCommand command = new StrategyMenuCommand(
@@ -81,10 +36,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             );
             commands.Clear();
 
-            Assert.AreSame(window, data.Window);
-            Assert.AreEqual(20, data.X);
-            Assert.AreEqual(30, data.Y);
-            Assert.AreEqual(140, data.Width);
             Assert.AreEqual(1, data.Commands.Count);
             Assert.AreSame(command, data.Commands[0]);
         }

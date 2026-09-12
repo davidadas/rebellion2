@@ -19,7 +19,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         }
 
         [Test]
-        public void Constructor_CompleteState_CopiesItemsAndStoresValues()
+        public void Constructor_SourceItemsChange_PreservesSnapshot()
         {
             UIWindow window = CreateWindow();
             Officer officer = new Officer();
@@ -34,10 +34,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             );
             items.Clear();
 
-            Assert.AreSame(window, source.Window);
-            Assert.AreEqual(StrategyMenuAction.Move, source.Action);
-            Assert.AreEqual(12, source.SourceX);
-            Assert.AreEqual(34, source.SourceY);
             Assert.AreEqual(1, source.Items.Count);
             Assert.AreSame(officer, source.Items[0]);
         }

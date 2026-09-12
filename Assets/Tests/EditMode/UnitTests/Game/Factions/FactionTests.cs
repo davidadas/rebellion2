@@ -577,21 +577,25 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void RemoveMessage_MissingMessageBucket_DoesNotThrow()
+        public void RemoveMessage_MissingMessageBucket_RemainsAbsent()
         {
             _faction.Messages.Remove(MessageType.Manufacturing);
             Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
 
-            Assert.DoesNotThrow(() => _faction.RemoveMessage(message));
+            _faction.RemoveMessage(message);
+
+            Assert.IsFalse(_faction.Messages.ContainsKey(MessageType.Manufacturing));
         }
 
         [Test]
-        public void RemoveMessage_NullMessageDictionary_DoesNotThrow()
+        public void RemoveMessage_NullMessageDictionary_RemainsNull()
         {
             _faction.Messages = null;
             Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
 
-            Assert.DoesNotThrow(() => _faction.RemoveMessage(message));
+            _faction.RemoveMessage(message);
+
+            Assert.IsNull(_faction.Messages);
         }
 
         [Test]

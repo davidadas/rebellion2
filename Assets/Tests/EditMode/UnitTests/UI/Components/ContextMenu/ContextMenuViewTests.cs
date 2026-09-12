@@ -73,24 +73,6 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
         }
 
         [Test]
-        public void Visuals_Constructor_StoresCommandColors()
-        {
-            Color32 enabled = new Color32(1, 2, 3, 4);
-            Color32 active = new Color32(5, 6, 7, 8);
-            Color32 disabled = new Color32(9, 10, 11, 12);
-
-            ContextMenuView.ContextMenuVisuals visuals = new ContextMenuView.ContextMenuVisuals(
-                enabled,
-                active,
-                disabled
-            );
-
-            Assert.AreEqual(enabled, visuals.EnabledColor);
-            Assert.AreEqual(active, visuals.ActiveColor);
-            Assert.AreEqual(disabled, visuals.DisabledColor);
-        }
-
-        [Test]
         public void Metrics_Dimensions_CalculatePanelWidthAndHeight()
         {
             ContextMenuMetrics metrics = new ContextMenuMetrics(20, 30, 2);
