@@ -16,6 +16,43 @@ namespace Rebellion.Tests.AI.Proposals
     public sealed class AIFacilityRemovalProposalTests
     {
         [Test]
+        public void Plan_WithOneFacilityPlanetPerSector_RemovesFacilityFromSecondPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "primary",
+                empire.InstanceID,
+                energyCapacity: 20
+            );
+            Planet second = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "second",
+                empire.InstanceID,
+                energyCapacity: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                second,
+                "second-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIFacilityRemovalProposal proposal = new AIFacilityRemovalPlanner()
+                .Plan(context)
+                .Cast<AIFacilityRemovalProposal>()
+                .Single();
+
+            Assert.AreSame(second, proposal.Planet);
+        }
+
+        [Test]
         public void Execute_WithEqualFacilityRates_RemovesUnfinishedFacility()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

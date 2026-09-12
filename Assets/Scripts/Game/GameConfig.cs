@@ -303,6 +303,7 @@ namespace Rebellion.Game
             public int FacilitySectorHubTargetCount { get; set; } = 5;
             public int ShipyardSectorHubTargetCount { get; set; } = 6;
             public int FacilitySectorHubMaximumCount { get; set; } = 7;
+            public int FacilityPlanetsPerSector { get; set; } = 3;
             public int FacilitySectorSecondaryTargetCount { get; set; } = 3;
             public int FacilitySectorCoveragePressureBonus { get; set; } = 100;
             public int FacilitySectorPrimaryHubPressureBonus { get; set; } = 50;

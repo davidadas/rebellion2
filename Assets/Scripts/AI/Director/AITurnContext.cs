@@ -283,7 +283,7 @@ namespace Rebellion.AI.Director
                     .ThenByDescending(item => item.Planet.GetTotalBuildingTypeCount(buildingType))
                     .ThenByDescending(item => context.Assessment.GetPlanetValue(item.Planet))
                     .ThenBy(item => item.Planet.InstanceID, StringComparer.Ordinal)
-                    .Take(3)
+                    .Take(config.FacilityPlanetsPerSector)
                     .Select(item => item.Planet)
                     .ToList();
                 if (ranked.Count > 0)
