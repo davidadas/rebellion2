@@ -83,7 +83,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            Faction blockadingFaction = FindBlockadingFaction(planet);
+            Faction blockadingFaction = GetBlockadingFaction(planet);
             if (blockadingFaction == null)
                 return;
 
@@ -122,7 +122,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Returns the faction operating the fleet that currently blockades a planet.
         /// </summary>
-        private Faction FindBlockadingFaction(Planet planet)
+        private Faction GetBlockadingFaction(Planet planet)
         {
             Fleet blockadingFleet = planet
                 .GetChildren<Fleet>()

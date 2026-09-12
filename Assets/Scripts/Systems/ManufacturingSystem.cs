@@ -142,7 +142,7 @@ namespace Rebellion.Systems
             if (!CanStartManufacturing(producer, template, destination, count, ownerInstanceId))
                 return false;
 
-            ReplaceDifferentProject(producer, template);
+            CancelConflictingProject(producer, template);
 
             bool started = false;
             Fleet capitalShipDestination = null;
@@ -312,7 +312,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Cancels the active project in a production lane when a different unit type is ordered.
         /// </summary>
-        private void ReplaceDifferentProject(Planet producer, IManufacturable template)
+        private void CancelConflictingProject(Planet producer, IManufacturable template)
         {
             ManufacturingType type = template.GetManufacturingType();
             if (
