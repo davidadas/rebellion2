@@ -7,7 +7,7 @@ using Rebellion.Game.Units;
 namespace Rebellion.AI.Proposals
 {
     /// <summary>
-    /// Retires production facilities outside a planet's sector allocation.
+    /// Removes production facilities outside a planet's sector allocation.
     /// </summary>
     public sealed class AIFacilityRemovalProposal : AIProposal
     {
@@ -22,7 +22,7 @@ namespace Rebellion.AI.Proposals
         /// <summary>
         /// Creates a facility-removal proposal.
         /// </summary>
-        /// <param name="planet">The planet whose surplus facilities should be retired.</param>
+        /// <param name="planet">The planet whose surplus facilities should be removed.</param>
         /// <param name="buildingType">The production-facility type to evaluate.</param>
         public AIFacilityRemovalProposal(Planet planet, BuildingType buildingType)
         {
@@ -123,7 +123,9 @@ namespace Rebellion.AI.Proposals
                     && building.GetBuildingType() == buildingType
                 )
                 .OrderByDescending(building => building.GetProcessRate())
-                .ThenBy(building => building.ManufacturingStatus)
+                .ThenByDescending(building =>
+                    building.ManufacturingStatus == ManufacturingStatus.Complete
+                )
                 .ThenBy(building => building.InstanceID)
                 .Skip(cap)
                 .ToList();
