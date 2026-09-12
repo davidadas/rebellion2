@@ -1338,8 +1338,8 @@ namespace Rebellion.Tests.AI.Planners
             );
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
-            AddShield(game, target, "shield-1", rebels.InstanceID, 10);
-            AddShield(game, target, "shield-2", rebels.InstanceID, 10);
+            AddShield(game, target, "shield-1", rebels.InstanceID, 100);
+            AddShield(game, target, "shield-2", rebels.InstanceID, 100);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -1530,8 +1530,8 @@ namespace Rebellion.Tests.AI.Planners
             );
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
-            AddShield(game, target, "shield-1", rebels.InstanceID, 10);
-            AddShield(game, target, "shield-2", rebels.InstanceID, 10);
+            AddShield(game, target, "shield-1", rebels.InstanceID, 100);
+            AddShield(game, target, "shield-2", rebels.InstanceID, 100);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITestSceneBuilder.AddProductionFacility(
                 game,

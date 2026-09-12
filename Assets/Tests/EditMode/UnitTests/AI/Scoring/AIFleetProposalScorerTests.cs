@@ -377,8 +377,8 @@ namespace Rebellion.Tests.AI.Scoring
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
             target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
-            AddShield(game, target, "shield-1", rebels.InstanceID, 5);
-            AddShield(game, target, "shield-2", rebels.InstanceID, 5);
+            AddShield(game, target, "shield-1", rebels.InstanceID, 50);
+            AddShield(game, target, "shield-2", rebels.InstanceID, 50);
             Fleet capitalOnly = AddAssaultFleet(game, owned, "capital-only", empire.InstanceID);
             capitalOnly.GetChildren<CapitalShip>()[0].Bombardment = 10;
             Fleet combinedArms = AddAssaultFleet(game, owned, "combined", empire.InstanceID);

@@ -873,8 +873,8 @@ namespace Rebellion.Tests.AI.Director
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
             target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
-            AddShield(game, target, "shield-1", rebels.InstanceID, 5);
-            AddShield(game, target, "shield-2", rebels.InstanceID, 5);
+            AddShield(game, target, "shield-1", rebels.InstanceID, 50);
+            AddShield(game, target, "shield-2", rebels.InstanceID, 50);
 
             Fleet blockedFleet = CreateAssaultFleet(game, origin, "blocked", empire.InstanceID, 10);
             Fleet readyFleet = CreateAssaultFleet(game, origin, "ready", empire.InstanceID, 10);
@@ -1239,7 +1239,7 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(300, assessment.GetRequiredAttackCombatStrength(firstTarget));
             Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(firstTarget));
             Assert.AreEqual(20, assessment.GetRequiredAttackRegimentStrength(firstTarget));
-            Assert.AreEqual(11, assessment.GetRequiredBombardmentStrength(firstTarget));
+            Assert.AreEqual(2, assessment.GetRequiredBombardmentStrength(firstTarget));
             Assert.AreEqual(300, assessment.GetRequiredAttackCombatStrength(secondTarget));
             Assert.AreEqual(3, assessment.GetRequiredAttackRegimentCount(secondTarget));
             Assert.AreEqual(20, assessment.GetRequiredAttackRegimentStrength(secondTarget));

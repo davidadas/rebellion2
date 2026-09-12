@@ -1553,7 +1553,7 @@ namespace Rebellion.AI.Director
             if (!IsAssaultBlockedByShields(planet))
                 return 0;
 
-            return BombardmentSystem.GetBombardmentShieldStrength(planet) + 1;
+            return GetBombardmentShieldResistance(planet) + 1;
         }
 
         /// <summary>
@@ -1701,7 +1701,7 @@ namespace Rebellion.AI.Director
             int bombardmentStrength = projected
                 ? GetProjectedFleetBombardmentStrength(fleet)
                 : GetFleetBombardmentStrength(fleet);
-            return bombardmentStrength > BombardmentSystem.GetBombardmentShieldStrength(planet);
+            return bombardmentStrength > GetBombardmentShieldResistance(planet);
         }
 
         /// <summary>
@@ -1870,9 +1870,21 @@ namespace Rebellion.AI.Director
         {
             return fleet != null
                 && targetPlanet != null
-                && GetFleetBombardmentStrength(fleet)
-                    > BombardmentSystem.GetBombardmentShieldStrength(targetPlanet)
+                && GetFleetBombardmentStrength(fleet) > GetBombardmentShieldResistance(targetPlanet)
                 && HasBombardmentTargets(targetPlanet);
+        }
+
+        /// <summary>
+        /// Returns planetary shield resistance on the bombardment-rating scale.
+        /// </summary>
+        /// <param name="planet">The planet whose shields are evaluated.</param>
+        /// <returns>The bombardment strength absorbed by the shields.</returns>
+        public int GetBombardmentShieldResistance(Planet planet)
+        {
+            return BombardmentSystem.GetBombardmentShieldResistance(
+                BombardmentSystem.GetBombardmentShieldStrength(planet),
+                _context.Game.Config.Combat.Bombardment
+            );
         }
 
         /// <summary>

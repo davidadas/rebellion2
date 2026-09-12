@@ -308,9 +308,6 @@ namespace Rebellion.Systems
             Mission mission = _game.GetSceneNodeByInstanceID<Mission>(missionInstanceID);
             if (mission == null)
                 return false;
-            if (mission.IsWaitingForParticipants())
-                return false;
-
             AddMissionResults(
                 mission,
                 mission.ResolveInterruption(_game, _provider),

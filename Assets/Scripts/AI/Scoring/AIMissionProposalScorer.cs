@@ -50,19 +50,13 @@ namespace Rebellion.AI.Scoring
             if (odds == null)
                 return 0;
 
-            if (
-                missionProposal.MainParticipants.OfType<Officer>().Any()
-                && odds.PersonnelLossProbability
-                    > context.Game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability
-            )
-                return 0;
-
             double successProbability = odds.ObjectiveSuccessProbability;
             if (!MeetsUprisingMissionProbabilityFloor(context, missionProposal, successProbability))
                 return 0;
 
             double foilProbability = odds.FoilProbability;
             missionProposal.SetFoilProbability(foilProbability);
+            missionProposal.SetPersonnelLossProbability(odds.PersonnelLossProbability);
             double score = GetMissionScore(context, missionProposal, successProbability);
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, missionProposal);
             score -= foilProbability * context.Game.Config.AI.MissionPlanning.MissionFoilRiskWeight;

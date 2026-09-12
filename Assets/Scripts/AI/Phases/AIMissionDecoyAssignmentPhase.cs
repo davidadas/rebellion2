@@ -67,10 +67,46 @@ namespace Rebellion.AI.Phases
             }
 
             PairRiskyOfficerMissions(selected, selectedIndexes, unprotectedRiskyMissions);
+            RemoveUnsafeOfficerMissions(context, selected);
 
             foreach (SpecialForces unusedDecoy in decoys.OfType<SpecialForces>())
                 context.SetSpecialForcesIntent(unusedDecoy, SpecialForcesIntent.Reserve);
             context.SetSelectedProposals(selected);
+        }
+
+        /// <summary>
+        /// Removes officer missions whose finalized participant team exceeds the loss limit.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="selected">The selected proposals after decoy assignment.</param>
+        private static void RemoveUnsafeOfficerMissions(
+            AITurnContext context,
+            IList<AIProposal> selected
+        )
+        {
+            for (int index = 0; index < selected.Count; index++)
+            {
+                if (
+                    selected[index] is not AIMissionProposal mission
+                    || !mission.MainParticipants.OfType<Officer>().Any()
+                )
+                    continue;
+
+                double? personnelLossProbability = mission.PersonnelLossProbability;
+                if (!personnelLossProbability.HasValue)
+                {
+                    MissionOdds odds = context.Missions.GetMissionOdds(
+                        mission.CreateRequest(),
+                        context.Assessment.GetMissionDetectorCandidates(mission.TargetPlanet)
+                    );
+                    personnelLossProbability = odds?.PersonnelLossProbability;
+                }
+                if (
+                    personnelLossProbability
+                    > context.Game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability
+                )
+                    selected[index] = null;
+            }
         }
 
         /// <summary>

@@ -214,7 +214,7 @@ namespace Rebellion.AI.Proposals
             bool canDamageMilitaryTargets =
                 canBombard
                 && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > BombardmentSystem.GetBombardmentShieldStrength(liveTarget);
+                    > context.Assessment.GetBombardmentShieldResistance(liveTarget);
             bool shouldBombardMilitaryTargets =
                 canDamageMilitaryTargets
                 && BombardmentSystem.HasActiveMilitaryTargets(

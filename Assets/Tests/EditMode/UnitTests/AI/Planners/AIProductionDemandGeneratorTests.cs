@@ -2129,8 +2129,8 @@ namespace Rebellion.Tests.AI.Planners
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
             enemy.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
-            AddShield(game, enemy, "shield-1", rebels.InstanceID, 10);
-            AddShield(game, enemy, "shield-2", rebels.InstanceID, 10);
+            AddShield(game, enemy, "shield-1", rebels.InstanceID, 100);
+            AddShield(game, enemy, "shield-2", rebels.InstanceID, 100);
             AITestSceneBuilder.RevealPlanet(game, empire, enemy);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             fleet.RoleType = FleetRoleType.Battle;
@@ -2172,8 +2172,8 @@ namespace Rebellion.Tests.AI.Planners
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
             enemy.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
-            AddShield(game, enemy, "shield-1", rebels.InstanceID, 10);
-            AddShield(game, enemy, "shield-2", rebels.InstanceID, 10);
+            AddShield(game, enemy, "shield-1", rebels.InstanceID, 100);
+            AddShield(game, enemy, "shield-2", rebels.InstanceID, 100);
             AITestSceneBuilder.RevealPlanet(game, empire, enemy);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             fleet.RoleType = FleetRoleType.Battle;

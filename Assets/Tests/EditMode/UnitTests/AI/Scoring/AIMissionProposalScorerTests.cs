@@ -386,7 +386,7 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
-        public void Score_OfficerMissionAbovePersonnelLossLimit_ReturnsZero()
+        public void Score_OfficerMissionAbovePersonnelLossLimit_RemainsAvailableForDecoy()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -415,7 +415,7 @@ namespace Rebellion.Tests.AI.Scoring
                 new AIMissionProposal(new[] { participant }, MissionTypeIDs.Espionage, target)
             );
 
-            Assert.AreEqual(0, score);
+            Assert.Greater(score, 0);
         }
 
         [Test]

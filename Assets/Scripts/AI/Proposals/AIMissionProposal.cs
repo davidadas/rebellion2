@@ -38,6 +38,7 @@ namespace Rebellion.AI.Proposals
 
         // Mission Assessment.
         public double FoilProbability { get; private set; }
+        public double? PersonnelLossProbability { get; private set; }
 
         /// <summary>
         /// Creates a mission proposal.
@@ -216,6 +217,15 @@ namespace Rebellion.AI.Proposals
         internal void SetFoilProbability(double probability)
         {
             FoilProbability = probability;
+        }
+
+        /// <summary>
+        /// Records the assessed probability that the mission loses at least one main officer.
+        /// </summary>
+        /// <param name="probability">The assessed personnel-loss probability.</param>
+        internal void SetPersonnelLossProbability(double probability)
+        {
+            PersonnelLossProbability = probability;
         }
 
         /// <summary>

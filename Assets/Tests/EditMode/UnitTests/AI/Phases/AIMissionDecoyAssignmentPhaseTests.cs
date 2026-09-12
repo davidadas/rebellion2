@@ -47,6 +47,89 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        public void Execute_WithDecoyReducingOfficerLossBelowLimit_KeepsMission()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Regiment detector = AITestSceneBuilder.CreateRegiment("detector", rebels.InstanceID);
+            detector.DetectionRating = 100;
+            game.AttachNode(detector, target);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            SpecialForces decoy = CreateSpecialForces("decoy", empire.InstanceID);
+            game.AttachNode(officer, origin);
+            game.AttachNode(decoy, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+            };
+            game.Config.ProbabilityTables.Mission.PlanetaryDecoy = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 5;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.SetSpecialForcesIntent(decoy, SpecialForcesIntent.Decoy);
+            AIMissionProposal mission = new AIMissionProposal(
+                new[] { officer },
+                MissionTypeIDs.Espionage,
+                target
+            );
+            mission.SetScore(50);
+            mission.SetFoilProbability(100);
+            context.SetSelectedProposals(new[] { mission });
+
+            new AIMissionDecoyAssignmentPhase().Execute(context);
+
+            AIMissionProposal selected = context
+                .SelectedProposals.OfType<AIMissionProposal>()
+                .Single();
+            CollectionAssert.AreEqual(new[] { decoy }, selected.DecoyParticipants);
+        }
+
+        [Test]
+        public void Execute_WithUnprotectedOfficerLossAboveLimit_RemovesMission()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Regiment detector = AITestSceneBuilder.CreateRegiment("detector", rebels.InstanceID);
+            detector.DetectionRating = 100;
+            game.AttachNode(detector, target);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            game.AttachNode(officer, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+            };
+            game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 5;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal mission = new AIMissionProposal(
+                new[] { officer },
+                MissionTypeIDs.Espionage,
+                target
+            );
+            mission.SetScore(50);
+            context.SetSelectedProposals(new[] { mission });
+
+            new AIMissionDecoyAssignmentPhase().Execute(context);
+
+            Assert.IsEmpty(context.SelectedProposals.OfType<AIMissionProposal>());
+        }
+
+        [Test]
         public void Execute_WithSpecialForcesLedMission_DoesNotAssignDecoy()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

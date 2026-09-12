@@ -3132,7 +3132,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void AbortMission_ParticipantInTransit_ReturnsFalse()
+        public void AbortMission_ParticipantInTransit_ReturnsParticipantToOrigin()
         {
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -3144,9 +3144,9 @@ namespace Rebellion.Tests.Sectors
 
             bool aborted = system.AbortMission(mission.InstanceID);
 
-            Assert.IsFalse(aborted);
-            Assert.AreEqual(mission, officer.GetParent());
-            Assert.AreEqual(planet, mission.GetParent());
+            Assert.IsTrue(aborted);
+            Assert.AreEqual(planet, officer.GetParent());
+            Assert.IsNull(mission.GetParent());
         }
 
         [Test]
