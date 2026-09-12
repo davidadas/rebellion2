@@ -234,9 +234,9 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithFasterShipyardOneOverMaintenanceBudget_SelectsAffordableShipyard()
+        public void Plan_WithPrimaryHubAndGlobalHeadroom_SelectsFasterShipyard()
         {
-            (GameRoot game, Faction empire, Building affordableShipyard, Building _) =
+            (GameRoot game, Faction empire, Building _, Building fasterShipyard) =
                 CreateShipyardSelectionScene(3, 4);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -245,11 +245,11 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIManufactureProposal>()
                 .Single(item => item.Demand.Kind == AIDemandKind.Shipyard);
 
-            Assert.AreSame(affordableShipyard, proposal.Product.GetReference());
+            Assert.AreSame(fasterShipyard, proposal.Product.GetReference());
         }
 
         [Test]
-        public void Plan_WithoutAffordableShipyard_DoesNotAddShipyardProposal()
+        public void Plan_WithPrimaryHubAndGlobalHeadroom_AddsShipyardProposal()
         {
             (GameRoot game, Faction empire, Building _, Building overBudgetShipyard) =
                 CreateShipyardSelectionScene(3, 4);
@@ -261,7 +261,7 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIProposal> proposals = new AIProductionPlanner().Plan(context);
 
-            Assert.IsFalse(
+            Assert.IsTrue(
                 proposals
                     .OfType<AIManufactureProposal>()
                     .Any(item => item.Demand.Kind == AIDemandKind.Shipyard)
@@ -287,7 +287,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithRemainingSharedFacilityBudget_AddsProposal()
         {
             (GameRoot game, Faction empire, Planet _, Building _) = CreateShipyardBatchScene(
-                constructionFacilityCount: 5,
+                constructionFacilityCount: 2,
                 energyCapacity: 20,
                 shipyardMaintenance: 1
             );
@@ -314,10 +314,10 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithHeadroomBelowFacilityAllocation_DoesNotAddFacilityProposal()
+        public void Plan_WithHeadroomBelowFacilityAllocationButEnoughForPrimaryHub_AddsProposal()
         {
             (GameRoot game, Faction empire, Planet planet, Building _) = CreateShipyardBatchScene(
-                constructionFacilityCount: 5,
+                constructionFacilityCount: 2,
                 energyCapacity: 20,
                 shipyardMaintenance: 1
             );
@@ -334,7 +334,7 @@ namespace Rebellion.Tests.AI.Planners
             List<AIProposal> proposals = new AIProductionPlanner().Plan(context);
 
             Assert.AreEqual(2, empire.ProjectedMaintenanceHeadroom);
-            Assert.IsFalse(
+            Assert.IsTrue(
                 proposals
                     .OfType<AIManufactureProposal>()
                     .Any(item => item.Demand.Kind == AIDemandKind.Shipyard)
@@ -387,7 +387,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithConstructionFacilityExactlyAtMaintenanceAllocation_AddsProposal()
         {
             (GameRoot game, Faction empire, Building _) = CreateConstructionFacilityBatchScene(
-                constructionFacilityCount: 6,
+                constructionFacilityCount: 2,
                 constructionFacilityMaintenance: 4
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -404,7 +404,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithConstructionFacilityOneOverMaintenanceAllocation_DoesNotAddProposal()
         {
             (GameRoot game, Faction empire, Building _) = CreateConstructionFacilityBatchScene(
-                constructionFacilityCount: 6,
+                constructionFacilityCount: 2,
                 constructionFacilityMaintenance: 5
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -971,7 +971,11 @@ namespace Rebellion.Tests.AI.Planners
                 new Technology(transport),
                 new Technology(slowTransport),
             };
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: new SequenceRNG(intValues: new[] { 1 })
+            );
 
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)

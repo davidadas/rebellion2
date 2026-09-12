@@ -1261,6 +1261,8 @@ namespace Rebellion.AI.Planners
             int combatDeficit = targetCombat - projectedCombat;
             int targetRegimentCapacity =
                 isDefenseOrder ? 0
+                : isColonizationFleet || isColonizationOrder
+                    ? context.Game.Config.AI.FleetDeployment.ColonizationFleetMaximumRegimentCount
                 : targetPlanet == null
                     ? context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount
                 : GetDesiredRegimentCount(context, fleet);

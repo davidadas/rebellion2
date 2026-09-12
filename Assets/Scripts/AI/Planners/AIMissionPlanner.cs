@@ -746,6 +746,18 @@ namespace Rebellion.AI.Planners
                 )
                 .ThenBy(target => target.InstanceID)
                 .ToList();
+            if (targets.Count > 0)
+            {
+                int highestPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                    context,
+                    planet,
+                    targets[0]
+                );
+                targets.RemoveAll(target =>
+                    AIMissionProposalScorer.GetSabotagePriorityBonus(context, planet, target)
+                    != highestPriority
+                );
+            }
             targets = SelectDistinctSabotageTargetTypes(targets);
             _sabotageTargets.Add(planet.InstanceID, targets);
             return targets;

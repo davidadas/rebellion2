@@ -92,9 +92,7 @@ namespace Rebellion.Systems
             faction.RefinedMaterialStockpile = ServicePendingMaterialRequests(
                 faction.PendingRefinedMaterialFacilityIDs,
                 faction.RefinedMaterialStockpile,
-                facilityId => GetPendingProductionFacility(faction, facilityId),
-                facility =>
-                    ManufacturingSystem.GetRefinedMaterialReserveFloor(_game, faction, facility)
+                facilityId => GetPendingProductionFacility(faction, facilityId)
             );
         }
 

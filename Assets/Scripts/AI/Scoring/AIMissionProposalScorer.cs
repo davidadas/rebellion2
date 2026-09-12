@@ -67,6 +67,7 @@ namespace Rebellion.AI.Scoring
             score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, missionProposal);
             score -= foilProbability * context.Game.Config.AI.MissionPlanning.MissionFoilRiskWeight;
             score -= GetTravelPenalty(context, missionProposal);
+            score -= GetOfficerReplacementPenalty(context, missionProposal);
 
             return score >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? score : 0;
         }
@@ -307,6 +308,25 @@ namespace Rebellion.AI.Scoring
                 MissionTypeIDs.Diplomacy => config.DiplomacyPriorityBonus,
                 _ => 0,
             };
+        }
+
+        /// <summary>
+        /// Penalizes risking an officer on hostile work that unlocked special forces can perform.
+        /// </summary>
+        private static int GetOfficerReplacementPenalty(
+            AITurnContext context,
+            AIMissionProposal proposal
+        )
+        {
+            if (
+                proposal.Participant is not Officer
+                || proposal.TargetPlanet?.GetOwnerInstanceID() == null
+                || proposal.TargetPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
+                || !context.HasUnlockedSpecialForcesForMission(proposal.MissionTypeID)
+            )
+                return 0;
+
+            return context.Game.Config.AI.MissionPlanning.HostileOfficerReplacementPenalty;
         }
 
         /// <summary>

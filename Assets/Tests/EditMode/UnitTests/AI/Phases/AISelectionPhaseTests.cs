@@ -182,6 +182,7 @@ namespace Rebellion.Tests.AI.Phases
         {
             AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
             AIManufactureProposal proposal = CreateManufactureProposal(
+                context,
                 producer,
                 AIDemandKind.PlanetaryDefense,
                 BuildingType.Defense
@@ -203,6 +204,7 @@ namespace Rebellion.Tests.AI.Phases
         {
             AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
             AIManufactureProposal proposal = CreateManufactureProposal(
+                context,
                 producer,
                 demandKind,
                 buildingType
@@ -225,6 +227,7 @@ namespace Rebellion.Tests.AI.Phases
         {
             AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
             AIManufactureProposal proposal = CreateManufactureProposal(
+                context,
                 producer,
                 demandKind,
                 BuildingType.None
@@ -246,6 +249,7 @@ namespace Rebellion.Tests.AI.Phases
         {
             AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
             AIManufactureProposal proposal = CreateManufactureProposal(
+                context,
                 producer,
                 demandKind,
                 buildingType
@@ -262,6 +266,7 @@ namespace Rebellion.Tests.AI.Phases
         {
             AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
             AIManufactureProposal higherScore = CreateManufactureProposal(
+                context,
                 producer,
                 AIDemandKind.PlanetaryDefense,
                 BuildingType.Defense,
@@ -269,6 +274,7 @@ namespace Rebellion.Tests.AI.Phases
                 score: 100
             );
             AIManufactureProposal lowerScore = CreateManufactureProposal(
+                context,
                 producer,
                 AIDemandKind.Shipyard,
                 BuildingType.Shipyard,
@@ -288,6 +294,7 @@ namespace Rebellion.Tests.AI.Phases
         {
             AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
             AIManufactureProposal higherTotalCost = CreateManufactureProposal(
+                context,
                 producer,
                 AIDemandKind.PlanetaryDefense,
                 BuildingType.Defense,
@@ -295,6 +302,7 @@ namespace Rebellion.Tests.AI.Phases
                 score: 100
             );
             AIManufactureProposal affordable = CreateManufactureProposal(
+                context,
                 producer,
                 AIDemandKind.Shipyard,
                 BuildingType.Shipyard,
@@ -314,6 +322,7 @@ namespace Rebellion.Tests.AI.Phases
         {
             AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
             AIManufactureProposal proposal = CreateManufactureProposal(
+                context,
                 producer,
                 AIDemandKind.PlanetaryDefense,
                 BuildingType.Defense,
@@ -441,7 +450,7 @@ namespace Rebellion.Tests.AI.Phases
                 "reserve-producer",
                 empire.InstanceID,
                 energyCapacity: 20,
-                rawResourceNodes: 2
+                rawResourceNodes: 3
             );
             AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -449,6 +458,20 @@ namespace Rebellion.Tests.AI.Phases
                 "construction-yard",
                 BuildingType.ConstructionFacility,
                 ManufacturingType.Building
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "training-facility",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
             );
             for (int index = 0; index < 2; index++)
             {
@@ -538,6 +561,7 @@ namespace Rebellion.Tests.AI.Phases
         /// <param name="buildingType">The building type to manufacture.</param>
         /// <returns>The building-production proposal.</returns>
         private static AIManufactureProposal CreateManufactureProposal(
+            AITurnContext context,
             Planet producer,
             AIDemandKind kind,
             BuildingType buildingType,
@@ -545,26 +569,82 @@ namespace Rebellion.Tests.AI.Phases
             double score = 100
         )
         {
-            Building building = AITestSceneBuilder.CreateBuildingTemplate(
-                $"reserve-{buildingType}",
-                buildingType,
-                ManufacturingType.None
-            );
-            building.ConstructionCost = constructionCost;
-            building.MaintenanceCost = 0;
+            IManufacturable product;
+            ManufacturingType manufacturingType;
+            Rebellion.SceneGraph.ContainerNode destination = producer;
+            switch (kind)
+            {
+                case AIDemandKind.FleetCapitalShip:
+                case AIDemandKind.FleetSeedCapitalShip:
+                case AIDemandKind.ColonizationFleetSeedCapitalShip:
+                    product = AITestSceneBuilder.CreateCapitalShip(
+                        $"reserve-{kind}",
+                        context.Faction.InstanceID
+                    );
+                    manufacturingType = ManufacturingType.Ship;
+                    break;
+                case AIDemandKind.FleetStarfighter:
+                    product = AITestSceneBuilder.CreateStarfighter(
+                        $"reserve-{kind}",
+                        context.Faction.InstanceID
+                    );
+                    manufacturingType = ManufacturingType.Ship;
+                    break;
+                case AIDemandKind.FleetRegiment:
+                case AIDemandKind.GarrisonRegimentReserve:
+                    product = AITestSceneBuilder.CreateRegiment(
+                        $"reserve-{kind}",
+                        context.Faction.InstanceID
+                    );
+                    manufacturingType = ManufacturingType.Troop;
+                    break;
+                default:
+                    product = AITestSceneBuilder.CreateBuildingTemplate(
+                        $"reserve-{buildingType}",
+                        buildingType,
+                        ManufacturingType.None
+                    );
+                    manufacturingType = ManufacturingType.Building;
+                    break;
+            }
+
+            product.ConstructionCost = constructionCost;
+            product.MaintenanceCost = 0;
+
+            if (
+                kind
+                is AIDemandKind.FleetCapitalShip
+                    or AIDemandKind.FleetStarfighter
+                    or AIDemandKind.FleetRegiment
+            )
+            {
+                Fleet fleet = EntityFactory.CreateFleet(
+                    $"reserve-fleet-{kind}",
+                    context.Faction.InstanceID
+                );
+                CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
+                    $"reserve-carrier-{kind}",
+                    context.Faction.InstanceID,
+                    regimentCapacity: 4,
+                    starfighterCapacity: 4
+                );
+                context.Game.AttachNode(fleet, producer);
+                context.Game.AttachNode(carrier, fleet);
+                destination = fleet;
+            }
             AIDemand demand = new AIDemand(
                 $"reserve-{kind}",
                 kind,
-                ManufacturingType.Building,
+                manufacturingType,
                 buildingType,
-                producer,
+                destination,
                 1,
                 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 producer,
-                new Technology(building)
+                new Technology(product)
             );
             proposal.SetScore(score);
             return proposal;

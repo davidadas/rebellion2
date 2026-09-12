@@ -1387,6 +1387,7 @@ namespace Rebellion.Tests.AI.Planners
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID, "fleet");
             fleet.RoleType = FleetRoleType.Colonization;
+            fleet.GetChildren<CapitalShip>().Single().RegimentCapacity = 2;
             AddColonizationRegiment(game, fleet, empire.InstanceID);
             AddColonizationRegiment(game, fleet, empire.InstanceID);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -1448,6 +1449,7 @@ namespace Rebellion.Tests.AI.Planners
                 combatStrength: 100
             );
             colonizationFleet.RoleType = FleetRoleType.Colonization;
+            colonizationFleet.GetChildren<CapitalShip>().Single().RegimentCapacity = 2;
             AddColonizationRegiment(game, conquestFleet, empire.InstanceID);
             AddColonizationRegiment(game, colonizationFleet, empire.InstanceID);
             AddColonizationRegiment(game, colonizationFleet, empire.InstanceID);
@@ -1523,6 +1525,7 @@ namespace Rebellion.Tests.AI.Planners
             };
             Fleet idleFleet = AddBattleFleet(game, owned, empire.InstanceID, "idle");
             idleFleet.RoleType = FleetRoleType.Colonization;
+            idleFleet.GetChildren<CapitalShip>().Single().RegimentCapacity = 2;
             AddColonizationRegiment(game, idleFleet, empire.InstanceID);
             AddColonizationRegiment(game, idleFleet, empire.InstanceID);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -2101,7 +2104,7 @@ namespace Rebellion.Tests.AI.Planners
                 staging,
                 empire.InstanceID,
                 "attack-fleet",
-                combatStrength: 1000
+                combatStrength: 2000
             );
             fleet.GetChildren<CapitalShip>().Single().RegimentCapacity = 1;
             fleet.Order = new FleetOrder
@@ -2158,7 +2161,7 @@ namespace Rebellion.Tests.AI.Planners
                 staging,
                 empire.InstanceID,
                 "attack-fleet",
-                combatStrength: 1000
+                combatStrength: 2000
             );
             fleet.GetChildren<CapitalShip>().Single().RegimentCapacity = 1;
             fleet.Order = new FleetOrder

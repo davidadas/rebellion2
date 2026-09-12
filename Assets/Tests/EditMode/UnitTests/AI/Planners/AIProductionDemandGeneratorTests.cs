@@ -331,6 +331,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithReservedHubAndEligibleWorld_TargetsEligibleWorldForExpansion()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Infrastructure.PlanetsPerTrainingFacility = 1;
             int staticDefenseEnergy =
                 game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
                 + game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
@@ -387,7 +388,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(item => item.Kind is AIDemandKind.Mine or AIDemandKind.Refinery)
                 .Max(item => item.Pressure);
 
-            Assert.AreSame(hub, demand.DestinationPlanet);
+            Assert.AreSame(expansionWorld, demand.DestinationPlanet);
             Assert.Greater(demand.Pressure, economyPressure);
         }
 
@@ -719,13 +720,9 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(demand => demand.Kind == AIDemandKind.Shipyard)
                 .ToList();
 
-            CollectionAssert.AreEquivalent(
-                new[] { hub, colony },
+            CollectionAssert.AreEqual(
+                new[] { hub },
                 demands.Select(demand => demand.DestinationPlanet)
-            );
-            Assert.Greater(
-                demands.Single(demand => demand.DestinationPlanet == hub).Pressure,
-                demands.Single(demand => demand.DestinationPlanet == colony).Pressure
             );
         }
 
@@ -894,9 +891,10 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithIdleTrainingFacility_AddsDemandTowardLocalClusterTarget()
+        public void Generate_WithDefenseReservedTrainingHub_TargetsFeasibleClusterPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.PlanetsPerTrainingFacility = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet hub = AITestSceneBuilder.AddPlanet(
                 game,
@@ -923,7 +921,7 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.IsTrue(
                 demands.Any(item =>
-                    item.Kind == AIDemandKind.TrainingFacility && item.DestinationPlanet == hub
+                    item.Kind == AIDemandKind.TrainingFacility && item.DestinationPlanet == colony
                 )
             );
         }
@@ -985,10 +983,9 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(item => item.Kind == AIDemandKind.ConstructionFacility)
                 .ToList();
 
-            Assert.AreEqual(2, demands.Count);
-            Assert.AreEqual(2, demands.Select(item => item.DestinationPlanet).Distinct().Count());
+            Assert.AreEqual(1, demands.Count);
+            Assert.AreEqual(1, demands.Select(item => item.DestinationPlanet).Distinct().Count());
             Assert.IsTrue(demands.All(item => item.QuantityNeeded == 1));
-            Assert.Greater(demands[0].Pressure, demands[1].Pressure);
         }
 
         [Test]
@@ -1904,7 +1901,7 @@ namespace Rebellion.Tests.AI.Planners
                     item.Kind == AIDemandKind.FleetCapitalShip && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(100, demand.QuantityNeeded);
+            Assert.AreEqual(200, demand.QuantityNeeded);
             Assert.AreEqual(AICapitalShipProductionRole.General, demand.CapitalShipRole);
         }
 
@@ -2264,6 +2261,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out _);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
+            game.Config.AI.FleetDeployment.MinimumMobileCombatStrength = 200;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
@@ -2421,6 +2419,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.FleetDeployment.MinimumMobileCombatStrength = 1000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
@@ -2461,6 +2460,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.FleetDeployment.MinimumMobileCombatStrength = 1000;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);

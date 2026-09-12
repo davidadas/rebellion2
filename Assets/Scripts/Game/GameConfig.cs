@@ -163,6 +163,8 @@ namespace Rebellion.Game
             public int DiplomacyResourceNodeWeight { get; set; } = 5;
 
             public int DiplomacySectorSupportRiskWeight { get; set; } = 25;
+
+            public int HostileOfficerReplacementPenalty { get; set; } = 100;
         }
 
         /// <summary>

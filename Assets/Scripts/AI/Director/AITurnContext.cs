@@ -43,6 +43,7 @@ namespace Rebellion.AI.Director
         private readonly List<GameResult> _results = new List<GameResult>();
         private readonly Dictionary<SpecialForces, SpecialForcesIntent> _specialForcesIntents =
             new Dictionary<SpecialForces, SpecialForcesIntent>();
+        private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
         private AIFacilityAllocationPolicy _facilityAllocation;
 
         /// <summary>
@@ -81,6 +82,14 @@ namespace Rebellion.AI.Director
             PlanetaryAssault = planetaryAssault;
             Random = random;
             FactionView = factionView;
+            _unlockedSpecialForcesMissionTypes =
+                faction
+                    ?.GetUnlockedTechnologies(ManufacturingType.Troop)
+                    .Select(technology => technology.GetReference())
+                    .OfType<SpecialForces>()
+                    .SelectMany(unit => unit.AllowedMissionTypeIDs)
+                    .ToHashSet(StringComparer.Ordinal)
+                ?? new HashSet<string>(StringComparer.Ordinal);
             Assessment = new AIAssessment(this);
             StrategicPlan = new AIStrategicPlan(this);
         }
@@ -147,6 +156,17 @@ namespace Rebellion.AI.Director
             return unit != null && _specialForcesIntents.TryGetValue(unit, out var intent)
                 ? intent
                 : SpecialForcesIntent.PrimaryAgent;
+        }
+
+        /// <summary>
+        /// Returns whether this faction can manufacture special forces for a mission type.
+        /// </summary>
+        /// <param name="missionTypeId">The mission capability to inspect.</param>
+        /// <returns>True when an unlocked special-forces template supports the mission.</returns>
+        public bool HasUnlockedSpecialForcesForMission(string missionTypeId)
+        {
+            return !string.IsNullOrEmpty(missionTypeId)
+                && _unlockedSpecialForcesMissionTypes.Contains(missionTypeId);
         }
 
         /// <summary>

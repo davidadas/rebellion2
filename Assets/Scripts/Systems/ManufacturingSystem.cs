@@ -925,7 +925,6 @@ namespace Rebellion.Systems
             if (string.IsNullOrEmpty(ownerInstanceId))
                 return results;
 
-            Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
             foreach (ManufacturingType type in GetActiveManufacturingTypes(planet, queue))
             {
                 queue.TryGetValue(type, out List<IManufacturable> items);
@@ -937,7 +936,6 @@ namespace Rebellion.Systems
                 List<Building> readyFacilities = AdvanceProductionFacilities(
                     planet,
                     type,
-                    faction,
                     hasQueuedItems
                 );
                 if (!hasQueuedItems)
@@ -955,7 +953,6 @@ namespace Rebellion.Systems
                     planet,
                     results
                 );
-                ReserveInputsForSpentProductionPoints(readyFacilities, faction, items.Count > 0);
                 CompleteManufacturedItems(planet, type, completed, results);
                 if (items.Count == 0)
                     DiscardReadyProductionPoints(readyFacilities);
@@ -1059,13 +1056,11 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The production planet.</param>
         /// <param name="type">The manufacturing type being processed.</param>
-        /// <param name="faction">The owning faction.</param>
         /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
         /// <returns>Facilities with a ready production point.</returns>
         private List<Building> AdvanceProductionFacilities(
             Planet planet,
             ManufacturingType type,
-            Faction faction,
             bool hasQueuedItems
         )
         {
@@ -1081,7 +1076,7 @@ namespace Rebellion.Systems
 
             double cycleIncrement = GetProductionCycleIncrement(planet);
             foreach (Building facility in productionFacilities)
-                AdvanceProductionFacility(facility, faction, hasQueuedItems, cycleIncrement);
+                AdvanceProductionFacility(facility, hasQueuedItems, cycleIncrement);
 
             return productionFacilities.Where(facility => facility.ProductionPointReady).ToList();
         }
@@ -1108,12 +1103,10 @@ namespace Rebellion.Systems
         /// Advances one production facility toward its next production point.
         /// </summary>
         /// <param name="facility">The facility to advance.</param>
-        /// <param name="faction">The owning faction.</param>
         /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
         /// <param name="cycleIncrement">The production progress available this tick.</param>
         private void AdvanceProductionFacility(
             Building facility,
-            Faction faction,
             bool hasQueuedItems,
             double cycleIncrement
         )
@@ -1124,12 +1117,8 @@ namespace Rebellion.Systems
             if (cycleIncrement <= 0)
                 return;
 
-            if (!facility.ProductionInputReserved)
-            {
-                int reserve = GetRefinedMaterialReserveFloor(_game, faction, facility);
-                if (!hasQueuedItems || !faction.RequestRefinedMaterial(facility, reserve))
-                    return;
-            }
+            if (!hasQueuedItems)
+                return;
 
             int processRate = facility.GetProcessRate();
             if (processRate <= 0)
@@ -1143,69 +1132,8 @@ namespace Rebellion.Systems
             if (facility.ProductionCycleProgress >= processRate)
             {
                 facility.ProductionCycleProgress = 0;
-                facility.ProductionInputReserved = false;
                 facility.ProductionPointReady = true;
             }
-        }
-
-        /// <summary>
-        /// Reserves replacement inputs for production points spent during this tick.
-        /// </summary>
-        /// <param name="facilities">The facilities whose ready points were distributed.</param>
-        /// <param name="faction">The faction supplying refined material.</param>
-        /// <param name="hasQueuedItems">Whether work remains after point distribution.</param>
-        private void ReserveInputsForSpentProductionPoints(
-            List<Building> facilities,
-            Faction faction,
-            bool hasQueuedItems
-        )
-        {
-            if (!hasQueuedItems)
-                return;
-
-            foreach (Building facility in facilities)
-            {
-                if (!facility.ProductionPointReady && !facility.ProductionInputReserved)
-                {
-                    int reserve = GetRefinedMaterialReserveFloor(_game, faction, facility);
-                    faction.RequestRefinedMaterial(facility, reserve);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Returns the refined-material floor applied to a production facility.
-        /// </summary>
-        /// <param name="game">The current game.</param>
-        /// <param name="faction">The faction supplying the material.</param>
-        /// <param name="facility">The requesting production facility.</param>
-        /// <returns>The minimum stockpile preserved before granting the request.</returns>
-        internal static int GetRefinedMaterialReserveFloor(
-            GameRoot game,
-            Faction faction,
-            Building facility
-        )
-        {
-            if (game?.Config?.AI == null || faction?.IsAIControlled() != true)
-                return 0;
-
-            Planet planet = facility?.GetParent() as Planet;
-            if (
-                planet != null
-                && planet
-                    .GetManufacturingQueue()
-                    .TryGetValue(facility.ProductionType, out List<IManufacturable> queue)
-                && queue?.FirstOrDefault() is Building building
-                && building.BuildingType is BuildingType.Mine or BuildingType.Refinery
-            )
-                return 0;
-
-            int reservePercent = game.Config.AI.Selection.RefinedMaterialReservePercent;
-            return (int)
-                Math.Min(
-                    int.MaxValue,
-                    (long)faction.RefinedMaterialSupply * Math.Max(0, reservePercent) / 100
-                );
         }
 
         /// <summary>
