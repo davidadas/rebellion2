@@ -1836,12 +1836,9 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void CaptureSnapshot_EmptyPlanet_DoesNotCrash()
+        public void CaptureSnapshot_EmptyPlanet_CreatesPlanetSnapshot()
         {
-            Assert.DoesNotThrow(() =>
-            {
-                _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
-            });
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
 
             PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["TATOOINE"];

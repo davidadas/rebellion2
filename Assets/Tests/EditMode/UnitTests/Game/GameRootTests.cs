@@ -709,7 +709,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void RemoveUnrecruitedOfficer_OfficerNotInList_DoesNotThrow()
+        public void RemoveUnrecruitedOfficer_OfficerNotInList_LeavesListUnchanged()
         {
             // Create officer that is not in the list.
             Officer officer = new Officer
@@ -718,8 +718,11 @@ namespace Rebellion.Tests.Game
                 RecruitingFactionInstanceIDs = new List<string> { "FACTION1" },
             };
 
-            // Remove non-existent officer (should not throw exception).
-            Assert.DoesNotThrow(() => _game.RemoveUnrecruitedOfficer(officer));
+            int countBefore = _game.GetUnrecruitedOfficers().Count;
+
+            _game.RemoveUnrecruitedOfficer(officer);
+
+            Assert.AreEqual(countBefore, _game.GetUnrecruitedOfficers().Count);
         }
 
         [Test]

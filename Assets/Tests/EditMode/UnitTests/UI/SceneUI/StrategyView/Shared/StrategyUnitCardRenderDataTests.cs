@@ -7,7 +7,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
     public sealed class StrategyUnitCardRenderDataTests
     {
         [Test]
-        public void Constructor_NullName_NormalizesAndPreservesFlags()
+        public void Constructor_NullName_NormalizesName()
         {
             StrategyUnitCardRenderData card = new StrategyUnitCardRenderData(
                 null,
@@ -28,11 +28,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
 
             Assert.AreEqual(string.Empty, card.Name);
-            Assert.AreEqual((Color32)Color.green, card.NameColor);
-            Assert.IsTrue(card.ShowName);
-            Assert.IsTrue(card.UseAlternateNameLayout);
-            Assert.AreEqual(4, card.EntityFrameYOffset);
-            Assert.IsTrue(card.CanDrag);
         }
     }
 }

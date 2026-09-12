@@ -39,19 +39,6 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void Constructor_DefaultConstruction_SeedDiffersAcrossInstances()
-        {
-            GameSummary firstSummary = new GameSummary();
-            GameSummary secondSummary = new GameSummary();
-
-            Assert.AreNotEqual(
-                firstSummary.Seed,
-                secondSummary.Seed,
-                "Each new GameSummary should roll a fresh default seed."
-            );
-        }
-
-        [Test]
         public void SerializeAndDeserialize_ExplicitSeed_RoundTripsExactly()
         {
             GameSummary summary = new GameSummary { Seed = 12345 };

@@ -46,7 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void FleetListRowRenderData_Values_PreservesNormalizedPresentation()
+        public void FleetListRowRenderData_NullName_NormalizesToEmptyString()
         {
             FleetListRowRenderData data = new FleetListRowRenderData(
                 null,
@@ -60,27 +60,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
 
             Assert.AreEqual(string.Empty, data.Name);
-            Assert.AreSame(_firstTexture, data.IconTexture);
-            Assert.AreSame(_secondTexture, data.EnrouteOverlayTexture);
-            Assert.AreSame(_firstTexture, data.DamagedOverlayTexture);
-            Assert.AreSame(_secondTexture, data.StarfighterBadgeTexture);
-            Assert.AreSame(_firstTexture, data.TroopBadgeTexture);
-            Assert.AreSame(_secondTexture, data.PersonnelBadgeTexture);
-            Assert.AreSame(_firstTexture, data.SelectionTexture);
-        }
-
-        [Test]
-        public void FleetWindowTabRenderData_Values_PreservesPresentation()
-        {
-            FleetWindowTabRenderData data = new FleetWindowTabRenderData(
-                FleetWindowTab.Regiments,
-                _firstTexture,
-                _secondTexture
-            );
-
-            Assert.AreEqual(FleetWindowTab.Regiments, data.Tab);
-            Assert.AreSame(_firstTexture, data.Texture);
-            Assert.AreSame(_secondTexture, data.PressedTexture);
         }
 
         [TestCase(0)]

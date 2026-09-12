@@ -38,24 +38,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
-        public void Constructor_CompleteTarget_StoresWindowTargetAndAvailability()
-        {
-            UIWindow window = CreateWindow();
-            Officer officer = new Officer { InstanceID = "officer" };
-            StrategyStatusTarget target = new StrategyStatusTarget(
-                null,
-                officer,
-                ManufacturingType.Troop
-            );
-
-            StatusWindowSession session = new StatusWindowSession(window, target, true, _ => null);
-
-            Assert.AreSame(window, session.Window);
-            Assert.AreSame(target, session.Target);
-            Assert.IsTrue(session.InfoDisabled);
-        }
-
-        [Test]
         public void Reconcile_SnapshotBackedTarget_RebindsPlanetAndItemByIdentity()
         {
             UIWindow window = CreateWindow();

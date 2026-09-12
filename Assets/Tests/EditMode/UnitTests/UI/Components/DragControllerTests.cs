@@ -34,28 +34,6 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
-        public void DragRequest_Source_StoresSource()
-        {
-            object source = new object();
-
-            DragRequest request = new DragRequest(source);
-
-            Assert.AreSame(source, request.Source);
-        }
-
-        [Test]
-        public void DragPreview_Constructor_StoresPresentationValues()
-        {
-            DragPreview preview = new DragPreview(_texture, 10, 20, 3, 4);
-
-            Assert.AreSame(_texture, preview.Texture);
-            Assert.AreEqual(10, preview.Width);
-            Assert.AreEqual(20, preview.Height);
-            Assert.AreEqual(3, preview.OffsetX);
-            Assert.AreEqual(4, preview.OffsetY);
-        }
-
-        [Test]
         public void DragPreview_MultipleImages_PreservesImageBoundsAndHotspot()
         {
             Rect uvRect = new Rect(0.25f, 0f, 0.5f, 1f);

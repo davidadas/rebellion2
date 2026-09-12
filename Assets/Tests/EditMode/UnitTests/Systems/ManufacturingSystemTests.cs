@@ -122,7 +122,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_EmptyGame_DoesNotCrash()
+        public void ProcessTick_EmptyGame_ReturnsNoResults()
         {
             GameConfig config = TestContent.Data.GameConfig;
             GameRoot emptyGame = new GameRoot(config);
@@ -136,9 +136,9 @@ namespace Rebellion.Tests.Systems
                 )
             );
 
-            emptyManager.ProcessTick();
+            List<GameResult> results = emptyManager.ProcessTick();
 
-            Assert.Pass();
+            Assert.IsEmpty(results);
         }
 
         [Test]
@@ -3701,16 +3701,7 @@ namespace Rebellion.Tests.Systems
                 _coruscant.GetManufacturingQueue();
 
             Assert.IsNotNull(queue);
-            // Empty queue may not have the key yet - check both cases
-            if (queue.ContainsKey(ManufacturingType.Building))
-            {
-                Assert.AreEqual(0, queue[ManufacturingType.Building].Count);
-            }
-            else
-            {
-                // Key doesn't exist yet, which is fine for an empty queue
-                Assert.Pass();
-            }
+            Assert.IsEmpty(queue);
         }
 
         [Test]

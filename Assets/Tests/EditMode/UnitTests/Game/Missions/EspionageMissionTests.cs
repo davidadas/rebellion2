@@ -359,7 +359,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_WithoutFogSystem_DoesNotThrow()
+        public void ResolveObjective_WithoutFogSystem_CompletesMission()
         {
             (
                 GameRoot game,
@@ -381,7 +381,9 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            Assert.DoesNotThrow(() => MissionSceneBuilder.RunToSuccess(mission, game));
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Assert.IsTrue(mission.IsComplete());
         }
 
         [Test]

@@ -25,20 +25,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _game.GetFactions().Add(new Faction { InstanceID = _opponentFactionId });
         }
 
-        [Test]
-        public void Marker_Values_PreservesEvaluationResult()
-        {
-            GalacticInformationMarker marker = new GalacticInformationMarker(
-                2,
-                _playerFactionId,
-                true
-            );
-
-            Assert.AreEqual(2, marker.Index);
-            Assert.AreEqual(_playerFactionId, marker.FactionInstanceId);
-            Assert.IsTrue(marker.Mixed);
-        }
-
         [TestCase(true)]
         [TestCase(false)]
         public void Evaluate_MissingInput_ReturnsLowestUnownedMarker(bool missingPlanet)

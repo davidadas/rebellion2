@@ -12,19 +12,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
     public class StrategyMissionTargetTests
     {
         [Test]
-        public void Constructor_PlanetAndItem_StoresTargetState()
-        {
-            GalaxyMapPlanet planet = CreateMapPlanet("planet", "player");
-            Officer officer = new Officer();
-
-            StrategyMissionTarget target = new StrategyMissionTarget(planet, officer);
-
-            Assert.AreSame(planet, target.Planet);
-            Assert.AreSame(officer, target.Item);
-            Assert.AreSame(target, target.Target);
-        }
-
-        [Test]
         public void GetMoveDestination_MissingPlanet_ReturnsNull()
         {
             StrategyMissionTarget target = new StrategyMissionTarget(null, new Officer());

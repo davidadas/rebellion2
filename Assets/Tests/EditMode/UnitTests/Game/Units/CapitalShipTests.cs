@@ -587,80 +587,20 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void WeaponRecharge_DefaultCapitalShip_ReturnsExpectedValue()
+        public void ConfiguredCapitalShip_PreservesCombatAndMovementStatistics()
         {
             Assert.AreEqual(12, _capitalShip.WeaponRecharge);
-        }
-
-        [Test]
-        public void Bombardment_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.AreEqual(20, _capitalShip.Bombardment);
-        }
-
-        [Test]
-        public void HullStrength_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.AreEqual(100, _capitalShip.CurrentHullStrength);
-        }
-
-        [Test]
-        public void DamageControl_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.AreEqual(10, _capitalShip.DamageControl);
-        }
-
-        [Test]
-        public void MaxShieldStrength_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.AreEqual(50, _capitalShip.MaxShieldStrength);
-        }
-
-        [Test]
-        public void ShieldRechargeRate_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.AreEqual(5, _capitalShip.ShieldRechargeRate);
-        }
-
-        [Test]
-        public void Hyperdrive_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.AreEqual(2, _capitalShip.Hyperdrive);
-        }
-
-        [Test]
-        public void SublightSpeed_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.AreEqual(15, _capitalShip.SublightSpeed);
-        }
-
-        [Test]
-        public void Maneuverability_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.AreEqual(8, _capitalShip.Maneuverability);
-        }
-
-        [Test]
-        public void TractorBeamPower_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.AreEqual(7, _capitalShip.TractorBeamPower);
-        }
-
-        [Test]
-        public void TractorBeamRange_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.AreEqual(3, _capitalShip.TractorBeamnRange);
-        }
-
-        [Test]
-        public void HasGravityWell_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.IsFalse(_capitalShip.HasGravityWell);
-        }
-
-        [Test]
-        public void DetectionRating_DefaultCapitalShip_ReturnsExpectedValue()
-        {
             Assert.AreEqual(25, _capitalShip.DetectionRating);
         }
 

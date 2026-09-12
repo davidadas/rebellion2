@@ -623,9 +623,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 .GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == "SlotName0");
 
-            typeof(OptionsSaveListView)
-                .GetMethod("BeginRename", BindingFlags.Instance | BindingFlags.NonPublic)
-                .Invoke(_saveListView, new object[] { 0 });
+            Button rowButton = _root
+                .GetComponentsInChildren<Image>(true)
+                .Single(image => image.name == "SlotRow0")
+                .GetComponent<Button>();
+            rowButton.onClick.Invoke();
+            rowButton.onClick.Invoke();
             _view.Render(data);
 
             Assert.IsFalse(renderedName.gameObject.activeSelf);
@@ -734,9 +737,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 false
             );
 
-            typeof(OptionsMenuView)
-                .GetMethod("RenderFooter", BindingFlags.Instance | BindingFlags.NonPublic)
-                .Invoke(_view, new object[] { data });
+            _view.Render(data);
 
             Button backToGame = GetField<Button>("_backToGameButton");
             Button mainMenu = GetField<Button>("_mainMenuButton");

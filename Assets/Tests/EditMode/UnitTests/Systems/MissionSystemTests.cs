@@ -141,7 +141,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void UpdateMission_CompletedParticipantParentedToMission_DoesNotThrow()
+        public void UpdateMission_CompletedParticipantParentedToMission_ReturnsParticipantToPlanet()
         {
             // Regression: officer parented to the mission (as happens after Initiate moves them
             // there) caused IsMovable() to return false and RequestMove to throw on teardown.
@@ -158,7 +158,10 @@ namespace Rebellion.Tests.Sectors
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            Assert.DoesNotThrow(() => system.UpdateMission(mission));
+            system.UpdateMission(mission);
+
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsFalse(game.GetSceneNodesByType<StubMission>().Contains(mission));
         }
 
         [Test]
