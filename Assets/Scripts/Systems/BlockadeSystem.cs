@@ -69,7 +69,7 @@ namespace Rebellion.Systems
         {
             if (
                 !originPlanet.IsBlockadedFor(unit.GetOwnerInstanceID())
-                || HasOperationalIonCannon(originPlanet, unit.GetOwnerInstanceID())
+                || originPlanet.HasOperationalIonCannon()
             )
                 return null;
 
@@ -92,22 +92,6 @@ namespace Rebellion.Systems
             }
 
             return null;
-        }
-
-        /// <summary>
-        /// Returns whether the departing faction has an operational ion cannon protecting the system.
-        /// </summary>
-        private static bool HasOperationalIonCannon(Planet planet, string ownerInstanceId)
-        {
-            return planet
-                .GetChildren<Building>()
-                .Any(building =>
-                    building.OwnerInstanceID == ownerInstanceId
-                    && building.IsActive()
-                    && building.ManufacturingStatus == ManufacturingStatus.Complete
-                    && building.BuildingType == BuildingType.Weapon
-                    && building.DefenseWeaponEffect == DefenseWeaponEffect.ShieldDamage
-                );
         }
 
         /// <summary>

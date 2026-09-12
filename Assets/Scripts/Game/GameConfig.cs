@@ -451,8 +451,6 @@ namespace Rebellion.Game
 
             public int BlockadeOpposeShiftIntervalTicks { get; set; }
 
-            public int GarrisonSupportShiftIntervalTicks { get; set; }
-
             public int DiplomacyOwnedPlanetSupportBase { get; set; }
 
             public int DiplomacyOwnedPlanetSupportRange { get; set; }
@@ -616,6 +614,10 @@ namespace Rebellion.Game
         [PersistableObject]
         public class BlockadeConfig
         {
+            public int CapitalShipProductionPenaltyPercent { get; set; }
+
+            public int FighterProductionPenaltyPercent { get; set; }
+
             public int EvacuationLossPercent { get; set; }
         }
 

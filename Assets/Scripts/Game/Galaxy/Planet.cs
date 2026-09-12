@@ -47,6 +47,7 @@ namespace Rebellion.Game.Galaxy
     public class Planet : ContainerNode
     {
         private const int _maximumPopularSupport = 100;
+        private const int _maximumProductionModifier = 100;
 
         // Planet Properties.
         public bool IsColonized { get; set; }
@@ -79,7 +80,6 @@ namespace Rebellion.Game.Galaxy
         // Periodic Support Status.
         public int NextBlockadeSupportShiftTick { get; set; }
         public int BlockadeSupportShiftIntervalTicks { get; set; }
-        public int NextGarrisonSupportShiftTick { get; set; }
 
         // Popular Support.
         public Dictionary<string, int> PopularSupport = new Dictionary<string, int>();
@@ -160,7 +160,6 @@ namespace Rebellion.Game.Galaxy
             copy.NextUprisingTimerOrder = NextUprisingTimerOrder;
             copy.NextBlockadeSupportShiftTick = NextBlockadeSupportShiftTick;
             copy.BlockadeSupportShiftIntervalTicks = BlockadeSupportShiftIntervalTicks;
-            copy.NextGarrisonSupportShiftTick = NextGarrisonSupportShiftTick;
             copy.PopularSupport = new Dictionary<string, int>(PopularSupport);
             copy._reservedManufacturingTypes = new List<ManufacturingType>(
                 _reservedManufacturingTypes
@@ -816,6 +815,49 @@ namespace Rebellion.Game.Galaxy
             return _buildings
                 .Where(building => building.GetProductionType() == productionType)
                 .ToList();
+        }
+
+        /// <summary>
+        /// Gets the manufacturing output percentage available during a blockade.
+        /// An operational KDY-150 ion cannon prevents the blockade penalty.
+        /// </summary>
+        /// <param name="capitalShipPenalty">The percentage removed per capital ship.</param>
+        /// <param name="fighterPenalty">The percentage removed per fighter squadron.</param>
+        /// <returns>The available manufacturing percentage from zero through one hundred.</returns>
+        public int GetBlockadeProductionModifier(int capitalShipPenalty, int fighterPenalty)
+        {
+            if (!IsBlockaded() || HasOperationalIonCannon())
+                return _maximumProductionModifier;
+
+            List<CapitalShip> capitalShips = _fleets
+                .Where(fleet => fleet.Movement == null)
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                .Where(IsEntityActive)
+                .ToList();
+            int fighterCount = capitalShips.Sum(capitalShip =>
+                capitalShip.GetChildren<Starfighter>().Count(IsEntityActive)
+            );
+            fighterCount += GetChildren<Starfighter>().Count(IsEntityActive);
+
+            return Math.Clamp(
+                _maximumProductionModifier
+                    - capitalShips.Count * capitalShipPenalty
+                    - fighterCount * fighterPenalty,
+                0,
+                _maximumProductionModifier
+            );
+        }
+
+        /// <summary>
+        /// Returns whether the planet has a completed, operational KDY-150 ion cannon.
+        /// </summary>
+        public bool HasOperationalIonCannon()
+        {
+            return _buildings.Any(building =>
+                building.BuildingType == BuildingType.Weapon
+                && building.DefenseWeaponEffect == DefenseWeaponEffect.ShieldDamage
+                && IsEntityActive(building)
+            );
         }
 
         /// <summary>
