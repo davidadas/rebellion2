@@ -23,7 +23,7 @@ public static partial class HeadlessSimulationRunner
         public double AverageBuildingCount;
         public int MinimumAvailableCount;
         public int MaximumAvailableCount;
-        public int ZeroAvailableTicks;
+        public int ZeroAvailableSamples;
     }
 
     private sealed class SpecialForcesLifecycleTracker
@@ -214,7 +214,7 @@ public static partial class HeadlessSimulationRunner
             private int _finalCount;
             private int _minimumAvailable = int.MaxValue;
             private int _maximumAvailable;
-            private int _zeroAvailableTicks;
+            private int _zeroAvailableSamples;
 
             /// <summary>
             /// Creates lifecycle counters for one faction and special-forces type.
@@ -252,7 +252,7 @@ public static partial class HeadlessSimulationRunner
                 _minimumAvailable = Math.Min(_minimumAvailable, available);
                 _maximumAvailable = Math.Max(_maximumAvailable, available);
                 if (available == 0)
-                    _zeroAvailableTicks++;
+                    _zeroAvailableSamples++;
             }
 
             /// <summary>
@@ -276,7 +276,7 @@ public static partial class HeadlessSimulationRunner
                     MinimumAvailableCount =
                         _minimumAvailable == int.MaxValue ? 0 : _minimumAvailable,
                     MaximumAvailableCount = _maximumAvailable,
-                    ZeroAvailableTicks = _zeroAvailableTicks,
+                    ZeroAvailableSamples = _zeroAvailableSamples,
                 };
             }
 
