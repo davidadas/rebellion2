@@ -42,7 +42,18 @@ namespace Rebellion.Tests.AI.Proposals
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            StubRNG random = new StubRNG();
+            MaintenanceSystem maintenance = new MaintenanceSystem(
+                game,
+                random,
+                new FleetSystem(game)
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: random,
+                maintenance: maintenance
+            );
 
             AIFacilityRemovalProposal proposal = new AIFacilityRemovalPlanner()
                 .Plan(context)
@@ -96,7 +107,17 @@ namespace Rebellion.Tests.AI.Proposals
             );
             unfinished.OwnerInstanceID = empire.InstanceID;
             StubRNG random = new StubRNG();
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire, random: random);
+            MaintenanceSystem maintenance = new MaintenanceSystem(
+                game,
+                random,
+                new FleetSystem(game)
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: random,
+                maintenance: maintenance
+            );
             Assert.IsTrue(
                 context.Manufacturing.Enqueue(
                     surplusPlanet,
@@ -140,7 +161,7 @@ namespace Rebellion.Tests.AI.Proposals
                 sector,
                 "surplus",
                 empire.InstanceID,
-                energyCapacity: 0
+                energyCapacity: 1
             );
             Building surplusFacility = AITestSceneBuilder.AddProductionFacility(
                 game,

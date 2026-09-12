@@ -438,7 +438,6 @@ namespace Rebellion.Tests.AI.Scoring
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
-            target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
             AddShield(game, target, "shield", rebels.InstanceID, 100);
             Fleet fleet = AddAssaultFleet(game, owned, "fleet", empire.InstanceID);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
