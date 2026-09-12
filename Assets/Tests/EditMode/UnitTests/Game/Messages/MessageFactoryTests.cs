@@ -3740,6 +3740,43 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_NeutralPlanetBlockade_DoesNotCreateMessages()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = null;
+            Fleet fleet = new Fleet { OwnerInstanceID = alliance.InstanceID };
+
+            List<MessageDeliveryRequest> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.BlockadeInitiated,
+                        MessageType.Fleet,
+                        "initiated",
+                        "initiated",
+                        imagePaths: FactionImages()
+                    ),
+                    Definition(
+                        MessageResultType.BlockadeDetected,
+                        MessageType.Fleet,
+                        "detected",
+                        "detected",
+                        imagePaths: FactionImages()
+                    ),
+                },
+                new BlockadeChangedResult
+                {
+                    Planet = target,
+                    BlockadingFleet = fleet,
+                    Blockaded = true,
+                }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
+        [Test]
         public void CreateMessages_EvacuationLosses_JoinsLostUnitNames()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
