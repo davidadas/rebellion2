@@ -122,14 +122,14 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_ManageProduction_FillsCapacityWithMatchedPair()
+        public void ProcessTick_ManageProduction_FillsLaneWithOneProject()
         {
             _faction.ManageGarrisons = false;
 
             _automation.ProcessTick();
 
-            Assert.AreEqual(11, CountResourceFacilities(BuildingType.Mine));
-            Assert.AreEqual(11, CountResourceFacilities(BuildingType.Refinery));
+            Assert.AreEqual(12, CountResourceFacilities(BuildingType.Mine));
+            Assert.AreEqual(10, CountResourceFacilities(BuildingType.Refinery));
         }
 
         [Test]
@@ -143,7 +143,7 @@ namespace Rebellion.Tests.Systems
 
             _automation.ProcessTick();
 
-            Assert.AreEqual(1, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
+            Assert.AreEqual(2, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
             Assert.AreEqual(0, distant.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
 
@@ -170,7 +170,7 @@ namespace Rebellion.Tests.Systems
 
             _automation.ProcessTick();
 
-            Assert.AreEqual(1, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
+            Assert.AreEqual(2, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
 
         [Test]

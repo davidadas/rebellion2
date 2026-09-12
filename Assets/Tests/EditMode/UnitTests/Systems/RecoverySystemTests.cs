@@ -148,6 +148,29 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_OfficerAboardFleetInTransit_DoesNotHeal()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            fleet.Movement = new MovementState { TransitTicks = 10 };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.InjuryPoints = 10;
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(officer, ship);
+
+            new RecoverySystem(game).ProcessTick();
+
+            Assert.AreEqual(10, officer.InjuryPoints);
+        }
+
+        [Test]
         public void ProcessTick_OfficerOnMission_DoesNotHeal()
         {
             (GameRoot game, Planet planet) = BuildScene();
@@ -221,7 +244,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_DamagedShipAtFriendlyPlanet_RepairsFast()
+        public void ProcessTick_DamagedShipAtFriendlyShipyard_RepairsFast()
         {
             (GameRoot game, Planet planet) = BuildScene();
 
@@ -236,6 +259,16 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
 
             RecoverySystem system = new RecoverySystem(game);
 
@@ -244,8 +277,104 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(
                 85,
                 ship.CurrentHullStrength,
-                "Ship at friendly planet should repair 5 per tick"
+                "Ship at a friendly orbital shipyard should repair 5 per tick"
             );
+        }
+
+        [Test]
+        public void ProcessTick_DamagedShipAtFriendlyPlanetWithoutShipyard_RepairsSlowly()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 80,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            new RecoverySystem(game).ProcessTick();
+
+            Assert.AreEqual(81, ship.CurrentHullStrength);
+        }
+
+        [Test]
+        public void ProcessTick_DamagedShipAtIncompleteFriendlyShipyard_RepairsSlowly()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 80,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                },
+                planet
+            );
+
+            new RecoverySystem(game).ProcessTick();
+
+            Assert.AreEqual(81, ship.CurrentHullStrength);
+        }
+
+        [Test]
+        public void ProcessTick_DamagedShipInTransit_DoesNotRepair()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            fleet.Movement = new MovementState { TransitTicks = 10 };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 80,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            new RecoverySystem(game).ProcessTick();
+
+            Assert.AreEqual(80, ship.CurrentHullStrength);
+        }
+
+        [Test]
+        public void ProcessTick_DamagedShipWithDirectTransit_DoesNotRepair()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 80,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState { TransitTicks = 10 },
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            new RecoverySystem(game).ProcessTick();
+
+            Assert.AreEqual(80, ship.CurrentHullStrength);
         }
 
         [Test]
@@ -317,6 +446,16 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
 
             RecoverySystem system = new RecoverySystem(game);
 
@@ -626,6 +765,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
                 IsColonized = true,
+                EnergyCapacity = 1,
                 PositionX = 0,
                 PositionY = 0,
             };
