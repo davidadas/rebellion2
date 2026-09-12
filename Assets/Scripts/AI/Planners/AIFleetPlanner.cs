@@ -137,10 +137,7 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
-            bool mayLeaveCampaign = context.Assessment.IsBlockedByShields(
-                fleet,
-                targetPlanet
-            );
+            bool mayLeaveCampaign = context.Assessment.IsBlockedByShields(fleet, targetPlanet);
             if (!mayLeaveCampaign)
                 proposals.Add(continuation);
 
@@ -771,10 +768,7 @@ namespace Rebellion.AI.Planners
             }
 
             return targetFleet.Order?.OrderType == FleetOrderType.Attack
-                && !context.Assessment.WillMeetAttackRequirements(
-                    targetFleet,
-                    targetPlanet
-                );
+                && !context.Assessment.WillMeetAttackRequirements(targetFleet, targetPlanet);
         }
 
         /// <summary>

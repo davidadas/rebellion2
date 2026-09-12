@@ -1495,8 +1495,7 @@ namespace Rebellion.AI.Director
         public bool CanWinProjectedOrbitalCombat(Fleet fleet, Planet planet)
         {
             int requiredStrength = GetRequiredOrbitalStrength(planet);
-            return requiredStrength > 0
-                && GetProjectedFleetCombatValue(fleet) >= requiredStrength;
+            return requiredStrength > 0 && GetProjectedFleetCombatValue(fleet) >= requiredStrength;
         }
 
         /// <summary>
