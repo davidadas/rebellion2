@@ -80,48 +80,19 @@ namespace Rebellion.Systems
         {
             if (!planet.IsBlockaded())
             {
-                planet.NextBlockadeSupportShiftTick = 0;
-                planet.BlockadeSupportShiftIntervalTicks = 0;
+                ResetBlockadeSupportShiftSchedule(planet);
                 return;
             }
 
-            Fleet blockadingFleet = planet
-                .GetChildren<Fleet>()
-                .FirstOrDefault(fleet =>
-                    fleet.Movement == null
-                    && fleet.HasOperationalCapitalShips()
-                    && fleet.OwnerInstanceID != planet.OwnerInstanceID
-                );
-            Faction fleetFaction = _game.GetFactionByOwnerInstanceID(
-                blockadingFleet?.OwnerInstanceID
-            );
-            if (fleetFaction == null)
-                return;
-
-            Faction favoredFaction = _game
-                .GetFactions()
-                .OrderByDescending(faction => planet.GetPopularSupport(faction.InstanceID))
-                .FirstOrDefault();
-            if (favoredFaction == null)
-                return;
-
-            int favoredSupport = planet.GetPopularSupport(favoredFaction.InstanceID);
+            Faction blockadingFaction = GetBlockadingFaction(planet);
             if (
-                _game
-                    .GetFactions()
-                    .Any(faction =>
-                        faction.InstanceID != favoredFaction.InstanceID
-                        && planet.GetPopularSupport(faction.InstanceID) == favoredSupport
-                    )
+                blockadingFaction == null
+                || !TryGetSupportLeader(planet, out Faction supportLeader)
             )
-            {
                 return;
-            }
 
-            bool fleetMatchesSupport = fleetFaction.InstanceID == favoredFaction.InstanceID;
-            int interval = fleetMatchesSupport
-                ? config.BlockadeMatchShiftIntervalTicks
-                : config.BlockadeOpposeShiftIntervalTicks;
+            bool blockadeSupportsFavoredFaction = blockadingFaction == supportLeader;
+            int interval = GetBlockadeSupportShiftInterval(config, blockadeSupportsFavoredFaction);
             if (interval <= 0)
                 return;
 
@@ -130,19 +101,88 @@ namespace Rebellion.Systems
                 || planet.BlockadeSupportShiftIntervalTicks != interval
             )
             {
-                planet.NextBlockadeSupportShiftTick = _game.CurrentTick + interval;
-                planet.BlockadeSupportShiftIntervalTicks = interval;
+                ScheduleNextBlockadeSupportShift(planet, interval);
                 return;
             }
 
             if (_game.CurrentTick < planet.NextBlockadeSupportShiftTick)
                 return;
 
-            int shift = fleetMatchesSupport
+            int shift = blockadeSupportsFavoredFaction
                 ? config.BlockadeMatchShift
                 : config.BlockadeOpposeShift;
-            ShiftPopularSupport(planet, fleetFaction, shift);
+            ShiftPopularSupport(planet, blockadingFaction, shift);
+            ScheduleNextBlockadeSupportShift(planet, interval);
+        }
+
+        /// <summary>
+        /// Returns the faction operating the fleet that currently blockades a planet.
+        /// </summary>
+        private Faction GetBlockadingFaction(Planet planet)
+        {
+            Fleet blockadingFleet = planet
+                .GetChildren<Fleet>()
+                .FirstOrDefault(fleet =>
+                    fleet.Movement == null
+                    && fleet.HasOperationalCapitalShips()
+                    && fleet.OwnerInstanceID != planet.OwnerInstanceID
+                );
+            return _game.GetFactionByOwnerInstanceID(blockadingFleet?.OwnerInstanceID);
+        }
+
+        /// <summary>
+        /// Finds the faction with strictly more popular support than every other faction.
+        /// </summary>
+        private bool TryGetSupportLeader(Planet planet, out Faction supportLeader)
+        {
+            List<Faction> factions = _game.GetFactions();
+            Faction candidate = factions
+                .OrderByDescending(faction => planet.GetPopularSupport(faction.InstanceID))
+                .FirstOrDefault();
+            if (candidate == null)
+            {
+                supportLeader = null;
+                return false;
+            }
+
+            int leadingSupport = planet.GetPopularSupport(candidate.InstanceID);
+            bool supportIsTied = factions.Any(faction =>
+                faction != candidate
+                && planet.GetPopularSupport(faction.InstanceID) == leadingSupport
+            );
+            supportLeader = supportIsTied ? null : candidate;
+            return supportLeader != null;
+        }
+
+        /// <summary>
+        /// Returns the blockade shift interval for the planet's current support alignment.
+        /// </summary>
+        private static int GetBlockadeSupportShiftInterval(
+            GameConfig.SupportShiftConfig config,
+            bool blockadeSupportsFavoredFaction
+        )
+        {
+            return blockadeSupportsFavoredFaction
+                ? config.BlockadeMatchShiftIntervalTicks
+                : config.BlockadeOpposeShiftIntervalTicks;
+        }
+
+        /// <summary>
+        /// Clears a planet's blockade support-shift schedule.
+        /// </summary>
+        private static void ResetBlockadeSupportShiftSchedule(Planet planet)
+        {
+            planet.NextBlockadeSupportShiftTick = 0;
+            planet.BlockadeSupportShiftIntervalTicks = 0;
+        }
+
+        /// <summary>
+        /// Schedules the planet's next blockade support shift.
+        /// </summary>
+        private void ScheduleNextBlockadeSupportShift(Planet planet, int interval)
+        {
             planet.NextBlockadeSupportShiftTick = _game.CurrentTick + interval;
+            planet.BlockadeSupportShiftIntervalTicks = interval;
         }
 
         /// <summary>
@@ -150,21 +190,8 @@ namespace Rebellion.Systems
         /// </summary>
         private void ApplyGarrisonSupportShift(Planet planet, GameConfig.SupportShiftConfig config)
         {
-            Faction garrisonFaction = _game
-                .GetFactions()
-                .FirstOrDefault(faction => faction.Settings?.GarrisonSupportShift != 0);
-            if (
-                garrisonFaction == null
-                || planet.OwnerInstanceID != garrisonFaction.InstanceID
-                || planet.IsInUprising
-                || !planet
-                    .GetAllRegiments()
-                    .Any(regiment =>
-                        regiment.OwnerInstanceID == garrisonFaction.InstanceID
-                        && regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                        && regiment.Movement == null
-                    )
-            )
+            Faction garrisonFaction = GetFactionWithGarrisonSupportShift();
+            if (!CanApplyGarrisonSupportShift(planet, garrisonFaction))
             {
                 planet.NextGarrisonSupportShiftTick = 0;
                 return;
@@ -176,7 +203,7 @@ namespace Rebellion.Systems
 
             if (planet.NextGarrisonSupportShiftTick <= 0)
             {
-                planet.NextGarrisonSupportShiftTick = _game.CurrentTick + interval;
+                ScheduleNextGarrisonSupportShift(planet, interval);
                 return;
             }
 
@@ -188,6 +215,41 @@ namespace Rebellion.Systems
                 garrisonFaction,
                 garrisonFaction.Settings.GarrisonSupportShift
             );
+            ScheduleNextGarrisonSupportShift(planet, interval);
+        }
+
+        /// <summary>
+        /// Returns the faction configured to alter support through troop garrisons.
+        /// </summary>
+        private Faction GetFactionWithGarrisonSupportShift()
+        {
+            return _game
+                .GetFactions()
+                .FirstOrDefault(faction => faction.Settings?.GarrisonSupportShift != 0);
+        }
+
+        /// <summary>
+        /// Returns whether a planet has the controlled, stationary garrison required for a shift.
+        /// </summary>
+        private static bool CanApplyGarrisonSupportShift(Planet planet, Faction faction)
+        {
+            return faction != null
+                && planet.OwnerInstanceID == faction.InstanceID
+                && !planet.IsInUprising
+                && planet
+                    .GetAllRegiments()
+                    .Any(regiment =>
+                        regiment.OwnerInstanceID == faction.InstanceID
+                        && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                        && regiment.Movement == null
+                    );
+        }
+
+        /// <summary>
+        /// Schedules the planet's next garrison support shift.
+        /// </summary>
+        private void ScheduleNextGarrisonSupportShift(Planet planet, int interval)
+        {
             planet.NextGarrisonSupportShiftTick = _game.CurrentTick + interval;
         }
 
