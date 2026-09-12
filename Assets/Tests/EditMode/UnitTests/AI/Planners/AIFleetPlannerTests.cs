@@ -1595,6 +1595,57 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithFleetRequiredAtItsPlanet_DoesNotAssignItToHeadquarters()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            Planet capturedEnemyHeadquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "captured-headquarters",
+                empire.InstanceID
+            );
+            rebels.HQInstanceID = capturedEnemyHeadquarters.InstanceID;
+            AddBattleFleet(
+                game,
+                capturedEnemyHeadquarters,
+                empire.InstanceID,
+                "required-fleet",
+                combatStrength: 2000
+            );
+            Planet reservePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "reserve",
+                empire.InstanceID
+            );
+            Fleet reserveFleet = AddBattleFleet(
+                game,
+                reservePlanet,
+                empire.InstanceID,
+                "reserve-fleet",
+                combatStrength: 1000
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIFleetDefenseProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetDefenseProposal>()
+                .Single(candidate => candidate.TargetPlanet == headquarters);
+
+            Assert.AreSame(reserveFleet, proposal.Fleet);
+        }
+
+        [Test]
         public void Plan_WithHostileFleetAtHeadquarters_AddsSufficientDefenseFleetProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

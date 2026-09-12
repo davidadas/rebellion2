@@ -1089,6 +1089,7 @@ namespace Rebellion.AI.Director
                     GetFleetPlanet(fleet)?.InstanceID == planet.InstanceID
                     || fleet.Order?.OrderType == FleetOrderType.Defend
                         && fleet.Order.TargetPlanetId == planet.InstanceID
+                        && fleet.Movement != null
                 )
                 .Sum(GetFleetCombatValue);
         }

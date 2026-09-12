@@ -160,7 +160,9 @@ namespace Rebellion.AI.Planners
         )
         {
             List<Fleet> candidates = context
-                .Assessment.OwnedFleets.Where(CanAssignHeadquartersDefense)
+                .Assessment.OwnedFleets.Where(fleet =>
+                    CanAssignHeadquartersDefense(context, fleet, headquarters)
+                )
                 .ToList();
             Fleet sufficientFleet = candidates
                 .Where(fleet => context.Assessment.GetFleetCombatValue(fleet) >= requiredDefense)
@@ -181,15 +183,25 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Returns whether a fleet can be assigned to headquarters defense.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="headquarters">The headquarters planet.</param>
         /// <returns>True when the fleet is idle and combat-capable.</returns>
-        private static bool CanAssignHeadquartersDefense(Fleet fleet)
+        private static bool CanAssignHeadquartersDefense(
+            AITurnContext context,
+            Fleet fleet,
+            Planet headquarters
+        )
         {
             return fleet?.RoleType == FleetRoleType.Battle
                 && fleet.Order == null
                 && fleet.Movement == null
                 && !fleet.IsInCombat
-                && fleet.HasOperationalCapitalShips();
+                && fleet.HasOperationalCapitalShips()
+                && (
+                    context.Assessment.GetFleetPlanet(fleet)?.InstanceID == headquarters.InstanceID
+                    || context.StrategicPlan.CanFleetDepart(fleet)
+                );
         }
 
         /// <summary>

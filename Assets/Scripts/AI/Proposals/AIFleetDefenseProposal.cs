@@ -146,6 +146,13 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
+            if (
+                Fleet.Order?.Status == FleetOrderStatus.Staging
+                && context.Assessment.GetFleetPlanet(Fleet)?.InstanceID != TargetPlanet.InstanceID
+                && !context.StrategicPlan.CanFleetDepart(Fleet)
+            )
+                return false;
+
             FleetOrder order = Fleet.Order;
             return order == null
                 || order.OrderType == FleetOrderType.Defend

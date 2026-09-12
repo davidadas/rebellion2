@@ -523,6 +523,7 @@ namespace Rebellion.Tests.AI.Director
                 OrderType = FleetOrderType.Defend,
                 TargetPlanetId = headquarters.InstanceID,
             };
+            inboundFleet.Movement = new MovementState { TransitTicks = 5 };
             game.AttachNode(inboundFleet, staging);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip(
