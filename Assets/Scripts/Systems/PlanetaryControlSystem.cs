@@ -61,7 +61,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies the original timed blockade support rule.
+        /// Updates timed popular-support changes caused by blockades.
         /// </summary>
         private void UpdateBlockadeSupport()
         {
