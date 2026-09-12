@@ -52,27 +52,19 @@ namespace Rebellion.Tests.Generation
                         },
                     },
                 },
-                Profiles = new List<DifficultyProfile>
+                FactionBuckets = new List<FactionBucketConfig>
                 {
-                    new DifficultyProfile
+                    new FactionBucketConfig
                     {
-                        Name = "Default",
-                        Difficulty = -1,
-                        FactionBuckets = new List<FactionBucketConfig>
-                        {
-                            new FactionBucketConfig
-                            {
-                                FactionID = "FNALL1",
-                                StrongPct = 40,
-                                WeakPct = 0,
-                            },
-                            new FactionBucketConfig
-                            {
-                                FactionID = "FNEMP1",
-                                StrongPct = 10,
-                                WeakPct = 5,
-                            },
-                        },
+                        FactionID = "FNALL1",
+                        StrongPct = 40,
+                        WeakPct = 0,
+                    },
+                    new FactionBucketConfig
+                    {
+                        FactionID = "FNEMP1",
+                        StrongPct = 10,
+                        WeakPct = 5,
                     },
                 },
             };

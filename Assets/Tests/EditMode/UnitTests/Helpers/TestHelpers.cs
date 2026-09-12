@@ -585,7 +585,7 @@ public static class GenerationContextFactory
                 GalaxyClassification = new GalaxyClassificationSection
                 {
                     FactionSetups = new List<FactionSetup>(),
-                    Profiles = new List<DifficultyProfile>(),
+                    FactionBuckets = new List<FactionBucketConfig>(),
                 },
                 UnitDeployment = new UnitDeploymentSection
                 {
