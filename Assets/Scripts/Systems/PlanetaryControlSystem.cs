@@ -53,7 +53,7 @@ namespace Rebellion.Systems
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
-            ApplyPeriodicSupportShifts();
+            ApplySupportShifts();
             UpdateUncolonizedPlanets(results);
             CheckOwnershipTransfers(results);
 
@@ -63,7 +63,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Applies the original timed blockade and Imperial-garrison support rules.
         /// </summary>
-        private void ApplyPeriodicSupportShifts()
+        private void ApplySupportShifts()
         {
             GameConfig.SupportShiftConfig config = _game.Config.SupportShift;
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
