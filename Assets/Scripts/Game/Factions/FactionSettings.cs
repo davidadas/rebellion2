@@ -94,7 +94,7 @@ namespace Rebellion.Game.Factions
         /// </summary>
         public SupportChange SupportResistance { get; set; } = SupportChange.Increase;
 
-        public int PeacefulGarrisonSupportShift { get; set; }
+        public int GarrisonSupportShift { get; set; }
 
         public HeadquartersSettings Headquarters
         {

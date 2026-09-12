@@ -451,7 +451,7 @@ namespace Rebellion.Game
 
             public int BlockadeOpposeShiftIntervalTicks { get; set; }
 
-            public int PeacefulGarrisonSupportShiftIntervalTicks { get; set; }
+            public int GarrisonSupportShiftIntervalTicks { get; set; }
 
             public int DiplomacyOwnedPlanetSupportBase { get; set; }
 
