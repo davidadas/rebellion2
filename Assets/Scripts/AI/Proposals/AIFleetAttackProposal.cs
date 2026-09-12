@@ -63,9 +63,6 @@ namespace Rebellion.AI.Proposals
             {
                 claimKeys.Add(AIClaimKeys.FleetAttack(Fleet.InstanceID));
 
-                if (Fleet.Order == null)
-                    claimKeys.Add(AIClaimKeys.NewOffensiveOrder(Fleet.GetOwnerInstanceID()));
-
                 if (TargetPlanet != null)
                     claimKeys.Add(AIClaimKeys.FleetAttackTarget(TargetPlanet.InstanceID));
 

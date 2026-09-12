@@ -107,14 +107,6 @@ namespace Rebellion.AI.Proposals
         internal static string PlanetColonization(string planetId) => $"planet:colonize:{planetId}";
 
         /// <summary>
-        /// Creates a claim for starting a faction offensive.
-        /// </summary>
-        /// <param name="factionId">The faction instance ID.</param>
-        /// <returns>The new-offensive-order claim.</returns>
-        internal static string NewOffensiveOrder(string factionId) =>
-            $"faction:new-offensive-order:{factionId}";
-
-        /// <summary>
         /// Creates a claim for starting a faction colonization order.
         /// </summary>
         /// <param name="factionId">The faction instance ID.</param>

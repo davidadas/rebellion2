@@ -1795,64 +1795,11 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithUnaffordableCandidate_SelectsFromAffordableCandidates()
-        {
-            (GameRoot game, Faction empire, Fleet fleet) = CreateCapitalSelectionScene();
-
-            CapitalShip firstAffordableTemplate = AITestSceneBuilder.CreateCapitalShip(
-                "first-affordable-template",
-                empire.InstanceID,
-                combatStrength: 300
-            );
-            firstAffordableTemplate.TypeID = "first-affordable";
-            firstAffordableTemplate.MaintenanceCost = 27;
-            firstAffordableTemplate.WeaponRecharge = 27;
-            CapitalShip overBudgetTemplate = AITestSceneBuilder.CreateCapitalShip(
-                "over-budget-template",
-                empire.InstanceID,
-                combatStrength: 300
-            );
-            overBudgetTemplate.TypeID = "over-budget";
-            overBudgetTemplate.MaintenanceCost = 28;
-            overBudgetTemplate.WeaponRecharge = 28;
-            CapitalShip secondAffordableTemplate = AITestSceneBuilder.CreateCapitalShip(
-                "second-affordable-template",
-                empire.InstanceID,
-                combatStrength: 300
-            );
-            secondAffordableTemplate.TypeID = "second-affordable";
-            secondAffordableTemplate.MaintenanceCost = 27;
-            secondAffordableTemplate.WeaponRecharge = 27;
-            empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
-            {
-                new Technology(firstAffordableTemplate),
-                new Technology(overBudgetTemplate),
-                new Technology(secondAffordableTemplate),
-            };
-            AITurnContext context = AITestSceneBuilder.CreateContext(
-                game,
-                empire,
-                random: new SequenceRNG(intValues: new[] { 1 })
-            );
-
-            AIManufactureProposal proposal = new AIProductionPlanner()
-                .Plan(context)
-                .OfType<AIManufactureProposal>()
-                .Single(item =>
-                    item.Demand.Kind == AIDemandKind.FleetCapitalShip && item.Destination == fleet
-                );
-
-            Assert.AreSame(secondAffordableTemplate, proposal.Product.GetReference());
-        }
-
-        [Test]
         public void Plan_WithRepeatedStarfighterType_SelectsDifferentCompetitiveType()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
-            game.Config.AI.Selection.CapitalMaintenanceAllocationPercent = 30;
-            game.Config.AI.Selection.CapitalMaintenanceSafetyPercent = 90;
             game.Config.AI.Selection.PreferredStarfighterTypeCountPerFleet = 10;
             game.Config.AI.Selection.LocalDuplicatePenaltyPerSelection = 1000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");

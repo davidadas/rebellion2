@@ -71,8 +71,6 @@ namespace Rebellion.AI.Planners
             bool
         >(StringComparer.Ordinal);
 
-        private int? _capitalShipMaintenanceBudget;
-
         /// <summary>
         /// Returns production proposals for the current AI turn.
         /// </summary>
@@ -98,7 +96,6 @@ namespace Rebellion.AI.Planners
             _fleetUnitCounts.Clear();
             _fleetHasIonStarfighters.Clear();
             _fleetHasTorpedoStarfighters.Clear();
-            _capitalShipMaintenanceBudget = null;
         }
 
         /// <summary>
@@ -612,14 +609,7 @@ namespace Rebellion.AI.Planners
             if (contribution <= 0)
                 return 0;
 
-            int requestedCount = IntegerMath.DivideRoundedUp(demand.QuantityNeeded, contribution);
-            if (capitalShip.MaintenanceCost <= 0)
-                return requestedCount;
-
-            return Math.Min(
-                requestedCount,
-                GetCapitalShipMaintenanceBudget(context) / capitalShip.MaintenanceCost
-            );
+            return IntegerMath.DivideRoundedUp(demand.QuantityNeeded, contribution);
         }
 
         /// <summary>
@@ -1009,7 +999,6 @@ namespace Rebellion.AI.Planners
             if (context?.Faction == null || demand == null)
                 return null;
 
-            int maintenanceBudget = GetCapitalShipMaintenanceBudget(context);
             bool needsStarfighterCapacity =
                 demand.CapitalShipRole == AICapitalShipProductionRole.General
                 && demand.DestinationFleet?.GetStarfighterCapacity() <= 0;
@@ -1027,9 +1016,6 @@ namespace Rebellion.AI.Planners
                     continue;
 
                 if (!CanFillCapitalShipRole(capitalShip, demand.CapitalShipRole))
-                    continue;
-
-                if (capitalShip.MaintenanceCost > maintenanceBudget)
                     continue;
 
                 eligibleTechnologies.Add(technology);
@@ -1051,35 +1037,6 @@ namespace Rebellion.AI.Planners
                     )
             );
             return eligibleTechnologies[context.Random.NextInt(0, eligibleTechnologies.Count)];
-        }
-
-        /// <summary>
-        /// Returns the remaining maintenance budget available to new capital ships this turn.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The available capital-ship maintenance capacity.</returns>
-        private int GetCapitalShipMaintenanceBudget(AITurnContext context)
-        {
-            if (_capitalShipMaintenanceBudget.HasValue)
-                return _capitalShipMaintenanceBudget.Value;
-
-            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
-            int allocatedMaintenance = IntegerMath.ScaleByPercent(
-                context.Assessment.MaintenanceCapacity,
-                config.CapitalMaintenanceAllocationPercent
-            );
-            int targetCapitalMaintenance = IntegerMath.ScaleByPercent(
-                allocatedMaintenance,
-                config.CapitalMaintenanceSafetyPercent
-            );
-            int committedCapitalMaintenance = context
-                .Faction.GetOwnedUnitsByType<CapitalShip>()
-                .Sum(capitalShip => capitalShip.MaintenanceCost);
-            int budget = Math.Max(0, targetCapitalMaintenance - committedCapitalMaintenance);
-
-            _capitalShipMaintenanceBudget =
-                context.Assessment.ProjectedMaintenanceHeadroom < budget ? 0 : budget;
-            return _capitalShipMaintenanceBudget.Value;
         }
 
         /// <summary>

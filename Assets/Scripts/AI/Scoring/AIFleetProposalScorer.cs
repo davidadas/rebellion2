@@ -466,6 +466,7 @@ namespace Rebellion.AI.Scoring
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">The fleet to score.</param>
         /// <param name="targetPlanet">The attack target.</param>
+        /// <param name="config">The fleet deployment scoring configuration.</param>
         /// <returns>The readiness score.</returns>
         private double ScoreReadiness(
             AITurnContext context,
