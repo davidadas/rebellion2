@@ -17,6 +17,7 @@ public static partial class HeadlessSimulationRunner
     private const string _tickCountFlag = "-simTicks";
     private const string _outputPathFlag = "-simOut";
     private const string _seedFlag = "-simSeed";
+    private const string _difficultyFlag = "-simDifficulty";
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
     private const string _defaultSimulationSaveFileName = "headless-simulation";
     private const string _savedSimulationPlayerId = "PLAYER1";
@@ -90,7 +91,7 @@ public static partial class HeadlessSimulationRunner
             GameSummary summary = new GameSummary
             {
                 GalaxySize = GameSize.Large,
-                Difficulty = GameDifficulty.Easy,
+                Difficulty = options.Difficulty,
                 VictoryCondition = GameVictoryCondition.Conquest,
                 ResourceAvailability = GameResourceAvailability.Normal,
                 StartingResearchLevel = 1,

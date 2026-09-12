@@ -17,6 +17,28 @@ namespace Rebellion.Tests.Editor.Simulation
     public sealed class HeadlessSimulationRunnerTests
     {
         [Test]
+        public void SimulationOptions_ParseDifficulty_UsesRequestedValue()
+        {
+            object options = ParseSimulationOptions("-simDifficulty", "Hard");
+
+            Assert.AreEqual(
+                GameDifficulty.Hard,
+                options.GetType().GetProperty("Difficulty").GetValue(options)
+            );
+        }
+
+        [Test]
+        public void SimulationOptions_ParseDifficulty_DefaultsToEasy()
+        {
+            object options = ParseSimulationOptions();
+
+            Assert.AreEqual(
+                GameDifficulty.Easy,
+                options.GetType().GetProperty("Difficulty").GetValue(options)
+            );
+        }
+
+        [Test]
         public void ManufacturedUnitTracker_RecordCompletion_CountsFacilityOnce()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -94,6 +116,21 @@ namespace Rebellion.Tests.Editor.Simulation
                     new object[] { empire.InstanceID, BuildingType.Shipyard }
                 )
             );
+        }
+
+        private static object ParseSimulationOptions(params string[] args)
+        {
+            Type runnerType = AppDomain
+                .CurrentDomain.GetAssemblies()
+                .Select(assembly => assembly.GetType("HeadlessSimulationRunner"))
+                .Single(type => type != null);
+            Type optionsType = runnerType.GetNestedType(
+                "SimulationOptions",
+                BindingFlags.NonPublic
+            );
+            return optionsType
+                .GetMethod("Parse", BindingFlags.Public | BindingFlags.Static)
+                .Invoke(null, new object[] { args });
         }
     }
 }

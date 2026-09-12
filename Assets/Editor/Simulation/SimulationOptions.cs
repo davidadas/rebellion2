@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game;
 
 public static partial class HeadlessSimulationRunner
 {
@@ -7,6 +8,7 @@ public static partial class HeadlessSimulationRunner
         public int TickCount { get; set; }
         public string OutputPath { get; set; }
         public int? Seed { get; set; }
+        public GameDifficulty Difficulty { get; set; } = GameDifficulty.Easy;
         public string SaveFileName { get; set; }
         public string SaveDisplayName { get; set; }
         public string PlayerFactionId { get; set; }
@@ -27,7 +29,28 @@ public static partial class HeadlessSimulationRunner
                     "SimulationResults/headless-simulation-summary.json"
                 ),
                 Seed = ParseNullableInt(args, _seedFlag),
+                Difficulty = ParseDifficulty(args),
             };
+        }
+
+        /// <summary>
+        /// Parses the requested game difficulty.
+        /// </summary>
+        /// <param name="args">The command-line arguments.</param>
+        /// <returns>The requested difficulty, or Easy when none is supplied.</returns>
+        private static GameDifficulty ParseDifficulty(string[] args)
+        {
+            string value = ParseString(args, _difficultyFlag, null);
+            if (
+                !string.IsNullOrWhiteSpace(value)
+                && Enum.TryParse(value, true, out GameDifficulty difficulty)
+                && Enum.IsDefined(typeof(GameDifficulty), difficulty)
+            )
+            {
+                return difficulty;
+            }
+
+            return GameDifficulty.Easy;
         }
 
         /// <summary>

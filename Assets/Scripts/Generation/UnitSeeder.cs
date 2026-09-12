@@ -379,7 +379,7 @@ namespace Rebellion.Generation
                 if (faction == null)
                     continue;
 
-                int deployBudget = CalculateDeployBudget(ctx, faction, budget, config);
+                int deployBudget = CalculateDeployBudget(ctx, faction, budget);
                 if (deployBudget <= 0)
                     continue;
 
@@ -510,31 +510,19 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Calculates the deployment budget for a faction based on available maintenance
-        /// capacity. Selects the appropriate budget level from config using galaxy size,
-        /// difficulty, and whether the faction is AI-controlled.
+        /// capacity. Selects the appropriate budget level from config using galaxy size.
         /// </summary>
         /// <param name="ctx">The generation context.</param>
         /// <param name="faction">The faction to calculate budget for.</param>
         /// <param name="budget">The faction's budget config with level entries.</param>
-        /// <param name="config">Unit deployment config.</param>
         /// <returns>The deployment budget in maintenance cost units.</returns>
         private int CalculateDeployBudget(
             GenerationContext ctx,
             Faction faction,
-            FactionBudget budget,
-            UnitDeploymentSection config
+            FactionBudget budget
         )
         {
-            bool isAI =
-                ctx.Summary.PlayerFactionID != null
-                && faction.InstanceID != ctx.Summary.PlayerFactionID;
-            int effectiveDifficulty = ResolveBudgetDifficulty(config, (int)ctx.Summary.Difficulty);
-            BudgetLevel level = ResolveBudgetLevel(
-                budget,
-                (int)ctx.Summary.GalaxySize,
-                effectiveDifficulty,
-                isAI
-            );
+            BudgetLevel level = ResolveBudgetLevel(budget, (int)ctx.Summary.GalaxySize);
             int maintenanceCapacity = CalculateMaintenanceCapacity(ctx.Sectors, faction);
             int maintenanceUsed = CalculateDeployedMaintenanceCost(ctx.Sectors, faction.InstanceID);
             int availableCapacity = Math.Max(0, maintenanceCapacity - maintenanceUsed);
@@ -543,42 +531,14 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Resolves the budget difficulty used by unit deployment.
-        /// </summary>
-        /// <param name="config">Unit deployment config.</param>
-        /// <param name="difficulty">Requested game difficulty.</param>
-        /// <returns>The mapped budget difficulty.</returns>
-        private int ResolveBudgetDifficulty(UnitDeploymentSection config, int difficulty)
-        {
-            BudgetDifficultyMapping mapping = config.BudgetDifficultyMappings?.FirstOrDefault(m =>
-                m.Difficulty == difficulty
-            );
-
-            return mapping?.BudgetDifficulty ?? difficulty;
-        }
-
-        /// <summary>
         /// Resolves the budget level that best matches the generation parameters.
         /// </summary>
         /// <param name="budget">The faction budget configuration.</param>
         /// <param name="galaxySize">Galaxy size index.</param>
-        /// <param name="difficulty">Difficulty index.</param>
-        /// <param name="isAI">Whether the faction is AI-controlled.</param>
         /// <returns>The selected budget level.</returns>
-        private BudgetLevel ResolveBudgetLevel(
-            FactionBudget budget,
-            int galaxySize,
-            int difficulty,
-            bool isAI
-        )
+        private BudgetLevel ResolveBudgetLevel(FactionBudget budget, int galaxySize)
         {
-            return budget.BudgetLevels.FirstOrDefault(b =>
-                    b.GalaxySize == galaxySize && b.Difficulty == difficulty && b.IsAI == isAI
-                )
-                ?? budget.BudgetLevels.FirstOrDefault(b =>
-                    b.GalaxySize == galaxySize && b.Difficulty == -1
-                )
-                ?? budget.BudgetLevels.FirstOrDefault(b => b.GalaxySize == galaxySize)
+            return budget.BudgetLevels.FirstOrDefault(b => b.GalaxySize == galaxySize)
                 ?? budget.BudgetLevels[0];
         }
 

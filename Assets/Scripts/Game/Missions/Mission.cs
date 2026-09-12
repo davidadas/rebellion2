@@ -450,7 +450,14 @@ namespace Rebellion.Game.Missions
         )
         {
             int? score = GetAgentScore(agent, context);
-            return score.HasValue ? LookupSuccessProbability(context.Game, score.Value) : 0;
+            if (!score.HasValue)
+                return 0;
+
+            double probability = LookupSuccessProbability(context.Game, score.Value);
+            int modifier = context
+                .Game.GetDifficultyModifier(OwnerInstanceID)
+                .MissionSuccessChancePoints;
+            return Math.Clamp(probability + modifier, 0, 100);
         }
 
         /// <summary>

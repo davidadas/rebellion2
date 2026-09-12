@@ -243,27 +243,19 @@ namespace Rebellion.Tests.Generation
                             StartingPlanets = new List<StartingPlanet>(),
                         },
                     },
-                    Profiles = new List<DifficultyProfile>
+                    FactionBuckets = new List<FactionBucketConfig>
                     {
-                        new DifficultyProfile
+                        new FactionBucketConfig
                         {
-                            Name = "Default",
-                            Difficulty = -1,
-                            FactionBuckets = new List<FactionBucketConfig>
-                            {
-                                new FactionBucketConfig
-                                {
-                                    FactionID = "FNALL1",
-                                    StrongPct = allianceStrongPct,
-                                    WeakPct = allianceWeakPct,
-                                },
-                                new FactionBucketConfig
-                                {
-                                    FactionID = "FNEMP1",
-                                    StrongPct = empireStrongPct,
-                                    WeakPct = empireWeakPct,
-                                },
-                            },
+                            FactionID = "FNALL1",
+                            StrongPct = allianceStrongPct,
+                            WeakPct = allianceWeakPct,
+                        },
+                        new FactionBucketConfig
+                        {
+                            FactionID = "FNEMP1",
+                            StrongPct = empireStrongPct,
+                            WeakPct = empireWeakPct,
                         },
                     },
                 },

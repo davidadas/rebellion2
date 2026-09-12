@@ -448,13 +448,7 @@ namespace Rebellion.Tests.Generation
                             FactionID = "FNEMP1",
                             BudgetLevels = new List<BudgetLevel>
                             {
-                                new BudgetLevel
-                                {
-                                    GalaxySize = 0,
-                                    Difficulty = 0,
-                                    IsAI = true,
-                                    Percentage = 100,
-                                },
+                                new BudgetLevel { GalaxySize = 0, Percentage = 100 },
                             },
                             UnitTable = new List<WeightedUnitEntry>
                             {
@@ -498,96 +492,6 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_BudgetDifficultyMapping_UsesMappedDifficulty()
-        {
-            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
-            planet.EnergyCapacity = 8;
-            planet.NumRawResourceNodes = 4;
-            for (int i = 0; i < 4; i++)
-            {
-                planet.AddChild(CompleteBuilding($"mine{i}", BuildingType.Mine, "FNEMP1"));
-                planet.AddChild(CompleteBuilding($"refinery{i}", BuildingType.Refinery, "FNEMP1"));
-            }
-
-            Faction empire = new Faction { InstanceID = "FNEMP1" };
-            empire.Settings.RefinementMultiplier = 1;
-            empire.Settings.ResourceProcessingPointsPerFacility = 1;
-            Faction[] factions = { empire };
-            Regiment[] regimentTemplates =
-            {
-                new Regiment { TypeID = "REEM002", MaintenanceCost = 1 },
-            };
-
-            GameGenerationConfig config = new GameGenerationConfig
-            {
-                GalaxyClassification = new GalaxyClassificationSection
-                {
-                    FactionSetups = new List<FactionSetup>(),
-                },
-                UnitDeployment = new UnitDeploymentSection
-                {
-                    UprisingPreventionThreshold = 0,
-                    SupportDeficitPerGarrisonTroop = 10,
-                    FixedGarrisons = new List<FixedGarrison>(),
-                    FixedFleets = new List<FixedFleet>(),
-                    BudgetDifficultyMappings = new List<BudgetDifficultyMapping>
-                    {
-                        new BudgetDifficultyMapping { Difficulty = 2, BudgetDifficulty = 1 },
-                    },
-                    FactionBudgets = new List<FactionBudget>
-                    {
-                        new FactionBudget
-                        {
-                            FactionID = "FNEMP1",
-                            BudgetLevels = new List<BudgetLevel>
-                            {
-                                new BudgetLevel
-                                {
-                                    GalaxySize = 0,
-                                    Difficulty = 1,
-                                    IsAI = true,
-                                    Percentage = 100,
-                                },
-                                new BudgetLevel
-                                {
-                                    GalaxySize = 0,
-                                    Difficulty = 2,
-                                    IsAI = true,
-                                    Percentage = 0,
-                                },
-                            },
-                            UnitTable = new List<WeightedUnitEntry>
-                            {
-                                new WeightedUnitEntry
-                                {
-                                    CumulativeWeight = 100,
-                                    Units = new List<UnitEntry>
-                                    {
-                                        new UnitEntry { TypeID = "REEM002", Count = 1 },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-            };
-
-            GenerationContext context = BuildContext(
-                new[] { WrapSector(planet) },
-                factions,
-                config,
-                new GalaxyClassificationResult(),
-                regimentTemplates: regimentTemplates
-            );
-            context.Summary.GalaxySize = GameSize.Small;
-            context.Summary.Difficulty = GameDifficulty.Hard;
-
-            new UnitSeeder().Seed(context);
-
-            Assert.AreEqual(4, planet.GetRegimentCount());
-        }
-
-        [Test]
         public void Seed_BudgetTableWithSpecialForces_DeploysSpecialForces()
         {
             Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
@@ -627,13 +531,7 @@ namespace Rebellion.Tests.Generation
                             FactionID = "FNEMP1",
                             BudgetLevels = new List<BudgetLevel>
                             {
-                                new BudgetLevel
-                                {
-                                    GalaxySize = 0,
-                                    Difficulty = 0,
-                                    IsAI = true,
-                                    Percentage = 100,
-                                },
+                                new BudgetLevel { GalaxySize = 0, Percentage = 100 },
                             },
                             UnitTable = new List<WeightedUnitEntry>
                             {
