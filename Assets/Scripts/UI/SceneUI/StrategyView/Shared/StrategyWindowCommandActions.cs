@@ -68,11 +68,11 @@ public interface IStrategyWindowCommandActions
     bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source);
 
     /// <summary>
-    /// Clears queued waypoint continuation for selected fleets without stopping active transit.
+    /// Cancels selected fleet waypoint routes and reverses any active waypoint legs.
     /// </summary>
     /// <param name="items">The selected fleets or their visible snapshots.</param>
-    /// <returns>True when at least one waypoint was cleared.</returns>
-    bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items);
+    /// <returns>True when at least one waypoint route was canceled.</returns>
+    bool CancelFleetWaypointMoves(IReadOnlyList<ISceneNode> items);
 }
 
 /// <summary>

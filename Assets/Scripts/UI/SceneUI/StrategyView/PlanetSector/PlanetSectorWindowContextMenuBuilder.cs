@@ -120,7 +120,7 @@ internal static class PlanetSectorWindowContextMenuBuilder
             ),
             new StrategyMenuCommand(
                 StrategyMenuAction.WaypointMove,
-                hasWaypoints ? "Clear Waypoints" : "Waypoint Move",
+                hasWaypoints ? "Cancel Waypoint Move" : "Waypoint Move",
                 playerControlsFleets && (canCommandFleets || allFleetsAreMoving || hasWaypoints)
             ),
             StrategyBombardmentMenuBuilder.Build(

@@ -246,7 +246,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 _playerFactionId
             );
 
-            Assert.AreEqual("Clear Waypoints", commands[2].Text);
+            Assert.AreEqual("Cancel Waypoint Move", commands[2].Text);
             Assert.IsTrue(commands[2].Enabled);
         }
 

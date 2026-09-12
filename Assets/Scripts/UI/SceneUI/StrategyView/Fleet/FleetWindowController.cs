@@ -569,7 +569,7 @@ public sealed class FleetWindowController
             case StrategyMenuAction.WaypointMove
                 when source.Items?.OfType<Fleet>().Any(fleet => fleet.HasWaypoints()) == true:
                 targetingController.Cancel();
-                commandActions.ClearFleetWaypoints(source.Items);
+                commandActions.CancelFleetWaypointMoves(source.Items);
                 break;
             case StrategyMenuAction.CreateMission:
             case StrategyMenuAction.Move:

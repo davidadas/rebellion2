@@ -859,7 +859,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             public bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
-            public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
+            public bool CancelFleetWaypointMoves(IReadOnlyList<ISceneNode> items) => false;
         }
     }
 }

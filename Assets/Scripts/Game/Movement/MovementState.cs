@@ -35,6 +35,16 @@ namespace Rebellion.Game.Movement
         public string SourceEventInstanceID { get; set; }
 
         /// <summary>
+        /// Identifies the planet from which the current transit leg departed.
+        /// </summary>
+        public string OriginPlanetInstanceID { get; set; }
+
+        /// <summary>
+        /// Indicates that the current transit leg was started by a waypoint route.
+        /// </summary>
+        public bool IsWaypointLeg { get; set; }
+
+        /// <summary>
         /// Position at the start of transit (origin planet coordinates).
         /// Used for interpolating position during transit.
         /// </summary>
@@ -85,6 +95,8 @@ namespace Rebellion.Game.Movement
                 TicksElapsed = TicksElapsed,
                 MovementGroupID = MovementGroupID,
                 SourceEventInstanceID = SourceEventInstanceID,
+                OriginPlanetInstanceID = OriginPlanetInstanceID,
+                IsWaypointLeg = IsWaypointLeg,
                 OriginPositionX = OriginPositionX,
                 OriginPositionY = OriginPositionY,
                 CurrentPositionX = CurrentPositionX,
