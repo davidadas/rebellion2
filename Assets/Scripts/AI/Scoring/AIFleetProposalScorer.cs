@@ -183,7 +183,8 @@ namespace Rebellion.AI.Scoring
                     * config.AttackSectorSupportLeverageWeight
                 + assessment.GetOwnedSystemPresenceRatio(assessment.GetPlanetSystemId(targetPlanet))
                     * config.AttackSystemPresenceWeight
-                + ScoreReadiness(context, fleet, targetPlanet) * config.AttackReadinessWeight
+                + ScoreReadiness(context, fleet, targetPlanet, config)
+                    * config.AttackReadinessWeight
                 + ScoreCaptureViability(context, fleet, targetPlanet)
                     * config.AttackCaptureViabilityWeight
                 + ScoreTravelEfficiency(assessment, fleet, targetPlanet)
@@ -201,7 +202,7 @@ namespace Rebellion.AI.Scoring
 
             if (
                 IsExposedSectorBombardmentTarget(context, targetPlanet)
-                && assessment.CanFleetBombardMilitaryTargets(fleet, targetPlanet)
+                && assessment.CanBombardMilitaryTargets(fleet, targetPlanet)
             )
                 score += config.ExposedSectorBombardmentBonus;
 
@@ -255,6 +256,7 @@ namespace Rebellion.AI.Scoring
                 + assessment.GetOwnedSystemPresenceRatio(assessment.GetPlanetSystemId(targetPlanet))
                     * config.AttackSystemPresenceWeight
                 + Math.Max(0, config.AttackReadinessWeight)
+                    * (1 + Math.Max(0, config.ReadyAttackBonus))
                 + Math.Max(0, config.AttackCaptureViabilityWeight)
                 + Math.Max(0, config.AttackTravelEfficiencyWeight)
                 + Math.Max(0, config.OrbitalResponseBonus);
@@ -287,7 +289,7 @@ namespace Rebellion.AI.Scoring
                 ) >= minimumOwnedPresence
                 && assessment.GetStrongestHostileFleetStrength(targetPlanet) <= 0
                 && assessment.GetHostilePlanetaryStarfighterStrength(targetPlanet) <= 0
-                && assessment.HasActiveHostileMilitaryTargets(targetPlanet);
+                && assessment.HasBombardmentTargets(targetPlanet);
         }
 
         /// <summary>
@@ -465,7 +467,12 @@ namespace Rebellion.AI.Scoring
         /// <param name="fleet">The fleet to score.</param>
         /// <param name="targetPlanet">The attack target.</param>
         /// <returns>The readiness score.</returns>
-        private double ScoreReadiness(AITurnContext context, Fleet fleet, Planet targetPlanet)
+        private double ScoreReadiness(
+            AITurnContext context,
+            Fleet fleet,
+            Planet targetPlanet,
+            GameConfig.AIFleetDeploymentConfig config
+        )
         {
             AIAssessment assessment = context.Assessment;
             int requiredRegimentCount = assessment.GetRequiredAttackRegimentCount(
@@ -488,25 +495,32 @@ namespace Rebellion.AI.Scoring
                 assessment.GetReadyFleetRegimentAttackStrength(fleet),
                 assessment.GetRequiredAttackRegimentStrength(fleet, targetPlanet)
             );
-            List<double> readiness = new List<double>
-            {
-                combatReadiness,
-                regimentReadiness,
-                transportReadiness,
-                groundReadiness,
-            };
+            double readinessSum =
+                combatReadiness + regimentReadiness + transportReadiness + groundReadiness;
+            double weakestReadiness = Math.Min(
+                Math.Min(combatReadiness, regimentReadiness),
+                Math.Min(transportReadiness, groundReadiness)
+            );
+            int readinessCount = 4;
             int requiredBombardment = assessment.GetRequiredBombardmentStrength(targetPlanet);
             if (requiredBombardment > 0)
             {
-                readiness.Add(
-                    GetFulfillmentRatio(
-                        assessment.GetFleetBombardmentStrength(fleet),
-                        requiredBombardment
-                    )
+                double bombardmentReadiness = GetFulfillmentRatio(
+                    assessment.GetFleetBombardmentStrength(fleet),
+                    requiredBombardment
                 );
+                readinessSum += bombardmentReadiness;
+                weakestReadiness = Math.Min(weakestReadiness, bombardmentReadiness);
+                readinessCount++;
             }
 
-            return GetAverage(readiness.ToArray());
+            double averageReadiness = readinessSum / readinessCount;
+            double floorWeight = Math.Max(0, config.AttackReadinessFloorWeight);
+            double readinessScore =
+                (averageReadiness + weakestReadiness * floorWeight) / (1 + floorWeight);
+            return weakestReadiness >= 1
+                ? readinessScore + Math.Max(0, config.ReadyAttackBonus)
+                : readinessScore;
         }
 
         /// <summary>

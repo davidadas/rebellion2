@@ -1171,7 +1171,7 @@ namespace Rebellion.AI.Planners
                 })
                 .OrderByDescending(candidate => candidate.Target != null)
                 .ThenByDescending(candidate =>
-                    context.Assessment.GetFleetAttackReadinessGateCount(
+                    context.Assessment.CountCurrentAttackRequirementsMet(
                         candidate.Fleet,
                         candidate.Target
                     )

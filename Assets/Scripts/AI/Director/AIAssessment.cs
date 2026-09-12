@@ -1133,7 +1133,7 @@ namespace Rebellion.AI.Director
         /// </summary>
         /// <param name="planet">Planet to inspect.</param>
         /// <returns>True when the active shield count meets the configured limit.</returns>
-        public bool HasFullOperationalPlanetaryShields(Planet planet)
+        public bool HasFullShields(Planet planet)
         {
             if (!IsOwnedPlanet(planet) || _context?.Game?.Config == null)
                 return false;
@@ -1492,7 +1492,7 @@ namespace Rebellion.AI.Director
         /// <param name="fleet">Attacking fleet.</param>
         /// <param name="planet">Target planet.</param>
         /// <returns>True when projected fleet strength is sufficient.</returns>
-        public bool CanProjectedFleetWinOrbitalCombat(Fleet fleet, Planet planet)
+        public bool CanWinProjectedOrbitalCombat(Fleet fleet, Planet planet)
         {
             int requiredStrength = GetRequiredOrbitalStrength(planet);
             return requiredStrength > 0
@@ -1579,7 +1579,7 @@ namespace Rebellion.AI.Director
         /// <param name="fleet">Fleet assigned to the attack.</param>
         /// <param name="planet">Target planet.</param>
         /// <returns>True when the fleet must wait for sabotage or choose another target.</returns>
-        public bool IsFleetBlockedByTargetShields(Fleet fleet, Planet planet)
+        public bool IsBlockedByShields(Fleet fleet, Planet planet)
         {
             return IsAssaultBlockedByShields(planet)
                 && GetFleetBombardmentStrength(fleet) < GetRequiredBombardmentStrength(planet);
@@ -1840,7 +1840,7 @@ namespace Rebellion.AI.Director
         /// <param name="fleet">Fleet assigned to the attack.</param>
         /// <param name="targetPlanet">Planet being attacked.</param>
         /// <returns>True when the fleet can make immediate progress against the planet.</returns>
-        public bool CanFleetMakeImmediateAttackProgress(Fleet fleet, Planet targetPlanet)
+        public bool CanAdvanceAttack(Fleet fleet, Planet targetPlanet)
         {
             if (CanBombardMilitaryTargets(fleet, targetPlanet))
                 return true;
@@ -1867,19 +1867,19 @@ namespace Rebellion.AI.Director
         /// <param name="fleet">Fleet being evaluated.</param>
         /// <param name="targetPlanet">Prospective bombardment target.</param>
         /// <returns>True when hostile military targets remain below the fleet's bombardment limit.</returns>
-        public bool CanFleetBombardMilitaryTargets(Fleet fleet, Planet targetPlanet)
+        public bool CanBombardMilitaryTargets(Fleet fleet, Planet targetPlanet)
         {
             return fleet != null
                 && targetPlanet != null
                 && GetFleetBombardmentStrength(fleet)
                     > BombardmentSystem.GetBombardmentShieldStrength(targetPlanet)
-                && HasActiveHostileMilitaryTargets(targetPlanet);
+                && HasBombardmentTargets(targetPlanet);
         }
 
         /// <summary>
         /// Returns whether hostile military bombardment targets remain on a planet.
         /// </summary>
-        public bool HasActiveHostileMilitaryTargets(Planet targetPlanet)
+        public bool HasBombardmentTargets(Planet targetPlanet)
         {
             if (targetPlanet == null)
                 return false;
@@ -1896,48 +1896,12 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns whether a fleet can weaken a planet before evaluating a ground assault.
-        /// </summary>
-        /// <param name="fleet">Fleet assigned to the attack.</param>
-        /// <param name="targetPlanet">Planet being attacked.</param>
-        /// <returns>True when military targets remain within the fleet's bombardment capability.</returns>
-        private bool CanBombardMilitaryTargets(Fleet fleet, Planet targetPlanet)
-        {
-            return CanFleetBombardMilitaryTargets(fleet, targetPlanet);
-        }
-
-        /// <summary>
-        /// Returns whether projected fleet strength satisfies one attack target.
-        /// </summary>
-        /// <param name="fleet">Fleet to inspect.</param>
-        /// <param name="targetPlanet">Target planet.</param>
-        /// <returns>True when projected strength is sufficient.</returns>
-        public bool IsFleetProjectedReadyToAttack(Fleet fleet, Planet targetPlanet)
-        {
-            int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
-            int availableCombat = GetProjectedFleetCombatValue(fleet);
-            int requiredRegiments = GetProjectedRequiredAttackRegimentCount(fleet, targetPlanet);
-            int requiredRegimentStrength = GetProjectedRequiredAttackRegimentStrength(
-                fleet,
-                targetPlanet
-            );
-            int requiredBombardment = GetRequiredBombardmentStrength(targetPlanet);
-            return fleet?.GetChildren<CapitalShip>().Any(capitalShip => capitalShip != null) == true
-                && availableCombat > 0
-                && availableCombat >= requiredCombat
-                && GetFleetLoadedRegimentCount(fleet) >= requiredRegiments
-                && GetFleetRegimentCapacity(fleet) >= requiredRegiments
-                && GetProjectedFleetRegimentAttackStrength(fleet) >= requiredRegimentStrength
-                && GetProjectedFleetBombardmentStrength(fleet) >= requiredBombardment;
-        }
-
-        /// <summary>
-        /// Returns whether projected fleet strength satisfies the next attack target.
+        /// Returns whether committed fleet strength will satisfy an attack target.
         /// </summary>
         /// <param name="fleet">Fleet to inspect.</param>
         /// <param name="targetPlanet">The next attack target.</param>
         /// <returns>True when projected strength is sufficient.</returns>
-        public bool IsFleetProjectedReadyToAttackTarget(Fleet fleet, Planet targetPlanet)
+        public bool WillMeetAttackRequirements(Fleet fleet, Planet targetPlanet)
         {
             int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
             int availableCombat = GetProjectedFleetCombatValue(fleet);
@@ -1959,7 +1923,7 @@ namespace Rebellion.AI.Director
         /// <param name="fleet">The fleet to inspect.</param>
         /// <param name="targetPlanet">The attack target.</param>
         /// <returns>The satisfied readiness gate count.</returns>
-        public int GetFleetAttackReadinessGateCount(Fleet fleet, Planet targetPlanet)
+        public int CountCurrentAttackRequirementsMet(Fleet fleet, Planet targetPlanet)
         {
             int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
             int requiredRegiments = GetRequiredAttackRegimentCount(fleet, targetPlanet);
@@ -1995,7 +1959,7 @@ namespace Rebellion.AI.Director
         /// <param name="fleet">Fleet to inspect.</param>
         /// <param name="targetPlanet">The next attack target.</param>
         /// <returns>The satisfied requirement count.</returns>
-        public int GetProjectedFleetAttackReadinessGateCount(Fleet fleet, Planet targetPlanet)
+        public int CountTargetAttackRequirementsMet(Fleet fleet, Planet targetPlanet)
         {
             int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
             int requiredRegiments = GetRequiredAttackRegimentCount(targetPlanet);
@@ -2441,7 +2405,7 @@ namespace Rebellion.AI.Director
         /// <param name="planet">The planet to inspect.</param>
         /// <param name="type">The manufacturing category.</param>
         /// <returns>The queued production clear ticks.</returns>
-        public double GetPlanetQueuedProductionClearTicks(Planet planet, ManufacturingType type)
+        public double GetProductionBacklogTicks(Planet planet, ManufacturingType type)
         {
             if (planet == null || type == ManufacturingType.None)
                 return 0;

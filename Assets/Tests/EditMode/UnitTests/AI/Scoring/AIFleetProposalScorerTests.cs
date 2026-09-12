@@ -419,6 +419,85 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
+        public void Score_AttackWithLowReadiness_AppliesFloorWeight()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;
+            config.AttackStrategicValueWeight = 0;
+            config.AttackSectorSupportLeverageWeight = 0;
+            config.AttackSystemPresenceWeight = 0;
+            config.AttackReadinessWeight = 100;
+            config.ReadyAttackBonus = 0;
+            config.AttackCaptureViabilityWeight = 0;
+            config.AttackTravelEfficiencyWeight = 0;
+            config.AttackExpectedLossPenaltyWeight = 0;
+            config.AttackOpportunityCostPenaltyWeight = 0;
+            config.MinimumAttackStrength = 1;
+            config.MinimumPlanetaryAssaultRegimentCount = 1;
+            config.AttackStrengthPercentOfDefense = 100;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
+            AddShield(game, target, "shield", rebels.InstanceID, 100);
+            Fleet fleet = AddAssaultFleet(game, owned, "fleet", empire.InstanceID);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                target
+            );
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+
+            config.AttackReadinessFloorWeight = 0;
+            double averageOnlyScore = scorer.Score(context, proposal);
+            config.AttackReadinessFloorWeight = 10;
+            double bottleneckWeightedScore = scorer.Score(context, proposal);
+
+            Assert.Less(bottleneckWeightedScore, averageOnlyScore);
+        }
+
+        [Test]
+        public void Score_ReadyAttack_AppliesConfiguredBonus()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;
+            config.AttackStrategicValueWeight = 0;
+            config.AttackSectorSupportLeverageWeight = 0;
+            config.AttackSystemPresenceWeight = 0;
+            config.AttackReadinessWeight = 100;
+            config.AttackReadinessFloorWeight = 0;
+            config.AttackCaptureViabilityWeight = 0;
+            config.AttackTravelEfficiencyWeight = 0;
+            config.AttackExpectedLossPenaltyWeight = 0;
+            config.AttackOpportunityCostPenaltyWeight = 0;
+            config.MinimumAttackStrength = 1;
+            config.MinimumPlanetaryAssaultRegimentCount = 1;
+            config.AttackStrengthPercentOfDefense = 100;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
+            Fleet fleet = AddAssaultFleet(game, owned, "fleet", empire.InstanceID);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                target
+            );
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+
+            config.ReadyAttackBonus = 0;
+            double unbonusedScore = scorer.Score(context, proposal);
+            config.ReadyAttackBonus = 3;
+            double bonusedScore = scorer.Score(context, proposal);
+
+            Assert.AreEqual(300, bonusedScore - unbonusedScore);
+        }
+
+        [Test]
         public void Score_AttackTransferWithCarriedStarfighters_IncludesSquadronStrength()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

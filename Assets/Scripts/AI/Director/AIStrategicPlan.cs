@@ -115,7 +115,7 @@ namespace Rebellion.AI.Director
                 _context.Game?.Config != null
                 && _context.Assessment.GetFactionPopularSupport(planet)
                     < _context.Game.Config.AI.Garrison.SupportThreshold
-                && !_context.Assessment.HasFullOperationalPlanetaryShields(planet)
+                && !_context.Assessment.HasFullShields(planet)
                 && _context.Assessment.GetDefensiveSupportRisk(planet) > 1;
             int requiredStrength = _context.Assessment.GetRequiredHeadquartersDefenseStrength(
                 planet

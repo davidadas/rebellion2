@@ -123,7 +123,7 @@ namespace Rebellion.AI.Planners
 
             bool targetCannotBeAttacked =
                 currentPlanet?.InstanceID == targetPlanet.InstanceID
-                && !context.Assessment.CanFleetMakeImmediateAttackProgress(fleet, targetPlanet);
+                && !context.Assessment.CanAdvanceAttack(fleet, targetPlanet);
             if (targetCannotBeAttacked)
             {
                 proposals.Add(
@@ -137,7 +137,7 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
-            bool mayLeaveCampaign = context.Assessment.IsFleetBlockedByTargetShields(
+            bool mayLeaveCampaign = context.Assessment.IsBlockedByShields(
                 fleet,
                 targetPlanet
             );
@@ -488,7 +488,7 @@ namespace Rebellion.AI.Planners
                     CanReceivePlanetRegimentTransfer(context, fleet)
                 )
                 .OrderByDescending(fleet =>
-                    context.Assessment.GetProjectedFleetAttackReadinessGateCount(
+                    context.Assessment.CountTargetAttackRequirementsMet(
                         fleet,
                         GetReinforcementTargetPlanet(context, fleet)
                     )
@@ -771,7 +771,7 @@ namespace Rebellion.AI.Planners
             }
 
             return targetFleet.Order?.OrderType == FleetOrderType.Attack
-                && !context.Assessment.IsFleetProjectedReadyToAttackTarget(
+                && !context.Assessment.WillMeetAttackRequirements(
                     targetFleet,
                     targetPlanet
                 );
@@ -816,7 +816,7 @@ namespace Rebellion.AI.Planners
                     CanReceiveCapitalShipTransfer(context, candidate.Fleet, candidate.TargetPlanet)
                 )
                 .OrderByDescending(candidate =>
-                    context.Assessment.GetProjectedFleetAttackReadinessGateCount(
+                    context.Assessment.CountTargetAttackRequirementsMet(
                         candidate.Fleet,
                         candidate.TargetPlanet
                     )

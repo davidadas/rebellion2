@@ -1376,7 +1376,7 @@ namespace Rebellion.AI.Planners
                 mode == ProducerMode.FacilityExpansion
                     ? eligibleProducers
                         .OrderBy(planet =>
-                            context.Assessment.GetPlanetQueuedProductionClearTicks(
+                            context.Assessment.GetProductionBacklogTicks(
                                 planet,
                                 ManufacturingType.Building
                             )

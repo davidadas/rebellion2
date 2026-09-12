@@ -100,7 +100,7 @@ namespace Rebellion.AI.Proposals
             Planet knownTarget = context.Assessment.GetKnownPlanet(TargetPlanet.InstanceID);
             if (
                 context.Assessment.GetStrongestHostileFleetStrength(knownTarget) > 0
-                && !context.Assessment.CanProjectedFleetWinOrbitalCombat(Fleet, knownTarget)
+                && !context.Assessment.CanWinProjectedOrbitalCombat(Fleet, knownTarget)
             )
             {
                 if (currentPlanet?.GetOwnerInstanceID() == context.Faction.InstanceID)

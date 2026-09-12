@@ -203,6 +203,10 @@ namespace Rebellion.Game
 
             public int AttackReadinessWeight { get; set; } = 35;
 
+            public double AttackReadinessFloorWeight { get; set; } = 4;
+
+            public double ReadyAttackBonus { get; set; } = 10;
+
             public int AttackCaptureViabilityWeight { get; set; } = 45;
 
             public int AttackTravelEfficiencyWeight { get; set; } = 20;
@@ -213,7 +217,7 @@ namespace Rebellion.Game
 
             public int AttackIntelAgePenaltyPerRefreshInterval { get; set; } = 1;
 
-            public int ExistingAttackOrderBonus { get; set; } = 25;
+            public int ExistingAttackOrderBonus { get; set; } = 300;
 
             public int HeadquartersAttackBonus { get; set; } = 45;
 
