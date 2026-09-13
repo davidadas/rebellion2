@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Systems
             _game
                 .GetPlayers()
                 .Add(
-                    new GamePlayer
+                    new Player
                     {
                         PlayerID = "PLAYER",
                         FactionID = _faction.InstanceID,
@@ -152,7 +152,7 @@ namespace Rebellion.Tests.Systems
             _game
                 .GetPlayers()
                 .Add(
-                    new GamePlayer
+                    new Player
                     {
                         PlayerID = "PLAYER",
                         FactionID = _faction.InstanceID,

@@ -57,7 +57,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.GetPlayers()
                 .Add(
-                    new GamePlayer
+                    new Player
                     {
                         PlayerID = "player",
                         FactionID = rebels.InstanceID,

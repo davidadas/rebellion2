@@ -112,7 +112,7 @@ public static partial class HeadlessSimulationRunner
                 .BuildGame();
             foreach (Faction faction in game.GetFactions())
             {
-                GamePlayer player = game.GetPlayerForFaction(faction.InstanceID);
+                Player player = game.GetFactionPlayer(faction.InstanceID);
                 game.SetFactionController(
                     faction.InstanceID,
                     player.PlayerID,
@@ -272,7 +272,7 @@ public static partial class HeadlessSimulationRunner
         game.Summary.PlayerFactionID = playerFaction.InstanceID;
         foreach (Faction faction in game.GetFactions())
         {
-            GamePlayer player = game.GetPlayerForFaction(faction.InstanceID);
+            Player player = game.GetFactionPlayer(faction.InstanceID);
             game.SetFactionController(
                 faction.InstanceID,
                 faction.InstanceID == playerFaction.InstanceID

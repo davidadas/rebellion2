@@ -122,7 +122,7 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(_game.GetFactions().Count, _game.GetPlayers().Count);
             Assert.AreEqual(
                 PlayerControllerType.Human,
-                _game.GetPlayerForFaction(_game.Summary.PlayerFactionID).ControllerType
+                _game.GetFactionPlayer(_game.Summary.PlayerFactionID).ControllerType
             );
             Assert.IsTrue(
                 _game

@@ -15,7 +15,7 @@ namespace Rebellion.Game
     /// Represents one participant in a game and the faction that participant controls.
     /// </summary>
     [PersistableObject]
-    public sealed class GamePlayer
+    public sealed class Player
     {
         public string PlayerID { get; set; }
         public string FactionID { get; set; }

@@ -87,7 +87,7 @@ namespace Rebellion.Tests.Managers
 
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            GamePlayer player = loadedGame.GetPlayerForFaction("FNALL1");
+            Player player = loadedGame.GetFactionPlayer("FNALL1");
             Assert.AreEqual("PLAYER1", player.PlayerID);
             Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
         }

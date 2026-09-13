@@ -195,7 +195,7 @@ public sealed class GameManager
     public PlayerUIState GetPlayerUIState()
     {
         Faction faction = GetPlayerFaction();
-        return _game.GetPlayerForFaction(faction.InstanceID).UIState;
+        return _game.GetFactionPlayer(faction.InstanceID).UIState;
     }
 
     /// <summary>

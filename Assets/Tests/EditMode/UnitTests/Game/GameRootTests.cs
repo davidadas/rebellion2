@@ -548,7 +548,7 @@ namespace Rebellion.Tests.Game
         {
             _game.SetFactionController("FACTION1", "PLAYER1", PlayerControllerType.Human);
 
-            GamePlayer player = _game.GetPlayerForFaction("FACTION1");
+            Player player = _game.GetFactionPlayer("FACTION1");
             Assert.AreEqual("PLAYER1", player.PlayerID);
             Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
         }
@@ -560,7 +560,7 @@ namespace Rebellion.Tests.Game
             _game.SetFactionController("FACTION1", "PLAYER1", PlayerControllerType.Human);
 
             Assert.AreEqual(1, _game.GetPlayers().Count);
-            Assert.AreEqual("PLAYER1", _game.GetPlayerForFaction("FACTION1").PlayerID);
+            Assert.AreEqual("PLAYER1", _game.GetFactionPlayer("FACTION1").PlayerID);
         }
 
         [Test]
@@ -571,7 +571,7 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(_game.GetFactions().Count, _game.GetPlayers().Count);
             Assert.AreEqual(
                 PlayerControllerType.Human,
-                _game.GetPlayerForFaction(_game.Summary.PlayerFactionID).ControllerType
+                _game.GetFactionPlayer(_game.Summary.PlayerFactionID).ControllerType
             );
         }
 

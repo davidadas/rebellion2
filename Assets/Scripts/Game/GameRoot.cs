@@ -88,7 +88,7 @@ namespace Rebellion.Game
         private List<Faction> _factions = new List<Faction>();
 
         [PersistableMember(Name = "Players")]
-        private List<GamePlayer> _players = new List<GamePlayer>();
+        private List<Player> _players = new List<Player>();
 
         [PersistableMember(Name = "UnrecruitedOfficers")]
         private List<Officer> _unrecruitedOfficers = new List<Officer>();
@@ -205,7 +205,7 @@ namespace Rebellion.Game
         /// Returns the participants in this game.
         /// </summary>
         /// <returns>The game participants.</returns>
-        public List<GamePlayer> GetPlayers()
+        public List<Player> GetPlayers()
         {
             return _players;
         }
@@ -215,7 +215,7 @@ namespace Rebellion.Game
         /// </summary>
         /// <param name="factionInstanceID">The controlled faction identifier.</param>
         /// <returns>The controlling participant, or null when none is assigned.</returns>
-        public GamePlayer GetPlayerForFaction(string factionInstanceID)
+        public Player GetFactionPlayer(string factionInstanceID)
         {
             return _players.FirstOrDefault(player => player.FactionID == factionInstanceID);
         }
@@ -232,12 +232,12 @@ namespace Rebellion.Game
             PlayerControllerType controllerType
         )
         {
-            GamePlayer player = _players.FirstOrDefault(candidate =>
+            Player player = _players.FirstOrDefault(candidate =>
                 candidate.FactionID == factionInstanceID
             );
             if (player == null)
             {
-                player = new GamePlayer { FactionID = factionInstanceID };
+                player = new Player { FactionID = factionInstanceID };
                 _players.Add(player);
             }
 
@@ -252,7 +252,7 @@ namespace Rebellion.Game
         {
             if (_players.Count > 0)
             {
-                foreach (GamePlayer player in _players)
+                foreach (Player player in _players)
                     player.UIState ??= new PlayerUIState();
                 return;
             }
@@ -278,7 +278,7 @@ namespace Rebellion.Game
             if (faction == null)
                 throw new ArgumentNullException(nameof(faction));
 
-            return GetPlayerForFaction(faction.InstanceID)?.ControllerType
+            return GetFactionPlayer(faction.InstanceID)?.ControllerType
                 != PlayerControllerType.Human;
         }
 

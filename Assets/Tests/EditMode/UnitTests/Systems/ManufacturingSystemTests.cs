@@ -807,7 +807,7 @@ namespace Rebellion.Tests.Systems
             _game
                 .GetPlayers()
                 .Add(
-                    new GamePlayer
+                    new Player
                     {
                         PlayerID = "PLAYER1",
                         FactionID = _empire.InstanceID,
