@@ -34,8 +34,46 @@ namespace Rebellion.AI.Planners
             proposals.AddRange(_defensePlanner.Plan(context));
 
             HashSet<string> activeAttackSystemIds = GetActiveAttackSystemIds(context);
+            HashSet<string> activeSurveySystemIds = context
+                .Assessment.OwnedFleets.Where(fleet =>
+                    fleet.Order?.OrderType == FleetOrderType.Explore
+                    && !string.IsNullOrEmpty(fleet.Order.TargetSystemId)
+                )
+                .Select(fleet => fleet.Order.TargetSystemId)
+                .ToHashSet(StringComparer.Ordinal);
+            IReadOnlyDictionary<string, IReadOnlyList<Planet>> unexploredOuterRimSystems =
+                GetUnexploredOuterRimSystems(context);
+            int colonizationSlots = Math.Max(
+                0,
+                context.Game.Config.AI.FleetDeployment.ColonizationFleetTargetCount
+                    - context.Assessment.OwnedFleets.Count(fleet =>
+                        fleet.RoleType == FleetRoleType.Colonization
+                    )
+            );
             foreach (Fleet fleet in context.Assessment.OwnedFleets)
-                AddFleetProposal(context, fleet, proposals);
+            {
+                if (fleet.RoleType == FleetRoleType.None)
+                {
+                    List<CapitalShip> transports = GetColonizationTransports(fleet)
+                        .Take(colonizationSlots)
+                        .ToList();
+                    proposals.Add(
+                        transports.Count > 0
+                            ? new AIFleetRoleProposal(fleet, transports)
+                            : new AIFleetRoleProposal(fleet, FleetRoleType.Battle)
+                    );
+                    colonizationSlots -= transports.Count;
+                    continue;
+                }
+
+                AddFleetProposal(
+                    context,
+                    fleet,
+                    unexploredOuterRimSystems,
+                    activeSurveySystemIds,
+                    proposals
+                );
+            }
 
             AddAttackOrderProposal(context, activeAttackSystemIds, proposals);
 
@@ -43,6 +81,22 @@ namespace Rebellion.AI.Planners
             AddPlanetRegimentTransferProposals(context, proposals);
 
             return proposals;
+        }
+
+        /// <summary>
+        /// Returns transport ships that can seed dedicated colonization fleets.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>Transport ships ordered by stable instance identifier.</returns>
+        private static IEnumerable<CapitalShip> GetColonizationTransports(Fleet fleet)
+        {
+            if (fleet.Order != null || fleet.Movement != null || fleet.IsInCombat)
+                return Enumerable.Empty<CapitalShip>();
+
+            return fleet
+                .GetChildren<CapitalShip>()
+                .Where(ship => ship.RegimentCapacity > 0)
+                .OrderBy(ship => ship.InstanceID, StringComparer.Ordinal);
         }
 
         /// <summary>
@@ -54,6 +108,8 @@ namespace Rebellion.AI.Planners
         private void AddFleetProposal(
             AITurnContext context,
             Fleet fleet,
+            IReadOnlyDictionary<string, IReadOnlyList<Planet>> unexploredOuterRimSystems,
+            HashSet<string> activeSurveySystemIds,
             List<AIProposal> proposals
         )
         {
@@ -62,7 +118,24 @@ namespace Rebellion.AI.Planners
 
             if (order == null)
             {
+                if (
+                    AddColonizationSurveyProposals(
+                        context,
+                        fleet,
+                        unexploredOuterRimSystems,
+                        activeSurveySystemIds,
+                        proposals
+                    )
+                )
+                    return;
+
                 AddColonizationOrderProposals(context, fleet, currentPlanet, proposals);
+                return;
+            }
+
+            if (order.OrderType == FleetOrderType.Explore)
+            {
+                AddExistingSurveyProposal(context, fleet, order, proposals);
                 return;
             }
 
@@ -159,6 +232,117 @@ namespace Rebellion.AI.Planners
                     )
                 );
             }
+        }
+
+        /// <summary>
+        /// Groups unexplored Outer Rim planets once for reuse by every fleet this turn.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>Unexplored planets keyed by sector identifier.</returns>
+        private static IReadOnlyDictionary<
+            string,
+            IReadOnlyList<Planet>
+        > GetUnexploredOuterRimSystems(AITurnContext context)
+        {
+            return context
+                .Assessment.UnexploredPlanets.Where(planet =>
+                    planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.OuterRim
+                )
+                .GroupBy(context.Assessment.GetPlanetSystemId)
+                .Where(group => !string.IsNullOrEmpty(group.Key))
+                .ToDictionary(
+                    group => group.Key,
+                    group =>
+                        (IReadOnlyList<Planet>)
+                            group
+                                .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                                .ToList(),
+                    StringComparer.Ordinal
+                );
+        }
+
+        /// <summary>
+        /// Adds candidate sector surveys before a colonization fleet selects a planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">Fleet being assigned.</param>
+        /// <param name="systems">Unexplored Outer Rim planets keyed by sector.</param>
+        /// <param name="activeSystemIds">Sectors already assigned to another survey fleet.</param>
+        /// <param name="proposals">Proposal list to update.</param>
+        /// <returns>True when at least one survey proposal was added.</returns>
+        private bool AddColonizationSurveyProposals(
+            AITurnContext context,
+            Fleet fleet,
+            IReadOnlyDictionary<string, IReadOnlyList<Planet>> systems,
+            HashSet<string> activeSystemIds,
+            List<AIProposal> proposals
+        )
+        {
+            if (!CanStartColonizationOrder(context, fleet))
+                return false;
+
+            bool added = false;
+            foreach (
+                KeyValuePair<string, IReadOnlyList<Planet>> system in systems.Where(system =>
+                    !activeSystemIds.Contains(system.Key)
+                )
+            )
+            {
+                proposals.Add(new AIColonizationSurveyProposal(fleet, system.Key, system.Value));
+                added = true;
+            }
+
+            return added;
+        }
+
+        /// <summary>
+        /// Continues an interrupted survey or selects its highest-capacity revealed colony.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">Fleet assigned to the survey.</param>
+        /// <param name="order">The current survey order.</param>
+        /// <param name="proposals">Proposal list to update.</param>
+        private void AddExistingSurveyProposal(
+            AITurnContext context,
+            Fleet fleet,
+            FleetOrder order,
+            List<AIProposal> proposals
+        )
+        {
+            if (fleet.Movement != null || fleet.HasWaypoints() || fleet.IsInCombat)
+                return;
+
+            string systemId = order.TargetSystemId;
+            if (string.IsNullOrEmpty(systemId))
+            {
+                proposals.Add(new AIClearFleetOrderProposal(fleet, order));
+                return;
+            }
+
+            IReadOnlyList<Planet> unexplored = context
+                .Assessment.UnexploredPlanets.Where(planet =>
+                    context.Assessment.GetPlanetSystemId(planet) == systemId
+                )
+                .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                .ToList();
+            if (unexplored.Count > 0)
+            {
+                proposals.Add(new AIColonizationSurveyProposal(fleet, systemId, unexplored));
+                return;
+            }
+
+            Planet target = context
+                .Assessment.KnownUncolonizedPlanets.Where(planet =>
+                    context.Assessment.GetPlanetSystemId(planet) == systemId
+                    && !HasColonizationFleetForTarget(context, planet, fleet)
+                )
+                .OrderByDescending(planet => planet.GetEnergyCapacity())
+                .ThenByDescending(planet => planet.GetRawResourceNodes())
+                .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
+            proposals.Add(
+                new AIColonizationSurveyProposal(fleet, systemId, Array.Empty<Planet>(), target)
+            );
         }
 
         /// <summary>

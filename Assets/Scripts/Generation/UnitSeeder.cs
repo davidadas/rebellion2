@@ -211,7 +211,7 @@ namespace Rebellion.Generation
                     continue;
 
                 Faction faction = factions.First(f => f.InstanceID == fleetConfig.FactionID);
-                Fleet fleet = faction.CreateFleet(capitalShips.ToArray(), FleetRoleType.Battle);
+                Fleet fleet = faction.CreateFleet(capitalShips.ToArray());
                 planet.AddChild(fleet);
             }
         }
@@ -659,7 +659,7 @@ namespace Rebellion.Generation
                 return;
             }
 
-            Fleet newFleet = faction.CreateFleet(capitalShips.ToArray(), FleetRoleType.Battle);
+            Fleet newFleet = faction.CreateFleet(capitalShips.ToArray());
             planet.AddChild(newFleet);
         }
 

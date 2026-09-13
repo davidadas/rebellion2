@@ -985,7 +985,7 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.AreEqual(1, demands.Count);
             Assert.AreEqual(1, demands.Select(item => item.DestinationPlanet).Distinct().Count());
-            Assert.IsTrue(demands.All(item => item.QuantityNeeded == 1));
+            Assert.IsTrue(demands.All(item => item.QuantityNeeded == 4));
         }
 
         [Test]
@@ -1048,7 +1048,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Single(item => item.Kind == AIDemandKind.ConstructionFacility);
 
             Assert.AreSame(planet, demand.DestinationPlanet);
-            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(5, demand.QuantityNeeded);
         }
 
         [Test]

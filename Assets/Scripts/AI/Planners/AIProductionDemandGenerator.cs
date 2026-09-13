@@ -903,7 +903,16 @@ namespace Rebellion.AI.Planners
             if (currentCount >= targetCount)
                 return;
 
+            int quantity = 1;
+            if (kind == AIDemandKind.ConstructionFacility)
+            {
+                quantity = Math.Min(targetCount - currentCount, target.GetAvailableEnergy());
+            }
+            if (quantity <= 0)
+                return;
+
             double concentrationBonus = baseDemandPercent * currentCount / targetCount;
+            double investmentDeficit = (double)(targetCount - currentCount) / targetCount;
 
             demands.Add(
                 new AIDemand(
@@ -912,14 +921,14 @@ namespace Rebellion.AI.Planners
                     ManufacturingType.Building,
                     buildingType,
                     target,
-                    1,
+                    quantity,
                     GetProductionFacilityPressure(
                         context,
                         kind,
                         currentCount,
                         targetCount,
                         baseDemandPercent,
-                        0
+                        investmentDeficit
                     )
                         + strategicBonus
                         + concentrationBonus,

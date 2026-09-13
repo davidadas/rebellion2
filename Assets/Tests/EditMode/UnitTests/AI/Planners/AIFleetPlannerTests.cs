@@ -1405,6 +1405,96 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithUnexploredOuterRimSystem_SurveysBeforeColonizing()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, core, "owned", empire.InstanceID);
+            PlanetSector outerRim = AITestSceneBuilder.AddSector(game, "outer-rim");
+            outerRim.SectorType = PlanetSectorType.OuterRim;
+            Planet small = AITestSceneBuilder.AddPlanet(
+                game,
+                outerRim,
+                "small",
+                null,
+                energyCapacity: 1
+            );
+            small.IsColonized = false;
+            Planet large = AITestSceneBuilder.AddPlanet(
+                game,
+                outerRim,
+                "large",
+                null,
+                energyCapacity: 8
+            );
+            large.IsColonized = false;
+            Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID, "fleet");
+            fleet.RoleType = FleetRoleType.Colonization;
+            fleet.GetChildren<CapitalShip>().Single().RegimentCapacity = 2;
+            AddColonizationRegiment(game, fleet, empire.InstanceID);
+            AddColonizationRegiment(game, fleet, empire.InstanceID);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProposal> proposals = new AIFleetPlanner().Plan(context);
+
+            AIColonizationSurveyProposal survey = proposals
+                .OfType<AIColonizationSurveyProposal>()
+                .Single(proposal => proposal.Fleet == fleet);
+            Assert.AreEqual(outerRim.InstanceID, survey.SystemId);
+            CollectionAssert.AreEquivalent(
+                new[] { small.InstanceID, large.InstanceID },
+                survey.UnexploredPlanets.Select(planet => planet.InstanceID)
+            );
+            Assert.IsFalse(
+                proposals.OfType<AIColonizationProposal>().Any(proposal => proposal.Fleet == fleet)
+            );
+        }
+
+        [Test]
+        public void Plan_WithCompletedSurvey_SelectsHighestEnergyPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "outer-rim");
+            system.SectorType = PlanetSectorType.OuterRim;
+            Planet small = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "small",
+                null,
+                energyCapacity: 1,
+                rawResourceNodes: 20
+            );
+            small.IsColonized = false;
+            Planet large = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "large",
+                null,
+                energyCapacity: 8
+            );
+            large.IsColonized = false;
+            AITestSceneBuilder.RevealPlanet(game, empire, small);
+            AITestSceneBuilder.RevealPlanet(game, empire, large);
+            Fleet fleet = AddBattleFleet(game, small, empire.InstanceID, "fleet");
+            fleet.RoleType = FleetRoleType.Colonization;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Explore,
+                Status = FleetOrderStatus.Readying,
+                TargetSystemId = system.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIColonizationSurveyProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIColonizationSurveyProposal>()
+                .Single();
+
+            Assert.AreEqual(large.InstanceID, proposal.ColonyTarget.InstanceID);
+            Assert.IsEmpty(proposal.UnexploredPlanets);
+        }
+
+        [Test]
         public void Plan_WithUnloadedBattleFleetAndUncolonizedPlanet_DoesNotAddColonizationProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

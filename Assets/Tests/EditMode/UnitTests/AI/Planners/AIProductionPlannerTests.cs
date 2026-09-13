@@ -433,7 +433,7 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIManufactureProposal>()
                 .Single(item => item.Demand.Kind == AIDemandKind.ConstructionFacility);
 
-            Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
+            Assert.AreEqual(2, proposal.Demand.QuantityNeeded);
         }
 
         [Test]

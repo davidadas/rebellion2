@@ -41,7 +41,6 @@ namespace Rebellion.AI.Planners
                 ),
                 Technology
             >();
-        private int? _committedProductionFacilityMaintenance;
         private readonly Dictionary<
             (string DestinationId, ManufacturingType ManufacturingType, ProducerMode Mode),
             List<Planet>
@@ -90,7 +89,6 @@ namespace Rebellion.AI.Planners
         {
             _unlockedTechnologies.Clear();
             _selectedTechnologies.Clear();
-            _committedProductionFacilityMaintenance = null;
             _producerPlanets.Clear();
             _queueWork.Clear();
             _fleetUnitCounts.Clear();
@@ -423,50 +421,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The remaining facility maintenance budget.</returns>
         private int GetFacilityMaintenanceBudget(AITurnContext context, AIDemand demand)
         {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            int headroomBudget = Math.Max(
+            return Math.Max(
                 0,
                 context.Assessment.ProjectedMaintenanceHeadroom
                     - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
             );
-            if (
-                demand.Kind == AIDemandKind.Shipyard
-                && context.FacilityAllocation.IsIncompletePrimaryHub(
-                    demand.DestinationPlanet,
-                    BuildingType.Shipyard,
-                    config.ShipyardSectorHubTargetCount
-                )
-            )
-                return headroomBudget;
-
-            int allocatedMaintenance = IntegerMath.ScaleByPercent(
-                context.Assessment.MaintenanceCapacity,
-                config.ProductionFacilityMaintenanceAllocationPercent
-            );
-            int availableMaintenance =
-                allocatedMaintenance - GetCommittedProductionFacilityMaintenance(context);
-            if (
-                availableMaintenance <= 0
-                || context.Assessment.ProjectedMaintenanceHeadroom < availableMaintenance
-            )
-                return 0;
-
-            return Math.Min(availableMaintenance, headroomBudget);
-        }
-
-        /// <summary>
-        /// Returns maintenance committed to production facilities.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The calculated value.</returns>
-        private int GetCommittedProductionFacilityMaintenance(AITurnContext context)
-        {
-            if (_committedProductionFacilityMaintenance.HasValue)
-                return _committedProductionFacilityMaintenance.Value;
-
-            _committedProductionFacilityMaintenance =
-                context.Assessment.GetProductionFacilityMaintenance();
-            return _committedProductionFacilityMaintenance.Value;
         }
 
         /// <summary>

@@ -25,8 +25,10 @@ namespace Rebellion.AI.Scoring
                 is AIFleetAttackProposal
                     or AIOrbitalEngagementProposal
                     or AIColonizationProposal
+                    or AIColonizationSurveyProposal
                     or AIClearFleetOrderProposal
                     or AIFleetDefenseProposal
+                    or AIFleetRoleProposal
                     or AITransferUnitProposal;
         }
 
@@ -61,14 +63,42 @@ namespace Rebellion.AI.Scoring
                     colonizationProposal.TargetPlanet,
                     HasExistingOrder(colonizationProposal)
                 ),
+                AIColonizationSurveyProposal surveyProposal => ScoreSurvey(context, surveyProposal),
                 AIClearFleetOrderProposal => double.PositiveInfinity,
                 AIFleetDefenseProposal defenseProposal => ScoreDefense(context, defenseProposal),
+                AIFleetRoleProposal => double.PositiveInfinity,
                 AITransferUnitProposal transferProposal => ScoreUnitTransfer(
                     context,
                     transferProposal
                 ),
                 _ => 0,
             };
+        }
+
+        /// <summary>
+        /// Scores a sector survey using its nearest unexplored entry point.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The survey proposal.</param>
+        /// <returns>The calculated value.</returns>
+        private double ScoreSurvey(AITurnContext context, AIColonizationSurveyProposal proposal)
+        {
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            double score = config.ColonizationBaseScore + config.ColonizationReadyFleetBonus;
+            if (proposal.EntryPlanet != null)
+            {
+                score +=
+                    ScoreColonizationTravelEfficiency(
+                        context.Assessment,
+                        proposal.Fleet,
+                        proposal.EntryPlanet
+                    ) * config.ColonizationTravelEfficiencyWeight;
+            }
+
+            if (proposal.Fleet?.Order?.OrderType == FleetOrderType.Explore)
+                score += config.ExistingColonizationOrderBonus;
+
+            return Math.Max(0, score);
         }
 
         /// <summary>
