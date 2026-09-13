@@ -1515,6 +1515,38 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_WithOnlyConstructionInfrastructure_DoesNotAddStarfighterDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "construction-world",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            Assert.IsFalse(
+                demands.Any(item =>
+                    item.Kind == AIDemandKind.PlanetaryStarfighterReserve
+                    && item.DestinationPlanet == planet
+                )
+            );
+        }
+
+        [Test]
         public void Generate_WithCompleteInfrastructureStarfighterReserve_SuppressesDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -1816,7 +1848,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithMultipleIdleUnderstrengthFleets_AddsAssemblyDemandForEachFleet()
+        public void Generate_WithMultipleIdleUnderstrengthFleets_FocusesOneAssemblyFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
@@ -1828,17 +1860,24 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            CollectionAssert.AreEquivalent(
-                new[] { firstFleet, secondFleet },
-                demands
-                    .Where(demand =>
-                        demand.Kind == AIDemandKind.FleetCapitalShip
-                        && (
-                            demand.DestinationFleet == firstFleet
-                            || demand.DestinationFleet == secondFleet
-                        )
+            Fleet destination = demands
+                .Where(demand =>
+                    demand.Kind == AIDemandKind.FleetCapitalShip
+                    && (
+                        demand.DestinationFleet == firstFleet
+                        || demand.DestinationFleet == secondFleet
                     )
-                    .Select(demand => demand.DestinationFleet)
+                )
+                .Select(demand => demand.DestinationFleet)
+                .Single();
+
+            Assert.AreSame(
+                new[] { firstFleet, secondFleet }
+                    .OrderBy(context.Assessment.GetProjectedFleetCombatValue)
+                    .ThenBy(fleet => fleet.GetRegimentCapacity())
+                    .ThenBy(fleet => fleet.InstanceID)
+                    .First(),
+                destination
             );
         }
 
@@ -1925,7 +1964,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithMultipleAttackFleets_AddsDemandForEachCampaign()
+        public void Generate_WithMultipleAttackFleets_FocusesOneCampaign()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
@@ -2016,11 +2055,9 @@ namespace Rebellion.Tests.AI.Planners
                 )
                 .ToList();
 
-            Assert.IsTrue(
-                reinforcementDemands.Any(demand => demand.DestinationFleet == remoteFleet)
-            );
-            Assert.IsTrue(
-                reinforcementDemands.Any(demand => demand.DestinationFleet == establishedFleet)
+            Assert.AreEqual(
+                1,
+                reinforcementDemands.Select(demand => demand.DestinationFleet).Distinct().Count()
             );
         }
 

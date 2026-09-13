@@ -19,6 +19,71 @@ namespace Rebellion.Tests.AI.Planners
     public class AIFleetPlannerTests
     {
         [Test]
+        public void Plan_WithUntypedMixedFleet_ExtractsOnlyDedicatedTransport()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            CapitalShip transport = AITestSceneBuilder.CreateCapitalShip(
+                "transport",
+                empire.InstanceID,
+                combatStrength: 0,
+                regimentCapacity: 1,
+                starfighterCapacity: 0
+            );
+            transport.Roles.Add(CapitalShipRole.Transport);
+            CapitalShip warship = AITestSceneBuilder.CreateCapitalShip(
+                "warship",
+                empire.InstanceID,
+                combatStrength: 1000,
+                regimentCapacity: 3,
+                starfighterCapacity: 0
+            );
+            warship.Roles.Add(CapitalShipRole.PrimaryLine);
+            game.AttachNode(fleet, owned);
+            game.AttachNode(transport, fleet);
+            game.AttachNode(warship, fleet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIFleetRoleProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetRoleProposal>()
+                .Single(item => item.Fleet == fleet);
+
+            Assert.AreEqual(FleetRoleType.Colonization, proposal.Role);
+            CollectionAssert.AreEqual(new[] { transport }, proposal.Ships);
+        }
+
+        [Test]
+        public void Plan_WithUntypedTroopCarryingWarship_AssignsBattleRole()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            CapitalShip warship = AITestSceneBuilder.CreateCapitalShip(
+                "warship",
+                empire.InstanceID,
+                combatStrength: 1000,
+                regimentCapacity: 3,
+                starfighterCapacity: 0
+            );
+            warship.Roles.Add(CapitalShipRole.PrimaryLine);
+            game.AttachNode(fleet, owned);
+            game.AttachNode(warship, fleet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIFleetRoleProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetRoleProposal>()
+                .Single(item => item.Fleet == fleet);
+
+            Assert.AreEqual(FleetRoleType.Battle, proposal.Role);
+            Assert.IsEmpty(proposal.Ships);
+        }
+
+        [Test]
         public void Plan_WithIdleBattleFleetAndEnemyPlanet_AddsAttackProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -1887,7 +1952,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithUnderstrengthHeadquartersOrder_AddsAnotherDefenseFleet()
+        public void Plan_WithUnderstrengthHeadquartersOrder_ReinforcesAssignedFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
@@ -1928,12 +1993,75 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIFleetDefenseProposal proposal = new AIFleetPlanner()
+            List<AIFleetDefenseProposal> proposals = new AIFleetPlanner()
                 .Plan(context)
                 .OfType<AIFleetDefenseProposal>()
-                .Single(candidate => candidate.Fleet == reserveFleet);
+                .ToList();
 
-            Assert.AreSame(headquarters, proposal.TargetPlanet);
+            Assert.IsTrue(
+                proposals.Any(candidate =>
+                    candidate.Fleet == assignedFleet && candidate.TargetPlanet == headquarters
+                )
+            );
+            Assert.IsFalse(proposals.Any(candidate => candidate.Fleet == reserveFleet));
+        }
+
+        [Test]
+        public void Plan_WithMultipleHeadquartersDefenseOrders_ClearsWeakerOrder()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            Fleet weakerFleet = AddBattleFleet(
+                game,
+                headquarters,
+                empire.InstanceID,
+                "weaker-fleet",
+                combatStrength: 400
+            );
+            Fleet strongerFleet = AddBattleFleet(
+                game,
+                headquarters,
+                empire.InstanceID,
+                "stronger-fleet",
+                combatStrength: 600
+            );
+            weakerFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = headquarters.InstanceID,
+            };
+            strongerFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = headquarters.InstanceID,
+            };
+
+            List<AIProposal> proposals = new AIFleetPlanner().Plan(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            Assert.IsTrue(
+                proposals
+                    .OfType<AIFleetDefenseProposal>()
+                    .Any(candidate =>
+                        candidate.Fleet == strongerFleet && candidate.TargetPlanet == headquarters
+                    )
+            );
+            Assert.IsTrue(
+                proposals
+                    .OfType<AIClearFleetOrderProposal>()
+                    .Any(candidate => candidate.Fleet == weakerFleet)
+            );
         }
 
         [Test]

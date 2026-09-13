@@ -342,13 +342,14 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithBusyConstructionQueue_AddsCountedFacilityProposal()
+        public void Plan_WithConstructionQueueCoveringPlanningHorizon_DoesNotAddFacilityProposal()
         {
             (GameRoot game, Faction empire, Planet planet, Building _) = CreateShipyardBatchScene(
                 constructionFacilityCount: 4,
                 energyCapacity: 20,
                 shipyardMaintenance: 1
             );
+            game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 1;
             Building queuedBuilding = AITestSceneBuilder.CreateBuildingTemplate(
                 "queued-building",
                 BuildingType.Defense,
@@ -360,9 +361,13 @@ namespace Rebellion.Tests.AI.Planners
             planet.AddToManufacturingQueue(queuedBuilding);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIManufactureProposal proposal = GetShipyardProposal(context);
+            List<AIManufactureProposal> proposals = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Where(item => item.Demand.Kind == AIDemandKind.Shipyard)
+                .ToList();
 
-            Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
+            Assert.IsEmpty(proposals);
         }
 
         [Test]

@@ -45,14 +45,40 @@ namespace Rebellion.AI.Planners
             if (headquarters == null)
                 return null;
 
+            List<Fleet> assignedFleets = context
+                .Assessment.OwnedFleets.Where(fleet =>
+                    fleet.Order?.OrderType == FleetOrderType.Defend
+                    && fleet.Order.TargetPlanetId == headquarters.InstanceID
+                )
+                .OrderByDescending(context.Assessment.GetFleetCombatValue)
+                .ThenBy(fleet => fleet.InstanceID)
+                .ToList();
+            if (assignedFleets.Count > 0)
+            {
+                Fleet primaryFleet = assignedFleets[0];
+                proposals.Add(new AIFleetDefenseProposal(primaryFleet, headquarters));
+                foreach (Fleet redundantFleet in assignedFleets.Skip(1))
+                    proposals.Add(
+                        new AIClearFleetOrderProposal(redundantFleet, redundantFleet.Order)
+                    );
+
+                return primaryFleet;
+            }
+
             int requiredDefense = context.Assessment.GetRequiredHeadquartersDefenseStrength(
                 headquarters
             );
-            int committedDefense = context.Assessment.GetCommittedHeadquartersDefenseStrength(
-                headquarters
-            );
-            if (committedDefense >= requiredDefense)
-                return null;
+            Fleet inboundFleet = context
+                .Assessment.OwnedFleets.Where(fleet =>
+                    fleet.Movement != null
+                    && context.Assessment.GetFleetPlanet(fleet)?.InstanceID
+                        == headquarters.InstanceID
+                )
+                .OrderByDescending(context.Assessment.GetFleetCombatValue)
+                .ThenBy(fleet => fleet.InstanceID)
+                .FirstOrDefault();
+            if (inboundFleet != null)
+                return inboundFleet;
 
             Fleet fleet = FindHeadquartersDefenseFleet(context, headquarters, requiredDefense);
             if (fleet != null)

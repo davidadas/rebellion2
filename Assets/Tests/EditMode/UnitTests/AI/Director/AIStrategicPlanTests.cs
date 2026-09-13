@@ -41,5 +41,26 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(4, tenPlanetPlan.TargetBattleFleetCount);
             Assert.AreEqual(1750, tenPlanetPlan.AssemblyFleetCombatStrength);
         }
+
+        [Test]
+        public void MobileStrengthTarget_CoversMinimumStrengthForEveryTargetFleet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;
+            config.MinimumBattleFleetCount = 4;
+            config.PlanetsPerBattleFleet = 8;
+            config.MinimumAttackStrength = 1400;
+            config.MinimumMobileCombatStrength = 5600;
+            config.MobileCombatStrengthPerPlanet = 175;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            for (int index = 0; index < 73; index++)
+                AITestSceneBuilder.AddPlanet(game, sector, $"planet-{index}", empire.InstanceID);
+
+            AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, empire).StrategicPlan;
+
+            Assert.AreEqual(10, plan.TargetBattleFleetCount);
+            Assert.AreEqual(14000, plan.TargetMobileCombatStrength);
+            Assert.AreEqual(1400, plan.AssemblyFleetCombatStrength);
+        }
     }
 }

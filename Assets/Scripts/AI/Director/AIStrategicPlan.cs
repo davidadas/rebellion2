@@ -67,8 +67,11 @@ namespace Rebellion.AI.Director
                         config.PlanetsPerBattleFleet
                     );
             _targetMobileCombatStrength = Math.Max(
-                minimumMobileCombatStrength,
-                operationalPlanetCount * mobileCombatStrengthPerPlanet
+                _targetBattleFleetCount * config.MinimumAttackStrength,
+                Math.Max(
+                    minimumMobileCombatStrength,
+                    operationalPlanetCount * mobileCombatStrengthPerPlanet
+                )
             );
         }
 

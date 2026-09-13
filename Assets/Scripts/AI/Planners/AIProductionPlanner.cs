@@ -806,6 +806,7 @@ namespace Rebellion.AI.Planners
                     );
             int laneLimit =
                 facilityCount > laneReserve ? facilityCount - laneReserve : facilityCount;
+            int queueLimit = GetQueueBatchCapacity(context, producerPlanet, building);
             int energyLimit = Math.Max(
                 0,
                 demand.DestinationPlanet.GetAvailableEnergy()
@@ -816,7 +817,10 @@ namespace Rebellion.AI.Planners
                 0,
                 Math.Min(
                     demand.QuantityNeeded,
-                    Math.Min(maintenanceLimit, Math.Min(laneLimit, energyLimit))
+                    Math.Min(
+                        maintenanceLimit,
+                        Math.Min(laneLimit, Math.Min(queueLimit, energyLimit))
+                    )
                 )
             );
         }

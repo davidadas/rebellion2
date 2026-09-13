@@ -60,6 +60,47 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithReconnaissanceTeam_DoesNotTargetOuterRimPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
+            PlanetSector outerRim = AITestSceneBuilder.AddSector(game, "outer-rim");
+            outerRim.SectorType = PlanetSectorType.OuterRim;
+            Planet origin = AITestSceneBuilder.AddPlanet(game, core, "origin", empire.InstanceID);
+            Planet coreTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                core,
+                "core-target",
+                rebels.InstanceID,
+                positionX: 100
+            );
+            AITestSceneBuilder.AddPlanet(
+                game,
+                outerRim,
+                "outer-rim-target",
+                rebels.InstanceID,
+                positionX: 10
+            );
+            SpecialForces reconnaissanceTeam = new SpecialForces
+            {
+                InstanceID = "recon",
+                OwnerInstanceID = empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
+            };
+            game.AttachNode(reconnaissanceTeam, origin);
+
+            List<AIMissionProposal> proposals = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .Where(candidate => candidate.MissionTypeID == MissionTypeIDs.Reconnaissance)
+                .ToList();
+
+            Assert.IsTrue(proposals.Count > 0);
+            Assert.IsTrue(proposals.All(proposal => proposal.TargetPlanet == coreTarget));
+        }
+
+        [Test]
         public void Plan_WithNonMainRecruiter_DoesNotAddRecruitmentProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

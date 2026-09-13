@@ -271,15 +271,16 @@ namespace Rebellion.AI.Planners
         private static int GetPlanetaryStarfighterRequirement(AITurnContext context, Planet planet)
         {
             GameConfig.AINonCapitalSummaryConfig config = context.Game.Config.AI.NonCapitalSummary;
-            bool hasProductionInfrastructure = HasProductionInfrastructure(context, planet);
+            bool hasShipProduction =
+                context.Assessment.GetPlanetProductionFacilityCount(planet, ManufacturingType.Ship)
+                > 0;
             int baseline =
                 planet.IsHeadquarters ? config.StarfighterRequirementHeadquarters
-                : hasProductionInfrastructure
-                    ? Math.Max(12, config.StarfighterRequirementInfrastructure)
+                : hasShipProduction ? Math.Max(12, config.StarfighterRequirementInfrastructure)
                 : config.StarfighterRequirementDefault;
             if (!planet.IsHeadquarters && !context.Assessment.IsPlanetThreatened(planet))
             {
-                if (!hasProductionInfrastructure)
+                if (!hasShipProduction)
                     baseline = IntegerMath.ScaleByPercent(
                         baseline,
                         config.InteriorStarfighterBaselinePercent
@@ -1113,17 +1114,12 @@ namespace Rebellion.AI.Planners
             AddFleetDemands(context, demands, defenseFleet);
 
             IReadOnlyList<Fleet> attackFleets = GetPriorityAttackFleets(context);
-            AddFirstShipDemand(context, demands, attackFleets);
-            AddFirstRegimentDemand(context, demands, attackFleets);
+            AddPriorityAttackFleetDemands(context, demands, attackFleets);
 
             foreach (Fleet colonizationFleet in GetPriorityColonizationFleets(context))
                 AddFleetDemands(context, demands, colonizationFleet);
 
-            if (attackFleets.Count == 0)
-            {
-                foreach (Fleet assemblyFleet in GetFleetAssemblyFleets(context))
-                    AddFleetDemands(context, demands, assemblyFleet);
-            }
+            AddFleetDemands(context, demands, GetFleetAssemblyFleets(context).FirstOrDefault());
         }
 
         /// <summary>
@@ -1143,12 +1139,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds ship-production demand for the first attack fleet that still needs ships.
+        /// Adds every unmet demand for the highest-priority attack fleet that still needs support.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
         /// <param name="fleets">Attack fleets in reinforcement priority order.</param>
-        private void AddFirstShipDemand(
+        private void AddPriorityAttackFleetDemands(
             AITurnContext context,
             List<AIDemand> demands,
             IReadOnlyList<Fleet> fleets
@@ -1157,29 +1153,7 @@ namespace Rebellion.AI.Planners
             foreach (Fleet fleet in fleets)
             {
                 int initialCount = demands.Count;
-                AddFleetCapitalShipDemand(context, demands, fleet);
-                AddFleetStarfighterDemand(context, demands, fleet);
-                if (demands.Count > initialCount)
-                    return;
-            }
-        }
-
-        /// <summary>
-        /// Adds troop-production demand for the first attack fleet that still needs regiments.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        /// <param name="fleets">Attack fleets in reinforcement priority order.</param>
-        private void AddFirstRegimentDemand(
-            AITurnContext context,
-            List<AIDemand> demands,
-            IReadOnlyList<Fleet> fleets
-        )
-        {
-            foreach (Fleet fleet in fleets)
-            {
-                int initialCount = demands.Count;
-                AddFleetRegimentDemand(context, demands, fleet);
+                AddFleetDemands(context, demands, fleet);
                 if (demands.Count > initialCount)
                     return;
             }
@@ -1221,6 +1195,9 @@ namespace Rebellion.AI.Planners
                 })
                 .OrderByDescending(candidate => candidate.Target != null)
                 .ThenByDescending(candidate =>
+                    GetProjectedAttackReadiness(context, candidate.Fleet, candidate.Target)
+                )
+                .ThenByDescending(candidate =>
                     context.Assessment.CountCurrentAttackRequirementsMet(
                         candidate.Fleet,
                         candidate.Target
@@ -1236,6 +1213,58 @@ namespace Rebellion.AI.Planners
                 .ThenBy(candidate => candidate.Fleet.InstanceID, StringComparer.Ordinal)
                 .Select(candidate => candidate.Fleet)
                 .ToList();
+        }
+
+        /// <summary>
+        /// Returns the weakest projected readiness ratio for an attack fleet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The fleet to assess.</param>
+        /// <param name="target">The fleet's attack target.</param>
+        /// <returns>The least-complete attack requirement, from zero through one.</returns>
+        private double GetProjectedAttackReadiness(
+            AITurnContext context,
+            Fleet fleet,
+            Planet target
+        )
+        {
+            if (fleet == null || target == null)
+                return 0;
+
+            AIAssessment assessment = context.Assessment;
+            int requiredRegiments = assessment.GetProjectedRequiredAttackRegimentCount(
+                fleet,
+                target
+            );
+            double readiness = GetFulfillmentRatio(
+                assessment.GetProjectedFleetCombatValue(fleet),
+                assessment.GetRequiredAttackCombatStrength(target)
+            );
+            readiness = Math.Min(
+                readiness,
+                GetFulfillmentRatio(
+                    assessment.GetFleetLoadedRegimentCount(fleet),
+                    requiredRegiments
+                )
+            );
+            readiness = Math.Min(
+                readiness,
+                GetFulfillmentRatio(assessment.GetFleetRegimentCapacity(fleet), requiredRegiments)
+            );
+            readiness = Math.Min(
+                readiness,
+                GetFulfillmentRatio(
+                    assessment.GetProjectedFleetRegimentAttackStrength(fleet),
+                    assessment.GetProjectedRequiredAttackRegimentStrength(fleet, target)
+                )
+            );
+            return Math.Min(
+                readiness,
+                GetFulfillmentRatio(
+                    assessment.GetProjectedFleetBombardmentStrength(fleet),
+                    assessment.GetRequiredBombardmentStrength(target)
+                )
+            );
         }
 
         /// <summary>

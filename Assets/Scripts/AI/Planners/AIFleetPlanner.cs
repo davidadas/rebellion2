@@ -95,7 +95,7 @@ namespace Rebellion.AI.Planners
 
             return fleet
                 .GetChildren<CapitalShip>()
-                .Where(ship => ship.RegimentCapacity > 0)
+                .Where(ship => ship.HasRole(CapitalShipRole.Transport))
                 .OrderBy(ship => ship.InstanceID, StringComparer.Ordinal);
         }
 
@@ -488,6 +488,9 @@ namespace Rebellion.AI.Planners
         )
         {
             Planet targetPlanet = context.Assessment.GetKnownPlanet(order.TargetPlanetId);
+            if (context.Assessment.IsFactionHeadquarters(targetPlanet))
+                return;
+
             if (
                 !context.Assessment.IsOwnedPlanet(targetPlanet)
                 || !context.Assessment.IsPriorityDefensePlanet(targetPlanet)

@@ -633,7 +633,8 @@ namespace Rebellion.AI.Planners
 
             return context
                 .Assessment.UnexploredPlanets.Where(planet =>
-                    !HasActiveMissionAtPlanet(MissionTypeIDs.Reconnaissance, planet.InstanceID)
+                    planet.GetParentOfType<PlanetSector>()?.SectorType != PlanetSectorType.OuterRim
+                    && !HasActiveMissionAtPlanet(MissionTypeIDs.Reconnaissance, planet.InstanceID)
                 )
                 .OrderBy(origin.GetRawDistanceTo)
                 .ThenBy(planet => planet.InstanceID);
