@@ -420,7 +420,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithPendingShipyardAtAnotherPlanet_ExpandsExistingShipyardHub()
+        public void Generate_WithConstrainedPendingShipyard_SelectsFeasibleSectorHub()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -448,12 +448,19 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(shipyard, pendingPlanet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
+            Assert.IsTrue(
+                context.DevelopmentAllocation.IsPrimaryHub(demandPlanet, BuildingType.Shipyard)
+            );
+            Assert.IsFalse(
+                context.DevelopmentAllocation.IsPrimaryHub(pendingPlanet, BuildingType.Shipyard)
+            );
+
             AIDemand demand = new AIProductionDemandGenerator()
                 .Generate(context)
                 .Single(item => item.Kind == AIDemandKind.Shipyard);
 
             Assert.AreEqual(
-                pendingPlanet.InstanceID,
+                demandPlanet.InstanceID,
                 demand.DestinationPlanet.InstanceID,
                 $"Selected {demand.DestinationPlanet.InstanceID}."
             );
@@ -892,7 +899,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithDefenseReservedTrainingHub_UsesUncommittedClusterPlanet()
+        public void Generate_WithExistingTrainingHub_ExpandsItsCluster()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Infrastructure.PlanetsPerTrainingFacility = 1;
@@ -928,7 +935,7 @@ namespace Rebellion.Tests.AI.Planners
 
             AIDemand demand = demands.Single(item => item.Kind == AIDemandKind.TrainingFacility);
 
-            Assert.AreNotSame(hub, demand.DestinationPlanet);
+            Assert.AreSame(hub, demand.DestinationPlanet);
             Assert.Greater(
                 context.DevelopmentAllocation.GetAvailableEnergy(
                     demand.DestinationPlanet,
