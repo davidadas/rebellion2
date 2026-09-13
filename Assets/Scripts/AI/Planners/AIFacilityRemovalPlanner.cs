@@ -43,7 +43,7 @@ namespace Rebellion.AI.Planners
                 {
                     if (
                         facilities.Count()
-                        > context.FacilityAllocation.GetCap(planet, facilities.Key)
+                        > context.DevelopmentAllocation.GetCap(planet, facilities.Key)
                     )
                         proposals.Add(new AIFacilityRemovalProposal(planet, facilities.Key));
                 }

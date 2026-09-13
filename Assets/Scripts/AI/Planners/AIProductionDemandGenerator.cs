@@ -42,14 +42,14 @@ namespace Rebellion.AI.Planners
             AddFleetReinforcementDemands(context, demands);
             AddPlanetaryGarrisonDemands(context, demands);
             _specialForcesDemandSource.AddDemands(context, demands);
-            AIFacilityAllocationPolicy facilityPolicy = context.FacilityAllocation;
+            AIPlanetDevelopmentAllocation developmentAllocation = context.DevelopmentAllocation;
             AddProductionFacilityDemands(
                 context,
                 demands,
                 new AIInfrastructurePlacementScorer(context),
-                facilityPolicy
+                developmentAllocation
             );
-            AddProductionFacilityUpgradeDemands(context, demands, facilityPolicy);
+            AddProductionFacilityUpgradeDemands(context, demands, developmentAllocation);
 
             return demands;
         }
@@ -475,12 +475,12 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
         /// <param name="placementScorer">The turn-scoped infrastructure placement scorer.</param>
-        /// <param name="facilityPolicy">The turn-scoped facility allocation policy.</param>
+        /// <param name="developmentAllocation">The turn-scoped planet development allocation.</param>
         private void AddProductionFacilityDemands(
             AITurnContext context,
             List<AIDemand> demands,
             AIInfrastructurePlacementScorer placementScorer,
-            AIFacilityAllocationPolicy facilityPolicy
+            AIPlanetDevelopmentAllocation developmentAllocation
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
@@ -492,7 +492,7 @@ namespace Rebellion.AI.Planners
                 BuildingType.Shipyard,
                 config.ShipyardDemandPercent,
                 placementScorer,
-                facilityPolicy
+                developmentAllocation
             );
             AddProductionFacilityDemand(
                 context,
@@ -502,7 +502,7 @@ namespace Rebellion.AI.Planners
                 BuildingType.ConstructionFacility,
                 config.ConstructionFacilityDemandPercent,
                 placementScorer,
-                facilityPolicy
+                developmentAllocation
             );
             AddProductionFacilityDemand(
                 context,
@@ -512,7 +512,7 @@ namespace Rebellion.AI.Planners
                 BuildingType.TrainingFacility,
                 config.TrainingFacilityDemandPercent,
                 placementScorer,
-                facilityPolicy
+                developmentAllocation
             );
         }
 
@@ -521,11 +521,11 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
-        /// <param name="facilityPolicy">The turn-scoped facility allocation policy.</param>
+        /// <param name="developmentAllocation">The turn-scoped planet development allocation.</param>
         private void AddProductionFacilityUpgradeDemands(
             AITurnContext context,
             List<AIDemand> demands,
-            AIFacilityAllocationPolicy facilityPolicy
+            AIPlanetDevelopmentAllocation developmentAllocation
         )
         {
             foreach (
@@ -540,21 +540,21 @@ namespace Rebellion.AI.Planners
                     demands,
                     planet,
                     BuildingType.ConstructionFacility,
-                    facilityPolicy
+                    developmentAllocation
                 );
                 AddProductionFacilityUpgradeDemand(
                     context,
                     demands,
                     planet,
                     BuildingType.Shipyard,
-                    facilityPolicy
+                    developmentAllocation
                 );
                 AddProductionFacilityUpgradeDemand(
                     context,
                     demands,
                     planet,
                     BuildingType.TrainingFacility,
-                    facilityPolicy
+                    developmentAllocation
                 );
             }
         }
@@ -566,17 +566,17 @@ namespace Rebellion.AI.Planners
         /// <param name="demands">The demand list to update.</param>
         /// <param name="planet">The planet whose facilities are evaluated.</param>
         /// <param name="buildingType">The production-facility type to upgrade.</param>
-        /// <param name="facilityPolicy">The turn-scoped facility allocation policy.</param>
+        /// <param name="developmentAllocation">The turn-scoped planet development allocation.</param>
         private void AddProductionFacilityUpgradeDemand(
             AITurnContext context,
             List<AIDemand> demands,
             Planet planet,
             BuildingType buildingType,
-            AIFacilityAllocationPolicy facilityPolicy
+            AIPlanetDevelopmentAllocation developmentAllocation
         )
         {
             if (
-                facilityPolicy.GetCap(planet, buildingType) <= 0
+                developmentAllocation.GetCap(planet, buildingType) <= 0
                 || HasPendingFacility(context, planet, buildingType)
             )
                 return;
@@ -676,7 +676,7 @@ namespace Rebellion.AI.Planners
         /// <param name="buildingType">The required facility type.</param>
         /// <param name="baseDemandPercent">The base demand pressure.</param>
         /// <param name="placementScorer">The turn-scoped infrastructure placement scorer.</param>
-        /// <param name="facilityPolicy">The turn-scoped facility allocation policy.</param>
+        /// <param name="developmentAllocation">The turn-scoped planet development allocation.</param>
         private void AddProductionFacilityDemand(
             AITurnContext context,
             List<AIDemand> demands,
@@ -685,7 +685,7 @@ namespace Rebellion.AI.Planners
             BuildingType buildingType,
             int baseDemandPercent,
             AIInfrastructurePlacementScorer placementScorer,
-            AIFacilityAllocationPolicy facilityPolicy
+            AIPlanetDevelopmentAllocation developmentAllocation
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
@@ -735,10 +735,14 @@ namespace Rebellion.AI.Planners
                 buildingType == BuildingType.Shipyard
                 && sectors.Any(sector =>
                     sector.Any(planet =>
-                        facilityPolicy.IsPrimaryHub(planet, buildingType)
-                        && GetAvailableFacilityExpansionEnergy(context, planet) > 0
+                        developmentAllocation.IsPrimaryHub(planet, buildingType)
+                        && GetAvailableFacilityExpansionEnergy(context, planet, buildingType) > 0
                         && planet.GetTotalBuildingTypeCount(buildingType)
-                            < facilityPolicy.GetPrimaryTarget(planet, buildingType, hubTarget)
+                            < developmentAllocation.GetPrimaryTarget(
+                                planet,
+                                buildingType,
+                                hubTarget
+                            )
                     )
                 );
 
@@ -749,8 +753,8 @@ namespace Rebellion.AI.Planners
 
                 List<Planet> sectorPlanets = sector
                     .Where(planet =>
-                        facilityPolicy.GetCap(planet, buildingType) > 0
-                        && GetAvailableFacilityExpansionEnergy(context, planet) > 0
+                        developmentAllocation.GetCap(planet, buildingType) > 0
+                        && GetAvailableFacilityExpansionEnergy(context, planet, buildingType) > 0
                     )
                     .ToList();
                 if (sectorPlanets.Count == 0)
@@ -767,17 +771,21 @@ namespace Rebellion.AI.Planners
                     GetDemandPlanet(context, sectorDemand),
                     manufacturingType,
                     buildingType,
-                    planet => GetAvailableFacilityExpansionEnergy(context, planet)
+                    planet => GetAvailableFacilityExpansionEnergy(context, planet, buildingType)
                 );
                 if (rankedPlanets.Count == 0)
                     continue;
 
                 Planet hub = rankedPlanets.FirstOrDefault(planet =>
-                    facilityPolicy.IsPrimaryHub(planet, buildingType)
+                    developmentAllocation.IsPrimaryHub(planet, buildingType)
                 );
                 if (hub == null)
                     continue;
-                int primaryTarget = facilityPolicy.GetPrimaryTarget(hub, buildingType, hubTarget);
+                int primaryTarget = developmentAllocation.GetPrimaryTarget(
+                    hub,
+                    buildingType,
+                    hubTarget
+                );
                 int hubCount = hub.GetTotalBuildingTypeCount(buildingType);
                 if (hubCount < primaryTarget)
                 {
@@ -818,7 +826,7 @@ namespace Rebellion.AI.Planners
                     .Infrastructure
                     .FacilitySectorSecondaryTargetCount;
                 Planet secondarySite = rankedPlanets.FirstOrDefault(planet =>
-                    facilityPolicy.GetCap(planet, buildingType) == secondaryTarget
+                    developmentAllocation.GetCap(planet, buildingType) == secondaryTarget
                     && planet.GetTotalBuildingTypeCount(buildingType) < secondaryTarget
                 );
 
@@ -1695,10 +1703,12 @@ namespace Rebellion.AI.Planners
             if (count <= 0)
                 return Enumerable.Empty<Planet>();
 
-            return GetBuildingDestinationPlanets(context)
+            return GetBuildingDestinationPlanets(context, BuildingType.Mine)
                 .Where(planet => planet.GetUnminedResourceNodeCount() > 0)
                 .OrderByDescending(planet => planet.GetUnminedResourceNodeCount())
-                .ThenByDescending(planet => planet.GetAvailableEnergy())
+                .ThenByDescending(planet =>
+                    context.DevelopmentAllocation.GetAvailableEnergy(planet, BuildingType.Mine)
+                )
                 .ThenBy(planet => planet.InstanceID)
                 .Take(count);
         }
@@ -1719,10 +1729,15 @@ namespace Rebellion.AI.Planners
             if (count <= 0)
                 return Enumerable.Empty<Planet>();
 
-            List<Planet> preferredTargets = GetBuildingDestinationPlanets(context)
+            List<Planet> preferredTargets = GetBuildingDestinationPlanets(
+                    context,
+                    BuildingType.Refinery
+                )
                 .Where(planet => !excludedPlanetIds.Contains(planet.InstanceID))
                 .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
-                .ThenByDescending(planet => planet.GetAvailableEnergy())
+                .ThenByDescending(planet =>
+                    context.DevelopmentAllocation.GetAvailableEnergy(planet, BuildingType.Refinery)
+                )
                 .ThenBy(planet => planet.InstanceID)
                 .Take(count)
                 .ToList();
@@ -1731,10 +1746,15 @@ namespace Rebellion.AI.Planners
                 return preferredTargets;
 
             preferredTargets.AddRange(
-                GetBuildingDestinationPlanets(context)
+                GetBuildingDestinationPlanets(context, BuildingType.Refinery)
                     .Where(planet => excludedPlanetIds.Contains(planet.InstanceID))
                     .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
-                    .ThenByDescending(planet => planet.GetAvailableEnergy())
+                    .ThenByDescending(planet =>
+                        context.DevelopmentAllocation.GetAvailableEnergy(
+                            planet,
+                            BuildingType.Refinery
+                        )
+                    )
                     .ThenBy(planet => planet.InstanceID)
                     .Take(count - preferredTargets.Count)
             );
@@ -1747,14 +1767,15 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to inspect.</param>
+        /// <param name="buildingType">The production facility being expanded.</param>
         /// <returns>The available energy.</returns>
-        private int GetAvailableFacilityExpansionEnergy(AITurnContext context, Planet planet)
+        private int GetAvailableFacilityExpansionEnergy(
+            AITurnContext context,
+            Planet planet,
+            BuildingType buildingType
+        )
         {
-            return Math.Max(
-                0,
-                planet.GetAvailableEnergy()
-                    - context.Assessment.GetPlanetaryDefenseEnergyDeficit(planet)
-            );
+            return context.DevelopmentAllocation.GetAvailableEnergy(planet, buildingType);
         }
 
         /// <summary>
@@ -1773,13 +1794,16 @@ namespace Rebellion.AI.Planners
         /// Returns planets that can receive buildings.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
+        /// <param name="buildingType">The building type seeking a destination.</param>
         /// <returns>Building destination planets.</returns>
-        private IEnumerable<Planet> GetBuildingDestinationPlanets(AITurnContext context)
+        private IEnumerable<Planet> GetBuildingDestinationPlanets(
+            AITurnContext context,
+            BuildingType buildingType
+        )
         {
             return context.Assessment.OwnedPlanets.Where(planet =>
                 IsOwnedUsablePlanet(planet)
-                && planet.GetAvailableEnergy()
-                    > context.Assessment.GetPlanetaryDefenseEnergyDeficit(planet)
+                && context.DevelopmentAllocation.GetAvailableEnergy(planet, buildingType) > 0
             );
         }
 

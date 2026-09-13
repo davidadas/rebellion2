@@ -30,8 +30,8 @@ namespace Rebellion.AI.Director
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
         public AIStrategicPlan StrategicPlan { get; }
-        public AIFacilityAllocationPolicy FacilityAllocation =>
-            _facilityAllocation ??= new AIFacilityAllocationPolicy(this);
+        public AIPlanetDevelopmentAllocation DevelopmentAllocation =>
+            _developmentAllocation ??= new AIPlanetDevelopmentAllocation(this);
 
         // Turn Output.
         public IReadOnlyList<AIProposal> Proposals => _proposals;
@@ -44,7 +44,7 @@ namespace Rebellion.AI.Director
         private readonly Dictionary<SpecialForces, SpecialForcesIntent> _specialForcesIntents =
             new Dictionary<SpecialForces, SpecialForcesIntent>();
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
-        private AIFacilityAllocationPolicy _facilityAllocation;
+        private AIPlanetDevelopmentAllocation _developmentAllocation;
 
         /// <summary>
         /// Creates a turn context.
@@ -197,21 +197,58 @@ namespace Rebellion.AI.Director
     /// Assigns the only planets in each sector that may host production facilities.
     /// The allocation is built once per AI turn and reused by construction and cleanup.
     /// </summary>
-    public sealed class AIFacilityAllocationPolicy
+    public sealed class AIPlanetDevelopmentAllocation
     {
         private readonly Dictionary<BuildingType, Dictionary<string, int>> _capsByType = new();
         private readonly Dictionary<BuildingType, HashSet<string>> _primaryPlanetIdsByType = new();
         private readonly Dictionary<BuildingType, Dictionary<string, int>> _primaryTargetsByType =
             new();
+        private readonly Dictionary<string, Dictionary<BuildingType, int>> _reservedEnergyByPlanet =
+            new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _defenseEnergyByPlanet = new(
+            StringComparer.Ordinal
+        );
 
-        public AIFacilityAllocationPolicy(AITurnContext context)
+        public AIPlanetDevelopmentAllocation(AITurnContext context)
         {
             if (context?.Assessment == null)
                 return;
 
-            BuildCaps(context, BuildingType.Shipyard);
-            BuildCaps(context, BuildingType.ConstructionFacility);
-            BuildCaps(context, BuildingType.TrainingFacility);
+            BuildAllocations(context);
+        }
+
+        /// <summary>
+        /// Returns energy that a building may consume without displacing planned development.
+        /// </summary>
+        /// <param name="planet">The prospective destination.</param>
+        /// <param name="buildingType">The proposed building type.</param>
+        /// <returns>The uncommitted energy available to the proposal.</returns>
+        public int GetAvailableEnergy(Planet planet, BuildingType buildingType)
+        {
+            if (planet == null)
+                return 0;
+
+            int reservedEnergy = _defenseEnergyByPlanet.TryGetValue(
+                planet.InstanceID,
+                out int defenseEnergy
+            )
+                ? defenseEnergy
+                : 0;
+            if (
+                _reservedEnergyByPlanet.TryGetValue(
+                    planet.InstanceID,
+                    out Dictionary<BuildingType, int> reservations
+                )
+            )
+            {
+                foreach (KeyValuePair<BuildingType, int> reservation in reservations)
+                {
+                    if (reservation.Key != buildingType)
+                        reservedEnergy += reservation.Value;
+                }
+            }
+
+            return Math.Max(0, planet.GetAvailableEnergy() - reservedEnergy);
         }
 
         public int GetCap(Planet planet, BuildingType buildingType)
@@ -257,74 +294,141 @@ namespace Rebellion.AI.Director
                 : fallbackTarget;
         }
 
-        private void BuildCaps(AITurnContext context, BuildingType buildingType)
+        private void BuildAllocations(AITurnContext context)
         {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            Dictionary<string, int> caps = new(StringComparer.Ordinal);
-            HashSet<string> primaryPlanetIds = new(StringComparer.Ordinal);
-            Dictionary<string, int> primaryTargets = new(StringComparer.Ordinal);
             foreach (
                 IGrouping<string, Planet> sector in context
                     .Assessment.OwnedPlanets.Where(IsUsable)
                     .GroupBy(context.Assessment.GetPlanetSystemId)
             )
             {
-                List<Planet> ranked = sector
-                    .Select(planet => new
-                    {
-                        Planet = planet,
-                        FeasibleCount = GetFeasibleFacilityCount(context, planet, buildingType),
-                    })
-                    .OrderByDescending(item =>
-                        buildingType != BuildingType.Shipyard
-                        || item.FeasibleCount >= config.ShipyardSectorHubTargetCount
-                    )
-                    .ThenByDescending(item => item.FeasibleCount)
-                    .ThenByDescending(item => item.Planet.GetTotalBuildingTypeCount(buildingType))
-                    .ThenByDescending(item => context.Assessment.GetPlanetValue(item.Planet))
-                    .ThenBy(item => item.Planet.InstanceID, StringComparer.Ordinal)
-                    .Take(config.FacilityPlanetsPerSector)
-                    .Select(item => item.Planet)
-                    .ToList();
-                if (ranked.Count > 0)
+                List<Planet> planets = sector.ToList();
+                foreach (Planet planet in planets)
                 {
-                    Planet primary = ranked[0];
-                    int configuredTarget =
-                        buildingType == BuildingType.Shipyard
-                            ? config.ShipyardSectorHubTargetCount
-                            : config.FacilitySectorHubTargetCount;
-                    int feasibleTarget = Math.Max(
-                        primary.GetTotalBuildingTypeCount(buildingType),
-                        Math.Min(
-                            configuredTarget,
-                            GetFeasibleFacilityCount(context, primary, buildingType)
-                        )
-                    );
-                    caps[primary.InstanceID] = Math.Max(
-                        feasibleTarget,
-                        primary.GetTotalBuildingTypeCount(buildingType)
-                    );
-                    primaryPlanetIds.Add(primary.InstanceID);
-                    primaryTargets[primary.InstanceID] = feasibleTarget;
+                    _defenseEnergyByPlanet[planet.InstanceID] =
+                        context.Assessment.GetPlanetaryDefenseEnergyDeficit(planet);
                 }
-                for (int index = 1; index < ranked.Count; index++)
-                    caps[ranked[index].InstanceID] = config.FacilitySectorSecondaryTargetCount;
-            }
 
-            _capsByType[buildingType] = caps;
-            _primaryPlanetIdsByType[buildingType] = primaryPlanetIds;
-            _primaryTargetsByType[buildingType] = primaryTargets;
+                HashSet<string> assignedPrimaryPlanetIds = new(StringComparer.Ordinal);
+                AllocateType(
+                    context,
+                    planets,
+                    BuildingType.ConstructionFacility,
+                    assignedPrimaryPlanetIds
+                );
+                AllocateType(context, planets, BuildingType.Shipyard, assignedPrimaryPlanetIds);
+                AllocateType(
+                    context,
+                    planets,
+                    BuildingType.TrainingFacility,
+                    assignedPrimaryPlanetIds
+                );
+            }
         }
 
-        private static int GetFeasibleFacilityCount(
+        private void AllocateType(
             AITurnContext context,
-            Planet planet,
-            BuildingType buildingType
+            IReadOnlyCollection<Planet> sector,
+            BuildingType buildingType,
+            HashSet<string> assignedPrimaryPlanetIds
         )
         {
-            int defensiveReserve = context.Assessment.GetPlanetaryDefenseEnergyDeficit(planet);
-            int availableEnergy = Math.Max(0, planet.GetAvailableEnergy() - defensiveReserve);
-            return planet.GetTotalBuildingTypeCount(buildingType) + availableEnergy;
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            Dictionary<string, int> caps = GetOrAdd(_capsByType, buildingType);
+            HashSet<string> primaryPlanetIds = GetOrAdd(_primaryPlanetIdsByType, buildingType);
+            Dictionary<string, int> primaryTargets = GetOrAdd(_primaryTargetsByType, buildingType);
+            List<Planet> ranked = sector
+                .Select(planet => new
+                {
+                    Planet = planet,
+                    FeasibleCount = GetFeasibleFacilityCount(planet, buildingType),
+                })
+                .OrderByDescending(item =>
+                    buildingType != BuildingType.Shipyard
+                    || item.FeasibleCount >= config.ShipyardSectorHubTargetCount
+                )
+                .ThenByDescending(item => item.Planet.GetTotalBuildingTypeCount(buildingType))
+                .ThenBy(item => assignedPrimaryPlanetIds.Contains(item.Planet.InstanceID))
+                .ThenByDescending(item => item.FeasibleCount)
+                .ThenByDescending(item => context.Assessment.GetPlanetValue(item.Planet))
+                .ThenBy(item => item.Planet.InstanceID, StringComparer.Ordinal)
+                .Take(config.FacilityPlanetsPerSector)
+                .Select(item => item.Planet)
+                .ToList();
+            if (ranked.Count == 0)
+                return;
+
+            Planet primary = ranked[0];
+            int configuredTarget =
+                buildingType == BuildingType.Shipyard
+                    ? config.ShipyardSectorHubTargetCount
+                    : config.FacilitySectorHubTargetCount;
+            int currentCount = primary.GetTotalBuildingTypeCount(buildingType);
+            int feasibleTarget = Math.Max(
+                currentCount,
+                Math.Min(configuredTarget, GetFeasibleFacilityCount(primary, buildingType))
+            );
+            caps[primary.InstanceID] = feasibleTarget;
+            primaryPlanetIds.Add(primary.InstanceID);
+            primaryTargets[primary.InstanceID] = feasibleTarget;
+            assignedPrimaryPlanetIds.Add(primary.InstanceID);
+            ReserveEnergy(primary, buildingType, Math.Max(0, feasibleTarget - currentCount));
+
+            for (int index = 1; index < ranked.Count; index++)
+            {
+                Planet secondary = ranked[index];
+                int secondaryCurrent = secondary.GetTotalBuildingTypeCount(buildingType);
+                int secondaryTarget = Math.Max(
+                    secondaryCurrent,
+                    Math.Min(
+                        config.FacilitySectorSecondaryTargetCount,
+                        GetFeasibleFacilityCount(secondary, buildingType)
+                    )
+                );
+                caps[secondary.InstanceID] = secondaryTarget;
+                ReserveEnergy(
+                    secondary,
+                    buildingType,
+                    Math.Max(0, secondaryTarget - secondaryCurrent)
+                );
+            }
+        }
+
+        private int GetFeasibleFacilityCount(Planet planet, BuildingType buildingType)
+        {
+            return planet.GetTotalBuildingTypeCount(buildingType)
+                + GetAvailableEnergy(planet, buildingType);
+        }
+
+        private void ReserveEnergy(Planet planet, BuildingType buildingType, int energy)
+        {
+            if (energy <= 0)
+                return;
+
+            if (
+                !_reservedEnergyByPlanet.TryGetValue(
+                    planet.InstanceID,
+                    out Dictionary<BuildingType, int> reservations
+                )
+            )
+            {
+                reservations = new Dictionary<BuildingType, int>();
+                _reservedEnergyByPlanet.Add(planet.InstanceID, reservations);
+            }
+
+            reservations[buildingType] = energy;
+        }
+
+        private static TValue GetOrAdd<TKey, TValue>(Dictionary<TKey, TValue> values, TKey key)
+            where TValue : new()
+        {
+            if (!values.TryGetValue(key, out TValue value))
+            {
+                value = new TValue();
+                values.Add(key, value);
+            }
+
+            return value;
         }
 
         private static bool IsUsable(Planet planet) =>

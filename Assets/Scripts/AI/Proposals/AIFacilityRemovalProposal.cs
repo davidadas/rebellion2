@@ -115,7 +115,7 @@ namespace Rebellion.AI.Proposals
             if (context?.Assessment == null || planet == null)
                 return new List<Building>();
 
-            int cap = context.FacilityAllocation.GetCap(planet, buildingType);
+            int cap = context.DevelopmentAllocation.GetCap(planet, buildingType);
             return context
                 .Assessment.GetPlanetBuildings(planet)
                 .Where(building =>
