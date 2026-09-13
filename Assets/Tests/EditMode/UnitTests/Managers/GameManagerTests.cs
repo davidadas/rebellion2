@@ -82,15 +82,11 @@ namespace Rebellion.Tests.Managers
         public void ReconcileLoadedState_ContestedPlayerFleet_RestoresPendingCombat()
         {
             GameRoot game = new GameRoot(TestConfig.Create()) { CurrentTick = 40 };
-            Faction alliance = new Faction
-            {
-                InstanceID = "FNALL1",
-                DisplayName = "Alliance",
-                PlayerID = "player",
-            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "player", PlayerControllerType.Human);
             PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
             game.AttachNode(sector, game.GetGalaxyMap());
             Planet planet = CreatePlanet("PLANET", empire.InstanceID, 0);
@@ -135,12 +131,7 @@ namespace Rebellion.Tests.Managers
         public void ProcessFactionAutomation_ManageNaming_AssignsNameImmediately()
         {
             GameRoot game = new GameRoot();
-            Faction faction = new Faction
-            {
-                InstanceID = "FACTION",
-                PlayerID = "PLAYER",
-                ManageNaming = true,
-            };
+            Faction faction = new Faction { InstanceID = "FACTION", ManageNaming = true };
             faction.ShipNamePools.Add(
                 new FactionNamePool
                 {
@@ -149,6 +140,7 @@ namespace Rebellion.Tests.Managers
                 }
             );
             game.GetFactions().Add(faction);
+            game.SetFactionController(faction.InstanceID, "PLAYER", PlayerControllerType.Human);
             GameManager manager = TestContent.CreateGameManager(game);
             CapitalShip ship = new CapitalShip
             {
@@ -534,20 +526,20 @@ namespace Rebellion.Tests.Managers
         public void ProcessTick_SabotageResult_RemovesDestroyedObjectFromActorSnapshot()
         {
             GameRoot game = new GameRoot(TestContent.Data.GameConfig);
-            Faction alliance = new Faction
-            {
-                InstanceID = "FNALL1",
-                DisplayName = "Alliance",
-                PlayerID = "alliance_player",
-            };
-            Faction empire = new Faction
-            {
-                InstanceID = "FNEMP1",
-                DisplayName = "Empire",
-                PlayerID = "empire_player",
-            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
+            game.SetFactionController(
+                alliance.InstanceID,
+                "alliance_player",
+                PlayerControllerType.Human
+            );
+            game.SetFactionController(
+                empire.InstanceID,
+                "empire_player",
+                PlayerControllerType.Human
+            );
 
             PlanetSector sector = new PlanetSector
             {
@@ -715,15 +707,15 @@ namespace Rebellion.Tests.Managers
             {
                 GameConfig config = TestConfig.Create();
                 GameRoot game = new GameRoot(config);
-                Faction alliance = new Faction
-                {
-                    InstanceID = "FNALL1",
-                    DisplayName = "Alliance",
-                    PlayerID = "player",
-                };
+                Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
                 Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
                 game.GetFactions().Add(alliance);
                 game.GetFactions().Add(empire);
+                game.SetFactionController(
+                    alliance.InstanceID,
+                    "player",
+                    PlayerControllerType.Human
+                );
 
                 PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
                 game.AttachNode(sector, game.GetGalaxyMap());
@@ -822,15 +814,11 @@ namespace Rebellion.Tests.Managers
         public void ProcessTick_FleetArrivesAtPlanetaryStarfighters_CreatesPendingCombat()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            Faction alliance = new Faction
-            {
-                InstanceID = "FNALL1",
-                DisplayName = "Alliance",
-                PlayerID = "player",
-            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "player", PlayerControllerType.Human);
 
             PlanetSector sector = new PlanetSector
             {
@@ -946,15 +934,11 @@ namespace Rebellion.Tests.Managers
         public void ProcessTick_PendingCombat_CompletesTickAfterResolution()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            Faction alliance = new Faction
-            {
-                InstanceID = "FNALL1",
-                DisplayName = "Alliance",
-                PlayerID = "player",
-            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "player", PlayerControllerType.Human);
 
             PlanetSector sector = new PlanetSector
             {
@@ -1023,15 +1007,11 @@ namespace Rebellion.Tests.Managers
         public void ResolveCombat_UnrelatedFleetReachedWaypoint_StartsDeferredNextLeg()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            Faction alliance = new Faction
-            {
-                InstanceID = "FNALL1",
-                DisplayName = "Alliance",
-                PlayerID = "player",
-            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "player", PlayerControllerType.Human);
             PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
             game.AttachNode(sector, game.GetGalaxyMap());
             Planet origin = CreatePlanet("ORIGIN", alliance.InstanceID, 0);
@@ -1428,13 +1408,9 @@ namespace Rebellion.Tests.Managers
             config.Recovery.FastReplacementAmount = 1;
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
             GameRoot game = new GameRoot(config);
-            Faction faction = new Faction
-            {
-                InstanceID = "FACTION",
-                DisplayName = "Faction",
-                PlayerID = "PLAYER",
-            };
+            Faction faction = new Faction { InstanceID = "FACTION", DisplayName = "Faction" };
             game.GetFactions().Add(faction);
+            game.SetFactionController(faction.InstanceID, "PLAYER", PlayerControllerType.Human);
             PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
             Planet planet = new Planet
             {

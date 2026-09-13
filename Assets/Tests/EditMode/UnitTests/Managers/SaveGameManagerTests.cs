@@ -65,6 +65,34 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveGameData_GameWithPlayers_SerializesPlayers()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            StringAssert.Contains(
+                "<Players>",
+                File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName))
+            );
+        }
+
+        [Test]
+        public void LoadGameData_SavedPlayers_RestoresPlayers()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            GamePlayer player = loadedGame.GetPlayerForFaction("FNALL1");
+            Assert.AreEqual("PLAYER1", player.PlayerID);
+            Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
+        }
+
+        [Test]
         public void SaveGameData_ExistingSave_AtomicallyReplacesWithoutTemporaryFiles()
         {
             GameRoot game = new GameRoot
@@ -777,6 +805,56 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveGameData_PlayerWithUIState_WritesUIState()
+        {
+            GameRoot game = BuildGameWithUntrackedIdleBarItems();
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            string xml = File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName));
+
+            StringAssert.Contains("<UntrackedIdleBarItems>", xml);
+            StringAssert.Contains("<EntityInstanceID>OFFICER1</EntityInstanceID>", xml);
+            StringAssert.Contains("<ManufacturingType>None</ManufacturingType>", xml);
+            StringAssert.Contains("<EntityInstanceID>PLANET1</EntityInstanceID>", xml);
+            StringAssert.Contains("<ManufacturingType>Ship</ManufacturingType>", xml);
+            StringAssert.Contains("<ManufacturingType>Troop</ManufacturingType>", xml);
+            StringAssert.Contains("<Bookmarks>", xml);
+            StringAssert.Contains("<PlanetInstanceID>PLANET2</PlanetInstanceID>", xml);
+            StringAssert.Contains("<Type>Fleet</Type>", xml);
+        }
+
+        [Test]
+        public void LoadGameData_SaveWithPlayerUIState_RestoresUIState()
+        {
+            GameRoot game = BuildGameWithUntrackedIdleBarItems();
+            PlayerUIState uiState = game.GetPlayers().Single().UIState;
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            PlayerUIState loadedUIState = _saveGameManager
+                .LoadGameData(_saveFileName)
+                .GetPlayers()
+                .Single()
+                .UIState;
+
+            CollectionAssert.AreEqual(
+                uiState.UntrackedIdleBarItems.Select(item =>
+                    (item.EntityInstanceID, item.ManufacturingType)
+                ),
+                loadedUIState.UntrackedIdleBarItems.Select(item =>
+                    (item.EntityInstanceID, item.ManufacturingType)
+                )
+            );
+            CollectionAssert.AreEqual(
+                uiState.Bookmarks.Select(item =>
+                    (item.SlotIndex, item.PlanetInstanceID, item.Type)
+                ),
+                loadedUIState.Bookmarks.Select(item =>
+                    (item.SlotIndex, item.PlanetInstanceID, item.Type)
+                )
+            );
+        }
+
+        [Test]
         public void SaveAndLoadGame_GameWithMetadata_PreservesMetadata()
         {
             GameSummary summary = new GameSummary
@@ -1244,6 +1322,53 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("SECTOR1", loadedAlliance.Fog.PlanetToSector["PLANET1"]);
             Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET2"]);
             Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET3"]);
+        }
+
+        /// <summary>
+        /// Creates a saveable game containing independently excluded idle-bar identities.
+        /// </summary>
+        private static GameRoot BuildGameWithUntrackedIdleBarItems()
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1" };
+            PlayerUIState uiState = new PlayerUIState
+            {
+                Bookmarks = new List<PlanetBookmark>
+                {
+                    new PlanetBookmark
+                    {
+                        SlotIndex = 2,
+                        PlanetInstanceID = "PLANET2",
+                        Type = PlanetBookmarkType.Fleet,
+                    },
+                },
+                UntrackedIdleBarItems = new List<IdleBarUntrackedItem>
+                {
+                    new IdleBarUntrackedItem
+                    {
+                        EntityInstanceID = "OFFICER1",
+                        ManufacturingType = ManufacturingType.None,
+                    },
+                    new IdleBarUntrackedItem
+                    {
+                        EntityInstanceID = "PLANET1",
+                        ManufacturingType = ManufacturingType.Ship,
+                    },
+                    new IdleBarUntrackedItem
+                    {
+                        EntityInstanceID = "PLANET1",
+                        ManufacturingType = ManufacturingType.Troop,
+                    },
+                },
+            };
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = faction.InstanceID },
+                Galaxy = new GalaxyMap(),
+            };
+            game.GetFactions().Add(faction);
+            game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
+            game.GetPlayers().Single().UIState = uiState;
+            return game;
         }
     }
 } // namespace Rebellion.Tests.Managers

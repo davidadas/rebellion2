@@ -92,15 +92,11 @@ internal static class GameRecordingSession
     }
 
     /// <summary>
-    /// Configures Game view capture at dimensions accepted by the MP4 encoder.
-    /// Odd dimensions are expanded by one pixel rather than reduced.
+    /// Configures capture using the resolution selected by the editor's Game view.
     /// </summary>
     private static GameViewInputSettings CreateGameViewInputSettings()
     {
-        GameViewInputSettings settings = new();
-        settings.OutputWidth = GetEncoderCompatibleDimension(settings.OutputWidth);
-        settings.OutputHeight = GetEncoderCompatibleDimension(settings.OutputHeight);
-        return settings;
+        return new GameViewInputSettings();
     }
 
     /// <summary>
@@ -167,14 +163,6 @@ internal static class GameRecordingSession
 
         CleanupFailedRecordingStart();
         return false;
-    }
-
-    /// <summary>
-    /// Returns the smallest even encoder dimension that does not reduce the requested size.
-    /// </summary>
-    private static int GetEncoderCompatibleDimension(int requestedDimension)
-    {
-        return Mathf.Max(2, requestedDimension + requestedDimension % 2);
     }
 
     /// <summary>

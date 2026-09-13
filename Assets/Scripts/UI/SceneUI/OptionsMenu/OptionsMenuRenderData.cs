@@ -101,6 +101,7 @@ public sealed class OptionsMenuRenderData
     public string FullScreenLabel { get; }
     public IReadOnlyDictionary<UserTacticalOption, bool> TacticalStates { get; }
     public IReadOnlyDictionary<UserGameplayOption, bool> GameplayStates { get; }
+    public IReadOnlyDictionary<UserInterfaceOption, bool> UserInterfaceStates { get; }
     public int AutosaveIntervalTicks { get; }
     public int AutosavesToKeep { get; }
 
@@ -132,6 +133,7 @@ public sealed class OptionsMenuRenderData
     /// <param name="gameplayStates">The current gameplay-toggle states keyed by option.</param>
     /// <param name="autosaveIntervalTicks">The number of ticks between autosaves.</param>
     /// <param name="autosavesToKeep">The maximum number of autosaves to retain.</param>
+    /// <param name="userInterfaceStates">The current user-interface toggle states.</param>
     public OptionsMenuRenderData(
         int x,
         int y,
@@ -149,7 +151,8 @@ public sealed class OptionsMenuRenderData
         bool listeningSecondary,
         IReadOnlyDictionary<UserGameplayOption, bool> gameplayStates = null,
         int autosaveIntervalTicks = UserGameplaySettings.DefaultAutosaveIntervalTicks,
-        int autosavesToKeep = UserGameplaySettings.DefaultAutosavesToKeep
+        int autosavesToKeep = UserGameplaySettings.DefaultAutosavesToKeep,
+        IReadOnlyDictionary<UserInterfaceOption, bool> userInterfaceStates = null
     )
     {
         X = x;
@@ -159,6 +162,7 @@ public sealed class OptionsMenuRenderData
         FullScreenLabel = fullScreenLabel ?? string.Empty;
         TacticalStates = tacticalStates ?? new Dictionary<UserTacticalOption, bool>();
         GameplayStates = gameplayStates ?? new Dictionary<UserGameplayOption, bool>();
+        UserInterfaceStates = userInterfaceStates ?? new Dictionary<UserInterfaceOption, bool>();
         AutosaveIntervalTicks = autosaveIntervalTicks;
         AutosavesToKeep = autosavesToKeep;
         Volumes = volumes ?? Array.Empty<float>();

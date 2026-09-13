@@ -170,6 +170,8 @@ public static class OptionsMenuPrefabBuilder
 
         BuildGameplayPage(view, gameplayPage, accent);
 
+        BuildIdleBarOptions(view, gameplayPage);
+
         BuildGraphicsPage(view, graphicsPage, accent);
 
         BuildAudioPage(view, audioPage, accent, textColor);
@@ -294,25 +296,13 @@ public static class OptionsMenuPrefabBuilder
             out Image autosavesToKeepBadge
         );
 
-        CreateOptionsSectionHeader(
-            gameplayPage,
-            "GalacticModeHeader",
-            "GALACTIC MODE",
-            134,
-            accent
-        );
+        CreateOptionsSectionHeader(gameplayPage, "GalaxyViewHeader", "GALAXY VIEW", 134, accent);
         UserGameplayOption[] options =
         {
             UserGameplayOption.PauseAfterEnemyBombardment,
             UserGameplayOption.PauseWhenSpaceBattleBegins,
-            UserGameplayOption.ShowIdleBar,
         };
-        string[] labels =
-        {
-            "Pause After Enemy Bombardment",
-            "Pause on Space Battles",
-            "Show Idle Bar",
-        };
+        string[] labels = { "Pause After Enemy Bombardment", "Pause on Space Battles" };
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length + 1];
         rows[0] = autosaveRow;
         for (int i = 0; i < options.Length; i++)
@@ -401,6 +391,35 @@ public static class OptionsMenuPrefabBuilder
         AssignReference(view, "_fullScreenValueField", fullScreenValue);
         AssignReference(view, "_fullScreenPrevButton", fullScreenPrev);
         AssignReference(view, "_fullScreenNextButton", fullScreenNext);
+    }
+
+    /// <summary>
+    /// Builds and wires the Idle Bar controls in the Gameplay page's Galaxy View section.
+    /// </summary>
+    /// <param name="view">The Options view receiving the authored references.</param>
+    /// <param name="gameplayPage">The authored Gameplay page root.</param>
+    private static void BuildIdleBarOptions(OptionsMenuView view, RectTransform gameplayPage)
+    {
+        UserInterfaceOption[] options =
+        {
+            UserInterfaceOption.ShowIdleBar,
+            UserInterfaceOption.KeepIdleBarOpen,
+        };
+        string[] labels = { "Show Idle Bar", "Keep Idle Bar Open" };
+        OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
+        for (int i = 0; i < options.Length; i++)
+        {
+            rows[i] = CreateOptionsToggleRow(
+                gameplayPage,
+                $"UserInterface{options[i]}",
+                (int)options[i],
+                labels[i],
+                20,
+                214 + i * 26
+            );
+        }
+
+        AssignReferenceArray(view, "_userInterfaceRows", rows);
     }
 
     /// <summary>

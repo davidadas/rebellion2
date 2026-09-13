@@ -28,12 +28,7 @@ namespace Rebellion.Tests.Game.Factions
         [SetUp]
         public void SetUp()
         {
-            _faction = new Faction
-            {
-                InstanceID = "FACTION1",
-                DisplayName = "Rebel Alliance",
-                PlayerID = "PLAYER1",
-            };
+            _faction = new Faction { InstanceID = "FACTION1", DisplayName = "Rebel Alliance" };
 
             _planet1 = new Planet { InstanceID = "PLANET1", OwnerInstanceID = "FACTION1" };
 
@@ -58,24 +53,6 @@ namespace Rebellion.Tests.Game.Factions
             };
 
             _technology = new Technology(_building);
-        }
-
-        [Test]
-        public void IsAIControlled_WithPlayerID_ReturnsFalse()
-        {
-            bool isAI = _faction.IsAIControlled();
-
-            Assert.IsFalse(isAI, "Faction with PlayerID should not be AI controlled");
-        }
-
-        [Test]
-        public void IsAIControlled_WithoutPlayerID_ReturnsTrue()
-        {
-            _faction.PlayerID = null;
-
-            bool isAI = _faction.IsAIControlled();
-
-            Assert.IsTrue(isAI, "Faction without PlayerID should be AI controlled");
         }
 
         [Test]
@@ -754,7 +731,6 @@ namespace Rebellion.Tests.Game.Factions
             _faction.RefinedMaterialStockpile = 23;
             _faction.PendingRawMaterialFacilityIDs.AddRange(new[] { "REFINERY1", "REFINERY2" });
             _faction.PendingRefinedMaterialFacilityIDs.AddRange(new[] { "SHIPYARD1", "SHIPYARD2" });
-
             string serialized = SerializationHelper.Serialize(_faction);
             Console.WriteLine("=== SERIALIZED XML ===");
             Console.WriteLine(serialized);
@@ -770,11 +746,6 @@ namespace Rebellion.Tests.Game.Factions
                 _faction.DisplayName,
                 deserialized.DisplayName,
                 "DisplayName should be correctly deserialized."
-            );
-            Assert.AreEqual(
-                _faction.PlayerID,
-                deserialized.PlayerID,
-                "PlayerID should be correctly deserialized."
             );
             Assert.AreEqual(
                 _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign),

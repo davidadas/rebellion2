@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -13,6 +15,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
         private const string _playerFactionId = "FNALL1";
 
         private BookmarkController _controller;
+        private PlayerUIState _state;
         private UIContext _uiContext;
 
         [SetUp]
@@ -27,13 +30,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
                 TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
-            _controller = new BookmarkController(_uiContext);
+            _state = new PlayerUIState();
+            _controller = new BookmarkController(_uiContext, _state.Bookmarks);
         }
 
         [Test]
         public void Constructor_NullContext_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new BookmarkController(null));
+            Assert.Throws<ArgumentNullException>(() =>
+                new BookmarkController(null, _state.Bookmarks)
+            );
+        }
+
+        [Test]
+        public void Constructor_NullSavedBookmarks_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new BookmarkController(_uiContext, null));
         }
 
         [Test]
@@ -93,6 +105,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
                 data[0].IconTexture
             );
             Assert.That(data, Has.Exactly(1).Matches<BookmarkRenderData>(item => item.Active));
+            Assert.AreEqual("planet-1", _state.Bookmarks.Single().PlanetInstanceID);
+            Assert.AreEqual(PlanetBookmarkType.Fleet, _state.Bookmarks.Single().Type);
         }
 
         [Test]
@@ -139,6 +153,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreEqual(15, bookmark.X);
             Assert.AreEqual(25, bookmark.Y);
             Assert.IsFalse(_controller.BuildRenderData()[0].Active);
+            Assert.IsEmpty(_state.Bookmarks);
         }
 
         [TestCase(-1)]
@@ -204,6 +219,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             _controller.TryTake(0, out BookmarkEntry bookmark);
 
             Assert.AreSame(original, bookmark.Planet);
+        }
+
+        [Test]
+        public void ResetSession_ReplacementBookmarks_ProjectsReplacementState()
+        {
+            List<PlanetBookmark> replacement = new List<PlanetBookmark>
+            {
+                new PlanetBookmark
+                {
+                    SlotIndex = 1,
+                    PlanetInstanceID = "planet-2",
+                    Type = PlanetBookmarkType.Mission,
+                },
+            };
+            GalaxyMapPlanet planet = CreatePlanet("planet-2", "Corellia");
+
+            _controller.ResetSession(replacement);
+            _controller.ReconcilePlanets(new[] { new GalaxyMapSector(null, new[] { planet }) });
+
+            Assert.IsFalse(_controller.BuildRenderData()[0].Active);
+            Assert.IsTrue(_controller.BuildRenderData()[1].Active);
+            Assert.AreEqual("Corellia", _controller.BuildRenderData()[1].Label);
         }
 
         private static GalaxyMapPlanet CreatePlanet(string instanceId, string displayName)

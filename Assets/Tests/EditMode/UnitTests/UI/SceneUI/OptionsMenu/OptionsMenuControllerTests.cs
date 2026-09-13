@@ -165,28 +165,36 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void GameplayActions_ToggleIdleBar()
+        public void UserInterfaceActions_ToggleIdleBarOptions()
         {
-            OptionsMenuView view = OpenAndRender();
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Gameplay);
             bool initiallyVisible = _bootstrap
                 .GetUserSettingsManager()
-                .Settings.Gameplay.ShowIdleBar;
-            OptionsToggleRowView gameplayRow = GetField<OptionsToggleRowView[]>(
-                    view,
-                    "_gameplayRows"
-                )
-                .Single(row => row.OptionIndex == (int)UserGameplayOption.ShowIdleBar);
-
-            GetField<Button>(gameplayRow, "_button").onClick.Invoke();
-            Assert.AreEqual(
-                !initiallyVisible,
-                _bootstrap.GetUserSettingsManager().Settings.Gameplay.ShowIdleBar
+                .Settings.UserInterface.ShowIdleBar;
+            bool initiallyAlwaysOpen = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.UserInterface.KeepIdleBarOpen;
+            OptionsToggleRowView[] rows = GetField<OptionsToggleRowView[]>(
+                view,
+                "_userInterfaceRows"
+            );
+            OptionsToggleRowView showRow = rows.Single(row =>
+                row.OptionIndex == (int)UserInterfaceOption.ShowIdleBar
+            );
+            OptionsToggleRowView pinRow = rows.Single(row =>
+                row.OptionIndex == (int)UserInterfaceOption.KeepIdleBarOpen
             );
 
-            GetField<Button>(gameplayRow, "_button").onClick.Invoke();
+            GetField<Button>(showRow, "_button").onClick.Invoke();
             Assert.AreEqual(
-                initiallyVisible,
-                _bootstrap.GetUserSettingsManager().Settings.Gameplay.ShowIdleBar
+                !initiallyVisible,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.ShowIdleBar
+            );
+
+            GetField<Button>(pinRow, "_button").onClick.Invoke();
+            Assert.AreEqual(
+                !initiallyAlwaysOpen,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.KeepIdleBarOpen
             );
         }
 
@@ -343,6 +351,34 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_controller.IsOpen);
             Assert.AreEqual(
                 "Existing Save",
+                _saveGameManager.GetSavedGames().Single().Metadata.SaveDisplayName
+            );
+        }
+
+        [Test]
+        public void SaveLoadActions_ValidNewSaveName_EnablesSaveButtonAndCreatesSave()
+        {
+            _bootstrap.GetRuntime().StartGame(CreateGame());
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+            OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
+            Button saveButton = GetField<Button>(saveList, "_saveButton");
+            RawImage disabledImage = GetField<RawImage>(saveList, "_saveDisabledImage");
+            TMP_InputField rename = GetField<TMP_InputField>(saveList, "_renameField");
+
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "SlotRow0")
+                .onClick.Invoke();
+            Assert.IsFalse(saveButton.interactable);
+
+            rename.text = "Created Save";
+            Assert.IsTrue(saveButton.interactable);
+            Assert.IsTrue(saveButton.targetGraphic.enabled);
+            Assert.IsFalse(disabledImage.gameObject.activeSelf);
+
+            saveButton.onClick.Invoke();
+
+            Assert.AreEqual(
+                "Created Save",
                 _saveGameManager.GetSavedGames().Single().Metadata.SaveDisplayName
             );
         }

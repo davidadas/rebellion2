@@ -32,10 +32,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies that authored modifier composites include their actual modifier and key paths.
+        /// Verifies that modifier composites include their platform modifier and authored key paths.
         /// </summary>
         [Test]
-        public void CompositeSignatures_UseAuthoredModifierAndBindingParts()
+        public void CompositeSignatures_UsePlatformModifierAndAuthoredBindingParts()
         {
             InputAction decrease = _inputManager.Asset.FindAction(
                 "Strategy/DecreaseGameSpeed",
@@ -55,7 +55,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 FindBinding(increase, "PrimaryChord")
             );
 
-            StringAssert.Contains("<Keyboard>/ctrl", decreaseSignature);
+            StringAssert.Contains(GetPlatformModifierPath(), decreaseSignature);
             StringAssert.Contains("<Keyboard>/minus", decreaseSignature);
             Assert.AreNotEqual(decreaseSignature, increaseSignature);
         }
@@ -75,7 +75,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             int reboundChord = FindBinding(rebound, "PrimaryChord");
             rebound.ApplyBindingOverride(
                 FindPart(rebound, reboundChord, "Modifier"),
-                "<Keyboard>/ctrl"
+                GetPlatformModifierPath()
             );
             rebound.ApplyBindingOverride(
                 FindPart(rebound, reboundChord, "Binding"),
@@ -343,6 +343,17 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Object.DestroyImmediate(inputRoot);
                 inputFixture.TearDown();
             }
+        }
+
+        /// <summary>
+        /// Returns the default desktop shortcut modifier for the current test platform.
+        /// </summary>
+        /// <returns>The native keyboard modifier path.</returns>
+        private static string GetPlatformModifierPath()
+        {
+            return Application.platform == RuntimePlatform.OSXEditor
+                ? "<Keyboard>/meta"
+                : "<Keyboard>/ctrl";
         }
 
         /// <summary>

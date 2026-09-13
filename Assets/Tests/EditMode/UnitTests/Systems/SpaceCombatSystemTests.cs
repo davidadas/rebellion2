@@ -1056,8 +1056,8 @@ namespace Rebellion.Tests.Systems
         public void Resolve_DefenderWinsOnOwnPlanet_DoesNotChangeOwnership()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
-            Faction alliance = new Faction { InstanceID = "alliance", PlayerID = null };
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
             game.GetFactions().Add(alliance);
 
@@ -1469,10 +1469,11 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_PlayerInvolvedEncounter_ReturnsPendingDecision()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
+            Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
             game.GetFactions().Add(alliance);
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -1503,10 +1504,11 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_PlayerInvolvedEncounter_ClearsFleetWaypointRoutes()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
+            Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
             game.GetFactions().Add(alliance);
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
@@ -1528,8 +1530,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_PlayerFleetAgainstPlanetaryStarfighters_ReturnsPendingDecision()
         {
             GameRoot game = CreateGame();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
             CreatePlanet(game, "empire-fallback", owner: "empire");
             Fleet fleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
@@ -1563,8 +1564,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_UnfinishedPlanetaryStarfighters_DoNotTriggerCombat()
         {
             GameRoot game = CreateGame();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
             Fleet fleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
             Starfighter defender = new Starfighter
@@ -1590,10 +1590,11 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_PlayerInvolvedEncounter_SetsRetreatAvailability()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
+            Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
             game.GetFactions().Add(alliance);
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
@@ -1627,8 +1628,9 @@ namespace Rebellion.Tests.Systems
         public void ResolvePending_MultipleColocatedFleets_IncludesEveryFleet()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.GetFactions().Add(new Faction { InstanceID = "empire", PlayerID = "player1" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
@@ -1677,8 +1679,9 @@ namespace Rebellion.Tests.Systems
         public void ResolvePending_MultipleColocatedFleets_DestroysEveryLosingFleetAndReportsEveryShip()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.GetFactions().Add(new Faction { InstanceID = "empire", PlayerID = "player1" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
@@ -1739,8 +1742,9 @@ namespace Rebellion.Tests.Systems
         public void ResolvePending_MultipleColocatedFleets_ExcludesInTransitSiblingFleet()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            game.GetFactions().Add(new Faction { InstanceID = "empire", PlayerID = "player1" });
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             Planet planet = new Planet { InstanceID = "p1" };
             game.AttachNode(planetSector, game.Galaxy);
@@ -1780,8 +1784,7 @@ namespace Rebellion.Tests.Systems
         public void ResolvePending_PlanetaryStarfighters_ParticipateInCombat()
         {
             GameRoot game = CreateGame();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
             Fleet fleet = CreateFleet(
                 game,
@@ -1823,8 +1826,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateAutomaticCombatGame();
             game.Random = new SequenceRNG();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
             (Planet allianceFallback, _) = CreatePlanet(
                 game,
@@ -1880,8 +1882,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateAutomaticCombatGame();
             game.Random = new SequenceRNG();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
             CreatePlanet(game, "alliance-fallback", owner: "alliance");
             CreatePlanet(game, "empire-fallback", owner: "empire");
@@ -1929,8 +1930,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateAutomaticCombatGame();
             game.Random = new SequenceRNG();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
             (Planet allianceFallback, _) = CreatePlanet(
                 game,
@@ -2009,8 +2009,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateAutomaticCombatGame();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 1.01;
             game.Random = new SequenceRNG();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
             (Planet allianceFallback, _) = CreatePlanet(
                 game,
@@ -2293,8 +2292,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateAutomaticCombatGame();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 1.01;
             game.Random = new SequenceRNG();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
             CreatePlanet(game, "alliance-fallback", owner: "alliance");
             CreatePlanet(game, "empire-fallback", owner: "empire");
@@ -2343,8 +2341,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateAutomaticCombatGame();
             game.Random = new SequenceRNG();
-            game.GetFactions().First(faction => faction.InstanceID == "alliance").PlayerID =
-                "player1";
+            game.SetFactionController("alliance", "player1", PlayerControllerType.Human);
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "empire");
             Fleet fleet = new Fleet { InstanceID = "alliance-fleet", OwnerInstanceID = "alliance" };
             game.AttachNode(fleet, planet);
@@ -2391,8 +2388,7 @@ namespace Rebellion.Tests.Systems
         public void ResolvePendingRetreat_PlayerFleet_MovesToFriendlyPlanet()
         {
             GameRoot game = CreateGame();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat");
             (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
             empireHome.PositionX = 100;
@@ -2440,8 +2436,7 @@ namespace Rebellion.Tests.Systems
         public void ResolvePendingRetreat_PlanetaryHyperdriveFighter_MovesFighterAndDoesNotRestartCombat()
         {
             GameRoot game = CreateGame();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
             (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
             CreatePlanet(game, "allianceHome", owner: "alliance");
@@ -2490,8 +2485,7 @@ namespace Rebellion.Tests.Systems
         public void ResolvePendingRetreat_PlanetaryHyperdriveFighterWithoutFleet_MovesFighterAndEndsCombat()
         {
             GameRoot game = CreateGame();
-            game.GetFactions().First(faction => faction.InstanceID == "alliance").PlayerID =
-                "player1";
+            game.SetFactionController("alliance", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
             (Planet allianceHome, _) = CreatePlanet(game, "allianceHome", owner: "alliance");
             CreatePlanet(game, "empireHome", owner: "empire");
@@ -2536,8 +2530,7 @@ namespace Rebellion.Tests.Systems
         public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighter_DoesNotMoveAnyForces()
         {
             GameRoot game = CreateGame();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
             CreatePlanet(game, "empireHome", owner: "empire");
             CreatePlanet(game, "allianceHome", owner: "alliance");
@@ -2577,8 +2570,7 @@ namespace Rebellion.Tests.Systems
         public void ResolvePendingRetreat_FleetWithoutHyperdrive_DoesNotMoveFleet()
         {
             GameRoot game = CreateGame();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat");
             CreatePlanet(game, "empireHome", owner: "empire");
             CreatePlanet(game, "allianceHome", owner: "alliance");
@@ -2606,8 +2598,7 @@ namespace Rebellion.Tests.Systems
         public void ResolvePendingRetreat_MultipleColocatedFleets_RetreatsEveryFleetAndReportsEveryShip()
         {
             GameRoot game = CreateGame();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat");
             (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
             empireHome.PositionX = 100;
@@ -2854,8 +2845,7 @@ namespace Rebellion.Tests.Systems
             game.Config.Combat.SpaceCombat.AutoResolveStartingDistance = 0;
             game.Config.Combat.SpaceCombat.AutoResolveWithdrawalDistance = 10;
             game.Random = new SequenceRNG();
-            game.GetFactions().First(faction => faction.InstanceID == "empire").PlayerID =
-                "player1";
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
             (Planet fallbackPlanet, _) = CreatePlanet(game, "alliance-fallback", owner: "alliance");
             CreatePlanet(game, "empire-fallback", owner: "empire");

@@ -52,7 +52,6 @@ namespace Rebellion.Game.Factions
             set => _settings = value ?? new FactionSettings();
         }
         public string HQInstanceID { get; set; }
-        public string PlayerID { get; set; }
 
         // Messages and Notifications.
         public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
@@ -210,12 +209,6 @@ namespace Rebellion.Game.Factions
         /// </summary>
         /// <returns>The HQ instance ID.</returns>
         public string GetHQInstanceID() => HQInstanceID;
-
-        /// <summary>
-        /// Checks if the faction is controlled by AI.
-        /// </summary>
-        /// <returns>True if the faction is AI controlled, false otherwise.</returns>
-        public bool IsAIControlled() => string.IsNullOrEmpty(PlayerID);
 
         /// <summary>
         /// Takes the next available ship name from a pool or one of its configured fallbacks.

@@ -55,7 +55,15 @@ namespace Rebellion.Tests.Systems
         private static (GameRoot Game, Fleet Fleet, AISystem System) BuildScene()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            rebels.PlayerID = "player";
+            game.GetPlayers()
+                .Add(
+                    new GamePlayer
+                    {
+                        PlayerID = "player",
+                        FactionID = rebels.InstanceID,
+                        ControllerType = PlayerControllerType.Human,
+                    }
+                );
             game.Config.AI.TickInterval = 7;
             game.Config.AI.FleetDeployment.AttackOpportunityCostPenaltyWeight = 0;
             PlanetSector planetSystem = AITestSceneBuilder.AddSector(game, "system");

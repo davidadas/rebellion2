@@ -8,7 +8,6 @@ public enum UserGameplayOption
     PauseAfterEnemyBombardment,
     PauseWhenSpaceBattleBegins,
     AutosaveEnabled,
-    ShowIdleBar,
 }
 
 /// <summary>
@@ -28,7 +27,6 @@ public sealed class UserGameplaySettings
     public int AutosavesToKeep = DefaultAutosavesToKeep;
     public bool PauseAfterEnemyBombardment = true;
     public bool PauseWhenSpaceBattleBegins = true;
-    public bool ShowIdleBar = true;
     public bool ShowMissionOdds = true;
 
     /// <summary>
@@ -43,7 +41,6 @@ public sealed class UserGameplaySettings
             UserGameplayOption.PauseAfterEnemyBombardment => PauseAfterEnemyBombardment,
             UserGameplayOption.PauseWhenSpaceBattleBegins => PauseWhenSpaceBattleBegins,
             UserGameplayOption.AutosaveEnabled => AutosaveEnabled,
-            UserGameplayOption.ShowIdleBar => ShowIdleBar,
             _ => throw new ArgumentOutOfRangeException(nameof(option), option, null),
         };
     }
@@ -65,9 +62,6 @@ public sealed class UserGameplaySettings
                 break;
             case UserGameplayOption.AutosaveEnabled:
                 AutosaveEnabled = enabled;
-                break;
-            case UserGameplayOption.ShowIdleBar:
-                ShowIdleBar = enabled;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(option), option, null);
@@ -116,7 +110,6 @@ public sealed class UserGameplaySettings
         AutosavesToKeep = DefaultAutosavesToKeep;
         PauseAfterEnemyBombardment = true;
         PauseWhenSpaceBattleBegins = true;
-        ShowIdleBar = true;
         ShowMissionOdds = true;
     }
 }

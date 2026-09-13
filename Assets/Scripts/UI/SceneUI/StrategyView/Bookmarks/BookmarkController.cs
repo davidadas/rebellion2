@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
@@ -12,13 +13,15 @@ using UnityEngine;
 public sealed class BookmarkController
 {
     private readonly BookmarkEntry[] bookmarks;
+    private List<PlanetBookmark> savedBookmarks;
     private readonly UIContext uiContext;
 
     /// <summary>
     /// Creates bookmark storage from the active faction's authored slot layout.
     /// </summary>
     /// <param name="uiContext">The active strategy presentation context.</param>
-    public BookmarkController(UIContext uiContext)
+    /// <param name="savedBookmarks">The durable bookmark records to read and update.</param>
+    public BookmarkController(UIContext uiContext, List<PlanetBookmark> savedBookmarks)
     {
         this.uiContext = uiContext ?? throw new ArgumentNullException(nameof(uiContext));
         StrategyBookmarkLayout layout = uiContext.GetPlayerFactionTheme()?.StrategyBookmarkLayout;
@@ -26,6 +29,26 @@ public sealed class BookmarkController
             throw new MissingReferenceException("StrategyBookmarkLayout is missing.");
 
         bookmarks = new BookmarkEntry[layout.GetSlotCount()];
+        ResetSession(savedBookmarks);
+    }
+
+    /// <summary>
+    /// Replaces bookmark state after the active game changes.
+    /// </summary>
+    /// <param name="nextBookmarks">The replacement game's durable bookmarks.</param>
+    public void ResetSession(List<PlanetBookmark> nextBookmarks)
+    {
+        savedBookmarks = nextBookmarks ?? throw new ArgumentNullException(nameof(nextBookmarks));
+        Array.Clear(bookmarks, 0, bookmarks.Length);
+        foreach (PlanetBookmark bookmark in savedBookmarks)
+        {
+            if (
+                bookmark?.SlotIndex is int slotIndex
+                && slotIndex >= 0
+                && slotIndex < bookmarks.Length
+            )
+                bookmarks[slotIndex] = new BookmarkEntry(bookmark);
+        }
     }
 
     /// <summary>
@@ -84,7 +107,10 @@ public sealed class BookmarkController
             if (bookmarks[i] != null)
                 continue;
 
-            bookmarks[i] = new BookmarkEntry(icon, x, y, planet);
+            BookmarkEntry entry = new BookmarkEntry(icon, x, y, planet);
+            entry.State.SlotIndex = i;
+            bookmarks[i] = entry;
+            savedBookmarks.Add(entry.State);
             return true;
         }
 
@@ -108,6 +134,7 @@ public sealed class BookmarkController
             return false;
 
         bookmarks[index] = null;
+        savedBookmarks.Remove(bookmark.State);
         return true;
     }
 
@@ -126,6 +153,7 @@ public sealed class BookmarkController
                 continue;
 
             bookmarks[i] = null;
+            savedBookmarks.Remove(bookmark.State);
             return bookmark;
         }
 
@@ -144,7 +172,7 @@ public sealed class BookmarkController
         Dictionary<string, GalaxyMapPlanet> planetsById = BuildPlanetLookup(sectors);
         for (int i = 0; i < bookmarks.Length; i++)
         {
-            string planetId = bookmarks[i]?.Planet?.Planet?.InstanceID;
+            string planetId = bookmarks[i]?.State?.PlanetInstanceID;
             if (planetId == null)
                 continue;
 

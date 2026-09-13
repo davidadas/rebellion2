@@ -7,6 +7,26 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public sealed class InputManagerBindingTests
     {
+        [Test]
+        public void ApplyPlatformDefaultModifierBindings_MacOS_UsesCommand()
+        {
+            InputActionAsset asset = CreateModifierActions();
+
+            InputManager.ApplyPlatformDefaultModifierBindings(asset, true);
+
+            AssertModifierPath(asset.FindAction("Test/Shortcut", true), "<Keyboard>/meta");
+        }
+
+        [Test]
+        public void ApplyPlatformDefaultModifierBindings_Windows_UsesControl()
+        {
+            InputActionAsset asset = CreateModifierActions();
+
+            InputManager.ApplyPlatformDefaultModifierBindings(asset, false);
+
+            AssertModifierPath(asset.FindAction("Test/Shortcut", true), "<Keyboard>/ctrl");
+        }
+
         /// <summary>
         /// Verifies that overrides attached to authored binding IDs survive a manager restart.
         /// </summary>
@@ -133,6 +153,27 @@ namespace Rebellion.Tests.Managers
             }
             Assert.Fail($"Binding '{name}' was not found on {action}.");
             return -1;
+        }
+
+        /// <summary>
+        /// Creates an action containing the authored cross-platform modifier alternatives.
+        /// </summary>
+        private static InputActionAsset CreateModifierActions()
+        {
+            InputActionAsset asset = ScriptableObject.CreateInstance<InputActionAsset>();
+            InputAction action = asset.AddActionMap("Test").AddAction("Shortcut");
+            action.AddBinding("<Keyboard>/ctrl");
+            action.AddBinding("<Keyboard>/leftMeta");
+            return asset;
+        }
+
+        /// <summary>
+        /// Verifies that an action uses only the expected platform modifier default.
+        /// </summary>
+        private static void AssertModifierPath(InputAction action, string expectedPath)
+        {
+            Assert.AreEqual(expectedPath, action.bindings[0].path);
+            Assert.AreEqual(string.Empty, action.bindings[1].path);
         }
     }
 }
