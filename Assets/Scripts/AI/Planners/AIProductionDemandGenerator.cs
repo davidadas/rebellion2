@@ -760,13 +760,10 @@ namespace Rebellion.AI.Planners
                 if (sectorPlanets.Count == 0)
                     continue;
                 AIDemand sectorDemand =
-                    productionDemands
-                        .Where(demand =>
-                            context.Assessment.GetPlanetSystemId(GetDemandPlanet(context, demand))
-                            == sector.Key
-                        )
-                        .FirstOrDefault()
-                    ?? productionDemands.FirstOrDefault();
+                    productionDemands.FirstOrDefault(demand =>
+                        context.Assessment.GetPlanetSystemId(GetDemandPlanet(context, demand))
+                        == sector.Key
+                    ) ?? productionDemands.FirstOrDefault();
                 Planet demandPlanet = GetDemandPlanet(context, sectorDemand) ?? sector.First();
                 IReadOnlyList<Planet> rankedPlanets = placementScorer.RankDestinations(
                     sectorPlanets,
