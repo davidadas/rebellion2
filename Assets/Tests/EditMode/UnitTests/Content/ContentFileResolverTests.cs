@@ -140,6 +140,23 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void ResolveFile_AddressLeavesPackRoot_ThrowsArgumentException()
+        {
+            ContentFileResolver resolver = new ContentFileResolver(contentRoot, packRoot);
+
+            Assert.Throws<ArgumentException>(() => resolver.ResolveFile("Pack/../../outside.xml"));
+        }
+
+        [Test]
+        public void ResolveFile_BackslashAddress_UsesPlatformPathHandling()
+        {
+            string baseFile = WriteFile(packRoot, "Data/ships.xml", "base");
+            ContentFileResolver resolver = new ContentFileResolver(contentRoot, packRoot);
+
+            Assert.AreEqual(baseFile, resolver.ResolveFile(@"Pack\Data\ships.xml"));
+        }
+
+        [Test]
         public void Discover_UnrelatedIncompleteMod_IgnoresDefinition()
         {
             string modRoot = Path.Combine(root, "Mods", "Unrelated");

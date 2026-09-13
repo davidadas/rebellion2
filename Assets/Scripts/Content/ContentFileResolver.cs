@@ -140,7 +140,7 @@ public sealed class ContentFileResolver
         Dictionary<string, string> files = new Dictionary<string, string>(StringComparer.Ordinal);
         AddFiles(files, ResolveBasePath(normalizedAddress));
         foreach (string modContentRoot in modContentRoots)
-            AddFiles(files, ResolveSafePath(modContentRoot, normalizedAddress));
+            AddFiles(files, ResolveModPath(modContentRoot, normalizedAddress));
         return files
             .OrderBy(pair => pair.Key, StringComparer.Ordinal)
             .Select(pair => normalizedAddress + "/" + pair.Key);
@@ -154,7 +154,7 @@ public sealed class ContentFileResolver
     public bool DirectoryExists(string directoryAddress)
     {
         string normalizedAddress = NormalizeAddress(directoryAddress).TrimEnd('/');
-        if (modContentRoots.Any(root => Directory.Exists(ResolveSafePath(root, normalizedAddress))))
+        if (modContentRoots.Any(root => Directory.Exists(ResolveModPath(root, normalizedAddress))))
             return true;
         return Directory.Exists(ResolveBasePath(normalizedAddress));
     }
@@ -183,7 +183,7 @@ public sealed class ContentFileResolver
         IEnumerable<string> extensions
     )
     {
-        string candidate = ResolveSafePath(rootPath, normalizedAddress);
+        string candidate = ResolveModPath(rootPath, normalizedAddress);
         if (File.Exists(candidate))
             return candidate;
         foreach (string extension in extensions)
@@ -196,10 +196,39 @@ public sealed class ContentFileResolver
 
     private string ResolveBasePath(string normalizedAddress)
     {
+        return ResolveScopedPath(
+            Path.Combine(ContentRootPath, "Application"),
+            PackRootPath,
+            normalizedAddress
+        );
+    }
+
+    private static string ResolveModPath(string modContentRoot, string normalizedAddress)
+    {
+        return ResolveScopedPath(
+            Path.Combine(modContentRoot, "Application"),
+            Path.Combine(modContentRoot, "Pack"),
+            normalizedAddress
+        );
+    }
+
+    private static string ResolveScopedPath(
+        string applicationRootPath,
+        string packRootPath,
+        string normalizedAddress
+    )
+    {
         if (normalizedAddress.StartsWith(_applicationAddressPrefix, StringComparison.Ordinal))
-            return ResolveSafePath(ContentRootPath, normalizedAddress);
+        {
+            return ResolveWithinRoot(
+                applicationRootPath,
+                normalizedAddress[_applicationAddressPrefix.Length..]
+            );
+        }
         if (normalizedAddress.StartsWith(_packAddressPrefix, StringComparison.Ordinal))
-            return ResolveSafePath(PackRootPath, normalizedAddress[_packAddressPrefix.Length..]);
+        {
+            return ResolveWithinRoot(packRootPath, normalizedAddress[_packAddressPrefix.Length..]);
+        }
 
         throw new ArgumentException(
             $"Content addresses must begin with '{_applicationAddressPrefix}' or '{_packAddressPrefix}'.",
@@ -221,21 +250,26 @@ public sealed class ContentFileResolver
             && !normalized.StartsWith(_packAddressPrefix, StringComparison.Ordinal)
         )
             throw new ArgumentException("A scoped content address is required.", nameof(address));
-        if (normalized.Split('/').Any(segment => segment == ".."))
-            throw new ArgumentException(
-                "Content addresses cannot contain parent-directory segments.",
-                nameof(address)
-            );
         return normalized;
     }
 
-    private static string ResolveSafePath(string rootPath, string relativePath)
+    private static string ResolveWithinRoot(string rootPath, string relativePath)
     {
         string absoluteRoot = Path.GetFullPath(rootPath);
-        string candidatePath = Path.GetFullPath(Path.Combine(absoluteRoot, relativePath));
-        string requiredPrefix =
-            absoluteRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        if (!candidatePath.StartsWith(requiredPrefix, StringComparison.Ordinal))
+        string nativeRelativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
+        if (Path.IsPathFullyQualified(nativeRelativePath))
+            throw new ArgumentException("A relative content path is required.");
+
+        string candidatePath = Path.GetFullPath(nativeRelativePath, absoluteRoot);
+        string relativeToRoot = Path.GetRelativePath(absoluteRoot, candidatePath);
+        if (
+            relativeToRoot == ".."
+            || relativeToRoot.StartsWith(
+                ".." + Path.DirectorySeparatorChar,
+                StringComparison.Ordinal
+            )
+            || Path.IsPathFullyQualified(relativeToRoot)
+        )
             throw new ArgumentException("Content paths cannot leave their content root.");
         return candidatePath;
     }
