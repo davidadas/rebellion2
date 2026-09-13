@@ -331,7 +331,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithReservedHubAndEligibleWorld_TargetsEligibleWorldForExpansion()
+        public void Generate_WithReservedDevelopmentCapacity_DoesNotAddTrainingFacility()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.Infrastructure.PlanetsPerTrainingFacility = 1;
@@ -386,13 +386,7 @@ namespace Rebellion.Tests.AI.Planners
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
-            AIDemand demand = demands.Single(item => item.Kind == AIDemandKind.TrainingFacility);
-            double economyPressure = demands
-                .Where(item => item.Kind is AIDemandKind.Mine or AIDemandKind.Refinery)
-                .Max(item => item.Pressure);
-
-            Assert.AreSame(expansionWorld, demand.DestinationPlanet);
-            Assert.Greater(demand.Pressure, economyPressure);
+            Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.TrainingFacility));
         }
 
         [Test]
@@ -458,7 +452,11 @@ namespace Rebellion.Tests.AI.Planners
                 .Generate(context)
                 .Single(item => item.Kind == AIDemandKind.Shipyard);
 
-            Assert.AreSame(pendingPlanet, demand.DestinationPlanet);
+            Assert.AreEqual(
+                pendingPlanet.InstanceID,
+                demand.DestinationPlanet.InstanceID,
+                $"Selected {demand.DestinationPlanet.InstanceID}."
+            );
         }
 
         [Test]
@@ -894,7 +892,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithDefenseReservedTrainingHub_TargetsFeasibleClusterPlanet()
+        public void Generate_WithDefenseReservedTrainingHub_UsesUncommittedClusterPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Infrastructure.PlanetsPerTrainingFacility = 1;
@@ -928,10 +926,15 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsTrue(
-                demands.Any(item =>
-                    item.Kind == AIDemandKind.TrainingFacility && item.DestinationPlanet == colony
-                )
+            AIDemand demand = demands.Single(item => item.Kind == AIDemandKind.TrainingFacility);
+
+            Assert.AreNotSame(hub, demand.DestinationPlanet);
+            Assert.Greater(
+                context.DevelopmentAllocation.GetAvailableEnergy(
+                    demand.DestinationPlanet,
+                    BuildingType.TrainingFacility
+                ),
+                0
             );
         }
 
