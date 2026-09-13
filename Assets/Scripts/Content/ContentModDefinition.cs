@@ -18,11 +18,23 @@ public sealed class ContentModDefinition
     [PersistableMember(Name = nameof(BasePackID))]
     private string _basePackId;
 
+    /// <summary>
+    /// Gets the stable mod identifier.
+    /// </summary>
     public string ID => _id;
 
+    /// <summary>
+    /// Gets the mod version.
+    /// </summary>
     public string Version => _version;
 
+    /// <summary>
+    /// Gets the player-facing mod name.
+    /// </summary>
     public string DisplayName => _displayName;
 
+    /// <summary>
+    /// Gets the identifier of the content pack this mod extends.
+    /// </summary>
     public string BasePackID => _basePackId;
 }

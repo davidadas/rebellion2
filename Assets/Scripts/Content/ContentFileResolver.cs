@@ -25,6 +25,10 @@ public sealed class ContentFileResolver
     /// <summary>
     /// Creates a resolver over explicit mod content roots in ascending load order.
     /// </summary>
+    /// <param name="contentRootPath">The absolute application content root.</param>
+    /// <param name="packRootPath">The absolute selected pack root.</param>
+    /// <param name="modContentRootPaths">The mod content roots in ascending load order.</param>
+    /// <param name="mods">The definitions corresponding to the mod content roots.</param>
     public ContentFileResolver(
         string contentRootPath,
         string packRootPath,
@@ -47,6 +51,10 @@ public sealed class ContentFileResolver
     /// <summary>
     /// Discovers mods compatible with a base pack from the directory beside Content.
     /// </summary>
+    /// <param name="contentRootPath">The absolute application content root.</param>
+    /// <param name="packRootPath">The absolute selected pack root.</param>
+    /// <param name="basePackID">The selected base pack identifier.</param>
+    /// <returns>A resolver containing the compatible discovered mods.</returns>
     internal static ContentFileResolver Discover(
         string contentRootPath,
         string packRootPath,
@@ -93,6 +101,9 @@ public sealed class ContentFileResolver
     /// <summary>
     /// Resolves an existing logical content address, preferring the last loaded mod.
     /// </summary>
+    /// <param name="address">The application- or pack-scoped logical address.</param>
+    /// <param name="extensions">Optional extensions to probe when the address has none.</param>
+    /// <returns>The resolved absolute file path, or null when no layer contains the file.</returns>
     public string ResolveFile(string address, params string[] extensions)
     {
         string normalizedAddress = NormalizeAddress(address);
@@ -121,6 +132,8 @@ public sealed class ContentFileResolver
     /// <summary>
     /// Enumerates the union of files beneath an address, with later layers replacing earlier files.
     /// </summary>
+    /// <param name="directoryAddress">The application- or pack-scoped directory address.</param>
+    /// <returns>The layered logical file addresses beneath the directory.</returns>
     public IEnumerable<string> EnumerateFileAddresses(string directoryAddress)
     {
         string normalizedAddress = NormalizeAddress(directoryAddress).TrimEnd('/');
@@ -136,6 +149,8 @@ public sealed class ContentFileResolver
     /// <summary>
     /// Checks whether a logical directory exists in any content layer.
     /// </summary>
+    /// <param name="directoryAddress">The application- or pack-scoped directory address.</param>
+    /// <returns>True when at least one layer contains the directory.</returns>
     public bool DirectoryExists(string directoryAddress)
     {
         string normalizedAddress = NormalizeAddress(directoryAddress).TrimEnd('/');

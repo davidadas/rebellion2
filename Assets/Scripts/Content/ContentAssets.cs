@@ -57,6 +57,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <summary>
     /// Creates an asset store backed by a layered content resolver.
     /// </summary>
+    /// <param name="resolver">The resolver that supplies base and modded content files.</param>
     public ContentAssets(ContentFileResolver resolver)
     {
         fileResolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
