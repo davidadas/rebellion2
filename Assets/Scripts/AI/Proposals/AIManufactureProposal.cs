@@ -346,17 +346,33 @@ namespace Rebellion.AI.Proposals
         /// <returns>The maintenance cost.</returns>
         public int GetMaintenanceCost()
         {
-            int maintenanceCost = Product?.GetReference()?.GetMaintenanceCost() ?? 0;
-            if (Demand?.Kind == AIDemandKind.BuildingUpgrade && Demand.BuildingToReplace != null)
-            {
-                maintenanceCost = Math.Max(
-                    0,
-                    maintenanceCost - Demand.BuildingToReplace.MaintenanceCost
-                );
-            }
-
-            long totalMaintenanceCost = (long)maintenanceCost * GetManufacturingCount();
+            long totalMaintenanceCost = (long)GetUnitMaintenanceCost() * GetManufacturingCount();
             return totalMaintenanceCost > int.MaxValue ? int.MaxValue : (int)totalMaintenanceCost;
+        }
+
+        /// <summary>
+        /// Returns the maintenance cost of one manufactured item.
+        /// </summary>
+        /// <returns>The per-item maintenance cost.</returns>
+        internal int GetUnitMaintenanceCost()
+        {
+            int maintenanceCost = Product?.GetReference()?.GetMaintenanceCost() ?? 0;
+            if (Demand?.Kind != AIDemandKind.BuildingUpgrade || Demand.BuildingToReplace == null)
+                return maintenanceCost;
+
+            return Math.Max(0, maintenanceCost - Demand.BuildingToReplace.MaintenanceCost);
+        }
+
+        /// <summary>
+        /// Reduces a counted manufacturing proposal to an affordable prefix.
+        /// </summary>
+        /// <param name="count">The accepted manufacturing count.</param>
+        internal void SelectManufacturingCount(int count)
+        {
+            if (!IsCountedManufacturingDemand() || Demand == null)
+                return;
+
+            Demand = Demand.WithQuantity(Math.Max(0, Math.Min(count, Demand.QuantityNeeded)));
         }
 
         /// <summary>

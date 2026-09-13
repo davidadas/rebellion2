@@ -491,19 +491,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The copied demand.</returns>
         private static AIDemand CreateProposalDemand(AIDemand demand, int quantity)
         {
-            AIDemand proposalDemand = new AIDemand(
-                demand.Id,
-                demand.Kind,
-                demand.ManufacturingType,
-                demand.BuildingType,
-                demand.Destination,
-                quantity,
-                demand.Pressure,
-                demand.ProductTypeId,
-                demand.CapitalShipRole
-            );
-            proposalDemand.BuildingToReplace = demand.BuildingToReplace;
-            return proposalDemand;
+            return demand.WithQuantity(quantity);
         }
 
         /// <summary>

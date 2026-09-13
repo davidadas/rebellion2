@@ -15,6 +15,8 @@ namespace Rebellion.AI.Phases
     /// </summary>
     internal sealed class AIProposalSelectionPolicy
     {
+        private const string _mixedProductType = "*";
+
         // Selection State.
         private readonly HashSet<string> _claimedKeys = new HashSet<string>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _reservedProducerCapacity = new Dictionary<
@@ -25,6 +27,17 @@ namespace Rebellion.AI.Phases
             string,
             int
         >(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _selectedProducerProducts = new Dictionary<
+            string,
+            string
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _currentProducerProducts = new Dictionary<
+            string,
+            string
+        >(StringComparer.Ordinal);
+        private readonly HashSet<string> _drainingProducerStreams = new HashSet<string>(
+            StringComparer.Ordinal
+        );
         private int _selectedMaintenanceCost;
 
         /// <summary>
@@ -89,18 +102,93 @@ namespace Rebellion.AI.Phases
             foreach (Planet producerPlanet in manufactureProposal.ProducerPlanets)
             {
                 manufactureProposal.SelectProducer(producerPlanet);
-                if (CanSelectManufactureProposal(context, manufactureProposal))
+                if (TrySelectManufacturePrefix(context, manufactureProposal))
                     return true;
             }
 
             foreach (AIManufactureOption option in manufactureProposal.ProducerOptions)
             {
                 manufactureProposal.SelectOption(option);
-                if (CanSelectManufactureProposal(context, manufactureProposal))
+                if (TrySelectManufacturePrefix(context, manufactureProposal))
                     return true;
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Selects the largest affordable prefix of a counted manufacturing proposal.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The manufacturing proposal to adjust.</param>
+        /// <returns>True when at least one item can be selected.</returns>
+        private bool TrySelectManufacturePrefix(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            int requestedCount = proposal.GetManufacturingCount();
+            if (requestedCount <= 1)
+                return CanSelectManufactureProposal(context, proposal);
+
+            int maximumCount = GetAvailableManufacturingCount(context, proposal, requestedCount);
+            if (maximumCount <= 0)
+                return false;
+
+            proposal.SelectManufacturingCount(maximumCount);
+            return CanSelectManufactureProposal(context, proposal);
+        }
+
+        /// <summary>
+        /// Returns the count allowed by remaining producer capacity and maintenance headroom.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal being considered.</param>
+        /// <param name="requestedCount">The proposal's requested count.</param>
+        /// <returns>The maximum count worth validating against domain constraints.</returns>
+        private int GetAvailableManufacturingCount(
+            AITurnContext context,
+            AIManufactureProposal proposal,
+            int requestedCount
+        )
+        {
+            int availableCount = requestedCount;
+            if (proposal.UsesSharedProducerCapacity)
+            {
+                string capacityKey = proposal.GetProducerCapacityKey();
+                int reservedCapacity = _reservedProducerCapacity.TryGetValue(
+                    capacityKey,
+                    out int reserved
+                )
+                    ? reserved
+                    : 0;
+                if (!_availableProducerCapacity.TryGetValue(capacityKey, out int availableCapacity))
+                {
+                    availableCapacity = proposal.ProducerPlanet.GetAvailableManufacturingCapacity(
+                        proposal.Demand.ManufacturingType
+                    );
+                    _availableProducerCapacity[capacityKey] = availableCapacity;
+                }
+
+                availableCount = Math.Min(
+                    availableCount,
+                    Math.Max(0, availableCapacity - reservedCapacity)
+                );
+            }
+
+            int unitMaintenanceCost = proposal.GetUnitMaintenanceCost();
+            if (unitMaintenanceCost <= 0)
+                return availableCount;
+
+            int minimumHeadroom = proposal.GetMinimumMaintenanceHeadroom(context);
+            int availableMaintenance =
+                context.Assessment.ProjectedMaintenanceHeadroom
+                - _selectedMaintenanceCost
+                - minimumHeadroom;
+            return Math.Min(
+                availableCount,
+                Math.Max(0, availableMaintenance / unitMaintenanceCost)
+            );
         }
 
         /// <summary>
@@ -114,7 +202,78 @@ namespace Rebellion.AI.Phases
             AIManufactureProposal proposal
         )
         {
-            return CanSelect(context, proposal) && HasProducerCapacity(proposal);
+            return CanSelect(context, proposal)
+                && HasProducerCapacity(proposal)
+                && ContinuesProductionStream(proposal);
+        }
+
+        /// <summary>
+        /// Returns whether the proposal preserves the producer's current product type.
+        /// </summary>
+        /// <param name="proposal">The manufacturing proposal to inspect.</param>
+        /// <returns>True when the stream is idle or already produces the proposed item.</returns>
+        private bool ContinuesProductionStream(AIManufactureProposal proposal)
+        {
+            string capacityKey = proposal.GetProducerCapacityKey();
+            string proposedTypeId = proposal.Product?.GetReference()?.GetTypeID();
+            if (string.IsNullOrEmpty(proposedTypeId))
+                return false;
+
+            if (_selectedProducerProducts.TryGetValue(capacityKey, out string selectedTypeId))
+                return selectedTypeId == proposedTypeId;
+
+            if (_drainingProducerStreams.Contains(capacityKey))
+                return false;
+
+            string currentTypeId = GetCurrentProductTypeId(proposal, capacityKey);
+            if (string.IsNullOrEmpty(currentTypeId))
+                return true;
+
+            if (currentTypeId == proposedTypeId)
+                return true;
+
+            _drainingProducerStreams.Add(capacityKey);
+            return false;
+        }
+
+        /// <summary>
+        /// Returns the indexed product type currently queued by a producer stream.
+        /// </summary>
+        /// <param name="proposal">A proposal targeting the producer stream.</param>
+        /// <param name="capacityKey">The stream's stable capacity key.</param>
+        /// <returns>The queued type, an empty value for an idle stream, or a mixed-type marker.</returns>
+        private string GetCurrentProductTypeId(AIManufactureProposal proposal, string capacityKey)
+        {
+            if (_currentProducerProducts.TryGetValue(capacityKey, out string currentTypeId))
+                return currentTypeId;
+
+            currentTypeId = string.Empty;
+            if (
+                proposal
+                    .ProducerPlanet.GetManufacturingQueue()
+                    .TryGetValue(proposal.Demand.ManufacturingType, out List<IManufacturable> queue)
+                && queue != null
+            )
+            {
+                foreach (IManufacturable item in queue)
+                {
+                    string itemTypeId = item?.GetTypeID();
+                    if (string.IsNullOrEmpty(currentTypeId))
+                    {
+                        currentTypeId = itemTypeId ?? string.Empty;
+                        continue;
+                    }
+
+                    if (currentTypeId != itemTypeId)
+                    {
+                        currentTypeId = _mixedProductType;
+                        break;
+                    }
+                }
+            }
+
+            _currentProducerProducts.Add(capacityKey, currentTypeId);
+            return currentTypeId;
         }
 
         /// <summary>
@@ -169,6 +328,9 @@ namespace Rebellion.AI.Phases
                 return;
 
             string capacityKey = manufactureProposal.GetProducerCapacityKey();
+            _selectedProducerProducts[capacityKey] = manufactureProposal
+                .Product.GetReference()
+                .GetTypeID();
             if (!manufactureProposal.UsesSharedProducerCapacity)
             {
                 _reservedProducerCapacity[capacityKey] = int.MaxValue;

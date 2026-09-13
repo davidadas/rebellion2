@@ -178,6 +178,25 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        public void Select_WithPartiallyAffordableFacilityBatch_SelectsAffordablePrefix()
+        {
+            AITurnContext context = CreateFacilityExpansionContext(
+                allocationPercent: 100,
+                out AIManufactureProposal proposal,
+                out AIManufactureProposal _,
+                quantity: 4
+            );
+            context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor =
+                context.Assessment.ProjectedMaintenanceHeadroom - 25;
+            context.AddProposal(proposal);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
+            Assert.AreEqual(2, proposal.GetManufacturingCount());
+        }
+
+        [Test]
         public void Select_WithDiscretionaryProductionBelowRefinedReserve_SelectsProposal()
         {
             AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
@@ -334,6 +353,58 @@ namespace Rebellion.Tests.AI.Phases
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
             CollectionAssert.AreEqual(new[] { proposal }, selected);
+        }
+
+        [Test]
+        public void Select_WithHigherScoredReplacement_DrainsCurrentProduction()
+        {
+            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
+            AIManufactureProposal replacement = CreateManufactureProposal(
+                context,
+                producer,
+                AIDemandKind.Shipyard,
+                BuildingType.Shipyard,
+                score: 200
+            );
+            AIManufactureProposal continuation = CreateManufactureProposal(
+                context,
+                producer,
+                AIDemandKind.PlanetaryDefense,
+                BuildingType.Defense,
+                score: 100
+            );
+            context.AddProposal(replacement);
+            context.AddProposal(continuation);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(0, selected.Count);
+        }
+
+        [Test]
+        public void Select_WithLowerScoredReplacement_ContinuesCurrentProduction()
+        {
+            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
+            AIManufactureProposal continuation = CreateManufactureProposal(
+                context,
+                producer,
+                AIDemandKind.PlanetaryDefense,
+                BuildingType.Defense,
+                score: 200
+            );
+            AIManufactureProposal replacement = CreateManufactureProposal(
+                context,
+                producer,
+                AIDemandKind.Shipyard,
+                BuildingType.Shipyard,
+                score: 100
+            );
+            context.AddProposal(continuation);
+            context.AddProposal(replacement);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { continuation }, selected);
         }
 
         [Test]
@@ -540,7 +611,7 @@ namespace Rebellion.Tests.AI.Phases
             }
 
             Building queued = AITestSceneBuilder.CreateBuildingTemplate(
-                "queued-defense",
+                "reserve-Defense",
                 BuildingType.Defense,
                 ManufacturingType.None
             );
@@ -656,11 +727,13 @@ namespace Rebellion.Tests.AI.Phases
         /// <param name="allocationPercent">Shared maintenance allocation for production facilities.</param>
         /// <param name="first">The first facility proposal.</param>
         /// <param name="second">The second facility proposal.</param>
+        /// <param name="quantity">The quantity represented by the first proposal.</param>
         /// <returns>The configured AI turn context.</returns>
         private static AITurnContext CreateFacilityExpansionContext(
             int allocationPercent,
             out AIManufactureProposal first,
-            out AIManufactureProposal second
+            out AIManufactureProposal second,
+            int quantity = 1
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -713,7 +786,7 @@ namespace Rebellion.Tests.AI.Phases
                 ManufacturingType.Ship
             );
             shipyard.MaintenanceCost = 10;
-            first = CreateFacilityExpansionProposal(firstPlanet, shipyard, 100);
+            first = CreateFacilityExpansionProposal(firstPlanet, shipyard, 100, quantity);
             second = CreateFacilityExpansionProposal(secondPlanet, shipyard, 90);
             return AITestSceneBuilder.CreateContext(game, empire);
         }
@@ -724,11 +797,13 @@ namespace Rebellion.Tests.AI.Phases
         /// <param name="planet">The producer and destination planet.</param>
         /// <param name="shipyard">The shipyard template.</param>
         /// <param name="score">The proposal score.</param>
+        /// <param name="quantity">The proposed shipyard count.</param>
         /// <returns>The facility-expansion proposal.</returns>
         private static AIManufactureProposal CreateFacilityExpansionProposal(
             Planet planet,
             Building shipyard,
-            float score
+            float score,
+            int quantity = 1
         )
         {
             AIDemand demand = new AIDemand(
@@ -737,7 +812,7 @@ namespace Rebellion.Tests.AI.Phases
                 ManufacturingType.Building,
                 BuildingType.Shipyard,
                 planet,
-                1,
+                quantity,
                 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(

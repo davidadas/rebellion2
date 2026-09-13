@@ -128,6 +128,29 @@ namespace Rebellion.AI.Planners.Demand
         }
 
         /// <summary>
+        /// Copies this demand with a different immediately requested quantity.
+        /// </summary>
+        /// <param name="quantityNeeded">Quantity represented by the copied demand.</param>
+        /// <returns>A demand with identical strategic identity and requirements.</returns>
+        internal AIDemand WithQuantity(int quantityNeeded)
+        {
+            return new AIDemand(
+                Id,
+                Kind,
+                ManufacturingType,
+                BuildingType,
+                Destination,
+                quantityNeeded,
+                Pressure,
+                ProductTypeId,
+                CapitalShipRole
+            )
+            {
+                BuildingToReplace = BuildingToReplace,
+            };
+        }
+
+        /// <summary>
         /// Builds the canonical demand identifier for a faction, kind, and key parts.
         /// </summary>
         /// <param name="factionInstanceId">The owning faction instance id.</param>

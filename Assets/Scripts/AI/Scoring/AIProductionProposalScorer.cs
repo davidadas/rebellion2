@@ -51,7 +51,7 @@ namespace Rebellion.AI.Scoring
         )
         {
             double score = proposal?.Demand?.Pressure ?? 0;
-            int maintenanceCost = proposal?.GetMaintenanceCost() ?? 0;
+            int maintenanceCost = proposal?.GetUnitMaintenanceCost() ?? 0;
             if (context?.Game == null || context.Faction == null || proposal == null)
                 return score;
 
