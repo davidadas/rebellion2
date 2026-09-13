@@ -93,6 +93,7 @@ namespace Rebellion.Tests.AI.Helpers
             return new Building
             {
                 InstanceID = instanceId,
+                TypeID = instanceId,
                 DisplayName = instanceId,
                 BuildingType = buildingType,
                 ProductionType = productionType,
@@ -115,6 +116,7 @@ namespace Rebellion.Tests.AI.Helpers
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = instanceId,
+                TypeID = instanceId,
                 DisplayName = instanceId,
                 ManufacturingFactionInstanceIDs = new List<string> { ownerInstanceId },
                 OwnerInstanceID = ownerInstanceId,
@@ -138,6 +140,7 @@ namespace Rebellion.Tests.AI.Helpers
             return new Regiment
             {
                 InstanceID = instanceId,
+                TypeID = instanceId,
                 DisplayName = instanceId,
                 OwnerInstanceID = ownerInstanceId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
