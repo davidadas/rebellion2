@@ -165,9 +165,6 @@ namespace Rebellion.AI.Proposals
 
             Fleet.Order.Status = FleetOrderStatus.Ready;
             context.Movement?.RequestMove(regiment, liveTarget);
-
-            if (liveTarget.GetOwnerInstanceID() == context.Faction.InstanceID)
-                ClearOrder();
         }
 
         /// <summary>
@@ -182,11 +179,16 @@ namespace Rebellion.AI.Proposals
             )
                 return;
 
+            string targetSystemId = order?.TargetSystemId;
+            if (string.IsNullOrEmpty(targetSystemId))
+                targetSystemId = TargetPlanet.GetParentOfType<PlanetSector>()?.InstanceID;
+
             Fleet.Order = new FleetOrder
             {
                 OrderType = FleetOrderType.Colonize,
                 Status = Status,
                 TargetPlanetId = TargetPlanet.InstanceID,
+                TargetSystemId = targetSystemId ?? string.Empty,
             };
         }
 
@@ -209,8 +211,14 @@ namespace Rebellion.AI.Proposals
             if (order == null)
                 return Fleet.RoleType == FleetRoleType.Colonization;
 
-            return order.OrderType == FleetOrderType.Colonize
-                && order.TargetPlanetId == TargetPlanet.InstanceID;
+            if (order.OrderType != FleetOrderType.Colonize)
+                return false;
+
+            if (order.TargetPlanetId == TargetPlanet.InstanceID)
+                return true;
+
+            return !string.IsNullOrEmpty(order.TargetSystemId)
+                && TargetPlanet.GetParentOfType<PlanetSector>()?.InstanceID == order.TargetSystemId;
         }
 
         /// <summary>

@@ -424,13 +424,50 @@ namespace Rebellion.AI.Planners
         )
         {
             Planet targetPlanet = context.Assessment.GetKnownPlanet(order.TargetPlanetId);
-            if (!IsKnownColonizationTarget(targetPlanet))
+            if (IsKnownColonizationTarget(targetPlanet))
             {
-                proposals.Add(new AIClearFleetOrderProposal(fleet, order));
+                proposals.Add(new AIColonizationProposal(fleet, order.Status, targetPlanet));
                 return;
             }
 
-            proposals.Add(new AIColonizationProposal(fleet, order.Status, targetPlanet));
+            Planet nextTarget = FindNextColonizationTarget(context, fleet, order.TargetSystemId);
+            if (nextTarget != null)
+            {
+                proposals.Add(
+                    new AIColonizationProposal(fleet, FleetOrderStatus.Staging, nextTarget)
+                );
+                return;
+            }
+
+            proposals.Add(new AIClearFleetOrderProposal(fleet, order));
+        }
+
+        /// <summary>
+        /// Returns the strongest unclaimed planet remaining in a colonization campaign.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The fleet conducting the campaign.</param>
+        /// <param name="systemId">The campaign system identifier.</param>
+        /// <returns>The next colonization target, or null when the campaign is complete.</returns>
+        private Planet FindNextColonizationTarget(
+            AITurnContext context,
+            Fleet fleet,
+            string systemId
+        )
+        {
+            if (string.IsNullOrEmpty(systemId))
+                return null;
+
+            return context
+                .Assessment.KnownUncolonizedPlanets.Where(planet =>
+                    context.Assessment.GetPlanetSystemId(planet) == systemId
+                    && !HasColonizationFleetForTarget(context, planet, fleet)
+                )
+                .OrderByDescending(planet => planet.GetEnergyCapacity())
+                .ThenByDescending(planet => planet.GetRawResourceNodes())
+                .ThenByDescending(context.Assessment.GetPlanetValue)
+                .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
         }
 
         /// <summary>
