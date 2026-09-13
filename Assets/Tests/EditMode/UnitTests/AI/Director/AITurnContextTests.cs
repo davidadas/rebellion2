@@ -150,7 +150,7 @@ namespace Rebellion.Tests.AI.Director
             );
 
             Assert.AreEqual(0, mineEnergy);
-            Assert.AreEqual(4, constructionEnergy);
+            Assert.AreEqual(3, constructionEnergy);
         }
 
         [Test]
