@@ -386,11 +386,6 @@ namespace Rebellion.AI.Director
                     )
                 );
                 caps[secondary.InstanceID] = secondaryTarget;
-                ReserveEnergy(
-                    secondary,
-                    buildingType,
-                    Math.Max(0, secondaryTarget - secondaryCurrent)
-                );
             }
         }
 
