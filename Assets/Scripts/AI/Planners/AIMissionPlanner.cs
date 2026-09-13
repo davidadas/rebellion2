@@ -1043,6 +1043,9 @@ namespace Rebellion.AI.Planners
         {
             int support = context.Assessment.GetFactionPopularSupport(planet);
             int strategicValue = context.Assessment.GetDiplomacyTargetStrategicValue(planet);
+            int coreWorldBonus = IsCoreWorld(planet)
+                ? context.Game.Config.AI.MissionPlanning.DiplomacyCoreWorldPriorityBonus
+                : 0;
 
             if (context.Assessment.IsOwnedPlanet(planet))
             {
@@ -1050,12 +1053,23 @@ namespace Rebellion.AI.Planners
                 return 100
                     - support
                     + strategicValue
+                    + coreWorldBonus
                     + supportRisk
                         * context.Game.Config.AI.MissionPlanning.DiplomacySectorSupportRiskWeight;
             }
 
-            return context.Assessment.IsNeutralPlanet(planet) ? support + strategicValue : 0;
+            return context.Assessment.IsNeutralPlanet(planet)
+                ? support + strategicValue + coreWorldBonus
+                : 0;
         }
+
+        /// <summary>
+        /// Returns whether a planet belongs to a core sector.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when the planet is in a core sector.</returns>
+        private static bool IsCoreWorld(Planet planet) =>
+            planet?.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core;
 
         /// <summary>
         /// Returns officer target candidate priority.

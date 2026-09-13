@@ -115,12 +115,12 @@ namespace Rebellion.AI.Proposals
             $"faction:new-colonization-order:{factionId}";
 
         /// <summary>
-        /// Creates a claim for surveying a sector.
+        /// Creates a claim for assigning a colonization sector.
         /// </summary>
         /// <param name="systemId">The sector instance ID.</param>
-        /// <returns>The sector-exploration claim.</returns>
-        internal static string SystemExploration(string systemId) =>
-            $"system:exploration:{systemId}";
+        /// <returns>The sector-colonization claim.</returns>
+        internal static string SystemColonization(string systemId) =>
+            $"system:colonization:{systemId}";
 
         /// <summary>
         /// Creates a claim for assigning a mission participant.

@@ -55,6 +55,43 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
+        public void Score_DiplomacyProposal_PrioritizesCoreWorld()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
+            core.SectorType = PlanetSectorType.Core;
+            PlanetSector outerRim = AITestSceneBuilder.AddSector(game, "outer-rim");
+            outerRim.SectorType = PlanetSectorType.OuterRim;
+            Planet coreWorld = AITestSceneBuilder.AddPlanet(game, core, "core-world", null);
+            Planet outerRimWorld = AITestSceneBuilder.AddPlanet(
+                game,
+                outerRim,
+                "outer-rim-world",
+                null
+            );
+            coreWorld.SetPopularSupport(empire.InstanceID, 1);
+            outerRimWorld.SetPopularSupport(empire.InstanceID, 99);
+            coreWorld.AddVisitor(empire.InstanceID);
+            outerRimWorld.AddVisitor(empire.InstanceID);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.Ratings[OfficerRating.Diplomacy] = 100;
+            game.AttachNode(officer, coreWorld);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double coreScore = scorer.Score(
+                context,
+                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, coreWorld)
+            );
+            double outerRimScore = scorer.Score(
+                context,
+                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, outerRimWorld)
+            );
+
+            Assert.Greater(coreScore, outerRimScore);
+        }
+
+        [Test]
         public void Score_RecruitmentProposal_ReturnsHigherScoreForHigherSupportPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

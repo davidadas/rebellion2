@@ -11,7 +11,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Proposals
 {
     [TestFixture]
-    public class AIColonizationSurveyProposalTests
+    public class AIColonizationCampaignProposalTests
     {
         [Test]
         public void Execute_WithUnexploredPlanets_StartsNearestNeighborSurveyRoute()
@@ -27,7 +27,7 @@ namespace Rebellion.Tests.AI.Proposals
             far.IsColonized = false;
             Fleet fleet = AddColonizationFleet(game, origin, empire.InstanceID);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            AIColonizationSurveyProposal proposal = new AIColonizationSurveyProposal(
+            AIColonizationCampaignProposal proposal = new AIColonizationCampaignProposal(
                 fleet,
                 outerRim.InstanceID,
                 new[]
@@ -47,7 +47,7 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(context);
 
-            Assert.AreEqual(FleetOrderType.Explore, fleet.Order.OrderType);
+            Assert.AreEqual(FleetOrderType.Colonize, fleet.Order.OrderType);
             Assert.AreEqual(outerRim.InstanceID, fleet.Order.TargetSystemId);
             CollectionAssert.AreEqual(new[] { near.InstanceID, far.InstanceID }, fleet.Waypoints);
             Assert.IsNotNull(fleet.Movement);
@@ -65,12 +65,12 @@ namespace Rebellion.Tests.AI.Proposals
             Fleet fleet = AddColonizationFleet(game, target, empire.InstanceID);
             fleet.Order = new FleetOrder
             {
-                OrderType = FleetOrderType.Explore,
+                OrderType = FleetOrderType.Colonize,
                 Status = FleetOrderStatus.Readying,
                 TargetSystemId = system.InstanceID,
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            AIColonizationSurveyProposal proposal = new AIColonizationSurveyProposal(
+            AIColonizationCampaignProposal proposal = new AIColonizationCampaignProposal(
                 fleet,
                 system.InstanceID,
                 System.Array.Empty<Planet>(),

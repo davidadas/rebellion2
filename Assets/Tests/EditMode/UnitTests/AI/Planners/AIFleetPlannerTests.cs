@@ -1437,13 +1437,13 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIProposal> proposals = new AIFleetPlanner().Plan(context);
 
-            AIColonizationSurveyProposal survey = proposals
-                .OfType<AIColonizationSurveyProposal>()
+            AIColonizationCampaignProposal campaign = proposals
+                .OfType<AIColonizationCampaignProposal>()
                 .Single(proposal => proposal.Fleet == fleet);
-            Assert.AreEqual(outerRim.InstanceID, survey.SystemId);
+            Assert.AreEqual(outerRim.InstanceID, campaign.SystemId);
             CollectionAssert.AreEquivalent(
                 new[] { small.InstanceID, large.InstanceID },
-                survey.UnexploredPlanets.Select(planet => planet.InstanceID)
+                campaign.UnexploredPlanets.Select(planet => planet.InstanceID)
             );
             Assert.IsFalse(
                 proposals.OfType<AIColonizationProposal>().Any(proposal => proposal.Fleet == fleet)
@@ -1479,15 +1479,15 @@ namespace Rebellion.Tests.AI.Planners
             fleet.RoleType = FleetRoleType.Colonization;
             fleet.Order = new FleetOrder
             {
-                OrderType = FleetOrderType.Explore,
+                OrderType = FleetOrderType.Colonize,
                 Status = FleetOrderStatus.Readying,
                 TargetSystemId = system.InstanceID,
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIColonizationSurveyProposal proposal = new AIFleetPlanner()
+            AIColonizationCampaignProposal proposal = new AIFleetPlanner()
                 .Plan(context)
-                .OfType<AIColonizationSurveyProposal>()
+                .OfType<AIColonizationCampaignProposal>()
                 .Single();
 
             Assert.AreEqual(large.InstanceID, proposal.ColonyTarget.InstanceID);

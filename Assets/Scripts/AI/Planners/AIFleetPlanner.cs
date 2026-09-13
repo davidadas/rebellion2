@@ -34,9 +34,9 @@ namespace Rebellion.AI.Planners
             proposals.AddRange(_defensePlanner.Plan(context));
 
             HashSet<string> activeAttackSystemIds = GetActiveAttackSystemIds(context);
-            HashSet<string> activeSurveySystemIds = context
+            HashSet<string> activeColonizationSystemIds = context
                 .Assessment.OwnedFleets.Where(fleet =>
-                    fleet.Order?.OrderType == FleetOrderType.Explore
+                    fleet.Order?.OrderType == FleetOrderType.Colonize
                     && !string.IsNullOrEmpty(fleet.Order.TargetSystemId)
                 )
                 .Select(fleet => fleet.Order.TargetSystemId)
@@ -70,7 +70,7 @@ namespace Rebellion.AI.Planners
                     context,
                     fleet,
                     unexploredOuterRimSystems,
-                    activeSurveySystemIds,
+                    activeColonizationSystemIds,
                     proposals
                 );
             }
@@ -105,13 +105,13 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">The fleet to evaluate.</param>
         /// <param name="unexploredOuterRimSystems">Unexplored outer-rim planets grouped by system.</param>
-        /// <param name="activeSurveySystemIds">Systems already targeted by a survey fleet.</param>
+        /// <param name="activeColonizationSystemIds">Systems assigned to another colonization fleet.</param>
         /// <param name="proposals">The proposal list to update.</param>
         private void AddFleetProposal(
             AITurnContext context,
             Fleet fleet,
             IReadOnlyDictionary<string, IReadOnlyList<Planet>> unexploredOuterRimSystems,
-            HashSet<string> activeSurveySystemIds,
+            HashSet<string> activeColonizationSystemIds,
             List<AIProposal> proposals
         )
         {
@@ -121,11 +121,11 @@ namespace Rebellion.AI.Planners
             if (order == null)
             {
                 if (
-                    AddColonizationSurveyProposals(
+                    AddColonizationCampaignProposals(
                         context,
                         fleet,
                         unexploredOuterRimSystems,
-                        activeSurveySystemIds,
+                        activeColonizationSystemIds,
                         proposals
                     )
                 )
@@ -135,9 +135,12 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
-            if (order.OrderType == FleetOrderType.Explore)
+            if (
+                order.OrderType == FleetOrderType.Colonize
+                && string.IsNullOrEmpty(order.TargetPlanetId)
+            )
             {
-                AddExistingSurveyProposal(context, fleet, order, proposals);
+                AddExistingColonizationCampaignProposal(context, fleet, order, proposals);
                 return;
             }
 
@@ -264,15 +267,15 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds candidate sector surveys before a colonization fleet selects a planet.
+        /// Adds candidate sector campaign assignments before a colonization fleet selects a planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">Fleet being assigned.</param>
         /// <param name="systems">Unexplored Outer Rim planets keyed by sector.</param>
-        /// <param name="activeSystemIds">Sectors already assigned to another survey fleet.</param>
+        /// <param name="activeSystemIds">Sectors already assigned to another campaign fleet.</param>
         /// <param name="proposals">Proposal list to update.</param>
-        /// <returns>True when at least one survey proposal was added.</returns>
-        private bool AddColonizationSurveyProposals(
+        /// <returns>True when at least one campaign proposal was added.</returns>
+        private bool AddColonizationCampaignProposals(
             AITurnContext context,
             Fleet fleet,
             IReadOnlyDictionary<string, IReadOnlyList<Planet>> systems,
@@ -290,7 +293,7 @@ namespace Rebellion.AI.Planners
                 )
             )
             {
-                proposals.Add(new AIColonizationSurveyProposal(fleet, system.Key, system.Value));
+                proposals.Add(new AIColonizationCampaignProposal(fleet, system.Key, system.Value));
                 added = true;
             }
 
@@ -298,13 +301,13 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Continues an interrupted survey or selects its highest-capacity revealed colony.
+        /// Continues an interrupted campaign or selects its highest-capacity revealed colony.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">Fleet assigned to the survey.</param>
-        /// <param name="order">The current survey order.</param>
+        /// <param name="fleet">Fleet assigned to the campaign.</param>
+        /// <param name="order">The current campaign order.</param>
         /// <param name="proposals">Proposal list to update.</param>
-        private void AddExistingSurveyProposal(
+        private void AddExistingColonizationCampaignProposal(
             AITurnContext context,
             Fleet fleet,
             FleetOrder order,
@@ -329,7 +332,7 @@ namespace Rebellion.AI.Planners
                 .ToList();
             if (unexplored.Count > 0)
             {
-                proposals.Add(new AIColonizationSurveyProposal(fleet, systemId, unexplored));
+                proposals.Add(new AIColonizationCampaignProposal(fleet, systemId, unexplored));
                 return;
             }
 
@@ -343,7 +346,7 @@ namespace Rebellion.AI.Planners
                 .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
                 .FirstOrDefault();
             proposals.Add(
-                new AIColonizationSurveyProposal(fleet, systemId, Array.Empty<Planet>(), target)
+                new AIColonizationCampaignProposal(fleet, systemId, Array.Empty<Planet>(), target)
             );
         }
 

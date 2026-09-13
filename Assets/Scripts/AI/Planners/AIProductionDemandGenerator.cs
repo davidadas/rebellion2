@@ -1109,46 +1109,80 @@ namespace Rebellion.AI.Planners
         /// <param name="demands">The demand list to update.</param>
         private void AddFleetReinforcementDemands(AITurnContext context, List<AIDemand> demands)
         {
-            foreach (Fleet fleet in GetPriorityReinforcementFleets(context))
+            Fleet defenseFleet = GetPriorityDefenseFleet(context);
+            AddFleetDemands(context, demands, defenseFleet);
+
+            IReadOnlyList<Fleet> attackFleets = GetPriorityAttackFleets(context);
+            AddFirstShipDemand(context, demands, attackFleets);
+            AddFirstRegimentDemand(context, demands, attackFleets);
+
+            foreach (Fleet colonizationFleet in GetPriorityColonizationFleets(context))
+                AddFleetDemands(context, demands, colonizationFleet);
+
+            if (attackFleets.Count == 0)
             {
-                AddFleetCapitalShipDemand(context, demands, fleet);
-                AddFleetStarfighterDemand(context, demands, fleet);
-                AddFleetRegimentDemand(context, demands, fleet);
+                foreach (Fleet assemblyFleet in GetFleetAssemblyFleets(context))
+                    AddFleetDemands(context, demands, assemblyFleet);
             }
         }
 
         /// <summary>
-        /// Returns fleets ordered for reinforcement planning.
+        /// Adds every applicable reinforcement demand for one fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The priority fleets.</returns>
-        private IReadOnlyList<Fleet> GetPriorityReinforcementFleets(AITurnContext context)
+        /// <param name="demands">The demand list to update.</param>
+        /// <param name="fleet">The fleet to reinforce.</param>
+        private void AddFleetDemands(AITurnContext context, List<AIDemand> demands, Fleet fleet)
         {
-            List<Fleet> fleets = new List<Fleet>();
-            AddPriorityFleet(fleets, GetPriorityDefenseFleet(context));
+            if (fleet == null)
+                return;
 
-            IReadOnlyList<Fleet> attackFleets = GetPriorityAttackFleets(context);
-            foreach (Fleet attackFleet in attackFleets)
-                AddPriorityFleet(fleets, attackFleet);
-
-            foreach (Fleet colonizationFleet in GetPriorityColonizationFleets(context))
-                AddPriorityFleet(fleets, colonizationFleet);
-
-            foreach (Fleet assemblyFleet in GetFleetAssemblyFleets(context))
-                AddPriorityFleet(fleets, assemblyFleet);
-
-            return fleets;
+            AddFleetCapitalShipDemand(context, demands, fleet);
+            AddFleetStarfighterDemand(context, demands, fleet);
+            AddFleetRegimentDemand(context, demands, fleet);
         }
 
         /// <summary>
-        /// Adds a fleet to a priority list without duplication.
+        /// Adds ship-production demand for the first attack fleet that still needs ships.
         /// </summary>
-        /// <param name="fleets">The priority list.</param>
-        /// <param name="fleet">The fleet to add.</param>
-        private void AddPriorityFleet(List<Fleet> fleets, Fleet fleet)
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="demands">The demand list to update.</param>
+        /// <param name="fleets">Attack fleets in reinforcement priority order.</param>
+        private void AddFirstShipDemand(
+            AITurnContext context,
+            List<AIDemand> demands,
+            IReadOnlyList<Fleet> fleets
+        )
         {
-            if (fleet != null && fleets.All(candidate => candidate.InstanceID != fleet.InstanceID))
-                fleets.Add(fleet);
+            foreach (Fleet fleet in fleets)
+            {
+                int initialCount = demands.Count;
+                AddFleetCapitalShipDemand(context, demands, fleet);
+                AddFleetStarfighterDemand(context, demands, fleet);
+                if (demands.Count > initialCount)
+                    return;
+            }
+        }
+
+        /// <summary>
+        /// Adds troop-production demand for the first attack fleet that still needs regiments.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="demands">The demand list to update.</param>
+        /// <param name="fleets">Attack fleets in reinforcement priority order.</param>
+        private void AddFirstRegimentDemand(
+            AITurnContext context,
+            List<AIDemand> demands,
+            IReadOnlyList<Fleet> fleets
+        )
+        {
+            foreach (Fleet fleet in fleets)
+            {
+                int initialCount = demands.Count;
+                AddFleetRegimentDemand(context, demands, fleet);
+                if (demands.Count > initialCount)
+                    return;
+            }
         }
 
         /// <summary>

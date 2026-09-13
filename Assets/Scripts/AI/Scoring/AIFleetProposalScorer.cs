@@ -25,7 +25,7 @@ namespace Rebellion.AI.Scoring
                 is AIFleetAttackProposal
                     or AIOrbitalEngagementProposal
                     or AIColonizationProposal
-                    or AIColonizationSurveyProposal
+                    or AIColonizationCampaignProposal
                     or AIClearFleetOrderProposal
                     or AIFleetDefenseProposal
                     or AIFleetRoleProposal
@@ -63,7 +63,10 @@ namespace Rebellion.AI.Scoring
                     colonizationProposal.TargetPlanet,
                     HasExistingOrder(colonizationProposal)
                 ),
-                AIColonizationSurveyProposal surveyProposal => ScoreSurvey(context, surveyProposal),
+                AIColonizationCampaignProposal campaignProposal => ScoreColonizationCampaign(
+                    context,
+                    campaignProposal
+                ),
                 AIClearFleetOrderProposal => double.PositiveInfinity,
                 AIFleetDefenseProposal defenseProposal => ScoreDefense(context, defenseProposal),
                 AIFleetRoleProposal => double.PositiveInfinity,
@@ -76,12 +79,15 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
-        /// Scores a sector survey using its nearest unexplored entry point.
+        /// Scores a sector campaign using its nearest unexplored entry point.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The survey proposal.</param>
+        /// <param name="proposal">The campaign proposal.</param>
         /// <returns>The calculated value.</returns>
-        private double ScoreSurvey(AITurnContext context, AIColonizationSurveyProposal proposal)
+        private double ScoreColonizationCampaign(
+            AITurnContext context,
+            AIColonizationCampaignProposal proposal
+        )
         {
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             double score = config.ColonizationBaseScore + config.ColonizationReadyFleetBonus;
@@ -95,7 +101,7 @@ namespace Rebellion.AI.Scoring
                     ) * config.ColonizationTravelEfficiencyWeight;
             }
 
-            if (proposal.Fleet?.Order?.OrderType == FleetOrderType.Explore)
+            if (proposal.Fleet?.Order?.OrderType == FleetOrderType.Colonize)
                 score += config.ExistingColonizationOrderBonus;
 
             return Math.Max(0, score);

@@ -157,6 +157,8 @@ namespace Rebellion.Game
 
             public int DiplomacySupportDeficitWeight { get; set; } = 1;
 
+            public int DiplomacyCoreWorldPriorityBonus { get; set; } = 1000;
+
             public int DiplomacyConstructionFacilityWeight { get; set; } = 25;
 
             public int DiplomacyShipyardWeight { get; set; } = 20;

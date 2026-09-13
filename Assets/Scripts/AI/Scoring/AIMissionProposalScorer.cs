@@ -255,7 +255,13 @@ namespace Rebellion.AI.Scoring
         {
             int opposingSupport =
                 proposal.TargetPlanet?.GetOpposingPopularSupport(context.Faction.InstanceID) ?? 0;
+            int coreWorldBonus =
+                proposal.TargetPlanet?.GetParentOfType<PlanetSector>()?.SectorType
+                == PlanetSectorType.Core
+                    ? context.Game.Config.AI.MissionPlanning.DiplomacyCoreWorldPriorityBonus
+                    : 0;
             return successProbability
+                + coreWorldBonus
                 + opposingSupport
                     * context.Game.Config.AI.MissionPlanning.DiplomacySupportDeficitWeight;
         }

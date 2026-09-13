@@ -9,9 +9,9 @@ using Rebellion.SceneGraph;
 namespace Rebellion.AI.Proposals
 {
     /// <summary>
-    /// Surveys one sector and converts the completed survey into a colonization order.
+    /// Assigns one sector to a colonization fleet and reveals it before selecting a colony.
     /// </summary>
-    public sealed class AIColonizationSurveyProposal : AIProposal
+    public sealed class AIColonizationCampaignProposal : AIProposal
     {
         public Fleet Fleet { get; }
 
@@ -24,13 +24,13 @@ namespace Rebellion.AI.Proposals
         public Planet EntryPlanet { get; }
 
         /// <summary>
-        /// Creates a proposal to survey the supplied planets or claim the selected colony.
+        /// Creates a proposal to campaign the supplied planets or claim the selected colony.
         /// </summary>
         /// <param name="fleet">The colonization fleet.</param>
-        /// <param name="systemId">The sector being surveyed.</param>
+        /// <param name="systemId">The sector being revealed.</param>
         /// <param name="unexploredPlanets">Planets that still require observation.</param>
-        /// <param name="colonyTarget">The best revealed colony, when surveying is complete.</param>
-        public AIColonizationSurveyProposal(
+        /// <param name="colonyTarget">The best revealed colony, when revealing is complete.</param>
+        public AIColonizationCampaignProposal(
             Fleet fleet,
             string systemId,
             IReadOnlyList<Planet> unexploredPlanets,
@@ -45,7 +45,7 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns claims that prevent competing orders, movement, and sector surveys.
+        /// Returns claims that prevent competing orders, movement, and sector campaign assignments.
         /// </summary>
         /// <returns>Claim keys for this proposal.</returns>
         public override IReadOnlyList<string> GetClaimKeys()
@@ -57,7 +57,7 @@ namespace Rebellion.AI.Proposals
             {
                 AIClaimKeys.FleetOrder(Fleet.InstanceID),
                 AIClaimKeys.FleetColonization(Fleet.InstanceID),
-                AIClaimKeys.SystemExploration(SystemId),
+                AIClaimKeys.SystemColonization(SystemId),
             };
             if (Fleet.Order == null)
                 claims.Add(AIClaimKeys.NewColonizationOrder(Fleet.GetOwnerInstanceID()));
@@ -73,24 +73,24 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         /// <returns>The fleet, sector, and resulting colony identifiers.</returns>
         public override string GetSortKey() =>
-            $"fleet-survey:{Fleet?.InstanceID}:{SystemId}:{ColonyTarget?.InstanceID}";
+            $"fleet-colonization:{Fleet?.InstanceID}:{SystemId}:{ColonyTarget?.InstanceID}";
 
         /// <summary>
-        /// Returns whether this survey proposal may be selected.
+        /// Returns whether this campaign proposal may be selected.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when the fleet and survey objective remain valid.</returns>
+        /// <returns>True when the fleet and campaign objective remain valid.</returns>
         public override bool CanSelect(AITurnContext context) => IsStillValid(context);
 
         /// <summary>
-        /// Returns whether this survey proposal may execute.
+        /// Returns whether this campaign proposal may execute.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when the fleet and survey objective remain valid.</returns>
+        /// <returns>True when the fleet and campaign objective remain valid.</returns>
         public override bool CanExecute(AITurnContext context) => IsStillValid(context);
 
         /// <summary>
-        /// Starts the survey route or assigns its highest-capacity revealed colony.
+        /// Starts the campaign route or assigns its highest-capacity revealed colony.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         public override void Execute(AITurnContext context)
@@ -134,7 +134,7 @@ namespace Rebellion.AI.Proposals
 
             Fleet.Order = new FleetOrder
             {
-                OrderType = FleetOrderType.Explore,
+                OrderType = FleetOrderType.Colonize,
                 Status = FleetOrderStatus.Readying,
                 TargetSystemId = SystemId,
             };
@@ -160,7 +160,11 @@ namespace Rebellion.AI.Proposals
             FleetOrder order = Fleet.Order;
             if (
                 order != null
-                && (order.OrderType != FleetOrderType.Explore || order.TargetSystemId != SystemId)
+                && (
+                    order.OrderType != FleetOrderType.Colonize
+                    || !string.IsNullOrEmpty(order.TargetPlanetId)
+                    || order.TargetSystemId != SystemId
+                )
             )
                 return false;
 
