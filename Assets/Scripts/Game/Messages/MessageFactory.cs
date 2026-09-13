@@ -2090,6 +2090,8 @@ namespace Rebellion.Game.Messages
                     result.BlockadingFleet?.GetOwnerInstanceID()
                 );
                 Faction targetFaction = GetBlockadeFaction(game, result.Planet?.OwnerInstanceID);
+                if (targetFaction == null)
+                    continue;
                 AddBlockadeDelivery(
                     deliveries,
                     blockadingFaction,
