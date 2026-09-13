@@ -18,6 +18,8 @@ installer.
 Each immediate subdirectory containing a `mod.xml` is loaded when its `BasePackID` matches the
 selected content pack. Mods load by folder name in ordinal order; when multiple mods contain the
 same logical file, the later mod wins. A missing mod file falls back to the selected content pack.
+The Options menu's Mods page shows the active mods and their load order. Enabling, disabling, and
+reordering mods in the game are not yet supported.
 
 ```text
 Mods/

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using UnityEngine;
 
@@ -216,7 +217,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _bindingSession.ListeningSecondary,
                 _settingsSession.GetGameplayStates(),
                 _settingsSession.Gameplay.AutosaveIntervalTicks,
-                _settingsSession.Gameplay.AutosavesToKeep
+                _settingsSession.Gameplay.AutosavesToKeep,
+                _bootstrap
+                    .GetContentPack()
+                    .FileResolver.Mods.Select(mod => new OptionsModRow(
+                        mod.ID,
+                        mod.Version,
+                        mod.DisplayName
+                    ))
+                    .ToArray()
             )
         );
     }

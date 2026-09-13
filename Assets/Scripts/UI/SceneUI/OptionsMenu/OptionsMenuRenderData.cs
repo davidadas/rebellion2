@@ -11,7 +11,31 @@ public enum OptionsMenuTab
     Graphics,
     Audio,
     Controls,
+    Mods,
     SaveLoad,
+}
+
+/// <summary>
+/// Represents one loaded mod in the Mods menu.
+/// </summary>
+public sealed class OptionsModRow
+{
+    public string ID { get; }
+    public string Version { get; }
+    public string DisplayName { get; }
+
+    /// <summary>
+    /// Creates a loaded-mod row.
+    /// </summary>
+    /// <param name="id">The stable mod identifier.</param>
+    /// <param name="version">The loaded mod version.</param>
+    /// <param name="displayName">The player-facing mod name.</param>
+    public OptionsModRow(string id, string version, string displayName)
+    {
+        ID = id ?? string.Empty;
+        Version = version ?? string.Empty;
+        DisplayName = displayName ?? string.Empty;
+    }
 }
 
 /// <summary>
@@ -108,6 +132,7 @@ public sealed class OptionsMenuRenderData
 
     public IReadOnlyList<OptionsBindingRow> Bindings { get; }
     public IReadOnlyList<OptionsSaveSlot> SaveSlots { get; }
+    public IReadOnlyList<OptionsModRow> Mods { get; }
 
     public bool HasActiveGame { get; }
     public bool CanSave { get; }
@@ -132,6 +157,7 @@ public sealed class OptionsMenuRenderData
     /// <param name="gameplayStates">The current gameplay-toggle states keyed by option.</param>
     /// <param name="autosaveIntervalTicks">The number of ticks between autosaves.</param>
     /// <param name="autosavesToKeep">The maximum number of autosaves to retain.</param>
+    /// <param name="mods">The loaded mods in load order.</param>
     public OptionsMenuRenderData(
         int x,
         int y,
@@ -149,7 +175,8 @@ public sealed class OptionsMenuRenderData
         bool listeningSecondary,
         IReadOnlyDictionary<UserGameplayOption, bool> gameplayStates = null,
         int autosaveIntervalTicks = UserGameplaySettings.DefaultAutosaveIntervalTicks,
-        int autosavesToKeep = UserGameplaySettings.DefaultAutosavesToKeep
+        int autosavesToKeep = UserGameplaySettings.DefaultAutosavesToKeep,
+        IReadOnlyList<OptionsModRow> mods = null
     )
     {
         X = x;
@@ -164,6 +191,7 @@ public sealed class OptionsMenuRenderData
         Volumes = volumes ?? Array.Empty<float>();
         Bindings = bindings ?? Array.Empty<OptionsBindingRow>();
         SaveSlots = saveSlots ?? Array.Empty<OptionsSaveSlot>();
+        Mods = mods ?? Array.Empty<OptionsModRow>();
         SelectedSlot = selectedSlot;
         HasActiveGame = hasActiveGame;
         CanSave = canSave;

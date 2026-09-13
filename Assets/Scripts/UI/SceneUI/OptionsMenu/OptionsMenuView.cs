@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -74,6 +75,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
 
     [SerializeField]
     private GameObject _controlsPage;
+
+    [SerializeField]
+    private GameObject _modsPage;
 
     [Header("Footer")]
     [SerializeField]
@@ -168,6 +172,13 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
 
     [SerializeField]
     private Image _bindingRestoreTemplate;
+
+    [Header("Mods page")]
+    [SerializeField]
+    private TextMeshProUGUI _modsStatusTextField;
+
+    [SerializeField]
+    private TextMeshProUGUI _modsListTextField;
 
     private bool _bound;
     private OptionsMenuTab? _previousTab;
@@ -272,6 +283,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             case OptionsMenuTab.Controls:
                 RenderControlsPage(data, resetControlsScroll);
                 break;
+            case OptionsMenuTab.Mods:
+                RenderModsPage(data);
+                break;
         }
         _previousTab = data.ActiveTab;
         gameObject.SetActive(true);
@@ -301,7 +315,10 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         SetPageActive(_audioPage, activeTab == OptionsMenuTab.Audio);
         SetPageActive(_saveLoadPage, activeTab == OptionsMenuTab.SaveLoad);
         SetPageActive(_controlsPage, activeTab == OptionsMenuTab.Controls);
-        _settingsActions?.SetActive(activeTab != OptionsMenuTab.SaveLoad);
+        SetPageActive(_modsPage, activeTab == OptionsMenuTab.Mods);
+        _settingsActions?.SetActive(
+            activeTab != OptionsMenuTab.SaveLoad && activeTab != OptionsMenuTab.Mods
+        );
     }
 
     /// <summary>
@@ -412,6 +429,29 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private void RenderSaveLoadPage(OptionsMenuRenderData data, bool resetScroll)
     {
         _saveListView.Render(data, resetScroll);
+    }
+
+    /// <summary>
+    /// Displays the active mods in deterministic load order.
+    /// </summary>
+    /// <param name="data">The Options menu data.</param>
+    private void RenderModsPage(OptionsMenuRenderData data)
+    {
+        string status = data.Mods.Count == 0 ? "NO MODS LOADED" : $"{data.Mods.Count} MODS LOADED";
+        UILayout.SetTextContent(_modsStatusTextField, status);
+
+        StringBuilder list = new StringBuilder();
+        for (int index = 0; index < data.Mods.Count; index++)
+        {
+            OptionsModRow mod = data.Mods[index];
+            if (index > 0)
+                list.AppendLine().AppendLine();
+            list.Append(index + 1).Append(". ").AppendLine(mod.DisplayName);
+            list.Append("   ").Append(mod.ID).Append("  •  ").Append(mod.Version);
+        }
+        if (data.Mods.Count == 0)
+            list.Append("Place compatible mods in the Mods folder and restart the game.");
+        UILayout.SetTextContent(_modsListTextField, list.ToString());
     }
 
     /// <summary>
@@ -745,6 +785,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             OptionsMenuTab.Audio => "AUDIO",
             OptionsMenuTab.SaveLoad => "SAVE / LOAD",
             OptionsMenuTab.Controls => "CONTROLS",
+            OptionsMenuTab.Mods => "MODS",
             _ => string.Empty,
         };
     }
@@ -976,16 +1017,19 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || string.IsNullOrWhiteSpace(_rowActiveSpriteAddress)
         )
             throw new MissingReferenceException($"{name} is missing a row sprite address.");
-        if (_tabButtons.Length != 5 || _tabLabelFields.Length != 5 || _tabSurfaceImages.Length != 5)
-            throw new MissingReferenceException($"{name} expects five tabs.");
+        if (_tabButtons.Length != 6 || _tabLabelFields.Length != 6 || _tabSurfaceImages.Length != 6)
+            throw new MissingReferenceException($"{name} expects six tabs.");
         if (
             _gameplayPage == null
             || _graphicsPage == null
             || _audioPage == null
             || _saveLoadPage == null
             || _controlsPage == null
+            || _modsPage == null
         )
             throw new MissingReferenceException($"{name} is missing a page container.");
+        if (_modsStatusTextField == null || _modsListTextField == null)
+            throw new MissingReferenceException($"{name} is missing a Mods text field.");
         if (_gameplayRows.Length != 4 || Array.Exists(_gameplayRows, row => row == null))
             throw new MissingReferenceException($"{name} expects four gameplay rows.");
         if (

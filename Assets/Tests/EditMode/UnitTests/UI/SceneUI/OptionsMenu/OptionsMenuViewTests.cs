@@ -467,13 +467,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies Gameplay is first and Controls precedes Save / Load in selection routing.
+        /// Verifies Gameplay is first and Mods precedes Save / Load in selection routing.
         /// </summary>
         [Test]
-        public void Tabs_PresentControlsBeforeSaveLoad_AndRouteSelections()
+        public void Tabs_PresentModsBeforeSaveLoad_AndRouteSelections()
         {
             CollectionAssert.AreEqual(
-                new[] { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" },
+                new[] { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "MODS", "SAVE / LOAD" },
                 GetField<TextMeshProUGUI[]>("_tabLabelFields").Select(label => label.text).ToArray()
             );
 
@@ -484,7 +484,38 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             tabButtons[3].onClick.Invoke();
             Assert.AreEqual(OptionsMenuTab.Controls, selectedTab);
             tabButtons[4].onClick.Invoke();
+            Assert.AreEqual(OptionsMenuTab.Mods, selectedTab);
+            tabButtons[5].onClick.Invoke();
             Assert.AreEqual(OptionsMenuTab.SaveLoad, selectedTab);
+        }
+
+        [Test]
+        public void ModsPage_LoadedMods_RendersLoadOrderAndIdentity()
+        {
+            OptionsMenuRenderData data = CreateRenderDataForTab(
+                OptionsMenuTab.Mods,
+                mods: new[]
+                {
+                    new OptionsModRow("first", "1.0.0", "First Mod"),
+                    new OptionsModRow("second", "2.0.0", "Second Mod"),
+                }
+            );
+
+            _view.Render(data);
+
+            Assert.AreEqual(
+                "2 MODS LOADED",
+                GetField<TextMeshProUGUI>("_modsStatusTextField").text
+            );
+            StringAssert.Contains(
+                "1. First Mod",
+                GetField<TextMeshProUGUI>("_modsListTextField").text
+            );
+            StringAssert.Contains(
+                "second  •  2.0.0",
+                GetField<TextMeshProUGUI>("_modsListTextField").text
+            );
+            Assert.IsFalse(GetField<GameObject>("_settingsActions").activeSelf);
         }
 
         /// <summary>
@@ -700,7 +731,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
 
             CollectionAssert.AreEqual(
-                new[] { 82, 118, 154, 190, 226 },
+                new[] { 82, 118, 154, 190, 226, 262 },
                 tabRects.Select(rect => rect.y).ToArray()
             );
             CollectionAssert.AreEqual(
@@ -819,7 +850,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private static OptionsMenuRenderData CreateRenderDataForTab(
             OptionsMenuTab activeTab,
             OptionsSaveSlot[] saveSlots = null,
-            OptionsBindingRow[] bindings = null
+            OptionsBindingRow[] bindings = null,
+            OptionsModRow[] mods = null
         )
         {
             return new OptionsMenuRenderData(
@@ -836,7 +868,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 true,
                 true,
                 -1,
-                false
+                false,
+                mods: mods
             );
         }
     }

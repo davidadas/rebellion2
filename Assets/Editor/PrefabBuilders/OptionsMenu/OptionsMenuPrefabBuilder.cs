@@ -161,12 +161,15 @@ public static class OptionsMenuPrefabBuilder
         SetSourceRect(saveLoadPage, 228, 69, 382, 365);
         RectTransform controlsPage = CreateChildLayer("ControlsPage", contentRoot);
         SetSourceRect(controlsPage, 228, 69, 382, 365);
+        RectTransform modsPage = CreateChildLayer("ModsPage", contentRoot);
+        SetSourceRect(modsPage, 228, 69, 382, 365);
 
         // Hidden Pages.
         graphicsPage.gameObject.SetActive(false);
         audioPage.gameObject.SetActive(false);
         saveLoadPage.gameObject.SetActive(false);
         controlsPage.gameObject.SetActive(false);
+        modsPage.gameObject.SetActive(false);
 
         BuildGameplayPage(view, gameplayPage, accent);
 
@@ -177,6 +180,7 @@ public static class OptionsMenuPrefabBuilder
         BuildSaveLoadPage(view, saveLoadPage, accent, textColor, textDim);
 
         BuildControlsPage(view, controlsPage, accent, textColor, textDim);
+        BuildModsPage(view, modsPage, accent, textColor, textDim);
         BuildFooter(view, contentRoot, textColor, textDim);
 
         AssignReference(view, "_backgroundImage", background);
@@ -195,6 +199,7 @@ public static class OptionsMenuPrefabBuilder
         AssignReference(view, "_audioPage", audioPage.gameObject);
         AssignReference(view, "_saveLoadPage", saveLoadPage.gameObject);
         AssignReference(view, "_controlsPage", controlsPage.gameObject);
+        AssignReference(view, "_modsPage", modsPage.gameObject);
 
         GameObject saved = SaveGeneratedPrefabAsset(window, _optionsMenuWindowPrefabPath);
         UnityEngine.Object.DestroyImmediate(window);
@@ -215,13 +220,14 @@ public static class OptionsMenuPrefabBuilder
         Color textColor
     )
     {
-        string[] tabNames = { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" };
+        string[] tabNames = { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "MODS", "SAVE / LOAD" };
         string[] tabObjectNames =
         {
             "GameplayTab",
             "GraphicsTab",
             "AudioTab",
             "ControlsTab",
+            "ModsTab",
             "SaveLoadTab",
         };
         Button[] tabButtons = new Button[tabNames.Length];
@@ -259,6 +265,43 @@ public static class OptionsMenuPrefabBuilder
         AssignReferenceArray(view, "_tabButtons", tabButtons);
         AssignReferenceArray(view, "_tabLabelFields", tabLabels);
         AssignReferenceArray(view, "_tabSurfaceImages", tabSurfaces);
+    }
+
+    /// <summary>
+    /// Builds the read-only loaded-mod list.
+    /// </summary>
+    /// <param name="view">The Options view receiving the authored references.</param>
+    /// <param name="modsPage">The authored Mods page root.</param>
+    /// <param name="accent">The Options accent color.</param>
+    /// <param name="textColor">The primary Options text color.</param>
+    /// <param name="textDim">The secondary Options text color.</param>
+    private static void BuildModsPage(
+        OptionsMenuView view,
+        RectTransform modsPage,
+        Color accent,
+        Color textColor,
+        Color textDim
+    )
+    {
+        CreateOptionsSectionHeader(modsPage, "LoadedModsHeader", "ACTIVE LOAD ORDER", 16, accent);
+
+        TextMeshProUGUI status = CreateTextLabel("ModsStatusTextField", modsPage);
+        status.text = "NO MODS LOADED";
+        status.color = textDim;
+        status.fontSize = 11;
+        status.alignment = TextAlignmentOptions.TopLeft;
+        SetSourceRect(status.rectTransform, 20, 43, 340, 18);
+
+        TextMeshProUGUI list = CreateTextLabel("ModsListTextField", modsPage);
+        list.text = "Place compatible mods in the Mods folder and restart the game.";
+        list.color = textColor;
+        list.fontSize = 11;
+        list.alignment = TextAlignmentOptions.TopLeft;
+        list.textWrappingMode = TextWrappingModes.Normal;
+        SetSourceRect(list.rectTransform, 20, 72, 340, 244);
+
+        AssignReference(view, "_modsStatusTextField", status);
+        AssignReference(view, "_modsListTextField", list);
     }
 
     /// <summary>

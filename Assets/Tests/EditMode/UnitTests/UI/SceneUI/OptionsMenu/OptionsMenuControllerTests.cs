@@ -140,6 +140,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             _controller.RenderWindows();
             Assert.IsTrue(GetField<GameObject>(view, "_controlsPage").activeSelf);
 
+            tabs[(int)OptionsMenuTab.Mods].onClick.Invoke();
+            _controller.RenderWindows();
+            Assert.IsTrue(GetField<GameObject>(view, "_modsPage").activeSelf);
+
             tabs[(int)OptionsMenuTab.SaveLoad].onClick.Invoke();
             _controller.RenderWindows();
             Assert.IsTrue(GetField<GameObject>(view, "_saveLoadPage").activeSelf);
