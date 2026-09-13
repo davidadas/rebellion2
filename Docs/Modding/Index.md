@@ -16,10 +16,12 @@ distribute only your mod definition and replacement files. Players and mod devel
 installer.
 
 Each immediate subdirectory containing a `mod.xml` is loaded when its `BasePackID` matches the
-selected content pack. Mods load by folder name in ordinal order; when multiple mods contain the
-same logical file, the later mod wins. A missing mod file falls back to the selected content pack.
-The Options menu's Mods page shows the active mods and their load order. Enabling, disabling, and
-reordering mods in the game are not yet supported.
+selected content pack, or for every pack when `BasePackID` is omitted. Mods load by folder name in
+ordinal order; when multiple mods contain the same logical file, the later mod wins. A missing mod
+file falls back to the selected content pack.
+The Options menu's Mods page shows compatible mods and lets players enable or disable them. Changes
+take effect after restarting the game. Mods load by folder name; custom reordering is not yet
+supported.
 
 ```text
 Mods/
@@ -42,6 +44,8 @@ The minimal mod definition is:
   <BasePackID>classic-galactic-civil-war</BasePackID>
 </ContentModDefinition>
 ```
+
+`Content/` is discovered as the mod's loose-file payload.
 
 A mod replaces a complete file at the matching logical path. It does not normally merge individual
 objects or XML fields within that file. Files beneath the mod's `Content/Pack` directory replace

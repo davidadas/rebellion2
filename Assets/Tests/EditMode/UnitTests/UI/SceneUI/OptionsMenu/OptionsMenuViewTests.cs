@@ -489,33 +489,77 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(OptionsMenuTab.SaveLoad, selectedTab);
         }
 
+        /// <summary>
+        /// Verifies compatible mods render their identity, enablement, and restart state.
+        /// </summary>
         [Test]
-        public void ModsPage_LoadedMods_RendersLoadOrderAndIdentity()
+        public void ModsPage_AvailableMods_RendersEnablementAndIdentity()
         {
             OptionsMenuRenderData data = CreateRenderDataForTab(
                 OptionsMenuTab.Mods,
                 mods: new[]
                 {
                     new OptionsModRow("first", "1.0.0", "First Mod"),
-                    new OptionsModRow("second", "2.0.0", "Second Mod"),
-                }
+                    new OptionsModRow("second", "2.0.0", "Second Mod", false, true),
+                },
+                contentPackLabel: "Classic Galactic Civil War"
             );
 
             _view.Render(data);
 
+            Assert.AreEqual("1 MOD LOADED", GetField<TextMeshProUGUI>("_modsStatusTextField").text);
+            TextMeshProUGUI restart = GetField<TextMeshProUGUI>("_modsRestartTextField");
+            Assert.IsTrue(restart.gameObject.activeSelf);
+            Assert.AreEqual("RESTART REQUIRED", restart.text);
+            Assert.AreEqual(FontStyles.Bold, restart.fontStyle);
             Assert.AreEqual(
-                "2 MODS LOADED",
-                GetField<TextMeshProUGUI>("_modsStatusTextField").text
+                "Classic Galactic Civil War",
+                GetField<TextMeshProUGUI>("_contentPackValueField").text
             );
-            StringAssert.Contains(
-                "1. First Mod",
-                GetField<TextMeshProUGUI>("_modsListTextField").text
+            int packDelta = 0;
+            _view.ContentPackStepRequested += delta => packDelta = delta;
+            GetField<Button>("_contentPackNextButton").onClick.Invoke();
+            Assert.AreEqual(1, packDelta);
+            List<OptionsToggleRowView> rows = GetField<List<OptionsToggleRowView>>("_modRows");
+            Assert.IsTrue(rows[0].gameObject.activeSelf);
+            Assert.IsTrue(rows[1].gameObject.activeSelf);
+            Assert.AreEqual(
+                "First Mod",
+                GetPrivateField<TextMeshProUGUI>(rows[0], "_labelTextField").text
             );
-            StringAssert.Contains(
-                "second  •  2.0.0",
-                GetField<TextMeshProUGUI>("_modsListTextField").text
+            Assert.AreEqual(
+                "OFF",
+                GetPrivateField<TextMeshProUGUI>(rows[1], "_stateTextField").text
             );
+            int requestedMod = -1;
+            _view.ModToggleRequested += index => requestedMod = index;
+            GetPrivateField<Button>(rows[1], "_button").onClick.Invoke();
+            Assert.AreEqual(1, requestedMod);
             Assert.IsFalse(GetField<GameObject>("_settingsActions").activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies a large compatible-mod list creates every row within scrollable content.
+        /// </summary>
+        [Test]
+        public void ModsPage_MoreModsThanViewport_RendersEveryModInScrollableContent()
+        {
+            OptionsModRow[] mods = Enumerable
+                .Range(1, 12)
+                .Select(index => new OptionsModRow($"mod-{index}", "1.0.0", $"Mod {index}"))
+                .ToArray();
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Mods, mods: mods));
+
+            List<OptionsToggleRowView> rows = GetField<List<OptionsToggleRowView>>("_modRows");
+            Assert.AreEqual(12, rows.Count);
+            Assert.IsTrue(rows[11].gameObject.activeSelf);
+            Assert.AreEqual(
+                "Mod 12",
+                GetPrivateField<TextMeshProUGUI>(rows[11], "_labelTextField").text
+            );
+            ScrollAreaView scrollArea = GetField<ScrollAreaView>("_modsScrollArea");
+            Assert.Greater(scrollArea.ContentRoot.rect.height, scrollArea.ViewportHeight);
         }
 
         /// <summary>
@@ -828,6 +872,15 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     .GetValue(_view);
         }
 
+        private static T GetPrivateField<T>(object target, string fieldName)
+        {
+            return (T)
+                target
+                    .GetType()
+                    .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+                    .GetValue(target);
+        }
+
         private static void SetField(object target, string fieldName, object value)
         {
             target
@@ -851,7 +904,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             OptionsMenuTab activeTab,
             OptionsSaveSlot[] saveSlots = null,
             OptionsBindingRow[] bindings = null,
-            OptionsModRow[] mods = null
+            OptionsModRow[] mods = null,
+            string contentPackLabel = ""
         )
         {
             return new OptionsMenuRenderData(
@@ -869,7 +923,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 true,
                 -1,
                 false,
-                mods: mods
+                mods: mods,
+                contentPackLabel: contentPackLabel
             );
         }
     }

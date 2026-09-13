@@ -46,6 +46,47 @@ public static class ContentPackLoader
     }
 
     /// <summary>
+    /// Discovers valid content-pack definitions beneath an external content root.
+    /// </summary>
+    /// <param name="contentRootPath">The external content root to inspect.</param>
+    /// <returns>The discovered pack definitions in stable directory order.</returns>
+    internal static IReadOnlyList<ContentPackDefinition> DiscoverPacks(string contentRootPath)
+    {
+        string packsRoot = Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName);
+        if (!Directory.Exists(packsRoot))
+            return Array.Empty<ContentPackDefinition>();
+
+        return Directory
+            .EnumerateDirectories(packsRoot)
+            .OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal)
+            .Select(path => Path.Combine(path, _packFileName))
+            .Where(File.Exists)
+            .Select(DeserializeXml<ContentPackDefinition>)
+            .Where(pack => !string.IsNullOrWhiteSpace(pack.ID))
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Discovers compatible mods for a selected content pack without loading the pack data.
+    /// </summary>
+    /// <param name="contentRootPath">The external content root to inspect.</param>
+    /// <param name="packID">The selected content-pack identifier.</param>
+    /// <param name="disabledModIDs">The mod identifiers disabled by the player.</param>
+    /// <returns>A resolver containing the selected pack's compatible mods.</returns>
+    internal static ContentFileResolver DiscoverModResolver(
+        string contentRootPath,
+        string packID,
+        IEnumerable<string> disabledModIDs
+    )
+    {
+        string packRoot = ResolvePackRoot(
+            Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName),
+            packID
+        );
+        return ContentFileResolver.Discover(contentRootPath, packRoot, packID, disabledModIDs);
+    }
+
+    /// <summary>
     /// Opens the selected pack/scenario, or the catalog default when either is empty.
     /// </summary>
     /// <param name="packIdOverride">Selected pack ID, or null/empty for the catalog default.</param>
@@ -53,7 +94,28 @@ public static class ContentPackLoader
     /// <returns>The loaded active content pack.</returns>
     public static ContentPack OpenActive(string packIdOverride, string scenarioIdOverride)
     {
-        return OpenActive(ResolveContentRootPath(), packIdOverride, scenarioIdOverride);
+        return OpenActive(packIdOverride, scenarioIdOverride, null);
+    }
+
+    /// <summary>
+    /// Opens the selected pack/scenario while omitting disabled compatible mods.
+    /// </summary>
+    /// <param name="packIdOverride">Selected pack ID, or null/empty for the catalog default.</param>
+    /// <param name="scenarioIdOverride">Selected scenario ID, or null/empty for the catalog default.</param>
+    /// <param name="disabledModIDs">Mod IDs that must not enter the active content layers.</param>
+    /// <returns>The loaded active content pack.</returns>
+    public static ContentPack OpenActive(
+        string packIdOverride,
+        string scenarioIdOverride,
+        IEnumerable<string> disabledModIDs
+    )
+    {
+        return OpenActive(
+            ResolveContentRootPath(),
+            packIdOverride,
+            scenarioIdOverride,
+            disabledModIDs
+        );
     }
 
     /// <summary>
@@ -63,7 +125,7 @@ public static class ContentPackLoader
     /// <returns>The loaded active content pack.</returns>
     internal static ContentPack OpenActive(string contentRootPath)
     {
-        return OpenActive(contentRootPath, null, null);
+        return OpenActive(contentRootPath, null, null, null);
     }
 
     /// <summary>
@@ -73,11 +135,13 @@ public static class ContentPackLoader
     /// <param name="contentRootPath">The external content root to inspect.</param>
     /// <param name="packIdOverride">Selected pack ID, or null/empty for the catalog default.</param>
     /// <param name="scenarioIdOverride">Selected scenario ID, or null/empty for the catalog default.</param>
+    /// <param name="disabledModIDs">Mod IDs that must not enter the active content layers.</param>
     /// <returns>The loaded active content pack.</returns>
     internal static ContentPack OpenActive(
         string contentRootPath,
         string packIdOverride,
-        string scenarioIdOverride
+        string scenarioIdOverride,
+        IEnumerable<string> disabledModIDs = null
     )
     {
         string absoluteContentRoot = Path.GetFullPath(
@@ -103,12 +167,17 @@ public static class ContentPackLoader
             && !string.Equals(packID, catalog.ActivePackID, StringComparison.Ordinal);
         try
         {
-            return OpenPack(absoluteContentRoot, packID, scenarioID);
+            return OpenPack(absoluteContentRoot, packID, scenarioID, disabledModIDs);
         }
         catch (Exception) when (usingOverride && !string.IsNullOrWhiteSpace(catalog.ActivePackID))
         {
             // Selected pack unavailable; fall back to the shipped default.
-            return OpenPack(absoluteContentRoot, catalog.ActivePackID, catalog.ActiveScenarioID);
+            return OpenPack(
+                absoluteContentRoot,
+                catalog.ActivePackID,
+                catalog.ActiveScenarioID,
+                disabledModIDs
+            );
         }
     }
 
@@ -118,11 +187,13 @@ public static class ContentPackLoader
     /// <param name="absoluteContentRoot">The resolved external content root.</param>
     /// <param name="packID">The pack ID to open.</param>
     /// <param name="scenarioID">The scenario ID to open, or empty for the pack default.</param>
+    /// <param name="disabledModIDs">Mod IDs that must not enter the active content layers.</param>
     /// <returns>The loaded content pack.</returns>
     private static ContentPack OpenPack(
         string absoluteContentRoot,
         string packID,
-        string scenarioID
+        string scenarioID,
+        IEnumerable<string> disabledModIDs
     )
     {
         string packRoot = ResolvePackRoot(
@@ -142,7 +213,8 @@ public static class ContentPackLoader
         ContentFileResolver fileResolver = ContentFileResolver.Discover(
             absoluteContentRoot,
             packRoot,
-            pack.ID
+            pack.ID,
+            disabledModIDs
         );
 
         List<ContentFactionDefinition> factions = LoadDefinitions<ContentFactionDefinition>(
@@ -460,11 +532,23 @@ public static class ContentPackLoader
         return document;
     }
 
+    /// <summary>
+    /// Resolves a required pack-scoped content file.
+    /// </summary>
+    /// <param name="fileResolver">The layered content resolver.</param>
+    /// <param name="relativePath">The path relative to the pack scope.</param>
+    /// <returns>The resolved absolute file path.</returns>
     private static string RequirePackFile(ContentFileResolver fileResolver, string relativePath)
     {
         return RequireFile(fileResolver, _packAddressPrefix + relativePath);
     }
 
+    /// <summary>
+    /// Resolves a required logical content address.
+    /// </summary>
+    /// <param name="fileResolver">The layered content resolver.</param>
+    /// <param name="address">The scoped logical content address.</param>
+    /// <returns>The resolved absolute file path.</returns>
     private static string RequireFile(ContentFileResolver fileResolver, string address)
     {
         return fileResolver.ResolveFile(address)

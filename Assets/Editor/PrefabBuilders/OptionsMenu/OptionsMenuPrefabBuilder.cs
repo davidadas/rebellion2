@@ -11,8 +11,8 @@ using UnityEngine.UI;
 /// </summary>
 public static class OptionsMenuPrefabBuilder
 {
-    private const int _navigationRowHeight = 30;
-    private const int _navigationRowSpacing = 6;
+    private const int _navigationRowHeight = 28;
+    private const int _navigationRowSpacing = 4;
     private const int _navigationRowStride = _navigationRowHeight + _navigationRowSpacing;
     private const int _tabNavigationStartY = 82;
     private const int _footerNavigationStartY = 318;
@@ -180,7 +180,7 @@ public static class OptionsMenuPrefabBuilder
         BuildSaveLoadPage(view, saveLoadPage, accent, textColor, textDim);
 
         BuildControlsPage(view, controlsPage, accent, textColor, textDim);
-        BuildModsPage(view, modsPage, accent, textColor, textDim);
+        BuildModsPage(view, modsPage, accent, textDim);
         BuildFooter(view, contentRoot, textColor, textDim);
 
         AssignReference(view, "_backgroundImage", background);
@@ -258,7 +258,7 @@ public static class OptionsMenuPrefabBuilder
             tabLabel.color = textColor;
             tabLabel.fontSize = 13;
             tabLabel.alignment = TextAlignmentOptions.MidlineLeft;
-            SetSourceRect(tabLabel.rectTransform, 14, 5, 140, 20);
+            SetSourceRect(tabLabel.rectTransform, 14, 0, 140, _navigationRowHeight);
             tabLabels[i] = tabLabel;
         }
 
@@ -268,40 +268,80 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Builds the read-only loaded-mod list.
+    /// Builds the mod enablement controls.
     /// </summary>
     /// <param name="view">The Options view receiving the authored references.</param>
     /// <param name="modsPage">The authored Mods page root.</param>
     /// <param name="accent">The Options accent color.</param>
-    /// <param name="textColor">The primary Options text color.</param>
     /// <param name="textDim">The secondary Options text color.</param>
     private static void BuildModsPage(
         OptionsMenuView view,
         RectTransform modsPage,
         Color accent,
-        Color textColor,
         Color textDim
     )
     {
-        CreateOptionsSectionHeader(modsPage, "LoadedModsHeader", "ACTIVE LOAD ORDER", 16, accent);
+        CreateOptionsSectionHeader(modsPage, "ContentPackHeader", "CONTENT PACK", 16, accent);
+        TextMeshProUGUI packValue = CreateOptionsFieldRow(
+            modsPage,
+            "ContentPack",
+            "Active Pack",
+            41,
+            out Button packPrev,
+            out Button packNext
+        );
+        CreateOptionsSectionHeader(modsPage, "LoadedModsHeader", "MODS", 74, accent);
 
         TextMeshProUGUI status = CreateTextLabel("ModsStatusTextField", modsPage);
         status.text = "NO MODS LOADED";
         status.color = textDim;
         status.fontSize = 11;
         status.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(status.rectTransform, 20, 43, 340, 18);
+        SetSourceRect(status.rectTransform, 20, 101, 160, 18);
 
-        TextMeshProUGUI list = CreateTextLabel("ModsListTextField", modsPage);
-        list.text = "Place compatible mods in the Mods folder and restart the game.";
-        list.color = textColor;
-        list.fontSize = 11;
-        list.alignment = TextAlignmentOptions.TopLeft;
-        list.textWrappingMode = TextWrappingModes.Normal;
-        SetSourceRect(list.rectTransform, 20, 72, 340, 244);
+        TextMeshProUGUI restart = CreateTextLabel("ModsRestartTextField", modsPage);
+        restart.text = "RESTART REQUIRED";
+        restart.color = new Color(0.95f, 0.25f, 0.25f);
+        restart.fontSize = 11;
+        restart.fontStyle = FontStyles.Bold;
+        restart.alignment = TextAlignmentOptions.TopRight;
+        SetSourceRect(restart.rectTransform, 180, 101, 180, 18);
+        restart.gameObject.SetActive(false);
+
+        ScrollAreaView modsScrollArea = CreateScrollAreaView(
+            modsPage,
+            "ModsScrollArea",
+            20,
+            128,
+            348,
+            214,
+            0,
+            0,
+            330,
+            214,
+            334,
+            0,
+            12,
+            214,
+            out RectTransform modsContent
+        );
+        OptionsToggleRowView rowTemplate = CreateOptionsToggleRow(
+            modsContent,
+            "ModRowTemplate",
+            0,
+            "Mod",
+            0,
+            0
+        );
+        rowTemplate.gameObject.SetActive(false);
 
         AssignReference(view, "_modsStatusTextField", status);
-        AssignReference(view, "_modsListTextField", list);
+        AssignReference(view, "_modsRestartTextField", restart);
+        AssignReference(view, "_contentPackValueField", packValue);
+        AssignReference(view, "_contentPackPrevButton", packPrev);
+        AssignReference(view, "_contentPackNextButton", packNext);
+        AssignReference(view, "_modsScrollArea", modsScrollArea);
+        AssignReference(view, "_modRowTemplate", rowTemplate);
     }
 
     /// <summary>

@@ -112,9 +112,14 @@ public sealed class AppBootstrap : MonoBehaviour
         // Read the saved selection directly; the settings system loads after content.
         UserSettingsManager.TryReadContentSelection(
             out string selectedPackID,
-            out string selectedScenarioID
+            out string selectedScenarioID,
+            out string[] disabledModIDs
         );
-        _contentPack = ContentPackLoader.OpenActive(selectedPackID, selectedScenarioID);
+        _contentPack = ContentPackLoader.OpenActive(
+            selectedPackID,
+            selectedScenarioID,
+            disabledModIDs
+        );
         _mainMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
             _contentPack.FileResolver,
             _mainMenuPreloadID
@@ -158,7 +163,6 @@ public sealed class AppBootstrap : MonoBehaviour
             _contentPack,
             getGameplaySettings: () => _userSettingsManager.Settings.Gameplay
         );
-
         if (inputController == null)
             inputController = CreateInputController();
 

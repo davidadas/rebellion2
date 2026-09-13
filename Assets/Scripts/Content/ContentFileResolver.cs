@@ -9,10 +9,13 @@ using Rebellion.Util.Serialization;
 /// </summary>
 public sealed class ContentFileResolver
 {
-    private const string _applicationAddressPrefix = "Application/";
-    private const string _packAddressPrefix = "Pack/";
+    private const string _applicationScopeName = "Application";
+    private const string _packScopeName = "Pack";
+    private const string _applicationAddressPrefix = _applicationScopeName + "/";
+    private const string _packAddressPrefix = _packScopeName + "/";
     private const string _modDefinitionFileName = "mod.xml";
     private const string _modContentDirectoryName = "Content";
+    private const string _modsDirectoryName = "Mods";
 
     private readonly IReadOnlyList<string> modContentRoots;
 
@@ -23,17 +26,24 @@ public sealed class ContentFileResolver
     public IReadOnlyList<ContentModDefinition> Mods { get; }
 
     /// <summary>
+    /// Gets every compatible discovered mod, including disabled mods.
+    /// </summary>
+    public IReadOnlyList<ContentModDefinition> AvailableMods { get; }
+
+    /// <summary>
     /// Creates a resolver over explicit mod content roots in ascending load order.
     /// </summary>
     /// <param name="contentRootPath">The absolute application content root.</param>
     /// <param name="packRootPath">The absolute selected pack root.</param>
     /// <param name="modContentRootPaths">The mod content roots in ascending load order.</param>
     /// <param name="mods">The definitions corresponding to the mod content roots.</param>
+    /// <param name="availableMods">All compatible definitions, including disabled mods.</param>
     public ContentFileResolver(
         string contentRootPath,
         string packRootPath,
         IEnumerable<string> modContentRootPaths = null,
-        IEnumerable<ContentModDefinition> mods = null
+        IEnumerable<ContentModDefinition> mods = null,
+        IEnumerable<ContentModDefinition> availableMods = null
     )
     {
         ContentRootPath = Path.GetFullPath(
@@ -46,6 +56,7 @@ public sealed class ContentFileResolver
             .Select(Path.GetFullPath)
             .ToArray();
         Mods = (mods ?? Enumerable.Empty<ContentModDefinition>()).ToArray();
+        AvailableMods = (availableMods ?? Mods).ToArray();
     }
 
     /// <summary>
@@ -54,23 +65,30 @@ public sealed class ContentFileResolver
     /// <param name="contentRootPath">The absolute application content root.</param>
     /// <param name="packRootPath">The absolute selected pack root.</param>
     /// <param name="basePackID">The selected base pack identifier.</param>
+    /// <param name="disabledModIDs">Mod IDs to discover without loading.</param>
     /// <returns>A resolver containing the compatible discovered mods.</returns>
     internal static ContentFileResolver Discover(
         string contentRootPath,
         string packRootPath,
-        string basePackID
+        string basePackID,
+        IEnumerable<string> disabledModIDs = null
     )
     {
         string modsRoot = Path.Combine(
             Directory.GetParent(Path.GetFullPath(contentRootPath))?.FullName
                 ?? throw new InvalidOperationException("The content root has no parent directory."),
-            "Mods"
+            _modsDirectoryName
         );
         if (!Directory.Exists(modsRoot))
             return new ContentFileResolver(contentRootPath, packRootPath);
 
         List<string> contentRoots = new List<string>();
         List<ContentModDefinition> definitions = new List<ContentModDefinition>();
+        List<ContentModDefinition> availableDefinitions = new List<ContentModDefinition>();
+        HashSet<string> disabledIDs = new HashSet<string>(
+            disabledModIDs ?? Enumerable.Empty<string>(),
+            StringComparer.Ordinal
+        );
         HashSet<string> ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (
             string modRoot in Directory
@@ -83,7 +101,10 @@ public sealed class ContentFileResolver
                 continue;
 
             ContentModDefinition definition = DeserializeDefinition(definitionPath);
-            if (!string.Equals(definition.BasePackID, basePackID, StringComparison.Ordinal))
+            if (
+                !string.IsNullOrWhiteSpace(definition.BasePackID)
+                && !string.Equals(definition.BasePackID, basePackID, StringComparison.Ordinal)
+            )
                 continue;
             ValidateDefinition(definition, definitionPath);
             if (!ids.Add(definition.ID))
@@ -91,11 +112,21 @@ public sealed class ContentFileResolver
                     $"Multiple content mods declare ID '{definition.ID}'."
                 );
 
-            definitions.Add(definition);
-            contentRoots.Add(Path.Combine(modRoot, _modContentDirectoryName));
+            availableDefinitions.Add(definition);
+            if (!disabledIDs.Contains(definition.ID))
+            {
+                definitions.Add(definition);
+                contentRoots.Add(Path.Combine(modRoot, _modContentDirectoryName));
+            }
         }
 
-        return new ContentFileResolver(contentRootPath, packRootPath, contentRoots, definitions);
+        return new ContentFileResolver(
+            contentRootPath,
+            packRootPath,
+            contentRoots,
+            definitions,
+            availableDefinitions
+        );
     }
 
     /// <summary>
@@ -159,6 +190,11 @@ public sealed class ContentFileResolver
         return Directory.Exists(ResolveBasePath(normalizedAddress));
     }
 
+    /// <summary>
+    /// Adds every file beneath one layer to the logical-address index.
+    /// </summary>
+    /// <param name="files">The indexed files, keyed by relative logical address.</param>
+    /// <param name="directoryPath">The absolute layer directory to enumerate.</param>
     private static void AddFiles(IDictionary<string, string> files, string directoryPath)
     {
         if (!Directory.Exists(directoryPath))
@@ -177,6 +213,13 @@ public sealed class ContentFileResolver
         }
     }
 
+    /// <summary>
+    /// Resolves an address and its optional extensions beneath one mod content root.
+    /// </summary>
+    /// <param name="rootPath">The absolute mod content root.</param>
+    /// <param name="normalizedAddress">The normalized scoped content address.</param>
+    /// <param name="extensions">The optional file extensions to probe.</param>
+    /// <returns>The first existing absolute file path, or null.</returns>
     private static string ResolveFromRoot(
         string rootPath,
         string normalizedAddress,
@@ -194,24 +237,42 @@ public sealed class ContentFileResolver
         return null;
     }
 
+    /// <summary>
+    /// Resolves a normalized address beneath the selected base content roots.
+    /// </summary>
+    /// <param name="normalizedAddress">The normalized scoped content address.</param>
+    /// <returns>The corresponding absolute base path.</returns>
     private string ResolveBasePath(string normalizedAddress)
     {
         return ResolveScopedPath(
-            Path.Combine(ContentRootPath, "Application"),
+            Path.Combine(ContentRootPath, _applicationScopeName),
             PackRootPath,
             normalizedAddress
         );
     }
 
+    /// <summary>
+    /// Resolves a normalized address beneath one mod content root.
+    /// </summary>
+    /// <param name="modContentRoot">The absolute mod content root.</param>
+    /// <param name="normalizedAddress">The normalized scoped content address.</param>
+    /// <returns>The corresponding absolute mod path.</returns>
     private static string ResolveModPath(string modContentRoot, string normalizedAddress)
     {
         return ResolveScopedPath(
-            Path.Combine(modContentRoot, "Application"),
-            Path.Combine(modContentRoot, "Pack"),
+            Path.Combine(modContentRoot, _applicationScopeName),
+            Path.Combine(modContentRoot, _packScopeName),
             normalizedAddress
         );
     }
 
+    /// <summary>
+    /// Maps a logical application- or pack-scoped address to its filesystem root.
+    /// </summary>
+    /// <param name="applicationRootPath">The absolute application content root.</param>
+    /// <param name="packRootPath">The absolute pack content root.</param>
+    /// <param name="normalizedAddress">The normalized scoped content address.</param>
+    /// <returns>The resolved absolute path within the selected scope.</returns>
     private static string ResolveScopedPath(
         string applicationRootPath,
         string packRootPath,
@@ -236,6 +297,11 @@ public sealed class ContentFileResolver
         );
     }
 
+    /// <summary>
+    /// Normalizes separators and validates a logical content address.
+    /// </summary>
+    /// <param name="address">The logical content address.</param>
+    /// <returns>The normalized scoped address.</returns>
     private static string NormalizeAddress(string address)
     {
         string normalized = address?.Trim().Replace('\\', '/');
@@ -253,6 +319,12 @@ public sealed class ContentFileResolver
         return normalized;
     }
 
+    /// <summary>
+    /// Resolves a relative path while preventing traversal outside its content root.
+    /// </summary>
+    /// <param name="rootPath">The absolute allowed content root.</param>
+    /// <param name="relativePath">The relative content path.</param>
+    /// <returns>The resolved absolute path within the root.</returns>
     private static string ResolveWithinRoot(string rootPath, string relativePath)
     {
         string absoluteRoot = Path.GetFullPath(rootPath);
@@ -274,6 +346,11 @@ public sealed class ContentFileResolver
         return candidatePath;
     }
 
+    /// <summary>
+    /// Deserializes one mod definition from disk.
+    /// </summary>
+    /// <param name="definitionPath">The absolute mod-definition path.</param>
+    /// <returns>The deserialized definition.</returns>
     private static ContentModDefinition DeserializeDefinition(string definitionPath)
     {
         GameSerializer serializer = new GameSerializer(
@@ -287,13 +364,17 @@ public sealed class ContentFileResolver
             );
     }
 
+    /// <summary>
+    /// Validates the required identity fields of one compatible mod definition.
+    /// </summary>
+    /// <param name="definition">The definition to validate.</param>
+    /// <param name="definitionPath">The source path used in validation errors.</param>
     private static void ValidateDefinition(ContentModDefinition definition, string definitionPath)
     {
         if (
             string.IsNullOrWhiteSpace(definition.ID)
             || string.IsNullOrWhiteSpace(definition.Version)
             || string.IsNullOrWhiteSpace(definition.DisplayName)
-            || string.IsNullOrWhiteSpace(definition.BasePackID)
         )
             throw new InvalidDataException(
                 $"Content mod definition is incomplete: {definitionPath}"

@@ -12,6 +12,9 @@ namespace Rebellion.Tests.Content
         private string contentRoot;
         private string packRoot;
 
+        /// <summary>
+        /// Creates isolated base-content and pack directories for each test.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -25,6 +28,9 @@ namespace Rebellion.Tests.Content
             Directory.CreateDirectory(packRoot);
         }
 
+        /// <summary>
+        /// Removes the isolated content directory after each test.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -32,6 +38,9 @@ namespace Rebellion.Tests.Content
                 Directory.Delete(root, true);
         }
 
+        /// <summary>
+        /// Verifies a missing mod file falls back to the selected base pack.
+        /// </summary>
         [Test]
         public void ResolveFile_ModDoesNotContainAddress_FallsBackToBasePack()
         {
@@ -47,6 +56,9 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(baseFile, resolver.ResolveFile("Pack/Data/ships.xml"));
         }
 
+        /// <summary>
+        /// Verifies the last mod in load order wins an address collision.
+        /// </summary>
         [Test]
         public void ResolveFile_MultipleModsContainAddress_LastModWins()
         {
@@ -64,6 +76,9 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(winningFile, resolver.ResolveFile("Pack/Data/ships.xml"));
         }
 
+        /// <summary>
+        /// Verifies extension probing still gives a mod layer precedence.
+        /// </summary>
         [Test]
         public void ResolveFile_ModUsesDifferentExtension_ModStillWins()
         {
@@ -82,6 +97,9 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        /// <summary>
+        /// Verifies directory enumeration unions layers without duplicate addresses.
+        /// </summary>
         [Test]
         public void EnumerateFileAddresses_LayersFilesAndRemovesDuplicateAddresses()
         {
@@ -104,6 +122,9 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        /// <summary>
+        /// Verifies discovery loads a compatible mod definition and content layer.
+        /// </summary>
         [Test]
         public void Discover_CompatibleMod_LoadsDefinitionAndContent()
         {
@@ -129,6 +150,38 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(modFile, resolver.ResolveFile("Pack/Data/ships.xml"));
         }
 
+        /// <summary>
+        /// Verifies disabled compatible mods remain discoverable without becoming active layers.
+        /// </summary>
+        [Test]
+        public void Discover_DisabledCompatibleMod_ListsButDoesNotLoadMod()
+        {
+            WriteFile(packRoot, "Data/ships.xml", "base");
+            string modRoot = Path.Combine(root, "Mods", "ShipRebalance");
+            WriteFile(
+                modRoot,
+                "mod.xml",
+                "<ContentModDefinition><ID>ship-rebalance</ID><Version>1.0.0</Version>"
+                    + "<DisplayName>Ship Rebalance</DisplayName><BasePackID>base-pack</BasePackID>"
+                    + "</ContentModDefinition>"
+            );
+            WriteFile(modRoot, "Content/Pack/Data/ships.xml", "mod");
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                contentRoot,
+                packRoot,
+                "base-pack",
+                new[] { "ship-rebalance" }
+            );
+
+            Assert.IsEmpty(resolver.Mods);
+            Assert.AreEqual("ship-rebalance", resolver.AvailableMods.Single().ID);
+            Assert.AreEqual("base", File.ReadAllText(resolver.ResolveFile("Pack/Data/ships.xml")));
+        }
+
+        /// <summary>
+        /// Verifies an address cannot traverse from one logical scope into another.
+        /// </summary>
         [Test]
         public void ResolveFile_AddressCrossesScope_ThrowsArgumentException()
         {
@@ -139,6 +192,9 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        /// <summary>
+        /// Verifies an address cannot traverse outside the selected pack root.
+        /// </summary>
         [Test]
         public void ResolveFile_AddressLeavesPackRoot_ThrowsArgumentException()
         {
@@ -147,6 +203,9 @@ namespace Rebellion.Tests.Content
             Assert.Throws<ArgumentException>(() => resolver.ResolveFile("Pack/../../outside.xml"));
         }
 
+        /// <summary>
+        /// Verifies logical addresses normalize platform-specific separators.
+        /// </summary>
         [Test]
         public void ResolveFile_BackslashAddress_UsesPlatformPathHandling()
         {
@@ -156,6 +215,9 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(baseFile, resolver.ResolveFile(@"Pack\Data\ships.xml"));
         }
 
+        /// <summary>
+        /// Verifies an incomplete definition for another pack cannot break discovery.
+        /// </summary>
         [Test]
         public void Discover_UnrelatedIncompleteMod_IgnoresDefinition()
         {
@@ -176,6 +238,13 @@ namespace Rebellion.Tests.Content
             Assert.IsEmpty(resolver.Mods);
         }
 
+        /// <summary>
+        /// Writes one test file beneath an isolated content root.
+        /// </summary>
+        /// <param name="basePath">The absolute base directory.</param>
+        /// <param name="relativePath">The relative file path.</param>
+        /// <param name="contents">The file contents.</param>
+        /// <returns>The absolute written file path.</returns>
         private static string WriteFile(string basePath, string relativePath, string contents)
         {
             string path = Path.Combine(basePath, relativePath);
