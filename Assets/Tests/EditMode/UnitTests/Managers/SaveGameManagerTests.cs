@@ -93,6 +93,36 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void LoadGameData_SavedStrategyWindows_RestoresWindowState()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
+            game.GetFactionPlayer("FNALL1")
+                .UIState.StrategyWindows.Add(
+                    new StrategyWindowState
+                    {
+                        WindowTypeID = "Planet.Fleet",
+                        TargetInstanceID = "PLANET1",
+                        X = 123,
+                        Y = 45,
+                        ZOrder = 2,
+                    }
+                );
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            StrategyWindowState state = loadedGame
+                .GetFactionPlayer("FNALL1")
+                .UIState.StrategyWindows.Single();
+            Assert.AreEqual("Planet.Fleet", state.WindowTypeID);
+            Assert.AreEqual("PLANET1", state.TargetInstanceID);
+            Assert.AreEqual(123, state.X);
+            Assert.AreEqual(45, state.Y);
+            Assert.AreEqual(2, state.ZOrder);
+        }
+
+        [Test]
         public void SaveGameData_ExistingSave_AtomicallyReplacesWithoutTemporaryFiles()
         {
             GameRoot game = new GameRoot

@@ -184,6 +184,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void TryOpenAtPosition_AvailableAuthoredSlot_RestoresRequestedSlot()
+        {
+            bool opened = _controller.TryOpenAtPosition(_sector, SectorWindowPositions.Right);
+            PlanetSectorWindowView view = GetOpenView(out UIWindow window);
+
+            Assert.IsTrue(opened);
+            Assert.AreEqual(SectorWindowPositions.Right, _controller.GetSectorPosition(view));
+            Assert.AreEqual(
+                GetWindowPosition(SectorWindowPositions.Right),
+                new Vector2Int(window.X, window.Y)
+            );
+        }
+
+        [Test]
+        public void TryOpenAtPosition_OccupiedAuthoredSlot_DoesNotReplaceWindow()
+        {
+            GalaxyMapSector secondSector = CreateSector("second", "Second Sector");
+            _controller.TryOpenAtPosition(_sector, SectorWindowPositions.Middle);
+
+            bool opened = _controller.TryOpenAtPosition(secondSector, SectorWindowPositions.Middle);
+
+            Assert.IsFalse(opened);
+            Assert.AreEqual(1, _windowManager.Windows.Count);
+            Assert.IsNotNull(_controller.FindWindow(_sector));
+            Assert.IsNull(_controller.FindWindow(secondSector));
+        }
+
+        [Test]
         public void SetSectorPosition_InitializedWindow_UpdatesSessionSlot()
         {
             PlanetSectorWindowView view = OpenWindow(out UIWindow _);

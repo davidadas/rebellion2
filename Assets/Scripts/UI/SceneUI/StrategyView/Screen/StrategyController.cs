@@ -41,6 +41,12 @@ public sealed class StrategyController
         IStatusWindowActions,
         IBattleAlertWindowActions
 {
+    private const string _defenseWindowTypeID = "Planet.Defense";
+    private const string _facilityWindowTypeID = "Planet.Facility";
+    private const string _fleetWindowTypeID = "Planet.Fleet";
+    private const string _missionsWindowTypeID = "Planet.Missions";
+    private const string _sectorWindowTypeID = "PlanetSector";
+
     [SerializeField]
     private CanvasGroup contentGroup;
 
@@ -99,6 +105,7 @@ public sealed class StrategyController
     private bool initialized;
     private bool cancelHandlersRegistered;
     private bool presentationActive;
+    private bool restoringWindows;
     private RectInt windowMovePreviewBounds;
     private bool windowMovePreviewVisible;
 
@@ -129,6 +136,7 @@ public sealed class StrategyController
     private StrategyDragController strategyDragController;
     private StrategyWindowPlacementController windowPlacementController;
     private StrategyWindowCommandController windowCommandController;
+    private StrategyWindowStateManager windowStateManager;
     private StrategyScreenInputController inputController;
     private OptionsMenuController _optionsMenuController;
     private AppInputController _appInputController;
@@ -207,11 +215,13 @@ public sealed class StrategyController
         InitializeWindowControllers();
         InitializeInteractionControllers();
         BindWindowControllerActions();
+        InitializeWindowState();
         SubscribeViewEvents();
         presentationActive = true;
         AppBootstrap.Instance?.GetInputController()?.SetContext(InputContext.Strategy);
         RegisterCancelHandlers();
         OnGameReady();
+        RestoreWindows();
         LoadInitialContent();
     }
 
@@ -327,6 +337,100 @@ public sealed class StrategyController
         );
         bool hasModalWindow = strategyWindowManager.HasModalWindow();
         strategyWindowLayerView.RenderModalState(hasModalWindow, hasModalWindow);
+    }
+
+    /// <summary>
+    /// Registers persistence adapters for restorable strategy windows.
+    /// </summary>
+    private void InitializeWindowState()
+    {
+        windowStateManager = new StrategyWindowStateManager(
+            strategyWindowManager,
+            gameManager.GetPlayerUIState().StrategyWindows
+        );
+        RegisterPlanetWindowState<FacilityWindowView>(
+            _facilityWindowTypeID,
+            facilityWindowController.GetPlanet,
+            (planet, x, y) => facilityWindowController.Open(planet, x, y, out _) != null
+        );
+        RegisterPlanetWindowState<DefenseWindowView>(
+            _defenseWindowTypeID,
+            defenseWindowController.GetPlanet,
+            (planet, x, y) => defenseWindowController.Open(planet, x, y, out _) != null
+        );
+        RegisterPlanetWindowState<FleetWindowView>(
+            _fleetWindowTypeID,
+            fleetWindowController.GetPlanet,
+            (planet, x, y) => fleetWindowController.Open(planet, x, y, out _) != null
+        );
+        RegisterPlanetWindowState<MissionsWindowView>(
+            _missionsWindowTypeID,
+            missionsWindowController.GetPlanet,
+            (planet, x, y) => missionsWindowController.Open(planet, x, y, out _) != null
+        );
+        windowStateManager.Register(
+            new StrategyWindowStateAdapter<PlanetSectorWindowView>(
+                _sectorWindowTypeID,
+                view => planetSectorWindowController.GetSector(view)?.PlanetSector?.InstanceID,
+                RestoreSectorWindow
+            )
+        );
+    }
+
+    /// <summary>
+    /// Registers one planet feature window with generic strategy-window persistence.
+    /// </summary>
+    /// <typeparam name="TView">The authored planet feature view.</typeparam>
+    /// <param name="windowTypeID">The stable serialized window type identifier.</param>
+    /// <param name="getPlanet">Returns the planet represented by a runtime view.</param>
+    /// <param name="open">Opens the feature window for a restored planet and position.</param>
+    private void RegisterPlanetWindowState<TView>(
+        string windowTypeID,
+        Func<TView, GalaxyMapPlanet> getPlanet,
+        Func<GalaxyMapPlanet, int, int, bool> open
+    )
+        where TView : class
+    {
+        windowStateManager.Register(
+            new StrategyWindowStateAdapter<TView>(
+                windowTypeID,
+                view => getPlanet(view)?.Planet?.InstanceID,
+                state =>
+                {
+                    GalaxyMapPlanet planet = galaxyMapController.FindPlanet(state.TargetInstanceID);
+                    return planet != null && open(planet, state.X, state.Y);
+                }
+            )
+        );
+    }
+
+    /// <summary>
+    /// Restores one planet-sector window into its saved authored slot.
+    /// </summary>
+    /// <param name="state">The saved sector window state.</param>
+    /// <returns>True when the sector and slot were restored.</returns>
+    private bool RestoreSectorWindow(StrategyWindowState state)
+    {
+        return state != null
+            && galaxyMapController.FindSector(state.TargetInstanceID) is GalaxyMapSector sector
+            && planetSectorWindowController.TryOpenAtPosition(sector, state.X);
+    }
+
+    /// <summary>
+    /// Restores the active player's saved strategy windows without overwriting them mid-restore.
+    /// </summary>
+    private void RestoreWindows()
+    {
+        restoringWindows = true;
+        try
+        {
+            windowStateManager?.Restore();
+        }
+        finally
+        {
+            restoringWindows = false;
+        }
+        windowStateManager?.Capture();
     }
 
     /// <summary>
@@ -1477,7 +1581,7 @@ public sealed class StrategyController
     private void HandleWindowFocusChanged(UIWindow window)
     {
         if (window != null)
-            dirty = true;
+            MarkDirty();
     }
 
     /// <summary>
@@ -1490,7 +1594,7 @@ public sealed class StrategyController
             return;
 
         ClearWindowMovePreview();
-        dirty = true;
+        MarkDirty();
     }
 
     /// <summary>
@@ -1605,7 +1709,7 @@ public sealed class StrategyController
         strategyWindowLayerView.RenderModalState(hasModalWindow, hasModalWindow);
         targetingController?.Cancel();
         ClearWindowMovePreview();
-        dirty = true;
+        MarkDirty();
     }
 
     /// <summary>
@@ -1710,11 +1814,13 @@ public sealed class StrategyController
         idleBarController.ResetSession(uiState.UntrackedIdleBarItems);
         bookmarkController.ResetSession(uiState.Bookmarks);
         ResetStrategyPresentation();
+        windowStateManager.Reset(uiState.StrategyWindows);
         uiContext.ReplaceGame(game);
         windowPlacementController.RefreshMovementBounds();
         PreloadStrategySfx();
         strategyMusicController.Resume();
         RefreshStrategyState();
+        RestoreWindows();
         PlayStrategyReadySound();
     }
 
@@ -3222,6 +3328,8 @@ public sealed class StrategyController
     private void MarkDirty()
     {
         dirty = true;
+        if (!restoringWindows)
+            windowStateManager?.Capture();
     }
 
     /// <summary>
