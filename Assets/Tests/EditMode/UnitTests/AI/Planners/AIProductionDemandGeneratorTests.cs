@@ -151,6 +151,7 @@ namespace Rebellion.Tests.AI.Planners
                 system,
                 "resource-world",
                 empire.InstanceID,
+                energyCapacity: 20,
                 rawResourceNodes: 4
             );
             AddResourceFacilities(game, planet, 2);
@@ -177,6 +178,7 @@ namespace Rebellion.Tests.AI.Planners
                 system,
                 "resource-world",
                 empire.InstanceID,
+                energyCapacity: 20,
                 rawResourceNodes: 4
             );
             AddResourceFacilities(game, planet, 2);
@@ -200,6 +202,7 @@ namespace Rebellion.Tests.AI.Planners
                 system,
                 "resource-world",
                 empire.InstanceID,
+                energyCapacity: 20,
                 rawResourceNodes: 4
             );
             empire.PendingRefinedMaterialFacilityIDs.Add("waiting-production-facility");
@@ -236,7 +239,7 @@ namespace Rebellion.Tests.AI.Planners
                 system,
                 "eligible-world",
                 empire.InstanceID,
-                energyCapacity: 6,
+                energyCapacity: 20,
                 rawResourceNodes: 2
             );
             AITestSceneBuilder.AddProductionFacility(
@@ -355,7 +358,7 @@ namespace Rebellion.Tests.AI.Planners
                 system,
                 "expansion-world",
                 empire.InstanceID,
-                energyCapacity: staticDefenseEnergy + 5,
+                energyCapacity: staticDefenseEnergy + 15,
                 rawResourceNodes: 4
             );
             hub.IsHeadquarters = true;
@@ -902,7 +905,13 @@ namespace Rebellion.Tests.AI.Planners
                 "training-hub",
                 empire.InstanceID
             );
-            Planet colony = AITestSceneBuilder.AddPlanet(game, system, "colony", empire.InstanceID);
+            Planet colony = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "colony",
+                empire.InstanceID,
+                energyCapacity: 20
+            );
             AITestSceneBuilder.AddPlanet(game, system, "colony-2", empire.InstanceID);
             AITestSceneBuilder.AddPlanet(game, system, "colony-3", empire.InstanceID);
             AITestSceneBuilder.AddPlanet(game, system, "colony-4", empire.InstanceID);
