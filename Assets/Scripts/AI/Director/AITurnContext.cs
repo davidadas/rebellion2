@@ -372,7 +372,8 @@ namespace Rebellion.AI.Director
             primaryPlanetIds.Add(primary.InstanceID);
             primaryTargets[primary.InstanceID] = feasibleTarget;
             assignedPrimaryPlanetIds.Add(primary.InstanceID);
-            ReserveEnergy(primary, buildingType, Math.Max(0, feasibleTarget - currentCount));
+            if (buildingType != BuildingType.TrainingFacility)
+                ReserveEnergy(primary, buildingType, Math.Max(0, feasibleTarget - currentCount));
 
             for (int index = 1; index < ranked.Count; index++)
             {
