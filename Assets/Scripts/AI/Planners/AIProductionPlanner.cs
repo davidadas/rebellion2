@@ -401,7 +401,7 @@ namespace Rebellion.AI.Planners
         private int GetBuildingMaintenanceBudget(AITurnContext context, AIDemand demand)
         {
             if (IsFacilityExpansionDemand(demand))
-                return GetFacilityMaintenanceBudget(context, demand);
+                return GetFacilityMaintenanceBudget(context);
 
             if (demand.UsesDefensiveReserve)
                 return GetDefensiveMaintenanceBudget(context);
@@ -417,9 +417,8 @@ namespace Rebellion.AI.Planners
         /// Returns the maintenance budget allocated to production-facility expansion.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="demand">The production demand.</param>
         /// <returns>The remaining facility maintenance budget.</returns>
-        private int GetFacilityMaintenanceBudget(AITurnContext context, AIDemand demand)
+        private int GetFacilityMaintenanceBudget(AITurnContext context)
         {
             return Math.Max(
                 0,
@@ -789,7 +788,7 @@ namespace Rebellion.AI.Planners
             Building building
         )
         {
-            int maintenanceBudget = GetFacilityMaintenanceBudget(context, demand);
+            int maintenanceBudget = GetFacilityMaintenanceBudget(context);
             int maintenanceLimit =
                 building.MaintenanceCost > 0
                     ? maintenanceBudget / building.MaintenanceCost

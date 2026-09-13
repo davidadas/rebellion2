@@ -104,6 +104,8 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">The fleet to evaluate.</param>
+        /// <param name="unexploredOuterRimSystems">Unexplored outer-rim planets grouped by system.</param>
+        /// <param name="activeSurveySystemIds">Systems already targeted by a survey fleet.</param>
         /// <param name="proposals">The proposal list to update.</param>
         private void AddFleetProposal(
             AITurnContext context,
