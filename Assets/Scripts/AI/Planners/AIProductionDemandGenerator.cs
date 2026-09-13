@@ -695,7 +695,7 @@ namespace Rebellion.AI.Planners
                 .OrderByDescending(demand => demand.Pressure)
                 .ThenBy(demand => demand.Id, StringComparer.Ordinal)
                 .ToList();
-            if (productionDemands.Count == 0)
+            if (productionDemands.Count == 0 && buildingType == BuildingType.TrainingFacility)
                 return;
 
             int remainingTrainingFacilityCount = int.MaxValue;
@@ -759,16 +759,18 @@ namespace Rebellion.AI.Planners
                     .ToList();
                 if (sectorPlanets.Count == 0)
                     continue;
-                AIDemand sectorDemand = productionDemands
-                    .Where(demand =>
-                        context.Assessment.GetPlanetSystemId(GetDemandPlanet(context, demand))
-                        == sector.Key
-                    )
-                    .DefaultIfEmpty(productionDemands[0])
-                    .First();
+                AIDemand sectorDemand =
+                    productionDemands
+                        .Where(demand =>
+                            context.Assessment.GetPlanetSystemId(GetDemandPlanet(context, demand))
+                            == sector.Key
+                        )
+                        .FirstOrDefault()
+                    ?? productionDemands.FirstOrDefault();
+                Planet demandPlanet = GetDemandPlanet(context, sectorDemand) ?? sector.First();
                 IReadOnlyList<Planet> rankedPlanets = placementScorer.RankDestinations(
                     sectorPlanets,
-                    GetDemandPlanet(context, sectorDemand),
+                    demandPlanet,
                     manufacturingType,
                     buildingType,
                     planet => GetAvailableFacilityExpansionEnergy(context, planet, buildingType)
@@ -940,8 +942,8 @@ namespace Rebellion.AI.Planners
                     )
                         + strategicBonus
                         + concentrationBonus,
-                    primaryDemand.ProductTypeId,
-                    primaryDemand.CapitalShipRole
+                    primaryDemand?.ProductTypeId,
+                    primaryDemand?.CapitalShipRole ?? AICapitalShipProductionRole.None
                 )
             );
         }
