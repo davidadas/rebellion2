@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scoring;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
@@ -1208,20 +1209,25 @@ namespace Rebellion.AI.Planners
             Starfighter starfighter
         )
         {
+            GameConfig.AIStarfighterSelectionUtilityConfig utility = config.UnitUtility.Starfighter;
             double score =
-                starfighter.LaserCannon * config.StarfighterEscortWeight
-                + starfighter.IonCannon * config.StarfighterInterceptorWeight
-                + starfighter.Torpedoes * config.StarfighterBomberWeight;
+                AIUtility.EvaluateRaw(starfighter.LaserCannon, utility.Laser)
+                + AIUtility.EvaluateRaw(starfighter.IonCannon, utility.Ion)
+                + AIUtility.EvaluateRaw(starfighter.Torpedoes, utility.Torpedo);
 
-            if (starfighter.IonCannon > 0 && !FleetHasIonStarfighter(fleet))
-                score += config.StarfighterMissingInterceptorBoost;
+            score += AIUtility.Evaluate(
+                starfighter.IonCannon > 0 && !FleetHasIonStarfighter(fleet) ? 1 : 0,
+                utility.MissingIon
+            );
+            score += AIUtility.Evaluate(
+                starfighter.Torpedoes > 0 && !FleetHasTorpedoStarfighter(fleet) ? 1 : 0,
+                utility.MissingTorpedo
+            );
 
-            if (starfighter.Torpedoes > 0 && !FleetHasTorpedoStarfighter(fleet))
-                score += config.StarfighterMissingBomberBoost;
-
-            score -=
-                CountFleetUnitsByType<Starfighter>(fleet, starfighter.GetTypeID())
-                * config.LocalDuplicatePenaltyPerSelection;
+            score -= AIUtility.EvaluateRaw(
+                CountFleetUnitsByType<Starfighter>(fleet, starfighter.GetTypeID()),
+                config.UnitUtility.DuplicateCost
+            );
 
             return score;
         }
@@ -1239,13 +1245,16 @@ namespace Rebellion.AI.Planners
             Regiment regiment
         )
         {
-            return regiment.AttackRating * config.RegimentAttackWeight
-                + regiment.DefenseRating * config.RegimentDefenseWeight
-                + regiment.BombardmentDefense * config.RegimentBombardmentDefenseWeight
-                + config.RegimentFleetAttackBoost
-                - regiment.MaintenanceCost * config.RegimentMaintenanceCostWeight
-                - CountFleetUnitsByType<Regiment>(fleet, regiment.GetTypeID())
-                    * config.LocalDuplicatePenaltyPerSelection;
+            GameConfig.AIRegimentSelectionUtilityConfig utility = config.UnitUtility.Regiment;
+            return AIUtility.EvaluateRaw(regiment.AttackRating, utility.Attack)
+                + AIUtility.EvaluateRaw(regiment.DefenseRating, utility.Defense)
+                + AIUtility.EvaluateRaw(regiment.BombardmentDefense, utility.BombardmentDefense)
+                + AIUtility.Evaluate(1, utility.Base)
+                - AIUtility.EvaluateRaw(regiment.MaintenanceCost, utility.MaintenanceCost)
+                - AIUtility.EvaluateRaw(
+                    CountFleetUnitsByType<Regiment>(fleet, regiment.GetTypeID()),
+                    config.UnitUtility.DuplicateCost
+                );
         }
 
         /// <summary>

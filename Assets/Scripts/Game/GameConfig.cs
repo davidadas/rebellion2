@@ -440,21 +440,10 @@ namespace Rebellion.Game
         public class AISelectionConfig
         {
             public float MinimumSelectableScore { get; set; }
-            public int RepeatBuildPenaltyPerSelection { get; set; }
-            public int LocalDuplicatePenaltyPerSelection { get; set; }
             public int PreferredStarfighterTypeCountPerFleet { get; set; }
             public int PreferredRegimentTypeCountPerDestination { get; set; }
-            public int StarfighterEscortWeight { get; set; }
-            public int StarfighterInterceptorWeight { get; set; }
-            public int StarfighterBomberWeight { get; set; }
-            public int StarfighterMissingInterceptorBoost { get; set; }
-            public int StarfighterMissingBomberBoost { get; set; }
-            public int RegimentDefenseWeight { get; set; }
-            public int RegimentAttackWeight { get; set; }
-            public int RegimentBombardmentDefenseWeight { get; set; }
-            public int RegimentMaintenanceCostWeight { get; set; }
-            public int RegimentGarrisonDefenseBoost { get; set; }
-            public int RegimentFleetAttackBoost { get; set; }
+            public AIUnitSelectionUtilityConfig UnitUtility { get; set; } =
+                new AIUnitSelectionUtilityConfig();
             public int RefinedMaterialReservePercent { get; set; } = 20;
             public int RefinedMaterialEconomyWarningPercent { get; set; } = 40;
             public int RefinedMaterialCommitmentHorizonTicks { get; set; } = 25;
@@ -462,6 +451,62 @@ namespace Rebellion.Game
             public int MaintenanceHeadroomHardFloor { get; set; } = 0;
             public AIProductionUtilityConfig ProductionUtility { get; set; } =
                 new AIProductionUtilityConfig();
+        }
+
+        /// <summary>
+        /// Utility considerations used to choose a unit technology for production.
+        /// </summary>
+        [PersistableObject]
+        public class AIUnitSelectionUtilityConfig
+        {
+            public AIStarfighterSelectionUtilityConfig Starfighter { get; set; } =
+                new AIStarfighterSelectionUtilityConfig();
+
+            public AIRegimentSelectionUtilityConfig Regiment { get; set; } =
+                new AIRegimentSelectionUtilityConfig();
+
+            public AIConsiderationConfig DuplicateCost { get; set; } = Weighted(450, 10);
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
+        }
+
+        /// <summary>
+        /// Utility considerations used to choose a starfighter technology.
+        /// </summary>
+        [PersistableObject]
+        public class AIStarfighterSelectionUtilityConfig
+        {
+            public AIConsiderationConfig Laser { get; set; } = Weighted(120, 20);
+            public AIConsiderationConfig Ion { get; set; } = Weighted(140, 20);
+            public AIConsiderationConfig Torpedo { get; set; } = Weighted(180, 20);
+            public AIConsiderationConfig MissingIon { get; set; } = Weighted(60);
+            public AIConsiderationConfig MissingTorpedo { get; set; } = Weighted(60);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
+        }
+
+        /// <summary>
+        /// Utility considerations used to choose a regiment technology.
+        /// </summary>
+        [PersistableObject]
+        public class AIRegimentSelectionUtilityConfig
+        {
+            public AIConsiderationConfig Attack { get; set; } = Weighted(80, 10);
+            public AIConsiderationConfig Defense { get; set; } = Weighted(80, 10);
+            public AIConsiderationConfig BombardmentDefense { get; set; } = Weighted(60, 10);
+            public AIConsiderationConfig Base { get; set; } = Weighted(50);
+            public AIConsiderationConfig MaintenanceCost { get; set; } = Weighted(100, 10);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
         }
 
         /// <summary>
