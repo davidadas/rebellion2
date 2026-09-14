@@ -642,11 +642,12 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SetFactionController_NewFaction_AddsPlayer()
         {
-            _game.SetFactionController("FACTION1", "PLAYER1", PlayerControllerType.Human);
+            _game.SetFactionController("FACTION2", "PLAYER2", PlayerControllerType.Human);
 
-            Player player = _game.GetFactionPlayer("FACTION1");
-            Assert.AreEqual("PLAYER1", player.PlayerID);
+            Player player = _game.GetFactionPlayer("FACTION2");
+            Assert.AreEqual("PLAYER2", player.PlayerID);
             Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
+            Assert.AreEqual(2, _game.GetPlayers().Count);
         }
 
         /// <summary>

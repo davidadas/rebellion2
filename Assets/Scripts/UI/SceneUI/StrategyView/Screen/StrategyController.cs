@@ -109,6 +109,7 @@ public sealed class StrategyController
     private bool presentationActive;
     private bool restoringWindows;
     private bool windowStateDirty;
+    private SaveGameManager saveGameManager;
     private RectInt windowMovePreviewBounds;
     private bool windowMovePreviewVisible;
 
@@ -581,6 +582,8 @@ public sealed class StrategyController
         );
         AppBootstrap bootstrap = AppBootstrap.Instance;
         GameRuntime settingsRuntime = bootstrap.GetRuntime();
+        saveGameManager = SaveGameManager.Instance;
+        saveGameManager.Saving += CaptureChangedWindows;
         _optionsMenuController = new OptionsMenuController(
             strategyWindowLayerView.OptionsMenuWindowPrefab,
             strategyWindowLayerView.GetWindowParent(true),
@@ -591,7 +594,7 @@ public sealed class StrategyController
             settingsRuntime.SaveGame,
             settingsRuntime.LoadGame,
             MarkDirty,
-            SaveGameManager.Instance
+            saveGameManager
         );
         _appInputController = bootstrap.GetInputController();
         if (_appInputController != null)
@@ -906,6 +909,8 @@ public sealed class StrategyController
     /// </summary>
     private void OnDestroy()
     {
+        if (saveGameManager != null)
+            saveGameManager.Saving -= CaptureChangedWindows;
         SetBriefingInteractionEnabled(true);
         UnwireStrategyInputActions();
         UnregisterCancelHandlers();

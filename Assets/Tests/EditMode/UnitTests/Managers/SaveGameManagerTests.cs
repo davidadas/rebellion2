@@ -75,7 +75,22 @@ namespace Rebellion.Tests.Managers
         }
 
         /// <summary>
-        /// Verifies save game data existing save atomically replaces without temporary files.
+        /// Verifies listeners can synchronize state immediately before serialization.
+        /// </summary>
+        [Test]
+        public void SaveGameData_SavingListenerMutatesGame_SerializesUpdatedState()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            _saveGameManager.Saving += () => game.CurrentTick = 42;
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loaded = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(42, loaded.CurrentTick);
+        }
+
+        /// <summary>
+        /// Verifies saving a game serializes its player records.
         /// </summary>
         [Test]
         public void SaveGameData_GameWithPlayers_SerializesPlayers()
