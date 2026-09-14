@@ -577,6 +577,29 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithDisabledPlanetDefenseEfficiency_PrefersStrongerDefender()
+        {
+            (GameRoot game, Faction empire, Planet _, Starfighter _) =
+                CreatePlanetaryStarfighterScene(0, 4, 12);
+            game.Config.AI.Selection.UnitUtility.Starfighter.PlanetDefenseEfficiency.Weight = 0;
+            Starfighter stronger = AITestSceneBuilder.CreateStarfighter(
+                "stronger-fighter",
+                empire.InstanceID,
+                laserCannon: 20,
+                maintenanceCost: 10
+            );
+            empire.ResearchQueue[ManufacturingType.Ship].Add(new Technology(stronger));
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item => item.Demand.Kind == AIDemandKind.PlanetaryStarfighterReserve);
+
+            Assert.AreSame(stronger, proposal.Product.GetReference());
+        }
+
+        [Test]
         public void Plan_WithPlanetaryFighterBatchExactlyAtDefensiveBudget_QueuesPlanningBatch()
         {
             (GameRoot game, Faction empire, Planet _, Starfighter _) =

@@ -482,6 +482,7 @@ namespace Rebellion.Game
             public AIConsiderationConfig Torpedo { get; set; } = Weighted(180, 20);
             public AIConsiderationConfig MissingIon { get; set; } = Weighted(60);
             public AIConsiderationConfig MissingTorpedo { get; set; } = Weighted(60);
+            public AIConsiderationConfig PlanetDefenseEfficiency { get; set; } = Weighted(100, 100);
 
             private static AIConsiderationConfig Weighted(double weight) =>
                 new AIConsiderationConfig { Weight = weight };

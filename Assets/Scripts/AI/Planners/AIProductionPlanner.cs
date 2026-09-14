@@ -1095,7 +1095,10 @@ namespace Rebellion.AI.Planners
                     && starfighter.GetWeaponStrength() > 0
                 )
                 .OrderByDescending(technology =>
-                    GetPlanetaryStarfighterDefenseEfficiency((Starfighter)technology.GetReference())
+                    ScorePlanetaryStarfighter(
+                        context.Game.Config.AI.Selection,
+                        (Starfighter)technology.GetReference()
+                    )
                 )
                 .ThenByDescending(technology =>
                     ((Starfighter)technology.GetReference()).GetWeaponStrength()
@@ -1108,16 +1111,25 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns a starfighter's defensive strength per maintenance point.
+        /// Scores a starfighter's defensive strength per maintenance point.
         /// </summary>
+        /// <param name="config">AI selection configuration.</param>
         /// <param name="starfighter">The starfighter.</param>
-        /// <returns>The defensive efficiency.</returns>
-        private static double GetPlanetaryStarfighterDefenseEfficiency(Starfighter starfighter)
+        /// <returns>The planetary-defense utility score.</returns>
+        private static double ScorePlanetaryStarfighter(
+            GameConfig.AISelectionConfig config,
+            Starfighter starfighter
+        )
         {
             int strength = starfighter.GetWeaponStrength();
-            return starfighter.MaintenanceCost > 0
-                ? strength / (double)starfighter.MaintenanceCost
-                : double.MaxValue;
+            double efficiency =
+                starfighter.MaintenanceCost > 0
+                    ? strength / (double)starfighter.MaintenanceCost
+                    : config.UnitUtility.Starfighter.PlanetDefenseEfficiency.InputMaximum;
+            return AIUtility.EvaluateRaw(
+                efficiency,
+                config.UnitUtility.Starfighter.PlanetDefenseEfficiency
+            );
         }
 
         /// <summary>
