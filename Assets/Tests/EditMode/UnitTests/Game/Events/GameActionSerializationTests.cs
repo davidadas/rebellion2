@@ -10,6 +10,9 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public sealed class GameActionSerializationTests
     {
+        /// <summary>
+        /// Verifies round trip planet actions restores concrete values.
+        /// </summary>
         [Test]
         public void RoundTrip_PlanetActions_RestoresConcreteValues()
         {
@@ -71,6 +74,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(50, ((SetPopularSupportAction)restored.Actions[4]).Support);
         }
 
+        /// <summary>
+        /// Verifies round trip presentation actions restores concrete values.
+        /// </summary>
         [Test]
         public void RoundTrip_PresentationActions_RestoresConcreteValues()
         {
@@ -147,6 +153,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(5, ((IncreaseForceRankAction)restored.Actions[2]).Amount);
         }
 
+        /// <summary>
+        /// Verifies round trip random actions restores concrete values.
+        /// </summary>
         [Test]
         public void RoundTrip_RandomActions_RestoresConcreteValues()
         {

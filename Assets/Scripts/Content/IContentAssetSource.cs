@@ -5,8 +5,18 @@ using UnityEngine;
 /// </summary>
 public interface IContentAssetSource
 {
+    /// <summary>
+    /// Gets texture.
+    /// </summary>
+    /// <param name="address">The address.</param>
+    /// <returns>The requested texture.</returns>
     Texture2D GetTexture(string address);
 
+    /// <summary>
+    /// Gets sprite.
+    /// </summary>
+    /// <param name="address">The address.</param>
+    /// <returns>The requested sprite.</returns>
     Sprite GetSprite(string address);
 
     /// <summary>

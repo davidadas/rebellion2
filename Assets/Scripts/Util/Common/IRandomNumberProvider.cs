@@ -11,11 +11,15 @@ namespace Rebellion.Util.Common
         /// <summary>
         /// Returns a random double in the range [0.0, 1.0).
         /// </summary>
+        /// <returns>The result of next double.</returns>
         double NextDouble();
 
         /// <summary>
         /// Returns a random integer in the range [min, max).
         /// </summary>
+        /// <param name="min">The min.</param>
+        /// <param name="max">The max.</param>
+        /// <returns>The result of next int.</returns>
         int NextInt(int min, int max);
     }
 
@@ -48,12 +52,22 @@ namespace Rebellion.Util.Common
             CallCount = advanceTo;
         }
 
+        /// <summary>
+        /// Executes next double.
+        /// </summary>
+        /// <returns>The result of next double.</returns>
         public double NextDouble()
         {
             CallCount++;
             return _rng.NextDouble();
         }
 
+        /// <summary>
+        /// Executes next int.
+        /// </summary>
+        /// <param name="min">The min.</param>
+        /// <param name="max">The max.</param>
+        /// <returns>The result of next int.</returns>
         public int NextInt(int min, int max)
         {
             CallCount++;

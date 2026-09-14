@@ -31,6 +31,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private string _loadedFileName;
         private string _testModDirectoryPath;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -58,6 +61,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             _controller = CreateController(GetPrefab());
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -75,6 +81,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             GameLaunchContext.Reset(TestContent.Pack);
         }
 
+        /// <summary>
+        /// Verifies open closed controller creates and renders single window.
+        /// </summary>
         [Test]
         public void Open_ClosedController_CreatesAndRendersSingleWindow()
         {
@@ -90,6 +99,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.GreaterOrEqual(_dirtyCount, 1);
         }
 
+        /// <summary>
+        /// Verifies open missing prefab leaves controller closed.
+        /// </summary>
         [Test]
         public void Open_MissingPrefab_LeavesControllerClosed()
         {
@@ -100,6 +112,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(controller.IsOpen);
         }
 
+        /// <summary>
+        /// Verifies try cancel open window closes window.
+        /// </summary>
         [Test]
         public void TryCancel_OpenWindow_ClosesWindow()
         {
@@ -113,6 +128,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsEmpty(_windowManager.Windows);
         }
 
+        /// <summary>
+        /// Verifies closed controller close and render are no ops.
+        /// </summary>
         [Test]
         public void ClosedController_CloseAndRender_AreNoOps()
         {
@@ -123,6 +141,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsEmpty(_windowManager.Windows);
         }
 
+        /// <summary>
+        /// Verifies navigation clean settings switches all tabs.
+        /// </summary>
         [Test]
         public void Navigation_CleanSettings_SwitchesAllTabs()
         {
@@ -194,6 +215,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        /// <summary>
+        /// Verifies gameplay actions toggle automatic pausing option.
+        /// </summary>
         [Test]
         public void GameplayActions_ToggleAutomaticPausingOption()
         {
@@ -213,6 +237,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        /// <summary>
+        /// Verifies gameplay actions toggle idle bar.
+        /// </summary>
         [Test]
         public void GameplayActions_ToggleIdleBar()
         {
@@ -239,6 +266,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        /// <summary>
+        /// Verifies graphics actions change preview and restore defaults after confirmation.
+        /// </summary>
         [Test]
         public void GraphicsActions_ChangePreviewAndRestoreDefaultsAfterConfirmation()
         {
@@ -266,6 +296,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.Greater(_dirtyCount, initialDirtyCount);
         }
 
+        /// <summary>
+        /// Verifies active game open and back to game pauses and restores speed.
+        /// </summary>
         [Test]
         public void ActiveGame_OpenAndBackToGame_PausesAndRestoresSpeed()
         {
@@ -280,6 +313,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(TickSpeed.Fast, gameManager.GetGameSpeed());
         }
 
+        /// <summary>
+        /// Verifies active game return to main menu warns about unsaved progress.
+        /// </summary>
         [Test]
         public void ActiveGame_ReturnToMainMenu_WarnsAboutUnsavedProgress()
         {
@@ -299,6 +335,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        /// <summary>
+        /// Verifies active game quit warns about unsaved progress.
+        /// </summary>
         [Test]
         public void ActiveGame_Quit_WarnsAboutUnsavedProgress()
         {
@@ -318,6 +357,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        /// <summary>
+        /// Verifies audio actions change volume then discard tab change.
+        /// </summary>
         [Test]
         public void AudioActions_ChangeVolumeThenDiscardTabChange()
         {
@@ -339,6 +381,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(GetField<GameObject>(view, "_audioPage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies controls actions restore binding and cancel rebind.
+        /// </summary>
         [Test]
         public void ControlsActions_RestoreBindingAndCancelRebind()
         {
@@ -359,6 +404,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(_controller.IsOpen);
         }
 
+        /// <summary>
+        /// Verifies save load actions without selection do not load or close.
+        /// </summary>
         [Test]
         public void SaveLoadActions_WithoutSelection_DoNotLoadOrClose()
         {
@@ -371,6 +419,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(_controller.IsOpen);
         }
 
+        /// <summary>
+        /// Verifies save load actions selected save overwrites and loads through host.
+        /// </summary>
         [Test]
         public void SaveLoadActions_SelectedSave_OverwritesAndLoadsThroughHost()
         {
@@ -396,6 +447,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        /// <summary>
+        /// Verifies save load actions rename create and delete refreshes persisted slots.
+        /// </summary>
         [Test]
         public void SaveLoadActions_RenameCreateAndDelete_RefreshesPersistedSlots()
         {
@@ -439,6 +493,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(1, _saveGameManager.GetSavedGames().Count);
         }
 
+        /// <summary>
+        /// Verifies main menu footer back to main menu closes overlay.
+        /// </summary>
         [Test]
         public void MainMenuFooter_BackToMainMenuClosesOverlay()
         {
@@ -449,6 +506,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_controller.IsOpen);
         }
 
+        /// <summary>
+        /// Verifies main menu quit cancel dismisses prompt without unsaved progress warning.
+        /// </summary>
         [Test]
         public void MainMenu_Quit_CancelDismissesPromptWithoutUnsavedProgressWarning()
         {
@@ -470,6 +530,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(_controller.IsOpen);
         }
 
+        /// <summary>
+        /// Verifies destroyed view clears controller window state.
+        /// </summary>
         [Test]
         public void DestroyedView_ClearsControllerWindowState()
         {
@@ -480,6 +543,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_controller.IsOpen);
         }
 
+        /// <summary>
+        /// Verifies dispose then open throws object disposed exception.
+        /// </summary>
         [Test]
         public void Dispose_ThenOpen_ThrowsObjectDisposedException()
         {
@@ -489,6 +555,11 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.Throws<ObjectDisposedException>(() => _controller.Open());
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <param name="prefab">The prefab.</param>
+        /// <returns>The created controller.</returns>
         private OptionsMenuController CreateController(OptionsMenuView prefab)
         {
             return new OptionsMenuController(
@@ -517,6 +588,11 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        /// <summary>
+        /// Opens and render.
+        /// </summary>
+        /// <param name="initialTab">The initial tab.</param>
+        /// <returns>The result of open and render.</returns>
         private OptionsMenuView OpenAndRender(OptionsMenuTab initialTab = OptionsMenuTab.Gameplay)
         {
             _controller.Open(initialTab);
@@ -530,11 +606,19 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             return view;
         }
 
+        /// <summary>
+        /// Gets open view.
+        /// </summary>
+        /// <returns>The requested open view.</returns>
         private OptionsMenuView GetOpenView()
         {
             return (OptionsMenuView)_windowManager.Windows.Single().Content;
         }
 
+        /// <summary>
+        /// Gets prefab.
+        /// </summary>
+        /// <returns>The requested prefab.</returns>
         private static OptionsMenuView GetPrefab()
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath);
@@ -545,6 +629,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             return view;
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private static T GetField<T>(object target, string fieldName)
         {
             return (T)
@@ -554,6 +645,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     .GetValue(target);
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
             ContentPack contentPack = _bootstrap.GetContentPack();
@@ -570,6 +665,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             };
         }
 
+        /// <summary>
+        /// Executes destroy audio managers.
+        /// </summary>
         private static void DestroyAudioManagers()
         {
             foreach (

@@ -16,6 +16,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Selects nodes from the current game state for one event activation.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal abstract IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -25,6 +29,9 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns registered nodes that remain attached to active gameplay containment.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The result of active.</returns>
         protected static IEnumerable<T> Active<T>(GameRoot game)
             where T : class, ISceneNode
         {
@@ -34,6 +41,11 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns whether a node is located at the explicitly named or bound planet.
         /// </summary>
+        /// <param name="node">The node.</param>
+        /// <param name="context">The context.</param>
+        /// <param name="planetInstanceID">The planet instance id.</param>
+        /// <param name="planetBinding">The planet binding.</param>
+        /// <returns>True when the value matches location; otherwise false.</returns>
         protected static bool MatchesLocation(
             ISceneNode node,
             GameEventEvaluationContext context,

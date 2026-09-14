@@ -21,6 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -48,12 +51,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             );
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
@@ -69,6 +78,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             );
         }
 
+        /// <summary>
+        /// Verifies open closed report creates named bound window at configured position.
+        /// </summary>
         [Test]
         public void Open_ClosedReport_CreatesNamedBoundWindowAtConfiguredPosition()
         {
@@ -118,6 +130,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.IsNull(_windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Verifies get mode unbound view throws invalid operation exception.
+        /// </summary>
         [Test]
         public void GetMode_UnboundView_ThrowsInvalidOperationException()
         {
@@ -129,6 +144,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.Throws<InvalidOperationException>(() => _controller.GetMode(view));
         }
 
+        /// <summary>
+        /// Verifies get title known mode returns displayed title.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(AdvisorReportMode.GalaxyOverview, "Galaxy Overview")]
         [TestCase(AdvisorReportMode.Objectives, "Objectives")]
         public void GetTitle_KnownMode_ReturnsDisplayedTitle(
@@ -139,6 +159,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreEqual(expected, AdvisorReportWindowController.GetTitle(mode));
         }
 
+        /// <summary>
+        /// Verifies get title unknown mode throws argument out of range exception.
+        /// </summary>
         [Test]
         public void GetTitle_UnknownMode_ThrowsArgumentOutOfRangeException()
         {

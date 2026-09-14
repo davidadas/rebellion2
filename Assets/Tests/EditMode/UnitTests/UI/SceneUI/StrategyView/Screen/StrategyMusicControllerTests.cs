@@ -21,6 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private int _stopMusicCalls;
         private readonly Queue<int> _randomIndices = new Queue<int>();
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -56,6 +59,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies resume first track uses strategic state.
+        /// </summary>
         [Test]
         public void Resume_FirstTrackUsesStrategicState()
         {
@@ -67,6 +73,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(_strongAdvantageTrack, _selectNextTrack());
         }
 
+        /// <summary>
+        /// Verifies selection after strategic track plays three neutral tracks.
+        /// </summary>
         [Test]
         public void Selection_AfterStrategicTrackPlaysThreeNeutralTracks()
         {
@@ -99,6 +108,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies selection two to one planet ratio uses advantage track.
+        /// </summary>
         [Test]
         public void Selection_TwoToOnePlanetRatioUsesAdvantageTrack()
         {
@@ -109,6 +121,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(_advantageTrack, _selectNextTrack());
         }
 
+        /// <summary>
+        /// Verifies selection one to two planet ratio uses disadvantage track.
+        /// </summary>
         [Test]
         public void Selection_OneToTwoPlanetRatioUsesDisadvantageTrack()
         {
@@ -119,6 +134,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(_disadvantageTrack, _selectNextTrack());
         }
 
+        /// <summary>
+        /// Verifies selection one to three planet ratio uses disadvantage track.
+        /// </summary>
         [Test]
         public void Selection_OneToThreePlanetRatioUsesDisadvantageTrack()
         {
@@ -129,6 +147,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(_disadvantageTrack, _selectNextTrack());
         }
 
+        /// <summary>
+        /// Verifies selection middle planet ratio uses random neutral track.
+        /// </summary>
         [Test]
         public void Selection_MiddlePlanetRatioUsesRandomNeutralTrack()
         {
@@ -140,6 +161,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual("neutral-3", _selectNextTrack());
         }
 
+        /// <summary>
+        /// Verifies selection no opponent planets uses configured multiplier.
+        /// </summary>
         [Test]
         public void Selection_NoOpponentPlanetsUsesConfiguredMultiplier()
         {
@@ -149,6 +173,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(_advantageTrack, _selectNextTrack());
         }
 
+        /// <summary>
+        /// Verifies selection uncolonized planets do not affect ratio.
+        /// </summary>
         [Test]
         public void Selection_UncolonizedPlanetsDoNotAffectRatio()
         {
@@ -160,6 +187,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(_advantageTrack, _selectNextTrack());
         }
 
+        /// <summary>
+        /// Verifies reset stops music and restarts cadence with strategic track.
+        /// </summary>
         [Test]
         public void Reset_StopsMusicAndRestartsCadenceWithStrategicTrack()
         {
@@ -176,6 +206,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(_strongAdvantageTrack, _selectNextTrack());
         }
 
+        /// <summary>
+        /// Gets random index.
+        /// </summary>
+        /// <param name="minimum">The minimum.</param>
+        /// <param name="maximum">The maximum.</param>
+        /// <returns>The requested random index.</returns>
         private int GetRandomIndex(int minimum, int maximum)
         {
             int value = _randomIndices.Count > 0 ? _randomIndices.Dequeue() : minimum;
@@ -183,6 +219,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             return value;
         }
 
+        /// <summary>
+        /// Adds colonized planets.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="count">The count.</param>
         private static void AddColonizedPlanets(Faction faction, int count)
         {
             for (int index = 0; index < count; index++)

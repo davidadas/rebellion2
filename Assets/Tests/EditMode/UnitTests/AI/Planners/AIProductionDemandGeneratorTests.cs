@@ -19,6 +19,9 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public class AIProductionDemandGeneratorTests
     {
+        /// <summary>
+        /// Verifies generate with claimed uncolonized planet adds colony demand.
+        /// </summary>
         [Test]
         public void Generate_WithClaimedUncolonizedPlanet_AddsColonyDemand()
         {
@@ -47,6 +50,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with mine capacity ahead uses refinery as colony founding facility.
+        /// </summary>
         [Test]
         public void Generate_WithMineCapacityAhead_UsesRefineryAsColonyFoundingFacility()
         {
@@ -87,6 +93,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(BuildingType.Refinery, demand.BuildingType);
         }
 
+        /// <summary>
+        /// Verifies generate with multiple claimed planets balances founding facilities.
+        /// </summary>
         [Test]
         public void Generate_WithMultipleClaimedPlanets_BalancesFoundingFacilities()
         {
@@ -120,6 +129,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with abandoned uncolonized planet does not add colony demand.
+        /// </summary>
         [Test]
         public void Generate_WithAbandonedUncolonizedPlanet_DoesNotAddColonyDemand()
         {
@@ -139,6 +151,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.Colony));
         }
 
+        /// <summary>
+        /// Verifies generate with unmined resources and sufficient economy does not add economy demand.
+        /// </summary>
         [Test]
         public void Generate_WithUnminedResourcesAndSufficientEconomy_DoesNotAddEconomyDemand()
         {
@@ -164,6 +179,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with projected refined materials near reserve adds economy demand.
+        /// </summary>
         [Test]
         public void Generate_WithProjectedRefinedMaterialsNearReserve_AddsEconomyDemand()
         {
@@ -189,6 +207,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.Refinery));
         }
 
+        /// <summary>
+        /// Verifies generate with pending manufacturing material request adds economy demand.
+        /// </summary>
         [Test]
         public void Generate_WithPendingManufacturingMaterialRequest_AddsEconomyDemand()
         {
@@ -211,6 +232,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.Refinery));
         }
 
+        /// <summary>
+        /// Verifies generate with lowest refinery count at full energy targets eligible planet.
+        /// </summary>
         [Test]
         public void Generate_WithLowestRefineryCountAtFullEnergy_TargetsEligiblePlanet()
         {
@@ -263,6 +287,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(eligiblePlanet, demand.DestinationPlanet);
         }
 
+        /// <summary>
+        /// Verifies generate with only static defense energy remaining does not add economy demand.
+        /// </summary>
         [Test]
         public void Generate_WithOnlyStaticDefenseEnergyRemaining_DoesNotAddEconomyDemand()
         {
@@ -288,6 +315,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with only static defense energy remaining does not add facility expansion.
+        /// </summary>
         [Test]
         public void Generate_WithOnlyStaticDefenseEnergyRemaining_DoesNotAddFacilityExpansion()
         {
@@ -327,6 +357,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with reserved hub and eligible world targets eligible world for expansion.
+        /// </summary>
         [Test]
         public void Generate_WithReservedHubAndEligibleWorld_TargetsEligibleWorldForExpansion()
         {
@@ -392,6 +425,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.Greater(demand.Pressure, economyPressure);
         }
 
+        /// <summary>
+        /// Verifies generate with pending shipyard adds demand toward sector hub target.
+        /// </summary>
         [Test]
         public void Generate_WithPendingShipyard_AddsDemandTowardSectorHubTarget()
         {
@@ -422,6 +458,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with pending shipyard at another planet expands existing shipyard hub.
+        /// </summary>
         [Test]
         public void Generate_WithPendingShipyardAtAnotherPlanet_ExpandsExistingShipyardHub()
         {
@@ -458,6 +497,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(pendingPlanet, demand.DestinationPlanet);
         }
 
+        /// <summary>
+        /// Verifies generate with unlocked facility upgrade selects slowest facility deterministically.
+        /// </summary>
         [Test]
         public void Generate_WithUnlockedFacilityUpgrade_SelectsSlowestFacilityDeterministically()
         {
@@ -502,6 +544,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with only one facility does not add upgrade demand.
+        /// </summary>
         [Test]
         public void Generate_WithOnlyOneFacility_DoesNotAddUpgradeDemand()
         {
@@ -530,6 +575,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.BuildingUpgrade));
         }
 
+        /// <summary>
+        /// Verifies generate with pending upgrade at one planet still upgrades another planet.
+        /// </summary>
         [Test]
         public void Generate_WithPendingUpgradeAtOnePlanet_StillUpgradesAnotherPlanet()
         {
@@ -588,6 +636,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(eligiblePlanet, upgradeDemands[0].DestinationPlanet);
         }
 
+        /// <summary>
+        /// Verifies generate with static defense demand adds construction facility demand.
+        /// </summary>
         [Test]
         public void Generate_WithStaticDefenseDemand_AddsConstructionFacilityDemand()
         {
@@ -607,6 +658,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.ConstructionFacility));
         }
 
+        /// <summary>
+        /// Verifies generate with ship demand and no shipyard adds shipyard at demand planet.
+        /// </summary>
         [Test]
         public void Generate_WithShipDemandAndNoShipyard_AddsShipyardAtDemandPlanet()
         {
@@ -628,6 +682,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with shipyard sectors below hub target adds demand in each sector.
+        /// </summary>
         [Test]
         public void Generate_WithShipyardSectorsBelowHubTarget_AddsDemandInEachSector()
         {
@@ -676,6 +733,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with established shipyard hub adds demand toward sector hub target.
+        /// </summary>
         [Test]
         public void Generate_WithEstablishedShipyardHub_AddsDemandTowardSectorHubTarget()
         {
@@ -726,6 +786,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with completed shipyard hub consolidates smaller shipyard cluster.
+        /// </summary>
         [Test]
         public void Generate_WithCompletedShipyardHub_ConsolidatesSmallerShipyardCluster()
         {
@@ -772,6 +835,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(colony, demand.DestinationPlanet);
         }
 
+        /// <summary>
+        /// Verifies generate with incomplete shipyard hub does not expand secondary in another sector.
+        /// </summary>
         [Test]
         public void Generate_WithIncompleteShipyardHub_DoesNotExpandSecondaryInAnotherSector()
         {
@@ -836,6 +902,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(demands.Any(demand => demand.DestinationPlanet == secondary));
         }
 
+        /// <summary>
+        /// Verifies generate with busy shipyard adds shipyard at existing hub.
+        /// </summary>
         [Test]
         public void Generate_WithBusyShipyard_AddsShipyardAtExistingHub()
         {
@@ -859,6 +928,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(hub, demand.DestinationPlanet);
         }
 
+        /// <summary>
+        /// Verifies generate with available capacity at stacked shipyard adds sector hub demand.
+        /// </summary>
         [Test]
         public void Generate_WithAvailableCapacityAtStackedShipyard_AddsSectorHubDemand()
         {
@@ -890,6 +962,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with defense reserved training hub targets feasible cluster planet.
+        /// </summary>
         [Test]
         public void Generate_WithDefenseReservedTrainingHub_TargetsFeasibleClusterPlanet()
         {
@@ -926,6 +1001,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with facility count below planet floor adds facility demand.
+        /// </summary>
         [Test]
         public void Generate_WithFacilityCountBelowPlanetFloor_AddsFacilityDemand()
         {
@@ -959,6 +1037,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(demands.Any(item => item.Kind == AIDemandKind.Shipyard));
         }
 
+        /// <summary>
+        /// Verifies generate with construction capacity deficit adds demands at distinct planets.
+        /// </summary>
         [Test]
         public void Generate_WithConstructionCapacityDeficit_AddsDemandsAtDistinctPlanets()
         {
@@ -988,6 +1069,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(demands.All(item => item.QuantityNeeded == 1));
         }
 
+        /// <summary>
+        /// Verifies generate with pending facility meeting faction floor adds local capacity demand.
+        /// </summary>
         [Test]
         public void Generate_WithPendingFacilityMeetingFactionFloor_AddsLocalCapacityDemand()
         {
@@ -1029,6 +1113,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(demands.Any(item => item.Kind == AIDemandKind.Shipyard));
         }
 
+        /// <summary>
+        /// Verifies generate with building demand and no construction capacity adds construction facility.
+        /// </summary>
         [Test]
         public void Generate_WithBuildingDemandAndNoConstructionCapacity_AddsConstructionFacility()
         {
@@ -1051,6 +1138,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with undefended headquarters and surplus adds shield and weapon demands.
+        /// </summary>
         [Test]
         public void Generate_WithUndefendedHeadquartersAndSurplus_AddsShieldAndWeaponDemands()
         {
@@ -1079,6 +1169,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with defensive surplus adds complete planetary defense package.
+        /// </summary>
         [Test]
         public void Generate_WithDefensiveSurplus_AddsCompletePlanetaryDefensePackage()
         {
@@ -1125,6 +1218,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate interior planet with scaled floor reduces garrison target.
+        /// </summary>
         [Test]
         public void Generate_InteriorPlanetWithScaledFloor_ReducesGarrisonTarget()
         {
@@ -1155,6 +1251,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(expected, garrisonDemand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate threatened planet with scaled floor keeps full garrison target.
+        /// </summary>
         [Test]
         public void Generate_ThreatenedPlanetWithScaledFloor_KeepsFullGarrisonTarget()
         {
@@ -1186,6 +1285,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate incomplete static defense with gate skips starfighter reserve.
+        /// </summary>
         [Test]
         public void Generate_IncompleteStaticDefenseWithGate_SkipsStarfighterReserve()
         {
@@ -1214,6 +1316,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with unthreatened non production planet does not add static defense.
+        /// </summary>
         [Test]
         public void Generate_WithUnthreatenedNonProductionPlanet_DoesNotAddStaticDefense()
         {
@@ -1241,6 +1346,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with one defense energy slot prioritizes partial shield network.
+        /// </summary>
         [Test]
         public void Generate_WithOneDefenseEnergySlot_PrioritizesPartialShieldNetwork()
         {
@@ -1278,6 +1386,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with static defense coverage and surplus energy adds configured weapon batch.
+        /// </summary>
         [Test]
         public void Generate_WithStaticDefenseCoverageAndSurplusEnergy_AddsConfiguredWeaponBatch()
         {
@@ -1319,6 +1430,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(2, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with inbound threat raises threatened planet defense pressure.
+        /// </summary>
         [Test]
         public void Generate_WithInboundThreat_RaisesThreatenedPlanetDefensePressure()
         {
@@ -1378,6 +1492,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.Greater(threatenedPressure, valuablePressure);
         }
 
+        /// <summary>
+        /// Verifies generate with unstable unshielded planet raises initial shield pressure.
+        /// </summary>
         [Test]
         public void Generate_WithUnstableUnshieldedPlanet_RaisesInitialShieldPressure()
         {
@@ -1413,6 +1530,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.Greater(pressure, config.EconomySevereDemandPercent);
         }
 
+        /// <summary>
+        /// Verifies generate with existing shield does not apply instability pressure.
+        /// </summary>
         [Test]
         public void Generate_WithExistingShield_DoesNotApplyInstabilityPressure()
         {
@@ -1450,6 +1570,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with unthreatened infrastructure adds twelve starfighter minimum demand.
+        /// </summary>
         [Test]
         public void Generate_WithUnthreatenedInfrastructure_AddsTwelveStarfighterMinimumDemand()
         {
@@ -1495,6 +1618,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(demand.UsesDefensiveReserve);
         }
 
+        /// <summary>
+        /// Verifies generate with complete infrastructure starfighter reserve suppresses demand.
+        /// </summary>
         [Test]
         public void Generate_WithCompleteInfrastructureStarfighterReserve_SuppressesDemand()
         {
@@ -1543,6 +1669,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with ordinary unthreatened planet suppresses starfighter demand.
+        /// </summary>
         [Test]
         public void Generate_WithOrdinaryUnthreatenedPlanet_SuppressesStarfighterDemand()
         {
@@ -1566,6 +1695,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with threatened ordinary planet adds strength based starfighter demand.
+        /// </summary>
         [Test]
         public void Generate_WithThreatenedOrdinaryPlanet_AddsStrengthBasedStarfighterDemand()
         {
@@ -1612,6 +1744,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(expectedThreatReinforcement, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with headquarters and infrastructure raises headquarters starfighter pressure.
+        /// </summary>
         [Test]
         public void Generate_WithHeadquartersAndInfrastructure_RaisesHeadquartersStarfighterPressure()
         {
@@ -1663,6 +1798,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.Greater(headquartersDemand.Pressure, infrastructureDemand.Pressure);
         }
 
+        /// <summary>
+        /// Verifies generate with fleet capacity gaps adds fleet reinforcement demands.
+        /// </summary>
         [Test]
         public void Generate_WithFleetCapacityGaps_AddsFleetReinforcementDemands()
         {
@@ -1698,6 +1836,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.FleetRegiment));
         }
 
+        /// <summary>
+        /// Verifies generate with attack fleet readiness gap preserves pressure above standard range.
+        /// </summary>
         [Test]
         public void Generate_WithAttackFleetReadinessGap_PreservesPressureAboveStandardRange()
         {
@@ -1737,6 +1878,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.Greater(demand.Pressure, 100);
         }
 
+        /// <summary>
+        /// Verifies generate with moving fleet does not add fleet reinforcement demand.
+        /// </summary>
         [Test]
         public void Generate_WithMovingFleet_DoesNotAddFleetReinforcementDemand()
         {
@@ -1769,6 +1913,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(demands.Any(demand => demand.DestinationFleet == fleet));
         }
 
+        /// <summary>
+        /// Verifies generate with active attack and idle understrength fleet adds assembly demand.
+        /// </summary>
         [Test]
         public void Generate_WithActiveAttackAndIdleUnderstrengthFleet_AddsAssemblyDemand()
         {
@@ -1796,6 +1943,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with multiple idle understrength fleets adds assembly demand for each fleet.
+        /// </summary>
         [Test]
         public void Generate_WithMultipleIdleUnderstrengthFleets_AddsAssemblyDemandForEachFleet()
         {
@@ -1823,6 +1973,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with multiple enemy planets builds for current target resistance.
+        /// </summary>
         [Test]
         public void Generate_WithMultipleEnemyPlanets_BuildsForCurrentTargetResistance()
         {
@@ -1905,6 +2058,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(AICapitalShipProductionRole.General, demand.CapitalShipRole);
         }
 
+        /// <summary>
+        /// Verifies generate with multiple attack fleets adds demand for each campaign.
+        /// </summary>
         [Test]
         public void Generate_WithMultipleAttackFleets_AddsDemandForEachCampaign()
         {
@@ -2005,6 +2161,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with attack regiment strength gap adds demand for entire deficit.
+        /// </summary>
         [Test]
         public void Generate_WithAttackRegimentStrengthGap_AddsDemandForEntireDeficit()
         {
@@ -2044,6 +2203,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(3, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with attack regiment strength gap and full capacity adds capital ship demand.
+        /// </summary>
         [Test]
         public void Generate_WithAttackRegimentStrengthGapAndFullCapacity_AddsCapitalShipDemand()
         {
@@ -2084,6 +2246,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(AICapitalShipProductionRole.TroopTransport, demand.CapitalShipRole);
         }
 
+        /// <summary>
+        /// Verifies generate with weak idle battle fleet adds capital ship demand.
+        /// </summary>
         [Test]
         public void Generate_WithWeakIdleBattleFleet_AddsCapitalShipDemand()
         {
@@ -2119,6 +2284,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(AICapitalShipProductionRole.General, demand.CapitalShipRole);
         }
 
+        /// <summary>
+        /// Verifies generate with shielded attack target and insufficient bombardment adds capital ship demand.
+        /// </summary>
         [Test]
         public void Generate_WithShieldedAttackTargetAndInsufficientBombardment_AddsCapitalShipDemand()
         {
@@ -2162,6 +2330,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(AICapitalShipProductionRole.Bombardment, demand.CapitalShipRole);
         }
 
+        /// <summary>
+        /// Verifies generate with combat and bombardment gaps prioritizes bombardment ship.
+        /// </summary>
         [Test]
         public void Generate_WithCombatAndBombardmentGaps_PrioritizesBombardmentShip()
         {
@@ -2204,6 +2375,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(AICapitalShipProductionRole.Bombardment, demand.CapitalShipRole);
         }
 
+        /// <summary>
+        /// Verifies generate with ready attack fleet and unlocked gravity well adds interdiction demand.
+        /// </summary>
         [Test]
         public void Generate_WithReadyAttackFleetAndUnlockedGravityWell_AddsInterdictionDemand()
         {
@@ -2256,6 +2430,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(AICapitalShipProductionRole.Interdiction, demand.CapitalShipRole);
         }
 
+        /// <summary>
+        /// Verifies generate with ready idle battle fleet and unlocked gravity well adds interdiction demand.
+        /// </summary>
         [Test]
         public void Generate_WithReadyIdleBattleFleetAndUnlockedGravityWell_AddsInterdictionDemand()
         {
@@ -2300,6 +2477,10 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(AICapitalShipProductionRole.Interdiction, demand.CapitalShipRole);
         }
 
+        /// <summary>
+        /// Verifies generate with committed gravity well ship does not add interdiction demand.
+        /// </summary>
+        /// <param name="manufacturingStatus">The manufacturing status.</param>
         [TestCase(ManufacturingStatus.Building)]
         [TestCase(ManufacturingStatus.Complete)]
         public void Generate_WithCommittedGravityWellShip_DoesNotAddInterdictionDemand(
@@ -2354,6 +2535,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with understrength headquarters defense fleet adds capital ship demand.
+        /// </summary>
         [Test]
         public void Generate_WithUnderstrengthHeadquartersDefenseFleet_AddsCapitalShipDemand()
         {
@@ -2425,6 +2609,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(50, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with inbound capital ship filling combat need does not add capital ship demand.
+        /// </summary>
         [Test]
         public void Generate_WithInboundCapitalShipFillingCombatNeed_DoesNotAddCapitalShipDemand()
         {
@@ -2463,6 +2650,10 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with committed capital ship filling combat need does not add capital ship demand.
+        /// </summary>
+        /// <param name="manufacturingStatus">The manufacturing status.</param>
         [TestCase(ManufacturingStatus.Building)]
         [TestCase(ManufacturingStatus.Complete)]
         public void Generate_WithCommittedCapitalShipFillingCombatNeed_DoesNotAddCapitalShipDemand(
@@ -2498,6 +2689,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with colonization fleet missing regiment capacity adds capital ship demand.
+        /// </summary>
         [Test]
         public void Generate_WithColonizationFleetMissingRegimentCapacity_AddsCapitalShipDemand()
         {
@@ -2537,6 +2731,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with colonization fleet capacity adds target colonization regiments.
+        /// </summary>
         [Test]
         public void Generate_WithColonizationFleetCapacity_AddsTargetColonizationRegiments()
         {
@@ -2579,6 +2776,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with defense fleet capacity does not add fleet regiment demand.
+        /// </summary>
         [Test]
         public void Generate_WithDefenseFleetCapacity_DoesNotAddFleetRegimentDemand()
         {
@@ -2626,6 +2826,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate without active officer mission does not add special forces demand.
+        /// </summary>
         [Test]
         public void Generate_WithoutActiveOfficerMission_DoesNotAddSpecialForcesDemand()
         {
@@ -2650,6 +2853,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with equivalent special forces templates adds one role demand.
+        /// </summary>
         [Test]
         public void Generate_WithEquivalentSpecialForcesTemplates_AddsOneRoleDemand()
         {
@@ -2694,6 +2900,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with active hostile officer missions scales special forces demand.
+        /// </summary>
         [Test]
         public void Generate_WithActiveHostileOfficerMissions_ScalesSpecialForcesDemand()
         {
@@ -2734,6 +2943,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(2, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with assigned decoy covering active mission does not add demand.
+        /// </summary>
         [Test]
         public void Generate_WithAssignedDecoyCoveringActiveMission_DoesNotAddDemand()
         {
@@ -2779,6 +2991,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.SpecialForces));
         }
 
+        /// <summary>
+        /// Verifies generate with replacement building covering active mission does not add demand.
+        /// </summary>
         [Test]
         public void Generate_WithReplacementBuildingCoveringActiveMission_DoesNotAddDemand()
         {
@@ -2824,6 +3039,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.SpecialForces));
         }
 
+        /// <summary>
+        /// Verifies generate with too few committed battle fleets adds fleet seed demand.
+        /// </summary>
         [Test]
         public void Generate_WithTooFewCommittedBattleFleets_AddsFleetSeedDemand()
         {
@@ -2848,6 +3066,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with delivering fleet seed counts fleet as committed.
+        /// </summary>
         [Test]
         public void Generate_WithDeliveringFleetSeed_CountsFleetAsCommitted()
         {
@@ -2879,6 +3100,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(demands.Any(item => item.Kind == AIDemandKind.FleetSeedCapitalShip));
         }
 
+        /// <summary>
+        /// Verifies generate with known uncolonized planet adds colonization fleet seed demand.
+        /// </summary>
         [Test]
         public void Generate_WithKnownUncolonizedPlanet_AddsColonizationFleetSeedDemand()
         {
@@ -2907,6 +3131,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with one of two colonization fleets adds one seed demand.
+        /// </summary>
         [Test]
         public void Generate_WithOneOfTwoColonizationFleets_AddsOneSeedDemand()
         {
@@ -2928,6 +3155,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with expanding territory scales fleet seed demand.
+        /// </summary>
         [Test]
         public void Generate_WithExpandingTerritory_ScalesFleetSeedDemand()
         {
@@ -2948,6 +3178,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(4, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with fleet role capacity deficit adds fleet seed demand.
+        /// </summary>
         [Test]
         public void Generate_WithFleetRoleCapacityDeficit_AddsFleetSeedDemand()
         {
@@ -2982,6 +3215,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with unguarded headquarters and fleet role deficit adds headquarters fleet seed demand.
+        /// </summary>
         [Test]
         public void Generate_WithUnguardedHeadquartersAndFleetRoleDeficit_AddsHeadquartersFleetSeedDemand()
         {
@@ -3016,6 +3252,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies generate with satisfied fleet target and unguarded headquarters adds fleet seed demand.
+        /// </summary>
         [Test]
         public void Generate_WithSatisfiedFleetTargetAndUnguardedHeadquarters_AddsFleetSeedDemand()
         {
@@ -3047,6 +3286,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.FleetSeedCapitalShip));
         }
 
+        /// <summary>
+        /// Verifies generate with under garrisoned planet adds required garrison demand.
+        /// </summary>
         [Test]
         public void Generate_WithUnderGarrisonedPlanet_AddsRequiredGarrisonDemand()
         {
@@ -3075,6 +3317,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate with satisfied garrison requirement does not add garrison demand.
+        /// </summary>
         [Test]
         public void Generate_WithSatisfiedGarrisonRequirement_DoesNotAddGarrisonDemand()
         {
@@ -3110,6 +3355,14 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Adds shield.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="strength">The strength.</param>
         private static void AddShield(
             GameRoot game,
             Planet planet,
@@ -3127,6 +3380,12 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(shield, planet);
         }
 
+        /// <summary>
+        /// Adds maintenance capacity.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="count">The count.</param>
         private static void AddMaintenanceCapacity(GameRoot game, Planet planet, int count)
         {
             planet.NumRawResourceNodes += count;
@@ -3149,6 +3408,11 @@ namespace Rebellion.Tests.AI.Planners
             }
         }
 
+        /// <summary>
+        /// Adds unlocked shipyard upgrade.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <returns>The result of add unlocked shipyard upgrade.</returns>
         private static Building AddUnlockedShipyardUpgrade(Faction faction)
         {
             Building advancedShipyard = AITestSceneBuilder.CreateBuildingTemplate(
@@ -3166,6 +3430,10 @@ namespace Rebellion.Tests.AI.Planners
             return advancedShipyard;
         }
 
+        /// <summary>
+        /// Creates busy shipyard scene.
+        /// </summary>
+        /// <returns>The created busy shipyard scene.</returns>
         private static (
             GameRoot game,
             Faction empire,
@@ -3214,6 +3482,15 @@ namespace Rebellion.Tests.AI.Planners
             return (game, empire, hub, destination, fleet, ship);
         }
 
+        /// <summary>
+        /// Adds attack fleet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="location">The location.</param>
+        /// <param name="target">The target.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="regimentCapacity">The regiment capacity.</param>
+        /// <returns>The result of add attack fleet.</returns>
         private static Fleet AddAttackFleet(
             GameRoot game,
             Planet location,

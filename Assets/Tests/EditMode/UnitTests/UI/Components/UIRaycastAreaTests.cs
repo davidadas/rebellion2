@@ -12,6 +12,9 @@ namespace Rebellion.Tests.UI.Components
         private UIRaycastArea _area;
         private GameObject _root;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -30,12 +33,18 @@ namespace Rebellion.Tests.UI.Components
             _root.SetActive(true);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             Object.DestroyImmediate(_root);
         }
 
+        /// <summary>
+        /// Verifies on pointer up after left button press emits release.
+        /// </summary>
         [Test]
         public void OnPointerUp_AfterLeftButtonPress_EmitsRelease()
         {
@@ -52,6 +61,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(1, releaseCount);
         }
 
+        /// <summary>
+        /// Verifies on pointer up without left button press does not emit release.
+        /// </summary>
         [Test]
         public void OnPointerUp_WithoutLeftButtonPress_DoesNotEmitRelease()
         {
@@ -65,6 +77,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, releaseCount);
         }
 
+        /// <summary>
+        /// Verifies on pointer down right button emits context request only.
+        /// </summary>
         [Test]
         public void OnPointerDown_RightButton_EmitsContextRequestOnly()
         {

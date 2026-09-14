@@ -22,6 +22,9 @@ namespace Rebellion.Game.Events
         [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
+        /// <summary>
+        /// Initializes a new instance of the AllConditional class.
+        /// </summary>
         public AllConditional()
             : base() { }
 
@@ -43,6 +46,9 @@ namespace Rebellion.Game.Events
         [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
+        /// <summary>
+        /// Initializes a new instance of the AnyConditional class.
+        /// </summary>
         public AnyConditional()
             : base() { }
 
@@ -64,6 +70,9 @@ namespace Rebellion.Game.Events
         [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
+        /// <summary>
+        /// Initializes a new instance of the NotConditional class.
+        /// </summary>
         public NotConditional()
             : base() { }
 
@@ -85,6 +94,9 @@ namespace Rebellion.Game.Events
         [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
+        /// <summary>
+        /// Initializes a new instance of the XorConditional class.
+        /// </summary>
         public XorConditional()
             : base() { }
 
@@ -120,6 +132,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Compares an actual integer with an expected integer using the selected operator.
         /// </summary>
+        /// <param name="actual">The actual.</param>
+        /// <param name="operation">The operation.</param>
+        /// <param name="expected">The expected.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         internal static bool Evaluate(int actual, ComparisonOperator operation, int expected) =>
             operation switch
             {
@@ -244,6 +260,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string CompareToBinding { get; set; }
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             bool hasLiteral = CompareTo != null;
@@ -385,6 +406,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns whether the authored operator requires ordered scalar values.
         /// </summary>
+        /// <returns>True when the ordered comparison condition is met; otherwise false.</returns>
         private bool IsOrderedComparison() =>
             Comparison
                 is ComparisonOperator.GreaterThan
@@ -405,6 +427,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             if (
@@ -436,6 +463,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
@@ -445,6 +477,11 @@ namespace Rebellion.Game.Events
             return officer != null && Evaluate(officer);
         }
 
+        /// <summary>
+        /// Evaluates the requested operation.
+        /// </summary>
+        /// <param name="officer">The officer.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         protected abstract bool Evaluate(Officer officer);
     }
 
@@ -454,6 +491,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string CaptorFactionInstanceID { get; set; }
 
+        /// <summary>
+        /// Evaluates the requested operation.
+        /// </summary>
+        /// <param name="officer">The officer.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         protected override bool Evaluate(Officer officer) =>
             officer.IsCaptured
             && (
@@ -465,18 +507,33 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "IsKilled")]
     public sealed class IsKilledConditional : OfficerBooleanConditional
     {
+        /// <summary>
+        /// Evaluates the requested operation.
+        /// </summary>
+        /// <param name="officer">The officer.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         protected override bool Evaluate(Officer officer) => officer.IsKilled;
     }
 
     [PersistableObject(Name = "IsInjured")]
     public sealed class IsInjuredConditional : OfficerBooleanConditional
     {
+        /// <summary>
+        /// Evaluates the requested operation.
+        /// </summary>
+        /// <param name="officer">The officer.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         protected override bool Evaluate(Officer officer) => officer.InjuryPoints > 0;
     }
 
     [PersistableObject(Name = "IsForceEligible")]
     public sealed class IsForceEligibleConditional : OfficerBooleanConditional
     {
+        /// <summary>
+        /// Evaluates the requested operation.
+        /// </summary>
+        /// <param name="officer">The officer.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         protected override bool Evaluate(Officer officer) => officer.IsForceEligible;
     }
 
@@ -532,6 +589,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string PlanetBinding { get; set; }
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
@@ -565,6 +627,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute(Name = "FactionInstanceID")]
         public string FactionInstanceID { get; set; }
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             GameRoot game = context.Game;
@@ -599,6 +666,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string PlanetBinding { get; set; }
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
@@ -634,6 +706,12 @@ namespace Rebellion.Game.Events
 
     internal static class SceneAncestors
     {
+        /// <summary>
+        /// Resolves the requested operation.
+        /// </summary>
+        /// <param name="node">The node.</param>
+        /// <param name="type">The type.</param>
+        /// <returns>The resolved value.</returns>
         internal static ISceneNode Resolve(ISceneNode node, SceneAncestorType type) =>
             type switch
             {
@@ -652,6 +730,11 @@ namespace Rebellion.Game.Events
     {
         public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             List<ISceneNode> nodes = ResolveDistinctUnits(context);
@@ -661,6 +744,11 @@ namespace Rebellion.Game.Events
             return parent != null && nodes.All(node => ReferenceEquals(node.GetParent(), parent));
         }
 
+        /// <summary>
+        /// Resolves distinct units.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>The resolved distinct units.</returns>
         private List<ISceneNode> ResolveDistinctUnits(GameConditionContext context) =>
             SceneConditionUnits.ResolveDistinct(context.Game, Units);
     }
@@ -673,6 +761,11 @@ namespace Rebellion.Game.Events
 
         public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context)
         {
             List<ISceneNode> nodes = SceneConditionUnits.ResolveDistinct(context.Game, Units);
@@ -688,6 +781,12 @@ namespace Rebellion.Game.Events
 
     internal static class SceneConditionUnits
     {
+        /// <summary>
+        /// Resolves distinct.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="references">The references.</param>
+        /// <returns>The resolved distinct.</returns>
         public static List<ISceneNode> ResolveDistinct(
             GameRoot game,
             IReadOnlyCollection<EventUnitReference> references
@@ -715,6 +814,9 @@ namespace Rebellion.Game.Events
     {
         public List<string> UnitInstanceIDs { get; set; } = new List<string>();
 
+        /// <summary>
+        /// Initializes a new instance of the AreOnOpposingFactionsConditional class.
+        /// </summary>
         public AreOnOpposingFactionsConditional()
             : base() { }
 
@@ -796,6 +898,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context) =>
             context.Game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID, includeDisabled: true)
                 is IMovable { Movement: not null };

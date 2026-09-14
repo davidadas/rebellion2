@@ -10,6 +10,8 @@ namespace Rebellion.Game.Advisor
         /// <summary>
         /// Returns the default notification type for a message-result category.
         /// </summary>
+        /// <param name="resultType">The result type.</param>
+        /// <returns>The requested default.</returns>
         public static AdvisorNotificationType GetDefault(MessageResultType? resultType) =>
             resultType switch
             {

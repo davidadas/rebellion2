@@ -9,6 +9,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
     {
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -16,6 +19,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies menu data command source change preserves snapshot.
+        /// </summary>
         [Test]
         public void MenuData_CommandSourceChange_PreservesSnapshot()
         {
@@ -40,6 +46,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreSame(command, data.Commands[0]);
         }
 
+        /// <summary>
+        /// Verifies menu data null commands uses empty collection.
+        /// </summary>
         [Test]
         public void MenuData_NullCommands_UsesEmptyCollection()
         {
@@ -48,6 +57,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsEmpty(data.Commands);
         }
 
+        /// <summary>
+        /// Creates window.
+        /// </summary>
+        /// <returns>The created window.</returns>
         private UIWindow CreateWindow()
         {
             _windowObject = new GameObject(

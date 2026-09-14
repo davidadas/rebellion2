@@ -147,6 +147,7 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Builds a new game and starts its configured faction introduction.
     /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private async Task StartNewGameAsync()
     {
         GameSummary summary = GameLaunchContext.Summary;
@@ -196,6 +197,7 @@ public sealed class GameFlowController : MonoBehaviour
     /// Plays the configured faction introduction before entering gameplay.
     /// </summary>
     /// <param name="faction">The player faction.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private Task PlayFactionIntroAsync(Faction faction)
     {
         if (faction == null)
@@ -345,6 +347,9 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Selects the headquarters movie from the faction that lost the headquarters.
     /// </summary>
+    /// <param name="themes">The themes.</param>
+    /// <param name="result">The result.</param>
+    /// <returns>The requested headquarters destroyed cutscene path.</returns>
     internal static string GetHeadquartersDestroyedCutscenePath(
         FactionThemeLibrary themes,
         HeadquartersLostResult result
@@ -389,6 +394,10 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Selects the configured victory or defeat movie from the player's perspective.
     /// </summary>
+    /// <param name="theme">The theme.</param>
+    /// <param name="playerFaction">The player faction.</param>
+    /// <param name="result">The result.</param>
+    /// <returns>The requested campaign ending cutscene path.</returns>
     internal static string GetCampaignEndingCutscenePath(
         FactionTheme theme,
         Faction playerFaction,

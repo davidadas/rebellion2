@@ -17,6 +17,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         private FinderWindowView _view;
         private GameObject _viewObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -26,6 +29,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -33,12 +39,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render systems presentation applies frame search tabs and rows.
+        /// </summary>
         [Test]
         public void Render_SystemsPresentation_AppliesFrameSearchTabsAndRows()
         {
@@ -81,6 +93,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsFalse(FindRowObject(rows[1], "CountColumnSlot1TextField").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render upper button layout hides button strip and uses upper slots.
+        /// </summary>
         [Test]
         public void Render_UpperButtonLayout_HidesButtonStripAndUsesUpperSlots()
         {
@@ -103,6 +118,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsFalse(FindObject("FourButtonLayoutTargetButtonImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render four button layout uses four lower slots.
+        /// </summary>
         [Test]
         public void Render_FourButtonLayout_UsesFourLowerSlots()
         {
@@ -125,6 +143,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsFalse(FindObject("UpperLayoutTargetButtonImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render command with source rect applies configured button bounds.
+        /// </summary>
         [Test]
         public void Render_CommandWithSourceRect_AppliesConfiguredButtonBounds()
         {
@@ -158,6 +179,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies render none command hides its authored button slot.
+        /// </summary>
         [Test]
         public void Render_NoneCommand_HidesItsAuthoredButtonSlot()
         {
@@ -187,6 +211,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsTrue(FindObject("TwoButtonLayoutTargetButtonImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render too many tabs throws missing reference exception.
+        /// </summary>
         [Test]
         public void Render_TooManyTabs_ThrowsMissingReferenceException()
         {
@@ -201,6 +228,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.Throws<MissingReferenceException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render too many upper commands throws missing reference exception.
+        /// </summary>
         [Test]
         public void Render_TooManyUpperCommands_ThrowsMissingReferenceException()
         {
@@ -215,6 +245,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.Throws<MissingReferenceException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render troops mode uses compact tab default title and rows layout.
+        /// </summary>
         [Test]
         public void Render_TroopsMode_UsesCompactTabDefaultTitleAndRowsLayout()
         {
@@ -243,6 +276,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies render personnel list uses personnel row and compact subjects.
+        /// </summary>
         [Test]
         public void Render_PersonnelList_UsesPersonnelRowAndCompactSubjects()
         {
@@ -271,6 +307,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies render personnel panel uses panel row and default subjects.
+        /// </summary>
         [Test]
         public void Render_PersonnelPanel_UsesPanelRowAndDefaultSubjects()
         {
@@ -299,6 +338,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies render shorter row collection hides unused cached rows.
+        /// </summary>
         [Test]
         public void Render_ShorterRowCollection_HidesUnusedCachedRows()
         {
@@ -332,6 +374,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual("Replacement", FindRowText(FindRows()[0], "NameTextField").text);
         }
 
+        /// <summary>
+        /// Verifies search input value changed raises normalized search request.
+        /// </summary>
         [Test]
         public void SearchInput_ValueChanged_RaisesNormalizedSearchRequest()
         {
@@ -344,6 +389,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(string.Empty, received);
         }
 
+        /// <summary>
+        /// Verifies tab button press then click raises focus without control press.
+        /// </summary>
         [Test]
         public void TabButton_PressThenClick_RaisesFocusWithoutControlPress()
         {
@@ -366,6 +414,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(3, selectedTab);
         }
 
+        /// <summary>
+        /// Verifies dialog button press then click raises control before rendered semantic command.
+        /// </summary>
         [Test]
         public void DialogButton_PressThenClick_RaisesControlBeforeRenderedSemanticCommand()
         {
@@ -402,6 +453,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(FinderWindowCommand.Close, command);
         }
 
+        /// <summary>
+        /// Verifies row gestures rendered row raise selection activation and context requests.
+        /// </summary>
         [Test]
         public void RowGestures_RenderedRow_RaiseSelectionActivationAndContextRequests()
         {
@@ -449,6 +503,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(right, contextEvent);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds controls and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsControlsAndRaisesDestroyedEvent()
         {
@@ -489,6 +546,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(0, searchCount);
         }
 
+        /// <summary>
+        /// Creates render data.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="panel">Whether panel.</param>
+        /// <param name="frame">The frame.</param>
+        /// <param name="tabs">The tabs.</param>
+        /// <param name="rows">The rows.</param>
+        /// <returns>The created render data.</returns>
         private FinderWindowRenderData CreateRenderData(
             FinderMode mode,
             bool panel,
@@ -512,6 +578,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Creates frame.
+        /// </summary>
+        /// <param name="useUpperButtonLayout">Whether use upper button layout.</param>
+        /// <param name="buttons">The buttons.</param>
+        /// <returns>The created frame.</returns>
         private FinderWindowFrameRenderData CreateFrame(
             bool useUpperButtonLayout,
             FinderWindowDialogButtonRenderData[] buttons
@@ -531,6 +603,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Creates dialog buttons.
+        /// </summary>
+        /// <param name="count">The count.</param>
+        /// <returns>The created dialog buttons.</returns>
         private FinderWindowDialogButtonRenderData[] CreateDialogButtons(int count)
         {
             FinderWindowCommand[] commands =
@@ -547,11 +624,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 .ToArray();
         }
 
+        /// <summary>
+        /// Creates dialog button.
+        /// </summary>
+        /// <param name="command">The command.</param>
+        /// <returns>The created dialog button.</returns>
         private FinderWindowDialogButtonRenderData CreateDialogButton(FinderWindowCommand command)
         {
             return new FinderWindowDialogButtonRenderData(command, _texture, _texture, null);
         }
 
+        /// <summary>
+        /// Creates tabs.
+        /// </summary>
+        /// <param name="count">The count.</param>
+        /// <returns>The created tabs.</returns>
         private FinderWindowTabRenderData[] CreateTabs(int count)
         {
             return Enumerable
@@ -560,6 +647,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 .ToArray();
         }
 
+        /// <summary>
+        /// Creates row.
+        /// </summary>
+        /// <param name="rowId">The row id.</param>
+        /// <param name="name">The name.</param>
+        /// <param name="selected">Whether selected.</param>
+        /// <param name="counts">The counts.</param>
+        /// <returns>The created row.</returns>
         private static FinderWindowRowRenderData CreateRow(
             string rowId,
             string name,
@@ -570,6 +665,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             return new FinderWindowRowRenderData(rowId, name, selected, counts);
         }
 
+        /// <summary>
+        /// Finds rows.
+        /// </summary>
+        /// <returns>The matching rows.</returns>
         private FinderWindowRowView[] FindRows()
         {
             return _viewObject
@@ -579,6 +678,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {
@@ -587,6 +692,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds object.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching object.</returns>
         private GameObject FindObject(string objectName)
         {
             return _viewObject
@@ -595,16 +705,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds rect.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching rect.</returns>
         private RectTransform FindRect(string objectName)
         {
             return FindObject(objectName).transform as RectTransform;
         }
 
+        /// <summary>
+        /// Finds text.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching text.</returns>
         private TextMeshProUGUI FindText(string objectName)
         {
             return FindComponent<TextMeshProUGUI>(objectName);
         }
 
+        /// <summary>
+        /// Finds row object.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching row object.</returns>
         private static GameObject FindRowObject(FinderWindowRowView row, string objectName)
         {
             return row.GetComponentsInChildren<Transform>(true)
@@ -612,6 +738,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds row text.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching row text.</returns>
         private static TextMeshProUGUI FindRowText(FinderWindowRowView row, string objectName)
         {
             return row.GetComponentsInChildren<TextMeshProUGUI>(true)

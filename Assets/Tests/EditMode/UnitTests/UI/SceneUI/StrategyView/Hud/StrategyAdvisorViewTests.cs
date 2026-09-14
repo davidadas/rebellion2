@@ -21,6 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         private GameObject _rootObject;
         private StrategyAdvisorView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -35,6 +38,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Canvas.ForceUpdateCanvases();
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -46,12 +52,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render visible presentation applies idle frames and input bounds.
+        /// </summary>
         [Test]
         public void Render_VisiblePresentation_AppliesIdleFramesAndInputBounds()
         {
@@ -77,6 +89,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(droidInput.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render hidden presentation hides frames and inputs.
+        /// </summary>
         [Test]
         public void Render_HiddenPresentation_HidesFramesAndInputs()
         {
@@ -90,6 +105,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsFalse(GetField<UIRaycastArea>("droidInput").gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render during playback clears queue and applies new idle presentation.
+        /// </summary>
         [Test]
         public void Render_DuringPlayback_ClearsQueueAndAppliesNewIdlePresentation()
         {
@@ -125,6 +143,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             UnityEngine.Object.DestroyImmediate(replacementProtocol);
         }
 
+        /// <summary>
+        /// Verifies refresh idle frames during playback preserves playback and updates idle frames.
+        /// </summary>
         [Test]
         public void RefreshIdleFrames_DuringPlayback_PreservesPlaybackAndUpdatesIdleFrames()
         {
@@ -169,6 +190,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies enqueue playbacks ordered animations plays frames and restores idle images.
+        /// </summary>
         [Test]
         public void EnqueuePlaybacks_OrderedAnimations_PlaysFramesAndRestoresIdleImages()
         {
@@ -211,6 +235,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             CollectionAssert.AreEqual(new[] { protocolAnimation, droidAnimation }, started);
         }
 
+        /// <summary>
+        /// Verifies enqueue playbacks delayed animation waits before starting.
+        /// </summary>
         [Test]
         public void EnqueuePlaybacks_DelayedAnimation_WaitsBeforeStarting()
         {
@@ -236,6 +263,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(_protocolFirstTexture, GetField<RawImage>("protocolImage").texture);
         }
 
+        /// <summary>
+        /// Verifies enqueue playbacks audio outlasts frames holds final frame until audio duration.
+        /// </summary>
         [Test]
         public void EnqueuePlaybacks_AudioOutlastsFrames_HoldsFinalFrameUntilAudioDuration()
         {
@@ -266,6 +296,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(_protocolIdleTexture, GetField<RawImage>("protocolImage").texture);
         }
 
+        /// <summary>
+        /// Verifies enqueue playbacks null and empty animations does not start playback.
+        /// </summary>
         [Test]
         public void EnqueuePlaybacks_NullAndEmptyAnimations_DoesNotStartPlayback()
         {
@@ -288,6 +321,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(_droidIdleTexture, GetField<RawImage>("droidImage").texture);
         }
 
+        /// <summary>
+        /// Verifies pause playback active animation freezes and resumes at current frame.
+        /// </summary>
         [Test]
         public void PausePlayback_ActiveAnimation_FreezesAndResumesAtCurrentFrame()
         {
@@ -314,6 +350,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(_protocolSecondTexture, GetField<RawImage>("protocolImage").texture);
         }
 
+        /// <summary>
+        /// Verifies cancel playback paused animation allows subsequent playback to complete.
+        /// </summary>
         [Test]
         public void CancelPlayback_PausedAnimation_AllowsSubsequentPlaybackToComplete()
         {
@@ -346,6 +385,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(_droidIdleTexture, GetField<RawImage>("droidImage").texture);
         }
 
+        /// <summary>
+        /// Verifies droid input left click raises droid clicked.
+        /// </summary>
         [Test]
         public void DroidInput_LeftClick_RaisesDroidClicked()
         {
@@ -359,6 +401,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(1, clickCount);
         }
 
+        /// <summary>
+        /// Verifies advisor inputs right press raise source coordinates.
+        /// </summary>
         [Test]
         public void AdvisorInputs_RightPress_RaiseSourceCoordinates()
         {
@@ -381,6 +426,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(expectedPosition, droidPosition);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds inputs and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsInputsAndRaisesDestroyedEvent()
         {
@@ -405,6 +453,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(0, contextCount);
         }
 
+        /// <summary>
+        /// Creates presentation.
+        /// </summary>
+        /// <param name="visible">Whether visible.</param>
+        /// <returns>The created presentation.</returns>
         private StrategyAdvisorViewData CreatePresentation(bool visible)
         {
             return new StrategyAdvisorViewData(
@@ -417,6 +470,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             );
         }
 
+        /// <summary>
+        /// Creates pointer event.
+        /// </summary>
+        /// <param name="button">The button.</param>
+        /// <returns>The created pointer event.</returns>
         private PointerEventData CreatePointerEvent(PointerEventData.InputButton button)
         {
             return new PointerEventData(null)
@@ -426,6 +484,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             };
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -434,6 +498,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     .GetValue(_view);
         }
 
+        /// <summary>
+        /// Gets source rect.
+        /// </summary>
+        /// <param name="transform">The transform.</param>
+        /// <returns>The requested source rect.</returns>
         private static RectInt GetSourceRect(Transform transform)
         {
             return UILayout.GetSourceRect(transform as RectTransform);

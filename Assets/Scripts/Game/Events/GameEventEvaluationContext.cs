@@ -83,6 +83,9 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Attempts to read a binding without imposing a compile-time value type.
         /// </summary>
+        /// <param name="name">The name.</param>
+        /// <param name="value">Receives the value.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         public bool TryGetBinding(string name, out object value) =>
             _bindings.TryGetValue(name, out value);
 

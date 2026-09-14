@@ -35,6 +35,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -55,12 +58,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             _controller = CreateController();
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null required dependency throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullRequiredDependency_ThrowsArgumentNullException()
         {
@@ -88,12 +97,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
         }
 
+        /// <summary>
+        /// Verifies bind window null view throws argument null exception.
+        /// </summary>
         [Test]
         public void BindWindow_NullView_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _controller.BindWindow(null));
         }
 
+        /// <summary>
+        /// Verifies open scrap valid selection creates modal session plays prompt and marks dirty.
+        /// </summary>
         [Test]
         public void OpenScrap_ValidSelection_CreatesModalSessionPlaysPromptAndMarksDirty()
         {
@@ -113,6 +128,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
         }
 
+        /// <summary>
+        /// Verifies render windows open scrap renders prompt selection and configured artwork.
+        /// </summary>
         [Test]
         public void RenderWindows_OpenScrap_RendersPromptSelectionAndConfiguredArtwork()
         {
@@ -134,6 +152,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsTrue(view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies cancel button open scrap closes without invoking action.
+        /// </summary>
         [Test]
         public void CancelButton_OpenScrap_ClosesWithoutInvokingAction()
         {
@@ -145,6 +166,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(0, _confirmedCount);
         }
 
+        /// <summary>
+        /// Verifies confirm button open scrap invokes action and closes dialog.
+        /// </summary>
         [Test]
         public void ConfirmButton_OpenScrap_InvokesActionAndClosesDialog()
         {
@@ -156,6 +180,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreSame(window, _requestedCloseWindow);
         }
 
+        /// <summary>
+        /// Verifies confirm button repeated choice invokes action once.
+        /// </summary>
         [Test]
         public void ConfirmButton_RepeatedChoice_InvokesActionOnce()
         {
@@ -168,6 +195,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(1, _confirmedCount);
         }
 
+        /// <summary>
+        /// Verifies open stop construction null action does not keep window or play audio.
+        /// </summary>
         [Test]
         public void OpenStopConstruction_NullAction_DoesNotKeepWindowOrPlayAudio()
         {
@@ -177,6 +207,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsEmpty(_playedSounds);
         }
 
+        /// <summary>
+        /// Verifies open stop construction selection renders prompt and plays stop sound.
+        /// </summary>
         [Test]
         public void OpenStopConstruction_Selection_RendersPromptAndPlaysStopSound()
         {
@@ -206,6 +239,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open retire selection renders prompt and plays retire sound.
+        /// </summary>
         [Test]
         public void OpenRetire_Selection_RendersPromptAndPlaysRetireSound()
         {
@@ -231,6 +267,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open move selection renders provided transit time without prompt sound.
+        /// </summary>
         [Test]
         public void OpenMove_Selection_RendersProvidedTransitTimeWithoutPromptSound()
         {
@@ -248,6 +287,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open mission abort mission renders original prompt without prompt sound.
+        /// </summary>
         [Test]
         public void OpenMissionAbort_Mission_RendersOriginalPromptWithoutPromptSound()
         {
@@ -267,6 +309,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies view destroyed initialized session releases session state.
+        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesSessionState()
         {
@@ -277,6 +322,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.Throws<InvalidOperationException>(() => _controller.RenderWindow(view, window));
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private ConfirmDialogWindowController CreateController()
         {
             return new ConfirmDialogWindowController(
@@ -292,11 +341,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 
         private sealed class TestMission : Mission
         {
+            /// <summary>
+            /// Creates node copy.
+            /// </summary>
+            /// <returns>The created node copy.</returns>
             protected override BaseSceneNode CreateNodeCopy() => new TestMission();
 
+            /// <summary>
+            /// Checks whether the repeat after completion condition is met.
+            /// </summary>
+            /// <param name="game">The game.</param>
+            /// <returns>True when the repeat after completion condition is met; otherwise false.</returns>
             public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
         private static GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -305,6 +367,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             return game;
         }
 
+        /// <summary>
+        /// Creates source ship.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The created source ship.</returns>
         private static CapitalShip CreateSourceShip(GameRoot game)
         {
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector { InstanceID = "sector" };
@@ -334,6 +401,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             return ship;
         }
 
+        /// <summary>
+        /// Opens scrap and initialize view.
+        /// </summary>
+        /// <param name="window">Receives the window.</param>
+        /// <returns>The result of open scrap and initialize view.</returns>
         private ConfirmDialogWindowView OpenScrapAndInitializeView(out UIWindow window)
         {
             _controller.OpenScrap(new ISceneNode[] { _sourceShip }, Confirm);
@@ -343,11 +415,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             return view;
         }
 
+        /// <summary>
+        /// Executes confirm.
+        /// </summary>
         private void Confirm()
         {
             _confirmedCount++;
         }
 
+        /// <summary>
+        /// Gets visible lines.
+        /// </summary>
+        /// <param name="view">The view.</param>
+        /// <returns>The requested visible lines.</returns>
         private static string[] GetVisibleLines(ConfirmDialogWindowView view)
         {
             return view.GetComponentsInChildren<TextMeshProUGUI>(true)
@@ -356,12 +436,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds button.
+        /// </summary>
+        /// <param name="view">The view.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching button.</returns>
         private static Button FindButton(ConfirmDialogWindowView view, string objectName)
         {
             return view.GetComponentsInChildren<Button>(true)
                 .Single(button => button.name == objectName);
         }
 
+        /// <summary>
+        /// Finds image.
+        /// </summary>
+        /// <param name="view">The view.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching image.</returns>
         private static RawImage FindImage(ConfirmDialogWindowView view, string objectName)
         {
             return view.GetComponentsInChildren<RawImage>(true)

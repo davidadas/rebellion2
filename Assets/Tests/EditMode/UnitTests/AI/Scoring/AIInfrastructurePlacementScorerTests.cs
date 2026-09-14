@@ -12,6 +12,9 @@ namespace Rebellion.Tests.AI.Scoring
     [TestFixture]
     public class AIInfrastructurePlacementScorerTests
     {
+        /// <summary>
+        /// Verifies select destination with unrepresented system prefers system coverage.
+        /// </summary>
         [Test]
         public void SelectDestination_WithUnrepresentedSystem_PrefersSystemCoverage()
         {
@@ -50,6 +53,9 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreSame(uncoveredPlanet, selected);
         }
 
+        /// <summary>
+        /// Verifies select destination within represented system prefers existing hub.
+        /// </summary>
         [Test]
         public void SelectDestination_WithinRepresentedSystem_PrefersExistingHub()
         {
@@ -86,6 +92,9 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreSame(existingHub, selected);
         }
 
+        /// <summary>
+        /// Verifies select destination for construction facility prefers compounding hub.
+        /// </summary>
         [Test]
         public void SelectDestination_ForConstructionFacility_PrefersCompoundingHub()
         {
@@ -123,6 +132,9 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreSame(existingHub, selected);
         }
 
+        /// <summary>
+        /// Verifies select destination with equivalent shipyard sites preserves resource world.
+        /// </summary>
         [Test]
         public void SelectDestination_WithEquivalentShipyardSites_PreservesResourceWorld()
         {

@@ -16,6 +16,9 @@ namespace Rebellion.Tests.AI.Phases
     [TestFixture]
     public class AIScoringPhaseTests
     {
+        /// <summary>
+        /// Verifies execute with supported proposal assigns score.
+        /// </summary>
         [Test]
         public void Execute_WithSupportedProposal_AssignsScore()
         {
@@ -37,6 +40,9 @@ namespace Rebellion.Tests.AI.Phases
             Assert.Greater(context.Proposals[0].Score, 0);
         }
 
+        /// <summary>
+        /// Verifies execute with injected scorer assigns score.
+        /// </summary>
         [Test]
         public void Execute_WithInjectedScorer_AssignsScore()
         {
@@ -62,6 +68,9 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(42, proposal.Score);
         }
 
+        /// <summary>
+        /// Verifies execute with unsupported proposal throws invalid operation exception.
+        /// </summary>
         [Test]
         public void Execute_WithUnsupportedProposal_ThrowsInvalidOperationException()
         {
@@ -82,11 +91,22 @@ namespace Rebellion.Tests.AI.Phases
 
         private sealed class TestProposalScorer : IAIProposalScorer
         {
+            /// <summary>
+            /// Checks whether the score condition is met.
+            /// </summary>
+            /// <param name="proposal">The proposal.</param>
+            /// <returns>True when the score condition is met; otherwise false.</returns>
             public bool CanScore(AIProposal proposal)
             {
                 return proposal is TestAIProposal;
             }
 
+            /// <summary>
+            /// Executes score.
+            /// </summary>
+            /// <param name="context">The context.</param>
+            /// <param name="proposal">The proposal.</param>
+            /// <returns>The result of score.</returns>
             public double Score(AITurnContext context, AIProposal proposal)
             {
                 return 42;

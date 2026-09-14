@@ -22,6 +22,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private GameObject _rootObject;
         private PlanetSectorPlanetView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -36,6 +39,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Canvas.ForceUpdateCanvases();
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -47,12 +53,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null, Vector2Int.zero));
         }
 
+        /// <summary>
+        /// Verifies render complete presentation applies images name position and bars.
+        /// </summary>
         [Test]
         public void Render_CompletePresentation_AppliesImagesNamePositionAndBars()
         {
@@ -121,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(planetImage.raycastTarget);
         }
 
+        /// <summary>
+        /// Verifies render continuous zero fill hides fill image.
+        /// </summary>
         [Test]
         public void Render_ContinuousZeroFill_HidesFillImage()
         {
@@ -139,6 +154,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(GetField<Image>("supportBarFillImage").gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies try get icon source rect visible and hidden icons reports availability.
+        /// </summary>
         [Test]
         public void TryGetIconSourceRect_VisibleAndHiddenIcons_ReportsAvailability()
         {
@@ -159,6 +177,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(defenseRect);
         }
 
+        /// <summary>
+        /// Verifies try get fleet drag image rendered fleet prefers pressed texture.
+        /// </summary>
         [Test]
         public void TryGetFleetDragImage_RenderedFleet_PrefersPressedTexture()
         {
@@ -171,6 +192,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(GetField<RawImage>("fleetImage").rectTransform, rect);
         }
 
+        /// <summary>
+        /// Verifies try create element explicit visible icon returns semantic element.
+        /// </summary>
         [Test]
         public void TryCreateElement_ExplicitVisibleIcon_ReturnsSemanticElement()
         {
@@ -193,6 +217,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(element.PlanetImage);
         }
 
+        /// <summary>
+        /// Verifies try create element explicit planet image returns planet element.
+        /// </summary>
         [Test]
         public void TryCreateElement_ExplicitPlanetImage_ReturnsPlanetElement()
         {
@@ -215,6 +242,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(element.PlanetImage);
         }
 
+        /// <summary>
+        /// Verifies pointer handlers visible icon raise semantic interaction events.
+        /// </summary>
         [Test]
         public void PointerHandlers_VisibleIcon_RaiseSemanticInteractionEvents()
         {
@@ -269,6 +299,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(7, lastElement.PlanetIndex);
         }
 
+        /// <summary>
+        /// Verifies pointer handlers unsupported button do not raise interaction events.
+        /// </summary>
         [Test]
         public void PointerHandlers_UnsupportedButton_DoNotRaiseInteractionEvents()
         {
@@ -289,6 +322,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(0, interactionCount);
         }
 
+        /// <summary>
+        /// Creates data.
+        /// </summary>
+        /// <param name="selectedIcon">The selected icon.</param>
+        /// <param name="hoveredIcon">The hovered icon.</param>
+        /// <param name="energyBar">The energy bar.</param>
+        /// <param name="rawBar">The raw bar.</param>
+        /// <param name="supportBar">The support bar.</param>
+        /// <returns>The created data.</returns>
         private PlanetSectorPlanetRenderData CreateData(
             PlanetIcon selectedIcon = PlanetIcon.None,
             PlanetIcon hoveredIcon = PlanetIcon.None,
@@ -321,6 +363,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Creates segmented bar.
+        /// </summary>
+        /// <param name="visible">Whether visible.</param>
+        /// <param name="cellCount">The cell count.</param>
+        /// <param name="litCells">The lit cells.</param>
+        /// <returns>The created segmented bar.</returns>
         private static PlanetSectorBarRenderData CreateSegmentedBar(
             bool visible,
             int cellCount,
@@ -338,6 +387,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Creates continuous bar.
+        /// </summary>
+        /// <param name="visible">Whether visible.</param>
+        /// <param name="ratio">The ratio.</param>
+        /// <returns>The created continuous bar.</returns>
         private static PlanetSectorBarRenderData CreateContinuousBar(bool visible, float ratio)
         {
             return new PlanetSectorBarRenderData(
@@ -351,6 +406,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Creates pointer event.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <param name="button">The button.</param>
+        /// <param name="clickCount">The click count.</param>
+        /// <returns>The created pointer event.</returns>
         private static PointerEventData CreatePointerEvent(
             GameObject target,
             PointerEventData.InputButton button,
@@ -367,6 +429,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             };
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -375,6 +443,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                     .GetValue(_view);
         }
 
+        /// <summary>
+        /// Gets source rect.
+        /// </summary>
+        /// <param name="transform">The transform.</param>
+        /// <returns>The requested source rect.</returns>
         private static RectInt GetSourceRect(Transform transform)
         {
             return UILayout.GetSourceRect(transform as RectTransform);

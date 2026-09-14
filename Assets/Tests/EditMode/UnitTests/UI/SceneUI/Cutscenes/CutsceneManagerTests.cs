@@ -21,6 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         private AudioManager _audioManager;
         private bool _previousAudioPause;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -35,6 +38,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             _clip = AssetDatabase.LoadAssetAtPath<VideoClip>(_clipPath);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -55,6 +61,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             AudioListener.pause = _previousAudioPause;
         }
 
+        /// <summary>
+        /// Verifies initialize null prefab throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullPrefab_ThrowsArgumentNullException()
         {
@@ -65,6 +74,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual("prefab", exception.ParamName);
         }
 
+        /// <summary>
+        /// Verifies play null clip invokes completion without changing application state.
+        /// </summary>
         [Test]
         public void Play_NullClip_InvokesCompletionWithoutChangingApplicationState()
         {
@@ -78,6 +90,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsFalse(AudioListener.pause);
         }
 
+        /// <summary>
+        /// Verifies play valid clip pauses application and creates player.
+        /// </summary>
         [Test]
         public void Play_ValidClip_PausesApplicationAndCreatesPlayer()
         {
@@ -90,6 +105,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreSame(_clip, player.GetComponent<VideoPlayer>().clip);
         }
 
+        /// <summary>
+        /// Verifies play valid clip applies master scaled video volume.
+        /// </summary>
         [Test]
         public void Play_ValidClip_AppliesMasterScaledVideoVolume()
         {
@@ -102,6 +120,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(0.125f, player.GetComponent<AudioSource>().volume);
         }
 
+        /// <summary>
+        /// Verifies play replacement clip preserves initial time scale for restoration.
+        /// </summary>
         [Test]
         public void Play_ReplacementClip_PreservesInitialTimeScaleForRestoration()
         {
@@ -122,6 +143,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(0.75f, Time.timeScale);
         }
 
+        /// <summary>
+        /// Verifies play replacement clip preserves initial audio pause for restoration.
+        /// </summary>
         [Test]
         public void Play_ReplacementClip_PreservesInitialAudioPauseForRestoration()
         {
@@ -136,6 +160,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsTrue(AudioListener.pause);
         }
 
+        /// <summary>
+        /// Verifies on destroy active playback restores previous application state.
+        /// </summary>
         [Test]
         public void OnDestroy_ActivePlayback_RestoresPreviousApplicationState()
         {
@@ -150,6 +177,12 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsFalse(AudioListener.pause);
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -158,6 +191,11 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
                     .GetValue(_manager);
         }
 
+        /// <summary>
+        /// Sets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <param name="value">The value.</param>
         private void SetField(string fieldName, object value)
         {
             typeof(CutsceneManager)

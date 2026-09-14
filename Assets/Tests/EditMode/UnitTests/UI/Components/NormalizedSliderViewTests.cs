@@ -37,6 +37,8 @@ namespace Rebellion.Tests.UI.Components
         /// <summary>
         /// Verifies rendering clamps values and places the thumb consistently.
         /// </summary>
+        /// <param name="value">The value.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(-1f, 0f)]
         [TestCase(0.5f, 0.5f)]
         [TestCase(2f, 1f)]
@@ -97,6 +99,9 @@ namespace Rebellion.Tests.UI.Components
         /// <summary>
         /// Reads a private authored reference from the slider under test.
         /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -108,6 +113,8 @@ namespace Rebellion.Tests.UI.Components
         /// <summary>
         /// Reads a transform in the source-pixel layout coordinate system.
         /// </summary>
+        /// <param name="transform">The transform.</param>
+        /// <returns>The requested source rect.</returns>
         private static RectInt GetSourceRect(Transform transform)
         {
             return UILayout.GetSourceRect(transform as RectTransform);

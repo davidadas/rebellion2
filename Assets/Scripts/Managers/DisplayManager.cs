@@ -54,6 +54,7 @@ public sealed class DisplayManager
     /// <summary>
     /// Returns the distinct available 16:9 resolutions in ascending size order.
     /// </summary>
+    /// <returns>The requested supported resolutions.</returns>
     public IReadOnlyList<Vector2Int> GetSupportedResolutions()
     {
         List<Vector2Int> supported = new List<Vector2Int>();
@@ -120,6 +121,9 @@ public sealed class DisplayManager
     /// <summary>
     /// Checks whether a resolution has a 16:9 aspect ratio within integer rounding tolerance.
     /// </summary>
+    /// <param name="width">The width.</param>
+    /// <param name="height">The height.</param>
+    /// <returns>True when the sixteen by nine condition is met; otherwise false.</returns>
     internal static bool IsSixteenByNine(int width, int height)
     {
         return width > 0 && height > 0 && Math.Abs((long)width * 9L - (long)height * 16L) <= 8L;
@@ -128,6 +132,12 @@ public sealed class DisplayManager
     /// <summary>
     /// Selects the exact requested mode or the largest supported mode fitting the target display.
     /// </summary>
+    /// <param name="supported">The supported.</param>
+    /// <param name="requestedWidth">The requested width.</param>
+    /// <param name="requestedHeight">The requested height.</param>
+    /// <param name="fallbackWidth">The fallback width.</param>
+    /// <param name="fallbackHeight">The fallback height.</param>
+    /// <returns>The resolved resolution.</returns>
     internal static Vector2Int ResolveResolution(
         IReadOnlyList<Vector2Int> supported,
         int requestedWidth,
@@ -174,6 +184,9 @@ public sealed class DisplayManager
     /// <summary>
     /// Compares two resolutions by width and then height.
     /// </summary>
+    /// <param name="left">The left.</param>
+    /// <param name="right">The right.</param>
+    /// <returns>The result of compare by size.</returns>
     private static int CompareBySize(Vector2Int left, Vector2Int right)
     {
         int widthComparison = left.x.CompareTo(right.x);
@@ -183,6 +196,9 @@ public sealed class DisplayManager
     /// <summary>
     /// Creates a common 16:9 mode fitting inside the supplied bounds.
     /// </summary>
+    /// <param name="targetWidth">The target width.</param>
+    /// <param name="targetHeight">The target height.</param>
+    /// <returns>The created fallback.</returns>
     private static Vector2Int CreateFallback(int targetWidth, int targetHeight)
     {
         if (targetWidth <= 0 || targetHeight <= 0)
@@ -201,6 +217,7 @@ public sealed class DisplayManager
     /// <summary>
     /// Reads the distinct resolution sizes reported by Unity.
     /// </summary>
+    /// <returns>The requested unity resolutions.</returns>
     private static IReadOnlyList<Vector2Int> GetUnityResolutions()
     {
         List<Vector2Int> resolutions = new List<Vector2Int>();
@@ -212,6 +229,7 @@ public sealed class DisplayManager
     /// <summary>
     /// Reads the native resolution of Unity's primary display.
     /// </summary>
+    /// <returns>The requested unity native resolution.</returns>
     private static Vector2Int GetUnityNativeResolution()
     {
         return new Vector2Int(Display.main.systemWidth, Display.main.systemHeight);
@@ -220,6 +238,9 @@ public sealed class DisplayManager
     /// <summary>
     /// Applies a display mode through Unity outside the editor.
     /// </summary>
+    /// <param name="width">The width.</param>
+    /// <param name="height">The height.</param>
+    /// <param name="mode">The mode.</param>
     private static void ApplyUnityResolution(int width, int height, FullScreenMode mode)
     {
         if (!Application.isEditor)

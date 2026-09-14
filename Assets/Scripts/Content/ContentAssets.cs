@@ -160,6 +160,10 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <summary>
     /// Resolves and caches a texture with the requested CPU-readability.
     /// </summary>
+    /// <param name="path">The path.</param>
+    /// <param name="cache">The cache.</param>
+    /// <param name="markNonReadable">Whether mark non readable.</param>
+    /// <returns>The requested texture.</returns>
     private Texture2D GetTexture(
         string path,
         IDictionary<string, Texture2D> cache,
@@ -221,6 +225,8 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     /// <summary>
     /// Resolves and caches a sprite backed by an addressed texture.
     /// </summary>
+    /// <param name="path">The path.</param>
+    /// <returns>The requested sprite.</returns>
     public Sprite GetSprite(string path)
     {
         return GetSprite(path, Vector4.zero);

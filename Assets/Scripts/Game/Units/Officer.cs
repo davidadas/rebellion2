@@ -24,6 +24,7 @@ namespace Rebellion.Game.Units
         public string EncyclopediaImagePath { get; set; }
 
         /// <summary>Creates an independent copy of this image set.</summary>
+        /// <returns>The created copy.</returns>
         public OfficerImageSet CreateCopy() =>
             new OfficerImageSet
             {
@@ -33,6 +34,10 @@ namespace Rebellion.Game.Units
                 EncyclopediaImagePath = EncyclopediaImagePath,
             };
 
+        /// <summary>
+        /// Executes merge from.
+        /// </summary>
+        /// <param name="authored">The authored.</param>
         public void MergeFrom(OfficerImageSet authored)
         {
             if (authored == null)
@@ -101,6 +106,8 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Returns the configured asset paths for one voice-line category.
         /// </summary>
+        /// <param name="type">The type.</param>
+        /// <returns>The requested paths.</returns>
         public IReadOnlyList<string> GetPaths(OfficerVoiceLineType type)
         {
             IReadOnlyList<string> paths = GetMutablePaths(type);
@@ -108,6 +115,7 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>Creates an independent copy of this voice set.</summary>
+        /// <returns>The created copy.</returns>
         public OfficerVoiceSet CreateCopy()
         {
             OfficerVoiceSet copy = new OfficerVoiceSet();
@@ -124,6 +132,7 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Replaces each voice category for which the authored set supplies at least one path.
         /// </summary>
+        /// <param name="authored">The authored.</param>
         public void MergeFrom(OfficerVoiceSet authored)
         {
             if (authored == null)
@@ -136,6 +145,8 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Returns the mutable collection that canonically stores one voice-line category.
         /// </summary>
+        /// <param name="type">The type.</param>
+        /// <returns>The requested mutable paths.</returns>
         private List<string> GetMutablePaths(OfficerVoiceLineType type) =>
             type switch
             {
@@ -157,6 +168,8 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Replaces a destination category only when authored paths are present.
         /// </summary>
+        /// <param name="authored">The authored.</param>
+        /// <param name="destination">The destination.</param>
         private static void ReplaceWhenAuthored(List<string> authored, List<string> destination)
         {
             if (authored == null || authored.Count == 0)
@@ -333,9 +346,11 @@ namespace Rebellion.Game.Units
         public Officer() { }
 
         /// <summary>Creates an empty officer copy.</summary>
+        /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new Officer();
 
         /// <summary>Copies officer state into an empty destination.</summary>
+        /// <param name="destination">The destination.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
             base.CopyStateTo(destination);

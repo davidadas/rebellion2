@@ -183,6 +183,7 @@ public sealed class AppBootstrap : MonoBehaviour
     /// Loads required main-menu textures and audio. Decorative models are loaded by their scene
     /// bindings so a missing model cannot prevent scene navigation.
     /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     internal Task InitializeMainMenuSceneAsync()
     {
         return InitializeMainMenuContentAsync();
@@ -229,6 +230,7 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <summary>
     /// Returns the application-owned cache used by runtime model bindings.
     /// </summary>
+    /// <returns>The requested content model cache.</returns>
     internal ContentModelCache GetContentModelCache()
     {
         return _contentModelCache;

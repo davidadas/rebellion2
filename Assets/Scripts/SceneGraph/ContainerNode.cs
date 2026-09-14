@@ -48,6 +48,12 @@ namespace Rebellion.SceneGraph
                 RemoveChild(child);
         }
 
+        /// <summary>
+        /// Checks whether the accept child condition is met.
+        /// </summary>
+        /// <param name="child">The child.</param>
+        /// <param name="plannedChildren">The planned children.</param>
+        /// <returns>True when the accept child condition is met; otherwise false.</returns>
         internal virtual bool CanAcceptChild(
             ISceneNode child,
             IReadOnlyCollection<ISceneNode> plannedChildren

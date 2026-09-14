@@ -14,6 +14,9 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class UnitSeederTests
     {
+        /// <summary>
+        /// Verifies seed uprising threshold not met adds garrison troops.
+        /// </summary>
         [Test]
         public void Seed_UprisingThresholdNotMet_AddsGarrisonTroops()
         {
@@ -57,6 +60,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(3, planet.GetRegimentCount());
         }
 
+        /// <summary>
+        /// Verifies seed owner support at threshold no garrison troops.
+        /// </summary>
         [Test]
         public void Seed_OwnerSupportAtThreshold_NoGarrisonTroops()
         {
@@ -99,6 +105,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(0, planet.GetRegimentCount());
         }
 
+        /// <summary>
+        /// Verifies seed fixed garrison places configured troops on configured planet type.
+        /// </summary>
         [Test]
         public void Seed_FixedGarrison_PlacesConfiguredTroopsOnConfiguredPlanetType()
         {
@@ -154,6 +163,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(4, planet.GetRegimentCount());
         }
 
+        /// <summary>
+        /// Verifies seed fixed garrison with faction hq sentinel resolves to faction hq.
+        /// </summary>
         [Test]
         public void Seed_FixedGarrisonWithFactionHqSentinel_ResolvesToFactionHq()
         {
@@ -207,6 +219,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(2, hq.GetRegimentCount());
         }
 
+        /// <summary>
+        /// Verifies seed fixed garrison with unknown unit id throws invalid operation exception.
+        /// </summary>
         [Test]
         public void Seed_FixedGarrisonWithUnknownUnitID_ThrowsInvalidOperationException()
         {
@@ -259,6 +274,9 @@ namespace Rebellion.Tests.Generation
             Assert.That(exception.Message, Does.Contain("UNKNOWN"));
         }
 
+        /// <summary>
+        /// Verifies seed fixed fleet places configured ships on configured planet type.
+        /// </summary>
         [Test]
         public void Seed_FixedFleet_PlacesConfiguredShipsOnConfiguredPlanetType()
         {
@@ -317,6 +335,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(2, fleets[0].GetChildren<CapitalShip>().Count);
         }
 
+        /// <summary>
+        /// Verifies seed fixed fleet with target planets selects one target by type id.
+        /// </summary>
         [Test]
         public void Seed_FixedFleetWithTargetPlanets_SelectsOneTargetByTypeID()
         {
@@ -360,6 +381,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(2, hq.GetChildren<Fleet>()[0].GetChildren<CapitalShip>().Count);
         }
 
+        /// <summary>
+        /// Verifies seed fixed fleet with ship entries loads cargo onto configured ship.
+        /// </summary>
         [Test]
         public void Seed_FixedFleetWithShipEntries_LoadsCargoOntoConfiguredShip()
         {
@@ -410,6 +434,9 @@ namespace Rebellion.Tests.Generation
             Assert.IsTrue(transport.GetChildren<Regiment>().All(r => r.TypeID == "REAL001"));
         }
 
+        /// <summary>
+        /// Verifies seed budget unit table uses previous threshold row.
+        /// </summary>
         [Test]
         public void Seed_BudgetUnitTable_UsesPreviousThresholdRow()
         {
@@ -497,6 +524,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(0, planet.GetChildren<Regiment>().Count(r => r.TypeID == "SECOND"));
         }
 
+        /// <summary>
+        /// Verifies seed budget difficulty mapping uses mapped difficulty.
+        /// </summary>
         [Test]
         public void Seed_BudgetDifficultyMapping_UsesMappedDifficulty()
         {
@@ -587,6 +617,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(4, planet.GetRegimentCount());
         }
 
+        /// <summary>
+        /// Verifies seed budget table with special forces deploys special forces.
+        /// </summary>
         [Test]
         public void Seed_BudgetTableWithSpecialForces_DeploysSpecialForces()
         {
@@ -675,6 +708,19 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Builds context.
+        /// </summary>
+        /// <param name="sectors">The sectors.</param>
+        /// <param name="factions">The factions.</param>
+        /// <param name="config">The config.</param>
+        /// <param name="classification">The classification.</param>
+        /// <param name="regimentTemplates">The regiment templates.</param>
+        /// <param name="shipTemplates">The ship templates.</param>
+        /// <param name="fighterTemplates">The fighter templates.</param>
+        /// <param name="specialForcesTemplates">The special forces templates.</param>
+        /// <param name="rng">The rng.</param>
+        /// <returns>The constructed context.</returns>
         private static GenerationContext BuildContext(
             PlanetSector[] sectors,
             Faction[] factions,
@@ -706,6 +752,14 @@ namespace Rebellion.Tests.Generation
             return ctx;
         }
 
+        /// <summary>
+        /// Executes owned planet.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="owner">The owner.</param>
+        /// <param name="ownerSupport">The owner support.</param>
+        /// <param name="typeId">The type id.</param>
+        /// <returns>The result of owned planet.</returns>
         private static Planet OwnedPlanet(
             string id,
             string owner,
@@ -724,6 +778,11 @@ namespace Rebellion.Tests.Generation
             return planet;
         }
 
+        /// <summary>
+        /// Executes wrap sector.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The result of wrap sector.</returns>
         private static PlanetSector WrapSector(Planet planet)
         {
             PlanetSector sector = new PlanetSector
@@ -735,6 +794,10 @@ namespace Rebellion.Tests.Generation
             return sector;
         }
 
+        /// <summary>
+        /// Creates fixed fleet target config.
+        /// </summary>
+        /// <returns>The created fixed fleet target config.</returns>
         private static GameGenerationConfig CreateFixedFleetTargetConfig()
         {
             return new GameGenerationConfig
@@ -778,6 +841,13 @@ namespace Rebellion.Tests.Generation
             };
         }
 
+        /// <summary>
+        /// Executes complete building.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <param name="owner">The owner.</param>
+        /// <returns>The result of complete building.</returns>
         private static Building CompleteBuilding(string id, BuildingType buildingType, string owner)
         {
             return new Building

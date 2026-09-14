@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private MissionCreateWindowView _view;
         private GameObject _viewObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -31,6 +34,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -38,12 +44,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render without primary participants disables confirm button and uses disabled texture.
+        /// </summary>
         [Test]
         public void Render_WithoutPrimaryParticipants_DisablesConfirmButtonAndUsesDisabledTexture()
         {
@@ -64,6 +76,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(disabledTexture, image.texture);
         }
 
+        /// <summary>
+        /// Verifies render mission tab applies title selection target tabs and dropdown.
+        /// </summary>
         [Test]
         public void Render_MissionTab_AppliesTitleSelectionTargetTabsAndDropdown()
         {
@@ -100,6 +115,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_texture, FindDropdownImage(items[0]).texture);
         }
 
+        /// <summary>
+        /// Verifies render mission tab without selection hides optional selection fields.
+        /// </summary>
         [Test]
         public void Render_MissionTabWithoutSelection_HidesOptionalSelectionFields()
         {
@@ -127,6 +145,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(FindObject("Dropdown").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render mission odds overlays success and foil on selected and dropdown icons.
+        /// </summary>
         [Test]
         public void Render_MissionOdds_OverlaysSuccessAndFoilOnSelectedAndDropdownIcons()
         {
@@ -174,6 +195,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(1f, selectedSuccess.rectTransform.anchorMax.x);
         }
 
+        /// <summary>
+        /// Verifies render mission odds visibility applies dark checkbox and raises changes.
+        /// </summary>
         [Test]
         public void Render_MissionOddsVisibility_AppliesDarkCheckboxAndRaisesChanges()
         {
@@ -221,6 +245,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsTrue(FindObject("CheckMarkClip").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render planet target preview uses authored preview texture.
+        /// </summary>
         [Test]
         public void Render_PlanetTargetPreview_UsesAuthoredPreviewTexture()
         {
@@ -245,6 +272,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsTrue(FindObject("TargetPreviewImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render planet target uses original centered size.
+        /// </summary>
         [Test]
         public void Render_PlanetTarget_UsesOriginalCenteredSize()
         {
@@ -276,6 +306,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             }
         }
 
+        /// <summary>
+        /// Verifies render non planet target can use full original target area.
+        /// </summary>
         [Test]
         public void Render_NonPlanetTarget_CanUseFullOriginalTargetArea()
         {
@@ -307,6 +340,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             }
         }
 
+        /// <summary>
+        /// Verifies render closed dropdown hides previously rendered items.
+        /// </summary>
         [Test]
         public void Render_ClosedDropdown_HidesPreviouslyRenderedItems()
         {
@@ -335,6 +371,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(item.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render shorter dropdown collection hides unused cached items.
+        /// </summary>
         [Test]
         public void Render_ShorterDropdownCollection_HidesUnusedCachedItems()
         {
@@ -363,6 +402,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual("Recruitment", FindDropdownText(FindDropdownItems()[0]).text);
         }
 
+        /// <summary>
+        /// Verifies render personnel tab applies headers and both participant lists.
+        /// </summary>
         [Test]
         public void Render_PersonnelTab_AppliesHeadersAndBothParticipantLists()
         {
@@ -393,6 +435,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_texture, FindParticipantImage(agents[0], "EntityImage").texture);
         }
 
+        /// <summary>
+        /// Verifies render shorter participant collections hide unused cached rows.
+        /// </summary>
         [Test]
         public void Render_ShorterParticipantCollections_HideUnusedCachedRows()
         {
@@ -438,6 +483,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies render switching to mission tab hides participant rows.
+        /// </summary>
         [Test]
         public void Render_SwitchingToMissionTab_HidesParticipantRows()
         {
@@ -470,6 +518,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(FindObject("Personnel").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render invalid tab count throws argument exception.
+        /// </summary>
         [Test]
         public void Render_InvalidTabCount_ThrowsArgumentException()
         {
@@ -490,6 +541,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render invalid tab order throws argument exception.
+        /// </summary>
         [Test]
         public void Render_InvalidTabOrder_ThrowsArgumentException()
         {
@@ -516,6 +570,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies authored controls click raise tabs dropdown actions and participant moves.
+        /// </summary>
         [Test]
         public void AuthoredControls_Click_RaiseTabsDropdownActionsAndParticipantMoves()
         {
@@ -546,6 +603,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(MissionParticipantRole.Decoy, secondMove);
         }
 
+        /// <summary>
+        /// Verifies action buttons click raise info confirm and cancel requests.
+        /// </summary>
         [Test]
         public void ActionButtons_Click_RaiseInfoConfirmAndCancelRequests()
         {
@@ -565,6 +625,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(1, cancelCount);
         }
 
+        /// <summary>
+        /// Verifies dropdown item click raises stable visual index.
+        /// </summary>
         [Test]
         public void DropdownItem_Click_RaisesStableVisualIndex()
         {
@@ -587,6 +650,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(1, requestedIndex);
         }
 
+        /// <summary>
+        /// Verifies participant gestures rendered rows raise role index and original event.
+        /// </summary>
         [Test]
         public void ParticipantGestures_RenderedRows_RaiseRoleIndexAndOriginalEvent()
         {
@@ -637,6 +703,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(eventData, clickedEvent);
         }
 
+        /// <summary>
+        /// Verifies on pointer click open dropdown outside primary click raises dismiss request.
+        /// </summary>
         [Test]
         public void OnPointerClick_OpenDropdownOutsidePrimaryClick_RaisesDismissRequest()
         {
@@ -671,6 +740,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(1, dismissCount);
         }
 
+        /// <summary>
+        /// Verifies scroll metrics authored templates return consistent row geometry.
+        /// </summary>
         [Test]
         public void ScrollMetrics_AuthoredTemplates_ReturnConsistentRowGeometry()
         {
@@ -690,6 +762,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies child views null render data throw argument null exception.
+        /// </summary>
         [Test]
         public void ChildViews_NullRenderData_ThrowArgumentNullException()
         {
@@ -707,6 +782,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentNullException>(() => participantTemplates[1].Render(null));
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds controls rows and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsControlsRowsAndRaisesDestroyedEvent()
         {
@@ -757,6 +835,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(0, participantCount);
         }
 
+        /// <summary>
+        /// Creates render data.
+        /// </summary>
+        /// <param name="activeTab">The active tab.</param>
+        /// <param name="dropdownOpen">Whether dropdown open.</param>
+        /// <param name="dropdownItems">The dropdown items.</param>
+        /// <param name="agents">The agents.</param>
+        /// <param name="decoys">The decoys.</param>
+        /// <param name="targetTexture">The target texture.</param>
+        /// <param name="usePlanetTargetPreview">Whether use planet target preview.</param>
+        /// <param name="missionName">The mission name.</param>
+        /// <param name="selectedMissionTexture">The selected mission texture.</param>
+        /// <param name="targetName">The target name.</param>
+        /// <param name="tabs">The tabs.</param>
+        /// <param name="showSelectedMission">Whether show selected mission.</param>
+        /// <param name="canConfirm">Whether can confirm.</param>
+        /// <param name="selectedMissionOdds">The selected mission odds.</param>
+        /// <param name="showMissionOdds">Whether show mission odds.</param>
+        /// <param name="checkboxFrameTexture">The checkbox frame texture.</param>
+        /// <param name="checkboxCheckMarkTexture">The checkbox check mark texture.</param>
+        /// <returns>The created render data.</returns>
         private MissionCreateWindowRenderData CreateRenderData(
             MissionCreateWindowTab activeTab,
             bool dropdownOpen,
@@ -802,6 +901,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Creates tabs.
+        /// </summary>
+        /// <returns>The created tabs.</returns>
         private MissionCreateTabRenderData[] CreateTabs()
         {
             return MissionCreateWindowRenderData
@@ -809,11 +912,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 .ToArray();
         }
 
+        /// <summary>
+        /// Creates dropdown item.
+        /// </summary>
+        /// <param name="label">The label.</param>
+        /// <returns>The created dropdown item.</returns>
         private StrategyDropdownItemRenderData CreateDropdownItem(string label)
         {
             return new StrategyDropdownItemRenderData(_texture, label, Color.white);
         }
 
+        /// <summary>
+        /// Creates participant.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <param name="inTransit">Whether in transit.</param>
+        /// <returns>The created participant.</returns>
         private MissionParticipantRowRenderData CreateParticipant(string name, bool inTransit)
         {
             return new MissionParticipantRowRenderData(
@@ -824,6 +938,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Finds dropdown items.
+        /// </summary>
+        /// <returns>The matching dropdown items.</returns>
         private StrategyDropdownItemView[] FindDropdownItems()
         {
             return _viewObject
@@ -836,6 +954,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds participant rows.
+        /// </summary>
+        /// <param name="role">The role.</param>
+        /// <returns>The matching participant rows.</returns>
         private MissionParticipantRowView[] FindParticipantRows(MissionParticipantRole role)
         {
             return _viewObject
@@ -848,6 +971,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {
@@ -856,6 +985,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds object.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching object.</returns>
         private GameObject FindObject(string objectName)
         {
             return _viewObject
@@ -864,29 +998,56 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds text.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching text.</returns>
         private TextMeshProUGUI FindText(string objectName)
         {
             return FindComponent<TextMeshProUGUI>(objectName);
         }
 
+        /// <summary>
+        /// Finds dropdown image.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        /// <returns>The matching dropdown image.</returns>
         private static RawImage FindDropdownImage(StrategyDropdownItemView item)
         {
             return item.GetComponentsInChildren<RawImage>(true)
                 .Single(image => image.name == "ItemImage");
         }
 
+        /// <summary>
+        /// Finds dropdown text.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        /// <returns>The matching dropdown text.</returns>
         private static TextMeshProUGUI FindDropdownText(StrategyDropdownItemView item)
         {
             return item.GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == "ItemTextField");
         }
 
+        /// <summary>
+        /// Finds odds text.
+        /// </summary>
+        /// <param name="root">The root.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching odds text.</returns>
         private static TextMeshProUGUI FindOddsText(Transform root, string objectName)
         {
             return root.GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == objectName);
         }
 
+        /// <summary>
+        /// Finds participant image.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching participant image.</returns>
         private static RawImage FindParticipantImage(
             MissionParticipantRowView row,
             string objectName
@@ -896,12 +1057,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 .Single(image => image.name == objectName);
         }
 
+        /// <summary>
+        /// Finds participant text.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <returns>The matching participant text.</returns>
         private static TextMeshProUGUI FindParticipantText(MissionParticipantRowView row)
         {
             return row.GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == "NameTextField");
         }
 
+        /// <summary>
+        /// Creates raycast event.
+        /// </summary>
+        /// <param name="button">The button.</param>
+        /// <param name="target">The target.</param>
+        /// <returns>The created raycast event.</returns>
         private static PointerEventData CreateRaycastEvent(
             PointerEventData.InputButton button,
             GameObject target

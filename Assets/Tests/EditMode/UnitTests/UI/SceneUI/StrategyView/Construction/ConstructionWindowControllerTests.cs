@@ -32,6 +32,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -54,12 +57,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             _controller.Initialize(_actions);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null game provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullGameProvider_ThrowsArgumentNullException()
         {
@@ -79,12 +88,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
         }
 
+        /// <summary>
+        /// Verifies initialize null actions throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _controller.Initialize(null));
         }
 
+        /// <summary>
+        /// Verifies bind window before initialize throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -97,6 +112,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
         }
 
+        /// <summary>
+        /// Verifies open from facility null source window does not create window.
+        /// </summary>
         [Test]
         public void OpenFromFacility_NullSourceWindow_DoesNotCreateWindow()
         {
@@ -112,6 +130,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(0, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open from advisor valid planets creates named session at utility position.
+        /// </summary>
         [Test]
         public void OpenFromAdvisor_ValidPlanets_CreatesNamedSessionAtUtilityPosition()
         {
@@ -159,6 +180,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsEmpty(_windowManager.Windows);
         }
 
+        /// <summary>
+        /// Verifies try initialize window non manufacturing tab returns false.
+        /// </summary>
         [Test]
         public void TryInitializeWindow_NonManufacturingTab_ReturnsFalse()
         {
@@ -182,6 +206,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Verifies reconcile window initialized session rebinds fresh planet projection.
+        /// </summary>
         [Test]
         public void ReconcileWindow_InitializedSession_RebindsFreshPlanetProjection()
         {
@@ -201,6 +228,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreSame(freshPlanet, _controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Verifies try create context menu default build selection returns enabled information commands.
+        /// </summary>
         [Test]
         public void TryCreateContextMenu_DefaultBuildSelection_ReturnsEnabledInformationCommands()
         {
@@ -228,6 +258,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreSame(view, window.Content);
         }
 
+        /// <summary>
+        /// Verifies view destroyed initialized session releases planet association.
+        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
@@ -238,6 +271,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Verifies build count submitted valid integer updates rendered quantity.
+        /// </summary>
         [Test]
         public void BuildCountSubmitted_ValidInteger_UpdatesRenderedQuantity()
         {
@@ -251,6 +287,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(2, _dirtyCount);
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private ConstructionWindowController CreateController()
         {
             return new ConstructionWindowController(
@@ -267,6 +307,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -275,6 +319,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             return game;
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The created planet.</returns>
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector
@@ -294,6 +343,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             return new GalaxyMapPlanet(planetSector, planet, _playerFactionId);
         }
 
+        /// <summary>
+        /// Creates source window.
+        /// </summary>
+        /// <returns>The created source window.</returns>
         private UIWindow CreateSourceWindow()
         {
             GameObject sourceObject = new GameObject(
@@ -307,6 +360,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             return window;
         }
 
+        /// <summary>
+        /// Opens advisor window.
+        /// </summary>
+        /// <param name="window">Receives the window.</param>
+        /// <returns>The result of open advisor window.</returns>
         private ConstructionWindowView OpenAdvisorWindow(out UIWindow window)
         {
             _controller.OpenFromAdvisor(_planet, _planet, FacilityWindowTab.Shipyards);
@@ -318,10 +376,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
         private sealed class TestActions : IConstructionWindowActions
         {
+            /// <summary>
+            /// Opens construction info.
+            /// </summary>
+            /// <param name="item">The item.</param>
             public void OpenConstructionInfo(ISceneNode item) { }
 
+            /// <summary>
+            /// Opens construction status.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenConstructionStatus(StrategyStatusTarget target) { }
 
+            /// <summary>
+            /// Refreshes after construction.
+            /// </summary>
             public void RefreshAfterConstruction() { }
         }
     }

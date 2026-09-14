@@ -69,9 +69,11 @@ namespace Rebellion.Game.Units
         public SpecialForces() { }
 
         /// <summary>Creates an empty special-forces copy.</summary>
+        /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new SpecialForces();
 
         /// <summary>Copies special-forces state into an empty destination.</summary>
+        /// <param name="destination">The destination.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
             base.CopyStateTo(destination);

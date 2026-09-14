@@ -59,6 +59,9 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Resolves the explicit recording or selects one recording from the officer's preset.
         /// </summary>
+        /// <param name="officer">The officer.</param>
+        /// <param name="provider">The provider.</param>
+        /// <returns>The resolved path.</returns>
         public string ResolvePath(Officer officer, IRandomNumberProvider provider)
         {
             bool hasPath = !string.IsNullOrWhiteSpace(Path);

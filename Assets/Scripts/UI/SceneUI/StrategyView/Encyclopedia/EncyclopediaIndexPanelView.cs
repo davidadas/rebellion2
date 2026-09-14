@@ -344,6 +344,7 @@ public sealed class EncyclopediaIndexPanelView : MonoBehaviour
     /// <summary>
     /// Verifies every authored child reference required to render the index panel.
     /// </summary>
+    /// <param name="verifyContent">Whether verify content.</param>
     private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)

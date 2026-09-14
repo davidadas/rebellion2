@@ -255,6 +255,7 @@ public static class StandalonePlayerBuild
     /// <summary>
     /// Fails the build if editor-only preview content leaked into Unity's player data.
     /// </summary>
+    /// <param name="report">The report.</param>
     private static void VerifyDevelopmentContentWasNotPacked(
         UnityEditor.Build.Reporting.BuildReport report
     )

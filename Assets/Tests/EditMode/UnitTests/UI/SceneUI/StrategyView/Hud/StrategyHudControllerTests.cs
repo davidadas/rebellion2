@@ -16,6 +16,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         private TestActions _actions;
         private StrategyHudController _controller;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -29,6 +32,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             _controller.Initialize(_actions);
         }
 
+        /// <summary>
+        /// Verifies constructor null dependencies throw argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullDependencies_ThrowArgumentNullException()
         {
@@ -46,6 +52,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             );
         }
 
+        /// <summary>
+        /// Verifies get source speed game speed returns source speed.
+        /// </summary>
+        /// <param name="speed">The speed.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(TickSpeed.Paused, 0)]
         [TestCase(TickSpeed.VerySlow, 1)]
         [TestCase(TickSpeed.Slow, 2)]
@@ -56,6 +67,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(expected, StrategyHudController.GetSourceSpeed(speed));
         }
 
+        /// <summary>
+        /// Verifies get speed indicator path configured theme returns mapped artwork.
+        /// </summary>
         [Test]
         public void GetSpeedIndicatorPath_ConfiguredTheme_ReturnsMappedArtwork()
         {
@@ -91,6 +105,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsNull(StrategyHudController.GetSpeedIndicatorPath(null, TickSpeed.Fast));
         }
 
+        /// <summary>
+        /// Verifies create view data paused speed shows paused instead of tick.
+        /// </summary>
         [Test]
         public void CreateViewData_PausedSpeed_ShowsPausedInsteadOfTick()
         {
@@ -102,6 +119,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual("PAUSED", data.TickCounter.Text);
         }
 
+        /// <summary>
+        /// Verifies create view data running speed shows tick.
+        /// </summary>
         [Test]
         public void CreateViewData_RunningSpeed_ShowsTick()
         {
@@ -113,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual("42", data.TickCounter.Text);
         }
 
+        /// <summary>
+        /// Verifies create view data configured button resolves released and pressed artwork.
+        /// </summary>
         [Test]
         public void CreateViewData_ConfiguredButton_ResolvesReleasedAndPressedArtwork()
         {
@@ -172,6 +195,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies build speed menu commands default catalog returns ordered enabled commands.
+        /// </summary>
         [Test]
         public void BuildSpeedMenuCommands_DefaultCatalog_ReturnsOrderedEnabledCommands()
         {
@@ -196,6 +222,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(commands.All(command => command.Enabled));
         }
 
+        /// <summary>
+        /// Verifies get unread message types mixed messages returns unread categories.
+        /// </summary>
         [Test]
         public void GetUnreadMessageTypes_MixedMessages_ReturnsUnreadCategories()
         {
@@ -218,6 +247,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             CollectionAssert.AreEquivalent(new[] { MessageType.Fleet }, types);
         }
 
+        /// <summary>
+        /// Verifies get unread message types missing faction returns empty collection.
+        /// </summary>
         [Test]
         public void GetUnreadMessageTypes_MissingFaction_ReturnsEmptyCollection()
         {
@@ -226,6 +258,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsEmpty(types);
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected owned enabled speed command sets game speed.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_OwnedEnabledSpeedCommand_SetsGameSpeed()
         {
@@ -245,6 +280,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(TickSpeed.Fast, _actions.SelectedSpeed);
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected foreign request ignores command.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ForeignRequest_IgnoresCommand()
         {
@@ -268,43 +306,92 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         {
             public TickSpeed? SelectedSpeed { get; private set; }
 
+            /// <summary>
+            /// Executes begin advisor construction.
+            /// </summary>
+            /// <param name="manufacturingType">The manufacturing type.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void BeginAdvisorConstruction(
                 ManufacturingType manufacturingType,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Opens advisor command context menu.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenAdvisorCommandContextMenu(
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Opens advisor notification context menu.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenAdvisorNotificationContextMenu(
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Opens advisor report.
+            /// </summary>
+            /// <param name="mode">The mode.</param>
             public void OpenAdvisorReport(AdvisorReportMode mode) { }
 
+            /// <summary>
+            /// Opens messages tab.
+            /// </summary>
+            /// <param name="tab">The tab.</param>
             public void OpenMessagesTab(MessagesTab tab) { }
 
+            /// <summary>
+            /// Processes advisor automation.
+            /// </summary>
+            /// <param name="faction">The faction.</param>
             public void ProcessAdvisorAutomation(Faction faction) { }
 
+            /// <summary>
+            /// Opens speed context menu.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenSpeedContextMenu(
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Executes release hud button.
+            /// </summary>
+            /// <param name="action">The action.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void ReleaseHudButton(StrategyHudAction action, int sourceX, int sourceY) { }
 
+            /// <summary>
+            /// Sets game speed.
+            /// </summary>
+            /// <param name="speed">The speed.</param>
             public void SetGameSpeed(TickSpeed speed)
             {
                 SelectedSpeed = speed;
             }
 
+            /// <summary>
+            /// Executes request hud render.
+            /// </summary>
             public void RequestHudRender() { }
         }
     }

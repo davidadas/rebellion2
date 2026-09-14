@@ -11,10 +11,22 @@ namespace Rebellion.Game.Units
     {
         MovementState Movement { get; set; }
 
+        /// <summary>
+        /// Checks whether the movable condition is met.
+        /// </summary>
+        /// <returns>True when the movable condition is met; otherwise false.</returns>
         bool IsMovable();
 
+        /// <summary>
+        /// Checks whether the blockade condition is met.
+        /// </summary>
+        /// <returns>True when the blockade condition is met; otherwise false.</returns>
         bool CanBlockade() => false;
 
+        /// <summary>
+        /// Executes ignores blockade.
+        /// </summary>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         bool IgnoresBlockade() => false;
     }
 }

@@ -20,6 +20,12 @@ namespace Rebellion.Tests.Game.Events
 {
     internal static class GameActionTestExtensions
     {
+        /// <summary>
+        /// Executes the requested operation.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="game">The game.</param>
+        /// <returns>The result of execute.</returns>
         internal static List<GameResult> Execute(this GameAction action, GameRoot game)
         {
             GameActionContext context = new GameActionContext(game, game.Random);
@@ -27,6 +33,13 @@ namespace Rebellion.Tests.Game.Events
             return context.Results;
         }
 
+        /// <summary>
+        /// Executes the requested operation.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="random">The random.</param>
+        /// <returns>The result of execute.</returns>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
@@ -38,6 +51,14 @@ namespace Rebellion.Tests.Game.Events
             return context.Results;
         }
 
+        /// <summary>
+        /// Executes the requested operation.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="random">The random.</param>
+        /// <param name="evaluation">The evaluation.</param>
+        /// <returns>The result of execute.</returns>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
@@ -50,6 +71,13 @@ namespace Rebellion.Tests.Game.Events
             return context.Results;
         }
 
+        /// <summary>
+        /// Executes the requested operation.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="unitFactory">The unit factory.</param>
+        /// <returns>The result of execute.</returns>
         internal static List<GameResult> Execute(
             this GameAction action,
             GameRoot game,
@@ -61,6 +89,12 @@ namespace Rebellion.Tests.Game.Events
             return context.Results;
         }
 
+        /// <summary>
+        /// Executes requests.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="game">The game.</param>
+        /// <returns>The result of execute requests.</returns>
         internal static List<GameRequest> ExecuteRequests(this GameAction action, GameRoot game)
         {
             GameActionContext context = new GameActionContext(game, game.Random);
@@ -68,6 +102,14 @@ namespace Rebellion.Tests.Game.Events
             return context.Requests;
         }
 
+        /// <summary>
+        /// Executes requests.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="random">The random.</param>
+        /// <param name="evaluation">The evaluation.</param>
+        /// <returns>The result of execute requests.</returns>
         internal static List<GameRequest> ExecuteRequests(
             this GameAction action,
             GameRoot game,
@@ -80,6 +122,13 @@ namespace Rebellion.Tests.Game.Events
             return context.Requests;
         }
 
+        /// <summary>
+        /// Executes requests.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="unitFactory">The unit factory.</param>
+        /// <returns>The result of execute requests.</returns>
         internal static List<GameRequest> ExecuteRequests(
             this GameAction action,
             GameRoot game,
@@ -95,6 +144,9 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public class GameActionsTests
     {
+        /// <summary>
+        /// Verifies place units mixed existing and spawn sources emits placement batch.
+        /// </summary>
         [Test]
         public void PlaceUnits_MixedExistingAndSpawnSources_EmitsPlacementBatch()
         {
@@ -164,6 +216,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(destination, result.Destinations.Single());
         }
 
+        /// <summary>
+        /// Verifies place units spawn sources round trips authored structure.
+        /// </summary>
         [Test]
         public void PlaceUnits_SpawnSources_RoundTripsAuthoredStructure()
         {
@@ -212,6 +267,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("FNALL1", sources[1].OwnerFactionInstanceID);
         }
 
+        /// <summary>
+        /// Verifies place units authored spawn sources deserializes structure.
+        /// </summary>
         [Test]
         public void PlaceUnits_AuthoredSpawnSources_DeserializesStructure()
         {
@@ -238,6 +296,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("FNALL1", sources[1].OwnerFactionInstanceID);
         }
 
+        /// <summary>
+        /// Verifies place units authored selectors deserializes structure.
+        /// </summary>
         [Test]
         public void PlaceUnits_AuthoredSelectors_DeserializesStructure()
         {
@@ -272,6 +333,9 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
+        /// <summary>
+        /// Verifies place units inactive existing unit throws invalid operation exception.
+        /// </summary>
         [Test]
         public void PlaceUnits_InactiveExistingUnit_ThrowsInvalidOperationException()
         {
@@ -296,6 +360,9 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("requires existing units to be active", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies place units selectors round trips transfer structure.
+        /// </summary>
         [Test]
         public void PlaceUnits_Selectors_RoundTripsTransferStructure()
         {
@@ -337,6 +404,9 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
+        /// <summary>
+        /// Verifies change owner unit selectors emits ownership request.
+        /// </summary>
         [Test]
         public void ChangeOwner_UnitSelectors_EmitsOwnershipRequest()
         {
@@ -362,6 +432,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsEmpty(result.Planets);
         }
 
+        /// <summary>
+        /// Verifies change owner with planets and units rejects ambiguous request.
+        /// </summary>
         [Test]
         public void ChangeOwner_WithPlanetsAndUnits_RejectsAmbiguousRequest()
         {
@@ -380,6 +453,9 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("exactly one", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies change owner planet selectors round trips authored structure.
+        /// </summary>
         [Test]
         public void ChangeOwner_PlanetSelectors_RoundTripsAuthoredStructure()
         {
@@ -401,6 +477,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsEmpty(restored.Units);
         }
 
+        /// <summary>
+        /// Verifies set node state attributes deserialize state.
+        /// </summary>
         [Test]
         public void SetNodeState_Attributes_DeserializeState()
         {
@@ -413,6 +492,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(SceneNodeState.Inactive, action.State);
         }
 
+        /// <summary>
+        /// Verifies set node state inactive officer selector round trips selector.
+        /// </summary>
         [Test]
         public void SetNodeState_InactiveOfficerSelector_RoundTripsSelector()
         {
@@ -441,6 +523,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(selector.IncludeInactive);
         }
 
+        /// <summary>
+        /// Verifies set node state inactive disables officer without detaching it.
+        /// </summary>
         [Test]
         public void SetNodeState_Inactive_DisablesOfficerWithoutDetachingIt()
         {
@@ -458,6 +543,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(officer.IsActive());
         }
 
+        /// <summary>
+        /// Verifies set node state inactive mission participant throws invalid operation exception.
+        /// </summary>
         [Test]
         public void SetNodeState_InactiveMissionParticipant_ThrowsInvalidOperationException()
         {
@@ -486,6 +574,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(officer.IsActive());
         }
 
+        /// <summary>
+        /// Verifies set node state selector disables every matching officer.
+        /// </summary>
         [Test]
         public void SetNodeState_Selector_DisablesEveryMatchingOfficer()
         {
@@ -508,6 +599,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(second.IsActive());
         }
 
+        /// <summary>
+        /// Verifies set node state active enables officer at existing parent.
+        /// </summary>
         [Test]
         public void SetNodeState_Active_EnablesOfficerAtExistingParent()
         {
@@ -527,6 +621,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(officer.IsActive());
         }
 
+        /// <summary>
+        /// Verifies set node state planet disables non movable node.
+        /// </summary>
         [Test]
         public void SetNodeState_Planet_DisablesNonMovableNode()
         {
@@ -541,6 +638,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(planet.IsActive());
         }
 
+        /// <summary>
+        /// Verifies set node state inactive officer selector enables matching officer.
+        /// </summary>
         [Test]
         public void SetNodeState_InactiveOfficerSelector_EnablesMatchingOfficer()
         {
@@ -569,6 +669,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(officer.IsActive());
         }
 
+        /// <summary>
+        /// Verifies trigger duel valid i ds emits request.
+        /// </summary>
         [Test]
         public void TriggerDuel_ValidIDs_EmitsRequest()
         {
@@ -593,6 +696,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(defender, request.OpposingOfficer);
         }
 
+        /// <summary>
+        /// Verifies trigger duel second officer participated reverses authored order.
+        /// </summary>
         [Test]
         public void TriggerDuel_SecondOfficerParticipated_ReversesAuthoredOrder()
         {
@@ -631,6 +737,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("encounter-voice", request.AudioPath);
         }
 
+        /// <summary>
+        /// Verifies trigger duel valid officers requests duel.
+        /// </summary>
         [Test]
         public void TriggerDuel_ValidOfficers_RequestsDuel()
         {
@@ -658,6 +767,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(1, requests.OfType<DuelRequest>().Count());
         }
 
+        /// <summary>
+        /// Verifies reveal to faction targets deserialize selectors.
+        /// </summary>
         [Test]
         public void RevealToFaction_Targets_DeserializeSelectors()
         {
@@ -670,6 +782,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("NABOO", action.Targets.OfType<SelectPlanets>().Single().InstanceID);
         }
 
+        /// <summary>
+        /// Verifies reveal to faction selected officer emits concrete observation.
+        /// </summary>
         [Test]
         public void RevealToFaction_SelectedOfficer_EmitsConcreteObservation()
         {
@@ -698,6 +813,9 @@ namespace Rebellion.Tests.Game.Events
             CollectionAssert.AreEqual(new[] { officer }, intelligence.Observations);
         }
 
+        /// <summary>
+        /// Verifies send message explicit recipient emits resolved result.
+        /// </summary>
         [Test]
         public void SendMessage_ExplicitRecipient_EmitsResolvedResult()
         {
@@ -726,6 +844,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("Audio/Luke/dialogue", result.BackgroundAudioPath);
         }
 
+        /// <summary>
+        /// Verifies send message officer subject does not include subject image by default.
+        /// </summary>
         [Test]
         public void SendMessage_OfficerSubject_DoesNotIncludeSubjectImageByDefault()
         {
@@ -747,6 +868,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsNull(result.OverlayImagePath);
         }
 
+        /// <summary>
+        /// Verifies send message show subject image includes officer message image.
+        /// </summary>
         [Test]
         public void SendMessage_ShowSubjectImage_IncludesOfficerMessageImage()
         {
@@ -769,6 +893,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("Officers/Luke/message", result.OverlayImagePath);
         }
 
+        /// <summary>
+        /// Verifies send message explicit overlay image uses authored image.
+        /// </summary>
         [Test]
         public void SendMessage_ExplicitOverlayImage_UsesAuthoredImage()
         {
@@ -791,6 +918,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("Story/portrait", result.OverlayImagePath);
         }
 
+        /// <summary>
+        /// Verifies send message recipient omitted throws exception.
+        /// </summary>
         [Test]
         public void SendMessage_RecipientOmitted_ThrowsException()
         {
@@ -804,6 +934,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("SendMessage requires RecipientFactionInstanceID.", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies send message inactive subject emits resolved result.
+        /// </summary>
         [Test]
         public void SendMessage_InactiveSubject_EmitsResolvedResult()
         {
@@ -829,6 +962,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(rebelPlanet, result.Location);
         }
 
+        /// <summary>
+        /// Verifies send message audio binding uses trigger binding path.
+        /// </summary>
         [Test]
         public void SendMessage_AudioBinding_UsesTriggerBindingPath()
         {
@@ -867,6 +1003,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("selected-encounter-voice", result.BackgroundAudioPath);
         }
 
+        /// <summary>
+        /// Verifies send message officer voice preset uses subject voice set.
+        /// </summary>
         [Test]
         public void SendMessage_OfficerVoicePreset_UsesSubjectVoiceSet()
         {
@@ -892,6 +1031,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("luke-success", result.OfficerVoicePath);
         }
 
+        /// <summary>
+        /// Verifies send message multiple background sources throws exception.
+        /// </summary>
         [Test]
         public void SendMessage_MultipleBackgroundSources_ThrowsException()
         {
@@ -912,6 +1054,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.Throws<InvalidOperationException>(() => action.Execute(game));
         }
 
+        /// <summary>
+        /// Verifies if action event variable selects branch and persists mutation.
+        /// </summary>
         [Test]
         public void IfAction_EventVariable_SelectsBranchAndPersistsMutation()
         {
@@ -950,6 +1095,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(0, game.EventRuntime.GetVariable("wrong"));
         }
 
+        /// <summary>
+        /// Verifies send units valid references emits authoritative request.
+        /// </summary>
         [Test]
         public void SendUnits_ValidReferences_EmitsAuthoritativeRequest()
         {
@@ -972,6 +1120,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(origin, officer.GetParent());
         }
 
+        /// <summary>
+        /// Verifies send units incompatible selector throws precise error.
+        /// </summary>
         [Test]
         public void SendUnits_IncompatibleSelector_ThrowsPreciseError()
         {
@@ -992,6 +1143,9 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("only movable units", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies send units select first destination emits all ordered candidates.
+        /// </summary>
         [Test]
         public void SendUnits_SelectFirstDestination_EmitsAllOrderedCandidates()
         {
@@ -1029,6 +1183,9 @@ namespace Rebellion.Tests.Game.Events
             CollectionAssert.AreEqual(new[] { first, second }, result.Destinations);
         }
 
+        /// <summary>
+        /// Verifies set capture status incompatible selector throws precise error.
+        /// </summary>
         [Test]
         public void SetCaptureStatus_IncompatibleSelector_ThrowsPreciseError()
         {
@@ -1050,6 +1207,9 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("only officers", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies set capture status normal capture allows escape.
+        /// </summary>
         [Test]
         public void SetCaptureStatus_NormalCapture_AllowsEscape()
         {
@@ -1074,6 +1234,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(officer, result.TargetOfficer);
         }
 
+        /// <summary>
+        /// Verifies set capture status authored non escaping capture disables escape.
+        /// </summary>
         [Test]
         public void SetCaptureStatus_AuthoredNonEscapingCapture_DisablesEscape()
         {
@@ -1093,6 +1256,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(officer.CanEscape);
         }
 
+        /// <summary>
+        /// Verifies set capture status release clears captor and capture only state.
+        /// </summary>
         [Test]
         public void SetCaptureStatus_Release_ClearsCaptorAndCaptureOnlyState()
         {
@@ -1116,6 +1282,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(officer.CanEscape);
         }
 
+        /// <summary>
+        /// Verifies set capture status recapture after release restores default escape state.
+        /// </summary>
         [Test]
         public void SetCaptureStatus_RecaptureAfterRelease_RestoresDefaultEscapeState()
         {
@@ -1142,6 +1311,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(officer.CanEscape);
         }
 
+        /// <summary>
+        /// Verifies set display name capital ship marks name as assigned.
+        /// </summary>
         [Test]
         public void SetDisplayName_CapitalShip_MarksNameAsAssigned()
         {
@@ -1171,6 +1343,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(ship.HasAssignedName);
         }
 
+        /// <summary>
+        /// Verifies set officer images configured values updates officer.
+        /// </summary>
         [Test]
         public void SetOfficerImages_ConfiguredValues_UpdatesOfficer()
         {
@@ -1194,6 +1369,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("jedi-encyclopedia", luke.EncyclopediaImagePath);
         }
 
+        /// <summary>
+        /// Verifies set officer voice set configured values replaces selected voice pools.
+        /// </summary>
         [Test]
         public void SetOfficerVoiceSet_ConfiguredValues_ReplacesSelectedVoicePools()
         {
@@ -1215,6 +1393,9 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
+        /// <summary>
+        /// Verifies increase force rank percent of effective rank adjusts force rating.
+        /// </summary>
         [Test]
         public void IncreaseForceRank_PercentOfEffectiveRank_AdjustsForceRating()
         {
@@ -1234,6 +1415,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(50, luke.ForceValue);
         }
 
+        /// <summary>
+        /// Verifies change officer rating amount adjusts stored rating.
+        /// </summary>
         [Test]
         public void ChangeOfficerRating_Amount_AdjustsStoredRating()
         {
@@ -1254,6 +1438,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(45, luke.GetBaseRating(OfficerRating.Diplomacy));
         }
 
+        /// <summary>
+        /// Verifies change officer rating percent of stored rating adjusts stored rating.
+        /// </summary>
         [Test]
         public void ChangeOfficerRating_PercentOfStoredRating_AdjustsStoredRating()
         {
@@ -1272,6 +1459,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(30, luke.GetBaseRating(OfficerRating.ShipResearch));
         }
 
+        /// <summary>
+        /// Verifies change officer rating multiple adjustment modes throws.
+        /// </summary>
         [Test]
         public void ChangeOfficerRating_MultipleAdjustmentModes_Throws()
         {
@@ -1290,6 +1480,9 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
+        /// <summary>
+        /// Verifies perform skill check successful roll executes success actions.
+        /// </summary>
         [Test]
         public void PerformSkillCheck_SuccessfulRoll_ExecutesSuccessActions()
         {
@@ -1329,6 +1522,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(1, game.EventRuntime.GetVariable("result"));
         }
 
+        /// <summary>
+        /// Verifies perform skill check failed roll executes failure actions.
+        /// </summary>
         [Test]
         public void PerformSkillCheck_FailedRoll_ExecutesFailureActions()
         {
@@ -1359,6 +1555,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(-1, game.EventRuntime.GetVariable("result"));
         }
 
+        /// <summary>
+        /// Verifies perform skill check injured officer uses effective rating.
+        /// </summary>
         [Test]
         public void PerformSkillCheck_InjuredOfficer_UsesEffectiveRating()
         {
@@ -1388,6 +1587,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(1, game.EventRuntime.GetVariable("failed"));
         }
 
+        /// <summary>
+        /// Verifies perform skill check negative rating multiplier uses scaled score.
+        /// </summary>
         [Test]
         public void PerformSkillCheck_NegativeRatingMultiplier_UsesScaledScore()
         {
@@ -1418,6 +1620,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsEmpty(results);
         }
 
+        /// <summary>
+        /// Verifies perform skill check missing officer throws invalid operation exception.
+        /// </summary>
         [Test]
         public void PerformSkillCheck_MissingOfficer_ThrowsInvalidOperationException()
         {
@@ -1436,6 +1641,9 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("could not resolve officer", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies perform skill check missing probability table throws invalid operation exception.
+        /// </summary>
         [Test]
         public void PerformSkillCheck_MissingProbabilityTable_ThrowsInvalidOperationException()
         {
@@ -1456,6 +1664,9 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("could not resolve probability table", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies set force eligible eligibility transition initializes force once.
+        /// </summary>
         [Test]
         public void SetForceEligible_EligibilityTransition_InitializesForceOnce()
         {
@@ -1490,6 +1701,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(13, leia.ForceValue);
         }
 
+        /// <summary>
+        /// Verifies apply officer injury inclusive range applies rolled severity.
+        /// </summary>
         [Test]
         public void ApplyOfficerInjury_InclusiveRange_AppliesRolledSeverity()
         {
@@ -1512,6 +1726,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(50, luke.InjuryPoints);
         }
 
+        /// <summary>
+        /// Verifies change raw resource nodes increases explicit amount.
+        /// </summary>
         [Test]
         public void ChangeRawResourceNodes_IncreasesExplicitAmount()
         {
@@ -1538,6 +1755,9 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
+        /// <summary>
+        /// Verifies change raw resource nodes neutral planet reports no faction.
+        /// </summary>
         [Test]
         public void ChangeRawResourceNodes_NeutralPlanet_ReportsNoFaction()
         {
@@ -1565,6 +1785,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(5, planet.NumRawResourceNodes);
         }
 
+        /// <summary>
+        /// Verifies change raw resource nodes bound amount applies reused integer.
+        /// </summary>
         [Test]
         public void ChangeRawResourceNodes_BoundAmount_AppliesReusedInteger()
         {
@@ -1586,6 +1809,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(2, planet.NumRawResourceNodes);
         }
 
+        /// <summary>
+        /// Verifies change energy capacity rolled amount applies inclusive integer roll.
+        /// </summary>
         [Test]
         public void ChangeEnergyCapacity_RolledAmount_AppliesInclusiveIntegerRoll()
         {
@@ -1602,6 +1828,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(6, planet.EnergyCapacity);
         }
 
+        /// <summary>
+        /// Verifies change popular support increase rebalances other faction.
+        /// </summary>
         [Test]
         public void ChangePopularSupport_IncreaseRebalancesOtherFaction()
         {
@@ -1627,6 +1856,9 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
+        /// <summary>
+        /// Verifies set popular support absolute value preserves unallocated support.
+        /// </summary>
         [Test]
         public void SetPopularSupport_AbsoluteValue_PreservesUnallocatedSupport()
         {
@@ -1646,6 +1878,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(20, planet.GetPopularSupport("rebels"));
         }
 
+        /// <summary>
+        /// Verifies damage planet resources minimum loss guarantees one point loss.
+        /// </summary>
         [Test]
         public void DamagePlanetResources_MinimumLoss_GuaranteesOnePointLoss()
         {
@@ -1669,6 +1904,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(1, results.OfType<PlanetStatChangedResult>().Count());
         }
 
+        /// <summary>
+        /// Verifies damage planet resources na n probability with no resources throws invalid operation exception.
+        /// </summary>
         [Test]
         public void DamagePlanetResources_NaNProbabilityWithNoResources_ThrowsInvalidOperationException()
         {
@@ -1686,6 +1924,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.Throws<InvalidOperationException>(execute);
         }
 
+        /// <summary>
+        /// Verifies damage planet resources negative minimum loss with no resources throws invalid operation exception.
+        /// </summary>
         [Test]
         public void DamagePlanetResources_NegativeMinimumLossWithNoResources_ThrowsInvalidOperationException()
         {
@@ -1704,6 +1945,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.Throws<InvalidOperationException>(execute);
         }
 
+        /// <summary>
+        /// Verifies roll double extreme finite range returns finite value.
+        /// </summary>
         [Test]
         public void RollDouble_ExtremeFiniteRange_ReturnsFiniteValue()
         {
@@ -1720,6 +1964,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(0, result);
         }
 
+        /// <summary>
+        /// Verifies roll chance rolled probability executes actions on success.
+        /// </summary>
         [Test]
         public void RollChance_RolledProbability_ExecutesActionsOnSuccess()
         {
@@ -1738,6 +1985,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(1, game.EventRuntime.GetVariable("success"));
         }
 
+        /// <summary>
+        /// Verifies roll chance na n probability throws invalid operation exception.
+        /// </summary>
         [Test]
         public void RollChance_NaNProbability_ThrowsInvalidOperationException()
         {
@@ -1749,6 +1999,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.Throws<InvalidOperationException>(execute);
         }
 
+        /// <summary>
+        /// Verifies roll chance failed probability does not execute actions.
+        /// </summary>
         [Test]
         public void RollChance_FailedProbability_DoesNotExecuteActions()
         {
@@ -1767,6 +2020,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.Zero(game.EventRuntime.GetVariable("failure"));
         }
 
+        /// <summary>
+        /// Verifies roll outcome weighted selection executes every action in selected outcome.
+        /// </summary>
         [Test]
         public void RollOutcome_WeightedSelection_ExecutesEveryActionInSelectedOutcome()
         {
@@ -1802,6 +2058,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(2, game.EventRuntime.GetVariable("second"));
         }
 
+        /// <summary>
+        /// Verifies destroy units selected unit deletes unit from game.
+        /// </summary>
         [Test]
         public void DestroyUnits_SelectedUnit_DeletesUnitFromGame()
         {
@@ -1827,6 +2086,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
+        /// <summary>
+        /// Verifies destroy units parent and child selected destroys subtree once.
+        /// </summary>
         [Test]
         public void DestroyUnits_ParentAndChildSelected_DestroysSubtreeOnce()
         {
@@ -1854,6 +2116,12 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
+        /// <summary>
+        /// Builds game.
+        /// </summary>
+        /// <param name="empirePlanet">Receives the empire planet.</param>
+        /// <param name="rebelPlanet">Receives the rebel planet.</param>
+        /// <returns>The constructed game.</returns>
         private GameRoot BuildGame(out Planet empirePlanet, out Planet rebelPlanet)
         {
             GameConfig config = TestConfig.Create();

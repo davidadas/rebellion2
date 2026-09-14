@@ -19,6 +19,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         private GameObject _rootObject;
         private IdleBarView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -26,12 +29,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _view = _rootObject.GetComponentInChildren<IdleBarView>(true);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies prefab properties authored view contains compact shelf and circular slot template.
+        /// </summary>
         [Test]
         public void PrefabProperties_AuthoredView_ContainsCompactShelfAndCircularSlotTemplate()
         {
@@ -62,6 +71,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsFalse(overflowText.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies prefab properties idle bar is top level non window feature.
+        /// </summary>
         [Test]
         public void PrefabProperties_IdleBarIsTopLevelNonWindowFeature()
         {
@@ -74,6 +86,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.Less(_view.transform.GetSiblingIndex(), windows.GetSiblingIndex());
         }
 
+        /// <summary>
+        /// Verifies render few entries creates small right aligned single row.
+        /// </summary>
         [Test]
         public void Render_FewEntries_CreatesSmallRightAlignedSingleRow()
         {
@@ -117,6 +132,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(new Color(0.08f, 0.09f, 0.11f, 0.9f), hitArea.color);
         }
 
+        /// <summary>
+        /// Verifies pointer hover expands portrait within fixed slot.
+        /// </summary>
         [Test]
         public void PointerHover_ExpandsPortraitWithinFixedSlot()
         {
@@ -158,6 +176,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(Vector3.one, portraitImage.rectTransform.localScale);
         }
 
+        /// <summary>
+        /// Verifies render hovered slot changes entity rebinds hover identity.
+        /// </summary>
         [Test]
         public void Render_HoveredSlotChangesEntity_RebindsHoverIdentity()
         {
@@ -189,6 +210,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
         }
 
+        /// <summary>
+        /// Verifies pointer hover overflowing entries reveals three rows until pointer leaves.
+        /// </summary>
         [Test]
         public void PointerHover_OverflowingEntries_RevealsThreeRowsUntilPointerLeaves()
         {
@@ -257,6 +281,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(1, CountRows(GetVisibleSlots()));
         }
 
+        /// <summary>
+        /// Verifies scroll overflowing entries moves shared scroll area by one row.
+        /// </summary>
         [Test]
         public void Scroll_OverflowingEntries_MovesSharedScrollAreaByOneRow()
         {
@@ -288,6 +315,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
         }
 
+        /// <summary>
+        /// Verifies drag candidate centered portrait preserves crop.
+        /// </summary>
         [Test]
         public void DragCandidate_CenteredPortrait_PreservesCrop()
         {
@@ -312,6 +342,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Object.DestroyImmediate(texture);
         }
 
+        /// <summary>
+        /// Verifies render then click raises selected entity identity.
+        /// </summary>
         [Test]
         public void Render_ThenClick_RaisesSelectedEntityIdentity()
         {
@@ -329,6 +362,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual("Officer", selectedInstanceId);
         }
 
+        /// <summary>
+        /// Verifies render then right click raises context request without selecting.
+        /// </summary>
         [Test]
         public void Render_ThenRightClick_RaisesContextRequestWithoutSelecting()
         {
@@ -361,6 +397,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsTrue(rightClick.used);
         }
 
+        /// <summary>
+        /// Verifies right click open context menu keeps expanded until menu closes.
+        /// </summary>
         [Test]
         public void RightClick_OpenContextMenu_KeepsExpandedUntilMenuCloses()
         {
@@ -386,6 +425,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual("+4", GetVisibleSlots()[4].name);
         }
 
+        /// <summary>
+        /// Verifies render empty entries hides shelf and existing slots.
+        /// </summary>
         [Test]
         public void Render_EmptyEntries_HidesShelfAndExistingSlots()
         {
@@ -401,6 +443,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsEmpty(GetVisibleSlots());
         }
 
+        /// <summary>
+        /// Verifies render hidden presentation deactivates feature root.
+        /// </summary>
         [Test]
         public void Render_HiddenPresentation_DeactivatesFeatureRoot()
         {
@@ -409,6 +454,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -417,6 +468,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                     .GetValue(_view);
         }
 
+        /// <summary>
+        /// Gets visible slots.
+        /// </summary>
+        /// <returns>The requested visible slots.</returns>
         private List<IdleBarSlotView> GetVisibleSlots()
         {
             List<IdleBarSlotView> visible = GetField<List<IdleBarSlotView>>("slots")
@@ -428,6 +483,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             return visible;
         }
 
+        /// <summary>
+        /// Executes invoke view method.
+        /// </summary>
+        /// <param name="methodName">The method name.</param>
         private void InvokeViewMethod(string methodName)
         {
             typeof(IdleBarView)
@@ -435,6 +494,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 .Invoke(_view, null);
         }
 
+        /// <summary>
+        /// Executes count rows.
+        /// </summary>
+        /// <param name="slots">The slots.</param>
+        /// <returns>The result of count rows.</returns>
         private static int CountRows(IEnumerable<IdleBarSlotView> slots)
         {
             return slots
@@ -443,6 +507,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 .Count();
         }
 
+        /// <summary>
+        /// Creates entries.
+        /// </summary>
+        /// <param name="count">The count.</param>
+        /// <returns>The created entries.</returns>
         private static List<IdleBarEntry> CreateEntries(int count)
         {
             List<IdleBarEntry> entries = new List<IdleBarEntry>();
@@ -451,16 +520,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             return entries;
         }
 
+        /// <summary>
+        /// Creates officer.
+        /// </summary>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created officer.</returns>
         private static Officer CreateOfficer(string displayName)
         {
             return new Officer { InstanceID = displayName, DisplayName = displayName };
         }
 
+        /// <summary>
+        /// Creates special forces.
+        /// </summary>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created special forces.</returns>
         private static SpecialForces CreateSpecialForces(string displayName)
         {
             return new SpecialForces { InstanceID = displayName, DisplayName = displayName };
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created planet.</returns>
         private static Planet CreatePlanet(string displayName)
         {
             return new Planet { InstanceID = displayName, DisplayName = displayName };

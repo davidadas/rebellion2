@@ -348,6 +348,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <summary>
         /// Finds a top-level authored binding by name.
         /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The matching binding.</returns>
         private static int FindBinding(InputAction action, string name)
         {
             for (int index = 0; index < action.bindings.Count; index++)
@@ -363,6 +366,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <summary>
         /// Finds a named part belonging to one authored composite.
         /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="compositeIndex">The composite index.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The matching part.</returns>
         private static int FindPart(InputAction action, int compositeIndex, string name)
         {
             for (int index = compositeIndex + 1; index < action.bindings.Count; index++)

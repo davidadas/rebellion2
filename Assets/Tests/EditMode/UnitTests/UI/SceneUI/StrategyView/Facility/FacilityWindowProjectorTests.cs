@@ -29,6 +29,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private FacilityWindowProjector _projector;
         private List<Texture2D> _textures;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -72,6 +75,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             _projector = new FacilityWindowProjector(() => _uiContext);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -80,12 +86,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 UnityEngine.Object.DestroyImmediate(texture);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new FacilityWindowProjector(null));
         }
 
+        /// <summary>
+        /// Verifies create render data null window throws argument null exception.
+        /// </summary>
         [Test]
         public void CreateRenderData_NullWindow_ThrowsArgumentNullException()
         {
@@ -94,6 +106,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies create render data null session throws argument null exception.
+        /// </summary>
         [Test]
         public void CreateRenderData_NullSession_ThrowsArgumentNullException()
         {
@@ -102,6 +117,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies create render data unavailable context throws invalid operation exception.
+        /// </summary>
         [Test]
         public void CreateRenderData_UnavailableContext_ThrowsInvalidOperationException()
         {
@@ -112,6 +130,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies create render data manufacturing tab returns lane and tab presentation.
+        /// </summary>
         [Test]
         public void CreateRenderData_ManufacturingTab_ReturnsLaneAndTabPresentation()
         {
@@ -210,6 +231,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual("0:0", troopCard.FacilityCount);
         }
 
+        /// <summary>
+        /// Verifies create render data mines tab returns inventory slots and selection.
+        /// </summary>
         [Test]
         public void CreateRenderData_MinesTab_ReturnsInventorySlotsAndSelection()
         {
@@ -244,6 +268,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies create render data moving building uses transit texture.
+        /// </summary>
         [Test]
         public void CreateRenderData_MovingBuilding_UsesTransitTexture()
         {
@@ -267,6 +294,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies create render data under construction inventory building uses construction texture.
+        /// </summary>
         [Test]
         public void CreateRenderData_UnderConstructionInventoryBuilding_UsesConstructionTexture()
         {
@@ -285,6 +315,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreSame(_constructionTexture, data.InventoryItems[0].Texture);
         }
 
+        /// <summary>
+        /// Verifies create render data queued building uses compact entity texture.
+        /// </summary>
         [Test]
         public void CreateRenderData_QueuedBuilding_UsesCompactEntityTexture()
         {
@@ -307,6 +340,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies create render data active queue item uses live delivery destination.
+        /// </summary>
         [Test]
         public void CreateRenderData_ActiveQueueItem_UsesLiveDeliveryDestination()
         {
@@ -341,6 +377,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Creates building.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <param name="status">The status.</param>
+        /// <returns>The created building.</returns>
         private static Building CreateBuilding(
             string instanceId,
             string displayName,
@@ -362,6 +406,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             };
         }
 
+        /// <summary>
+        /// Creates textures.
+        /// </summary>
+        /// <returns>The created textures.</returns>
         private Dictionary<string, Texture2D> CreateTextures()
         {
             _constructionTexture = new Texture2D(4, 2);
@@ -387,6 +435,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             return textures;
         }
 
+        /// <summary>
+        /// Creates theme.
+        /// </summary>
+        /// <returns>The created theme.</returns>
         private static FactionTheme CreateTheme()
         {
             return new FactionTheme
@@ -433,6 +485,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             };
         }
 
+        /// <summary>
+        /// Creates capital ship.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created capital ship.</returns>
         private static CapitalShip CreateCapitalShip(string instanceId, string displayName)
         {
             return new CapitalShip

@@ -227,6 +227,7 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour, IContentInitializab
     /// <summary>
     /// Verifies every authored visual, control, and template reference.
     /// </summary>
+    /// <param name="verifyContent">Whether verify content.</param>
     private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)

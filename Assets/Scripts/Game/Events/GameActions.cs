@@ -285,6 +285,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Executes the authored success or fallback actions for the current conditions.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             IEnumerable<GameAction> selected = Conditionals.TrueForAll(condition =>
@@ -365,6 +366,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Produces current observations of the selected targets for the recipient faction.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             Faction recipient = context.Game.GetFactionByOwnerInstanceID(FactionInstanceID);
@@ -493,6 +495,9 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves one background-image source to its external content path.
         /// </summary>
+        /// <param name="image">The image.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The resolved value.</returns>
         internal static string Resolve(MessageBackgroundImage image, GameActionContext context)
         {
             if (image == null)
@@ -513,6 +518,9 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves one background-audio source to its external content path.
         /// </summary>
+        /// <param name="audio">The audio.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The resolved value.</returns>
         internal static string Resolve(MessageAudio audio, GameActionContext context)
         {
             if (audio == null)
@@ -530,6 +538,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves either an authored path or a path supplied by an event binding.
         /// </summary>
+        /// <param name="path">The path.</param>
+        /// <param name="binding">The binding.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The resolved path.</returns>
         private static string ResolvePath(string path, string binding, GameActionContext context)
         {
             if (!string.IsNullOrWhiteSpace(path))
@@ -568,6 +580,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Applies the authored captivity state to every selected officer.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -924,6 +937,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Performs the authored officer skill check and executes its matching branch.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
@@ -974,6 +988,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Marks the configured officer as Force-sensitive without revealing that potential.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
@@ -1001,6 +1016,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Reveals and initializes an officer's existing latent Force potential once.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
@@ -1040,6 +1056,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Rolls and applies an injury within the authored severity range.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -1081,6 +1098,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Merges authored image paths into the officer's active image set.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -1154,6 +1172,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Merges authored voice categories into the officer's active voice set.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -1205,6 +1224,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Requests a duel between the two authored officers.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -1251,6 +1271,11 @@ namespace Rebellion.Game.Events
         /// Resolves the union of an explicit instance and selector results into unique registered
         /// game entities, failing when the action would mutate no valid target.
         /// </summary>
+        /// <param name="targetInstanceID">The target instance id.</param>
+        /// <param name="selectors">The selectors.</param>
+        /// <param name="context">The context.</param>
+        /// <param name="actionName">The action name.</param>
+        /// <returns>The resolved targets.</returns>
         internal static List<BaseGameEntity> ResolveTargets(
             string targetInstanceID,
             IEnumerable<GameEventSelector> selectors,
@@ -1317,6 +1342,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves all authored targets and applies the configured display name.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             foreach (
@@ -1355,6 +1381,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves all authored targets and applies the configured status text.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             foreach (
@@ -1385,6 +1412,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves all authored targets and removes their current status text.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             foreach (
@@ -1953,6 +1981,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Deletes every unit selected by the authored unit selectors.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
@@ -1989,6 +2018,9 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns whether another selected node already contains the candidate node.
         /// </summary>
+        /// <param name="unit">The unit.</param>
+        /// <param name="selected">The selected.</param>
+        /// <returns>True when the selected ancestor condition is met; otherwise false.</returns>
         private static bool HasSelectedAncestor(ISceneNode unit, HashSet<ISceneNode> selected)
         {
             for (ISceneNode parent = unit.GetParent(); parent != null; parent = parent.GetParent())
@@ -2016,6 +2048,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves exactly one ownership domain and delegates the change to gameplay.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             bool hasPlanets = Planets.Count > 0;
@@ -2057,6 +2090,8 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns whether ownership can be transferred for the selected unit type.
         /// </summary>
+        /// <param name="node">The node.</param>
+        /// <returns>True when the supported unit condition is met; otherwise false.</returns>
         private static bool IsSupportedUnit(ISceneNode node) =>
             node is Officer
             || node is CapitalShip
@@ -2074,6 +2109,13 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves explicit and selected movable units for an action.
         /// </summary>
+        /// <param name="unitInstanceID">The unit instance id.</param>
+        /// <param name="selectors">The selectors.</param>
+        /// <param name="context">The context.</param>
+        /// <param name="actionName">The action name.</param>
+        /// <param name="allowSpawn">Whether allow spawn.</param>
+        /// <param name="includeDisabled">Whether include disabled.</param>
+        /// <returns>The resolved units.</returns>
         internal static List<IMovable> ResolveUnits(
             string unitInstanceID,
             IEnumerable<GameEventSelector> selectors,
@@ -2144,6 +2186,11 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves explicit and selected destination containers for an action.
         /// </summary>
+        /// <param name="destinationInstanceID">The destination instance id.</param>
+        /// <param name="selectors">The selectors.</param>
+        /// <param name="context">The context.</param>
+        /// <param name="actionName">The action name.</param>
+        /// <returns>The resolved destinations.</returns>
         internal static List<ContainerNode> ResolveDestinations(
             string destinationInstanceID,
             IEnumerable<GameEventSelector> selectors,
@@ -2209,6 +2256,9 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves the units and destinations shared by transit-based transfer actions.
         /// </summary>
+        /// <param name="context">The context.</param>
+        /// <param name="actionName">The action name.</param>
+        /// <returns>The resolved value.</returns>
         protected (List<IMovable> Units, List<ContainerNode> Destinations) Resolve(
             GameActionContext context,
             string actionName
@@ -2239,6 +2289,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Requests immediate placement of the resolved units at the resolved destination.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             List<ContainerNode> destinations = UnitActionTargets.ResolveDestinations(
@@ -2292,6 +2343,8 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Creates detached runtime units for immediate placement.
         /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>The result of spawn.</returns>
         internal IEnumerable<ISceneNode> Spawn(GameActionContext context)
         {
             if (context.UnitFactory == null)
@@ -2315,6 +2368,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Rejects use as a general selector because spawned units require immediate placement.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -2336,6 +2393,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Requests normal transit for the resolved units to the resolved destination.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             (List<IMovable> units, List<ContainerNode> destinations) = Resolve(
@@ -2395,6 +2453,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Applies the authored local active state to every selected scene node.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
         {
             IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>

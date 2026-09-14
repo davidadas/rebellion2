@@ -9,6 +9,9 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class BalanceSeederTests
     {
+        /// <summary>
+        /// Verifies seed headquarters planet owner support pinned to max.
+        /// </summary>
         [Test]
         public void Seed_HeadquartersPlanet_OwnerSupportPinnedToMax()
         {
@@ -26,6 +29,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(100, planet.GetPopularSupport("FNEMP1"));
         }
 
+        /// <summary>
+        /// Verifies seed owned planet with military presence boosts owner support.
+        /// </summary>
         [Test]
         public void Seed_OwnedPlanetWithMilitaryPresence_BoostsOwnerSupport()
         {
@@ -41,6 +47,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(54, planet.GetPopularSupport("FNALL1"));
         }
 
+        /// <summary>
+        /// Verifies seed high military presence boost capped at max boost.
+        /// </summary>
         [Test]
         public void Seed_HighMilitaryPresence_BoostCappedAtMaxBoost()
         {
@@ -58,6 +67,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(60, planet.GetPopularSupport("FNALL1"));
         }
 
+        /// <summary>
+        /// Verifies seed unowned planet no support change.
+        /// </summary>
         [Test]
         public void Seed_UnownedPlanet_NoSupportChange()
         {
@@ -71,6 +83,12 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(25, planet.GetPopularSupport("FNALL1"));
         }
 
+        /// <summary>
+        /// Builds context.
+        /// </summary>
+        /// <param name="sector">The sector.</param>
+        /// <param name="factions">The factions.</param>
+        /// <returns>The constructed context.</returns>
         private static GenerationContext BuildContext(PlanetSector sector, Faction[] factions)
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
@@ -79,6 +97,13 @@ namespace Rebellion.Tests.Generation
             return ctx;
         }
 
+        /// <summary>
+        /// Executes make planet.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="owner">The owner.</param>
+        /// <param name="isHq">Whether is hq.</param>
+        /// <returns>The result of make planet.</returns>
         private static Planet MakePlanet(string id, string owner, bool isHq = false)
         {
             return new Planet
@@ -90,6 +115,11 @@ namespace Rebellion.Tests.Generation
             };
         }
 
+        /// <summary>
+        /// Executes make sector.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The result of make sector.</returns>
         private static PlanetSector MakeSector(Planet planet)
         {
             PlanetSector sector = new PlanetSector { InstanceID = $"sector_{planet.InstanceID}" };

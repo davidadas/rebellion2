@@ -911,6 +911,12 @@ namespace Rebellion.AI.Director
             return detectors;
         }
 
+        /// <summary>
+        /// Adds mission detector candidates.
+        /// </summary>
+        /// <param name="candidates">Whether candidates.</param>
+        /// <param name="detectors">The detectors.</param>
+        /// <typeparam name="T">The t type.</typeparam>
         private void AddMissionDetectorCandidates<T>(
             IEnumerable<T> candidates,
             ICollection<ISceneNode> detectors
@@ -921,6 +927,11 @@ namespace Rebellion.AI.Director
                 AddMissionDetectorCandidate(candidate, detectors);
         }
 
+        /// <summary>
+        /// Adds mission detector candidate.
+        /// </summary>
+        /// <param name="candidate">Whether candidate.</param>
+        /// <param name="detectors">The detectors.</param>
         private void AddMissionDetectorCandidate(
             ISceneNode candidate,
             ICollection<ISceneNode> detectors
@@ -1913,6 +1924,8 @@ namespace Rebellion.AI.Director
         /// <summary>
         /// Returns whether hostile military bombardment targets remain on a planet.
         /// </summary>
+        /// <param name="targetPlanet">The target planet.</param>
+        /// <returns>True when the bombardment targets condition is met; otherwise false.</returns>
         public bool HasBombardmentTargets(Planet targetPlanet)
         {
             if (targetPlanet == null)
@@ -2738,6 +2751,7 @@ namespace Rebellion.AI.Director
         /// <param name="key">Cache key.</param>
         /// <param name="createValue">Value factory used on cache miss.</param>
         /// <returns>The cached or created value.</returns>
+        /// <typeparam name="TValue">The t value type.</typeparam>
         private static TValue GetOrAdd<TValue>(
             Dictionary<string, TValue> cache,
             string key,
@@ -2763,6 +2777,7 @@ namespace Rebellion.AI.Director
         /// <param name="key">Cache key.</param>
         /// <param name="createValue">Value factory used on cache miss.</param>
         /// <returns>The cached or created value.</returns>
+        /// <typeparam name="TValue">The t value type.</typeparam>
         private static TValue GetOrAdd<TValue>(
             Dictionary<ManufacturingType, TValue> cache,
             ManufacturingType key,
@@ -2785,6 +2800,8 @@ namespace Rebellion.AI.Director
         /// <param name="key">Cache key.</param>
         /// <param name="createValue">Value factory used on cache miss.</param>
         /// <returns>The cached or created value.</returns>
+        /// <typeparam name="TKey">The t key type.</typeparam>
+        /// <typeparam name="TValue">The t value type.</typeparam>
         private static TValue GetOrAdd<TKey, TValue>(
             Dictionary<TKey, TValue> cache,
             TKey key,

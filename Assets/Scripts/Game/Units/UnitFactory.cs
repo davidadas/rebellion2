@@ -16,6 +16,11 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Builds a unit-template lookup from every repeatable unit category.
         /// </summary>
+        /// <param name="buildings">The buildings.</param>
+        /// <param name="capitalShips">The capital ships.</param>
+        /// <param name="starfighters">The starfighters.</param>
+        /// <param name="regiments">The regiments.</param>
+        /// <param name="specialForces">The special forces.</param>
         public UnitFactory(
             IEnumerable<Building> buildings,
             IEnumerable<CapitalShip> capitalShips,
@@ -33,6 +38,10 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Creates one complete, stationary unit of the expected category.
         /// </summary>
+        /// <param name="typeID">The type id.</param>
+        /// <param name="ownerInstanceID">The owner instance id.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The created value.</returns>
         public T Create<T>(string typeID, string ownerInstanceID)
             where T : class, ISceneNode, IManufacturable
         {
@@ -57,6 +66,9 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Creates one complete, stationary unit while accepting its authored category.
         /// </summary>
+        /// <param name="typeID">The type id.</param>
+        /// <param name="ownerInstanceID">The owner instance id.</param>
+        /// <returns>The created value.</returns>
         public ISceneNode Create(string typeID, string ownerInstanceID)
         {
             if (!_templates.TryGetValue(typeID, out ISceneNode template))
@@ -78,6 +90,8 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Returns the maintenance cost authored on one unit template.
         /// </summary>
+        /// <param name="typeID">The type id.</param>
+        /// <returns>The requested maintenance cost.</returns>
         public int GetMaintenanceCost(string typeID)
         {
             if (!_templates.TryGetValue(typeID, out ISceneNode template))
@@ -92,6 +106,8 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Combines the available unit-definition categories into one template sequence.
         /// </summary>
+        /// <param name="categories">The categories.</param>
+        /// <returns>The result of combine.</returns>
         private static IEnumerable<ISceneNode> Combine(
             params IEnumerable<ISceneNode>[] categories
         ) => categories.SelectMany(category => category ?? Enumerable.Empty<ISceneNode>());

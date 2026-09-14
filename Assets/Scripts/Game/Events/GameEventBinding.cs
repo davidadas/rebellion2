@@ -54,6 +54,13 @@ namespace Rebellion.Game.Events
 
         internal override Type ValueType => typeof(int);
 
+        /// <summary>
+        /// Resolves the requested operation.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The resolved value.</returns>
         internal override object Resolve(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -90,6 +97,13 @@ namespace Rebellion.Game.Events
 
         internal override Type ValueType => typeof(int);
 
+        /// <summary>
+        /// Resolves the requested operation.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The resolved value.</returns>
         internal override object Resolve(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -130,6 +144,13 @@ namespace Rebellion.Game.Events
 
         internal override Type ValueType => typeof(int);
 
+        /// <summary>
+        /// Resolves the requested operation.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The resolved value.</returns>
         internal override object Resolve(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -162,6 +183,13 @@ namespace Rebellion.Game.Events
 
         internal override Type ValueType => typeof(int);
 
+        /// <summary>
+        /// Resolves the requested operation.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The resolved value.</returns>
         internal override object Resolve(
             GameRoot game,
             IRandomNumberProvider provider,

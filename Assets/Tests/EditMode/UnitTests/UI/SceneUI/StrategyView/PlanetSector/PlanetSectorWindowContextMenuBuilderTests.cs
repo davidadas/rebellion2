@@ -15,6 +15,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private const string _opposingFactionId = "FNEMP1";
         private const string _playerFactionId = "FNALL1";
 
+        /// <summary>
+        /// Verifies create missing hit returns disabled planet information commands.
+        /// </summary>
         [Test]
         public void Create_MissingHit_ReturnsDisabledPlanetInformationCommands()
         {
@@ -33,6 +36,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(commands[1].Enabled);
         }
 
+        /// <summary>
+        /// Verifies create planet information hit returns enabled planet information commands.
+        /// </summary>
+        /// <param name="icon">The icon.</param>
+        /// <param name="planetImage">Whether planet image.</param>
         [TestCase(PlanetIcon.None, false)]
         [TestCase(PlanetIcon.Facility, false)]
         [TestCase(PlanetIcon.Defense, false)]
@@ -57,6 +65,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(commands[1].Enabled);
         }
 
+        /// <summary>
+        /// Verifies create mission hit returns disabled mission commands.
+        /// </summary>
         [Test]
         public void Create_MissionHit_ReturnsDisabledMissionCommands()
         {
@@ -80,6 +91,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(commands[2].Enabled);
         }
 
+        /// <summary>
+        /// Verifies create mobile headquarters returns move commands.
+        /// </summary>
         [Test]
         public void Create_MobileHeadquarters_ReturnsMoveCommands()
         {
@@ -104,6 +118,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(commands[1].Enabled);
         }
 
+        /// <summary>
+        /// Verifies create empty fleet hit returns disabled fleet commands.
+        /// </summary>
         [Test]
         public void Create_EmptyFleetHit_ReturnsDisabledFleetCommands()
         {
@@ -134,6 +151,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(commands[7].Enabled);
         }
 
+        /// <summary>
+        /// Verifies create player fleet hit returns enabled fleet commands and status.
+        /// </summary>
         [Test]
         public void Create_PlayerFleetHit_ReturnsEnabledFleetCommandsAndStatus()
         {
@@ -176,6 +196,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies create opposing fleet hit returns disabled commands and enabled status.
+        /// </summary>
         [Test]
         public void Create_OpposingFleetHit_ReturnsDisabledCommandsAndEnabledStatus()
         {
@@ -202,6 +225,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(commands[7].Enabled);
         }
 
+        /// <summary>
+        /// Verifies create multiple player fleets returns commands without single fleet status.
+        /// </summary>
         [Test]
         public void Create_MultiplePlayerFleets_ReturnsCommandsWithoutSingleFleetStatus()
         {
@@ -230,6 +256,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(commands[7].Enabled);
         }
 
+        /// <summary>
+        /// Verifies create player fleet in transit with waypoints returns clear waypoints command.
+        /// </summary>
         [Test]
         public void Create_PlayerFleetInTransitWithWaypoints_ReturnsClearWaypointsCommand()
         {
@@ -250,6 +279,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(commands[2].Enabled);
         }
 
+        /// <summary>
+        /// Verifies create player fleet in transit without waypoints returns enabled waypoint move command.
+        /// </summary>
         [Test]
         public void Create_PlayerFleetInTransitWithoutWaypoints_ReturnsEnabledWaypointMoveCommand()
         {
@@ -269,6 +301,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(commands[2].Enabled);
         }
 
+        /// <summary>
+        /// Creates hit.
+        /// </summary>
+        /// <param name="icon">The icon.</param>
+        /// <param name="planetImage">Whether planet image.</param>
+        /// <returns>The created hit.</returns>
         private static PlanetSectorWindowHit CreateHit(PlanetIcon icon, bool planetImage)
         {
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector();

@@ -16,6 +16,9 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class AssassinationMissionTests
     {
+        /// <summary>
+        /// Verifies try create valid target returns not null.
+        /// </summary>
         [Test]
         public void TryCreate_ValidTarget_ReturnsNotNull()
         {
@@ -46,6 +49,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("target", ((AssassinationMission)mission).TargetOfficerInstanceID);
         }
 
+        /// <summary>
+        /// Verifies try create target in transit returns null.
+        /// </summary>
         [Test]
         public void TryCreate_TargetInTransit_ReturnsNull()
         {
@@ -72,6 +78,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies try create null target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NullTarget_ReturnsNull()
         {
@@ -95,6 +104,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null when target is null");
         }
 
+        /// <summary>
+        /// Verifies try create non planet target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NonPlanetTarget_ReturnsNull()
         {
@@ -118,6 +130,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null when target is not a Planet");
         }
 
+        /// <summary>
+        /// Verifies try create no valid target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NoValidTarget_ReturnsNull()
         {
@@ -143,6 +158,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create friendly officer as target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_FriendlyOfficerAsTarget_ReturnsNull()
         {
@@ -172,6 +190,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create target already captured returns null.
+        /// </summary>
         [Test]
         public void TryCreate_TargetAlreadyCaptured_ReturnsNull()
         {
@@ -199,6 +220,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null when target is already captured");
         }
 
+        /// <summary>
+        /// Verifies resolve objective first hit survived and second hit kills credits second assassin.
+        /// </summary>
         [Test]
         public void ResolveObjective_FirstHitSurvivedAndSecondHitKills_CreditsSecondAssassin()
         {
@@ -257,6 +281,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create target already killed returns null.
+        /// </summary>
         [Test]
         public void TryCreate_TargetAlreadyKilled_ReturnsNull()
         {
@@ -284,6 +311,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null when target is already killed");
         }
 
+        /// <summary>
+        /// Verifies try create target on wrong planet returns null.
+        /// </summary>
         [Test]
         public void TryCreate_TargetOnWrongPlanet_ReturnsNull()
         {
@@ -312,6 +342,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective special forces succeeds and kill check passes credits special forces.
+        /// </summary>
         [Test]
         public void ResolveObjective_SpecialForcesSucceedsAndKillCheckPasses_CreditsSpecialForces()
         {
@@ -373,6 +406,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective success kill check fails target survives with injury.
+        /// </summary>
         [Test]
         public void ResolveObjective_SuccessKillCheckFails_TargetSurvivesWithInjury()
         {
@@ -432,6 +468,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective main character hit target survives and mission fails.
+        /// </summary>
         [Test]
         public void ResolveObjective_MainCharacterHit_TargetSurvivesAndMissionFails()
         {
@@ -469,6 +508,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective minor character killed improves successful assassin combat.
+        /// </summary>
         [Test]
         public void ResolveObjective_MinorCharacterKilled_ImprovesSuccessfulAssassinCombat()
         {
@@ -506,6 +548,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(originalCombat + 1, officer.GetBaseRating(OfficerRating.Combat));
         }
 
+        /// <summary>
+        /// Verifies update mission target already killed returns failed.
+        /// </summary>
         [Test]
         public void UpdateMission_TargetAlreadyKilled_ReturnsFailed()
         {
@@ -551,6 +596,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies update mission target moved to different planet does not roll or improve participant.
+        /// </summary>
         [Test]
         public void UpdateMission_TargetMovedToDifferentPlanet_DoesNotRollOrImproveParticipant()
         {
@@ -607,6 +655,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(originalCombat, officer.GetBaseRating(OfficerRating.Combat));
         }
 
+        /// <summary>
+        /// Verifies resolve objective target removed from scene returns failed.
+        /// </summary>
         [Test]
         public void ResolveObjective_TargetRemovedFromScene_ReturnsFailed()
         {
@@ -646,6 +697,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies roll participant success subtracts target combat from participant combat.
+        /// </summary>
         [Test]
         public void RollParticipantSuccess_SubtractsTargetCombatFromParticipantCombat()
         {
@@ -690,6 +744,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(equalCombatSucceeded);
         }
 
+        /// <summary>
+        /// Verifies serialize round trip preserves data.
+        /// </summary>
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
@@ -722,6 +779,16 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(1, deserialized.CurrentProgress);
         }
 
+        /// <summary>
+        /// Creates assassination mission.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="target">The target.</param>
+        /// <param name="mainParticipants">The main participants.</param>
+        /// <param name="decoyParticipants">The decoy participants.</param>
+        /// <param name="targetOfficer">The target officer.</param>
+        /// <returns>The created assassination mission.</returns>
         private static Mission CreateAssassinationMission(
             GameRoot game,
             string ownerInstanceId,

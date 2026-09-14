@@ -8,6 +8,9 @@ namespace Rebellion.Tests.UI.Components
     {
         private GameObject _windowManagerObject;
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -15,6 +18,9 @@ namespace Rebellion.Tests.UI.Components
                 Object.DestroyImmediate(_windowManagerObject);
         }
 
+        /// <summary>
+        /// Verifies try cancel active window emits close request.
+        /// </summary>
         [Test]
         public void TryCancel_ActiveWindow_EmitsCloseRequest()
         {
@@ -29,6 +35,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(window, closedWindow);
         }
 
+        /// <summary>
+        /// Verifies try cancel focused window uses focused window.
+        /// </summary>
         [Test]
         public void TryCancel_FocusedWindow_UsesFocusedWindow()
         {
@@ -45,6 +54,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(firstWindow, closedWindow);
         }
 
+        /// <summary>
+        /// Verifies try cancel without active window returns false.
+        /// </summary>
         [Test]
         public void TryCancel_WithoutActiveWindow_ReturnsFalse()
         {
@@ -56,6 +68,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(cancelled);
         }
 
+        /// <summary>
+        /// Verifies try cancel without close listener returns false.
+        /// </summary>
         [Test]
         public void TryCancel_WithoutCloseListener_ReturnsFalse()
         {
@@ -67,6 +82,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(cancelled);
         }
 
+        /// <summary>
+        /// Verifies try cancel content consumes cancel does not emit close request.
+        /// </summary>
         [Test]
         public void TryCancel_ContentConsumesCancel_DoesNotEmitCloseRequest()
         {
@@ -84,6 +102,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, closeRequestCount);
         }
 
+        /// <summary>
+        /// Verifies register modal window blocks earlier window.
+        /// </summary>
         [Test]
         public void Register_ModalWindow_BlocksEarlierWindow()
         {
@@ -191,6 +212,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(replacement, windowManager.Windows[0]);
         }
 
+        /// <summary>
+        /// Verifies focus active window does not emit focus changed.
+        /// </summary>
         [Test]
         public void Focus_ActiveWindow_DoesNotEmitFocusChanged()
         {
@@ -205,6 +229,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, focusChangedCount);
         }
 
+        /// <summary>
+        /// Verifies unregister active window promotes previous focusable window.
+        /// </summary>
         [Test]
         public void Unregister_ActiveWindow_PromotesPreviousFocusableWindow()
         {
@@ -218,6 +245,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(firstWindow.ActiveWindow);
         }
 
+        /// <summary>
+        /// Verifies find window registered content returns owning window.
+        /// </summary>
         [Test]
         public void FindWindow_RegisteredContent_ReturnsOwningWindow()
         {
@@ -233,6 +263,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(expected, window);
         }
 
+        /// <summary>
+        /// Verifies find window missing content returns null.
+        /// </summary>
         [Test]
         public void FindWindow_MissingContent_ReturnsNull()
         {
@@ -244,6 +277,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsNull(window);
         }
 
+        /// <summary>
+        /// Verifies find window view matching predicate returns authored content.
+        /// </summary>
         [Test]
         public void FindWindowView_MatchingPredicate_ReturnsAuthoredContent()
         {
@@ -264,6 +300,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(expected, result);
         }
 
+        /// <summary>
+        /// Verifies create window immovable modeless window preserves authored position.
+        /// </summary>
         [Test]
         public void CreateWindow_ImmovableModelessWindow_PreservesAuthoredPosition()
         {
@@ -288,6 +327,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(new Vector2Int(500, 400), new Vector2Int(window.X, window.Y));
         }
 
+        /// <summary>
+        /// Verifies for each window mixed content visits matching windows only.
+        /// </summary>
         [Test]
         public void ForEachWindow_MixedContent_VisitsMatchingWindowsOnly()
         {
@@ -316,6 +358,10 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(expected, visitedContent);
         }
 
+        /// <summary>
+        /// Creates window manager.
+        /// </summary>
+        /// <returns>The created window manager.</returns>
         private UIWindowManager CreateWindowManager()
         {
             _windowManagerObject = new GameObject(
@@ -328,6 +374,14 @@ namespace Rebellion.Tests.UI.Components
             return _windowManagerObject.GetComponent<UIWindowManager>();
         }
 
+        /// <summary>
+        /// Creates window.
+        /// </summary>
+        /// <param name="windowManager">The window manager.</param>
+        /// <param name="id">The id.</param>
+        /// <param name="modal">Whether modal.</param>
+        /// <param name="canFocus">Whether can focus.</param>
+        /// <returns>The created window.</returns>
         private UIWindow CreateWindow(
             UIWindowManager windowManager,
             int id,
@@ -396,6 +450,10 @@ namespace Rebellion.Tests.UI.Components
         {
             public int CancelCount { get; private set; }
 
+            /// <summary>
+            /// Attempts cancel.
+            /// </summary>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryCancel()
             {
                 CancelCount++;

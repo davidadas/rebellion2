@@ -18,6 +18,9 @@ namespace Rebellion.Tests.Game.Missions
         private Faction _faction;
         private Planet _planet;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -81,6 +84,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create enemy planet returns null.
+        /// </summary>
         [Test]
         public void TryCreate_EnemyPlanet_ReturnsNull()
         {
@@ -101,6 +107,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null for an enemy planet");
         }
 
+        /// <summary>
+        /// Verifies try create zero research skill returns null.
+        /// </summary>
         [Test]
         public void TryCreate_ZeroResearchSkill_ReturnsNull()
         {
@@ -119,6 +128,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies resolve objective positive research skill and minimum roll awards research capacity.
+        /// </summary>
         [Test]
         public void ResolveObjective_PositiveResearchSkillAndMinimumRoll_AwardsResearchCapacity()
         {
@@ -130,6 +142,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
+        /// <summary>
+        /// Verifies resolve objective success awards research capacity.
+        /// </summary>
         [Test]
         public void ResolveObjective_Success_AwardsResearchCapacity()
         {
@@ -143,6 +158,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.Greater(after, before, "Successful research mission should award capacity");
         }
 
+        /// <summary>
+        /// Verifies resolve objective success increments matching research skill.
+        /// </summary>
         [Test]
         public void ResolveObjective_Success_IncrementsMatchingResearchSkill()
         {
@@ -158,6 +176,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective failure no capacity awarded.
+        /// </summary>
         [Test]
         public void ResolveObjective_Failure_NoCapacityAwarded()
         {
@@ -172,6 +193,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective roll equals research chance does not award capacity.
+        /// </summary>
         [Test]
         public void ResolveObjective_RollEqualsResearchChance_DoesNotAwardCapacity()
         {
@@ -187,6 +211,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(50, officer.ShipResearch);
         }
 
+        /// <summary>
+        /// Verifies resolve objective after research facility destroyed continues research.
+        /// </summary>
         [Test]
         public void ResolveObjective_AfterResearchFacilityDestroyed_ContinuesResearch()
         {
@@ -202,6 +229,11 @@ namespace Rebellion.Tests.Game.Missions
             Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
+        /// <summary>
+        /// Verifies try create with only other facility types returns null.
+        /// </summary>
+        /// <param name="discipline">The discipline.</param>
+        /// <param name="requiredFacilityType">The required facility type.</param>
         [TestCase(ResearchDiscipline.ShipDesign, ManufacturingType.Ship)]
         [TestCase(ResearchDiscipline.TroopTraining, ManufacturingType.Troop)]
         [TestCase(ResearchDiscipline.FacilityDesign, ManufacturingType.Building)]
@@ -229,6 +261,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies resolve objective failure skill unchanged.
+        /// </summary>
         [Test]
         public void ResolveObjective_Failure_SkillUnchanged()
         {
@@ -240,6 +275,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(10, officer.ShipResearch, "Skill should not change on failure");
         }
 
+        /// <summary>
+        /// Verifies resolve objective second participant succeeds awards research capacity.
+        /// </summary>
         [Test]
         public void ResolveObjective_SecondParticipantSucceeds_AwardsResearchCapacity()
         {
@@ -270,6 +308,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(101, secondOfficer.ShipResearch);
         }
 
+        /// <summary>
+        /// Verifies resolve objective troop training discipline awards troop capacity.
+        /// </summary>
         [Test]
         public void ResolveObjective_TroopTrainingDiscipline_AwardsTroopCapacity()
         {
@@ -288,6 +329,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective max skill officer awards research capacity.
+        /// </summary>
         [Test]
         public void ResolveObjective_MaxSkillOfficer_AwardsResearchCapacity()
         {
@@ -299,6 +343,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
+        /// <summary>
+        /// Verifies resolve objective success does not increment leadership.
+        /// </summary>
         [Test]
         public void ResolveObjective_Success_DoesNotIncrementLeadership()
         {
@@ -315,6 +362,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion owned planet returns true.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_OwnedPlanet_ReturnsTrue()
         {
@@ -324,6 +374,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(mission.ShouldRepeatAfterCompletion(_game));
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion planet lost returns false.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_PlanetLost_ReturnsFalse()
         {
@@ -335,6 +388,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion after success returns true.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_AfterSuccess_ReturnsTrue()
         {
@@ -349,6 +405,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion after failure returns true.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_AfterFailure_ReturnsTrue()
         {
@@ -363,6 +422,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize ship design mission retains all properties.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_ShipDesignMission_RetainsAllProperties()
         {
@@ -398,6 +460,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(7, deserialized.CurrentProgress);
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize troop training mission retains all properties.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_TroopTrainingMission_RetainsAllProperties()
         {
@@ -422,6 +487,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize facility design mission retains all properties.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_FacilityDesignMission_RetainsAllProperties()
         {
@@ -446,6 +514,12 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Creates mission.
+        /// </summary>
+        /// <param name="officer">The officer.</param>
+        /// <param name="discipline">The discipline.</param>
+        /// <returns>The created mission.</returns>
         private Mission CreateMission(
             Officer officer,
             ResearchDiscipline discipline = ResearchDiscipline.ShipDesign
@@ -464,6 +538,13 @@ namespace Rebellion.Tests.Game.Missions
             return mission;
         }
 
+        /// <summary>
+        /// Creates officer.
+        /// </summary>
+        /// <param name="shipSkill">The ship skill.</param>
+        /// <param name="troopSkill">The troop skill.</param>
+        /// <param name="facilitySkill">The facility skill.</param>
+        /// <returns>The created officer.</returns>
         private Officer CreateOfficer(int shipSkill = 50, int troopSkill = 0, int facilitySkill = 0)
         {
             Officer officer = new Officer

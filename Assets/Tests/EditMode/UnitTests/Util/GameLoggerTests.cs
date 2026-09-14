@@ -11,6 +11,9 @@ namespace Rebellion.Tests.Util
         private GameLogger.LogLevel _originalMinimumLevel;
         private string _tempFile;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -19,6 +22,9 @@ namespace Rebellion.Tests.Util
             GameLogger.SetMinimumLevel(GameLogger.LogLevel.Debug);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -28,6 +34,9 @@ namespace Rebellion.Tests.Util
                 File.Delete(_tempFile);
         }
 
+        /// <summary>
+        /// Verifies log minimum level none does not write to file.
+        /// </summary>
         [Test]
         public void Log_MinimumLevelNone_DoesNotWriteToFile()
         {
@@ -44,6 +53,9 @@ namespace Rebellion.Tests.Util
             Assert.IsEmpty(File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies log file logging enabled writes message to file.
+        /// </summary>
         [Test]
         public void Log_FileLoggingEnabled_WritesMessageToFile()
         {
@@ -58,6 +70,9 @@ namespace Rebellion.Tests.Util
             StringAssert.Contains("hello world", File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies log timestamps enabled message includes timestamp prefix.
+        /// </summary>
         [Test]
         public void Log_TimestampsEnabled_MessageIncludesTimestampPrefix()
         {
@@ -68,6 +83,9 @@ namespace Rebellion.Tests.Util
             StringAssert.Contains("[20", File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies log timestamps disabled message omits timestamp prefix.
+        /// </summary>
         [Test]
         public void Log_TimestampsDisabled_MessageOmitsTimestampPrefix()
         {
@@ -82,6 +100,9 @@ namespace Rebellion.Tests.Util
             StringAssert.DoesNotContain("[20", File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies log any level message contains level tag.
+        /// </summary>
         [Test]
         public void Log_AnyLevel_MessageContainsLevelTag()
         {
@@ -95,6 +116,9 @@ namespace Rebellion.Tests.Util
             StringAssert.Contains("[Warning]", File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies log level above minimum does not write to file.
+        /// </summary>
         [Test]
         public void Log_LevelAboveMinimum_DoesNotWriteToFile()
         {
@@ -111,6 +135,9 @@ namespace Rebellion.Tests.Util
             Assert.IsEmpty(File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies warning file logging enabled writes message to file.
+        /// </summary>
         [Test]
         public void Warning_FileLoggingEnabled_WritesMessageToFile()
         {
@@ -124,6 +151,9 @@ namespace Rebellion.Tests.Util
             StringAssert.Contains("watch out", File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies debug file logging enabled writes message to file.
+        /// </summary>
         [Test]
         public void Debug_FileLoggingEnabled_WritesMessageToFile()
         {
@@ -138,6 +168,9 @@ namespace Rebellion.Tests.Util
             StringAssert.Contains("debug info", File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies log format file logging enabled writes formatted message.
+        /// </summary>
         [Test]
         public void LogFormat_FileLoggingEnabled_WritesFormattedMessage()
         {
@@ -152,6 +185,9 @@ namespace Rebellion.Tests.Util
             StringAssert.Contains("Player Alice scored 42", File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies log exception with exception writes type and message.
+        /// </summary>
         [Test]
         public void LogException_WithException_WritesTypeAndMessage()
         {
@@ -171,6 +207,9 @@ namespace Rebellion.Tests.Util
             StringAssert.Contains("boom", content);
         }
 
+        /// <summary>
+        /// Verifies set minimum level to error suppresses info messages.
+        /// </summary>
         [Test]
         public void SetMinimumLevel_ToError_SuppressesInfoMessages()
         {
@@ -187,6 +226,9 @@ namespace Rebellion.Tests.Util
             Assert.IsEmpty(File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies set minimum level to debug allows all messages.
+        /// </summary>
         [Test]
         public void SetMinimumLevel_ToDebug_AllowsAllMessages()
         {
@@ -203,6 +245,9 @@ namespace Rebellion.Tests.Util
             StringAssert.Contains("should appear", File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies configure file logging enabled creates new file.
+        /// </summary>
         [Test]
         public void Configure_FileLoggingEnabled_CreatesNewFile()
         {
@@ -224,6 +269,9 @@ namespace Rebellion.Tests.Util
             }
         }
 
+        /// <summary>
+        /// Verifies configure file logging disabled does not write to file.
+        /// </summary>
         [Test]
         public void Configure_FileLoggingDisabled_DoesNotWriteToFile()
         {
@@ -239,6 +287,9 @@ namespace Rebellion.Tests.Util
             Assert.IsEmpty(File.ReadAllText(_tempFile));
         }
 
+        /// <summary>
+        /// Verifies configure null file path retains existing path.
+        /// </summary>
         [Test]
         public void Configure_NullFilePath_RetainsExistingPath()
         {

@@ -21,11 +21,19 @@ public static partial class HeadlessSimulationRunner
             List<GarrisonRemovalBombardmentSimulationResult>
         > _results = new(StringComparer.Ordinal);
 
+        /// <summary>
+        /// Initializes a new instance of the GarrisonRemovalBombardmentTracker class.
+        /// </summary>
+        /// <param name="game">The game.</param>
         public GarrisonRemovalBombardmentTracker(GameRoot game)
         {
             _supportShift = game.Config.SupportShift.GarrisonRemovalSupportShift;
         }
 
+        /// <summary>
+        /// Executes record.
+        /// </summary>
+        /// <param name="results">The results.</param>
         public void Record(IReadOnlyList<GameResult> results)
         {
             if (results == null)
@@ -77,6 +85,11 @@ public static partial class HeadlessSimulationRunner
             }
         }
 
+        /// <summary>
+        /// Builds summary.
+        /// </summary>
+        /// <param name="factionId">The faction id.</param>
+        /// <returns>The constructed summary.</returns>
         public GarrisonRemovalBombardmentSimulationSummary BuildSummary(string factionId)
         {
             GarrisonRemovalBombardmentSimulationResult[] results = _results.TryGetValue(

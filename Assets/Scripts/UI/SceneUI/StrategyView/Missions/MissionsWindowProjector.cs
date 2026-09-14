@@ -216,6 +216,9 @@ internal sealed class MissionsWindowProjector
     /// Resolves planet targets through their current planet artwork and other targets through
     /// their compact entity artwork.
     /// </summary>
+    /// <param name="uiContext">The ui context.</param>
+    /// <param name="target">The target.</param>
+    /// <returns>The requested target texture.</returns>
     private static Texture GetTargetTexture(UIContext uiContext, ISceneNode target)
     {
         return target is Planet planet

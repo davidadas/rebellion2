@@ -25,6 +25,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         private UIContext _uiContext;
         private DefenseWindowProjector _projector;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -54,30 +57,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _projector = new DefenseWindowProjector(() => _uiContext);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new DefenseWindowProjector(null));
         }
 
+        /// <summary>
+        /// Verifies build null session throws argument null exception.
+        /// </summary>
         [Test]
         public void Build_NullSession_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _projector.Build(null, _window, true));
         }
 
+        /// <summary>
+        /// Verifies build null window throws argument null exception.
+        /// </summary>
         [Test]
         public void Build_NullWindow_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _projector.Build(_session, null, true));
         }
 
+        /// <summary>
+        /// Verifies build unavailable context throws invalid operation exception.
+        /// </summary>
         [Test]
         public void Build_UnavailableContext_ThrowsInvalidOperationException()
         {
@@ -88,6 +106,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Verifies build selected captured officer returns personnel card presentation.
+        /// </summary>
         [Test]
         public void Build_SelectedCapturedOfficer_ReturnsPersonnelCardPresentation()
         {
@@ -141,6 +162,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsTrue(card.CanDrag);
         }
 
+        /// <summary>
+        /// Verifies build player owned regiment tab returns garrison requirement.
+        /// </summary>
         [Test]
         public void Build_PlayerOwnedRegimentTab_ReturnsGarrisonRequirement()
         {
@@ -153,6 +177,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual("Garrison Requirement: 3", data.GarrisonRequirementText);
         }
 
+        /// <summary>
+        /// Verifies build non player owned regiment tab clears garrison requirement.
+        /// </summary>
         [Test]
         public void Build_NonPlayerOwnedRegimentTab_ClearsGarrisonRequirement()
         {
@@ -166,6 +193,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(string.Empty, data.GarrisonRequirementText);
         }
 
+        /// <summary>
+        /// Verifies build moving officer without transit artwork uses themed enroute background.
+        /// </summary>
         [Test]
         public void Build_MovingOfficerWithoutTransitArtwork_UsesThemedEnrouteBackground()
         {
@@ -198,6 +228,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNotNull(data.TitleTexture);
         }
 
+        /// <summary>
+        /// Verifies build starfighter under construction returns construction background.
+        /// </summary>
         [Test]
         public void Build_StarfighterUnderConstruction_ReturnsConstructionBackground()
         {
@@ -220,6 +253,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsFalse(card.CanDrag);
         }
 
+        /// <summary>
+        /// Verifies build moving damaged starfighter returns enroute and damage overlays.
+        /// </summary>
         [Test]
         public void Build_MovingDamagedStarfighter_ReturnsEnrouteAndDamageOverlays()
         {
@@ -255,6 +291,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsFalse(card.CanDrag);
         }
 
+        /// <summary>
+        /// Verifies build shield under construction returns defense building card.
+        /// </summary>
         [Test]
         public void Build_ShieldUnderConstruction_ReturnsDefenseBuildingCard()
         {
@@ -286,6 +325,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsFalse(data.Items[0].CanDrag);
         }
 
+        /// <summary>
+        /// Verifies get tab title tab returns expected title.
+        /// </summary>
+        /// <param name="tab">The tab.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(DefenseWindowTab.Personnel, "Personnel")]
         [TestCase(DefenseWindowTab.Regiments, "Trooper Regiments")]
         [TestCase(DefenseWindowTab.Starfighters, "Fighter Squadrons")]
@@ -299,6 +343,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(expected, title);
         }
 
+        /// <summary>
+        /// Creates starfighter.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created starfighter.</returns>
         private static Starfighter CreateStarfighter(string instanceId, string displayName)
         {
             Starfighter definition = TestContent.Data.Starfighters.First(fighter =>

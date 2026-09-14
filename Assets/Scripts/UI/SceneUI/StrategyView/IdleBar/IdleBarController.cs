@@ -23,6 +23,7 @@ public interface IIdleBarActions
     /// </summary>
     /// <param name="target">The context-clicked strategy entity.</param>
     /// <param name="eventData">The source pointer event.</param>
+    /// <returns>The result of open idle bar context menu.</returns>
     ContextMenuRequest OpenIdleBarContextMenu(ISceneNode target, PointerEventData eventData);
 
     /// <summary>

@@ -109,6 +109,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <summary>
     /// Opens or focuses the Options menu.
     /// </summary>
+    /// <param name="initialTab">The initial tab.</param>
     public void Open(OptionsMenuTab initialTab = OptionsMenuTab.Gameplay)
     {
         EnsureUsable();
@@ -561,6 +562,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <summary>
     /// Rebuilds the cached save-slot list from the shared save manager.
     /// </summary>
+    /// <param name="selectedFileName">The selected file name.</param>
     private void RefreshSaveSlots(string selectedFileName = null)
     {
         _saveSlots.Clear();
@@ -855,6 +857,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <summary>
     /// Toggles a gameplay option and marks settings dirty.
     /// </summary>
+    /// <param name="option">The option.</param>
     private void HandleGameplayToggle(UserGameplayOption option)
     {
         _settingsSession.ToggleGameplay(option);

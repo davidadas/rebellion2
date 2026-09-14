@@ -11,6 +11,9 @@ public static class EditorStartupScene
 {
     private const string _bootScenePath = "Assets/Scenes/BootScene.unity";
 
+    /// <summary>
+    /// Initializes a new instance of the EditorStartupScene class.
+    /// </summary>
     static EditorStartupScene()
     {
         EditorApplication.delayCall += OpenBootSceneWhenUntitled;

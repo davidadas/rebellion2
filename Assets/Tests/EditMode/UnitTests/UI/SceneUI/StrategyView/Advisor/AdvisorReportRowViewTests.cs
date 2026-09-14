@@ -17,6 +17,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         private Texture2D _texture;
         private AdvisorReportRowView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -27,6 +30,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             _texture = new Texture2D(48, 48);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -34,12 +40,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render data applies texture text and visibility.
+        /// </summary>
         [Test]
         public void Render_Data_AppliesTextureTextAndVisibility()
         {
@@ -58,6 +70,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.IsTrue(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {

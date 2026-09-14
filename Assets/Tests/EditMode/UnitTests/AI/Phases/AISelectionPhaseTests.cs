@@ -17,6 +17,9 @@ namespace Rebellion.Tests.AI.Phases
     [TestFixture]
     public class AISelectionPhaseTests
     {
+        /// <summary>
+        /// Verifies select with scored proposals returns highest score first.
+        /// </summary>
         [Test]
         public void Select_WithScoredProposals_ReturnsHighestScoreFirst()
         {
@@ -35,6 +38,9 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreSame(lowerScore, selected[1]);
         }
 
+        /// <summary>
+        /// Verifies select with conflicting claims selects only highest scored proposal.
+        /// </summary>
         [Test]
         public void Select_WithConflictingClaims_SelectsOnlyHighestScoredProposal()
         {
@@ -52,6 +58,9 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreSame(higherScore, selected[0]);
         }
 
+        /// <summary>
+        /// Verifies select with mandatory proposal selects it before higher scored optional proposal.
+        /// </summary>
         [Test]
         public void Select_WithMandatoryProposal_SelectsItBeforeHigherScoredOptionalProposal()
         {
@@ -73,6 +82,9 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreSame(mandatory, selected[0]);
         }
 
+        /// <summary>
+        /// Verifies select with unscored proposal does not select proposal.
+        /// </summary>
         [Test]
         public void Select_WithUnscoredProposal_DoesNotSelectProposal()
         {
@@ -85,6 +97,9 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(0, selected.Count);
         }
 
+        /// <summary>
+        /// Verifies select with non positive score does not select proposal.
+        /// </summary>
         [Test]
         public void Select_WithNonPositiveScore_DoesNotSelectProposal()
         {
@@ -98,6 +113,9 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(0, selected.Count);
         }
 
+        /// <summary>
+        /// Verifies select with manufacture proposal beyond maintenance headroom does not select proposal.
+        /// </summary>
         [Test]
         public void Select_WithManufactureProposalBeyondMaintenanceHeadroom_DoesNotSelectProposal()
         {
@@ -145,6 +163,9 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(0, selected.Count);
         }
 
+        /// <summary>
+        /// Verifies select with facility expansion at distinct producers selects both proposals.
+        /// </summary>
         [Test]
         public void Select_WithFacilityExpansionAtDistinctProducers_SelectsBothProposals()
         {
@@ -161,6 +182,9 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEquivalent(new[] { first, second }, selected);
         }
 
+        /// <summary>
+        /// Verifies select with facility expansion beyond shared budget selects one proposal.
+        /// </summary>
         [Test]
         public void Select_WithFacilityExpansionBeyondSharedBudget_SelectsOneProposal()
         {
@@ -177,6 +201,9 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(1, selected.Count);
         }
 
+        /// <summary>
+        /// Verifies select with discretionary production below refined reserve selects proposal.
+        /// </summary>
         [Test]
         public void Select_WithDiscretionaryProductionBelowRefinedReserve_SelectsProposal()
         {
@@ -194,6 +221,11 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
+        /// <summary>
+        /// Verifies select with strategic reserve exemption below refined reserve selects proposal.
+        /// </summary>
+        /// <param name="demandKind">The demand kind.</param>
+        /// <param name="buildingType">The building type.</param>
         [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
         [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
         [TestCase(AIDemandKind.ColonizationFleetSeedCapitalShip, BuildingType.None)]
@@ -216,6 +248,10 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
+        /// <summary>
+        /// Verifies select with military production below refined reserve selects proposal.
+        /// </summary>
+        /// <param name="demandKind">The demand kind.</param>
         [TestCase(AIDemandKind.FleetCapitalShip)]
         [TestCase(AIDemandKind.FleetSeedCapitalShip)]
         [TestCase(AIDemandKind.FleetStarfighter)]
@@ -239,6 +275,11 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
+        /// <summary>
+        /// Verifies select with strategic facility below refined reserve selects proposal.
+        /// </summary>
+        /// <param name="demandKind">The demand kind.</param>
+        /// <param name="buildingType">The building type.</param>
         [TestCase(AIDemandKind.ConstructionFacility, BuildingType.ConstructionFacility)]
         [TestCase(AIDemandKind.Shipyard, BuildingType.Shipyard)]
         [TestCase(AIDemandKind.TrainingFacility, BuildingType.TrainingFacility)]
@@ -261,6 +302,9 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
+        /// <summary>
+        /// Verifies select with queued and new production commitments preserves refined reserve.
+        /// </summary>
         [Test]
         public void Select_WithQueuedAndNewProductionCommitments_PreservesRefinedReserve()
         {
@@ -289,6 +333,9 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { higherScore }, selected);
         }
 
+        /// <summary>
+        /// Verifies select with higher total cost but affordable horizon selects higher score proposal.
+        /// </summary>
         [Test]
         public void Select_WithHigherTotalCostButAffordableHorizon_SelectsHigherScoreProposal()
         {
@@ -317,6 +364,9 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { higherTotalCost }, selected);
         }
 
+        /// <summary>
+        /// Verifies select with long production order uses average horizon consumption.
+        /// </summary>
         [Test]
         public void Select_WithLongProductionOrder_UsesAverageHorizonConsumption()
         {
@@ -336,6 +386,9 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
+        /// <summary>
+        /// Verifies select with unavailable preferred manufacturing producer selects next producer.
+        /// </summary>
         [Test]
         public void Select_WithUnavailablePreferredManufacturingProducer_SelectsNextProducer()
         {
@@ -420,6 +473,9 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreSame(fallbackProducer, flexibleProposal.ProducerPlanet);
         }
 
+        /// <summary>
+        /// Verifies execute stores selected proposals on context.
+        /// </summary>
         [Test]
         public void Execute_StoresSelectedProposalsOnContext()
         {
@@ -560,6 +616,9 @@ namespace Rebellion.Tests.AI.Phases
         /// <param name="kind">The demand kind represented by the proposal.</param>
         /// <param name="buildingType">The building type to manufacture.</param>
         /// <returns>The building-production proposal.</returns>
+        /// <param name="context">The context.</param>
+        /// <param name="constructionCost">The construction cost.</param>
+        /// <param name="score">The score.</param>
         private static AIManufactureProposal CreateManufactureProposal(
             AITurnContext context,
             Planet producer,
@@ -749,6 +808,10 @@ namespace Rebellion.Tests.AI.Phases
             return proposal;
         }
 
+        /// <summary>
+        /// Creates empty context.
+        /// </summary>
+        /// <returns>The created empty context.</returns>
         private static AITurnContext CreateEmptyContext()
         {
             return new AITurnContext(null, null, null, null, null, null, null, null);

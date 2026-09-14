@@ -327,6 +327,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Gets or creates the visual row for a save-list index.
     /// </summary>
+    /// <param name="index">The index.</param>
+    /// <returns>The requested row.</returns>
     private Image GetRow(int index)
     {
         while (_rowImages.Count <= index)
@@ -348,6 +350,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Gets or creates the faction icon for a save-list index.
     /// </summary>
+    /// <param name="index">The index.</param>
+    /// <returns>The requested icon.</returns>
     private RawImage GetIcon(int index)
     {
         while (_iconImages.Count <= index)
@@ -366,6 +370,11 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Gets or creates a text field from an authored row template.
     /// </summary>
+    /// <param name="fields">The fields.</param>
+    /// <param name="template">The template.</param>
+    /// <param name="prefix">The prefix.</param>
+    /// <param name="index">The index.</param>
+    /// <returns>The requested field.</returns>
     private TextMeshProUGUI GetField(
         List<TextMeshProUGUI> fields,
         TextMeshProUGUI template,
@@ -392,6 +401,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Gets or creates the delete button for a save-list index.
     /// </summary>
+    /// <param name="index">The index.</param>
+    /// <returns>The requested delete.</returns>
     private Button GetDelete(int index)
     {
         while (_deleteButtons.Count <= index)
@@ -416,6 +427,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Selects a clicked slot and starts renaming on a qualifying double-click.
     /// </summary>
+    /// <param name="button">The button.</param>
+    /// <param name="index">The index.</param>
     private void HandleSlotClick(Button button, int index)
     {
         if (index < 0 || index >= _slots.Count)
@@ -442,6 +455,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Positions and opens the rename field for a save-list index.
     /// </summary>
+    /// <param name="index">The index.</param>
     private void BeginRename(int index)
     {
         if (index < 0 || index >= _slots.Count)
@@ -473,16 +487,20 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Completes editing without treating focus loss as an explicit submission.
     /// </summary>
+    /// <param name="value">The value.</param>
     private void HandleRenameEndEdit(string value) => CompleteRename(value, false);
 
     /// <summary>
     /// Completes editing as an explicit keyboard submission.
     /// </summary>
+    /// <param name="value">The value.</param>
     private void HandleRenameSubmitted(string value) => CompleteRename(value, true);
 
     /// <summary>
     /// Closes the rename field and forwards a committed name to the controller.
     /// </summary>
+    /// <param name="value">The value.</param>
+    /// <param name="submitted">Whether submitted.</param>
     private void CompleteRename(string value, bool submitted)
     {
         if (_renameRow < 0)
@@ -537,6 +555,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Stretches rename text within the input field while retaining horizontal padding.
     /// </summary>
+    /// <param name="rect">The rect.</param>
     private static void StretchRenameText(RectTransform rect)
     {
         rect.anchorMin = Vector2.zero;
@@ -549,6 +568,9 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Switches a button between its enabled control and disabled artwork.
     /// </summary>
+    /// <param name="button">The button.</param>
+    /// <param name="disabledImage">The disabled image.</param>
+    /// <param name="enabled">Whether enabled.</param>
     private static void SetButtonDisabledVisual(Button button, RawImage disabledImage, bool enabled)
     {
         if (disabledImage != null)
@@ -560,6 +582,9 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Fits a texture within a source rectangle without changing its aspect ratio.
     /// </summary>
+    /// <param name="texture">The texture.</param>
+    /// <param name="box">The box.</param>
+    /// <returns>The result of fit preserving aspect.</returns>
     private static RectInt FitPreservingAspect(Texture texture, RectInt box)
     {
         if (texture == null || texture.width <= 0 || texture.height <= 0)
@@ -585,6 +610,9 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Hides pooled row components after the last currently rendered item.
     /// </summary>
+    /// <param name="items">The items.</param>
+    /// <param name="firstHiddenIndex">The first hidden index.</param>
+    /// <typeparam name="T">The t type.</typeparam>
     private static void HideFrom<T>(List<T> items, int firstHiddenIndex)
         where T : Component
     {

@@ -20,6 +20,9 @@ namespace Rebellion.Tests.Sectors
         private GameRoot _game;
         private Planet _planet;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -37,6 +40,9 @@ namespace Rebellion.Tests.Sectors
             _fleetSystem = new FleetSystem(_game);
         }
 
+        /// <summary>
+        /// Verifies constructor with null game throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
@@ -47,6 +53,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("game", exception.ParamName);
         }
 
+        /// <summary>
+        /// Verifies create at planet snapshot destination creates fleet on live planet.
+        /// </summary>
         [Test]
         public void CreateAtPlanet_SnapshotDestination_CreatesFleetOnLivePlanet()
         {
@@ -60,6 +69,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(_ownerId, fleet.GetOwnerInstanceID());
         }
 
+        /// <summary>
+        /// Verifies create at planet invalid owner does not create fleet.
+        /// </summary>
         [Test]
         public void CreateAtPlanet_InvalidOwner_DoesNotCreateFleet()
         {
@@ -69,6 +81,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(_planet.GetChildren<Fleet>());
         }
 
+        /// <summary>
+        /// Verifies create from capital ships partial source selection preserves source fleet.
+        /// </summary>
         [Test]
         public void CreateFromCapitalShips_PartialSourceSelection_PreservesSourceFleet()
         {
@@ -90,6 +105,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies create from capital ships complete source selection removes source fleet.
+        /// </summary>
         [Test]
         public void CreateFromCapitalShips_CompleteSourceSelection_RemovesSourceFleet()
         {
@@ -109,6 +127,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies create from capital ships snapshot selection uses live ship.
+        /// </summary>
         [Test]
         public void CreateFromCapitalShips_SnapshotSelection_UsesLiveShip()
         {
@@ -126,6 +147,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(snapshot.GetParent());
         }
 
+        /// <summary>
+        /// Verifies create from capital ships unauthorized owner preserves source graph.
+        /// </summary>
         [Test]
         public void CreateFromCapitalShips_UnauthorizedOwner_PreservesSourceGraph()
         {
@@ -141,6 +165,9 @@ namespace Rebellion.Tests.Sectors
             CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetChildren<Fleet>().ToList());
         }
 
+        /// <summary>
+        /// Verifies create from capital ships completed ship in transit preserves source graph.
+        /// </summary>
         [Test]
         public void CreateFromCapitalShips_CompletedShipInTransit_PreservesSourceGraph()
         {
@@ -157,6 +184,9 @@ namespace Rebellion.Tests.Sectors
             CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetChildren<Fleet>().ToList());
         }
 
+        /// <summary>
+        /// Verifies create from capital ships ship under construction changes delivery fleet.
+        /// </summary>
         [Test]
         public void CreateFromCapitalShips_ShipUnderConstruction_ChangesDeliveryFleet()
         {
@@ -175,6 +205,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(ManufacturingStatus.Building, ship.ManufacturingStatus);
         }
 
+        /// <summary>
+        /// Verifies remove if empty populated fleet preserves fleet.
+        /// </summary>
         [Test]
         public void RemoveIfEmpty_PopulatedFleet_PreservesFleet()
         {
@@ -186,6 +219,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(_planet, fleet.GetParent());
         }
 
+        /// <summary>
+        /// Verifies remove if empty empty fleet removes fleet.
+        /// </summary>
         [Test]
         public void RemoveIfEmpty_EmptyFleet_RemovesFleet()
         {
@@ -199,6 +235,12 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID));
         }
 
+        /// <summary>
+        /// Creates fleet.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ship">Receives the ship.</param>
+        /// <returns>The created fleet.</returns>
         private Fleet CreateFleet(string instanceId, out CapitalShip ship)
         {
             Fleet fleet = new Fleet(_ownerId, instanceId) { InstanceID = instanceId };
@@ -208,6 +250,11 @@ namespace Rebellion.Tests.Sectors
             return fleet;
         }
 
+        /// <summary>
+        /// Creates ship.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <returns>The created ship.</returns>
         private static CapitalShip CreateShip(string instanceId)
         {
             return new CapitalShip

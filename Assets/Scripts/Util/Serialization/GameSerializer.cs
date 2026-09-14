@@ -1025,6 +1025,7 @@ namespace Rebellion.Util.Serialization
         /// <param name="reader">The XmlReader to use.</param>
         /// <param name="attributes">The dictionary of persistable attributes.</param>
         /// <param name="obj">The object to set attributes on.</param>
+        /// <returns>The read attributes.</returns>
         private static HashSet<MemberInfo> ReadAttributes(
             XmlReader reader,
             IDictionary<string, MemberInfo> attributes,

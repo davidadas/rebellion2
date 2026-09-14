@@ -34,6 +34,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -59,12 +62,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _controller.Initialize(_actions);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null targeting controller throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullTargetingController_ThrowsArgumentNullException()
         {
@@ -81,12 +90,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies initialize null actions throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _controller.Initialize(null));
         }
 
+        /// <summary>
+        /// Verifies bind window before initialize throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -99,6 +114,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
         }
 
+        /// <summary>
+        /// Verifies try initialize window null planet returns false.
+        /// </summary>
         [Test]
         public void TryInitializeWindow_NullPlanet_ReturnsFalse()
         {
@@ -113,6 +131,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Verifies open valid planet creates named window with default mission selection.
+        /// </summary>
         [Test]
         public void Open_ValidPlanet_CreatesNamedWindowWithDefaultMissionSelection()
         {
@@ -132,6 +153,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(MissionParticipantRole.Agent, _controller.GetActiveRole(view));
         }
 
+        /// <summary>
+        /// Verifies open existing planet reuses window without additional invalidation.
+        /// </summary>
         [Test]
         public void Open_ExistingPlanet_ReusesWindowWithoutAdditionalInvalidation()
         {
@@ -146,6 +170,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies surface clicked active targeting selects planet node.
+        /// </summary>
         [Test]
         public void SurfaceClicked_ActiveTargeting_SelectsPlanetNode()
         {
@@ -163,6 +190,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_planet.Planet, target.Item);
         }
 
+        /// <summary>
+        /// Verifies participant released active targeting selects participant node.
+        /// </summary>
         [Test]
         public void ParticipantReleased_ActiveTargeting_SelectsParticipantNode()
         {
@@ -189,6 +219,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_firstAgent, target.Item);
         }
 
+        /// <summary>
+        /// Verifies select target decoy participant selects mission and decoy role.
+        /// </summary>
         [Test]
         public void SelectTarget_DecoyParticipant_SelectsMissionAndDecoyRole()
         {
@@ -203,6 +236,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_secondMission, _controller.GetStatusTarget(view).Item);
         }
 
+        /// <summary>
+        /// Verifies reconcile window fresh projection preserves mission selection by identity.
+        /// </summary>
         [Test]
         public void ReconcileWindow_FreshProjection_PreservesMissionSelectionByIdentity()
         {
@@ -237,6 +273,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(freshSecond, _controller.GetStatusTarget(view).Item);
         }
 
+        /// <summary>
+        /// Verifies try create context menu selected mission returns authored commands and width.
+        /// </summary>
         [Test]
         public void TryCreateContextMenu_SelectedMission_ReturnsAuthoredCommandsAndWidth()
         {
@@ -263,6 +302,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected abort routes selected mission identity.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_Abort_RoutesSelectedMissionIdentity()
         {
@@ -284,6 +326,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(_firstMission.InstanceID, _actions.AbortedMissionInstanceId);
         }
 
+        /// <summary>
+        /// Verifies view destroyed initialized session releases planet association.
+        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
@@ -294,6 +339,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private MissionsWindowController CreateController()
         {
             return new MissionsWindowController(
@@ -307,6 +356,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -315,6 +368,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             return game;
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The created planet.</returns>
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
             GalaxyPlanetSector sector = new GalaxyPlanetSector
@@ -334,6 +392,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             return new GalaxyMapPlanet(sector, planet, _playerFactionId);
         }
 
+        /// <summary>
+        /// Creates mission.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="decoy">Receives the decoy.</param>
+        /// <returns>The created mission.</returns>
         private static TestMission CreateMission(
             string instanceId,
             string displayName,
@@ -352,6 +417,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             return mission;
         }
 
+        /// <summary>
+        /// Opens window.
+        /// </summary>
+        /// <param name="window">Receives the window.</param>
+        /// <returns>The result of open window.</returns>
         private MissionsWindowView OpenWindow(out UIWindow window)
         {
             window = _controller.Open(_planet, 20, 30, out bool _);
@@ -363,6 +433,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             public string AbortedMissionInstanceId { get; private set; }
 
+            /// <summary>
+            /// Opens abort mission confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="missionInstanceId">The mission instance id.</param>
             public void OpenAbortMissionConfirmWindow(
                 UIWindow sourceWindow,
                 string missionInstanceId
@@ -371,8 +446,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 AbortedMissionInstanceId = missionInstanceId;
             }
 
+            /// <summary>
+            /// Opens missions status.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenMissionsStatus(StrategyStatusTarget target) { }
 
+            /// <summary>
+            /// Opens missions info.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenMissionsInfo(StrategyStatusTarget target) { }
         }
 
@@ -380,11 +463,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             public object Target { get; private set; }
 
+            /// <summary>
+            /// Executes on target selected.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="target">The target.</param>
             public void OnTargetSelected(TargetingRequest request, object target)
             {
                 Target = target;
             }
 
+            /// <summary>
+            /// Executes on targeting cancelled.
+            /// </summary>
+            /// <param name="request">The request.</param>
             public void OnTargetingCancelled(TargetingRequest request) { }
         }
 
@@ -395,6 +487,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             protected override Rebellion.SceneGraph.BaseSceneNode CreateNodeCopy() =>
                 new TestMission();
 
+            /// <summary>
+            /// Checks whether the repeat after completion condition is met.
+            /// </summary>
+            /// <param name="game">The game.</param>
+            /// <returns>True when the repeat after completion condition is met; otherwise false.</returns>
             public override bool ShouldRepeatAfterCompletion(GameRoot game)
             {
                 return false;

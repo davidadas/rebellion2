@@ -19,6 +19,9 @@ namespace Rebellion.Tests.Game.Missions
         private Officer _trainer;
         private Officer _student;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -40,6 +43,9 @@ namespace Rebellion.Tests.Game.Missions
             _student = CreateJedi("student", 40);
         }
 
+        /// <summary>
+        /// Verifies get objective success probability trainer and student returns training progress probability.
+        /// </summary>
         [Test]
         public void GetObjectiveSuccessProbability_TrainerAndStudent_ReturnsTrainingProgressProbability()
         {
@@ -57,6 +63,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(expectedProbability, probability, 0.0001);
         }
 
+        /// <summary>
+        /// Verifies try create enemy planet returns null.
+        /// </summary>
         [Test]
         public void TryCreate_EnemyPlanet_ReturnsNull()
         {
@@ -65,24 +74,36 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(CreateMission());
         }
 
+        /// <summary>
+        /// Verifies try create no participants returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NoParticipants_ReturnsNull()
         {
             Assert.IsNull(CreateMission(new List<IMissionParticipant>()));
         }
 
+        /// <summary>
+        /// Verifies try create trainer only returns null.
+        /// </summary>
         [Test]
         public void TryCreate_TrainerOnly_ReturnsNull()
         {
             Assert.IsNull(CreateMission(new List<IMissionParticipant> { _trainer }));
         }
 
+        /// <summary>
+        /// Verifies try create student only returns null.
+        /// </summary>
         [Test]
         public void TryCreate_StudentOnly_ReturnsNull()
         {
             Assert.IsNull(CreateMission(new List<IMissionParticipant> { _student }));
         }
 
+        /// <summary>
+        /// Verifies try create non officer participant returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NonOfficerParticipant_ReturnsNull()
         {
@@ -98,6 +119,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create participant without known force ability returns null.
+        /// </summary>
         [Test]
         public void TryCreate_ParticipantWithoutKnownForceAbility_ReturnsNull()
         {
@@ -106,6 +130,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(CreateMission());
         }
 
+        /// <summary>
+        /// Verifies try create non jedi participant returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NonJediParticipant_ReturnsNull()
         {
@@ -114,6 +141,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(CreateMission());
         }
 
+        /// <summary>
+        /// Verifies try create trainer below qualified threshold returns null.
+        /// </summary>
         [Test]
         public void TryCreate_TrainerBelowQualifiedThreshold_ReturnsNull()
         {
@@ -122,6 +152,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(CreateMission());
         }
 
+        /// <summary>
+        /// Verifies try create participant at trainer rank returns null.
+        /// </summary>
         [Test]
         public void TryCreate_ParticipantAtTrainerRank_ReturnsNull()
         {
@@ -130,6 +163,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(CreateMission());
         }
 
+        /// <summary>
+        /// Verifies try create qualified participant below trainer returns mission.
+        /// </summary>
         [Test]
         public void TryCreate_QualifiedParticipantBelowTrainer_ReturnsMission()
         {
@@ -138,6 +174,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNotNull(CreateMission());
         }
 
+        /// <summary>
+        /// Verifies try create multiple trainers selects highest ranked trainer.
+        /// </summary>
         [Test]
         public void TryCreate_MultipleTrainers_SelectsHighestRankedTrainer()
         {
@@ -150,6 +189,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(higherTrainer.InstanceID, mission.TrainerInstanceID);
         }
 
+        /// <summary>
+        /// Verifies try create valid team stores selected trainer and team.
+        /// </summary>
         [Test]
         public void TryCreate_ValidTeam_StoresSelectedTrainerAndTeam()
         {
@@ -163,6 +205,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective closest ranked student attempts first trains only successful participant.
+        /// </summary>
         [Test]
         public void ResolveObjective_ClosestRankedStudentAttemptsFirst_TrainsOnlySuccessfulParticipant()
         {
@@ -187,6 +232,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective passed training roll with zero progress returns failed report.
+        /// </summary>
         [Test]
         public void ResolveObjective_PassedTrainingRollWithZeroProgress_ReturnsFailedReport()
         {
@@ -205,6 +253,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective failed training roll returns failed report.
+        /// </summary>
         [Test]
         public void ResolveObjective_FailedTrainingRoll_ReturnsFailedReport()
         {
@@ -222,6 +273,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective training progress does not improve diplomacy rating.
+        /// </summary>
         [Test]
         public void ResolveObjective_TrainingProgress_DoesNotImproveDiplomacyRating()
         {
@@ -235,6 +289,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(studentDiplomacy, _student.GetBaseRating(OfficerRating.Diplomacy));
         }
 
+        /// <summary>
+        /// Verifies get abort reason trainer captured returns failure.
+        /// </summary>
         [Test]
         public void GetAbortReason_TrainerCaptured_ReturnsFailure()
         {
@@ -244,6 +301,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(MissionCompletionReason.Failure, mission.GetAbortReason(_game));
         }
 
+        /// <summary>
+        /// Verifies get abort reason participant killed returns failure.
+        /// </summary>
         [Test]
         public void GetAbortReason_ParticipantKilled_ReturnsFailure()
         {
@@ -253,6 +313,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(MissionCompletionReason.Failure, mission.GetAbortReason(_game));
         }
 
+        /// <summary>
+        /// Verifies get abort reason planet lost returns target unavailable.
+        /// </summary>
         [Test]
         public void GetAbortReason_PlanetLost_ReturnsTargetUnavailable()
         {
@@ -265,6 +328,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion valid assignment returns false.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_ValidAssignment_ReturnsFalse()
         {
@@ -273,6 +339,13 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
         }
 
+        /// <summary>
+        /// Creates jedi.
+        /// </summary>
+        /// <param name="instanceID">The instance id.</param>
+        /// <param name="forceValue">The force value.</param>
+        /// <param name="isTrainer">Whether is trainer.</param>
+        /// <returns>The created jedi.</returns>
         private Officer CreateJedi(string instanceID, int forceValue, bool isTrainer = false)
         {
             Officer officer = EntityFactory.CreateOfficer(instanceID, "rebels");
@@ -284,6 +357,12 @@ namespace Rebellion.Tests.Game.Missions
             return officer;
         }
 
+        /// <summary>
+        /// Creates mission.
+        /// </summary>
+        /// <param name="participants">The participants.</param>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The created mission.</returns>
         private JediTrainingMission CreateMission(
             List<IMissionParticipant> participants = null,
             Planet planet = null

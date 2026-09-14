@@ -9,6 +9,9 @@ namespace Rebellion.Tests.App
         private AppBootstrap _bootstrap;
         private GameObject _gameObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -24,6 +27,9 @@ namespace Rebellion.Tests.App
             _bootstrap = _gameObject.AddComponent<AppBootstrap>();
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -32,6 +38,9 @@ namespace Rebellion.Tests.App
             GameLaunchContext.Reset(TestContent.Pack);
         }
 
+        /// <summary>
+        /// Verifies initialize runtime core blank launch context sets active content defaults.
+        /// </summary>
         [Test]
         public void InitializeRuntimeCore_BlankLaunchContext_SetsActiveContentDefaults()
         {
@@ -49,6 +58,9 @@ namespace Rebellion.Tests.App
             Assert.AreEqual(TestContent.Pack.Scenario.ID, GameLaunchContext.Summary.ScenarioID);
         }
 
+        /// <summary>
+        /// Executes destroy audio managers.
+        /// </summary>
         private static void DestroyAudioManagers()
         {
             foreach (

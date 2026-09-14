@@ -15,6 +15,9 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public sealed class AIMissionCandidateSelectorTests
     {
+        /// <summary>
+        /// Verifies try add executable proposal with zero score does not retain proposal.
+        /// </summary>
         [Test]
         public void TryAdd_ExecutableProposalWithZeroScore_DoesNotRetainProposal()
         {

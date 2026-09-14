@@ -20,6 +20,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private StrategyWindowPlacements _placements;
         private StrategyWindowPlacementController _controller;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -35,6 +38,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -42,6 +48,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null dependency throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullDependency_ThrowsArgumentNullException()
         {
@@ -56,6 +65,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Verifies constructor configured bounds applies movement bounds to manager.
+        /// </summary>
         [Test]
         public void Constructor_ConfiguredBounds_AppliesMovementBoundsToManager()
         {
@@ -80,6 +92,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Verifies refresh movement bounds changed bounds reapplies movement bounds to manager.
+        /// </summary>
         [Test]
         public void RefreshMovementBounds_ChangedBounds_ReappliesMovementBoundsToManager()
         {
@@ -108,6 +123,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Verifies get sector window position configured slots returns authored positions.
+        /// </summary>
         [Test]
         public void GetSectorWindowPosition_ConfiguredSlots_ReturnsAuthoredPositions()
         {
@@ -120,6 +138,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(_placements.SectorRightPosition.ToVector2Int(), right);
         }
 
+        /// <summary>
+        /// Verifies get sector window position configured slots do not overlap.
+        /// </summary>
         [Test]
         public void GetSectorWindowPosition_ConfiguredSlots_DoNotOverlap()
         {
@@ -132,6 +153,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.GreaterOrEqual(right.x, middle.x + windowWidth);
         }
 
+        /// <summary>
+        /// Verifies get sector window position unknown slot throws argument out of range exception.
+        /// </summary>
         [Test]
         public void GetSectorWindowPosition_UnknownSlot_ThrowsArgumentOutOfRangeException()
         {
@@ -140,6 +164,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Verifies get utility window position configured theme returns authored position.
+        /// </summary>
         [Test]
         public void GetUtilityWindowPosition_ConfiguredTheme_ReturnsAuthoredPosition()
         {
@@ -148,6 +175,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(_placements.UtilityWindowPosition.ToVector2Int(), position);
         }
 
+        /// <summary>
+        /// Verifies centered window positions authored prefabs center within movement bounds.
+        /// </summary>
         [Test]
         public void CenteredWindowPositions_AuthoredPrefabs_CenterWithinMovementBounds()
         {
@@ -181,6 +211,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Verifies get mission create window position authored prefab and offset centers on surface.
+        /// </summary>
         [Test]
         public void GetMissionCreateWindowPosition_AuthoredPrefabAndOffset_CentersOnSurface()
         {
@@ -199,6 +232,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(expected, position);
         }
 
+        /// <summary>
+        /// Verifies get construction window position source position applies offset and clamps.
+        /// </summary>
         [Test]
         public void GetConstructionWindowPosition_SourcePosition_AppliesOffsetAndClamps()
         {
@@ -215,6 +251,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(expected, position);
         }
 
+        /// <summary>
+        /// Verifies clamp planet window position known icons uses matching prefab size.
+        /// </summary>
         [Test]
         public void ClampPlanetWindowPosition_KnownIcons_UsesMatchingPrefabSize()
         {
@@ -245,6 +284,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(GetMaximumPosition(_windowLayer.MissionsWindowPrefab), mission);
         }
 
+        /// <summary>
+        /// Verifies clamp planet window position unknown icon preserves requested position.
+        /// </summary>
         [Test]
         public void ClampPlanetWindowPosition_UnknownIcon_PreservesRequestedPosition()
         {
@@ -253,6 +295,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(new Vector2Int(123, 456), position);
         }
 
+        /// <summary>
+        /// Creates context.
+        /// </summary>
+        /// <returns>The created context.</returns>
         private UIContext CreateContext()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -265,6 +311,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Gets centered position.
+        /// </summary>
+        /// <param name="prefab">The prefab.</param>
+        /// <returns>The requested centered position.</returns>
         private Vector2Int GetCenteredPosition(MonoBehaviour prefab)
         {
             SourceRectLayout bounds = _placements.WindowBounds;
@@ -275,6 +326,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Gets maximum position.
+        /// </summary>
+        /// <param name="prefab">The prefab.</param>
+        /// <returns>The requested maximum position.</returns>
         private Vector2Int GetMaximumPosition(MonoBehaviour prefab)
         {
             SourceRectLayout bounds = _placements.WindowBounds;

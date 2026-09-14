@@ -851,6 +851,7 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Returns whether the planet has a completed, operational KDY-150 ion cannon.
         /// </summary>
+        /// <returns>True when the operational ion cannon condition is met; otherwise false.</returns>
         public bool HasOperationalIonCannon()
         {
             return _buildings.Any(building =>

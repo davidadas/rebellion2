@@ -15,6 +15,9 @@ namespace Rebellion.Tests.UI.Components.SelectableList
         private ScrollAreaView _scrollArea;
         private FinderWindowRowView _rowTemplate;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -25,12 +28,18 @@ namespace Rebellion.Tests.UI.Components.SelectableList
                 .Single(row => row.name == "RowTemplate");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null scroll area throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullScrollArea_ThrowsArgumentNullException()
         {
@@ -45,6 +54,9 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             );
         }
 
+        /// <summary>
+        /// Verifies constructor null row template throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullRowTemplate_ThrowsArgumentNullException()
         {
@@ -59,6 +71,9 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             );
         }
 
+        /// <summary>
+        /// Verifies render rows creates named views with stable indexes and geometry.
+        /// </summary>
         [Test]
         public void Render_Rows_CreatesNamedViewsWithStableIndexesAndGeometry()
         {
@@ -83,6 +98,9 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             );
         }
 
+        /// <summary>
+        /// Verifies render shorter collection reuses first row and hides remaining rows.
+        /// </summary>
         [Test]
         public void Render_ShorterCollection_ReusesFirstRowAndHidesRemainingRows()
         {
@@ -117,6 +135,9 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsFalse(initialViews[1].gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render null collection hides cached rows.
+        /// </summary>
         [Test]
         public void Render_NullCollection_HidesCachedRows()
         {
@@ -139,6 +160,9 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsFalse(row.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies hide rendered rows hides every cached view.
+        /// </summary>
         [Test]
         public void Hide_RenderedRows_HidesEveryCachedView()
         {
@@ -161,6 +185,9 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsFalse(row.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies clear rendered row detaches selection callback.
+        /// </summary>
         [Test]
         public void Clear_RenderedRow_DetachesSelectionCallback()
         {
@@ -191,6 +218,11 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.AreEqual(0, selectionCount);
         }
 
+        /// <summary>
+        /// Creates list.
+        /// </summary>
+        /// <param name="rowSelected">The row selected.</param>
+        /// <returns>The created list.</returns>
         private SelectableListView<FinderWindowRowView, FinderWindowRowRenderData> CreateList(
             Action<FinderWindowRowView, PointerEventData> rowSelected = null
         )
@@ -204,6 +236,10 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             );
         }
 
+        /// <summary>
+        /// Finds rendered rows.
+        /// </summary>
+        /// <returns>The matching rendered rows.</returns>
         private FinderWindowRowView[] FindRenderedRows()
         {
             return _rootObject
@@ -213,11 +249,22 @@ namespace Rebellion.Tests.UI.Components.SelectableList
                 .ToArray();
         }
 
+        /// <summary>
+        /// Gets source rect.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <returns>The requested source rect.</returns>
         private static RectInt GetSourceRect(FinderWindowRowView row)
         {
             return UILayout.GetSourceRect(row.transform as RectTransform);
         }
 
+        /// <summary>
+        /// Renders row.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <param name="data">The data.</param>
+        /// <param name="index">The index.</param>
         private static void RenderRow(
             FinderWindowRowView row,
             FinderWindowRowRenderData data,

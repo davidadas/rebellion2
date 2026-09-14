@@ -60,14 +60,26 @@ namespace Rebellion.Tests.Util.Extensions
         public int PublicGetPrivateSet { get; private set; }
         private string PrivateProperty { get; set; }
 
+        /// <summary>
+        /// Initializes a new instance of the TestClassWithPrivateSetters class.
+        /// </summary>
         public TestClassWithPrivateSetters() { }
 
+        /// <summary>
+        /// Initializes a new instance of the TestClassWithPrivateSetters class.
+        /// </summary>
+        /// <param name="value">The value.</param>
+        /// <param name="text">The text.</param>
         public TestClassWithPrivateSetters(int value, string text)
         {
             PublicGetPrivateSet = value;
             PrivateProperty = text;
         }
 
+        /// <summary>
+        /// Gets private property.
+        /// </summary>
+        /// <returns>The requested private property.</returns>
         public string GetPrivateProperty() => PrivateProperty;
     }
 
@@ -97,6 +109,10 @@ namespace Rebellion.Tests.Util.Extensions
     {
         public int Value { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the TestClassWithoutDefaultConstructor class.
+        /// </summary>
+        /// <param name="value">The value.</param>
         public TestClassWithoutDefaultConstructor(int value)
         {
             Value = value;
@@ -109,12 +125,18 @@ namespace Rebellion.Tests.Util.Extensions
         public T2 GenericProperty2 { get; set; }
         public List<Tuple<T1, T2>> GenericList { get; set; }
 
+        /// <summary>
+        /// Initializes a new instance of the GenericTestClass class.
+        /// </summary>
         public GenericTestClass() { }
     }
 
     [TestFixture]
     public class ObjectExtensionsTests
     {
+        /// <summary>
+        /// Verifies get deep copy null object returns null.
+        /// </summary>
         [Test]
         public void GetDeepCopy_NullObject_ReturnsNull()
         {
@@ -123,6 +145,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.IsNull(copy);
         }
 
+        /// <summary>
+        /// Verifies get deep copy simple object creates deep copy.
+        /// </summary>
         [Test]
         public void GetDeepCopy_SimpleObject_CreatesDeepCopy()
         {
@@ -138,6 +163,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.AreEqual(original.StringProperty, copy.StringProperty);
         }
 
+        /// <summary>
+        /// Verifies get deep copy object with clone ignore ignores marked properties.
+        /// </summary>
         [Test]
         public void GetDeepCopy_ObjectWithCloneIgnore_IgnoresMarkedProperties()
         {
@@ -159,6 +187,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.IsNull(copy.IgnoredListProperty);
         }
 
+        /// <summary>
+        /// Verifies get deep copy complex object creates deep copy.
+        /// </summary>
         [Test]
         public void GetDeepCopy_ComplexObject_CreatesDeepCopy()
         {
@@ -194,6 +225,9 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
+        /// <summary>
+        /// Verifies get deep copy nested collections are deeply copied.
+        /// </summary>
         [Test]
         public void GetDeepCopy_NestedCollections_AreDeeplyCopied()
         {
@@ -228,6 +262,9 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
+        /// <summary>
+        /// Verifies get deep copy dictionary with type keys copies dictionary and preserves keys.
+        /// </summary>
         [Test]
         public void GetDeepCopy_DictionaryWithTypeKeys_CopiesDictionaryAndPreservesKeys()
         {
@@ -250,6 +287,9 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
+        /// <summary>
+        /// Verifies get deep copy array properties are deeply copied.
+        /// </summary>
         [Test]
         public void GetDeepCopy_ArrayProperties_AreDeeplyCopied()
         {
@@ -287,6 +327,9 @@ namespace Rebellion.Tests.Util.Extensions
             }
         }
 
+        /// <summary>
+        /// Verifies get deep copy read only properties are copied.
+        /// </summary>
         [Test]
         public void GetDeepCopy_ReadOnlyProperties_AreCopied()
         {
@@ -301,6 +344,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.AreEqual(original.WritableProperty, copy.WritableProperty);
         }
 
+        /// <summary>
+        /// Verifies get deep copy private setters are copied.
+        /// </summary>
         [Test]
         public void GetDeepCopy_PrivateSetters_AreCopied()
         {
@@ -312,6 +358,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.AreEqual(original.GetPrivateProperty(), copy.GetPrivateProperty());
         }
 
+        /// <summary>
+        /// Verifies get deep copy derived class copies base and derived properties.
+        /// </summary>
         [Test]
         public void GetDeepCopy_DerivedClass_CopiesBaseAndDerivedProperties()
         {
@@ -329,6 +378,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.AreEqual(original.DerivedProperty, copy.DerivedProperty);
         }
 
+        /// <summary>
+        /// Verifies get deep copy class with struct is deeply copied.
+        /// </summary>
         [Test]
         public void GetDeepCopy_ClassWithStruct_IsDeeplyCopied()
         {
@@ -362,6 +414,9 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
+        /// <summary>
+        /// Verifies get deep copy object without default constructor throws exception.
+        /// </summary>
         [Test]
         public void GetDeepCopy_ObjectWithoutDefaultConstructor_ThrowsException()
         {
@@ -372,6 +427,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.Throws<InvalidOperationException>(() => original.GetDeepCopy());
         }
 
+        /// <summary>
+        /// Verifies get deep copy generic class is deeply copied.
+        /// </summary>
         [Test]
         public void GetDeepCopy_GenericClass_IsDeeplyCopied()
         {
@@ -395,6 +453,9 @@ namespace Rebellion.Tests.Util.Extensions
             CollectionAssert.AreEqual(original.GenericList, copy.GenericList);
         }
 
+        /// <summary>
+        /// Verifies get deep copy normal mode respects clone ignore.
+        /// </summary>
         [Test]
         public void GetDeepCopy_NormalMode_RespectsCloneIgnore()
         {
@@ -416,6 +477,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.IsNull(copy.IgnoredListProperty);
         }
 
+        /// <summary>
+        /// Verifies get deep copy full mode ignores clone ignore.
+        /// </summary>
         [Test]
         public void GetDeepCopy_FullMode_IgnoresCloneIgnore()
         {
@@ -438,6 +502,9 @@ namespace Rebellion.Tests.Util.Extensions
             CollectionAssert.AreEqual(original.IgnoredListProperty, copy.IgnoredListProperty);
         }
 
+        /// <summary>
+        /// Verifies get deep copy full mode deeply copies nested ignored objects.
+        /// </summary>
         [Test]
         public void GetDeepCopy_FullMode_DeeplyCopiesNestedIgnoredObjects()
         {
@@ -458,6 +525,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.AreEqual(original.NestedObject.StringProperty, copy.NestedObject.StringProperty);
         }
 
+        /// <summary>
+        /// Verifies get shallow copy null object returns null.
+        /// </summary>
         [Test]
         public void GetShallowCopy_NullObject_ReturnsNull()
         {
@@ -466,6 +536,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.IsNull(copy);
         }
 
+        /// <summary>
+        /// Verifies get shallow copy simple object creates shallow copy.
+        /// </summary>
         [Test]
         public void GetShallowCopy_SimpleObject_CreatesShallowCopy()
         {
@@ -481,6 +554,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.AreEqual(original.StringProperty, copy.StringProperty);
         }
 
+        /// <summary>
+        /// Verifies get shallow copy object with clone ignore ignores marked properties.
+        /// </summary>
         [Test]
         public void GetShallowCopy_ObjectWithCloneIgnore_IgnoresMarkedProperties()
         {
@@ -502,6 +578,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.IsNull(copy.IgnoredListProperty);
         }
 
+        /// <summary>
+        /// Verifies get shallow copy complex object shares references.
+        /// </summary>
         [Test]
         public void GetShallowCopy_ComplexObject_SharesReferences()
         {
@@ -530,6 +609,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.AreSame(original.DictionaryProperty, copy.DictionaryProperty);
         }
 
+        /// <summary>
+        /// Verifies get shallow copy normal mode respects clone ignore.
+        /// </summary>
         [Test]
         public void GetShallowCopy_NormalMode_RespectsCloneIgnore()
         {
@@ -551,6 +633,9 @@ namespace Rebellion.Tests.Util.Extensions
             Assert.IsNull(copy.IgnoredListProperty);
         }
 
+        /// <summary>
+        /// Verifies get shallow copy full mode ignores clone ignore.
+        /// </summary>
         [Test]
         public void GetShallowCopy_FullMode_IgnoresCloneIgnore()
         {

@@ -12,6 +12,9 @@ namespace Rebellion.Tests.Game.Combat
     [TestFixture]
     public class PlanetaryAssaultResolverTests
     {
+        /// <summary>
+        /// Verifies resolve completed assault does not modify game state.
+        /// </summary>
         [Test]
         public void Resolve_CompletedAssault_DoesNotModifyGameState()
         {

@@ -45,6 +45,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -122,12 +125,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null mission create controller throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullMissionCreateController_ThrowsArgumentNullException()
         {
@@ -158,6 +167,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Verifies try execute move invalid selection returns false without callbacks.
+        /// </summary>
         [Test]
         public void TryExecuteMove_InvalidSelection_ReturnsFalseWithoutCallbacks()
         {
@@ -173,6 +185,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(0, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies try execute move valid selection clears source and invalidates snapshot.
+        /// </summary>
         [Test]
         public void TryExecuteMove_ValidSelection_ClearsSourceAndInvalidatesSnapshot()
         {
@@ -188,6 +203,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies try execute move already at destination does not play order audio.
+        /// </summary>
         [Test]
         public void TryExecuteMove_AlreadyAtDestination_DoesNotPlayOrderAudio()
         {
@@ -209,6 +227,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(0, _playedSfxCount);
         }
 
+        /// <summary>
+        /// Verifies try execute move unit in transit plays advisor rejection.
+        /// </summary>
         [Test]
         public void TryExecuteMove_UnitInTransit_PlaysAdvisorRejection()
         {
@@ -225,6 +246,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(0, _playedSfxCount);
         }
 
+        /// <summary>
+        /// Verifies try execute move ship under construction plays advisor rejection.
+        /// </summary>
         [Test]
         public void TryExecuteMove_ShipUnderConstruction_PlaysAdvisorRejection()
         {
@@ -252,6 +276,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(0, _playedSfxCount);
         }
 
+        /// <summary>
+        /// Verifies try append fleet waypoint valid destination stages route without moving fleet.
+        /// </summary>
         [Test]
         public void TryAppendFleetWaypoint_ValidDestination_StagesRouteWithoutMovingFleet()
         {
@@ -280,6 +307,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsEmpty(fleet.Waypoints);
         }
 
+        /// <summary>
+        /// Verifies try commit fleet waypoint plan staged route starts fleet movement.
+        /// </summary>
         [Test]
         public void TryCommitFleetWaypointPlan_StagedRoute_StartsFleetMovement()
         {
@@ -304,6 +334,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             CollectionAssert.AreEqual(new[] { _destination.Planet.InstanceID }, fleet.Waypoints);
         }
 
+        /// <summary>
+        /// Verifies execute targeted command move confirm without source window opens confirmation window.
+        /// </summary>
         [Test]
         public void ExecuteTargetedCommand_MoveConfirmWithoutSourceWindow_OpensConfirmationWindow()
         {
@@ -323,6 +356,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(_windowManager.TryGetWindowView(window, out ConfirmDialogWindowView _));
         }
 
+        /// <summary>
+        /// Verifies execute targeted command create mission opens mission create window.
+        /// </summary>
         [Test]
         public void ExecuteTargetedCommand_CreateMission_OpensMissionCreateWindow()
         {
@@ -342,6 +378,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(_windowManager.TryGetWindowView(window, out MissionCreateWindowView _));
         }
 
+        /// <summary>
+        /// Verifies execute targeted command create mission without item plays advisor rejection.
+        /// </summary>
         [Test]
         public void ExecuteTargetedCommand_CreateMissionWithoutItem_PlaysAdvisorRejection()
         {
@@ -360,6 +399,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(1, _invalidOrderRejectionCount);
         }
 
+        /// <summary>
+        /// Verifies execute targeted command create mission without valid option plays advisor rejection.
+        /// </summary>
         [Test]
         public void ExecuteTargetedCommand_CreateMissionWithoutValidOption_PlaysAdvisorRejection()
         {
@@ -391,6 +433,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(1, _invalidOrderRejectionCount);
         }
 
+        /// <summary>
+        /// Verifies open move confirm window confirmed move moves unit and refreshes source.
+        /// </summary>
         [Test]
         public void OpenMoveConfirmWindow_ConfirmedMove_MovesUnitAndRefreshesSource()
         {
@@ -409,6 +454,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open scrap confirm window valid selection opens confirmation window.
+        /// </summary>
         [Test]
         public void OpenScrapConfirmWindow_ValidSelection_OpensConfirmationWindow()
         {
@@ -419,6 +467,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(_windowManager.TryGetWindowView(window, out ConfirmDialogWindowView _));
         }
 
+        /// <summary>
+        /// Verifies open stop construction confirm window building item opens confirmation window.
+        /// </summary>
         [Test]
         public void OpenStopConstructionConfirmWindow_BuildingItem_OpensConfirmationWindow()
         {
@@ -434,6 +485,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(_windowManager.TryGetWindowView(window, out ConfirmDialogWindowView _));
         }
 
+        /// <summary>
+        /// Verifies open retire confirm window without source window opens confirmation window.
+        /// </summary>
         [Test]
         public void OpenRetireConfirmWindow_WithoutSourceWindow_OpensConfirmationWindow()
         {
@@ -444,6 +498,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(_windowManager.TryGetWindowView(window, out ConfirmDialogWindowView _));
         }
 
+        /// <summary>
+        /// Verifies open retire confirm window confirmed retirement removes officer and refreshes source.
+        /// </summary>
         [Test]
         public void OpenRetireConfirmWindow_ConfirmedRetirement_RemovesOfficerAndRefreshesSource()
         {
@@ -457,6 +514,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <param name="origin">Receives the origin.</param>
+        /// <param name="destination">Receives the destination.</param>
+        /// <param name="missionTarget">Receives the mission target.</param>
+        /// <returns>The created game.</returns>
         private GameRoot CreateGame(
             out Planet origin,
             out GalaxyMapPlanet destination,
@@ -502,6 +566,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             return game;
         }
 
+        /// <summary>
+        /// Creates source window.
+        /// </summary>
+        /// <returns>The created source window.</returns>
         private UIWindow CreateSourceWindow()
         {
             GameObject sourceObject = new GameObject(
@@ -515,6 +583,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             return window;
         }
 
+        /// <summary>
+        /// Creates operational fleet.
+        /// </summary>
+        /// <returns>The created operational fleet.</returns>
         private Rebellion.Game.Units.Fleet CreateOperationalFleet()
         {
             Planet origin = _officer.GetParentOfType<Planet>();
@@ -534,6 +606,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             return fleet;
         }
 
+        /// <summary>
+        /// Executes confirm open dialog.
+        /// </summary>
         private void ConfirmOpenDialog()
         {
             UIWindow window = _windowManager.Windows.Single();
@@ -546,8 +621,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
         private sealed class MissionCreateActions : IMissionCreateWindowActions
         {
+            /// <summary>
+            /// Refreshes after mission creation.
+            /// </summary>
             public void RefreshAfterMissionCreation() { }
 
+            /// <summary>
+            /// Opens mission create info.
+            /// </summary>
             public void OpenMissionCreateInfo() { }
         }
     }

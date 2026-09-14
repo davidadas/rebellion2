@@ -20,6 +20,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         private Texture2D _selectionTexture;
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -31,6 +34,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             UIComponentTestHelper.InvokeLifecycle(_row, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -40,12 +46,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _row.Render(null, 0));
         }
 
+        /// <summary>
+        /// Verifies render selected row applies identity selection icon header and index.
+        /// </summary>
         [Test]
         public void Render_SelectedRow_AppliesIdentitySelectionIconHeaderAndIndex()
         {
@@ -67,6 +79,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(fontWeight, header.fontWeight);
         }
 
+        /// <summary>
+        /// Verifies render unselected row uses normal icon offset and clears selection.
+        /// </summary>
         [Test]
         public void Render_UnselectedRow_UsesNormalIconOffsetAndClearsSelection()
         {
@@ -87,6 +102,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(1, _row.Index);
         }
 
+        /// <summary>
+        /// Creates row.
+        /// </summary>
+        /// <param name="selected">Whether selected.</param>
+        /// <param name="headerColor">The header color.</param>
+        /// <returns>The created row.</returns>
         private MessageWindowRowRenderData CreateRow(bool selected, Color32 headerColor)
         {
             return new MessageWindowRowRenderData(
@@ -102,6 +123,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Finds child.
+        /// </summary>
+        /// <param name="parent">The parent.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching child.</returns>
         private static T FindChild<T>(Component parent, string objectName)
             where T : Component
         {

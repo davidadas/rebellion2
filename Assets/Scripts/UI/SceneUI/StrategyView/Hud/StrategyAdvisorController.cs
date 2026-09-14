@@ -175,6 +175,13 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         pendingExpirationTicks[notificationKey] = currentTick + lifetimeTicks;
     }
 
+    /// <summary>
+    /// Resolves notification.
+    /// </summary>
+    /// <param name="delivery">The delivery.</param>
+    /// <param name="lifetimeTicks">Receives the lifetime ticks.</param>
+    /// <param name="notificationKey">Receives the notification key.</param>
+    /// <returns>The resolved notification.</returns>
     private StrategyAdvisorNotificationTheme ResolveNotification(
         MessageDeliveredResult delivery,
         out int lifetimeTicks,
@@ -209,6 +216,12 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         };
     }
 
+    /// <summary>
+    /// Executes merge animation.
+    /// </summary>
+    /// <param name="preset">The preset.</param>
+    /// <param name="authored">The authored.</param>
+    /// <returns>The result of merge animation.</returns>
     private static StrategyAdvisorAnimationTheme MergeAnimation(
         StrategyAdvisorAnimationTheme preset,
         AdvisorAnimation authored

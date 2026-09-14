@@ -18,6 +18,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Executes the action within one event activation.
         /// </summary>
+        /// <param name="context">The context.</param>
         internal abstract void Execute(GameActionContext context);
 
         /// <summary>
@@ -59,6 +60,13 @@ namespace Rebellion.Game.Events
         internal List<GameRequest> Requests { get; } = new List<GameRequest>();
         internal List<GameResult> Results { get; } = new List<GameResult>();
 
+        /// <summary>
+        /// Initializes a new instance of the GameActionContext class.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="random">The random.</param>
+        /// <param name="evaluation">The evaluation.</param>
+        /// <param name="unitFactory">The unit factory.</param>
         public GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
@@ -75,6 +83,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Adds authoritative work requested by the current action.
         /// </summary>
+        /// <param name="request">The request.</param>
         internal void Request(GameRequest request)
         {
             if (request == null)
@@ -87,6 +96,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Records one factual result produced directly by the current action.
         /// </summary>
+        /// <param name="result">The result.</param>
         internal void Record(GameResult result)
         {
             if (result == null)
@@ -100,6 +110,7 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Records factual results produced directly by the current action.
         /// </summary>
+        /// <param name="results">The results.</param>
         internal void Record(IEnumerable<GameResult> results)
         {
             foreach (GameResult result in results ?? Enumerable.Empty<GameResult>())

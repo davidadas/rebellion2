@@ -24,6 +24,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         private Color _authoredScreenColor;
         private VideoPlayer _videoPlayer;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -37,6 +40,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             UIComponentTestHelper.InvokeLifecycle(_player, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -44,6 +50,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
                 UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies awake authored prefab configures playback components.
+        /// </summary>
         [Test]
         public void Awake_AuthoredPrefab_ConfiguresPlaybackComponents()
         {
@@ -70,6 +79,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(AspectRatioFitter.AspectMode.FitInParent, screenAspect.aspectMode);
         }
 
+        /// <summary>
+        /// Verifies play valid clip configures video and audio output.
+        /// </summary>
         [Test]
         public void Play_ValidClip_ConfiguresVideoAndAudioOutput()
         {
@@ -82,6 +94,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(Color.black, _screen.color);
         }
 
+        /// <summary>
+        /// Verifies set volume value outside range clamps audio source volume.
+        /// </summary>
         [Test]
         public void SetVolume_ValueOutsideRange_ClampsAudioSourceVolume()
         {
@@ -90,6 +105,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(1f, _audioSource.volume);
         }
 
+        /// <summary>
+        /// Verifies configure url playback valid url configures url video source.
+        /// </summary>
         [Test]
         public void ConfigureUrlPlayback_ValidUrl_ConfiguresUrlVideoSource()
         {
@@ -105,6 +123,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(Color.black, _screen.color);
         }
 
+        /// <summary>
+        /// Verifies reveal frame decoded texture uses native texture and aspect ratio.
+        /// </summary>
         [Test]
         public void RevealFrame_DecodedTexture_UsesNativeTextureAndAspectRatio()
         {
@@ -129,6 +150,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             }
         }
 
+        /// <summary>
+        /// Verifies end cutscene repeated termination invokes completion once.
+        /// </summary>
         [Test]
         public void EndCutscene_RepeatedTermination_InvokesCompletionOnce()
         {
@@ -159,6 +183,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(Color.black, _screen.color);
         }
 
+        /// <summary>
+        /// Verifies on destroy active playback blanks screen and releases frame events.
+        /// </summary>
         [Test]
         public void OnDestroy_ActivePlayback_BlanksScreenAndReleasesFrameEvents()
         {
@@ -174,6 +201,12 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -182,6 +215,11 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
                     .GetValue(_player);
         }
 
+        /// <summary>
+        /// Executes invoke.
+        /// </summary>
+        /// <param name="methodName">The method name.</param>
+        /// <param name="parameters">The parameters.</param>
         private void Invoke(string methodName, params object[] parameters)
         {
             MethodInfo method = typeof(CutscenePlayer).GetMethod(

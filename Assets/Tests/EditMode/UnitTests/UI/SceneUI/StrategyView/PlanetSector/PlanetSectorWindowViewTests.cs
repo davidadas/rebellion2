@@ -21,6 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private GameObject _rootObject;
         private PlanetSectorWindowView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -33,6 +36,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Canvas.ForceUpdateCanvases();
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -42,12 +48,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render multiple planets applies title projection and stable view names.
+        /// </summary>
         [Test]
         public void Render_MultiplePlanets_AppliesTitleProjectionAndStableViewNames()
         {
@@ -78,6 +90,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render shorter snapshot reuses and hides surplus planet views.
+        /// </summary>
         [Test]
         public void Render_ShorterSnapshot_ReusesAndHidesSurplusPlanetViews()
         {
@@ -110,6 +125,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(planets[1].gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies try create element rendered fleet raycast returns semantic element.
+        /// </summary>
         [Test]
         public void TryCreateElement_RenderedFleetRaycast_ReturnsSemanticElement()
         {
@@ -135,6 +153,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(element.PlanetImage);
         }
 
+        /// <summary>
+        /// Verifies try get fleet drag preview rendered fleet returns pressed texture and icon geometry.
+        /// </summary>
         [Test]
         public void TryGetFleetDragPreview_RenderedFleet_ReturnsPressedTextureAndIconGeometry()
         {
@@ -164,6 +185,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(iconBounds.height, preview.Height);
         }
 
+        /// <summary>
+        /// Verifies try get fleet drag preview non fleet or missing planet returns false.
+        /// </summary>
         [Test]
         public void TryGetFleetDragPreview_NonFleetOrMissingPlanet_ReturnsFalse()
         {
@@ -197,6 +221,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(missingPreview);
         }
 
+        /// <summary>
+        /// Verifies planet interaction rendered child forwards all semantic events.
+        /// </summary>
         [Test]
         public void PlanetInteraction_RenderedChild_ForwardsAllSemanticEvents()
         {
@@ -236,6 +263,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1, releasedCount);
         }
 
+        /// <summary>
+        /// Verifies on destroy rendered children unbinds events and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_RenderedChildren_UnbindsEventsAndRaisesDestroyedEvent()
         {
@@ -264,6 +294,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(0, clickedCount);
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="index">The index.</param>
+        /// <param name="offset">The offset.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The created planet.</returns>
         private PlanetSectorPlanetRenderData CreatePlanet(int index, Vector2Int offset, string name)
         {
             PlanetSectorBarRenderData segmented = new PlanetSectorBarRenderData(
@@ -308,6 +345,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Projects planet position.
+        /// </summary>
+        /// <param name="offset">The offset.</param>
+        /// <returns>The result of project planet position.</returns>
         private Vector2Int ProjectPlanetPosition(Vector2Int offset)
         {
             RectInt windowBounds = GetSourceRect(_view.transform);
@@ -328,17 +370,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Gets planet image position.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The requested planet image position.</returns>
         private static Vector2Int GetPlanetImagePosition(PlanetSectorPlanetView planet)
         {
             RectInt bounds = planet.GetRenderedPlanetImageSourceRect();
             return new Vector2Int(bounds.x, bounds.y);
         }
 
+        /// <summary>
+        /// Gets planet views.
+        /// </summary>
+        /// <returns>The requested planet views.</returns>
         private List<PlanetSectorPlanetView> GetPlanetViews()
         {
             return GetField<List<PlanetSectorPlanetView>>("planetViews");
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -347,6 +404,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                     .GetValue(_view);
         }
 
+        /// <summary>
+        /// Gets planet field.
+        /// </summary>
+        /// <param name="view">The view.</param>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested planet field.</returns>
         private static T GetPlanetField<T>(PlanetSectorPlanetView view, string fieldName)
         {
             return (T)
@@ -355,11 +419,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                     .GetValue(view);
         }
 
+        /// <summary>
+        /// Gets source rect.
+        /// </summary>
+        /// <param name="transform">The transform.</param>
+        /// <returns>The requested source rect.</returns>
         private static RectInt GetSourceRect(Transform transform)
         {
             return UILayout.GetSourceRect(transform as RectTransform);
         }
 
+        /// <summary>
+        /// Creates pointer event.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <param name="button">The button.</param>
+        /// <param name="clickCount">The click count.</param>
+        /// <returns>The created pointer event.</returns>
         private static PointerEventData CreatePointerEvent(
             GameObject target,
             PointerEventData.InputButton button,

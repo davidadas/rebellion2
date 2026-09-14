@@ -13,6 +13,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
     {
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -20,6 +23,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null dependencies throw argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullDependencies_ThrowArgumentNullException()
         {
@@ -37,6 +43,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
         }
 
+        /// <summary>
+        /// Verifies reconcile snapshot backed target rebinds planet and item by identity.
+        /// </summary>
         [Test]
         public void Reconcile_SnapshotBackedTarget_RebindsPlanetAndItemByIdentity()
         {
@@ -71,6 +80,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(ManufacturingType.Ship, session.Target.ManufacturingType);
         }
 
+        /// <summary>
+        /// Verifies reconcile missing snapshot planet returns false and preserves target.
+        /// </summary>
         [Test]
         public void Reconcile_MissingSnapshotPlanet_ReturnsFalseAndPreservesTarget()
         {
@@ -85,6 +97,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreSame(target, session.Target);
         }
 
+        /// <summary>
+        /// Verifies reconcile missing snapshot item returns false and preserves target.
+        /// </summary>
         [Test]
         public void Reconcile_MissingSnapshotItem_ReturnsFalseAndPreservesTarget()
         {
@@ -106,6 +121,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreSame(target, session.Target);
         }
 
+        /// <summary>
+        /// Verifies reconcile static template target preserves original item.
+        /// </summary>
         [Test]
         public void Reconcile_StaticTemplateTarget_PreservesOriginalItem()
         {
@@ -126,6 +144,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(ManufacturingType.Building, session.Target.ManufacturingType);
         }
 
+        /// <summary>
+        /// Verifies reconcile null sectors throws argument null exception.
+        /// </summary>
         [Test]
         public void Reconcile_NullSectors_ThrowsArgumentNullException()
         {
@@ -139,6 +160,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.Throws<ArgumentNullException>(() => session.Reconcile(null));
         }
 
+        /// <summary>
+        /// Creates window.
+        /// </summary>
+        /// <returns>The created window.</returns>
         private UIWindow CreateWindow()
         {
             _windowObject = new GameObject(
@@ -150,6 +175,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             return _windowObject.GetComponent<UIWindow>();
         }
 
+        /// <summary>
+        /// Creates map planet.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The created map planet.</returns>
         private static GalaxyMapPlanet CreateMapPlanet(Planet planet)
         {
             return new GalaxyMapPlanet(new GalaxyPlanetSector(), planet, string.Empty);

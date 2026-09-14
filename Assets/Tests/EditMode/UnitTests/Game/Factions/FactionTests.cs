@@ -25,6 +25,9 @@ namespace Rebellion.Tests.Game.Factions
         private Building _building;
         private Technology _technology;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -60,6 +63,9 @@ namespace Rebellion.Tests.Game.Factions
             _technology = new Technology(_building);
         }
 
+        /// <summary>
+        /// Verifies is ai controlled with player id returns false.
+        /// </summary>
         [Test]
         public void IsAIControlled_WithPlayerID_ReturnsFalse()
         {
@@ -68,6 +74,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsFalse(isAI, "Faction with PlayerID should not be AI controlled");
         }
 
+        /// <summary>
+        /// Verifies is ai controlled without player id returns true.
+        /// </summary>
         [Test]
         public void IsAIControlled_WithoutPlayerID_ReturnsTrue()
         {
@@ -78,6 +87,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsTrue(isAI, "Faction without PlayerID should be AI controlled");
         }
 
+        /// <summary>
+        /// Verifies try take next ship name available names returns names in order.
+        /// </summary>
         [Test]
         public void TryTakeNextShipName_AvailableNames_ReturnsNamesInOrder()
         {
@@ -99,6 +111,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(2, _faction.ShipNamePools.Single().NextNameIndex);
         }
 
+        /// <summary>
+        /// Verifies try take next ship name exhausted primary pool returns fallback name.
+        /// </summary>
         [Test]
         public void TryTakeNextShipName_ExhaustedPrimaryPool_ReturnsFallbackName()
         {
@@ -127,6 +142,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(1, _faction.ShipNamePools[1].NextNameIndex);
         }
 
+        /// <summary>
+        /// Verifies try take next ship name fallback cycle returns false.
+        /// </summary>
         [Test]
         public void TryTakeNextShipName_FallbackCycle_ReturnsFalse()
         {
@@ -144,6 +162,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsNull(shipName);
         }
 
+        /// <summary>
+        /// Verifies take next generic ship name same ship type returns sequential names.
+        /// </summary>
         [Test]
         public void TakeNextGenericShipName_SameShipType_ReturnsSequentialNames()
         {
@@ -165,6 +186,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual("Generic Ship 2", secondName);
         }
 
+        /// <summary>
+        /// Verifies add owned unit valid planet adds planet to owned nodes.
+        /// </summary>
         [Test]
         public void AddOwnedUnit_ValidPlanet_AddsPlanetToOwnedNodes()
         {
@@ -175,6 +199,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.Contains(_planet1, planets, "Faction should contain the added planet");
         }
 
+        /// <summary>
+        /// Verifies remove owned unit owned planet removes from owned nodes.
+        /// </summary>
         [Test]
         public void RemoveOwnedUnit_OwnedPlanet_RemovesFromOwnedNodes()
         {
@@ -187,6 +214,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsFalse(planets.Contains(_planet1), "Faction should not contain removed planet");
         }
 
+        /// <summary>
+        /// Verifies get owned units by type faction with mixed units returns units of type.
+        /// </summary>
         [Test]
         public void GetOwnedUnitsByType_FactionWithMixedUnits_ReturnsUnitsOfType()
         {
@@ -204,6 +234,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.Contains(_fleet, fleets, "Should contain fleet");
         }
 
+        /// <summary>
+        /// Verifies get owned units by type disabled unit excludes unit by default.
+        /// </summary>
         [Test]
         public void GetOwnedUnitsByType_DisabledUnit_ExcludesUnitByDefault()
         {
@@ -215,6 +248,9 @@ namespace Rebellion.Tests.Game.Factions
             CollectionAssert.DoesNotContain(fleets, _fleet);
         }
 
+        /// <summary>
+        /// Verifies get owned units by type disabled unit and included disabled returns unit.
+        /// </summary>
         [Test]
         public void GetOwnedUnitsByType_DisabledUnitAndIncludedDisabled_ReturnsUnit()
         {
@@ -226,6 +262,9 @@ namespace Rebellion.Tests.Game.Factions
             CollectionAssert.Contains(fleets, _fleet);
         }
 
+        /// <summary>
+        /// Verifies get owned colonized planets faction with uncolonized owned planet returns only colonized planets.
+        /// </summary>
         [Test]
         public void GetOwnedColonizedPlanets_FactionWithUncolonizedOwnedPlanet_ReturnsOnlyColonizedPlanets()
         {
@@ -241,6 +280,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsFalse(planets.Contains(_planet2));
         }
 
+        /// <summary>
+        /// Verifies get unlocked technologies faction below order returns only unlocked technologies.
+        /// </summary>
         [Test]
         public void GetUnlockedTechnologies_FactionBelowOrder_ReturnsOnlyUnlockedTechnologies()
         {
@@ -283,6 +325,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies get current research target with unresearched returns next unlocked.
+        /// </summary>
         [Test]
         public void GetCurrentResearchTarget_WithUnresearched_ReturnsNextUnlocked()
         {
@@ -299,6 +344,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(1, target.GetResearchOrder());
         }
 
+        /// <summary>
+        /// Verifies get current research target all unlocked returns null.
+        /// </summary>
         [Test]
         public void GetCurrentResearchTarget_AllUnlocked_ReturnsNull()
         {
@@ -314,6 +362,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsNull(target, "Should return null when all technologies are unlocked");
         }
 
+        /// <summary>
+        /// Verifies get highest unlocked order with set order returns correct order.
+        /// </summary>
         [Test]
         public void GetHighestUnlockedOrder_WithSetOrder_ReturnsCorrectOrder()
         {
@@ -324,6 +375,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(5, order, "Should return the correct unlocked order");
         }
 
+        /// <summary>
+        /// Verifies set highest unlocked order valid order sets order.
+        /// </summary>
         [Test]
         public void SetHighestUnlockedOrder_ValidOrder_SetsOrder()
         {
@@ -336,6 +390,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies rebuild research catalog with restricted building filters producer faction.
+        /// </summary>
         [Test]
         public void RebuildResearchCatalog_WithRestrictedBuilding_FiltersProducerFaction()
         {
@@ -358,6 +415,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(1, entries.Count, "Should only include technologies for this faction");
         }
 
+        /// <summary>
+        /// Verifies rebuild research catalog with no producer factions excludes technology.
+        /// </summary>
         [Test]
         public void RebuildResearchCatalog_WithNoProducerFactions_ExcludesTechnology()
         {
@@ -374,6 +434,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsFalse(_faction.ResearchCatalog.ContainsKey(ResearchDiscipline.ShipDesign));
         }
 
+        /// <summary>
+        /// Verifies rebuild research catalog with multiple buildings sorts by research order.
+        /// </summary>
         [Test]
         public void RebuildResearchCatalog_WithMultipleBuildings_SortsByResearchOrder()
         {
@@ -409,6 +472,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(3, entries[2].Order);
         }
 
+        /// <summary>
+        /// Verifies apply research progress meets difficulty returns unlocked technology.
+        /// </summary>
         [Test]
         public void ApplyResearchProgress_MeetsDifficulty_ReturnsUnlockedTechnology()
         {
@@ -426,6 +492,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies apply research progress excess capacity advances once and carries remainder.
+        /// </summary>
         [Test]
         public void ApplyResearchProgress_ExcessCapacity_AdvancesOnceAndCarriesRemainder()
         {
@@ -442,6 +511,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies apply research progress below difficulty returns null and accumulates.
+        /// </summary>
         [Test]
         public void ApplyResearchProgress_BelowDifficulty_ReturnsNullAndAccumulates()
         {
@@ -457,6 +529,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies apply research progress all unlocked returns null.
+        /// </summary>
         [Test]
         public void ApplyResearchProgress_AllUnlocked_ReturnsNull()
         {
@@ -472,6 +547,10 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(1, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
         }
 
+        /// <summary>
+        /// Verifies apply research progress with real templates unlocks next technology.
+        /// </summary>
+        /// <param name="discipline">The discipline.</param>
         [Test]
         public void ApplyResearchProgress_WithRealTemplates_UnlocksNextTechnology(
             [Values(
@@ -521,6 +600,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies add message with any message type adds to matching bucket.
+        /// </summary>
         [Test]
         public void AddMessage_WithAnyMessageType_AddsToMatchingBucket()
         {
@@ -540,6 +622,9 @@ namespace Rebellion.Tests.Game.Factions
             }
         }
 
+        /// <summary>
+        /// Verifies add message missing message bucket creates bucket and adds message.
+        /// </summary>
         [Test]
         public void AddMessage_MissingMessageBucket_CreatesBucketAndAddsMessage()
         {
@@ -551,6 +636,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.Contains(message, _faction.Messages[MessageType.Manufacturing]);
         }
 
+        /// <summary>
+        /// Verifies add message null message dictionary creates dictionary and adds message.
+        /// </summary>
         [Test]
         public void AddMessage_NullMessageDictionary_CreatesDictionaryAndAddsMessage()
         {
@@ -562,6 +650,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.Contains(message, _faction.Messages[MessageType.Manufacturing]);
         }
 
+        /// <summary>
+        /// Verifies remove message existing message removes from list.
+        /// </summary>
         [Test]
         public void RemoveMessage_ExistingMessage_RemovesFromList()
         {
@@ -576,6 +667,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies remove message missing message bucket remains absent.
+        /// </summary>
         [Test]
         public void RemoveMessage_MissingMessageBucket_RemainsAbsent()
         {
@@ -587,6 +681,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsFalse(_faction.Messages.ContainsKey(MessageType.Manufacturing));
         }
 
+        /// <summary>
+        /// Verifies remove message null message dictionary remains null.
+        /// </summary>
         [Test]
         public void RemoveMessage_NullMessageDictionary_RemainsNull()
         {
@@ -598,6 +695,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsNull(_faction.Messages);
         }
 
+        /// <summary>
+        /// Verifies get available mission participants mixed participant states returns only available participants.
+        /// </summary>
         [Test]
         public void GetAvailableMissionParticipants_MixedParticipantStates_ReturnsOnlyAvailableParticipants()
         {
@@ -667,6 +767,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies get available mission participants officer aboard moving fleet excludes officer.
+        /// </summary>
         [Test]
         public void GetAvailableMissionParticipants_OfficerAboardMovingFleet_ExcludesOfficer()
         {
@@ -690,6 +793,9 @@ namespace Rebellion.Tests.Game.Factions
             CollectionAssert.DoesNotContain(available, officer);
         }
 
+        /// <summary>
+        /// Verifies get total raw resource nodes faction with multiple planets returns sum across planets.
+        /// </summary>
         [Test]
         public void GetTotalRawResourceNodes_FactionWithMultiplePlanets_ReturnsSumAcrossPlanets()
         {
@@ -704,6 +810,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(25, total, "Should sum raw resource nodes across all planets");
         }
 
+        /// <summary>
+        /// Verifies get total available resource nodes faction with blockaded planet returns sum across planets.
+        /// </summary>
         [Test]
         public void GetTotalAvailableResourceNodes_FactionWithBlockadedPlanet_ReturnsSumAcrossPlanets()
         {
@@ -723,6 +832,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(10, total, "Should only count non-blockaded planets");
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize maintains state.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_MaintainsState()
         {
@@ -809,6 +921,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize research state retains all disciplines and ignores derived catalogs.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_ResearchState_RetainsAllDisciplinesAndIgnoresDerivedCatalogs()
         {
@@ -885,6 +1000,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies request raw material no stockpile queues facility once.
+        /// </summary>
         [Test]
         public void RequestRawMaterial_NoStockpile_QueuesFacilityOnce()
         {
@@ -901,6 +1019,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies request refined material available stockpile reserves material immediately.
+        /// </summary>
         [Test]
         public void RequestRefinedMaterial_AvailableStockpile_ReservesMaterialImmediately()
         {
@@ -915,6 +1036,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies get hq instance id faction with hq returns hq instance id.
+        /// </summary>
         [Test]
         public void GetHQInstanceID_FactionWithHQ_ReturnsHQInstanceID()
         {
@@ -925,6 +1049,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual("HQ1", hqId, "Should return the HQ instance ID");
         }
 
+        /// <summary>
+        /// Verifies get hq instance id with null hq returns null.
+        /// </summary>
         [Test]
         public void GetHQInstanceID_WithNullHQ_ReturnsNull()
         {
@@ -935,6 +1062,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsNull(hqId, "Should return null when HQ is not set");
         }
 
+        /// <summary>
+        /// Verifies get total raw mined resources faction with multiple planets returns sum across planets.
+        /// </summary>
         [Test]
         public void GetTotalRawMinedResources_FactionWithMultiplePlanets_ReturnsSumAcrossPlanets()
         {
@@ -974,6 +1104,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(50, total, "Should sum raw mined resources across all planets");
         }
 
+        /// <summary>
+        /// Verifies get total available mined resources faction with blockaded planet returns sum across planets.
+        /// </summary>
         [Test]
         public void GetTotalAvailableMinedResources_FactionWithBlockadedPlanet_ReturnsSumAcrossPlanets()
         {
@@ -1015,6 +1148,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(20, total, "Should only count non-blockaded planets");
         }
 
+        /// <summary>
+        /// Verifies get total raw refinement capacity faction with multiple planets returns sum across planets.
+        /// </summary>
         [Test]
         public void GetTotalRawRefinementCapacity_FactionWithMultiplePlanets_ReturnsSumAcrossPlanets()
         {
@@ -1052,6 +1188,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(15, total, "Should sum raw refinement capacity across all planets");
         }
 
+        /// <summary>
+        /// Verifies get total available refinement capacity faction with blockaded planet returns sum across planets.
+        /// </summary>
         [Test]
         public void GetTotalAvailableRefinementCapacity_FactionWithBlockadedPlanet_ReturnsSumAcrossPlanets()
         {
@@ -1091,6 +1230,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(5, total, "Should only count non-blockaded planets");
         }
 
+        /// <summary>
+        /// Verifies get total available materials faction with multiple planets calculates available total.
+        /// </summary>
         [Test]
         public void GetTotalAvailableMaterials_FactionWithMultiplePlanets_CalculatesAvailableTotal()
         {
@@ -1126,6 +1268,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(5, total, "Should calculate available materials correctly");
         }
 
+        /// <summary>
+        /// Verifies get total available materials faction with blockaded planet excludes blockaded planets.
+        /// </summary>
         [Test]
         public void GetTotalAvailableMaterials_FactionWithBlockadedPlanet_ExcludesBlockadedPlanets()
         {
@@ -1188,6 +1333,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(5, total, "Should exclude blockaded planets from calculation");
         }
 
+        /// <summary>
+        /// Verifies get nearest friendly planet to multiple friendly planets returns closest planet.
+        /// </summary>
         [Test]
         public void GetNearestFriendlyPlanetTo_MultipleFriendlyPlanets_ReturnsClosestPlanet()
         {
@@ -1223,6 +1371,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual("PLANET1", nearest.InstanceID, "Should return the nearest planet");
         }
 
+        /// <summary>
+        /// Verifies get nearest friendly planet to with node not on planet throws exception.
+        /// </summary>
         [Test]
         public void GetNearestFriendlyPlanetTo_WithNodeNotOnPlanet_ThrowsException()
         {
@@ -1236,6 +1387,9 @@ namespace Rebellion.Tests.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Verifies get nearest owned planet to multiple owned planets returns closest planet.
+        /// </summary>
         [Test]
         public void GetNearestOwnedPlanetTo_MultipleOwnedPlanets_ReturnsClosestPlanet()
         {
@@ -1252,6 +1406,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual("PLANET2", nearest.InstanceID, "Should return the nearest planet");
         }
 
+        /// <summary>
+        /// Verifies get nearest owned planet to with excluded closest planet returns next closest planet.
+        /// </summary>
         [Test]
         public void GetNearestOwnedPlanetTo_WithExcludedClosestPlanet_ReturnsNextClosestPlanet()
         {
@@ -1268,6 +1425,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual("PLANET2", nearest.InstanceID, "Should skip the excluded planet");
         }
 
+        /// <summary>
+        /// Verifies get nearest owned planet to with stale ownership index returns current owner planet.
+        /// </summary>
         [Test]
         public void GetNearestOwnedPlanetTo_WithStaleOwnershipIndex_ReturnsCurrentOwnerPlanet()
         {
@@ -1285,6 +1445,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual("PLANET2", nearest.InstanceID, "Should ignore stale owned entities");
         }
 
+        /// <summary>
+        /// Verifies get total maintenance cost mixed complete and building sums complete only.
+        /// </summary>
         [Test]
         public void GetTotalMaintenanceCost_MixedCompleteAndBuilding_SumsCompleteOnly()
         {
@@ -1308,6 +1471,9 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(10, _faction.GetTotalMaintenanceCost());
         }
 
+        /// <summary>
+        /// Verifies get total in progress construction cost mixed complete and building sums building only.
+        /// </summary>
         [Test]
         public void GetTotalInProgressConstructionCost_MixedCompleteAndBuilding_SumsBuildingOnly()
         {
@@ -1331,6 +1497,12 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(70, _faction.GetTotalInProgressConstructionCost());
         }
 
+        /// <summary>
+        /// Creates operational fleet.
+        /// </summary>
+        /// <param name="instanceID">The instance id.</param>
+        /// <param name="ownerInstanceID">The owner instance id.</param>
+        /// <returns>The created operational fleet.</returns>
         private static Fleet CreateOperationalFleet(string instanceID, string ownerInstanceID)
         {
             Fleet fleet = new Fleet { InstanceID = instanceID, OwnerInstanceID = ownerInstanceID };
@@ -1344,6 +1516,10 @@ namespace Rebellion.Tests.Game.Factions
             return fleet;
         }
 
+        /// <summary>
+        /// Sets up ship catalog.
+        /// </summary>
+        /// <param name="techs">The techs.</param>
         private void SetupShipCatalog(params (string name, int order, int difficulty)[] techs)
         {
             IManufacturable[] templates = techs

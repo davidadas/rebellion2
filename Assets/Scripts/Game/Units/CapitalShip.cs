@@ -137,9 +137,11 @@ namespace Rebellion.Game.Units
         public CapitalShip() { }
 
         /// <summary>Creates an empty capital-ship copy.</summary>
+        /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new CapitalShip();
 
         /// <summary>Copies capital-ship state into an empty destination.</summary>
+        /// <param name="destination">The destination.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
             base.CopyStateTo(destination);
@@ -476,6 +478,9 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Returns whether the ship can accept a child alongside already planned additions.
         /// </summary>
+        /// <param name="child">The child.</param>
+        /// <param name="plannedChildren">The planned children.</param>
+        /// <returns>True when the accept child condition is met; otherwise false.</returns>
         internal override bool CanAcceptChild(
             ISceneNode child,
             IReadOnlyCollection<ISceneNode> plannedChildren

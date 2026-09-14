@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         private MessagesDetailPanelView _view;
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -29,6 +32,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -38,12 +44,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render detail applies scaled artwork header navigation and lines.
+        /// </summary>
         [Test]
         public void Render_Detail_AppliesScaledArtworkHeaderNavigationAndLines()
         {
@@ -82,6 +94,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Verifies render missing artwork hides card and overlay.
+        /// </summary>
         [Test]
         public void Render_MissingArtwork_HidesCardAndOverlay()
         {
@@ -103,6 +118,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(FindObject("DetailOverlayImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render shorter text hides unused cached line fields.
+        /// </summary>
         [Test]
         public void Render_ShorterText_HidesUnusedCachedLineFields()
         {
@@ -115,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual("Replacement", FindDetailLines().Single().text);
         }
 
+        /// <summary>
+        /// Verifies get scaled image rect valid texture preserves authored width and aspect ratio.
+        /// </summary>
         [Test]
         public void GetScaledImageRect_ValidTexture_PreservesAuthoredWidthAndAspectRatio()
         {
@@ -125,6 +146,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(new RectInt(3, 4, 160, 80), result);
         }
 
+        /// <summary>
+        /// Verifies get scaled image rect missing texture returns authored rect.
+        /// </summary>
         [Test]
         public void GetScaledImageRect_MissingTexture_ReturnsAuthoredRect()
         {
@@ -135,6 +159,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(template, result);
         }
 
+        /// <summary>
+        /// Verifies navigation buttons click raise previous and next requests.
+        /// </summary>
         [Test]
         public void NavigationButtons_Click_RaisePreviousAndNextRequests()
         {
@@ -150,6 +177,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(1, nextCount);
         }
 
+        /// <summary>
+        /// Verifies hide visible panel deactivates panel.
+        /// </summary>
         [Test]
         public void Hide_VisiblePanel_DeactivatesPanel()
         {
@@ -160,6 +190,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds navigation controls.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsNavigationControls()
         {
@@ -176,6 +209,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(0, nextCount);
         }
 
+        /// <summary>
+        /// Creates detail.
+        /// </summary>
+        /// <param name="text">The text.</param>
+        /// <param name="previousDisabled">Whether previous disabled.</param>
+        /// <param name="nextDisabled">Whether next disabled.</param>
+        /// <returns>The created detail.</returns>
         private MessagesDetailPanelRenderData CreateDetail(
             string text,
             bool previousDisabled,
@@ -194,6 +234,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Finds detail lines.
+        /// </summary>
+        /// <returns>The matching detail lines.</returns>
         private TextMeshProUGUI[] FindDetailLines()
         {
             return _windowObject
@@ -207,6 +251,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {
@@ -215,6 +265,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds object.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching object.</returns>
         private GameObject FindObject(string objectName)
         {
             return _windowObject
@@ -223,6 +278,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds text.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching text.</returns>
         private TextMeshProUGUI FindText(string objectName)
         {
             return FindComponent<TextMeshProUGUI>(objectName);

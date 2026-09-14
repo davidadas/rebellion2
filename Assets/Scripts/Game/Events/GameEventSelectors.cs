@@ -30,6 +30,8 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns registered nodes that match the authored activity and identity filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The selected owned.</returns>
         protected IEnumerable<T> SelectOwned(GameRoot game)
         {
             IEnumerable<T> nodes = IncludeInactive
@@ -41,6 +43,8 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Filters a supplied node sequence by authored identity and ownership.
         /// </summary>
+        /// <param name="nodes">The nodes.</param>
+        /// <returns>The selected owned.</returns>
         protected IEnumerable<T> SelectOwned(IEnumerable<T> nodes)
         {
             return nodes
@@ -69,6 +73,9 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns owned nodes located at the selected planet.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected located.</returns>
         protected IEnumerable<T> SelectLocated(GameRoot game, GameEventEvaluationContext context) =>
             SelectOwned(game)
                 .Where(node => MatchesLocation(node, context, PlanetInstanceID, PlanetBinding));
@@ -89,6 +96,9 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns located units matching the authored manufacturing filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected manufacturable.</returns>
         protected IEnumerable<T> SelectManufacturable(
             GameRoot game,
             GameEventEvaluationContext context
@@ -117,6 +127,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns active planets that match the authored ownership and sector filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -148,6 +162,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns active planet sectors that match the authored filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -181,6 +199,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns officers that match the authored location and captivity filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -202,6 +224,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns special-forces units that match the authored location filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -218,6 +244,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns fleets that match the authored location filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -234,6 +264,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns missions that match the authored location filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -250,6 +284,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns capital ships that match the authored unit filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -266,6 +304,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns starfighters that match the authored unit filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -282,6 +324,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns regiments that match the authored unit filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -311,6 +357,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns buildings that match the authored unit and strategic-category filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -320,6 +370,8 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns whether a building belongs to the authored strategic category.
         /// </summary>
+        /// <param name="building">The building.</param>
+        /// <returns>True when the value matches category; otherwise false.</returns>
         private bool MatchesCategory(Building building) =>
             Category switch
             {
@@ -359,6 +411,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns manufacturing orders that match the authored planet, owner, and type filters.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -418,6 +474,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Randomly samples the authored candidate selectors within the configured limits.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -478,6 +538,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns the first distinct node produced by the authored candidate selectors.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -487,6 +551,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns the distinct candidate sequence before taking its first node.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected candidates.</returns>
         internal IEnumerable<ISceneNode> SelectCandidates(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -506,6 +574,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns the scene node or nodes held by the authored event binding.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -561,6 +633,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns the nearest parent of the requested type for each authored candidate node.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -588,6 +664,10 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Returns the remembered previous location of the authored unit.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>The selected value.</returns>
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
             IRandomNumberProvider provider,

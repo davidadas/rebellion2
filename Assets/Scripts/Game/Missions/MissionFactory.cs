@@ -218,6 +218,8 @@ namespace Rebellion.Game.Missions
         /// Ensures an assignment does not contain the same participant more than once or use one
         /// participant as both a primary agent and a decoy.
         /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the unique participants condition is met; otherwise false.</returns>
         private static bool HasUniqueParticipants(MissionContext context)
         {
             HashSet<string> participantIds = new HashSet<string>(StringComparer.Ordinal);

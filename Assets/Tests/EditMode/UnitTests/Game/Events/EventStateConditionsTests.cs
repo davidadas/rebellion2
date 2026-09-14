@@ -11,6 +11,9 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public class EventStateConditionsTests
     {
+        /// <summary>
+        /// Verifies evaluate binding null binding returns false.
+        /// </summary>
         [Test]
         public void EvaluateBinding_NullBinding_ReturnsFalse()
         {
@@ -33,6 +36,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(result);
         }
 
+        /// <summary>
+        /// Verifies evaluate binding object binding throws invalid operation exception.
+        /// </summary>
         [Test]
         public void EvaluateBinding_ObjectBinding_ThrowsInvalidOperationException()
         {
@@ -63,6 +69,9 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("cannot be compared", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies evaluate binding different object binding throws invalid operation exception.
+        /// </summary>
         [Test]
         public void EvaluateBinding_DifferentObjectBinding_ThrowsInvalidOperationException()
         {
@@ -87,6 +96,9 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("cannot be compared", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies evaluate binding compatible binding comparison returns true.
+        /// </summary>
         [Test]
         public void EvaluateBinding_CompatibleBindingComparison_ReturnsTrue()
         {
@@ -110,6 +122,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(result);
         }
 
+        /// <summary>
+        /// Verifies evaluate binding incompatible binding comparison throws invalid operation exception.
+        /// </summary>
         [Test]
         public void EvaluateBinding_IncompatibleBindingComparison_ThrowsInvalidOperationException()
         {
@@ -135,6 +150,9 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("incompatible value types", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies evaluate binding enum literal comparison returns true.
+        /// </summary>
         [Test]
         public void EvaluateBinding_EnumLiteralComparison_ReturnsTrue()
         {
@@ -155,6 +173,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(conditional.IsMet(game, context));
         }
 
+        /// <summary>
+        /// Verifies evaluate binding enum and string bindings throws invalid operation exception.
+        /// </summary>
         [Test]
         public void EvaluateBinding_EnumAndStringBindings_ThrowsInvalidOperationException()
         {
@@ -180,6 +201,9 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("incompatible value types", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies evaluate binding ordered enum comparison throws invalid operation exception.
+        /// </summary>
         [Test]
         public void EvaluateBinding_OrderedEnumComparison_ThrowsInvalidOperationException()
         {
@@ -204,6 +228,11 @@ namespace Rebellion.Tests.Game.Events
             StringAssert.Contains("ordered comparisons only for numeric values", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies evaluate binding null optional binding uses predicate semantics.
+        /// </summary>
+        /// <param name="comparison">The comparison.</param>
+        /// <param name="expected">Whether expected.</param>
         [TestCase(ComparisonOperator.Equal, false)]
         [TestCase(ComparisonOperator.NotEqual, true)]
         [TestCase(ComparisonOperator.GreaterThan, false)]
@@ -232,6 +261,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(expected, conditional.IsMet(game, context));
         }
 
+        /// <summary>
+        /// Verifies has event activated activation recorded returns true.
+        /// </summary>
         [Test]
         public void HasEventActivated_ActivationRecorded_ReturnsTrue()
         {
@@ -245,6 +277,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(conditional.IsMet(game));
         }
 
+        /// <summary>
+        /// Verifies is event complete persisted completion state returns true.
+        /// </summary>
         [Test]
         public void IsEventComplete_PersistedCompletionState_ReturnsTrue()
         {
@@ -260,6 +295,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(isComplete);
         }
 
+        /// <summary>
+        /// Verifies is event complete loaded unlimited event returns false.
+        /// </summary>
         [Test]
         public void IsEventComplete_LoadedUnlimitedEvent_ReturnsFalse()
         {
@@ -276,6 +314,12 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(isComplete);
         }
 
+        /// <summary>
+        /// Builds game.
+        /// </summary>
+        /// <param name="empirePlanet">Receives the empire planet.</param>
+        /// <param name="rebelPlanet">Receives the rebel planet.</param>
+        /// <returns>The constructed game.</returns>
         private static GameRoot BuildGame(out Planet empirePlanet, out Planet rebelPlanet)
         {
             GameRoot game = new GameRoot(TestConfig.Create());

@@ -19,6 +19,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         private Texture2D _titleTexture;
         private ConfirmDialogWindowView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -30,6 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Canvas.ForceUpdateCanvases();
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -38,12 +44,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render complete presentation applies position artwork controls and lines.
+        /// </summary>
         [Test]
         public void Render_CompletePresentation_AppliesPositionArtworkControlsAndLines()
         {
@@ -77,6 +89,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsTrue(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render shorter presentation reuses first line and hides surplus lines.
+        /// </summary>
         [Test]
         public void Render_ShorterPresentation_ReusesFirstLineAndHidesSurplusLines()
         {
@@ -96,6 +111,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsFalse(lines[1].gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render null line collection is rejected by render data.
+        /// </summary>
         [Test]
         public void Render_NullLineCollection_IsRejectedByRenderData()
         {
@@ -104,6 +122,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
         }
 
+        /// <summary>
+        /// Verifies confirm button click raises accepted choice.
+        /// </summary>
         [Test]
         public void ConfirmButton_Click_RaisesAcceptedChoice()
         {
@@ -121,6 +142,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(true, confirmed);
         }
 
+        /// <summary>
+        /// Verifies cancel button click raises rejected choice.
+        /// </summary>
         [Test]
         public void CancelButton_Click_RaisesRejectedChoice()
         {
@@ -138,6 +162,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(false, confirmed);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds buttons and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsButtonsAndRaisesDestroyedEvent()
         {
@@ -154,6 +181,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(0, choiceCount);
         }
 
+        /// <summary>
+        /// Creates data.
+        /// </summary>
+        /// <param name="lines">The lines.</param>
+        /// <returns>The created data.</returns>
         private ConfirmDialogWindowRenderData CreateData(params string[] lines)
         {
             return new ConfirmDialogWindowRenderData(
@@ -165,6 +197,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="instance">The instance.</param>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private static T GetField<T>(object instance, string fieldName)
         {
             return (T)
