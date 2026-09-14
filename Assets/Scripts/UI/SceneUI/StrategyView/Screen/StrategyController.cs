@@ -441,12 +441,13 @@ public sealed class StrategyController
         if (state == null)
             return false;
 
-        int position = state.GetX();
-        if (position < SectorWindowPositions.Left || position > SectorWindowPositions.Right)
-        {
-            if (!windowPlacementController.TryGetSectorWindowSlot(position, out position))
-                return false;
-        }
+        if (
+            !windowPlacementController.TryResolveSectorWindowPosition(
+                state.GetX(),
+                out int position
+            )
+        )
+            return false;
 
         return galaxyMapController.FindSector(state.GetTargetInstanceID()) is GalaxyMapSector sector
             && planetSectorWindowController.TryOpenAtPosition(sector, position);

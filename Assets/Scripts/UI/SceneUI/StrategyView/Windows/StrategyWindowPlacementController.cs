@@ -85,6 +85,23 @@ public sealed class StrategyWindowPlacementController
     }
 
     /// <summary>
+    /// Resolves persisted sector-window state to an authored slot.
+    /// </summary>
+    /// <param name="value">The persisted slot index or legacy source-space coordinate.</param>
+    /// <param name="slot">The resolved authored sector slot.</param>
+    /// <returns>True when the persisted value maps to a valid authored slot.</returns>
+    public bool TryResolveSectorWindowPosition(int value, out int slot)
+    {
+        if (value >= SectorWindowPositions.Left && value <= SectorWindowPositions.Right)
+        {
+            slot = value;
+            return true;
+        }
+
+        return TryGetSectorWindowSlot(value, out slot);
+    }
+
+    /// <summary>
     /// Gets the authored utility-window position.
     /// </summary>
     /// <returns>The source-space utility-window position.</returns>
