@@ -1885,9 +1885,8 @@ public sealed class StrategyController
         windowPlacementController.RefreshMovementBounds();
         PreloadStrategySfx();
         strategyMusicController.Resume();
-        RebuildSnapshot();
+        RefreshStrategyState();
         RestoreWindows();
-        MarkDirty();
         PlayStrategyReadySound();
     }
 
