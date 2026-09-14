@@ -52,6 +52,9 @@ public static class StrategyViewPrefabBuilder
         "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
     private const string _planetSectorClusterPrefabPath =
         "Assets/Prefabs/UI/StrategyView/PlanetSectorCluster.prefab";
+    public const string GalaxyMapPrefabPath = "Assets/Prefabs/UI/StrategyView/GalaxyMap.prefab";
+    public const string StrategyHudShellPrefabPath =
+        "Assets/Prefabs/UI/StrategyView/StrategyHudShell.prefab";
     private const string _commonScrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _commonTextInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
     private const string _strategyScenePath = "Assets/Scenes/StrategyView.unity";
@@ -598,6 +601,176 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
+    /// Rebuilds the reusable production galaxy-map composition.
+    /// </summary>
+    public static void BuildGalaxyMapPrefab()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(GalaxyMapPrefabPath));
+        _previewThemes = null;
+        _previewThemeId = null;
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(_planetSectorClusterPrefabPath) == null)
+            BuildPlanetSectorClusterPrefab();
+        PlanetSectorClusterView clusterPrefab = LoadPrefabComponent<PlanetSectorClusterView>(
+            _planetSectorClusterPrefabPath
+        );
+        GameObject galaxyMap = CreateLayer(_galaxyMapName, null);
+        SetStrategySurfaceRect(galaxyMap.GetComponent<RectTransform>());
+        GalaxyMapView view = EnableRuntimeComponent(galaxyMap.AddComponent<GalaxyMapView>());
+
+        RectTransform background = CreateChildLayer(
+            _galaxyBackgroundImageName,
+            galaxyMap.transform
+        );
+        RawImage backgroundImage = background.gameObject.AddComponent<RawImage>();
+        backgroundImage.raycastTarget = false;
+        GalaxyBackground theme = PreviewTheme?.GalaxyBackground;
+        Texture2D backgroundTexture = LoadTexture(theme?.ImagePath);
+        backgroundImage.texture = backgroundTexture;
+        if (backgroundTexture != null)
+            SetSourceRect(
+                background,
+                theme?.SourcePosition?.X ?? _defaultGalaxyBackgroundX,
+                theme?.SourcePosition?.Y ?? _defaultGalaxyBackgroundY,
+                ToSourceUnits(backgroundTexture.width),
+                ToSourceUnits(backgroundTexture.height)
+            );
+
+        RectTransform clusters = CreateChildLayer(_planetSectorClustersName, galaxyMap.transform);
+        GalacticInformationDisplayTheme informationTheme =
+            PreviewTheme?.GalacticInformationDisplay
+            ?? throw new MissingReferenceException(
+                "Preview GalacticInformationDisplay theme is missing."
+            );
+        TextMeshProUGUI label = CreateTextLabel(
+            _activeGalacticInformationFilterLabelName,
+            galaxyMap.transform
+        );
+        label.text = string.Empty;
+        label.color = informationTheme.GetActiveFilterLabelColor();
+        label.fontSize = informationTheme.ActiveFilterLabelFontSize;
+        label.alignment = TextAlignmentOptions.Top;
+        label.raycastTarget = false;
+        SourceRectLayout labelLayout =
+            informationTheme.ActiveFilterLabelSourceLayout
+            ?? throw new MissingReferenceException(
+                "Preview GalacticInformationDisplay active filter label layout is missing."
+            );
+        SetSourceRect(
+            label.rectTransform,
+            labelLayout.X,
+            labelLayout.Y,
+            labelLayout.Width,
+            labelLayout.Height
+        );
+        label.gameObject.SetActive(false);
+
+        AssignReference(view, "background", background);
+        AssignReference(view, "backgroundImage", backgroundImage);
+        AssignReference(view, "planetSectorClusters", clusters);
+        AssignReference(view, "activeFilterLabel", label);
+        AssignReference(view, "planetSectorClusterPrefab", clusterPrefab);
+        SaveGeneratedPrefabAsset(galaxyMap, GalaxyMapPrefabPath);
+        Object.DestroyImmediate(galaxyMap);
+    }
+
+    /// <summary>
+    /// Rebuilds the reusable production strategy-HUD composition.
+    /// </summary>
+    public static void BuildStrategyHudShellPrefab()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(StrategyHudShellPrefabPath));
+        _previewThemes = null;
+        _previewThemeId = null;
+        GameObject hud = CreateLayer(_hudName, null);
+        SetStrategySurfaceRect(hud.GetComponent<RectTransform>());
+        StrategyHudView view = EnableRuntimeComponent(hud.AddComponent<StrategyHudView>());
+        RectTransform background = CreateChildLayer(_hudBackgroundImageName, hud.transform);
+        RawImage backgroundImage = background.gameObject.AddComponent<RawImage>();
+        backgroundImage.texture = LoadTexture(PreviewTheme?.TacticalHUDLayout?.ImagePath);
+        backgroundImage.enabled = backgroundImage.texture != null;
+        backgroundImage.raycastTarget = false;
+        StrategyAdvisorView advisor = CreateStrategyAdvisorView(hud.transform);
+        RectTransform textFields = CreateChildLayer(_hudTextFieldsName, hud.transform);
+        TacticalHUDLayout layout = PreviewTheme?.TacticalHUDLayout;
+        TextMeshProUGUI tick = CreateHudLabel(
+            _hudTickTextFieldName,
+            "0",
+            textFields,
+            layout?.TickCounterSourceLayout,
+            TextAlignmentOptions.Top
+        );
+        TextMeshProUGUI rawMaterials = CreateHudLabel(
+            _hudRawMaterialsTextFieldName,
+            "0",
+            textFields,
+            layout?.RawMaterialsSourceLayout,
+            TextAlignmentOptions.TopRight
+        );
+        TextMeshProUGUI refinedMaterials = CreateHudLabel(
+            _hudRefinedMaterialsTextFieldName,
+            "0",
+            textFields,
+            layout?.RefinedMaterialsSourceLayout,
+            TextAlignmentOptions.TopRight
+        );
+        TextMeshProUGUI maintenance = CreateHudLabel(
+            _hudMaintenanceTextFieldName,
+            "0",
+            textFields,
+            layout?.MaintenanceSourceLayout,
+            TextAlignmentOptions.TopRight
+        );
+        RawImage speedIndicator = CreateRawImage(
+            "SpeedIndicatorImage",
+            hud.transform,
+            layout?.SpeedIndicators?.MediumImagePath,
+            layout?.SpeedIndicatorSourceLayout
+        );
+        RawImage informationDisplay = CreateRawImage(
+            "GalacticInformationDisplayImage",
+            hud.transform,
+            layout?.GalacticInformationDisplayImagePath,
+            layout?.GalacticInformationDisplayImageLayout
+        );
+        List<RawImage> notifications = CreateHudMessageNotificationImages(hud.transform);
+        List<Button> notificationButtons = CreateButtons(notifications);
+        List<RawImage> buttonImages = CreateHudButtonImages(hud.transform);
+        List<UIRaycastArea> buttons = CreateHudButtonViews(hud.transform);
+        UIRaycastArea speedContext = CreateHudButtonView(
+            "GameSpeedButton",
+            hud.transform,
+            layout?.SpeedContextSourceLayout
+        );
+        RawImage pressedButton = CreateRawImage(
+            "PressedMainButtonImage",
+            hud.transform,
+            null,
+            0,
+            0
+        );
+        pressedButton.enabled = false;
+        pressedButton.raycastTarget = false;
+        pressedButton.gameObject.SetActive(false);
+
+        AssignReference(view, "backgroundImage", backgroundImage);
+        AssignReference(view, "tickTextField", tick);
+        AssignReference(view, "rawMaterialsTextField", rawMaterials);
+        AssignReference(view, "refinedMaterialsTextField", refinedMaterials);
+        AssignReference(view, "maintenanceTextField", maintenance);
+        AssignReference(view, "speedIndicatorImage", speedIndicator);
+        AssignReference(view, "galacticInformationDisplayImage", informationDisplay);
+        AssignReference(view, "pressedMainButtonImage", pressedButton);
+        AssignReferenceArray(view, "mainButtonImages", buttonImages);
+        AssignReferenceArray(view, "messageNotificationImages", notifications);
+        AssignReferenceArray(view, "messageNotificationButtons", notificationButtons);
+        AssignReferenceArray(view, "buttonViews", buttons);
+        AssignReference(view, "speedContextView", speedContext);
+        AssignReference(view, "advisorView", advisor);
+        SaveGeneratedPrefabAsset(hud, StrategyHudShellPrefabPath);
+        Object.DestroyImmediate(hud);
+    }
+
+    /// <summary>
     /// Rebuilds the authored Strategy View root prefab and its registered window references.
     /// </summary>
     public static void BuildStrategyViewRootPrefab()
@@ -605,6 +778,8 @@ public static class StrategyViewPrefabBuilder
         Directory.CreateDirectory(Path.GetDirectoryName(_prefabPath));
         _previewThemes = null;
         _previewThemeId = null;
+        BuildGalaxyMapPrefab();
+        BuildStrategyHudShellPrefab();
         PlanetSectorWindowView planetSectorWindowPrefab = LoadWindowPrefab<PlanetSectorWindowView>(
             _planetSectorWindowPrefabPath
         );
@@ -647,9 +822,6 @@ public static class StrategyViewPrefabBuilder
         OptionsMenuView optionsMenuWindowPrefab = LoadWindowPrefab<OptionsMenuView>(
             _optionsMenuWindowPrefabPath
         );
-        PlanetSectorClusterView planetSectorClusterPrefab =
-            LoadPrefabComponent<PlanetSectorClusterView>(_planetSectorClusterPrefabPath);
-
         GameObject sceneRoot = new GameObject(_sceneInstanceName);
         BuildSceneInfrastructure(sceneRoot);
         GameObject ui = new GameObject("UI");
@@ -687,62 +859,10 @@ public static class StrategyViewPrefabBuilder
         surfaceImage.color = Color.clear;
         surfaceImage.raycastTarget = true;
 
-        GameObject galaxyMap = CreateLayer(_galaxyMapName, root.transform);
-        RectTransform galaxyMapRect = galaxyMap.GetComponent<RectTransform>();
-        SetStrategySurfaceRect(galaxyMapRect);
-        GalaxyMapView galaxyMapView = EnableRuntimeComponent(
-            galaxyMap.AddComponent<GalaxyMapView>()
+        GalaxyMapView galaxyMapView = InstantiatePrefabComponent<GalaxyMapView>(
+            GalaxyMapPrefabPath,
+            root.transform
         );
-
-        RectTransform background = CreateChildLayer(
-            _galaxyBackgroundImageName,
-            galaxyMap.transform
-        );
-        RawImage backgroundImage = background.gameObject.AddComponent<RawImage>();
-        backgroundImage.raycastTarget = false;
-        GalaxyBackground previewGalaxyBackground = PreviewTheme?.GalaxyBackground;
-        Texture2D backgroundTexture = LoadTexture(previewGalaxyBackground?.ImagePath);
-        backgroundImage.texture = backgroundTexture;
-        if (backgroundTexture != null)
-            SetSourceRect(
-                background,
-                previewGalaxyBackground?.SourcePosition?.X ?? _defaultGalaxyBackgroundX,
-                previewGalaxyBackground?.SourcePosition?.Y ?? _defaultGalaxyBackgroundY,
-                ToSourceUnits(backgroundTexture.width),
-                ToSourceUnits(backgroundTexture.height)
-            );
-
-        RectTransform planetSectorClusters = CreateChildLayer(
-            _planetSectorClustersName,
-            galaxyMap.transform
-        );
-        GalacticInformationDisplayTheme galacticInformationTheme =
-            PreviewTheme?.GalacticInformationDisplay
-            ?? throw new MissingReferenceException(
-                "Preview GalacticInformationDisplay theme is missing."
-            );
-        TextMeshProUGUI activeFilterLabel = CreateTextLabel(
-            _activeGalacticInformationFilterLabelName,
-            galaxyMap.transform
-        );
-        activeFilterLabel.text = string.Empty;
-        activeFilterLabel.color = galacticInformationTheme.GetActiveFilterLabelColor();
-        activeFilterLabel.fontSize = galacticInformationTheme.ActiveFilterLabelFontSize;
-        activeFilterLabel.alignment = TextAlignmentOptions.Top;
-        activeFilterLabel.raycastTarget = false;
-        SourceRectLayout activeFilterLabelLayout =
-            galacticInformationTheme.ActiveFilterLabelSourceLayout
-            ?? throw new MissingReferenceException(
-                "Preview GalacticInformationDisplay active filter label layout is missing."
-            );
-        SetSourceRect(
-            activeFilterLabel.rectTransform,
-            activeFilterLabelLayout.X,
-            activeFilterLabelLayout.Y,
-            activeFilterLabelLayout.Width,
-            activeFilterLabelLayout.Height
-        );
-        activeFilterLabel.gameObject.SetActive(false);
 
         GameObject bookmarks = CreateLayer("Bookmarks", root.transform);
         RectTransform bookmarksRect = bookmarks.GetComponent<RectTransform>();
@@ -758,82 +878,11 @@ public static class StrategyViewPrefabBuilder
             bookmarkLayout
         );
 
-        GameObject hud = CreateLayer(_hudName, root.transform);
-        bookmarks.transform.SetSiblingIndex(hud.transform.GetSiblingIndex() + 1);
-        RectTransform hudRect = hud.GetComponent<RectTransform>();
-        SetStrategySurfaceRect(hudRect);
-        StrategyHudView hudView = EnableRuntimeComponent(hud.AddComponent<StrategyHudView>());
-
-        RectTransform hudBackground = CreateChildLayer(_hudBackgroundImageName, hud.transform);
-        RawImage hudBackgroundImage = hudBackground.gameObject.AddComponent<RawImage>();
-        hudBackgroundImage.texture = LoadTexture(PreviewTheme?.TacticalHUDLayout?.ImagePath);
-        hudBackgroundImage.enabled = hudBackgroundImage.texture != null;
-        hudBackgroundImage.raycastTarget = false;
-        StrategyAdvisorView advisorView = CreateStrategyAdvisorView(hud.transform);
-
-        RectTransform hudTextFields = CreateChildLayer(_hudTextFieldsName, hud.transform);
-        TacticalHUDLayout previewHudLayout = PreviewTheme?.TacticalHUDLayout;
-        TextMeshProUGUI tickLabel = CreateHudLabel(
-            _hudTickTextFieldName,
-            "0",
-            hudTextFields,
-            previewHudLayout?.TickCounterSourceLayout,
-            TextAlignmentOptions.Top
+        StrategyHudView hudView = InstantiatePrefabComponent<StrategyHudView>(
+            StrategyHudShellPrefabPath,
+            root.transform
         );
-        TextMeshProUGUI rawMaterialsLabel = CreateHudLabel(
-            _hudRawMaterialsTextFieldName,
-            "0",
-            hudTextFields,
-            previewHudLayout?.RawMaterialsSourceLayout,
-            TextAlignmentOptions.TopRight
-        );
-        TextMeshProUGUI refinedMaterialsLabel = CreateHudLabel(
-            _hudRefinedMaterialsTextFieldName,
-            "0",
-            hudTextFields,
-            previewHudLayout?.RefinedMaterialsSourceLayout,
-            TextAlignmentOptions.TopRight
-        );
-        TextMeshProUGUI maintenanceLabel = CreateHudLabel(
-            _hudMaintenanceTextFieldName,
-            "0",
-            hudTextFields,
-            previewHudLayout?.MaintenanceSourceLayout,
-            TextAlignmentOptions.TopRight
-        );
-        RawImage speedIndicatorImage = CreateRawImage(
-            "SpeedIndicatorImage",
-            hud.transform,
-            previewHudLayout?.SpeedIndicators?.MediumImagePath,
-            previewHudLayout?.SpeedIndicatorSourceLayout
-        );
-        RawImage galacticInformationDisplayImage = CreateRawImage(
-            "GalacticInformationDisplayImage",
-            hud.transform,
-            previewHudLayout?.GalacticInformationDisplayImagePath,
-            previewHudLayout?.GalacticInformationDisplayImageLayout
-        );
-        List<RawImage> messageNotificationImages = CreateHudMessageNotificationImages(
-            hud.transform
-        );
-        List<Button> messageNotificationButtons = CreateButtons(messageNotificationImages);
-        List<RawImage> mainButtonImages = CreateHudButtonImages(hud.transform);
-        List<UIRaycastArea> hudButtonViews = CreateHudButtonViews(hud.transform);
-        UIRaycastArea speedContextView = CreateHudButtonView(
-            "GameSpeedButton",
-            hud.transform,
-            PreviewTheme?.TacticalHUDLayout?.SpeedContextSourceLayout
-        );
-        RawImage pressedMainButtonImage = CreateRawImage(
-            "PressedMainButtonImage",
-            hud.transform,
-            null,
-            0,
-            0
-        );
-        pressedMainButtonImage.enabled = false;
-        pressedMainButtonImage.raycastTarget = false;
-        pressedMainButtonImage.gameObject.SetActive(false);
+        bookmarks.transform.SetSiblingIndex(hudView.transform.GetSiblingIndex() + 1);
 
         IdleBarView idleBar = CreateIdleBarView(root.transform);
         GameObject windows = CreateLayer(_windowLayerName, root.transform);
@@ -919,30 +968,6 @@ public static class StrategyViewPrefabBuilder
             optionsMenuWindowPrefab
         );
         AssignWindowLayerLayout(windowsView);
-        AssignReference(hudView, "backgroundImage", hudBackgroundImage);
-        AssignReference(hudView, "tickTextField", tickLabel);
-        AssignReference(hudView, "rawMaterialsTextField", rawMaterialsLabel);
-        AssignReference(hudView, "refinedMaterialsTextField", refinedMaterialsLabel);
-        AssignReference(hudView, "maintenanceTextField", maintenanceLabel);
-        AssignReference(hudView, "speedIndicatorImage", speedIndicatorImage);
-        AssignReference(
-            hudView,
-            "galacticInformationDisplayImage",
-            galacticInformationDisplayImage
-        );
-        AssignReference(hudView, "pressedMainButtonImage", pressedMainButtonImage);
-        AssignReferenceArray(hudView, "mainButtonImages", mainButtonImages);
-        AssignReferenceArray(hudView, "messageNotificationImages", messageNotificationImages);
-        AssignReferenceArray(hudView, "messageNotificationButtons", messageNotificationButtons);
-        AssignReferenceArray(hudView, "buttonViews", hudButtonViews);
-        AssignReference(hudView, "speedContextView", speedContextView);
-        AssignReference(hudView, "advisorView", advisorView);
-        AssignReference(galaxyMapView, "background", background);
-        AssignReference(galaxyMapView, "backgroundImage", backgroundImage);
-        AssignReference(galaxyMapView, "planetSectorClusters", planetSectorClusters);
-        AssignReference(galaxyMapView, "activeFilterLabel", activeFilterLabel);
-        AssignReference(galaxyMapView, "planetSectorClusterPrefab", planetSectorClusterPrefab);
-
         SaveGeneratedPrefabAsset(sceneRoot, _prefabPath);
         Object.DestroyImmediate(sceneRoot);
         AssetDatabase.SaveAssets();

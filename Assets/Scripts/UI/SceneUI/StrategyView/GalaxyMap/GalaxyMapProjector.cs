@@ -229,7 +229,7 @@ public sealed class GalaxyMapProjector
     /// <param name="icons">The configured marker artwork.</param>
     /// <param name="markerIndex">The zero-based marker intensity.</param>
     /// <returns>The best configured marker path for the requested intensity.</returns>
-    internal static string GetPlanetIconPath(PlanetIcons icons, int markerIndex)
+    public static string GetPlanetIconPath(PlanetIcons icons, int markerIndex)
     {
         return markerIndex switch
         {
