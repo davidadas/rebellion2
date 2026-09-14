@@ -12,6 +12,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private GameObject _root;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Creates the window manager used by each test.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -19,6 +22,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _windowManager = _root.GetComponent<UIWindowManager>();
         }
 
+        /// <summary>
+        /// Destroys the test window hierarchy.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -26,12 +32,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 Object.DestroyImmediate(_root);
         }
 
+        /// <summary>
+        /// Verifies that capture replaces stale state with a complete supported window record.
+        /// </summary>
         [Test]
         public void Capture_RegisteredModelessWindow_ReplacesSavedState()
         {
             List<WindowState> states = new List<WindowState>
             {
-                new WindowState { WindowTypeID = "Stale" },
+                new WindowState("Stale", null, 0, 0, 0, 0, 0),
             };
             StrategyWindowStateManager manager = new StrategyWindowStateManager(
                 _windowManager,
@@ -43,14 +52,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             manager.Capture();
 
             Assert.AreEqual(1, states.Count);
-            Assert.AreEqual("Test.Window", states[0].WindowTypeID);
-            Assert.AreEqual("TARGET1", states[0].TargetInstanceID);
-            Assert.AreEqual(7, states[0].X);
-            Assert.AreEqual(11, states[0].Y);
-            Assert.AreEqual(100, states[0].Width);
-            Assert.AreEqual(80, states[0].Height);
+            Assert.AreEqual("Test.Window", states[0].GetWindowTypeID());
+            Assert.AreEqual("TARGET1", states[0].GetTargetInstanceID());
+            Assert.AreEqual(7, states[0].GetX());
+            Assert.AreEqual(11, states[0].GetY());
+            Assert.AreEqual(100, states[0].GetWidth());
+            Assert.AreEqual(80, states[0].GetHeight());
         }
 
+        /// <summary>
+        /// Verifies that unsupported and modal windows are excluded from persisted state.
+        /// </summary>
         [Test]
         public void Capture_UnsupportedAndModalWindows_DoesNotPersistThem()
         {
@@ -68,30 +80,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             CollectionAssert.IsEmpty(states);
         }
 
+        /// <summary>
+        /// Verifies that supported windows restore in their persisted stacking order.
+        /// </summary>
         [Test]
         public void Restore_RegisteredStates_RestoresInSavedStackOrder()
         {
             List<string> restoredTargets = new List<string>();
             List<WindowState> states = new List<WindowState>
             {
-                new WindowState
-                {
-                    WindowTypeID = "Unknown.Window",
-                    TargetInstanceID = "IGNORED",
-                    ZOrder = 0,
-                },
-                new WindowState
-                {
-                    WindowTypeID = "Test.Window",
-                    TargetInstanceID = "SECOND",
-                    ZOrder = 2,
-                },
-                new WindowState
-                {
-                    WindowTypeID = "Test.Window",
-                    TargetInstanceID = "FIRST",
-                    ZOrder = 1,
-                },
+                new WindowState("Unknown.Window", "IGNORED", 0, 0, 0, 0, 0),
+                new WindowState("Test.Window", "SECOND", 0, 0, 0, 0, 2),
+                new WindowState("Test.Window", "FIRST", 0, 0, 0, 0, 1),
             };
             StrategyWindowStateManager manager = new StrategyWindowStateManager(
                 _windowManager,
@@ -100,7 +100,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             manager.Register(
                 CreateAdapter(state =>
                 {
-                    restoredTargets.Add(state.TargetInstanceID);
+                    restoredTargets.Add(state.GetTargetInstanceID());
                     return true;
                 })
             );
@@ -110,6 +110,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             CollectionAssert.AreEqual(new[] { "FIRST", "SECOND" }, restoredTargets);
         }
 
+        /// <summary>
+        /// Creates the test adapter used to capture and restore test windows.
+        /// </summary>
+        /// <param name="restore">The callback invoked to restore persisted state.</param>
+        /// <returns>The configured test adapter.</returns>
         private StrategyWindowStateAdapter<TestWindowContent> CreateAdapter(
             System.Func<WindowState, bool> restore
         )
@@ -121,6 +126,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Creates and registers a test window with the runtime window manager.
+        /// </summary>
+        /// <typeparam name="TContent">The authored content component placed in the window.</typeparam>
+        /// <param name="x">The horizontal window position.</param>
+        /// <param name="y">The vertical window position.</param>
+        /// <param name="modal">Whether the window is modal.</param>
         private void CreateWindow<TContent>(int x, int y, bool modal)
             where TContent : MonoBehaviour
         {

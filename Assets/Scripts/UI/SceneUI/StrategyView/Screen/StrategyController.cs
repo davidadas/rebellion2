@@ -405,8 +405,10 @@ public sealed class StrategyController
                 view => getPlanet(view)?.Planet?.InstanceID,
                 state =>
                 {
-                    GalaxyMapPlanet planet = galaxyMapController.FindPlanet(state.TargetInstanceID);
-                    return planet != null && open(planet, state.X, state.Y);
+                    GalaxyMapPlanet planet = galaxyMapController.FindPlanet(
+                        state.GetTargetInstanceID()
+                    );
+                    return planet != null && open(planet, state.GetX(), state.GetY());
                 }
             )
         );
@@ -420,8 +422,8 @@ public sealed class StrategyController
     private bool RestoreSectorWindow(WindowState state)
     {
         return state != null
-            && galaxyMapController.FindSector(state.TargetInstanceID) is GalaxyMapSector sector
-            && planetSectorWindowController.TryOpenAtPosition(sector, state.X);
+            && galaxyMapController.FindSector(state.GetTargetInstanceID()) is GalaxyMapSector sector
+            && planetSectorWindowController.TryOpenAtPosition(sector, state.GetX());
     }
 
     /// <summary>

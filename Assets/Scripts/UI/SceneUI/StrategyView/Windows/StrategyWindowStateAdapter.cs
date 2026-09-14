@@ -35,17 +35,16 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
     }
 
     /// <inheritdoc />
-    public bool TryCapture(UIWindow window, out WindowState state)
+    public bool TryGetTargetInstanceID(UIWindow window, out string targetInstanceID)
     {
-        state = null;
+        targetInstanceID = null;
         if (window == null || !window.TryGetContent(out TView view))
             return false;
 
-        string targetInstanceID = getTargetInstanceID(view);
+        targetInstanceID = getTargetInstanceID(view);
         if (string.IsNullOrEmpty(targetInstanceID))
             return false;
 
-        state = new WindowState { TargetInstanceID = targetInstanceID };
         return true;
     }
 

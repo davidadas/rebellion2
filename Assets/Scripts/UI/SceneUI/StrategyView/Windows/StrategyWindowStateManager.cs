@@ -11,12 +11,12 @@ public interface IStrategyWindowStateAdapter
     string WindowTypeID { get; }
 
     /// <summary>
-    /// Attempts to capture a supported runtime window.
+    /// Attempts to identify the target represented by a supported runtime window.
     /// </summary>
     /// <param name="window">The runtime window to inspect.</param>
-    /// <param name="state">The captured state when the window is supported.</param>
+    /// <param name="targetInstanceID">The represented game-object identifier.</param>
     /// <returns>True when this adapter owns the window.</returns>
-    bool TryCapture(UIWindow window, out WindowState state);
+    bool TryGetTargetInstanceID(UIWindow window, out string targetInstanceID);
 
     /// <summary>
     /// Attempts to restore one persisted window.
@@ -89,16 +89,20 @@ public sealed class StrategyWindowStateManager
 
             foreach (IStrategyWindowStateAdapter adapter in adapters.Values)
             {
-                if (!adapter.TryCapture(window, out WindowState state) || state == null)
+                if (!adapter.TryGetTargetInstanceID(window, out string targetInstanceID))
                     continue;
 
-                state.WindowTypeID = adapter.WindowTypeID;
-                state.X = window.X;
-                state.Y = window.Y;
-                state.Width = window.Width;
-                state.Height = window.Height;
-                state.ZOrder = zOrder;
-                captured.Add(state);
+                captured.Add(
+                    new WindowState(
+                        adapter.WindowTypeID,
+                        targetInstanceID,
+                        window.X,
+                        window.Y,
+                        window.Width,
+                        window.Height,
+                        zOrder
+                    )
+                );
                 break;
             }
         }
@@ -113,12 +117,15 @@ public sealed class StrategyWindowStateManager
     /// </summary>
     public void Restore()
     {
-        foreach (WindowState state in states.OrderBy(state => state.ZOrder).ToList())
+        foreach (WindowState state in states.OrderBy(state => state.GetZOrder()).ToList())
         {
             if (
                 state != null
-                && !string.IsNullOrEmpty(state.WindowTypeID)
-                && adapters.TryGetValue(state.WindowTypeID, out IStrategyWindowStateAdapter adapter)
+                && !string.IsNullOrEmpty(state.GetWindowTypeID())
+                && adapters.TryGetValue(
+                    state.GetWindowTypeID(),
+                    out IStrategyWindowStateAdapter adapter
+                )
             )
             {
                 adapter.Restore(state);

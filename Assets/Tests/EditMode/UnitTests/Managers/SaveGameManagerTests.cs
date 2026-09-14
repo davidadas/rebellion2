@@ -118,16 +118,7 @@ namespace Rebellion.Tests.Managers
             game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
             game.GetFactionPlayer("FNALL1")
                 .UIState.GetOrCreateSection("Strategy")
-                .Windows.Add(
-                    new WindowState
-                    {
-                        WindowTypeID = "Planet.Fleet",
-                        TargetInstanceID = "PLANET1",
-                        X = 123,
-                        Y = 45,
-                        ZOrder = 2,
-                    }
-                );
+                .Windows.Add(new WindowState("Planet.Fleet", "PLANET1", 123, 45, 0, 0, 2));
             _saveGameManager.SaveGameData(game, _saveFileName);
 
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
@@ -136,11 +127,11 @@ namespace Rebellion.Tests.Managers
                 .GetFactionPlayer("FNALL1")
                 .UIState.GetOrCreateSection("Strategy")
                 .Windows.Single();
-            Assert.AreEqual("Planet.Fleet", state.WindowTypeID);
-            Assert.AreEqual("PLANET1", state.TargetInstanceID);
-            Assert.AreEqual(123, state.X);
-            Assert.AreEqual(45, state.Y);
-            Assert.AreEqual(2, state.ZOrder);
+            Assert.AreEqual("Planet.Fleet", state.GetWindowTypeID());
+            Assert.AreEqual("PLANET1", state.GetTargetInstanceID());
+            Assert.AreEqual(123, state.GetX());
+            Assert.AreEqual(45, state.GetY());
+            Assert.AreEqual(2, state.GetZOrder());
         }
 
         [Test]
