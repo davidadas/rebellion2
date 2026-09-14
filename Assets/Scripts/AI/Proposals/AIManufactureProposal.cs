@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Rebellion.AI.Director;
-using Rebellion.AI.Planners.Demand;
+using Rebellion.AI.Planners;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;

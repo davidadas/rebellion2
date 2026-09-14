@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.AI.Director;
-using Rebellion.AI.Planners.Demand;
+using Rebellion.AI.Planners;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;

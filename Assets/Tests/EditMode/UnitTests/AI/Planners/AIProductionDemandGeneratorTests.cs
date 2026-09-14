@@ -3,7 +3,6 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI.Director;
 using Rebellion.AI.Planners;
-using Rebellion.AI.Planners.Demand;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
