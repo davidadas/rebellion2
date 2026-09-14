@@ -39,6 +39,18 @@ exclusive claim keys.
 Candidate generation and scoring reuse the turn assessment. They must not introduce per-candidate
 scene-graph scans, nested materialization, or repeated sorting of the same source collection.
 
+## Allocation
+
+Allocation resolves choices where several proposals consume the same scarce actor or destination.
+Fleet defense is sequential allocation: rank threatened planets, assign one feasible fleet, reserve
+that fleet, and continue. Its target and fleet preferences use `DefenseAllocationUtility`; proposal
+selection still uses `DefenseUtility` so allocation tie-breaks cannot distort the relative value of
+defense versus unrelated proposal types.
+
+When established behavior requires a strict preference order, give considerations non-overlapping
+score bands in configuration. Lower bands may break ties within a higher band but cannot reverse
+it. This keeps the hierarchy explicit and tunable without hiding it in chained LINQ ordering.
+
 ## Configuration
 
 Policy targets and limits remain explicit typed values. Preferences use `AIConsiderationConfig`:

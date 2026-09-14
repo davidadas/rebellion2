@@ -343,6 +343,9 @@ namespace Rebellion.Game
             public AIDefenseUtilityConfig DefenseUtility { get; set; } =
                 new AIDefenseUtilityConfig();
 
+            public AIDefenseAllocationUtilityConfig DefenseAllocationUtility { get; set; } =
+                new AIDefenseAllocationUtilityConfig();
+
             public AIColonizationUtilityConfig ColonizationUtility { get; set; } =
                 new AIColonizationUtilityConfig();
 
@@ -425,6 +428,29 @@ namespace Rebellion.Game
             public AIConsiderationConfig Base { get; set; } = Weighted(1000);
 
             public AIConsiderationConfig SectorRisk { get; set; } = Weighted(300, 10);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
+        }
+
+        /// <summary>
+        /// Utility considerations used to allocate defense fleets among valid assignments.
+        /// </summary>
+        [PersistableObject]
+        public class AIDefenseAllocationUtilityConfig
+        {
+            public AIConsiderationConfig SectorRisk { get; set; } = Weighted(1000000, 10);
+
+            public AIConsiderationConfig StrategicValue { get; set; } = Weighted(10000, 1000);
+
+            public AIConsiderationConfig DefenseNeed { get; set; } = Weighted(1, 10000);
+
+            public AIConsiderationConfig TravelEfficiency { get; set; } = Weighted(1000000);
+
+            public AIConsiderationConfig ForceEfficiency { get; set; } = Weighted(1);
 
             private static AIConsiderationConfig Weighted(double weight) =>
                 new AIConsiderationConfig { Weight = weight };

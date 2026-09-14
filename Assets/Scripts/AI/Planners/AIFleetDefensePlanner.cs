@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scoring;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
@@ -110,9 +111,9 @@ namespace Rebellion.AI.Planners
                         && context.Assessment.GetRequiredPlanetDefenseStrength(planet) > 0
                         && !HasDefenseOrder(context, planet)
                     )
-                    .OrderByDescending(context.Assessment.GetDefensiveSupportRisk)
-                    .ThenByDescending(context.Assessment.GetPlanetValue)
-                    .ThenByDescending(context.Assessment.GetRequiredPlanetDefenseStrength)
+                    .OrderByDescending(planet =>
+                        AIFleetProposalScorer.ScoreDefenseTarget(context, planet)
+                    )
                     .ThenBy(planet => planet.InstanceID)
             )
             {
@@ -144,8 +145,9 @@ namespace Rebellion.AI.Planners
                     && CanAssignPlanetDefense(context, fleet)
                     && context.Assessment.CanDefendPlanet(fleet, targetPlanet)
                 )
-                .OrderBy(fleet => GetFleetDistance(context, fleet, targetPlanet))
-                .ThenBy(context.Assessment.GetFleetCombatValue)
+                .OrderByDescending(fleet =>
+                    AIFleetProposalScorer.ScoreDefenseAssignment(context, fleet, targetPlanet)
+                )
                 .ThenBy(fleet => fleet.InstanceID)
                 .FirstOrDefault();
         }
@@ -192,8 +194,9 @@ namespace Rebellion.AI.Planners
                 .ToList();
             Fleet sufficientFleet = candidates
                 .Where(fleet => context.Assessment.GetFleetCombatValue(fleet) >= requiredDefense)
-                .OrderBy(fleet => GetFleetDistance(context, fleet, headquarters))
-                .ThenBy(context.Assessment.GetFleetCombatValue)
+                .OrderByDescending(fleet =>
+                    AIFleetProposalScorer.ScoreDefenseAssignment(context, fleet, headquarters)
+                )
                 .ThenBy(fleet => fleet.InstanceID)
                 .FirstOrDefault();
             if (sufficientFleet != null)
@@ -201,7 +204,9 @@ namespace Rebellion.AI.Planners
 
             return candidates
                 .OrderByDescending(context.Assessment.GetFleetCombatValue)
-                .ThenBy(fleet => GetFleetDistance(context, fleet, headquarters))
+                .ThenByDescending(fleet =>
+                    AIFleetProposalScorer.ScoreDefenseTravelEfficiency(context, fleet, headquarters)
+                )
                 .ThenBy(fleet => fleet.InstanceID)
                 .FirstOrDefault();
         }
@@ -228,23 +233,6 @@ namespace Rebellion.AI.Planners
                     context.Assessment.GetFleetPlanet(fleet)?.InstanceID == headquarters.InstanceID
                     || context.StrategicPlan.CanFleetDepart(fleet)
                 );
-        }
-
-        /// <summary>
-        /// Returns the direct distance from a fleet's current planet to a destination.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to locate.</param>
-        /// <param name="destination">The destination planet.</param>
-        /// <returns>The distance, or the maximum value when the fleet has no planet.</returns>
-        private static double GetFleetDistance(
-            AITurnContext context,
-            Fleet fleet,
-            Planet destination
-        )
-        {
-            return context.Assessment.GetFleetPlanet(fleet)?.GetRawDistanceTo(destination)
-                ?? double.MaxValue;
         }
 
         /// <summary>

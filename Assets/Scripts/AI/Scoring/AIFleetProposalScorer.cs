@@ -155,6 +155,101 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
+        /// Returns the configured utility of defending a planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="targetPlanet">The planet requiring defense.</param>
+        /// <returns>The target utility.</returns>
+        internal static double ScoreDefenseTarget(AITurnContext context, Planet targetPlanet)
+        {
+            GameConfig.AIDefenseAllocationUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .FleetDeployment
+                .DefenseAllocationUtility;
+            return AIUtility.EvaluateRaw(
+                    context.Assessment.GetDefensiveSupportRisk(targetPlanet),
+                    utility.SectorRisk
+                )
+                + AIUtility.EvaluateRaw(
+                    context.Assessment.GetPlanetValue(targetPlanet),
+                    utility.StrategicValue
+                )
+                + AIUtility.EvaluateRaw(
+                    context.Assessment.GetRequiredDefenseStrength(targetPlanet),
+                    utility.DefenseNeed
+                );
+        }
+
+        /// <summary>
+        /// Returns the configured utility of assigning a sufficient fleet to a planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The candidate fleet.</param>
+        /// <param name="targetPlanet">The planet requiring defense.</param>
+        /// <returns>The assignment utility.</returns>
+        internal static double ScoreDefenseAssignment(
+            AITurnContext context,
+            Fleet fleet,
+            Planet targetPlanet
+        )
+        {
+            GameConfig.AIDefenseAllocationUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .FleetDeployment
+                .DefenseAllocationUtility;
+            return AIUtility.Evaluate(
+                    ScoreDefenseTravelEfficiency(context, fleet, targetPlanet),
+                    utility.TravelEfficiency
+                )
+                + AIUtility.Evaluate(
+                    ScoreDefenseForceEfficiency(context, fleet, targetPlanet),
+                    utility.ForceEfficiency
+                );
+        }
+
+        /// <summary>
+        /// Returns the travel utility of a defense assignment.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The candidate fleet.</param>
+        /// <param name="targetPlanet">The planet requiring defense.</param>
+        /// <returns>One at the destination, approaching zero with distance.</returns>
+        internal static double ScoreDefenseTravelEfficiency(
+            AITurnContext context,
+            Fleet fleet,
+            Planet targetPlanet
+        )
+        {
+            Planet currentPlanet = context.Assessment.GetFleetPlanet(fleet);
+            if (currentPlanet == null || targetPlanet == null)
+                return 0;
+
+            return 1 / (1 + currentPlanet.GetRawDistanceTo(targetPlanet));
+        }
+
+        /// <summary>
+        /// Returns how closely a fleet fits the required defense without excess force.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The candidate fleet.</param>
+        /// <param name="targetPlanet">The planet requiring defense.</param>
+        /// <returns>The required share of the candidate fleet's combat value.</returns>
+        internal static double ScoreDefenseForceEfficiency(
+            AITurnContext context,
+            Fleet fleet,
+            Planet targetPlanet
+        )
+        {
+            int fleetStrength = context.Assessment.GetFleetCombatValue(fleet);
+            int requiredStrength = context.Assessment.GetRequiredDefenseStrength(targetPlanet);
+            return AIUtility.Fulfillment(requiredStrength, fleetStrength);
+        }
+
+        /// <summary>
         /// Returns whether a proposal is advancing an existing order.
         /// </summary>
         /// <param name="proposal">The proposal to inspect.</param>
