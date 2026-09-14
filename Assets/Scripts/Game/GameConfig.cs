@@ -158,16 +158,6 @@ namespace Rebellion.Game
 
             public int MaximumUnprotectedOfficerMissionFoilProbability { get; set; } = 20;
 
-            public int DiplomacyConstructionFacilityWeight { get; set; } = 25;
-
-            public int DiplomacyShipyardWeight { get; set; } = 20;
-
-            public int DiplomacyTrainingFacilityWeight { get; set; } = 5;
-
-            public int DiplomacyResourceNodeWeight { get; set; } = 5;
-
-            public int DiplomacySectorSupportRiskWeight { get; set; } = 25;
-
             public AIMissionUtilityConfig Utility { get; set; } = new AIMissionUtilityConfig();
         }
 
@@ -187,6 +177,9 @@ namespace Rebellion.Game
 
             public AIDiplomacyUtilityConfig Diplomacy { get; set; } =
                 new AIDiplomacyUtilityConfig();
+
+            public AIOfficerTargetUtilityConfig OfficerTarget { get; set; } =
+                new AIOfficerTargetUtilityConfig();
         }
 
         /// <summary>
@@ -278,8 +271,36 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig CoreWorld { get; set; } = Weighted(1000);
 
+            public AIConsiderationConfig ConstructionFacility { get; set; } = Weighted(250, 10);
+
+            public AIConsiderationConfig Shipyard { get; set; } = Weighted(200, 10);
+
+            public AIConsiderationConfig TrainingFacility { get; set; } = Weighted(50, 10);
+
+            public AIConsiderationConfig ResourceNode { get; set; } = Weighted(75, 15);
+
+            public AIConsiderationConfig SectorSupportRisk { get; set; } = Weighted(250, 10);
+
             private static AIConsiderationConfig Weighted(double weight) =>
                 new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
+        }
+
+        /// <summary>
+        /// Strategic value considerations for hostile officer targets.
+        /// </summary>
+        [PersistableObject]
+        public class AIOfficerTargetUtilityConfig
+        {
+            public AIConsiderationConfig Combat { get; set; } = Weighted(300, 300);
+            public AIConsiderationConfig Espionage { get; set; } = Weighted(300, 300);
+            public AIConsiderationConfig Diplomacy { get; set; } = Weighted(300, 300);
+            public AIConsiderationConfig Leadership { get; set; } = Weighted(300, 300);
+            public AIConsiderationConfig ShipResearch { get; set; } = Weighted(300, 300);
+            public AIConsiderationConfig FacilityResearch { get; set; } = Weighted(300, 300);
+            public AIConsiderationConfig TroopResearch { get; set; } = Weighted(300, 300);
 
             private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
                 new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };

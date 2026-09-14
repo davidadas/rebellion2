@@ -50,7 +50,24 @@ namespace Rebellion.AI.Scoring
             if (consideration == null)
                 return 0;
 
-            return Evaluate(Fulfillment(value, consideration.InputMaximum), consideration);
+            double maximum = consideration.InputMaximum;
+            if (
+                maximum > 0
+                && (
+                    consideration.Curve == null
+                    || consideration.Curve.Shape == GameConfig.AIResponseCurveShape.Linear
+                )
+            )
+            {
+                if (double.IsNaN(value) || value <= 0)
+                    return 0;
+
+                return value >= maximum
+                    ? consideration.Weight
+                    : value * (consideration.Weight / maximum);
+            }
+
+            return Evaluate(Fulfillment(value, maximum), consideration);
         }
 
         /// <summary>

@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scoring;
+using Rebellion.Game;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -832,7 +833,7 @@ namespace Rebellion.AI.Planners
                 .Shuffle(context.Random)
                 .OrderByDescending(candidate => candidate.TargetOfficer.IsMain)
                 .ThenByDescending(candidate =>
-                    GetOfficerTargetCandidatePriority(candidate.TargetOfficer)
+                    GetOfficerTargetCandidatePriority(context, candidate.TargetOfficer)
                 )
                 .ToList();
         }
@@ -879,6 +880,7 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Returns research disciplines an officer can advance at a planet.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="officer">The officer to evaluate.</param>
         /// <param name="planet">The planet to evaluate.</param>
@@ -1039,7 +1041,7 @@ namespace Rebellion.AI.Planners
         private double GetDiplomacyCandidatePriority(AITurnContext context, Planet planet)
         {
             int support = context.Assessment.GetFactionPopularSupport(planet);
-            int strategicValue = context.Assessment.GetDiplomacyTargetStrategicValue(planet);
+            double strategicValue = context.Assessment.GetDiplomacyTargetStrategicValue(planet);
             double coreWorldValue = AIUtility.Evaluate(
                 IsCoreWorld(planet) ? 1 : 0,
                 context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.CoreWorld
@@ -1052,8 +1054,10 @@ namespace Rebellion.AI.Planners
                     - support
                     + strategicValue
                     + coreWorldValue
-                    + supportRisk
-                        * context.Game.Config.AI.MissionPlanning.DiplomacySectorSupportRiskWeight;
+                    + AIUtility.EvaluateRaw(
+                        supportRisk,
+                        context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.SectorSupportRisk
+                    );
             }
 
             return context.Assessment.IsNeutralPlanet(planet)
@@ -1074,15 +1078,46 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="officer">The officer to evaluate.</param>
         /// <returns>The calculated value.</returns>
-        private int GetOfficerTargetCandidatePriority(Officer officer)
+        private static double GetOfficerTargetCandidatePriority(
+            AITurnContext context,
+            Officer officer
+        )
         {
-            return officer.GetEffectiveRating(OfficerRating.Combat)
-                + officer.GetEffectiveRating(OfficerRating.Espionage)
-                + officer.GetEffectiveRating(OfficerRating.Diplomacy)
-                + officer.GetEffectiveRating(OfficerRating.Leadership)
-                + officer.GetBaseRating(ResearchDiscipline.ShipDesign)
-                + officer.GetBaseRating(ResearchDiscipline.FacilityDesign)
-                + officer.GetBaseRating(ResearchDiscipline.TroopTraining);
+            GameConfig.AIOfficerTargetUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .OfficerTarget;
+            return AIUtility.EvaluateRaw(
+                    officer.GetEffectiveRating(OfficerRating.Combat),
+                    utility.Combat
+                )
+                + AIUtility.EvaluateRaw(
+                    officer.GetEffectiveRating(OfficerRating.Espionage),
+                    utility.Espionage
+                )
+                + AIUtility.EvaluateRaw(
+                    officer.GetEffectiveRating(OfficerRating.Diplomacy),
+                    utility.Diplomacy
+                )
+                + AIUtility.EvaluateRaw(
+                    officer.GetEffectiveRating(OfficerRating.Leadership),
+                    utility.Leadership
+                )
+                + AIUtility.EvaluateRaw(
+                    officer.GetBaseRating(ResearchDiscipline.ShipDesign),
+                    utility.ShipResearch
+                )
+                + AIUtility.EvaluateRaw(
+                    officer.GetBaseRating(ResearchDiscipline.FacilityDesign),
+                    utility.FacilityResearch
+                )
+                + AIUtility.EvaluateRaw(
+                    officer.GetBaseRating(ResearchDiscipline.TroopTraining),
+                    utility.TroopResearch
+                );
         }
     }
 }

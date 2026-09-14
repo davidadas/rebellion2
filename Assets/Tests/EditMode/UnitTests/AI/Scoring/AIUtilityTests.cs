@@ -49,6 +49,18 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
+        public void LinearRawConsiderationPreservesExactUnitScale()
+        {
+            GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
+            {
+                Weight = 300,
+                InputMaximum = 300,
+            };
+
+            Assert.That(AIUtility.EvaluateRaw(137, consideration), Is.EqualTo(137));
+        }
+
+        [Test]
         public void DiscreteConsiderationTruncatesFractionalContribution()
         {
             GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
