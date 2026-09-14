@@ -192,5 +192,50 @@ namespace Rebellion.Tests.AI.Director
                 context.DevelopmentAllocation.IsPrimaryHub(second, BuildingType.Shipyard)
             );
         }
+
+        [Test]
+        public void DevelopmentAllocation_UsesConfiguredHubUtility()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameConfig.AIInfrastructureAllocationUtilityConfig utility = game.Config
+                .AI
+                .Infrastructure
+                .AllocationUtility;
+            utility.HubCapacity.Weight = 0;
+            utility.ExistingFacilities.Weight = 0;
+            utility.UnassignedHub.Weight = 0;
+            utility.FeasibleCapacity.Weight = 0;
+            utility.StrategicValue.Weight = 100;
+            game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet lowValue = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "a-low-value",
+                empire.InstanceID,
+                energyCapacity: 1
+            );
+            Planet highValue = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "z-high-value",
+                empire.InstanceID,
+                energyCapacity: 5
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Assert.IsFalse(
+                context.DevelopmentAllocation.IsPrimaryHub(
+                    lowValue,
+                    BuildingType.ConstructionFacility
+                )
+            );
+            Assert.IsTrue(
+                context.DevelopmentAllocation.IsPrimaryHub(
+                    highValue,
+                    BuildingType.ConstructionFacility
+                )
+            );
+        }
     }
 }

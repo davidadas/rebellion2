@@ -58,6 +58,10 @@ Colonization continuation uses `AIColonizationTargetScorer` after a fleet has be
 system. `ColonizationTargetUtility` owns the economic preference between eligible colonies, so the
 planner does not hide a second target policy in chained sorting.
 
+Sector production hubs are assigned once per turn-scoped development allocation through
+`AIInfrastructureAllocationScorer`. `AllocationUtility` expresses hub capacity, existing
+investment, role separation, feasible capacity, and strategic value in non-overlapping score bands.
+
 When established behavior requires a strict preference order, give considerations non-overlapping
 score bands in configuration. Lower bands may break ties within a higher band but cannot reverse
 it. This keeps the hierarchy explicit and tunable without hiding it in chained LINQ ordering.

@@ -630,6 +630,8 @@ namespace Rebellion.Game
             public int FacilitySectorSecondaryTargetCount { get; set; } = 3;
             public AIInfrastructurePlacementUtilityConfig PlacementUtility { get; set; } =
                 new AIInfrastructurePlacementUtilityConfig();
+            public AIInfrastructureAllocationUtilityConfig AllocationUtility { get; set; } =
+                new AIInfrastructureAllocationUtilityConfig();
             public int ProductionFacilityMaintenanceAllocationPercent { get; set; } = 30;
             public int ProductionFacilityInvestmentHorizonTicks { get; set; } = 70;
             public int FacilityConstructionLaneReserve { get; set; } = 1;
@@ -730,6 +732,29 @@ namespace Rebellion.Game
 
             private static AIConsiderationConfig Weighted(double weight) =>
                 new AIConsiderationConfig { Weight = weight };
+        }
+
+        /// <summary>
+        /// Utility considerations used to assign sector production hubs.
+        /// </summary>
+        [PersistableObject]
+        public class AIInfrastructureAllocationUtilityConfig
+        {
+            public AIConsiderationConfig HubCapacity { get; set; } = Weighted(1000000000);
+
+            public AIConsiderationConfig ExistingFacilities { get; set; } = Weighted(10000000, 100);
+
+            public AIConsiderationConfig UnassignedHub { get; set; } = Weighted(10000);
+
+            public AIConsiderationConfig FeasibleCapacity { get; set; } = Weighted(1000, 100);
+
+            public AIConsiderationConfig StrategicValue { get; set; } = Weighted(1, 10000);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
         }
 
         /// <summary>

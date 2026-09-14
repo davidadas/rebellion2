@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scoring;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -344,13 +345,14 @@ namespace Rebellion.AI.Director
                     FeasibleCount = GetFeasibleFacilityCount(planet, buildingType),
                 })
                 .OrderByDescending(item =>
-                    buildingType != BuildingType.Shipyard
-                    || item.FeasibleCount >= config.ShipyardSectorHubTargetCount
+                    AIInfrastructureAllocationScorer.Score(
+                        context,
+                        item.Planet,
+                        buildingType,
+                        item.FeasibleCount,
+                        assignedPrimaryPlanetIds
+                    )
                 )
-                .ThenByDescending(item => item.Planet.GetTotalBuildingTypeCount(buildingType))
-                .ThenBy(item => assignedPrimaryPlanetIds.Contains(item.Planet.InstanceID))
-                .ThenByDescending(item => item.FeasibleCount)
-                .ThenByDescending(item => context.Assessment.GetPlanetValue(item.Planet))
                 .ThenBy(item => item.Planet.InstanceID, StringComparer.Ordinal)
                 .Take(config.FacilityPlanetsPerSector)
                 .Select(item => item.Planet)
