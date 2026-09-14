@@ -211,7 +211,18 @@ namespace Rebellion.Systems
         /// <param name="destination">The target container to move toward.</param>
         public void RequestMove(IMovable unit, ContainerNode destination)
         {
-            RequestMove(unit, destination, (string)null);
+            TryRequestMove(unit, destination);
+        }
+
+        /// <summary>
+        /// Attempts to move one unit through normal movement validation.
+        /// </summary>
+        /// <param name="unit">The unit to move.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <returns>True when the movement request was accepted.</returns>
+        internal bool TryRequestMove(IMovable unit, ContainerNode destination)
+        {
+            return TryRequestMove(unit, destination, sourceEventInstanceID: null);
         }
 
         /// <summary>
@@ -285,7 +296,7 @@ namespace Rebellion.Systems
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The movement destination.</param>
         /// <param name="sourceEventInstanceID">The originating event identifier.</param>
-        private void RequestMove(
+        private bool TryRequestMove(
             IMovable unit,
             ContainerNode destination,
             string sourceEventInstanceID
@@ -299,12 +310,11 @@ namespace Rebellion.Systems
             destination = ResolveLiveContainer(destination);
 
             if (!CanReceiveMoveOrder(unit))
-                return;
+                return false;
 
             if (IsManufacturingDestinationChange(unit))
             {
-                RetargetManufacturingDestination(unit, destination);
-                return;
+                return TryRetargetManufacturingDestination(unit, destination);
             }
 
             if (unit is Officer { IsCaptured: true })
@@ -317,7 +327,7 @@ namespace Rebellion.Systems
                     GameLogger.Warning(
                         $"RequestMove rejected: {unit.GetDisplayName()} is captured and cannot be ordered to move."
                     );
-                    return;
+                    return false;
                 }
             }
 
@@ -327,7 +337,7 @@ namespace Rebellion.Systems
                 GameLogger.Warning(
                     $"RequestMove rejected: {unit.GetDisplayName()} cannot enter the enemy blockade at {requestedPlanet.GetDisplayName()}."
                 );
-                return;
+                return false;
             }
 
             bool moved = ExecuteMove(
@@ -338,6 +348,7 @@ namespace Rebellion.Systems
             );
             if (moved && unit is Fleet fleet)
                 fleet.Waypoints.Clear();
+            return moved;
         }
 
         /// <summary>
@@ -2888,7 +2899,8 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The item being manufactured.</param>
         /// <param name="destination">The requested destination.</param>
-        private void RetargetManufacturingDestination(IMovable unit, ContainerNode destination)
+        /// <returns>True when the destination change was accepted.</returns>
+        private bool TryRetargetManufacturingDestination(IMovable unit, ContainerNode destination)
         {
             if (
                 !TryResolveAcceptedDestination(
@@ -2897,9 +2909,10 @@ namespace Rebellion.Systems
                     out ContainerNode resolvedDestination
                 )
             )
-                return;
+                return false;
 
             ApplyManufacturingDestination(unit, resolvedDestination);
+            return true;
         }
 
         /// <summary>
