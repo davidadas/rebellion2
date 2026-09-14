@@ -60,7 +60,6 @@ namespace Rebellion.Tests.Systems
                     new Faction
                     {
                         InstanceID = "empire",
-                        PlayerID = null,
                         Settings = new FactionSettings
                         {
                             InvertSupportShift = true,
@@ -76,7 +75,6 @@ namespace Rebellion.Tests.Systems
                     new Faction
                     {
                         InstanceID = "alliance",
-                        PlayerID = null,
                         Settings = new FactionSettings
                         {
                             InvertSupportShift = false,

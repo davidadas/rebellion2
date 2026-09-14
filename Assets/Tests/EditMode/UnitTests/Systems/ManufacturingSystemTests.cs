@@ -804,7 +804,16 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_AtPlayerRefinedMaterialReserve_ContinuesProduction()
         {
-            _empire.PlayerID = "PLAYER1";
+            _game
+                .GetPlayers()
+                .Add(
+                    new Player
+                    {
+                        PlayerID = "PLAYER1",
+                        FactionID = _empire.InstanceID,
+                        ControllerType = PlayerControllerType.Human,
+                    }
+                );
             Building defense = new Building
             {
                 InstanceID = "DEFENSE1",

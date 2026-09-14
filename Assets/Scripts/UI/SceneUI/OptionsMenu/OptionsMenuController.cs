@@ -225,6 +225,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _settingsSession.GetGameplayStates(),
                 _settingsSession.Gameplay.AutosaveIntervalTicks,
                 _settingsSession.Gameplay.AutosavesToKeep,
+                _settingsSession.GetUserInterfaceStates(),
                 BuildModRows().ToArray(),
                 GetSelectedPack()?.DisplayName ?? _selectedPackID,
                 !string.Equals(
@@ -387,6 +388,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.QuitRequested += HandleQuitRequested;
         target.TacticalToggleRequested += HandleTacticalToggle;
         target.GameplayToggleRequested += HandleGameplayToggle;
+        target.UserInterfaceToggleRequested += HandleUserInterfaceToggle;
         target.ModToggleRequested += HandleModToggle;
         target.ContentPackStepRequested += HandleContentPackStep;
         target.AutosaveIntervalChanged += HandleAutosaveIntervalChanged;
@@ -862,6 +864,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Toggles a user-interface option and marks settings dirty.
+    /// </summary>
+    private void HandleUserInterfaceToggle(UserInterfaceOption option)
+    {
+        _settingsSession.ToggleUserInterface(option);
+        _markDirty();
+    }
+
+    /// <summary>
     /// Applies a directly entered autosave interval.
     /// </summary>
     /// <param name="value">The entered interval text.</param>
@@ -941,6 +952,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.QuitRequested -= HandleQuitRequested;
         destroyed.TacticalToggleRequested -= HandleTacticalToggle;
         destroyed.GameplayToggleRequested -= HandleGameplayToggle;
+        destroyed.UserInterfaceToggleRequested -= HandleUserInterfaceToggle;
         destroyed.ModToggleRequested -= HandleModToggle;
         destroyed.ContentPackStepRequested -= HandleContentPackStep;
         destroyed.AutosaveIntervalChanged -= HandleAutosaveIntervalChanged;

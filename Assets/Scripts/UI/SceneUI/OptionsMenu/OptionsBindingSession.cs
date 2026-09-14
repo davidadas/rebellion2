@@ -714,6 +714,7 @@ internal sealed class OptionsBindingSession : IDisposable
             .Replace("LEFT ", "L ")
             .Replace("RIGHT ", "R ")
             .Replace("CONTROL", "CTRL")
+            .Replace("COMMAND", "CMD")
             .Replace("DELETE", "DEL")
             .Replace("INSERT", "INS")
             .Replace("BACKSPACE", "BKSP")

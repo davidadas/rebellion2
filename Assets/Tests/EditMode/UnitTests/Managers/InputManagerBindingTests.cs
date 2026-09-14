@@ -1,12 +1,51 @@
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace Rebellion.Tests.Managers
 {
     [TestFixture]
     public sealed class InputManagerBindingTests
     {
+        [Test]
+        public void SetShortcutModifier_MacOS_UsesResolvableCommandKey()
+        {
+            InputTestFixture inputFixture = new InputTestFixture();
+            inputFixture.Setup();
+            InputActionAsset asset = CreateModifierActions();
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+
+            try
+            {
+                InputManager.SetShortcutModifier(asset, true);
+                InputAction action = asset.FindAction("Test/Shortcut", true);
+                asset.Enable();
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.LeftMeta));
+                InputSystem.Update();
+
+                AssertModifierPath(action, "<Keyboard>/leftMeta");
+                CollectionAssert.Contains(action.controls, keyboard.leftMetaKey);
+                Assert.IsTrue(action.IsPressed());
+                Assert.IsNotEmpty(action.GetBindingDisplayString(0));
+            }
+            finally
+            {
+                Object.DestroyImmediate(asset);
+                inputFixture.TearDown();
+            }
+        }
+
+        [Test]
+        public void SetShortcutModifier_Windows_UsesControl()
+        {
+            InputActionAsset asset = CreateModifierActions();
+
+            InputManager.SetShortcutModifier(asset, false);
+
+            AssertModifierPath(asset.FindAction("Test/Shortcut", true), "<Keyboard>/ctrl");
+        }
+
         /// <summary>
         /// Verifies that overrides attached to authored binding IDs survive a manager restart.
         /// </summary>
@@ -133,6 +172,27 @@ namespace Rebellion.Tests.Managers
             }
             Assert.Fail($"Binding '{name}' was not found on {action}.");
             return -1;
+        }
+
+        /// <summary>
+        /// Creates an action containing the authored cross-platform modifier alternatives.
+        /// </summary>
+        private static InputActionAsset CreateModifierActions()
+        {
+            InputActionAsset asset = ScriptableObject.CreateInstance<InputActionAsset>();
+            InputAction action = asset.AddActionMap("Test").AddAction("Shortcut");
+            action.AddBinding("<Keyboard>/ctrl");
+            action.AddBinding("<Keyboard>/leftMeta");
+            return asset;
+        }
+
+        /// <summary>
+        /// Verifies that an action uses only the expected platform modifier default.
+        /// </summary>
+        private static void AssertModifierPath(InputAction action, string expectedPath)
+        {
+            Assert.AreEqual(expectedPath, action.bindings[0].path);
+            Assert.AreEqual(string.Empty, action.bindings[1].path);
         }
     }
 }

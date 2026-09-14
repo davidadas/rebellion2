@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
@@ -647,9 +648,9 @@ public sealed class BattleAlertWindowController
             return playerFactionId;
 
         return uiContext
-            ?.Game?.GetFactions()
-            ?.FirstOrDefault(faction => !string.IsNullOrEmpty(faction.PlayerID))
-            ?.InstanceID;
+            ?.Game?.GetPlayers()
+            ?.FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
+            ?.FactionID;
     }
 
     /// <summary>

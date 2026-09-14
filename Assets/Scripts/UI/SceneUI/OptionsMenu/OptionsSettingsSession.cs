@@ -26,6 +26,8 @@ internal sealed class OptionsSettingsSession
         new Dictionary<UserTacticalOption, bool>();
     private readonly Dictionary<UserGameplayOption, bool> _snapshotGameplay =
         new Dictionary<UserGameplayOption, bool>();
+    private readonly Dictionary<UserInterfaceOption, bool> _snapshotUserInterface =
+        new Dictionary<UserInterfaceOption, bool>();
 
     private float[] _snapshotVolumes = Array.Empty<float>();
     private int _snapshotResolutionWidth;
@@ -41,6 +43,8 @@ internal sealed class OptionsSettingsSession
     internal UserVideoSettings Video => _userSettings.Settings.Video;
 
     internal UserGameplaySettings Gameplay => _userSettings.Settings.Gameplay;
+
+    internal UserInterfaceSettings UserInterface => _userSettings.Settings.UserInterface;
 
     internal UserAudioSettings Audio => _userSettings.Settings.Audio;
 
@@ -101,6 +105,8 @@ internal sealed class OptionsSettingsSession
             Video.SetEnabled(entry.Key, entry.Value);
         foreach (KeyValuePair<UserGameplayOption, bool> entry in _snapshotGameplay)
             Gameplay.SetEnabled(entry.Key, entry.Value);
+        foreach (KeyValuePair<UserInterfaceOption, bool> entry in _snapshotUserInterface)
+            UserInterface.SetEnabled(entry.Key, entry.Value);
         Gameplay.SetAutosaveIntervalTicks(_snapshotAutosaveIntervalTicks);
         Gameplay.SetAutosavesToKeep(_snapshotAutosavesToKeep);
 
@@ -120,6 +126,7 @@ internal sealed class OptionsSettingsSession
         {
             case OptionsMenuTab.Gameplay:
                 Gameplay.RestoreDefaults();
+                UserInterface.RestoreDefaults();
                 break;
             case OptionsMenuTab.Graphics:
                 Video.ResolutionWidth = 0;
@@ -148,6 +155,17 @@ internal sealed class OptionsSettingsSession
         Dictionary<UserGameplayOption, bool> states = new Dictionary<UserGameplayOption, bool>();
         foreach (UserGameplayOption option in Enum.GetValues(typeof(UserGameplayOption)))
             states[option] = Gameplay.IsEnabled(option);
+        return states;
+    }
+
+    /// <summary>
+    /// Copies the staged user-interface toggles for presentation.
+    /// </summary>
+    internal Dictionary<UserInterfaceOption, bool> GetUserInterfaceStates()
+    {
+        Dictionary<UserInterfaceOption, bool> states = new Dictionary<UserInterfaceOption, bool>();
+        foreach (UserInterfaceOption option in Enum.GetValues(typeof(UserInterfaceOption)))
+            states[option] = UserInterface.IsEnabled(option);
         return states;
     }
 
@@ -193,6 +211,15 @@ internal sealed class OptionsSettingsSession
     internal void ToggleGameplay(UserGameplayOption option)
     {
         Gameplay.SetEnabled(option, !Gameplay.IsEnabled(option));
+        RefreshDirtyState();
+    }
+
+    /// <summary>
+    /// Toggles a user-interface option and marks the session dirty.
+    /// </summary>
+    internal void ToggleUserInterface(UserInterfaceOption option)
+    {
+        UserInterface.SetEnabled(option, !UserInterface.IsEnabled(option));
         RefreshDirtyState();
     }
 
@@ -292,6 +319,9 @@ internal sealed class OptionsSettingsSession
         _snapshotGameplay.Clear();
         foreach (UserGameplayOption option in Enum.GetValues(typeof(UserGameplayOption)))
             _snapshotGameplay[option] = Gameplay.IsEnabled(option);
+        _snapshotUserInterface.Clear();
+        foreach (UserInterfaceOption option in Enum.GetValues(typeof(UserInterfaceOption)))
+            _snapshotUserInterface[option] = UserInterface.IsEnabled(option);
     }
 
     /// <summary>
@@ -342,6 +372,18 @@ internal sealed class OptionsSettingsSession
             if (
                 !_snapshotGameplay.TryGetValue(option, out bool enabled)
                 || Gameplay.IsEnabled(option) != enabled
+            )
+            {
+                IsDirty = true;
+                return;
+            }
+        }
+
+        foreach (UserInterfaceOption option in Enum.GetValues(typeof(UserInterfaceOption)))
+        {
+            if (
+                !_snapshotUserInterface.TryGetValue(option, out bool enabled)
+                || UserInterface.IsEnabled(option) != enabled
             )
             {
                 IsDirty = true;

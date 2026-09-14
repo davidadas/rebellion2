@@ -185,8 +185,18 @@ public sealed class GameManager
     /// <summary>
     /// Returns the player-controlled faction.
     /// </summary>
-    /// <returns>The faction whose PlayerID is set.</returns>
+    /// <returns>The faction controlled by the human game participant.</returns>
     public Faction GetPlayerFaction() => _game.GetPlayerFaction();
+
+    /// <summary>
+    /// Returns the durable interface state for the local human participant.
+    /// </summary>
+    /// <returns>The local participant's interface state.</returns>
+    public PlayerUIState GetPlayerUIState()
+    {
+        Faction faction = GetPlayerFaction();
+        return _game.GetFactionPlayer(faction.InstanceID).UIState;
+    }
 
     /// <summary>
     /// Returns the fog of war system for building faction-specific galaxy views.
@@ -333,6 +343,8 @@ public sealed class GameManager
         _factionAutomationSystem.ProcessTick();
         ProcessResults(_resourceProductionSystem.ProcessTick());
         ProcessResults(_manufacturingSystem.ProcessTick());
+        // Refill capacity released by completed orders before tick observers render idle lanes.
+        _factionAutomationSystem.ProcessTick();
         ProcessResults(_maintenanceSystem.ProcessTick());
         ProcessResults(_recoverySystem.ProcessTick());
         ProcessResults(_captiveSystem.ProcessTick());
@@ -429,6 +441,7 @@ public sealed class GameManager
             throw new InvalidOperationException("Cannot manage a null game.");
 
         _game = game;
+        _game.EnsurePlayers();
         if (_game.Config == null)
             _game.SetConfig(_gameData.GameConfig);
         _game.RebuildSceneState();

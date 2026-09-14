@@ -251,6 +251,26 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
+    /// Opens a sector in an unoccupied authored slot without replacing another sector window.
+    /// </summary>
+    /// <param name="sector">The sector that should accompany a planet feature window.</param>
+    /// <returns>True when the sector is already open or was opened in an available slot.</returns>
+    public bool TryOpenInAvailableSlot(GalaxyMapSector sector)
+    {
+        if (sector == null)
+            return false;
+        if (FindWindow(sector) != null)
+            return true;
+
+        int? position = GetAvailablePosition();
+        if (!position.HasValue)
+            return false;
+
+        OpenAt(sector, position.Value);
+        return FindWindow(sector) != null;
+    }
+
+    /// <summary>
     /// Renders every registered planet-sector window.
     /// </summary>
     public void RenderWindows()
@@ -1218,13 +1238,22 @@ public sealed class PlanetSectorWindowController
     /// <returns>The selected authored sector position.</returns>
     private int GetTargetPosition()
     {
+        return GetAvailablePosition() ?? _sectorWindowPositionOrder[0];
+    }
+
+    /// <summary>
+    /// Finds the first unoccupied authored sector slot.
+    /// </summary>
+    /// <returns>The available slot, or null when all slots are occupied.</returns>
+    private int? GetAvailablePosition()
+    {
         foreach (int position in _sectorWindowPositionOrder)
         {
             if (FindWindow(position) == null)
                 return position;
         }
 
-        return _sectorWindowPositionOrder[0];
+        return null;
     }
 
     /// <summary>

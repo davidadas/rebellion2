@@ -139,8 +139,8 @@ namespace Rebellion.Systems
             Faction defender = _game.GetFactionByOwnerInstanceID(decision.DefenderOwnerInstanceID);
             return attacker != null
                 && defender != null
-                && attacker.IsAIControlled()
-                && defender.IsAIControlled();
+                && _game.IsFactionAIControlled(attacker)
+                && _game.IsFactionAIControlled(defender);
         }
 
         /// <summary>

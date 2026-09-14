@@ -1,3 +1,4 @@
+using System.Linq;
 using Rebellion.Input;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -14,7 +15,7 @@ public sealed class InputManager : MonoBehaviour
     /// </summary>
     public PlayerInputActions Actions
     {
-        get { return _actions ??= new PlayerInputActions(); }
+        get { return _actions ??= CreateActions(); }
     }
 
     /// <summary>
@@ -89,6 +90,53 @@ public sealed class InputManager : MonoBehaviour
         if (!string.IsNullOrWhiteSpace(bindingOverrides))
             asset.LoadBindingOverridesFromJson(bindingOverrides);
         RemoveReservedShortcutOverrides(asset);
+    }
+
+    /// <summary>
+    /// Applies the platform-specific default for shortcuts authored with the Control modifier.
+    /// </summary>
+    /// <param name="asset">The input action asset to update.</param>
+    /// <param name="useCommandKey">Whether Command replaces Control.</param>
+    internal static void SetShortcutModifier(InputActionAsset asset, bool useCommandKey)
+    {
+        foreach (InputActionMap actionMap in asset.actionMaps)
+        {
+            foreach (InputAction action in actionMap.actions)
+            {
+                bool hasControlDefault = action.bindings.Any(binding =>
+                    binding.path == "<Keyboard>/ctrl"
+                );
+                if (!hasControlDefault)
+                    continue;
+
+                for (int index = 0; index < action.bindings.Count; index++)
+                {
+                    string path = action.bindings[index].path;
+                    if (path == "<Keyboard>/ctrl")
+                    {
+                        if (useCommandKey)
+                            action.ChangeBinding(index).WithPath("<Keyboard>/leftMeta");
+                    }
+                    else if (path == "<Keyboard>/leftMeta")
+                    {
+                        action.ChangeBinding(index).WithPath(string.Empty);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Creates the generated actions and selects the native desktop shortcut modifier.
+    /// </summary>
+    private static PlayerInputActions CreateActions()
+    {
+        PlayerInputActions actions = new PlayerInputActions();
+        bool useCommandKey =
+            Application.platform == RuntimePlatform.OSXEditor
+            || Application.platform == RuntimePlatform.OSXPlayer;
+        SetShortcutModifier(actions.asset, useCommandKey);
+        return actions;
     }
 
     /// <summary>

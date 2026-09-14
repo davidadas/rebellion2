@@ -7,6 +7,7 @@ using System;
 public sealed class UserSettings
 {
     public UserGameplaySettings Gameplay = new UserGameplaySettings();
+    public UserInterfaceSettings UserInterface = new UserInterfaceSettings();
     public UserAudioSettings Audio = new UserAudioSettings();
     public UserVideoSettings Video = new UserVideoSettings();
     public UserInputSettings Input = new UserInputSettings();
@@ -18,6 +19,7 @@ public sealed class UserSettings
     public void Normalize()
     {
         Gameplay ??= new UserGameplaySettings();
+        UserInterface ??= new UserInterfaceSettings();
         Audio ??= new UserAudioSettings();
         Video ??= new UserVideoSettings();
         Input ??= new UserInputSettings();

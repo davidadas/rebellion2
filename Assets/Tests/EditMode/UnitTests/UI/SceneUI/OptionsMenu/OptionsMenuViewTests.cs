@@ -322,20 +322,21 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies the Gameplay mode and footer use the requested player-facing labels.
+        /// Verifies the Gameplay sections and footer use the requested player-facing labels.
         /// </summary>
         [Test]
-        public void GeneratedLabels_UseGalacticModeAndReturnWording()
+        public void GeneratedLabels_UseGalaxyViewAndReturnWording()
         {
-            string[] labels = _root
-                .GetComponentsInChildren<TextMeshProUGUI>(true)
-                .Select(field => field.text)
-                .ToArray();
+            TextMeshProUGUI[] fields = _root.GetComponentsInChildren<TextMeshProUGUI>(true);
+            string[] labels = fields.Select(field => field.text).ToArray();
 
-            CollectionAssert.Contains(labels, "GALACTIC MODE");
+            CollectionAssert.Contains(labels, "GALAXY VIEW");
             CollectionAssert.Contains(labels, "Show Idle Bar");
+            CollectionAssert.Contains(labels, "Keep Idle Bar Open");
             CollectionAssert.Contains(labels, "RETURN TO GAME");
             CollectionAssert.Contains(labels, "RETURN TO MAIN MENU");
+
+            Assert.IsFalse(fields.Any(field => field.text == "IDLE BAR"));
         }
 
         /// <summary>

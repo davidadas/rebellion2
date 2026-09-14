@@ -150,6 +150,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void TryOpenInAvailableSlot_AvailableSlot_OpensWithoutReplacingWindow()
+        {
+            GalaxyMapSector secondSector = CreateSector("second", "Second Sector");
+            _controller.Open(_sector);
+
+            bool opened = _controller.TryOpenInAvailableSlot(secondSector);
+
+            Assert.IsTrue(opened);
+            Assert.AreEqual(2, _windowManager.Windows.Count);
+            Assert.IsNotNull(_controller.FindWindow(_sector));
+            Assert.IsNotNull(_controller.FindWindow(secondSector));
+        }
+
+        [Test]
+        public void TryOpenInAvailableSlot_AllSlotsOccupied_DoesNotReplaceWindow()
+        {
+            GalaxyMapSector secondSector = CreateSector("second", "Second Sector");
+            GalaxyMapSector thirdSector = CreateSector("third", "Third Sector");
+            GalaxyMapSector fourthSector = CreateSector("fourth", "Fourth Sector");
+            _controller.Open(_sector);
+            _controller.Open(secondSector);
+            _controller.Open(thirdSector);
+
+            bool opened = _controller.TryOpenInAvailableSlot(fourthSector);
+
+            Assert.IsFalse(opened);
+            Assert.AreEqual(3, _windowManager.Windows.Count);
+            Assert.IsNotNull(_controller.FindWindow(_sector));
+            Assert.IsNotNull(_controller.FindWindow(secondSector));
+            Assert.IsNotNull(_controller.FindWindow(thirdSector));
+            Assert.IsNull(_controller.FindWindow(fourthSector));
+        }
+
+        [Test]
         public void SetSectorPosition_InitializedWindow_UpdatesSessionSlot()
         {
             PlanetSectorWindowView view = OpenWindow(out UIWindow _);
@@ -614,6 +648,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 planet.GetPlanetIconPath()
             );
             return new GalaxyMapSector(planetSector, new[] { strategyPlanet });
+        }
+
+        private static GalaxyMapSector CreateSector(string instanceId, string displayName)
+        {
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector
+            {
+                InstanceID = instanceId,
+                DisplayName = displayName,
+            };
+            return new GalaxyMapSector(planetSector, Array.Empty<GalaxyMapPlanet>());
         }
 
         private PlanetSectorWindowView OpenWindow(out UIWindow window)
