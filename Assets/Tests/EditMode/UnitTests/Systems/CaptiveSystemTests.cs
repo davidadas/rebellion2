@@ -357,6 +357,11 @@ namespace Rebellion.Tests.Systems
                 result.IsCaptured,
                 "Result should indicate officer is no longer captured"
             );
+            Assert.AreEqual(
+                "rebels",
+                result.CaptorInstanceID,
+                "Result should retain the faction that lost custody"
+            );
         }
 
         [Test]

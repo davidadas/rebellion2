@@ -2576,6 +2576,55 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_OfficerRelease_NotifiesOwnerAndFormerCaptor()
+        {
+            (GameRoot game, Faction alliance, Faction empire, Planet origin, _) =
+                BuildTwoFactionMessageScene();
+            Officer target = new Officer
+            {
+                TypeID = "OFAL001",
+                DisplayName = "Target",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(target, origin);
+
+            List<MessageDeliveryRequest> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.OfficerReleased,
+                        MessageType.Mission,
+                        "owner:{officer}",
+                        "owner:{officer}:{system}"
+                    ),
+                    Definition(
+                        MessageResultType.EnemyOfficerReleased,
+                        MessageType.Mission,
+                        "captor:{officer}",
+                        "captor:{officer}:{system}"
+                    ),
+                },
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = target,
+                    IsCaptured = false,
+                    CaptorInstanceID = empire.InstanceID,
+                    Context = origin,
+                }
+            );
+
+            Assert.AreEqual(2, deliveries.Count);
+            Assert.AreEqual("owner:Target:Coruscant", FirstMessageFor(deliveries, alliance).Body);
+            Message captorMessage = FirstMessageFor(deliveries, empire);
+            Assert.AreEqual("captor:Target:Coruscant", captorMessage.Body);
+            Assert.AreEqual(
+                AdvisorSubjectNotification.Released,
+                DeliveryFor(captorMessage).AdvisorSubjectNotification
+            );
+        }
+
+        [Test]
         public void CreateMessages_OfficerRecovered_UsesBackgroundAndSubjectImage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
@@ -3737,6 +3786,43 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(MessageType.Fleet, message.Type);
             Assert.AreEqual("initiated:Alliance:Empire:Fleet 1:Yavin", message.Title);
             Assert.AreEqual("empire-image", message.DisplayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_NeutralPlanetBlockade_DoesNotCreateMessages()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = null;
+            Fleet fleet = new Fleet { OwnerInstanceID = alliance.InstanceID };
+
+            List<MessageDeliveryRequest> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.BlockadeInitiated,
+                        MessageType.Fleet,
+                        "initiated",
+                        "initiated",
+                        imagePaths: FactionImages()
+                    ),
+                    Definition(
+                        MessageResultType.BlockadeDetected,
+                        MessageType.Fleet,
+                        "detected",
+                        "detected",
+                        imagePaths: FactionImages()
+                    ),
+                },
+                new BlockadeChangedResult
+                {
+                    Planet = target,
+                    BlockadingFleet = fleet,
+                    Blockaded = true,
+                }
+            );
+
+            Assert.IsEmpty(deliveries);
         }
 
         [Test]

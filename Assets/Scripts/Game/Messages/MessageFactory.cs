@@ -423,6 +423,7 @@ namespace Rebellion.Game.Messages
                 MessageResultType.OfficerCaptured => AdvisorSubjectNotification.Captured,
                 MessageResultType.EnemyOfficerCaptured => AdvisorSubjectNotification.Captured,
                 MessageResultType.OfficerReleased => AdvisorSubjectNotification.Released,
+                MessageResultType.EnemyOfficerReleased => AdvisorSubjectNotification.Released,
                 MessageResultType.OfficerRecruited => AdvisorSubjectNotification.Report,
                 MessageResultType.OfficerInjured => AdvisorSubjectNotification.Report,
                 MessageResultType.OfficerRecovered => AdvisorSubjectNotification.Report,
@@ -737,10 +738,10 @@ namespace Rebellion.Game.Messages
                     )
                 );
 
-                if (!result.IsCaptured)
-                    continue;
-
-                Faction captorFaction = GetFaction(game, officer?.CaptorInstanceID);
+                Faction captorFaction = GetFaction(
+                    game,
+                    result.IsCaptured ? officer?.CaptorInstanceID : result.CaptorInstanceID
+                );
                 if (captorFaction?.InstanceID == ownerFaction?.InstanceID)
                     continue;
 
@@ -748,7 +749,9 @@ namespace Rebellion.Game.Messages
                     deliveries,
                     captorFaction,
                     CreateOfficerMessage(
-                        MessageResultType.EnemyOfficerCaptured,
+                        result.IsCaptured
+                            ? MessageResultType.EnemyOfficerCaptured
+                            : MessageResultType.EnemyOfficerReleased,
                         captorFaction,
                         officer,
                         planet,
@@ -2090,6 +2093,8 @@ namespace Rebellion.Game.Messages
                     result.BlockadingFleet?.GetOwnerInstanceID()
                 );
                 Faction targetFaction = GetBlockadeFaction(game, result.Planet?.OwnerInstanceID);
+                if (targetFaction == null)
+                    continue;
                 AddBlockadeDelivery(
                     deliveries,
                     blockadingFaction,
