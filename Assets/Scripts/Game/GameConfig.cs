@@ -389,7 +389,6 @@ namespace Rebellion.Game
             public int ShipyardDemandPercent { get; set; }
             public int TrainingFacilityDemandPercent { get; set; } = 100;
             public int TrainingFacilityBacklogPressureBonus { get; set; } = 5;
-            public int TrainingFacilitySecondFacilityWeight { get; set; } = 125;
             public int FacilitySectorHubTargetCount { get; set; } = 5;
             public int ShipyardSectorHubTargetCount { get; set; } = 6;
             public int FacilitySectorHubMaximumCount { get; set; } = 7;
@@ -397,14 +396,8 @@ namespace Rebellion.Game
             public int FacilitySectorSecondaryTargetCount { get; set; } = 3;
             public int FacilitySectorCoveragePressureBonus { get; set; } = 100;
             public int FacilitySectorPrimaryHubPressureBonus { get; set; } = 50;
-            public int FacilitySystemCoverageWeight { get; set; } = 50;
-            public int FacilityExistingHubWeight { get; set; } = 30;
-            public int ConstructionFacilityHubWeight { get; set; } = 100;
-            public int FacilityAvailableEnergyWeight { get; set; } = 20;
-            public int FacilityPlanetValueWeight { get; set; } = 15;
-            public int FacilitySystemSecurityWeight { get; set; } = 20;
-            public int FacilityDemandProximityWeight { get; set; } = 15;
-            public int FacilityResourceOpportunityCostWeight { get; set; } = 25;
+            public AIInfrastructurePlacementUtilityConfig PlacementUtility { get; set; } =
+                new AIInfrastructurePlacementUtilityConfig();
             public int ProductionFacilityMaintenanceAllocationPercent { get; set; } = 30;
             public int ProductionFacilityInvestmentHorizonTicks { get; set; } = 70;
             public int ProductionFacilityInvestmentPressureWeight { get; set; } = 100;
@@ -455,6 +448,34 @@ namespace Rebellion.Game
             public int FleetFinalReadinessGateUnitCount { get; set; } = 2;
             public int FleetStarfighterFillPressureWeight { get; set; } = 20;
             public int FleetReinforcementTravelPenaltyWeight { get; set; } = 1;
+        }
+
+        /// <summary>
+        /// Utility considerations used to rank production-facility destinations.
+        /// </summary>
+        [PersistableObject]
+        public class AIInfrastructurePlacementUtilityConfig
+        {
+            public AIConsiderationConfig SystemCoverage { get; set; } = Weighted(50);
+
+            public AIConsiderationConfig ExistingHub { get; set; } = Weighted(30);
+
+            public AIConsiderationConfig ConstructionHub { get; set; } = Weighted(100);
+
+            public AIConsiderationConfig SecondTrainingFacility { get; set; } = Weighted(125);
+
+            public AIConsiderationConfig AvailableEnergy { get; set; } = Weighted(20);
+
+            public AIConsiderationConfig PlanetValue { get; set; } = Weighted(15);
+
+            public AIConsiderationConfig SystemSecurity { get; set; } = Weighted(20);
+
+            public AIConsiderationConfig DemandProximity { get; set; } = Weighted(15);
+
+            public AIConsiderationConfig ResourceOpportunityCost { get; set; } = Weighted(25);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>

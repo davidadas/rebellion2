@@ -187,6 +187,7 @@ namespace Rebellion.AI.Scoring
         )
         {
             GameConfig.AIInfrastructureConfig config = _context.Game.Config.AI.Infrastructure;
+            GameConfig.AIInfrastructurePlacementUtilityConfig utility = config.PlacementUtility;
             string systemId = _context.Assessment.GetPlanetSystemId(planet);
             int systemFacilityCount = _facilityCountsBySystem.TryGetValue(systemId, out int count)
                 ? count
@@ -200,17 +201,21 @@ namespace Rebellion.AI.Scoring
                 demandPlanet == null || greatestDistance <= 0
                     ? 1
                     : 1 - demandPlanet.GetRawDistanceTo(planet) / greatestDistance;
-            double score = systemFacilityCount == 0 ? config.FacilitySystemCoverageWeight : 0;
-            int hubWeight =
+            double score = AIUtility.Evaluate(
+                systemFacilityCount == 0 ? 1 : 0,
+                utility.SystemCoverage
+            );
+            GameConfig.AIConsiderationConfig hub =
                 manufacturingType == ManufacturingType.Building
-                    ? config.ConstructionFacilityHubWeight
-                    : config.FacilityExistingHubWeight;
-            score +=
-                hubWeight
-                * Normalize(
+                    ? utility.ConstructionHub
+                    : utility.ExistingHub;
+            score += AIUtility.Evaluate(
+                AIUtility.Fulfillment(
                     _context.Assessment.GetPlanetProductionRate(planet, manufacturingType),
                     highestProductionRate
-                );
+                ),
+                hub
+            );
             if (
                 buildingType == BuildingType.TrainingFacility
                 && _context.Assessment.GetPlanetProductionFacilityCount(
@@ -218,32 +223,32 @@ namespace Rebellion.AI.Scoring
                     ManufacturingType.Troop
                 ) == 1
             )
-                score += config.TrainingFacilitySecondFacilityWeight;
-            score +=
-                config.FacilityAvailableEnergyWeight
-                * Normalize(availableEnergy, highestAvailableEnergy);
-            score +=
-                config.FacilityPlanetValueWeight
-                * Normalize(_context.Assessment.GetPlanetValue(planet), highestPlanetValue);
-            score += config.FacilitySystemSecurityWeight * systemControl;
-            score += config.FacilityDemandProximityWeight * proximity;
+                score += AIUtility.Evaluate(1, utility.SecondTrainingFacility);
+            score += AIUtility.Evaluate(
+                AIUtility.Fulfillment(availableEnergy, highestAvailableEnergy),
+                utility.AvailableEnergy
+            );
+            score += AIUtility.Evaluate(
+                AIUtility.Fulfillment(
+                    _context.Assessment.GetPlanetValue(planet),
+                    highestPlanetValue
+                ),
+                utility.PlanetValue
+            );
+            score += AIUtility.Evaluate(systemControl, utility.SystemSecurity);
+            score += AIUtility.Evaluate(proximity, utility.DemandProximity);
 
             if (manufacturingType != ManufacturingType.Building)
-                score -=
-                    config.FacilityResourceOpportunityCostWeight
-                    * Normalize(GetUnminedResourceCount(planet), highestUnminedResourceCount);
+                score -= AIUtility.Evaluate(
+                    AIUtility.Fulfillment(
+                        GetUnminedResourceCount(planet),
+                        highestUnminedResourceCount
+                    ),
+                    utility.ResourceOpportunityCost
+                );
 
             return score;
         }
-
-        /// <summary>
-        /// Returns a value relative to the strongest candidate value.
-        /// </summary>
-        /// <param name="value">The candidate value.</param>
-        /// <param name="maximum">The strongest candidate value.</param>
-        /// <returns>A value from zero through one.</returns>
-        private static double Normalize(double value, double maximum) =>
-            maximum <= 0 ? 0 : value / maximum;
 
         /// <summary>
         /// Adds one planet to a system count.
