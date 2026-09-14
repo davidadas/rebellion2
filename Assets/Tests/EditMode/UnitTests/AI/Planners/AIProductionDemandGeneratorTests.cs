@@ -1964,11 +1964,11 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithMultipleAttackFleets_FocusesOneCampaign()
+        public void Generate_WithSeparateAttackFleetNeeds_PrioritizesEachManufacturingLane()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
-            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 2;
             game.Config.AI.Infrastructure.AssaultRegimentLoadPercent = 0;
             game.Config.AI.Infrastructure.StarfighterParentFillPercent = 0;
             PlanetSector establishedSystem = AITestSceneBuilder.AddSector(
@@ -2020,10 +2020,19 @@ namespace Rebellion.Tests.AI.Planners
                     "established-ship",
                     empire.InstanceID,
                     combatStrength: 100,
-                    regimentCapacity: 0,
+                    regimentCapacity: 2,
                     starfighterCapacity: 0
                 ),
                 establishedFleet
+            );
+            CapitalShip establishedShip = establishedFleet.GetChildren<CapitalShip>().Single();
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("established-regiment-1", empire.InstanceID),
+                establishedShip
+            );
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("established-regiment-2", empire.InstanceID),
+                establishedShip
             );
 
             Fleet remoteFleet = EntityFactory.CreateFleet("remote-fleet", empire.InstanceID);
@@ -2040,10 +2049,14 @@ namespace Rebellion.Tests.AI.Planners
                     "remote-ship",
                     empire.InstanceID,
                     combatStrength: 500,
-                    regimentCapacity: 1,
+                    regimentCapacity: 2,
                     starfighterCapacity: 0
                 ),
                 remoteFleet
+            );
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("remote-regiment", empire.InstanceID),
+                remoteFleet.GetChildren<CapitalShip>().Single()
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -2055,9 +2068,17 @@ namespace Rebellion.Tests.AI.Planners
                 )
                 .ToList();
 
-            Assert.AreEqual(
-                1,
-                reinforcementDemands.Select(demand => demand.DestinationFleet).Distinct().Count()
+            Assert.IsTrue(
+                reinforcementDemands.Any(demand =>
+                    demand.Kind == AIDemandKind.FleetCapitalShip
+                    && demand.DestinationFleet == establishedFleet
+                )
+            );
+            Assert.IsTrue(
+                reinforcementDemands.Any(demand =>
+                    demand.Kind == AIDemandKind.FleetRegiment
+                    && demand.DestinationFleet == remoteFleet
+                )
             );
         }
 
