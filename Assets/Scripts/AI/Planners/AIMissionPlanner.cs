@@ -1046,12 +1046,19 @@ namespace Rebellion.AI.Planners
                 IsCoreWorld(planet) ? 1 : 0,
                 context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.CoreWorld
             );
+            GameConfig.AIConsiderationConfig supportUtility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .Diplomacy
+                .SupportDeficit;
 
             if (context.Assessment.IsOwnedPlanet(planet))
             {
                 int supportRisk = context.Assessment.GetDefensiveSupportRisk(planet);
-                return 100
-                    - support
+                return AIUtility.EvaluateRaw(100 - support, supportUtility)
                     + strategicValue
                     + coreWorldValue
                     + AIUtility.EvaluateRaw(
@@ -1061,7 +1068,7 @@ namespace Rebellion.AI.Planners
             }
 
             return context.Assessment.IsNeutralPlanet(planet)
-                ? support + strategicValue + coreWorldValue
+                ? AIUtility.EvaluateRaw(support, supportUtility) + strategicValue + coreWorldValue
                 : 0;
         }
 
