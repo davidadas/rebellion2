@@ -92,13 +92,16 @@ public sealed class StrategyWindowPlacementController
     /// <returns>True when the persisted value maps to a valid authored slot.</returns>
     public bool TryResolveSectorWindowPosition(int value, out int slot)
     {
+        if (TryGetSectorWindowSlot(value, out slot))
+            return true;
         if (value >= SectorWindowPositions.Left && value <= SectorWindowPositions.Right)
         {
             slot = value;
             return true;
         }
 
-        return TryGetSectorWindowSlot(value, out slot);
+        slot = -1;
+        return false;
     }
 
     /// <summary>
