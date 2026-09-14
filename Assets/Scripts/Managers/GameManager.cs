@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
@@ -165,7 +167,7 @@ public sealed class GameManager
     /// <summary>
     /// Reconstructs unresolved runtime decisions represented by loaded game state.
     /// </summary>
-    internal void ReconcileLoadedState()
+    public void ReconcileLoadedState()
     {
         ReconcileLoadedCombatState();
     }
@@ -193,6 +195,64 @@ public sealed class GameManager
     /// </summary>
     /// <returns>The active FogOfWarSystem instance.</returns>
     public FogOfWarSystem GetFogOfWarSystem() => _fogOfWarSystem;
+
+    /// <summary>
+    /// Requests movement through the same validated system used by player-facing controls.
+    /// </summary>
+    /// <param name="units">The units to move.</param>
+    /// <param name="destination">The requested destination.</param>
+    /// <param name="factionInstanceId">The faction issuing the command.</param>
+    /// <returns>True when the movement request was accepted.</returns>
+    public bool TryRequestMove(
+        IReadOnlyList<ISceneNode> units,
+        ContainerNode destination,
+        string factionInstanceId
+    ) => _movementSystem.TryRequestMove(units, destination, factionInstanceId);
+
+    /// <summary>
+    /// Starts a manufacturing order through the same validated system used by player controls.
+    /// </summary>
+    public bool TryStartManufacturing(
+        Planet producer,
+        IManufacturable template,
+        ISceneNode destination,
+        int count,
+        string factionInstanceId
+    ) =>
+        _manufacturingSystem.StartManufacturing(
+            producer,
+            template,
+            destination,
+            count,
+            factionInstanceId
+        );
+
+    /// <summary>
+    /// Executes a validated planetary assault for the player-facing command boundary.
+    /// </summary>
+    public PlanetaryAssaultResult TryPlanetaryAssault(IReadOnlyList<Fleet> fleets, Planet target) =>
+        _planetaryAssaultSystem.TryExecute(fleets, target);
+
+    /// <summary>
+    /// Executes a validated bombardment for the player-facing command boundary.
+    /// </summary>
+    public BombardmentResult TryBombard(
+        IReadOnlyList<Fleet> fleets,
+        Planet target,
+        BombardmentType type
+    ) => _bombardmentSystem.TryExecute(fleets, target, type);
+
+    /// <summary>
+    /// Resolves pending player combat when a decision is available.
+    /// </summary>
+    public bool TryResolveCombat(bool autoResolve)
+    {
+        if (!_spaceCombatSystem.HasPendingDecision)
+            return false;
+
+        ResolveCombat(autoResolve);
+        return true;
+    }
 
     /// <summary>
     /// Immediately applies the current advisor automation choices for one faction.

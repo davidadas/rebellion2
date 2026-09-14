@@ -8,7 +8,7 @@ public static partial class HeadlessSimulationRunner
         public int TickCount { get; set; }
         public string OutputPath { get; set; }
         public int? Seed { get; set; }
-        public GameDifficulty Difficulty { get; set; } = GameDifficulty.Easy;
+        public GameDifficulty Difficulty { get; set; } = GameDifficulty.Medium;
         public string SaveFileName { get; set; }
         public string SaveDisplayName { get; set; }
         public string PlayerFactionId { get; set; }
@@ -37,7 +37,7 @@ public static partial class HeadlessSimulationRunner
         /// Parses the requested game difficulty.
         /// </summary>
         /// <param name="args">The command-line arguments.</param>
-        /// <returns>The requested difficulty, or Easy when none is supplied.</returns>
+        /// <returns>The requested difficulty, or Medium when none is supplied.</returns>
         private static GameDifficulty ParseDifficulty(string[] args)
         {
             string value = ParseString(args, _difficultyFlag, null);
@@ -50,7 +50,7 @@ public static partial class HeadlessSimulationRunner
                 return difficulty;
             }
 
-            return GameDifficulty.Easy;
+            return GameDifficulty.Medium;
         }
 
         /// <summary>
