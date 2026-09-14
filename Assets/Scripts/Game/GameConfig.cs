@@ -129,6 +129,8 @@ namespace Rebellion.Game
         {
             public double Weight { get; set; }
 
+            public double InputMaximum { get; set; } = 1;
+
             public AIResponseCurveConfig Curve { get; set; } = new AIResponseCurveConfig();
         }
 
@@ -239,35 +241,9 @@ namespace Rebellion.Game
 
             public int AttackStrengthPercentOfStrongestHostileFleet { get; set; }
 
-            public int AttackStrategicValueWeight { get; set; } = 55;
-
-            public int AttackSectorSupportLeverageWeight { get; set; } = 30;
-
-            public int AttackSystemPresenceWeight { get; set; } = 30;
-
-            public int AttackReadinessWeight { get; set; } = 35;
-
             public double AttackReadinessFloorWeight { get; set; } = 4;
 
-            public double ReadyAttackBonus { get; set; } = 10;
-
-            public int AttackCaptureViabilityWeight { get; set; } = 45;
-
-            public int AttackTravelEfficiencyWeight { get; set; } = 20;
-
-            public int AttackExpectedLossPenaltyWeight { get; set; } = 50;
-
-            public int AttackOpportunityCostPenaltyWeight { get; set; } = 30;
-
-            public int AttackIntelAgePenaltyPerRefreshInterval { get; set; } = 1;
-
-            public int ExistingAttackOrderBonus { get; set; } = 300;
-
-            public int HeadquartersAttackBonus { get; set; } = 45;
-
-            public int OrbitalResponseBonus { get; set; } = 250;
-
-            public int ExposedSectorBombardmentBonus { get; set; } = 100;
+            public AIAttackUtilityConfig AttackUtility { get; set; } = new AIAttackUtilityConfig();
 
             public int ExposedSectorMinimumOwnedPresencePercent { get; set; } = 50;
 
@@ -290,6 +266,47 @@ namespace Rebellion.Game
             public int ColonizationFleetMinimumRegimentCount { get; set; } = 2;
 
             public int ColonizationFleetMaximumRegimentCount { get; set; } = 4;
+        }
+
+        /// <summary>
+        /// Utility considerations used to value fleet attacks and attack-fleet reinforcement.
+        /// </summary>
+        [PersistableObject]
+        public class AIAttackUtilityConfig
+        {
+            public AIConsiderationConfig StrategicValue { get; set; } = Weighted(55);
+
+            public AIConsiderationConfig SectorSupport { get; set; } = Weighted(300, 10);
+
+            public AIConsiderationConfig SystemPresence { get; set; } = Weighted(30);
+
+            public AIConsiderationConfig Readiness { get; set; } = Weighted(35);
+
+            public AIConsiderationConfig Ready { get; set; } = Weighted(350);
+
+            public AIConsiderationConfig CaptureViability { get; set; } = Weighted(45);
+
+            public AIConsiderationConfig TravelEfficiency { get; set; } = Weighted(20);
+
+            public AIConsiderationConfig ExpectedLossRisk { get; set; } = Weighted(50);
+
+            public AIConsiderationConfig OpportunityCost { get; set; } = Weighted(30);
+
+            public AIConsiderationConfig IntelAgeRisk { get; set; } = Weighted(2);
+
+            public AIConsiderationConfig ExistingOrder { get; set; } = Weighted(300);
+
+            public AIConsiderationConfig Headquarters { get; set; } = Weighted(45);
+
+            public AIConsiderationConfig OrbitalAdvantage { get; set; } = Weighted(250);
+
+            public AIConsiderationConfig ExposedBombardment { get; set; } = Weighted(100);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
         }
 
         /// <summary>

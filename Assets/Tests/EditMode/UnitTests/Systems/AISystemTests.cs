@@ -57,7 +57,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             rebels.PlayerID = "player";
             game.Config.AI.TickInterval = 7;
-            game.Config.AI.FleetDeployment.AttackOpportunityCostPenaltyWeight = 0;
+            game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 0;
             PlanetSector planetSystem = AITestSceneBuilder.AddSector(game, "system");
             Planet owned = AITestSceneBuilder.AddPlanet(
                 game,

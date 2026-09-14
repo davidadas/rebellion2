@@ -37,6 +37,18 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
+        public void RawConsiderationNormalizesAgainstConfiguredMaximum()
+        {
+            GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
+            {
+                Weight = 300,
+                InputMaximum = 10,
+            };
+
+            Assert.That(AIUtility.EvaluateRaw(3, consideration), Is.EqualTo(90).Within(0.000001));
+        }
+
+        [Test]
         public void SmoothStepPreservesEndpointsAndMidpoint()
         {
             GameConfig.AIResponseCurveConfig curve = new GameConfig.AIResponseCurveConfig

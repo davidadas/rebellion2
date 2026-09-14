@@ -238,16 +238,16 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithEnemySystems_PrioritizesGreatestFriendlyPresence()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            game.Config.AI.FleetDeployment.AttackStrategicValueWeight = 0;
-            game.Config.AI.FleetDeployment.AttackSectorSupportLeverageWeight = 0;
-            game.Config.AI.FleetDeployment.AttackSystemPresenceWeight = 100;
-            game.Config.AI.FleetDeployment.AttackReadinessWeight = 0;
-            game.Config.AI.FleetDeployment.AttackCaptureViabilityWeight = 0;
-            game.Config.AI.FleetDeployment.AttackTravelEfficiencyWeight = 0;
-            game.Config.AI.FleetDeployment.AttackExpectedLossPenaltyWeight = 0;
-            game.Config.AI.FleetDeployment.AttackOpportunityCostPenaltyWeight = 0;
-            game.Config.AI.FleetDeployment.HeadquartersAttackBonus = 0;
-            game.Config.AI.FleetDeployment.OrbitalResponseBonus = 0;
+            game.Config.AI.FleetDeployment.AttackUtility.StrategicValue.Weight = 0;
+            game.Config.AI.FleetDeployment.AttackUtility.SectorSupport.Weight = 0;
+            game.Config.AI.FleetDeployment.AttackUtility.SystemPresence.Weight = 100;
+            game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 0;
+            game.Config.AI.FleetDeployment.AttackUtility.CaptureViability.Weight = 0;
+            game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
+            game.Config.AI.FleetDeployment.AttackUtility.ExpectedLossRisk.Weight = 0;
+            game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 0;
+            game.Config.AI.FleetDeployment.AttackUtility.Headquarters.Weight = 0;
+            game.Config.AI.FleetDeployment.AttackUtility.OrbitalAdvantage.Weight = 0;
             PlanetSector establishedSystem = AITestSceneBuilder.AddSector(
                 game,
                 "established-system"

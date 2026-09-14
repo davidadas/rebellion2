@@ -23,6 +23,23 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
+        /// Normalizes a raw consideration value against its configured maximum before evaluation.
+        /// </summary>
+        /// <param name="value">The raw consideration value.</param>
+        /// <param name="consideration">The input range, response curve, and contribution weight.</param>
+        /// <returns>The weighted utility contribution.</returns>
+        public static double EvaluateRaw(
+            double value,
+            GameConfig.AIConsiderationConfig consideration
+        )
+        {
+            if (consideration == null)
+                return 0;
+
+            return Evaluate(Fulfillment(value, consideration.InputMaximum), consideration);
+        }
+
+        /// <summary>
         /// Evaluates a normalized input through a response curve.
         /// </summary>
         /// <param name="input">The normalized curve input.</param>
