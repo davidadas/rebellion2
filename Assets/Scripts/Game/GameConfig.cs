@@ -366,8 +366,27 @@ namespace Rebellion.Game
             public int RefinedMaterialCommitmentHorizonTicks { get; set; } = 25;
             public int MinimumMaintenanceHeadroomAfterProduction { get; set; } = 200;
             public int MaintenanceHeadroomHardFloor { get; set; } = 0;
-            public int MaintenanceHeadroomPenaltyWeight { get; set; }
-            public int MaintenanceShortfallPenalty { get; set; }
+            public AIProductionUtilityConfig ProductionUtility { get; set; } =
+                new AIProductionUtilityConfig();
+        }
+
+        /// <summary>
+        /// Utility costs applied when ranking production proposals.
+        /// </summary>
+        [PersistableObject]
+        public class AIProductionUtilityConfig
+        {
+            public AIConsiderationConfig TravelCost { get; set; } = Weighted(100, 100);
+
+            public AIConsiderationConfig HeadroomRisk { get; set; } = Weighted(0);
+
+            public AIConsiderationConfig Shortfall { get; set; } = Weighted(0);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
         }
 
         /// <summary>
@@ -447,7 +466,6 @@ namespace Rebellion.Game
             public int FleetFinalReadinessGatePressure { get; set; } = 35;
             public int FleetFinalReadinessGateUnitCount { get; set; } = 2;
             public int FleetStarfighterFillPressureWeight { get; set; } = 20;
-            public int FleetReinforcementTravelPenaltyWeight { get; set; } = 1;
         }
 
         /// <summary>

@@ -19,7 +19,8 @@ namespace Rebellion.Tests.AI.Scoring
         public void Score_WithFleetReinforcement_DeductsTravelPenalty()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.FleetReinforcementTravelPenaltyWeight = 1;
+            game.Config.AI.Selection.ProductionUtility.TravelCost.Weight = 100;
+            game.Config.AI.Selection.ProductionUtility.TravelCost.InputMaximum = 100;
             PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet nearProducer = AITestSceneBuilder.AddPlanet(
                 game,

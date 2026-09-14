@@ -56,7 +56,8 @@ namespace Rebellion.AI.Scoring
                 return score;
 
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
-            score -= GetTravelPenalty(context, proposal);
+            GameConfig.AIProductionUtilityConfig utility = config.ProductionUtility;
+            score -= AIUtility.EvaluateRaw(GetTravelCost(context, proposal), utility.TravelCost);
 
             if (maintenanceCost <= 0)
                 return score;
@@ -70,10 +71,16 @@ namespace Rebellion.AI.Scoring
                 config.MinimumMaintenanceHeadroomAfterProduction - projectedHeadroom;
 
             if (headroomDeficit > 0)
-                score -= headroomDeficit * config.MaintenanceHeadroomPenaltyWeight;
+                score -= AIUtility.Evaluate(
+                    AIUtility.Fulfillment(
+                        headroomDeficit,
+                        config.MinimumMaintenanceHeadroomAfterProduction
+                    ),
+                    utility.HeadroomRisk
+                );
 
             if (projectedHeadroom < 0)
-                score -= config.MaintenanceShortfallPenalty;
+                score -= AIUtility.Evaluate(1, utility.Shortfall);
 
             return score;
         }
@@ -84,7 +91,7 @@ namespace Rebellion.AI.Scoring
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to inspect.</param>
         /// <returns>The travel penalty.</returns>
-        private double GetTravelPenalty(AITurnContext context, AIManufactureProposal proposal)
+        private double GetTravelCost(AITurnContext context, AIManufactureProposal proposal)
         {
             if (proposal?.Demand?.Destination is not Fleet destinationFleet)
                 return 0;
@@ -98,9 +105,7 @@ namespace Rebellion.AI.Scoring
             if (distanceScale <= 0)
                 return 0;
 
-            return producerPlanet.GetRawDistanceTo(destinationPlanet)
-                / distanceScale
-                * context.Game.Config.AI.Infrastructure.FleetReinforcementTravelPenaltyWeight;
+            return producerPlanet.GetRawDistanceTo(destinationPlanet) / distanceScale;
         }
     }
 }
