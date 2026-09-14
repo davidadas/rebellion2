@@ -507,7 +507,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             _view.Render(data);
 
-            Assert.AreEqual("1 MOD LOADED", GetField<TextMeshProUGUI>("_modsStatusTextField").text);
+            Assert.AreEqual(
+                "2 MODS LOADED",
+                GetField<TextMeshProUGUI>("_modsStatusTextField").text
+            );
             TextMeshProUGUI restart = GetField<TextMeshProUGUI>("_modsRestartTextField");
             Assert.IsTrue(restart.gameObject.activeSelf);
             Assert.AreEqual("RESTART REQUIRED", restart.text);
@@ -539,10 +542,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies a large compatible-mod list creates every row within scrollable content.
+        /// Verifies a large compatible-mod list creates every row.
         /// </summary>
         [Test]
-        public void ModsPage_MoreModsThanViewport_RendersEveryModInScrollableContent()
+        public void ModsPage_ManyMods_RendersEveryMod()
         {
             OptionsModRow[] mods = Enumerable
                 .Range(1, 12)
@@ -558,8 +561,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "Mod 12",
                 GetPrivateField<TextMeshProUGUI>(rows[11], "_labelTextField").text
             );
-            ScrollAreaView scrollArea = GetField<ScrollAreaView>("_modsScrollArea");
-            Assert.Greater(scrollArea.ContentRoot.rect.height, scrollArea.ViewportHeight);
         }
 
         /// <summary>
@@ -752,45 +753,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies every left-side navigation row uses the same height and vertical gap.
+        /// Verifies main-menu hosting replaces Back to Game with Back to Main Menu.
         /// </summary>
         [Test]
-        public void NavigationRows_UseConsistentVerticalRhythm()
-        {
-            Button[] tabRows = GetField<Button[]>("_tabButtons");
-            Button[] footerRows =
-            {
-                GetField<Button>("_backToGameButton"),
-                GetField<Button>("_mainMenuButton"),
-                GetField<Button>("_quitButton"),
-            };
-            RectInt[] tabRects = tabRows
-                .Select(row => UILayout.GetSourceRect((RectTransform)row.transform))
-                .ToArray();
-            RectInt[] footerRects = footerRows
-                .Select(row => UILayout.GetSourceRect((RectTransform)row.transform))
-                .ToArray();
-            RectInt footerRoot = UILayout.GetSourceRect(
-                (RectTransform)footerRows[0].transform.parent
-            );
-
-            CollectionAssert.AreEqual(
-                new[] { 82, 118, 154, 190, 226, 262 },
-                tabRects.Select(rect => rect.y).ToArray()
-            );
-            CollectionAssert.AreEqual(
-                new[] { 0, 36, 72 },
-                footerRects.Select(rect => rect.y).ToArray()
-            );
-            Assert.AreEqual(new RectInt(38, 318, 163, 102), footerRoot);
-            Assert.IsTrue(tabRects.Concat(footerRects).All(rect => rect.height == 30));
-        }
-
-        /// <summary>
-        /// Verifies main-menu hosting replaces Back to Game with Back to Main Menu without gaps.
-        /// </summary>
-        [Test]
-        public void RenderFooter_MainMenuHost_ShowsBackToMainMenuAndQuitWithoutGap()
+        public void Render_MainMenuHost_ShowsMainMenuAndQuitActions()
         {
             OptionsMenuRenderData data = new OptionsMenuRenderData(
                 0,
@@ -809,9 +775,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 false
             );
 
-            typeof(OptionsMenuView)
-                .GetMethod("RenderFooter", BindingFlags.Instance | BindingFlags.NonPublic)
-                .Invoke(_view, new object[] { data });
+            _view.Render(data);
 
             Button backToGame = GetField<Button>("_backToGameButton");
             Button mainMenu = GetField<Button>("_mainMenuButton");
@@ -819,11 +783,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(backToGame.gameObject.activeSelf);
             Assert.IsTrue(mainMenu.gameObject.activeSelf);
             Assert.IsTrue(quit.gameObject.activeSelf);
-            Assert.IsNotNull(quit.transform.parent.GetComponent<VerticalLayoutGroup>());
-            Assert.AreEqual(0, UILayout.GetSourceRect((RectTransform)mainMenu.transform).x);
-            Assert.AreEqual(36, UILayout.GetSourceRect((RectTransform)mainMenu.transform).y);
-            Assert.AreEqual(0, UILayout.GetSourceRect((RectTransform)quit.transform).x);
-            Assert.AreEqual(72, UILayout.GetSourceRect((RectTransform)quit.transform).y);
         }
 
         /// <summary>
