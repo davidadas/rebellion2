@@ -344,6 +344,7 @@ namespace Rebellion.AI.Planners
             if (context?.Faction == null || demand?.BuildingType == BuildingType.None)
                 return null;
 
+            GameConfig.AISelectionConfig selectionConfig = context.Game.Config.AI.Selection;
             int maintenanceBudget = GetBuildingMaintenanceBudget(context, demand);
             if (IsFacilityExpansionDemand(demand) && maintenanceBudget <= 0)
                 return null;
@@ -357,7 +358,7 @@ namespace Rebellion.AI.Planners
                     && GetBuildingMaintenanceCost(demand, building) <= maintenanceBudget
                 )
                 .OrderByDescending(technology =>
-                    GetBuildingCapability((Building)technology.GetReference())
+                    ScoreBuildingTechnology(selectionConfig, (Building)technology.GetReference())
                 )
                 .ThenByDescending(technology => technology.GetResearchOrder())
                 .ThenBy(technology => technology.GetReference().GetMaintenanceCost())
@@ -858,21 +859,25 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="building">The building to evaluate.</param>
         /// <returns>The building capability used for technology selection.</returns>
-        private static int GetBuildingCapability(Building building)
+        private static double ScoreBuildingTechnology(
+            GameConfig.AISelectionConfig config,
+            Building building
+        )
         {
-            return building.GetBuildingType() switch
+            double capability = building.GetBuildingType() switch
             {
                 BuildingType.ConstructionFacility
                 or BuildingType.Shipyard
                 or BuildingType.TrainingFacility
                 or BuildingType.Mine
                 or BuildingType.Refinery => building.ProcessRate > 0
-                    ? -building.ProcessRate
-                    : int.MinValue,
+                    ? 1.0 / building.ProcessRate
+                    : 0,
                 BuildingType.Weapon => building.WeaponPower,
                 BuildingType.Defense => building.ShieldStrength,
-                _ => int.MinValue,
+                _ => 0,
             };
+            return AIUtility.EvaluateRaw(capability, config.TechnologyUtility.Building.Capability);
         }
 
         /// <summary>
@@ -1125,10 +1130,10 @@ namespace Rebellion.AI.Planners
             double efficiency =
                 starfighter.MaintenanceCost > 0
                     ? strength / (double)starfighter.MaintenanceCost
-                    : config.UnitUtility.Starfighter.PlanetDefenseEfficiency.InputMaximum;
+                    : config.TechnologyUtility.Starfighter.PlanetDefenseEfficiency.InputMaximum;
             return AIUtility.EvaluateRaw(
                 efficiency,
-                config.UnitUtility.Starfighter.PlanetDefenseEfficiency
+                config.TechnologyUtility.Starfighter.PlanetDefenseEfficiency
             );
         }
 
@@ -1221,7 +1226,9 @@ namespace Rebellion.AI.Planners
             Starfighter starfighter
         )
         {
-            GameConfig.AIStarfighterSelectionUtilityConfig utility = config.UnitUtility.Starfighter;
+            GameConfig.AIStarfighterSelectionUtilityConfig utility = config
+                .TechnologyUtility
+                .Starfighter;
             double score =
                 AIUtility.EvaluateRaw(starfighter.LaserCannon, utility.Laser)
                 + AIUtility.EvaluateRaw(starfighter.IonCannon, utility.Ion)
@@ -1238,7 +1245,7 @@ namespace Rebellion.AI.Planners
 
             score -= AIUtility.EvaluateRaw(
                 CountFleetUnitsByType<Starfighter>(fleet, starfighter.GetTypeID()),
-                config.UnitUtility.DuplicateCost
+                config.TechnologyUtility.DuplicateCost
             );
 
             return score;
@@ -1257,7 +1264,7 @@ namespace Rebellion.AI.Planners
             Regiment regiment
         )
         {
-            GameConfig.AIRegimentSelectionUtilityConfig utility = config.UnitUtility.Regiment;
+            GameConfig.AIRegimentSelectionUtilityConfig utility = config.TechnologyUtility.Regiment;
             return AIUtility.EvaluateRaw(regiment.AttackRating, utility.Attack)
                 + AIUtility.EvaluateRaw(regiment.DefenseRating, utility.Defense)
                 + AIUtility.EvaluateRaw(regiment.BombardmentDefense, utility.BombardmentDefense)
@@ -1265,7 +1272,7 @@ namespace Rebellion.AI.Planners
                 - AIUtility.EvaluateRaw(regiment.MaintenanceCost, utility.MaintenanceCost)
                 - AIUtility.EvaluateRaw(
                     CountFleetUnitsByType<Regiment>(fleet, regiment.GetTypeID()),
-                    config.UnitUtility.DuplicateCost
+                    config.TechnologyUtility.DuplicateCost
                 );
         }
 

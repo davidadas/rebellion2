@@ -581,7 +581,8 @@ namespace Rebellion.Tests.AI.Planners
         {
             (GameRoot game, Faction empire, Planet _, Starfighter _) =
                 CreatePlanetaryStarfighterScene(0, 4, 12);
-            game.Config.AI.Selection.UnitUtility.Starfighter.PlanetDefenseEfficiency.Weight = 0;
+            game.Config.AI.Selection.TechnologyUtility.Starfighter.PlanetDefenseEfficiency.Weight =
+                0;
             Starfighter stronger = AITestSceneBuilder.CreateStarfighter(
                 "stronger-fighter",
                 empire.InstanceID,
@@ -934,7 +935,7 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1000;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
-            game.Config.AI.Selection.UnitUtility.DuplicateCost.Weight = 0;
+            game.Config.AI.Selection.TechnologyUtility.DuplicateCost.Weight = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1027,7 +1028,7 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense = 100;
             game.Config.AI.Infrastructure.AssaultRegimentLoadPercent = 0;
-            game.Config.AI.Selection.UnitUtility.DuplicateCost.Weight = 0;
+            game.Config.AI.Selection.TechnologyUtility.DuplicateCost.Weight = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1547,7 +1548,7 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 0;
-            game.Config.AI.Selection.UnitUtility.DuplicateCost.Weight = 0;
+            game.Config.AI.Selection.TechnologyUtility.DuplicateCost.Weight = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1722,7 +1723,7 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
             game.Config.AI.Selection.PreferredStarfighterTypeCountPerFleet = 10;
-            game.Config.AI.Selection.UnitUtility.DuplicateCost.Weight = 10000;
+            game.Config.AI.Selection.TechnologyUtility.DuplicateCost.Weight = 10000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,

@@ -442,8 +442,8 @@ namespace Rebellion.Game
             public float MinimumSelectableScore { get; set; }
             public int PreferredStarfighterTypeCountPerFleet { get; set; }
             public int PreferredRegimentTypeCountPerDestination { get; set; }
-            public AIUnitSelectionUtilityConfig UnitUtility { get; set; } =
-                new AIUnitSelectionUtilityConfig();
+            public AITechnologySelectionUtilityConfig TechnologyUtility { get; set; } =
+                new AITechnologySelectionUtilityConfig();
             public int RefinedMaterialReservePercent { get; set; } = 20;
             public int RefinedMaterialEconomyWarningPercent { get; set; } = 40;
             public int RefinedMaterialCommitmentHorizonTicks { get; set; } = 25;
@@ -457,15 +457,33 @@ namespace Rebellion.Game
         /// Utility considerations used to choose a unit technology for production.
         /// </summary>
         [PersistableObject]
-        public class AIUnitSelectionUtilityConfig
+        public class AITechnologySelectionUtilityConfig
         {
+            public AIBuildingSelectionUtilityConfig Building { get; set; } =
+                new AIBuildingSelectionUtilityConfig();
+
             public AIStarfighterSelectionUtilityConfig Starfighter { get; set; } =
                 new AIStarfighterSelectionUtilityConfig();
 
             public AIRegimentSelectionUtilityConfig Regiment { get; set; } =
                 new AIRegimentSelectionUtilityConfig();
 
+            public AISpecialForcesSelectionUtilityConfig SpecialForces { get; set; } =
+                new AISpecialForcesSelectionUtilityConfig();
+
             public AIConsiderationConfig DuplicateCost { get; set; } = Weighted(450, 10);
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
+        }
+
+        /// <summary>
+        /// Utility considerations used to choose a building technology.
+        /// </summary>
+        [PersistableObject]
+        public class AIBuildingSelectionUtilityConfig
+        {
+            public AIConsiderationConfig Capability { get; set; } = Weighted(1000, 1000);
 
             private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
                 new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
@@ -505,6 +523,18 @@ namespace Rebellion.Game
 
             private static AIConsiderationConfig Weighted(double weight) =>
                 new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
+        }
+
+        /// <summary>
+        /// Utility considerations used to choose a special-forces technology.
+        /// </summary>
+        [PersistableObject]
+        public class AISpecialForcesSelectionUtilityConfig
+        {
+            public AIConsiderationConfig BuildEfficiency { get; set; } = Weighted(100, 100);
 
             private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
                 new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };

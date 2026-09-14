@@ -142,7 +142,24 @@ namespace Rebellion.AI.Planners
                     .OrderBy(group => group.Key, StringComparer.Ordinal)
             )
             {
-                SpecialForces template = role.OrderBy(candidate => candidate.ConstructionCost)
+                GameConfig.AIConsiderationConfig buildEfficiency = context
+                    .Game
+                    .Config
+                    .AI
+                    .Selection
+                    .TechnologyUtility
+                    .SpecialForces
+                    .BuildEfficiency;
+                SpecialForces template = role.OrderByDescending(candidate =>
+                        AIUtility.Evaluate(
+                            1
+                                - AIUtility.Fulfillment(
+                                    candidate.ConstructionCost,
+                                    buildEfficiency.InputMaximum
+                                ),
+                            buildEfficiency
+                        )
+                    )
                     .ThenBy(candidate => candidate.MaintenanceCost)
                     .ThenBy(candidate => candidate.GetTypeID(), StringComparer.Ordinal)
                     .First();
