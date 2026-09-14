@@ -97,10 +97,7 @@ public sealed class InputManager : MonoBehaviour
     /// </summary>
     /// <param name="asset">The input action asset to update.</param>
     /// <param name="useCommandKey">Whether Command replaces Control.</param>
-    internal static void ApplyPlatformDefaultModifierBindings(
-        InputActionAsset asset,
-        bool useCommandKey
-    )
+    internal static void SetShortcutModifier(InputActionAsset asset, bool useCommandKey)
     {
         foreach (InputActionMap actionMap in asset.actionMaps)
         {
@@ -118,7 +115,7 @@ public sealed class InputManager : MonoBehaviour
                     if (path == "<Keyboard>/ctrl")
                     {
                         if (useCommandKey)
-                            action.ChangeBinding(index).WithPath("<Keyboard>/meta");
+                            action.ChangeBinding(index).WithPath("<Keyboard>/leftMeta");
                     }
                     else if (path == "<Keyboard>/leftMeta")
                     {
@@ -138,7 +135,7 @@ public sealed class InputManager : MonoBehaviour
         bool useCommandKey =
             Application.platform == RuntimePlatform.OSXEditor
             || Application.platform == RuntimePlatform.OSXPlayer;
-        ApplyPlatformDefaultModifierBindings(actions.asset, useCommandKey);
+        SetShortcutModifier(actions.asset, useCommandKey);
         return actions;
     }
 

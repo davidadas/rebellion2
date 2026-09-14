@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
@@ -15,6 +16,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
@@ -157,6 +159,113 @@ namespace Rebellion.Tests.Managers
 
             Assert.AreEqual("Named Ship", ship.DisplayName);
             Assert.IsTrue(ship.HasAssignedName);
+        }
+
+        [Test]
+        public void ProcessTick_AdvisorOrderCompletes_RefillsReleasedLaneOnly()
+        {
+            const string factionId = "FACTION";
+            const string regimentTypeId = "GARRISON";
+            GameConfig config = TestConfig.Create();
+            config.AI.Garrison.SupportThreshold = 50;
+            config.AI.Garrison.GarrisonDivisor = 10;
+            config.AI.Garrison.UprisingMultiplier = 2;
+            GameRoot game = new GameRoot(config);
+            Faction faction = new Faction
+            {
+                InstanceID = factionId,
+                ManageGarrisons = true,
+                ManageProduction = false,
+            };
+            faction.Settings.ResourceProcessingPointsPerFacility = 50;
+            game.GetFactions().Add(faction);
+            game.SetFactionController(factionId, "PLAYER", PlayerControllerType.Human);
+
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet producer = CreatePlanet("PRODUCER", factionId, 0);
+            producer.EnergyCapacity = 10;
+            producer.NumRawResourceNodes = 2;
+            Planet destination = CreatePlanet("DESTINATION", factionId, 10);
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(producer, sector);
+            game.AttachNode(destination, sector);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "TRAINING",
+                    OwnerInstanceID = factionId,
+                    BuildingType = BuildingType.TrainingFacility,
+                    ProductionType = ManufacturingType.Troop,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                producer
+            );
+            for (int index = 0; index < 2; index++)
+            {
+                game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = $"MINE_{index}",
+                        OwnerInstanceID = factionId,
+                        BuildingType = BuildingType.Mine,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    producer
+                );
+                game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = $"REFINERY_{index}",
+                        OwnerInstanceID = factionId,
+                        BuildingType = BuildingType.Refinery,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    producer
+                );
+            }
+
+            GameManager manager = new GameManager(
+                game,
+                CreateAutomationGameData(config, factionId, regimentTypeId)
+            );
+            Regiment completingOrder = new Regiment
+            {
+                InstanceID = "COMPLETING_ORDER",
+                TypeID = regimentTypeId,
+                OwnerInstanceID = factionId,
+                ConstructionCost = 1,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            Assert.IsTrue(
+                manager.ManufacturingSystem.Enqueue(
+                    producer,
+                    completingOrder,
+                    destination,
+                    ignoreCost: true
+                )
+            );
+
+            manager.ProcessTick();
+
+            Assert.AreEqual(ManufacturingStatus.Delivering, completingOrder.ManufacturingStatus);
+            Assert.AreEqual(1, producer.GetManufacturingQueue()[ManufacturingType.Troop].Count);
+            Assert.AreEqual(
+                ManufacturingStatus.Building,
+                producer
+                    .GetManufacturingQueue()[ManufacturingType.Troop]
+                    .Single()
+                    .ManufacturingStatus
+            );
+            Assert.IsFalse(
+                producer
+                    .GetManufacturingQueue()
+                    .TryGetValue(
+                        ManufacturingType.Building,
+                        out List<IManufacturable> buildingOrders
+                    )
+                    && buildingOrders.Count > 0
+            );
         }
 
         [Test]
@@ -1484,6 +1593,58 @@ namespace Rebellion.Tests.Managers
                 Subject = resultType.ToString(),
                 Body = resultType.ToString(),
             };
+        }
+
+        /// <summary>
+        /// Creates the minimal content catalog required for advisor-managed garrison production.
+        /// </summary>
+        /// <param name="config">The game configuration shared with the test game.</param>
+        /// <param name="factionId">The faction allowed to manufacture the garrison.</param>
+        /// <param name="regimentTypeId">The configured garrison regiment type.</param>
+        /// <returns>A catalog containing the requested garrison template.</returns>
+        private static GameDataCatalog CreateAutomationGameData(
+            GameConfig config,
+            string factionId,
+            string regimentTypeId
+        )
+        {
+            GameGenerationConfig generationConfig = new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>
+                    {
+                        new FactionSetup
+                        {
+                            FactionID = factionId,
+                            GarrisonTroopTypeID = regimentTypeId,
+                        },
+                    },
+                },
+            };
+            Regiment garrison = new Regiment
+            {
+                TypeID = regimentTypeId,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = new List<string> { factionId },
+            };
+            return new GameDataCatalog(
+                config,
+                generationConfig,
+                Array.Empty<Faction>(),
+                Array.Empty<PlanetSector>(),
+                Array.Empty<Building>(),
+                Array.Empty<CapitalShip>(),
+                Array.Empty<Starfighter>(),
+                new[] { garrison },
+                Array.Empty<SpecialForces>(),
+                Array.Empty<Officer>(),
+                Array.Empty<GameEvent>(),
+                Array.Empty<MessageDefinition>(),
+                new EncyclopediaEntries(),
+                new FactionThemes()
+            );
         }
 
         private static float? GetTickInterval(GameManager manager)

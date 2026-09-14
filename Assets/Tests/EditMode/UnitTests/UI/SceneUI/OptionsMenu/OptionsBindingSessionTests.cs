@@ -352,7 +352,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private static string GetPlatformModifierPath()
         {
             return Application.platform == RuntimePlatform.OSXEditor
-                ? "<Keyboard>/meta"
+                ? "<Keyboard>/leftMeta"
                 : "<Keyboard>/ctrl";
         }
 

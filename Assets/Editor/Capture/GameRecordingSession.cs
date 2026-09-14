@@ -96,7 +96,20 @@ internal static class GameRecordingSession
     /// </summary>
     private static GameViewInputSettings CreateGameViewInputSettings()
     {
-        return new GameViewInputSettings();
+        GameViewInputSettings settings = new GameViewInputSettings();
+        settings.OutputWidth = GetEncoderDimension(settings.OutputWidth);
+        settings.OutputHeight = GetEncoderDimension(settings.OutputHeight);
+        return settings;
+    }
+
+    /// <summary>
+    /// Rounds a positive odd dimension up to the next MP4-compatible even value.
+    /// </summary>
+    /// <param name="dimension">The Game view dimension.</param>
+    /// <returns>The original dimension when compatible; otherwise the next even value.</returns>
+    private static int GetEncoderDimension(int dimension)
+    {
+        return dimension > 0 && dimension % 2 != 0 ? dimension + 1 : dimension;
     }
 
     /// <summary>

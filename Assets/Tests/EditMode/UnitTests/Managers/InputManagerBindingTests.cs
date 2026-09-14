@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace Rebellion.Tests.Managers
 {
@@ -8,21 +9,39 @@ namespace Rebellion.Tests.Managers
     public sealed class InputManagerBindingTests
     {
         [Test]
-        public void ApplyPlatformDefaultModifierBindings_MacOS_UsesCommand()
+        public void SetShortcutModifier_MacOS_UsesResolvableCommandKey()
         {
+            InputTestFixture inputFixture = new InputTestFixture();
+            inputFixture.Setup();
             InputActionAsset asset = CreateModifierActions();
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
 
-            InputManager.ApplyPlatformDefaultModifierBindings(asset, true);
+            try
+            {
+                InputManager.SetShortcutModifier(asset, true);
+                InputAction action = asset.FindAction("Test/Shortcut", true);
+                asset.Enable();
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.LeftMeta));
+                InputSystem.Update();
 
-            AssertModifierPath(asset.FindAction("Test/Shortcut", true), "<Keyboard>/meta");
+                AssertModifierPath(action, "<Keyboard>/leftMeta");
+                CollectionAssert.Contains(action.controls, keyboard.leftMetaKey);
+                Assert.IsTrue(action.IsPressed());
+                Assert.IsNotEmpty(action.GetBindingDisplayString(0));
+            }
+            finally
+            {
+                Object.DestroyImmediate(asset);
+                inputFixture.TearDown();
+            }
         }
 
         [Test]
-        public void ApplyPlatformDefaultModifierBindings_Windows_UsesControl()
+        public void SetShortcutModifier_Windows_UsesControl()
         {
             InputActionAsset asset = CreateModifierActions();
 
-            InputManager.ApplyPlatformDefaultModifierBindings(asset, false);
+            InputManager.SetShortcutModifier(asset, false);
 
             AssertModifierPath(asset.FindAction("Test/Shortcut", true), "<Keyboard>/ctrl");
         }
