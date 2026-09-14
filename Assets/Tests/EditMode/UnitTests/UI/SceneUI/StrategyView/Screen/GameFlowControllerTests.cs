@@ -226,6 +226,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         /// <summary>
+        /// Verifies that disabling briefings overrides an otherwise valid opening request.
+        /// </summary>
+        [Test]
+        public void ShouldPlayOpeningBriefing_BriefingsDisabled_ReturnsFalse()
+        {
+            bool shouldPlay = GameFlowController.ShouldPlayOpeningBriefing(
+                requested: true,
+                completed: false,
+                disabled: true
+            );
+
+            Assert.IsFalse(shouldPlay);
+        }
+
+        /// <summary>
+        /// Verifies that an enabled, uncompleted opening briefing still plays when requested.
+        /// </summary>
+        [Test]
+        public void ShouldPlayOpeningBriefing_BriefingsEnabledAndUncompleted_ReturnsTrue()
+        {
+            bool shouldPlay = GameFlowController.ShouldPlayOpeningBriefing(
+                requested: true,
+                completed: false,
+                disabled: false
+            );
+
+            Assert.IsTrue(shouldPlay);
+        }
+
+        /// <summary>
         /// Verifies that new-game startup rejects a missing launch summary.
         /// </summary>
         [Test]

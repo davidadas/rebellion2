@@ -1147,8 +1147,14 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || _modsPage == null
         )
             throw new MissingReferenceException($"{name} is missing a page container.");
-        if (_gameplayRows.Length != 3 || Array.Exists(_gameplayRows, row => row == null))
-            throw new MissingReferenceException($"{name} expects three gameplay rows.");
+        int gameplayOptionCount = Enum.GetValues(typeof(UserGameplayOption)).Length;
+        if (
+            _gameplayRows.Length != gameplayOptionCount
+            || Array.Exists(_gameplayRows, row => row == null)
+        )
+            throw new MissingReferenceException(
+                $"{name} expects {gameplayOptionCount} gameplay rows."
+            );
         if (_userInterfaceRows.Length != 2 || Array.Exists(_userInterfaceRows, row => row == null))
             throw new MissingReferenceException($"{name} expects two user-interface rows.");
         if (
