@@ -258,15 +258,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// Verifies swap initialized window moves to next slot and marks dirty.
         /// </summary>
         [Test]
-        public void Swap_InitializedWindow_MovesToNextSlotAndMarksDirty()
+        public void Swap_InitializedWindow_MovesToNextSlotAndNotifiesChange()
         {
             PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            bool moved = false;
+            window.Moved += _ => moved = true;
 
             _controller.Swap(window);
 
             Vector2Int position = GetWindowPosition(SectorWindowPositions.Middle);
             Assert.AreEqual(SectorWindowPositions.Middle, _controller.GetSectorPosition(view));
             Assert.AreEqual(position, new Vector2Int(window.X, window.Y));
+            Assert.IsTrue(moved);
             Assert.AreEqual(2, _dirtyCount);
         }
 

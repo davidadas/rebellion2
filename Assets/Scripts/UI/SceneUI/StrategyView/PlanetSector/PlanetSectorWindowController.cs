@@ -344,6 +344,7 @@ public sealed class PlanetSectorWindowController
         Vector2Int position = getWindowPosition(target);
         session.SelectSectorPosition(target);
         window.MoveTo(position.x, position.y);
+        window.NotifyMoved();
         markDirty();
     }
 
