@@ -421,9 +421,7 @@ public class SaveGameManager
         GameSerializer serializer = CreateSaveDeserializer(typeof(GameRoot));
 
         using FileStream fileStream = new FileStream(saveFilePath, FileMode.Open);
-        GameRoot game = (GameRoot)serializer.Deserialize(fileStream);
-        game.EnsurePlayers();
-        return game;
+        return (GameRoot)serializer.Deserialize(fileStream);
     }
 
     /// <summary>

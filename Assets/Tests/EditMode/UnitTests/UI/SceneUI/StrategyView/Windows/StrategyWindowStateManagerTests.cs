@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.UIState;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
@@ -28,9 +29,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void Capture_RegisteredModelessWindow_ReplacesSavedState()
         {
-            List<StrategyWindowState> states = new List<StrategyWindowState>
+            List<WindowState> states = new List<WindowState>
             {
-                new StrategyWindowState { WindowTypeID = "Stale" },
+                new WindowState { WindowTypeID = "Stale" },
             };
             StrategyWindowStateManager manager = new StrategyWindowStateManager(
                 _windowManager,
@@ -53,7 +54,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void Capture_UnsupportedAndModalWindows_DoesNotPersistThem()
         {
-            List<StrategyWindowState> states = new List<StrategyWindowState>();
+            List<WindowState> states = new List<WindowState>();
             StrategyWindowStateManager manager = new StrategyWindowStateManager(
                 _windowManager,
                 states
@@ -71,21 +72,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         public void Restore_RegisteredStates_RestoresInSavedStackOrder()
         {
             List<string> restoredTargets = new List<string>();
-            List<StrategyWindowState> states = new List<StrategyWindowState>
+            List<WindowState> states = new List<WindowState>
             {
-                new StrategyWindowState
+                new WindowState
                 {
                     WindowTypeID = "Unknown.Window",
                     TargetInstanceID = "IGNORED",
                     ZOrder = 0,
                 },
-                new StrategyWindowState
+                new WindowState
                 {
                     WindowTypeID = "Test.Window",
                     TargetInstanceID = "SECOND",
                     ZOrder = 2,
                 },
-                new StrategyWindowState
+                new WindowState
                 {
                     WindowTypeID = "Test.Window",
                     TargetInstanceID = "FIRST",
@@ -110,7 +111,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         private StrategyWindowStateAdapter<TestWindowContent> CreateAdapter(
-            System.Func<StrategyWindowState, bool> restore
+            System.Func<WindowState, bool> restore
         )
         {
             return new StrategyWindowStateAdapter<TestWindowContent>(

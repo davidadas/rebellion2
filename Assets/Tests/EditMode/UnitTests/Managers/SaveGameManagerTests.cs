@@ -8,6 +8,7 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Managers
@@ -116,8 +117,9 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
             game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
             game.GetFactionPlayer("FNALL1")
-                .UIState.StrategyWindows.Add(
-                    new StrategyWindowState
+                .UIState.GetOrCreateSection("Strategy")
+                .Windows.Add(
+                    new WindowState
                     {
                         WindowTypeID = "Planet.Fleet",
                         TargetInstanceID = "PLANET1",
@@ -130,9 +132,10 @@ namespace Rebellion.Tests.Managers
 
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            StrategyWindowState state = loadedGame
+            WindowState state = loadedGame
                 .GetFactionPlayer("FNALL1")
-                .UIState.StrategyWindows.Single();
+                .UIState.GetOrCreateSection("Strategy")
+                .Windows.Single();
             Assert.AreEqual("Planet.Fleet", state.WindowTypeID);
             Assert.AreEqual("PLANET1", state.TargetInstanceID);
             Assert.AreEqual(123, state.X);
@@ -939,20 +942,22 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void SaveGameData_PlayerWithUIState_WritesUIState()
         {
-            GameRoot game = BuildGameWithUntrackedIdleBarItems();
+            GameRoot game = BuildGameWithIgnoredItems();
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             string xml = File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName));
 
-            StringAssert.Contains("<UntrackedIdleBarItems>", xml);
-            StringAssert.Contains("<EntityInstanceID>OFFICER1</EntityInstanceID>", xml);
-            StringAssert.Contains("<ManufacturingType>None</ManufacturingType>", xml);
-            StringAssert.Contains("<EntityInstanceID>PLANET1</EntityInstanceID>", xml);
-            StringAssert.Contains("<ManufacturingType>Ship</ManufacturingType>", xml);
-            StringAssert.Contains("<ManufacturingType>Troop</ManufacturingType>", xml);
-            StringAssert.Contains("<Bookmarks>", xml);
-            StringAssert.Contains("<PlanetInstanceID>PLANET2</PlanetInstanceID>", xml);
-            StringAssert.Contains("<Type>Fleet</Type>", xml);
+            StringAssert.Contains("<Sections>", xml);
+            StringAssert.Contains("<SectionID>Strategy</SectionID>", xml);
+            StringAssert.Contains("<IgnoredItems>", xml);
+            StringAssert.Contains("<TargetInstanceID>OFFICER1</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Entity</ItemTypeID>", xml);
+            StringAssert.Contains("<TargetInstanceID>PLANET1</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Ship</ItemTypeID>", xml);
+            StringAssert.Contains("<ItemTypeID>Troop</ItemTypeID>", xml);
+            StringAssert.Contains("<BookmarkedItems>", xml);
+            StringAssert.Contains("<TargetInstanceID>PLANET2</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Fleet</ItemTypeID>", xml);
         }
 
         /// <summary>
@@ -961,8 +966,9 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void LoadGameData_SaveWithPlayerUIState_RestoresUIState()
         {
-            GameRoot game = BuildGameWithUntrackedIdleBarItems();
+            GameRoot game = BuildGameWithIgnoredItems();
             PlayerUIState uiState = game.GetPlayers().Single().UIState;
+            UIStateSection section = uiState.GetOrCreateSection("Strategy");
             _saveGameManager.SaveGameData(game, _saveFileName);
 
             PlayerUIState loadedUIState = _saveGameManager
@@ -970,21 +976,19 @@ namespace Rebellion.Tests.Managers
                 .GetPlayers()
                 .Single()
                 .UIState;
+            UIStateSection loadedSection = loadedUIState.GetOrCreateSection("Strategy");
 
+            Assert.AreEqual("Strategy", loadedSection.SectionID);
             CollectionAssert.AreEqual(
-                uiState.UntrackedIdleBarItems.Select(item =>
-                    (item.EntityInstanceID, item.ManufacturingType)
-                ),
-                loadedUIState.UntrackedIdleBarItems.Select(item =>
-                    (item.EntityInstanceID, item.ManufacturingType)
-                )
+                section.IgnoredItems.Select(item => (item.TargetInstanceID, item.ItemTypeID)),
+                loadedSection.IgnoredItems.Select(item => (item.TargetInstanceID, item.ItemTypeID))
             );
             CollectionAssert.AreEqual(
-                uiState.Bookmarks.Select(item =>
-                    (item.SlotIndex, item.PlanetInstanceID, item.Type)
+                section.BookmarkedItems.Select(item =>
+                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID)
                 ),
-                loadedUIState.Bookmarks.Select(item =>
-                    (item.SlotIndex, item.PlanetInstanceID, item.Type)
+                loadedSection.BookmarkedItems.Select(item =>
+                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID)
                 )
             );
         }
@@ -1496,36 +1500,35 @@ namespace Rebellion.Tests.Managers
         /// Creates a saveable game containing independently excluded idle-bar identities.
         /// </summary>
         /// <returns>The configured saveable game.</returns>
-        private static GameRoot BuildGameWithUntrackedIdleBarItems()
+        private static GameRoot BuildGameWithIgnoredItems()
         {
             Faction faction = new Faction { InstanceID = "FNALL1" };
             PlayerUIState uiState = new PlayerUIState
             {
-                Bookmarks = new List<PlanetBookmark>
+                Sections = new List<UIStateSection>
                 {
-                    new PlanetBookmark
+                    new UIStateSection
                     {
-                        SlotIndex = 2,
-                        PlanetInstanceID = "PLANET2",
-                        Type = PlanetBookmarkType.Fleet,
-                    },
-                },
-                UntrackedIdleBarItems = new List<IdleBarUntrackedItem>
-                {
-                    new IdleBarUntrackedItem
-                    {
-                        EntityInstanceID = "OFFICER1",
-                        ManufacturingType = ManufacturingType.None,
-                    },
-                    new IdleBarUntrackedItem
-                    {
-                        EntityInstanceID = "PLANET1",
-                        ManufacturingType = ManufacturingType.Ship,
-                    },
-                    new IdleBarUntrackedItem
-                    {
-                        EntityInstanceID = "PLANET1",
-                        ManufacturingType = ManufacturingType.Troop,
+                        SectionID = "Strategy",
+                        BookmarkedItems = new List<BookmarkedItem>
+                        {
+                            new BookmarkedItem
+                            {
+                                SlotIndex = 2,
+                                TargetInstanceID = "PLANET2",
+                                ItemTypeID = "Fleet",
+                            },
+                        },
+                        IgnoredItems = new List<IgnoredItem>
+                        {
+                            new IgnoredItem
+                            {
+                                TargetInstanceID = "OFFICER1",
+                                ItemTypeID = "Entity",
+                            },
+                            new IgnoredItem { TargetInstanceID = "PLANET1", ItemTypeID = "Ship" },
+                            new IgnoredItem { TargetInstanceID = "PLANET1", ItemTypeID = "Troop" },
+                        },
                     },
                 },
             };

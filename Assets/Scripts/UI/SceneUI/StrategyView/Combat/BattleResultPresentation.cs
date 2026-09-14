@@ -553,8 +553,7 @@ internal abstract class BattleResultPresentation
                 ? StrategyUISoundPaths.PlanetaryAssault
                 : null;
 
-        internal override string Title =>
-            FirstNonBlank(report.Title, GetDefaultTitle(report.CombatType, report.PlanetName));
+        internal override string Title => report.Title;
 
         internal override bool UsesPlanetaryLayout =>
             report.CombatType != CombatReportType.SpaceBattle;

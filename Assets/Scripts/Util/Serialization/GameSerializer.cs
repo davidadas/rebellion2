@@ -929,6 +929,18 @@ namespace Rebellion.Util.Serialization
                     string elementName = reader.Name;
                     memberLookup.TryGetValue(elementName, out MemberInfo member);
 
+                    if (inlineCollectionMember != null && member == inlineCollectionMember)
+                    {
+                        string message =
+                            $"Unknown element '{elementName}' encountered while deserializing {actualType.Name}.";
+                        if (!settings.IgnoreUnknownElements)
+                            throw new InvalidOperationException(message);
+
+                        settings.UnknownElementSkipped?.Invoke(actualType, elementName);
+                        reader.Skip();
+                        continue;
+                    }
+
                     if (member != null)
                     {
                         if (populatedAttributes.Contains(member))

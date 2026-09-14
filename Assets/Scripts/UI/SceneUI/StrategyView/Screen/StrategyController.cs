@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -46,6 +47,7 @@ public sealed class StrategyController
     private const string _fleetWindowTypeID = "Planet.Fleet";
     private const string _missionsWindowTypeID = "Planet.Missions";
     private const string _sectorWindowTypeID = "PlanetSector";
+    private const string _uiStateSectionID = "Strategy";
 
     [SerializeField]
     private CanvasGroup contentGroup;
@@ -239,6 +241,7 @@ public sealed class StrategyController
     /// </summary>
     private void InitializeScreenControllers()
     {
+        UIStateSection uiState = GetStrategyUIState();
         AudioManager audioManager = AudioManager.EnsureExists();
         ContentAssets contentAssets = AppBootstrap.Instance.GetContentAssets();
         System.Random musicRandom = new System.Random();
@@ -266,7 +269,7 @@ public sealed class StrategyController
         contextMenuController = new ContextMenuController();
         idleBarController = new IdleBarController(
             () => gameManager?.GetPlayerFaction(),
-            gameManager.GetPlayerUIState().UntrackedIdleBarItems,
+            uiState.IgnoredItems,
             contextMenuController,
             () => uiContext,
             () =>
@@ -305,6 +308,15 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Gets the durable state owned by the strategy interface.
+    /// </summary>
+    /// <returns>The strategy UI state section.</returns>
+    private UIStateSection GetStrategyUIState()
+    {
+        return gameManager.GetPlayerUIState().GetOrCreateSection(_uiStateSectionID);
+    }
+
+    /// <summary>
     /// Creates the shared window infrastructure and every feature-window controller.
     /// </summary>
     private void InitializeWindowControllers()
@@ -325,11 +337,9 @@ public sealed class StrategyController
     /// </summary>
     private void InitializeWindowInfrastructure()
     {
+        UIStateSection uiState = GetStrategyUIState();
         targetingController = new TargetingController(strategyOverlay);
-        bookmarkController = new BookmarkController(
-            uiContext,
-            gameManager.GetPlayerUIState().Bookmarks
-        );
+        bookmarkController = new BookmarkController(uiContext, uiState.BookmarkedItems);
         windowPlacementController = new StrategyWindowPlacementController(
             uiContext,
             strategyWindowLayerView,
@@ -344,10 +354,8 @@ public sealed class StrategyController
     /// </summary>
     private void InitializeWindowState()
     {
-        windowStateManager = new StrategyWindowStateManager(
-            strategyWindowManager,
-            gameManager.GetPlayerUIState().StrategyWindows
-        );
+        UIStateSection uiState = GetStrategyUIState();
+        windowStateManager = new StrategyWindowStateManager(strategyWindowManager, uiState.Windows);
         RegisterPlanetWindowState<FacilityWindowView>(
             _facilityWindowTypeID,
             facilityWindowController.GetPlanet,
@@ -409,7 +417,7 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="state">The saved sector window state.</param>
     /// <returns>True when the sector and slot were restored.</returns>
-    private bool RestoreSectorWindow(StrategyWindowState state)
+    private bool RestoreSectorWindow(WindowState state)
     {
         return state != null
             && galaxyMapController.FindSector(state.TargetInstanceID) is GalaxyMapSector sector
@@ -1813,11 +1821,11 @@ public sealed class StrategyController
     /// <param name="game">The replacement active game.</param>
     private void HandleGameReplaced(GameRoot game)
     {
-        PlayerUIState uiState = gameManager.GetPlayerUIState();
-        idleBarController.ResetSession(uiState.UntrackedIdleBarItems);
-        bookmarkController.ResetSession(uiState.Bookmarks);
+        UIStateSection uiState = GetStrategyUIState();
+        idleBarController.ResetSession(uiState.IgnoredItems);
+        bookmarkController.ResetSession(uiState.BookmarkedItems);
         ResetStrategyPresentation();
-        windowStateManager.Reset(uiState.StrategyWindows);
+        windowStateManager.Reset(uiState.Windows);
         uiContext.ReplaceGame(game);
         windowPlacementController.RefreshMovementBounds();
         PreloadStrategySfx();

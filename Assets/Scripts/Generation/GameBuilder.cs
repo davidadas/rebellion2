@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
@@ -14,6 +15,9 @@ namespace Rebellion.Generation
     /// </summary>
     public sealed class GameBuilder
     {
+        private const string _localPlayerID = "PLAYER1";
+        private const string _aiPlayerIDPrefix = "AI_";
+
         private readonly GameSummary _summary;
         private readonly GameDataCatalog _gameData;
         private readonly IRandomNumberProvider _randomProvider;
@@ -158,11 +162,28 @@ namespace Rebellion.Generation
             GameRoot game = new GameRoot { Summary = ctx.Summary, Random = ctx.Rng };
             game.GetEventPool().AddRange(ctx.Events);
             game.GetFactions().AddRange(ctx.Factions);
-            game.EnsurePlayers();
+            AddPlayers(game);
             game.GetUnrecruitedOfficers().AddRange(ctx.UnrecruitedOfficers);
             game.Galaxy = galaxy;
             game.SetConfig(ctx.GameConfig);
             ctx.Game = game;
+        }
+
+        /// <summary>
+        /// Creates the participants controlling each generated faction.
+        /// </summary>
+        /// <param name="game">The generated game receiving its participants.</param>
+        private static void AddPlayers(GameRoot game)
+        {
+            foreach (Faction faction in game.GetFactions())
+            {
+                bool isHuman = faction.InstanceID == game.Summary.PlayerFactionID;
+                game.SetFactionController(
+                    faction.InstanceID,
+                    isHuman ? _localPlayerID : $"{_aiPlayerIDPrefix}{faction.InstanceID}",
+                    isHuman ? PlayerControllerType.Human : PlayerControllerType.AI
+                );
+            }
         }
     }
 }

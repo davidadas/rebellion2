@@ -335,19 +335,17 @@ namespace Rebellion.Tests.Util.Serialization
         /// Verifies deserialize inline collection accepts legacy wrapper.
         /// </summary>
         [Test]
-        public void Deserialize_InlineCollection_AcceptsLegacyWrapper()
+        public void Deserialize_InlineCollectionWrapper_ThrowsInvalidOperationException()
         {
             GameSerializer serializer = new GameSerializer(typeof(ItemWithInlineCollection));
             const string xml =
-                "<ItemWithInlineCollection><Items><SimpleItem><Name>legacy</Name></SimpleItem></Items></ItemWithInlineCollection>";
+                "<ItemWithInlineCollection><Items><SimpleItem><Name>item</Name></SimpleItem></Items></ItemWithInlineCollection>";
 
-            ItemWithInlineCollection restored = (ItemWithInlineCollection)DeserializeFromString(
-                serializer,
-                xml
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                DeserializeFromString(serializer, xml)
             );
 
-            Assert.AreEqual(1, restored.Items.Count);
-            Assert.AreEqual("legacy", restored.Items[0].Name);
+            StringAssert.Contains("Unknown element 'Items'", exception.Message);
         }
 
         /// <summary>

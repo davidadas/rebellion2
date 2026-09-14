@@ -1,5 +1,5 @@
 using System;
-using Rebellion.Game;
+using Rebellion.Game.UIState;
 
 /// <summary>
 /// Adapts one authored strategy-window view type to generic persisted window state.
@@ -9,7 +9,7 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
     where TView : class
 {
     private readonly Func<TView, string> getTargetInstanceID;
-    private readonly Func<StrategyWindowState, bool> restore;
+    private readonly Func<WindowState, bool> restore;
 
     public string WindowTypeID { get; }
 
@@ -22,7 +22,7 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
     public StrategyWindowStateAdapter(
         string windowTypeID,
         Func<TView, string> getTargetInstanceID,
-        Func<StrategyWindowState, bool> restore
+        Func<WindowState, bool> restore
     )
     {
         if (string.IsNullOrWhiteSpace(windowTypeID))
@@ -35,7 +35,7 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
     }
 
     /// <inheritdoc />
-    public bool TryCapture(UIWindow window, out StrategyWindowState state)
+    public bool TryCapture(UIWindow window, out WindowState state)
     {
         state = null;
         if (window == null || !window.TryGetContent(out TView view))
@@ -45,12 +45,12 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
         if (string.IsNullOrEmpty(targetInstanceID))
             return false;
 
-        state = new StrategyWindowState { TargetInstanceID = targetInstanceID };
+        state = new WindowState { TargetInstanceID = targetInstanceID };
         return true;
     }
 
     /// <inheritdoc />
-    public bool Restore(StrategyWindowState state)
+    public bool Restore(WindowState state)
     {
         return state != null && restore(state);
     }

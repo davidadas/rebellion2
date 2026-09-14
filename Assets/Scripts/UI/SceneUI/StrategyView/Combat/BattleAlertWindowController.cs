@@ -637,17 +637,12 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
-    /// Returns the current player faction identifier with the saved-game fallback.
+    /// Returns the faction controlled by the human participant.
     /// </summary>
     /// <returns>The current player faction identifier.</returns>
     private string GetPlayerFactionID()
     {
-        UIContext uiContext = getUIContext();
-        string playerFactionId = uiContext?.Game?.Summary?.PlayerFactionID;
-        if (!string.IsNullOrEmpty(playerFactionId))
-            return playerFactionId;
-
-        return uiContext
+        return getUIContext()
             ?.Game?.GetPlayers()
             ?.FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
             ?.FactionID;

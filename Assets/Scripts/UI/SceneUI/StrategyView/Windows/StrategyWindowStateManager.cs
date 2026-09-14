@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
+using Rebellion.Game.UIState;
 
 /// <summary>
 /// Converts one registered strategy-window type between its runtime and persisted forms.
@@ -16,14 +16,14 @@ public interface IStrategyWindowStateAdapter
     /// <param name="window">The runtime window to inspect.</param>
     /// <param name="state">The captured state when the window is supported.</param>
     /// <returns>True when this adapter owns the window.</returns>
-    bool TryCapture(UIWindow window, out StrategyWindowState state);
+    bool TryCapture(UIWindow window, out WindowState state);
 
     /// <summary>
     /// Attempts to restore one persisted window.
     /// </summary>
     /// <param name="state">The persisted window state.</param>
     /// <returns>True when the window was restored.</returns>
-    bool Restore(StrategyWindowState state);
+    bool Restore(WindowState state);
 }
 
 /// <summary>
@@ -36,17 +36,14 @@ public sealed class StrategyWindowStateManager
         IStrategyWindowStateAdapter
     >(StringComparer.Ordinal);
     private readonly UIWindowManager windowManager;
-    private IList<StrategyWindowState> states;
+    private IList<WindowState> states;
 
     /// <summary>
     /// Creates a state manager for one player's saved window collection.
     /// </summary>
     /// <param name="windowManager">The runtime strategy-window registry.</param>
     /// <param name="states">The player's persisted window collection.</param>
-    public StrategyWindowStateManager(
-        UIWindowManager windowManager,
-        IList<StrategyWindowState> states
-    )
+    public StrategyWindowStateManager(UIWindowManager windowManager, IList<WindowState> states)
     {
         this.windowManager =
             windowManager ?? throw new ArgumentNullException(nameof(windowManager));
@@ -73,7 +70,7 @@ public sealed class StrategyWindowStateManager
     /// Replaces the persisted collection after the active game changes.
     /// </summary>
     /// <param name="newStates">The replacement player's saved windows.</param>
-    public void Reset(IList<StrategyWindowState> newStates)
+    public void Reset(IList<WindowState> newStates)
     {
         states = newStates ?? throw new ArgumentNullException(nameof(newStates));
     }
@@ -83,7 +80,7 @@ public sealed class StrategyWindowStateManager
     /// </summary>
     public void Capture()
     {
-        List<StrategyWindowState> captured = new List<StrategyWindowState>();
+        List<WindowState> captured = new List<WindowState>();
         for (int zOrder = 0; zOrder < windowManager.Windows.Count; zOrder++)
         {
             UIWindow window = windowManager.Windows[zOrder];
@@ -92,7 +89,7 @@ public sealed class StrategyWindowStateManager
 
             foreach (IStrategyWindowStateAdapter adapter in adapters.Values)
             {
-                if (!adapter.TryCapture(window, out StrategyWindowState state) || state == null)
+                if (!adapter.TryCapture(window, out WindowState state) || state == null)
                     continue;
 
                 state.WindowTypeID = adapter.WindowTypeID;
@@ -107,7 +104,7 @@ public sealed class StrategyWindowStateManager
         }
 
         states.Clear();
-        foreach (StrategyWindowState state in captured)
+        foreach (WindowState state in captured)
             states.Add(state);
     }
 
@@ -116,7 +113,7 @@ public sealed class StrategyWindowStateManager
     /// </summary>
     public void Restore()
     {
-        foreach (StrategyWindowState state in states.OrderBy(state => state.ZOrder).ToList())
+        foreach (WindowState state in states.OrderBy(state => state.ZOrder).ToList())
         {
             if (
                 state != null

@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -96,15 +96,16 @@ public interface IIdleBarTrackingActions
 /// </summary>
 public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
 {
-    private static readonly ManufacturingType[] _planetManufacturingTypes =
+    private const string _entityItemTypeID = "Entity";
+    private static readonly string[] _planetItemTypeIDs =
     {
-        ManufacturingType.Ship,
-        ManufacturingType.Troop,
-        ManufacturingType.Building,
+        nameof(ManufacturingType.Ship),
+        nameof(ManufacturingType.Troop),
+        nameof(ManufacturingType.Building),
     };
 
     private readonly Func<Faction> getFaction;
-    private List<IdleBarUntrackedItem> untrackedItems;
+    private List<IgnoredItem> ignoredItems;
     private readonly ContextMenuController contextMenuController;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<bool> getVisibility;
@@ -125,7 +126,7 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// Creates an idle-bar controller backed by current strategy state.
     /// </summary>
     /// <param name="getFaction">Returns the faction represented by the idle bar.</param>
-    /// <param name="untrackedItems">The durable idle-bar exclusions to read and update.</param>
+    /// <param name="ignoredItems">The durable idle-bar exclusions to read and update.</param>
     /// <param name="contextMenuController">Owns the shared context-menu lifecycle.</param>
     /// <param name="getUIContext">Returns the current strategy UI context.</param>
     /// <param name="getVisibility">Returns whether the experimental feature is enabled.</param>
@@ -133,7 +134,7 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// <param name="getAlwaysOpen">Returns whether the idle bar remains expanded.</param>
     public IdleBarController(
         Func<Faction> getFaction,
-        List<IdleBarUntrackedItem> untrackedItems,
+        List<IgnoredItem> ignoredItems,
         ContextMenuController contextMenuController,
         Func<UIContext> getUIContext,
         Func<bool> getVisibility,
@@ -142,8 +143,7 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     )
     {
         this.getFaction = getFaction ?? throw new ArgumentNullException(nameof(getFaction));
-        this.untrackedItems =
-            untrackedItems ?? throw new ArgumentNullException(nameof(untrackedItems));
+        this.ignoredItems = ignoredItems ?? throw new ArgumentNullException(nameof(ignoredItems));
         this.contextMenuController =
             contextMenuController ?? throw new ArgumentNullException(nameof(contextMenuController));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
@@ -243,11 +243,11 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// <summary>
     /// Clears transient interaction state after the active game changes.
     /// </summary>
-    /// <param name="nextUntrackedItems">The replacement persisted idle-bar exclusions.</param>
-    public void ResetSession(List<IdleBarUntrackedItem> nextUntrackedItems)
+    /// <param name="nextIgnoredItems">The replacement persisted idle-bar exclusions.</param>
+    public void ResetSession(List<IgnoredItem> nextIgnoredItems)
     {
-        untrackedItems =
-            nextUntrackedItems ?? throw new ArgumentNullException(nameof(nextUntrackedItems));
+        ignoredItems =
+            nextIgnoredItems ?? throw new ArgumentNullException(nameof(nextIgnoredItems));
         actions.CancelIdleBarItemDrag();
         ClearLocationHighlight();
     }
@@ -273,8 +273,8 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
         if (string.IsNullOrEmpty(entity?.InstanceID))
             return false;
 
-        return GetManufacturingTypes(entity)
-            .Any(type => !ContainsUntrackedItem(untrackedItems, entity.InstanceID, type));
+        return GetItemTypeIDs(entity)
+            .Any(type => !ContainsIgnoredItem(ignoredItems, entity.InstanceID, type));
     }
 
     /// <inheritdoc />
@@ -283,20 +283,20 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
         if (string.IsNullOrEmpty(entity?.InstanceID))
             return;
 
-        ManufacturingType[] manufacturingTypes = GetManufacturingTypes(entity).ToArray();
-        bool untrack = manufacturingTypes.Any(type =>
-            !ContainsUntrackedItem(untrackedItems, entity.InstanceID, type)
+        string[] itemTypeIDs = GetItemTypeIDs(entity).ToArray();
+        bool untrack = itemTypeIDs.Any(type =>
+            !ContainsIgnoredItem(ignoredItems, entity.InstanceID, type)
         );
-        foreach (ManufacturingType type in manufacturingTypes)
+        foreach (string itemTypeID in itemTypeIDs)
         {
-            untrackedItems.RemoveAll(item => IsUntrackedItem(item, entity.InstanceID, type));
+            ignoredItems.RemoveAll(item => IsIgnoredItem(item, entity.InstanceID, itemTypeID));
             if (untrack)
             {
-                untrackedItems.Add(
-                    new IdleBarUntrackedItem
+                ignoredItems.Add(
+                    new IgnoredItem
                     {
-                        EntityInstanceID = entity.InstanceID,
-                        ManufacturingType = type,
+                        TargetInstanceID = entity.InstanceID,
+                        ItemTypeID = itemTypeID,
                     }
                 );
             }
@@ -309,11 +309,11 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// <summary>
     /// Gets the independently persisted idle-bar identities represented by an entity.
     /// </summary>
-    /// <param name="entity">The entity whose manufacturing identities are requested.</param>
-    /// <returns>The manufacturing identities represented by the entity.</returns>
-    private static IEnumerable<ManufacturingType> GetManufacturingTypes(ISceneNode entity)
+    /// <param name="entity">The entity whose item identities are requested.</param>
+    /// <returns>The item identities represented by the entity.</returns>
+    private static IEnumerable<string> GetItemTypeIDs(ISceneNode entity)
     {
-        return entity is Planet ? _planetManufacturingTypes : new[] { ManufacturingType.None };
+        return entity is Planet ? _planetItemTypeIDs : new[] { _entityItemTypeID };
     }
 
     /// <summary>
@@ -321,15 +321,15 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// </summary>
     /// <param name="items">The persisted exclusions to search.</param>
     /// <param name="entityInstanceId">The entity identifier to match.</param>
-    /// <param name="manufacturingType">The manufacturing identity to match.</param>
+    /// <param name="itemTypeID">The item identity to match.</param>
     /// <returns>True when a matching exclusion exists.</returns>
-    private static bool ContainsUntrackedItem(
-        IEnumerable<IdleBarUntrackedItem> items,
+    private static bool ContainsIgnoredItem(
+        IEnumerable<IgnoredItem> items,
         string entityInstanceId,
-        ManufacturingType manufacturingType
+        string itemTypeID
     )
     {
-        return items.Any(item => IsUntrackedItem(item, entityInstanceId, manufacturingType));
+        return items.Any(item => IsIgnoredItem(item, entityInstanceId, itemTypeID));
     }
 
     /// <summary>
@@ -337,17 +337,13 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// </summary>
     /// <param name="item">The persisted exclusion to inspect.</param>
     /// <param name="entityInstanceId">The entity identifier to match.</param>
-    /// <param name="manufacturingType">The manufacturing identity to match.</param>
+    /// <param name="itemTypeID">The item identity to match.</param>
     /// <returns>True when the exclusion represents the requested identity.</returns>
-    private static bool IsUntrackedItem(
-        IdleBarUntrackedItem item,
-        string entityInstanceId,
-        ManufacturingType manufacturingType
-    )
+    private static bool IsIgnoredItem(IgnoredItem item, string entityInstanceId, string itemTypeID)
     {
         return item != null
-            && string.Equals(item.EntityInstanceID, entityInstanceId, StringComparison.Ordinal)
-            && item.ManufacturingType == manufacturingType;
+            && string.Equals(item.TargetInstanceID, entityInstanceId, StringComparison.Ordinal)
+            && string.Equals(item.ItemTypeID, itemTypeID, StringComparison.Ordinal);
     }
 
     /// <summary>

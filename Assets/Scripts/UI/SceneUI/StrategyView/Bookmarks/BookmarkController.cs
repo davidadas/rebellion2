@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using UnityEngine;
 
@@ -13,7 +13,7 @@ using UnityEngine;
 public sealed class BookmarkController
 {
     private readonly BookmarkEntry[] bookmarks;
-    private List<PlanetBookmark> savedBookmarks;
+    private List<BookmarkedItem> savedBookmarks;
     private readonly UIContext uiContext;
 
     /// <summary>
@@ -21,7 +21,7 @@ public sealed class BookmarkController
     /// </summary>
     /// <param name="uiContext">The active strategy presentation context.</param>
     /// <param name="savedBookmarks">The durable bookmark records to read and update.</param>
-    public BookmarkController(UIContext uiContext, List<PlanetBookmark> savedBookmarks)
+    public BookmarkController(UIContext uiContext, List<BookmarkedItem> savedBookmarks)
     {
         this.uiContext = uiContext ?? throw new ArgumentNullException(nameof(uiContext));
         StrategyBookmarkLayout layout = uiContext.GetPlayerFactionTheme()?.StrategyBookmarkLayout;
@@ -36,11 +36,11 @@ public sealed class BookmarkController
     /// Replaces bookmark state after the active game changes.
     /// </summary>
     /// <param name="nextBookmarks">The replacement game's durable bookmarks.</param>
-    public void ResetSession(List<PlanetBookmark> nextBookmarks)
+    public void ResetSession(List<BookmarkedItem> nextBookmarks)
     {
         savedBookmarks = nextBookmarks ?? throw new ArgumentNullException(nameof(nextBookmarks));
         Array.Clear(bookmarks, 0, bookmarks.Length);
-        foreach (PlanetBookmark bookmark in savedBookmarks)
+        foreach (BookmarkedItem bookmark in savedBookmarks)
         {
             if (
                 bookmark?.SlotIndex is int slotIndex
@@ -172,7 +172,7 @@ public sealed class BookmarkController
         Dictionary<string, GalaxyMapPlanet> planetsById = BuildPlanetLookup(sectors);
         for (int i = 0; i < bookmarks.Length; i++)
         {
-            string planetId = bookmarks[i]?.State?.PlanetInstanceID;
+            string planetId = bookmarks[i]?.State?.TargetInstanceID;
             if (planetId == null)
                 continue;
 

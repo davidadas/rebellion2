@@ -31,9 +31,6 @@ namespace Rebellion.Game
     [PersistableObject(Name = "Game")]
     public class GameRoot
     {
-        private const string _localPlayerID = "PLAYER1";
-        private const string _aiPlayerIDPrefix = "AI_";
-
         // Scene graph.
         private GalaxyMap _galaxy;
 
@@ -246,29 +243,6 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Creates participant records for saves written before players were modeled explicitly.
-        /// </summary>
-        public void EnsurePlayers()
-        {
-            if (_players.Count > 0)
-            {
-                foreach (Player player in _players)
-                    player.UIState ??= new PlayerUIState();
-                return;
-            }
-
-            foreach (Faction faction in _factions)
-            {
-                bool isHuman = faction.InstanceID == Summary?.PlayerFactionID;
-                SetFactionController(
-                    faction.InstanceID,
-                    isHuman ? _localPlayerID : $"{_aiPlayerIDPrefix}{faction.InstanceID}",
-                    isHuman ? PlayerControllerType.Human : PlayerControllerType.AI
-                );
-            }
-        }
-
-        /// <summary>
         /// Returns whether a faction has no human participant controlling it.
         /// </summary>
         /// <param name="faction">The faction to inspect.</param>
@@ -287,15 +261,13 @@ namespace Rebellion.Game
         /// </summary>
         /// <returns>The player's <see cref="Faction"/>.</returns>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when no summary has been set or the summary has no player faction ID.
+        /// Thrown when no human participant is configured or its faction does not exist.
         /// </exception>
         public Faction GetPlayerFaction()
         {
             string factionInstanceID = _players
                 .FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
                 ?.FactionID;
-            if (string.IsNullOrEmpty(factionInstanceID))
-                factionInstanceID = Summary?.PlayerFactionID;
             if (string.IsNullOrEmpty(factionInstanceID))
                 throw new InvalidOperationException("No human player faction is configured.");
 
