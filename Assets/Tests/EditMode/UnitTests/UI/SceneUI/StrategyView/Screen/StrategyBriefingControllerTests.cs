@@ -604,6 +604,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionID });
             game.GetFactions().Add(new Faction { InstanceID = _opponentFactionID });
             game.Summary.PlayerFactionID = _playerFactionID;
+            game.SetFactionController(_playerFactionID, "PLAYER1", PlayerControllerType.Human);
             return game;
         }
 

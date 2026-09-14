@@ -35,6 +35,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),

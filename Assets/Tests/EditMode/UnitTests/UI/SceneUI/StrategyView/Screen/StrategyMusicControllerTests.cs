@@ -33,6 +33,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             game.GetFactions().Add(_playerFaction);
             game.GetFactions().Add(_opponentFaction);
             game.Summary.PlayerFactionID = _playerFaction.InstanceID;
+            game.SetFactionController(
+                _playerFaction.InstanceID,
+                "PLAYER1",
+                PlayerControllerType.Human
+            );
 
             _theme = new StrategyMusicTheme
             {

@@ -62,6 +62,7 @@ namespace Rebellion.Tests.Game
             _game = new GameRoot(_summary, config);
             _game.GetFactions().Add(_faction1);
             _game.GetFactions().Add(_faction2);
+            _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
         }
 
         /// <summary>
