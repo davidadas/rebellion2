@@ -485,6 +485,12 @@ public static class ContentPackLoader
         );
     }
 
+    /// <summary>
+    /// Loads the layered game configuration through the active content resolver.
+    /// </summary>
+    /// <param name="fileResolver">The resolver supplying application, pack, and mod files.</param>
+    /// <param name="packGameConfigPath">The optional pack-relative override path.</param>
+    /// <returns>The merged, schema-validated game configuration.</returns>
     private static GameConfig LoadGameConfig(
         ContentFileResolver fileResolver,
         string packGameConfigPath
