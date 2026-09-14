@@ -452,6 +452,9 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig ForceEfficiency { get; set; } = Weighted(1);
 
+            public AIConsiderationConfig ReinforcementNeed { get; set; } =
+                Weighted(int.MaxValue, int.MaxValue);
+
             private static AIConsiderationConfig Weighted(double weight) =>
                 new AIConsiderationConfig { Weight = weight };
 

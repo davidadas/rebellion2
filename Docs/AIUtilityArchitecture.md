@@ -47,6 +47,10 @@ that fleet, and continue. Its target and fleet preferences use `DefenseAllocatio
 selection still uses `DefenseUtility` so allocation tie-breaks cannot distort the relative value of
 defense versus unrelated proposal types.
 
+Defense production and live capital-ship transfers evaluate their remaining strength through
+`AIFleetReinforcementUtility`. Callers supply projected strength for production and ready strength
+for an immediate transfer; the shared utility owns how the resulting need maps to preference.
+
 When established behavior requires a strict preference order, give considerations non-overlapping
 score bands in configuration. Lower bands may break ties within a higher band but cannot reverse
 it. This keeps the hierarchy explicit and tunable without hiding it in chained LINQ ordering.

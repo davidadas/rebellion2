@@ -1260,8 +1260,11 @@ namespace Rebellion.AI.Planners
                 .Select(fleet => new { Fleet = fleet, Target = GetDefenseTarget(context, fleet) })
                 .Where(candidate => candidate.Target != null)
                 .OrderByDescending(candidate =>
-                    context.Assessment.GetRequiredDefenseStrength(candidate.Target)
-                    - context.Assessment.GetProjectedFleetCombatValue(candidate.Fleet)
+                    AIFleetReinforcementUtility.ScoreDefenseNeed(
+                        context,
+                        candidate.Target,
+                        context.Assessment.GetProjectedFleetCombatValue(candidate.Fleet)
+                    )
                 )
                 .ThenBy(candidate => candidate.Fleet.InstanceID, StringComparer.Ordinal)
                 .Select(candidate => candidate.Fleet)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scoring;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -1020,8 +1021,11 @@ namespace Rebellion.AI.Planners
                     CanReceiveCapitalShipTransfer(context, candidate.Fleet, candidate.TargetPlanet)
                 )
                 .OrderByDescending(candidate =>
-                    context.Assessment.GetRequiredDefenseStrength(candidate.TargetPlanet)
-                    - context.Assessment.GetReadyFleetCombatValue(candidate.Fleet)
+                    AIFleetReinforcementUtility.ScoreDefenseNeed(
+                        context,
+                        candidate.TargetPlanet,
+                        context.Assessment.GetReadyFleetCombatValue(candidate.Fleet)
+                    )
                 )
                 .ThenBy(candidate => candidate.Fleet.InstanceID)
                 .Select(candidate => candidate.Fleet)
