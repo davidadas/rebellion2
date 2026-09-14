@@ -384,7 +384,7 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds demand for a dedicated colonization fleet when known unsettled planets remain.
+        /// Adds demand for a dedicated colonization fleet while settlement opportunities remain.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
@@ -398,7 +398,7 @@ namespace Rebellion.AI.Planners
                 fleet.RoleType == FleetRoleType.Colonization
             );
             int deficit = targetCount - committedCount;
-            if (context.Assessment.KnownUncolonizedPlanets.Count == 0 || deficit <= 0)
+            if (!HasColonizationOpportunity(context) || deficit <= 0)
                 return;
 
             Planet destination = FindFleetAssemblyPlanet(context);
@@ -420,6 +420,19 @@ namespace Rebellion.AI.Planners
                     capitalShipRole: AICapitalShipProductionRole.TroopTransport
                 )
             );
+        }
+
+        /// <summary>
+        /// Returns whether known unsettled territory or unexplored Outer Rim territory remains.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when a colonization fleet has useful work available.</returns>
+        private static bool HasColonizationOpportunity(AITurnContext context)
+        {
+            return context.Assessment.KnownUncolonizedPlanets.Count > 0
+                || context.Assessment.UnexploredPlanets.Any(planet =>
+                    planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.OuterRim
+                );
         }
 
         /// <summary>

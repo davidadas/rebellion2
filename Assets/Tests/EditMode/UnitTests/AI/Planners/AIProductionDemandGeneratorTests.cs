@@ -2964,6 +2964,30 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_WithUnexploredOuterRimPlanet_AddsColonizationFleetSeedDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector ownedSystem = AITestSceneBuilder.AddSector(game, "owned-system");
+            Planet shipyardPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                ownedSystem,
+                "shipyard-world",
+                empire.InstanceID
+            );
+            PlanetSector outerRimSystem = AITestSceneBuilder.AddSector(game, "outer-rim-system");
+            outerRimSystem.SectorType = PlanetSectorType.OuterRim;
+            AITestSceneBuilder.AddPlanet(game, outerRimSystem, "unexplored", null);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item => item.Kind == AIDemandKind.ColonizationFleetSeedCapitalShip);
+
+            Assert.AreSame(shipyardPlanet, demand.DestinationPlanet);
+            Assert.AreEqual(AICapitalShipProductionRole.TroopTransport, demand.CapitalShipRole);
+        }
+
+        [Test]
         public void Generate_WithOneOfTwoColonizationFleets_AddsOneSeedDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
