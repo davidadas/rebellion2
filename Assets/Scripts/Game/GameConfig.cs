@@ -96,6 +96,43 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Shapes supported by normalized AI utility considerations.
+        /// </summary>
+        public enum AIResponseCurveShape
+        {
+            Linear,
+            Power,
+            SmoothStep,
+            Logistic,
+        }
+
+        /// <summary>
+        /// Configuration for mapping a normalized input to normalized utility.
+        /// </summary>
+        [PersistableObject]
+        public class AIResponseCurveConfig
+        {
+            public AIResponseCurveShape Shape { get; set; } = AIResponseCurveShape.Linear;
+
+            public double Exponent { get; set; } = 1;
+
+            public double Midpoint { get; set; } = 0.5;
+
+            public double Steepness { get; set; } = 10;
+        }
+
+        /// <summary>
+        /// Configuration for one normalized and weighted AI consideration.
+        /// </summary>
+        [PersistableObject]
+        public class AIConsiderationConfig
+        {
+            public double Weight { get; set; }
+
+            public AIResponseCurveConfig Curve { get; set; } = new AIResponseCurveConfig();
+        }
+
+        /// <summary>
         /// Mission planning priorities and intelligence freshness settings.
         /// </summary>
         [PersistableObject]
