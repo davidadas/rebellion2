@@ -460,6 +460,37 @@ namespace Rebellion.Tests.Systems
         /// Verifies process tick can escape false skips escape attempt.
         /// </summary>
         [Test]
+        public void ProcessTick_FriendlyFleetFirstShipUnavailable_MovesOfficerToOperationalShip()
+        {
+            (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
+            Planet friendlyPlanet = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
+            game.ChangeOwnership(friendlyPlanet, "rebels");
+            Fleet fleet = EntityFactory.CreateFleet("friendly_fleet", "empire");
+            CapitalShip unavailableShip = new CapitalShip
+            {
+                InstanceID = "unavailable_ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            CapitalShip operationalShip = new CapitalShip
+            {
+                InstanceID = "operational_ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(unavailableShip, fleet);
+            game.AttachNode(operationalShip, fleet);
+            CaptiveSystem system = CreateSystem(game, new FixedRNG(0.0), movement);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.IsFalse(captive.IsCaptured);
+            Assert.AreSame(operationalShip, captive.GetParent());
+            Assert.AreEqual(1, results.OfType<OfficerCaptureStateResult>().Count());
+        }
+
+        [Test]
         public void ProcessTick_CanEscapeFalse_SkipsEscapeAttempt()
         {
             (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();

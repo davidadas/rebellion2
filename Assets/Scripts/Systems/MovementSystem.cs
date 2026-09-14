@@ -3138,11 +3138,17 @@ namespace Rebellion.Systems
                     );
             }
 
-            if (
-                (unit is Officer || unit is SpecialForces)
-                && fleet.GetChildren<CapitalShip>().Count > 0
-            )
-                return fleet.GetChildren<CapitalShip>()[0];
+            if (unit is Officer || unit is SpecialForces)
+            {
+                return fleet
+                    .GetChildren<CapitalShip>()
+                    .FirstOrDefault(ship =>
+                        ship.ManufacturingStatus == ManufacturingStatus.Complete
+                        && ship.Movement == null
+                        && CanAcceptReservedChild(ship, unit, reservedChildren)
+                    );
+            }
+
             return null;
         }
 

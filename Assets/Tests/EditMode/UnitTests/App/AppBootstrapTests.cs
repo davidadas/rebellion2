@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -56,6 +57,20 @@ namespace Rebellion.Tests.App
                 GameLaunchContext.Summary.PackVersion
             );
             Assert.AreEqual(TestContent.Pack.Scenario.ID, GameLaunchContext.Summary.ScenarioID);
+        }
+
+        [Test]
+        public async Task InitializeMainMenuContentAsync_DestroyedDuringPreload_CompletesSafelyAsync()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            Task preload = _bootstrap.InitializeMainMenuContentAsync();
+
+            Object.DestroyImmediate(_gameObject);
+            _gameObject = null;
+
+            await preload;
+
+            Assert.IsNull(AppBootstrap.Instance);
         }
 
         /// <summary>
