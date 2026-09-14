@@ -249,17 +249,8 @@ namespace Rebellion.Game
 
             public int DefenseSectorSupportRiskWeight { get; set; } = 30;
 
-            public int ColonizationBaseScore { get; set; } = 45;
-
-            public int ColonizationStrategicValueWeight { get; set; } = 20;
-
-            public int ColonizationTravelEfficiencyWeight { get; set; } = 20;
-
-            public int ColonizationReadyFleetBonus { get; set; } = 35;
-
-            public int ColonizationOpportunityCostPenaltyWeight { get; set; } = 20;
-
-            public int ExistingColonizationOrderBonus { get; set; } = 100;
+            public AIColonizationUtilityConfig ColonizationUtility { get; set; } =
+                new AIColonizationUtilityConfig();
 
             public int ColonizationFleetTargetCount { get; set; } = 2;
 
@@ -307,6 +298,28 @@ namespace Rebellion.Game
 
             private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
                 new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
+        }
+
+        /// <summary>
+        /// Utility considerations used to value colonization fleets and destinations.
+        /// </summary>
+        [PersistableObject]
+        public class AIColonizationUtilityConfig
+        {
+            public AIConsiderationConfig Base { get; set; } = Weighted(45);
+
+            public AIConsiderationConfig StrategicValue { get; set; } = Weighted(20);
+
+            public AIConsiderationConfig TravelEfficiency { get; set; } = Weighted(20);
+
+            public AIConsiderationConfig Ready { get; set; } = Weighted(35);
+
+            public AIConsiderationConfig OpportunityCost { get; set; } = Weighted(20);
+
+            public AIConsiderationConfig ExistingOrder { get; set; } = Weighted(100);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>

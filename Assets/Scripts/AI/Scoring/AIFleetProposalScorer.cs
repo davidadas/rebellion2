@@ -89,20 +89,30 @@ namespace Rebellion.AI.Scoring
             AIColonizationCampaignProposal proposal
         )
         {
-            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
-            double score = config.ColonizationBaseScore + config.ColonizationReadyFleetBonus;
+            GameConfig.AIColonizationUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .FleetDeployment
+                .ColonizationUtility;
+            double score =
+                AIUtility.Evaluate(1, utility.Base) + AIUtility.Evaluate(1, utility.Ready);
             if (proposal.EntryPlanet != null)
             {
-                score +=
+                score += AIUtility.Evaluate(
                     ScoreColonizationTravelEfficiency(
                         context.Assessment,
                         proposal.Fleet,
                         proposal.EntryPlanet
-                    ) * config.ColonizationTravelEfficiencyWeight;
+                    ),
+                    utility.TravelEfficiency
+                );
             }
 
-            if (proposal.Fleet?.Order?.OrderType == FleetOrderType.Colonize)
-                score += config.ExistingColonizationOrderBonus;
+            score += AIUtility.Evaluate(
+                proposal.Fleet?.Order?.OrderType == FleetOrderType.Colonize ? 1 : 0,
+                utility.ExistingOrder
+            );
 
             return Math.Max(0, score);
         }
@@ -375,23 +385,31 @@ namespace Rebellion.AI.Scoring
                 return 0;
 
             AIAssessment assessment = context.Assessment;
-            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            GameConfig.AIColonizationUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .FleetDeployment
+                .ColonizationUtility;
             double score =
-                config.ColonizationBaseScore
-                + GetFulfillmentRatio(
-                    assessment.GetPlanetValue(targetPlanet),
-                    assessment.GetHighestKnownUncolonizedPlanetValue()
-                ) * config.ColonizationStrategicValueWeight
-                + ScoreColonizationTravelEfficiency(assessment, fleet, targetPlanet)
-                    * config.ColonizationTravelEfficiencyWeight
-                - ScoreOpportunityCost(context, fleet)
-                    * config.ColonizationOpportunityCostPenaltyWeight;
-
-            if (assessment.GetReadyFleetRegimentCount(fleet) > 0)
-                score += config.ColonizationReadyFleetBonus;
-
-            if (existingOrder)
-                score += config.ExistingColonizationOrderBonus;
+                AIUtility.Evaluate(1, utility.Base)
+                + AIUtility.Evaluate(
+                    GetFulfillmentRatio(
+                        assessment.GetPlanetValue(targetPlanet),
+                        assessment.GetHighestKnownUncolonizedPlanetValue()
+                    ),
+                    utility.StrategicValue
+                )
+                + AIUtility.Evaluate(
+                    ScoreColonizationTravelEfficiency(assessment, fleet, targetPlanet),
+                    utility.TravelEfficiency
+                )
+                - AIUtility.Evaluate(ScoreOpportunityCost(context, fleet), utility.OpportunityCost)
+                + AIUtility.Evaluate(
+                    assessment.GetReadyFleetRegimentCount(fleet) > 0 ? 1 : 0,
+                    utility.Ready
+                )
+                + AIUtility.Evaluate(existingOrder ? 1 : 0, utility.ExistingOrder);
 
             return Math.Max(0, score);
         }

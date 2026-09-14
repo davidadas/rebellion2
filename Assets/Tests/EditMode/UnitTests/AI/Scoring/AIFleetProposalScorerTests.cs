@@ -699,11 +699,11 @@ namespace Rebellion.Tests.AI.Scoring
         public void Score_ColonizationProposalWithLoadedRegiment_AddsReadinessBonus()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.FleetDeployment.ColonizationBaseScore = 10;
-            game.Config.AI.FleetDeployment.ColonizationStrategicValueWeight = 0;
-            game.Config.AI.FleetDeployment.ColonizationTravelEfficiencyWeight = 0;
-            game.Config.AI.FleetDeployment.ColonizationReadyFleetBonus = 30;
-            game.Config.AI.FleetDeployment.ColonizationOpportunityCostPenaltyWeight = 0;
+            game.Config.AI.FleetDeployment.ColonizationUtility.Base.Weight = 10;
+            game.Config.AI.FleetDeployment.ColonizationUtility.StrategicValue.Weight = 0;
+            game.Config.AI.FleetDeployment.ColonizationUtility.TravelEfficiency.Weight = 0;
+            game.Config.AI.FleetDeployment.ColonizationUtility.Ready.Weight = 30;
+            game.Config.AI.FleetDeployment.ColonizationUtility.OpportunityCost.Weight = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
@@ -735,12 +735,12 @@ namespace Rebellion.Tests.AI.Scoring
         public void Score_ExistingColonizationOrderOnColonizationFleet_AddsContinuationBonus()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.FleetDeployment.ColonizationBaseScore = 10;
-            game.Config.AI.FleetDeployment.ColonizationStrategicValueWeight = 0;
-            game.Config.AI.FleetDeployment.ColonizationTravelEfficiencyWeight = 0;
-            game.Config.AI.FleetDeployment.ColonizationReadyFleetBonus = 0;
-            game.Config.AI.FleetDeployment.ColonizationOpportunityCostPenaltyWeight = 0;
-            game.Config.AI.FleetDeployment.ExistingColonizationOrderBonus = 20;
+            game.Config.AI.FleetDeployment.ColonizationUtility.Base.Weight = 10;
+            game.Config.AI.FleetDeployment.ColonizationUtility.StrategicValue.Weight = 0;
+            game.Config.AI.FleetDeployment.ColonizationUtility.TravelEfficiency.Weight = 0;
+            game.Config.AI.FleetDeployment.ColonizationUtility.Ready.Weight = 0;
+            game.Config.AI.FleetDeployment.ColonizationUtility.OpportunityCost.Weight = 0;
+            game.Config.AI.FleetDeployment.ColonizationUtility.ExistingOrder.Weight = 20;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
