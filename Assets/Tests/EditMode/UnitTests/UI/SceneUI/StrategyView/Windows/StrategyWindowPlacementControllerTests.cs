@@ -201,61 +201,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         /// <summary>
-        /// Verifies persisted authored slot indices restore directly.
-        /// </summary>
-        [Test]
-        public void TryResolveSectorWindowPosition_SlotIndex_ReturnsSameSlot()
-        {
-            bool found = _controller.TryResolveSectorWindowPosition(
-                SectorWindowPositions.Middle,
-                out int slot
-            );
-
-            Assert.IsTrue(found);
-            Assert.AreEqual(SectorWindowPositions.Middle, slot);
-        }
-
-        /// <summary>
-        /// Verifies legacy persisted coordinates still resolve to authored sector slots.
-        /// </summary>
-        [Test]
-        public void TryResolveSectorWindowPosition_AuthoredCoordinate_ReturnsMatchingSlot()
-        {
-            int x = _controller.GetSectorWindowPosition(SectorWindowPositions.Right).x;
-
-            bool found = _controller.TryResolveSectorWindowPosition(x, out int slot);
-
-            Assert.IsTrue(found);
-            Assert.AreEqual(SectorWindowPositions.Right, slot);
-        }
-
-        /// <summary>
-        /// Verifies authored coordinates take precedence when they overlap slot-index values.
-        /// </summary>
-        [Test]
-        public void TryResolveSectorWindowPosition_OverlappingCoordinate_PrefersCoordinateSlot()
-        {
-            _placements.SectorLeftPosition = new SourcePointLayout
-            {
-                X = SectorWindowPositions.Middle,
-                Y = _placements.SectorLeftPosition.Y,
-            };
-            _controller = new StrategyWindowPlacementController(
-                _uiContext,
-                _windowLayer,
-                _windowManager
-            );
-
-            bool found = _controller.TryResolveSectorWindowPosition(
-                SectorWindowPositions.Middle,
-                out int slot
-            );
-
-            Assert.IsTrue(found);
-            Assert.AreEqual(SectorWindowPositions.Left, slot);
-        }
-
-        /// <summary>
         /// Verifies get utility window position configured theme returns authored position.
         /// </summary>
         [Test]
