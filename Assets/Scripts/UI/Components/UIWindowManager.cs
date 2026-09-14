@@ -57,6 +57,11 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     public event Action<UIWindow> WindowClosed;
 
     /// <summary>
+    /// Raised after the registered window collection, bounds, or stacking order changes.
+    /// </summary>
+    public event Action WindowsChanged;
+
+    /// <summary>
     /// Raised when a modal window enters the registry.
     /// </summary>
     public event Action<UIWindow> ModalOpened;
@@ -253,8 +258,10 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         if (!wasRegistered && window.Modal)
             ModalOpened?.Invoke(window);
 
-        if (!window.CanFocus || !Focus(window))
+        if (!window.CanFocus || !Focus(window, false))
             ApplyActiveState();
+
+        WindowsChanged?.Invoke();
     }
 
     /// <summary>
@@ -276,6 +283,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         ApplyActiveState();
         UnbindWindow(window);
         WindowClosed?.Invoke(window);
+        WindowsChanged?.Invoke();
     }
 
     /// <summary>
@@ -284,6 +292,17 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     /// <param name="window">The window requesting focus.</param>
     /// <returns>True when the window received focus.</returns>
     public bool Focus(UIWindow window)
+    {
+        return Focus(window, true);
+    }
+
+    /// <summary>
+    /// Promotes a window and optionally announces its changed stacking order.
+    /// </summary>
+    /// <param name="window">The window requesting focus.</param>
+    /// <param name="notifyWindowsChanged">Whether to announce the changed window state.</param>
+    /// <returns>True when the window received focus.</returns>
+    private bool Focus(UIWindow window, bool notifyWindowsChanged)
     {
         if (!window || !window.CanFocus || !CanInteractWithWindow(window))
             return false;
@@ -296,6 +315,8 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         ActiveWindow = window;
         ApplyActiveState();
         FocusChanged?.Invoke(window);
+        if (notifyWindowsChanged)
+            WindowsChanged?.Invoke();
         return true;
     }
 
@@ -628,6 +649,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         window.MovePreviewChanged += HandleWindowMovePreviewChanged;
         window.MovePreviewEnded += HandleWindowMovePreviewEnded;
         window.Moved += HandleWindowMoved;
+        window.Resized += HandleWindowResized;
     }
 
     /// <summary>
@@ -641,6 +663,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         window.MovePreviewChanged -= HandleWindowMovePreviewChanged;
         window.MovePreviewEnded -= HandleWindowMovePreviewEnded;
         window.Moved -= HandleWindowMoved;
+        window.Resized -= HandleWindowResized;
     }
 
     /// <summary>
@@ -696,6 +719,16 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     private void HandleWindowMoved(UIWindow window)
     {
         WindowMoved?.Invoke(window);
+        WindowsChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Announces a committed size change from a registered window.
+    /// </summary>
+    /// <param name="window">The resized window.</param>
+    private void HandleWindowResized(UIWindow window)
+    {
+        WindowsChanged?.Invoke();
     }
 
     /// <summary>

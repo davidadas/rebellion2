@@ -108,6 +108,7 @@ public sealed class StrategyController
     private bool cancelHandlersRegistered;
     private bool presentationActive;
     private bool restoringWindows;
+    private bool windowStateDirty;
     private RectInt windowMovePreviewBounds;
     private bool windowMovePreviewVisible;
 
@@ -441,6 +442,7 @@ public sealed class StrategyController
             restoringWindows = false;
         }
         windowStateManager?.Capture();
+        windowStateDirty = false;
     }
 
     /// <summary>
@@ -711,6 +713,7 @@ public sealed class StrategyController
         strategyWindowManager.WindowMovePreviewChanged += HandleWindowMovePreviewChanged;
         strategyWindowManager.WindowMovePreviewEnded += HandleWindowMovePreviewEnded;
         strategyWindowManager.WindowMoved += HandleWindowMoved;
+        strategyWindowManager.WindowsChanged += HandleWindowsChanged;
         strategyWindowManager.FocusChanged += HandleWindowFocusChanged;
         strategyWindowManager.ModalOpened += HandleWindowModalOpened;
         strategyWindowManager.WindowClosed += HandleAnyWindowClosed;
@@ -735,6 +738,7 @@ public sealed class StrategyController
             strategyWindowManager.WindowMovePreviewChanged -= HandleWindowMovePreviewChanged;
             strategyWindowManager.WindowMovePreviewEnded -= HandleWindowMovePreviewEnded;
             strategyWindowManager.WindowMoved -= HandleWindowMoved;
+            strategyWindowManager.WindowsChanged -= HandleWindowsChanged;
             strategyWindowManager.FocusChanged -= HandleWindowFocusChanged;
             strategyWindowManager.ModalOpened -= HandleWindowModalOpened;
             strategyWindowManager.WindowClosed -= HandleAnyWindowClosed;
@@ -925,6 +929,8 @@ public sealed class StrategyController
     {
         if (gameManager == null || !contentReady)
             return;
+
+        CaptureChangedWindows();
 
         if (briefingActive)
         {
@@ -1605,6 +1611,27 @@ public sealed class StrategyController
 
         ClearWindowMovePreview();
         MarkDirty();
+    }
+
+    /// <summary>
+    /// Synchronizes durable window state after the runtime window collection changes.
+    /// </summary>
+    private void HandleWindowsChanged()
+    {
+        if (!restoringWindows)
+            windowStateDirty = true;
+    }
+
+    /// <summary>
+    /// Captures changed windows after their feature controllers finish initializing them.
+    /// </summary>
+    private void CaptureChangedWindows()
+    {
+        if (!windowStateDirty || restoringWindows)
+            return;
+
+        windowStateManager?.Capture();
+        windowStateDirty = false;
     }
 
     /// <summary>
@@ -3342,8 +3369,6 @@ public sealed class StrategyController
     private void MarkDirty()
     {
         dirty = true;
-        if (!restoringWindows)
-            windowStateManager?.Capture();
     }
 
     /// <summary>
