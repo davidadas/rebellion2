@@ -21,6 +21,10 @@ namespace Rebellion.Game
 
         public string ScenarioID;
 
+        public string[] ModIDs = Array.Empty<string>();
+
+        public string[] ModVersions = Array.Empty<string>();
+
         public bool OpeningBriefingCompleted;
 
         public DateTime LastSavedUtc;

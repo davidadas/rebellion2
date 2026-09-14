@@ -365,6 +365,50 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_EscapeSucceedsWithoutFriendlyDestination_RemainsCaptured()
+        {
+            (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
+            Planet friendlyPlanet = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
+            game.ChangeOwnership(friendlyPlanet, "rebels");
+            CaptiveSystem system = CreateSystem(game, new FixedRNG(0.0), movement);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.IsTrue(captive.IsCaptured);
+            Assert.AreEqual("rebels", captive.CaptorInstanceID);
+            Assert.IsTrue(captive.CanEscape);
+            Assert.AreSame(planet, captive.GetParent());
+            Assert.IsNull(captive.Movement);
+            Assert.IsEmpty(results.OfType<OfficerCaptureStateResult>());
+        }
+
+        [Test]
+        public void ProcessTick_EscapeSucceedsWithFriendlyFleet_MovesOfficerToFleet()
+        {
+            (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
+            Planet friendlyPlanet = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
+            game.ChangeOwnership(friendlyPlanet, "rebels");
+            Fleet fleet = EntityFactory.CreateFleet("friendly_fleet", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "friendly_ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            CaptiveSystem system = CreateSystem(game, new FixedRNG(0.0), movement);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.IsFalse(captive.IsCaptured);
+            Assert.IsNull(captive.CaptorInstanceID);
+            Assert.IsFalse(captive.CanEscape);
+            Assert.AreSame(ship, captive.GetParent());
+            Assert.AreEqual(1, results.OfType<OfficerCaptureStateResult>().Count());
+        }
+
+        [Test]
         public void ProcessTick_CanEscapeFalse_SkipsEscapeAttempt()
         {
             (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
@@ -510,7 +554,7 @@ namespace Rebellion.Tests.Systems
             system.ProcessTick();
 
             Assert.IsFalse(captive.IsCaptured);
-            Assert.AreSame(planet, captive.GetParent());
+            Assert.AreEqual("empire", captive.GetParentOfType<Planet>()?.OwnerInstanceID);
         }
 
         [Test]

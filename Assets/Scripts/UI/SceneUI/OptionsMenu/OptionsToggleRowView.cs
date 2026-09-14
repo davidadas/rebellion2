@@ -44,6 +44,15 @@ public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
     public event Action<int> ToggleRequested;
 
     /// <summary>
+    /// Assigns the owning page's semantic option index.
+    /// </summary>
+    /// <param name="optionIndex">The option index emitted when toggled.</param>
+    internal void SetOptionIndex(int optionIndex)
+    {
+        _optionIndex = optionIndex;
+    }
+
+    /// <summary>
     /// Restores the state-swapped toggle sprites from installation content.
     /// </summary>
     /// <param name="contentAssets">The active content asset source.</param>
@@ -65,6 +74,17 @@ public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
         _labelTextField.color = enabled ? _onTextColor : _offTextColor;
         _stateTextField.text = enabled ? "ON" : "OFF";
         _stateTextField.color = enabled ? _onTextColor : _offTextColor;
+    }
+
+    /// <summary>
+    /// Renders the current option state and player-facing label.
+    /// </summary>
+    /// <param name="enabled">Whether the option is enabled.</param>
+    /// <param name="label">The option label.</param>
+    public void Render(bool enabled, string label)
+    {
+        UILayout.SetTextContent(_labelTextField, label ?? string.Empty);
+        Render(enabled);
     }
 
     /// <summary>

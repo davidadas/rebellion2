@@ -152,6 +152,23 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
+        /// <summary>
+        /// Verifies saves reject a different active mod identity.
+        /// </summary>
+        [Test]
+        public void ValidateGameContent_SaveHasDifferentMods_ThrowsInvalidOperationException()
+        {
+            GameRoot game = CreateGame();
+            game.Summary.ModIDs = new[] { "missing-mod" };
+            game.Summary.ModVersions = new[] { "1.0.0" };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _runtime.ValidateGameContent(game)
+            );
+            StringAssert.Contains("mods [missing-mod@1.0.0]", exception.Message);
+            StringAssert.Contains("mods [] is active", exception.Message);
+        }
+
         private GameRoot CreateGame()
         {
             return new GameRoot

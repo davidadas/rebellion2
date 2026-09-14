@@ -47,6 +47,8 @@ namespace Rebellion.Game
         public string PackID;
         public string PackVersion;
         public string ScenarioID;
+        public string[] ModIDs = Array.Empty<string>();
+        public string[] ModVersions = Array.Empty<string>();
         public int Seed = Guid.NewGuid().GetHashCode();
 
         /// <summary>
