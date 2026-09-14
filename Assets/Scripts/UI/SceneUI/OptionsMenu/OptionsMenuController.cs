@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using UnityEngine;
 
@@ -20,6 +21,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private readonly SaveGameManager _saveGameManager;
     private readonly IContentAssetSource _contentAssets;
     private readonly FactionThemeLibrary _factionThemeLibrary;
+    private readonly IReadOnlyList<ContentPackDefinition> _availablePacks;
 
     private readonly OptionsSettingsSession _settingsSession;
     private readonly OptionsBindingSession _bindingSession;
@@ -36,6 +38,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private TickSpeed _speedBeforeOptions;
     private bool _gamePaused;
     private bool _disposed;
+    private string _selectedPackID;
+    private ContentFileResolver _selectedModResolver;
 
     /// <summary>
     /// Returns whether the Options menu is open.
@@ -84,6 +88,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _factionThemeLibrary = new FactionThemeLibrary(
             _bootstrap.GetContentPack().GameData.FactionThemes
         );
+        ContentPack contentPack = _bootstrap.GetContentPack();
+        _availablePacks = ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath);
+        _selectedPackID = contentPack.Definition.ID;
+        RefreshSelectedModResolver();
         InputManager bindings = _bootstrap.GetInputManager();
         _settingsSession = new OptionsSettingsSession(
             _bootstrap.GetUserSettingsManager(),
@@ -216,8 +224,117 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _bindingSession.ListeningSecondary,
                 _settingsSession.GetGameplayStates(),
                 _settingsSession.Gameplay.AutosaveIntervalTicks,
-                _settingsSession.Gameplay.AutosavesToKeep
+                _settingsSession.Gameplay.AutosavesToKeep,
+                BuildModRows().ToArray(),
+                GetSelectedPack()?.DisplayName ?? _selectedPackID,
+                !string.Equals(
+                    _selectedPackID,
+                    _bootstrap.GetContentPack().Definition.ID,
+                    StringComparison.Ordinal
+                )
             )
+        );
+    }
+
+    /// <summary>
+    /// Projects compatible mods into their current and pending enablement states.
+    /// </summary>
+    /// <returns>The ordered mod rows for the selected content pack.</returns>
+    private IEnumerable<OptionsModRow> BuildModRows()
+    {
+        ContentFileResolver resolver = _selectedModResolver;
+        HashSet<string> disabledIDs = new HashSet<string>(
+            _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs,
+            StringComparer.Ordinal
+        );
+        HashSet<string> loadedIDs = new HashSet<string>(
+            _bootstrap.GetContentPack().FileResolver.Mods.Select(mod => mod.ID),
+            StringComparer.Ordinal
+        );
+        return resolver.AvailableMods.Select(mod => new OptionsModRow(
+            mod.ID,
+            mod.Version,
+            mod.DisplayName,
+            !disabledIDs.Contains(mod.ID),
+            loadedIDs.Contains(mod.ID)
+        ));
+    }
+
+    /// <summary>
+    /// Toggles one compatible mod and persists its pending restart state.
+    /// </summary>
+    /// <param name="index">The compatible mod's displayed index.</param>
+    private void HandleModToggle(int index)
+    {
+        ContentFileResolver resolver = _selectedModResolver;
+        if (index < 0 || index >= resolver.AvailableMods.Count)
+            return;
+
+        UserSettingsManager settingsManager = _bootstrap.GetUserSettingsManager();
+        HashSet<string> disabledIDs = new HashSet<string>(
+            settingsManager.Settings.Content.DisabledModIDs,
+            StringComparer.Ordinal
+        );
+        string id = resolver.AvailableMods[index].ID;
+        if (!disabledIDs.Add(id))
+            disabledIDs.Remove(id);
+        settingsManager.Settings.Content.DisabledModIDs = disabledIDs
+            .OrderBy(disabledID => disabledID, StringComparer.Ordinal)
+            .ToArray();
+        settingsManager.Save();
+        _markDirty();
+    }
+
+    /// <summary>
+    /// Gets the definition selected for the next application start.
+    /// </summary>
+    /// <returns>The selected pack definition, or null when unavailable.</returns>
+    private ContentPackDefinition GetSelectedPack()
+    {
+        return _availablePacks.FirstOrDefault(pack =>
+            string.Equals(pack.ID, _selectedPackID, StringComparison.Ordinal)
+        );
+    }
+
+    /// <summary>
+    /// Moves the pending content-pack selection by one requested direction.
+    /// </summary>
+    /// <param name="delta">The requested selection direction.</param>
+    private void HandleContentPackStep(int delta)
+    {
+        if (_availablePacks.Count < 2 || delta == 0)
+            return;
+
+        int currentIndex = -1;
+        for (int index = 0; index < _availablePacks.Count; index++)
+        {
+            if (string.Equals(_availablePacks[index].ID, _selectedPackID, StringComparison.Ordinal))
+            {
+                currentIndex = index;
+                break;
+            }
+        }
+        int nextIndex =
+            (currentIndex + Math.Sign(delta) + _availablePacks.Count) % _availablePacks.Count;
+        _selectedPackID = _availablePacks[nextIndex].ID;
+        UserSettingsManager settingsManager = _bootstrap.GetUserSettingsManager();
+        settingsManager.Settings.Content.ActivePackID = _selectedPackID;
+        settingsManager.Settings.Content.ActiveScenarioID = string.Empty;
+        settingsManager.Save();
+        RefreshSelectedModResolver();
+        _markDirty();
+    }
+
+    /// <summary>
+    /// Rediscovers compatible mods for the pending content-pack selection.
+    /// </summary>
+    private void RefreshSelectedModResolver()
+    {
+        UserSettingsManager settingsManager = _bootstrap.GetUserSettingsManager();
+        _selectedModResolver = ContentPackLoader.DiscoverModResolver(
+            _bootstrap.GetContentPack().ContentRootPath,
+            _selectedPackID,
+            settingsManager.Settings.Content.DisabledModIDs
         );
     }
 
@@ -270,6 +387,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.QuitRequested += HandleQuitRequested;
         target.TacticalToggleRequested += HandleTacticalToggle;
         target.GameplayToggleRequested += HandleGameplayToggle;
+        target.ModToggleRequested += HandleModToggle;
+        target.ContentPackStepRequested += HandleContentPackStep;
         target.AutosaveIntervalChanged += HandleAutosaveIntervalChanged;
         target.AutosavesToKeepChanged += HandleAutosavesToKeepChanged;
         target.ResolutionStepRequested += HandleResolutionStep;
@@ -822,6 +941,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.QuitRequested -= HandleQuitRequested;
         destroyed.TacticalToggleRequested -= HandleTacticalToggle;
         destroyed.GameplayToggleRequested -= HandleGameplayToggle;
+        destroyed.ModToggleRequested -= HandleModToggle;
+        destroyed.ContentPackStepRequested -= HandleContentPackStep;
         destroyed.AutosaveIntervalChanged -= HandleAutosaveIntervalChanged;
         destroyed.AutosavesToKeepChanged -= HandleAutosavesToKeepChanged;
         destroyed.ResolutionStepRequested -= HandleResolutionStep;

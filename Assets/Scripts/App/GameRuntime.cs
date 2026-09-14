@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Util.Common;
 using UnityEngine;
@@ -231,11 +232,33 @@ public sealed class GameRuntime
         GameSummary summary = game.Summary;
         if (!_contentPack.MatchesContentIdentity(summary))
         {
+            string requiredMods = FormatModIdentity(summary.ModIDs, summary.ModVersions);
+            string activeMods = FormatModIdentity(
+                _contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray(),
+                _contentPack.FileResolver.Mods.Select(mod => mod.Version).ToArray()
+            );
             throw new InvalidOperationException(
                 $"Save requires content pack '{summary.PackID}' version '{summary.PackVersion}' "
-                    + $"scenario '{summary.ScenarioID}', but '{_contentPack.Definition.ID}' version "
-                    + $"'{_contentPack.Definition.Version}' scenario '{_contentPack.Scenario.ID}' is active."
+                    + $"scenario '{summary.ScenarioID}' with mods [{requiredMods}], but "
+                    + $"'{_contentPack.Definition.ID}' version '{_contentPack.Definition.Version}' "
+                    + $"scenario '{_contentPack.Scenario.ID}' with mods [{activeMods}] is active."
             );
         }
+    }
+
+    /// <summary>
+    /// Formats ordered mod identifiers and versions for a compatibility error.
+    /// </summary>
+    /// <param name="modIDs">The ordered mod identifiers.</param>
+    /// <param name="modVersions">The versions corresponding to the identifiers.</param>
+    /// <returns>A comma-separated ordered mod identity.</returns>
+    private static string FormatModIdentity(string[] modIDs, string[] modVersions)
+    {
+        string[] ids = modIDs ?? Array.Empty<string>();
+        string[] versions = modVersions ?? Array.Empty<string>();
+        return string.Join(
+            ", ",
+            ids.Select((id, index) => $"{id}@{(index < versions.Length ? versions[index] : "?")}")
+        );
     }
 }

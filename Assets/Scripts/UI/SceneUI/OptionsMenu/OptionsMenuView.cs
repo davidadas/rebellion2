@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -26,6 +27,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private readonly List<Image> _bindingBadgeImages = new List<Image>();
     private readonly List<Image> _bindingSecondaryBadgeImages = new List<Image>();
     private readonly List<Image> _bindingRestoreImages = new List<Image>();
+    private readonly List<OptionsToggleRowView> _modRows = new List<OptionsToggleRowView>();
     private readonly HashSet<Button> _wiredBadges = new HashSet<Button>();
 
     [Header("Frame")]
@@ -74,6 +76,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
 
     [SerializeField]
     private GameObject _controlsPage;
+
+    [SerializeField]
+    private GameObject _modsPage;
 
     [Header("Footer")]
     [SerializeField]
@@ -169,7 +174,30 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private Image _bindingRestoreTemplate;
 
+    [Header("Mods page")]
+    [SerializeField]
+    private ScrollAreaView _modsScrollArea;
+
+    [SerializeField]
+    private OptionsToggleRowView _modRowTemplate;
+
+    [SerializeField]
+    private TextMeshProUGUI _modsStatusTextField;
+
+    [SerializeField]
+    private TextMeshProUGUI _modsRestartTextField;
+
+    [SerializeField]
+    private TextMeshProUGUI _contentPackValueField;
+
+    [SerializeField]
+    private Button _contentPackPrevButton;
+
+    [SerializeField]
+    private Button _contentPackNextButton;
+
     private bool _bound;
+    private IContentAssetSource _contentAssets;
     private OptionsMenuTab? _previousTab;
 
     public event Action<OptionsMenuTab> TabSelected;
@@ -190,6 +218,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action QuitRequested;
     public event Action<UserTacticalOption> TacticalToggleRequested;
     public event Action<UserGameplayOption> GameplayToggleRequested;
+    public event Action<int> ModToggleRequested;
+    public event Action<int> ContentPackStepRequested;
     public event Action<string> AutosaveIntervalChanged;
     public event Action<string> AutosavesToKeepChanged;
     public event Action<int> ResolutionStepRequested;
@@ -203,6 +233,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="contentAssets">The active content asset source.</param>
     public void InitializeContent(IContentAssetSource contentAssets)
     {
+        _contentAssets = contentAssets ?? throw new ArgumentNullException(nameof(contentAssets));
         Vector4 border = new Vector4(7f, 7f, 7f, 7f);
         _rowIdleSprite = ContentBindings.RequireSprite(
             contentAssets,
@@ -248,6 +279,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             data.ActiveTab == OptionsMenuTab.SaveLoad && _previousTab != OptionsMenuTab.SaveLoad;
         bool resetControlsScroll =
             data.ActiveTab == OptionsMenuTab.Controls && _previousTab != OptionsMenuTab.Controls;
+        bool resetModsScroll =
+            data.ActiveTab == OptionsMenuTab.Mods && _previousTab != OptionsMenuTab.Mods;
         UILayout.SetSourcePosition(transform as RectTransform, data.X, data.Y);
         UILayout.SetTextContent(_headerTextField, "OPTIONS");
         UILayout.SetTextContent(_pageTitleTextField, GetTabTitle(data.ActiveTab));
@@ -271,6 +304,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 break;
             case OptionsMenuTab.Controls:
                 RenderControlsPage(data, resetControlsScroll);
+                break;
+            case OptionsMenuTab.Mods:
+                RenderModsPage(data, resetModsScroll);
                 break;
         }
         _previousTab = data.ActiveTab;
@@ -301,7 +337,10 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         SetPageActive(_audioPage, activeTab == OptionsMenuTab.Audio);
         SetPageActive(_saveLoadPage, activeTab == OptionsMenuTab.SaveLoad);
         SetPageActive(_controlsPage, activeTab == OptionsMenuTab.Controls);
-        _settingsActions?.SetActive(activeTab != OptionsMenuTab.SaveLoad);
+        SetPageActive(_modsPage, activeTab == OptionsMenuTab.Mods);
+        _settingsActions?.SetActive(
+            activeTab != OptionsMenuTab.SaveLoad && activeTab != OptionsMenuTab.Mods
+        );
     }
 
     /// <summary>
@@ -412,6 +451,60 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private void RenderSaveLoadPage(OptionsMenuRenderData data, bool resetScroll)
     {
         _saveListView.Render(data, resetScroll);
+    }
+
+    /// <summary>
+    /// Displays the active mods in deterministic load order.
+    /// </summary>
+    /// <param name="data">The Options menu data.</param>
+    /// <param name="resetScroll">Whether the page was just entered.</param>
+    private void RenderModsPage(OptionsMenuRenderData data, bool resetScroll)
+    {
+        bool restartRequired =
+            data.ContentRestartRequired || data.Mods.Any(mod => mod.Enabled != mod.Loaded);
+        UILayout.SetTextContent(_contentPackValueField, data.ContentPackLabel);
+        int loadedCount = data.Mods.Count(mod => mod.Loaded);
+        string status =
+            data.Mods.Count == 0
+                ? "NO COMPATIBLE MODS FOUND"
+                : $"{loadedCount} {(loadedCount == 1 ? "MOD" : "MODS")} LOADED";
+        UILayout.SetTextContent(_modsStatusTextField, status);
+        _modsRestartTextField.gameObject.SetActive(restartRequired);
+
+        for (int index = 0; index < data.Mods.Count; index++)
+        {
+            OptionsToggleRowView row = GetModRow(index);
+            OptionsModRow mod = data.Mods[index];
+            UILayout.SetSourcePosition(row.transform as RectTransform, 0, index * 20);
+            row.Render(mod.Enabled, mod.DisplayName);
+            row.gameObject.SetActive(true);
+        }
+        for (int index = data.Mods.Count; index < _modRows.Count; index++)
+            _modRows[index].gameObject.SetActive(false);
+
+        _modsScrollArea.SetContentHeight(data.Mods.Count * 20, 20, resetScroll);
+    }
+
+    /// <summary>
+    /// Gets or creates a reusable mod-toggle row for one displayed index.
+    /// </summary>
+    /// <param name="index">The required displayed mod index.</param>
+    /// <returns>The reusable mod-toggle row.</returns>
+    private OptionsToggleRowView GetModRow(int index)
+    {
+        while (_modRows.Count <= index)
+        {
+            OptionsToggleRowView row = Instantiate(_modRowTemplate, _modsScrollArea.ContentRoot);
+            row.name = $"ModRow{_modRows.Count + 1}";
+            row.SetOptionIndex(_modRows.Count);
+            if (_contentAssets != null)
+                row.InitializeContent(_contentAssets);
+            if (_bound)
+                row.ToggleRequested += HandleModToggle;
+            _modRows.Add(row);
+        }
+
+        return _modRows[index];
     }
 
     /// <summary>
@@ -745,6 +838,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             OptionsMenuTab.Audio => "AUDIO",
             OptionsMenuTab.SaveLoad => "SAVE / LOAD",
             OptionsMenuTab.Controls => "CONTROLS",
+            OptionsMenuTab.Mods => "MODS",
             _ => string.Empty,
         };
     }
@@ -788,6 +882,11 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             if (row != null)
                 row.ToggleRequested += HandleGameplayToggle;
         }
+        foreach (OptionsToggleRowView row in _modRows)
+        {
+            if (row != null)
+                row.ToggleRequested += HandleModToggle;
+        }
 
         _autosaveIntervalInputField.onEndEdit.AddListener(value =>
             AutosaveIntervalChanged?.Invoke(value)
@@ -804,6 +903,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _resolutionNextButton.onClick.AddListener(() => ResolutionStepRequested?.Invoke(1));
         _fullScreenPrevButton.onClick.AddListener(() => FullScreenStepRequested?.Invoke(-1));
         _fullScreenNextButton.onClick.AddListener(() => FullScreenStepRequested?.Invoke(1));
+        _contentPackPrevButton.onClick.AddListener(() => ContentPackStepRequested?.Invoke(-1));
+        _contentPackNextButton.onClick.AddListener(() => ContentPackStepRequested?.Invoke(1));
 
         for (int i = 0; i < _volumeSliders.Length; i++)
         {
@@ -855,6 +956,11 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         {
             if (row != null)
                 row.ToggleRequested -= HandleGameplayToggle;
+        }
+        foreach (OptionsToggleRowView row in _modRows)
+        {
+            if (row != null)
+                row.ToggleRequested -= HandleModToggle;
         }
     }
 
@@ -930,6 +1036,15 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Forwards a mod-toggle request to subscribers.
+    /// </summary>
+    /// <param name="option">The displayed mod index.</param>
+    private void HandleModToggle(int option)
+    {
+        ModToggleRequested?.Invoke(option);
+    }
+
+    /// <summary>
     /// Shows the confirmation prompt with a message.
     /// </summary>
     /// <param name="message">The prompt text.</param>
@@ -976,16 +1091,27 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || string.IsNullOrWhiteSpace(_rowActiveSpriteAddress)
         )
             throw new MissingReferenceException($"{name} is missing a row sprite address.");
-        if (_tabButtons.Length != 5 || _tabLabelFields.Length != 5 || _tabSurfaceImages.Length != 5)
-            throw new MissingReferenceException($"{name} expects five tabs.");
+        if (_tabButtons.Length != 6 || _tabLabelFields.Length != 6 || _tabSurfaceImages.Length != 6)
+            throw new MissingReferenceException($"{name} expects six tabs.");
         if (
             _gameplayPage == null
             || _graphicsPage == null
             || _audioPage == null
             || _saveLoadPage == null
             || _controlsPage == null
+            || _modsPage == null
         )
             throw new MissingReferenceException($"{name} is missing a page container.");
+        if (
+            _modsStatusTextField == null
+            || _modsRestartTextField == null
+            || _contentPackValueField == null
+            || _contentPackPrevButton == null
+            || _contentPackNextButton == null
+            || _modsScrollArea == null
+            || _modRowTemplate == null
+        )
+            throw new MissingReferenceException($"{name} is missing Mods controls.");
         if (_gameplayRows.Length != 4 || Array.Exists(_gameplayRows, row => row == null))
             throw new MissingReferenceException($"{name} expects four gameplay rows.");
         if (
@@ -1022,13 +1148,13 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || _bindingRestoreTemplate == null
         )
             throw new MissingReferenceException($"{name} is missing a binding template.");
-
         _bindingRowTemplate.gameObject.SetActive(false);
         _bindingHeaderTemplate.gameObject.SetActive(false);
         _bindingActionTemplate.gameObject.SetActive(false);
         _bindingKeyBadgeTemplate.gameObject.SetActive(false);
         _bindingKeyTemplate.gameObject.SetActive(false);
         _bindingRestoreTemplate.gameObject.SetActive(false);
+        _modRowTemplate.gameObject.SetActive(false);
     }
 
     /// <summary>
