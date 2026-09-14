@@ -46,7 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 _windowManager,
                 states
             );
-            manager.Register(CreateAdapter(_ => true));
+            manager.Register(CreateAdapter(_ => null));
             CreateWindow<TestWindowContent>(7, 11, modal: false);
 
             manager.Capture();
@@ -108,7 +108,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 _windowManager,
                 states
             );
-            manager.Register(CreateAdapter(_ => true));
+            manager.Register(CreateAdapter(_ => null));
             CreateWindow<OtherWindowContent>(0, 0, modal: false);
             CreateWindow<TestWindowContent>(0, 0, modal: true);
 
@@ -138,7 +138,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 CreateAdapter(state =>
                 {
                     restoredTargets.Add(state.GetTargetInstanceID());
-                    return true;
+                    return CreateWindow<TestWindowContent>(0, 0, modal: false);
                 })
             );
 
@@ -148,12 +148,39 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         /// <summary>
+        /// Verifies that restoration skips null entries and reapplies saved dimensions and order.
+        /// </summary>
+        [Test]
+        public void Restore_NullAndSizedStates_RestoresValidWindowBoundsAndStackOrder()
+        {
+            List<WindowState> states = new List<WindowState>
+            {
+                new WindowState("Test.Window", "TOP", 0, 0, 140, 90, 2),
+                null,
+                new WindowState("Test.Window", "BOTTOM", 0, 0, 120, 70, 1),
+            };
+            StrategyWindowStateManager manager = new StrategyWindowStateManager(
+                _windowManager,
+                states
+            );
+            manager.Register(CreateAdapter(_ => CreateWindow<TestWindowContent>(0, 0, false)));
+
+            manager.Restore();
+
+            Assert.AreEqual(2, _windowManager.Windows.Count);
+            Assert.AreEqual(120, _windowManager.Windows[0].Width);
+            Assert.AreEqual(70, _windowManager.Windows[0].Height);
+            Assert.AreEqual(140, _windowManager.Windows[1].Width);
+            Assert.AreEqual(90, _windowManager.Windows[1].Height);
+        }
+
+        /// <summary>
         /// Creates the test adapter used to capture and restore test windows.
         /// </summary>
         /// <param name="restore">The callback invoked to restore persisted state.</param>
         /// <returns>The configured test adapter.</returns>
         private StrategyWindowStateAdapter<TestWindowContent> CreateAdapter(
-            System.Func<WindowState, bool> restore
+            System.Func<WindowState, UIWindow> restore
         )
         {
             return new StrategyWindowStateAdapter<TestWindowContent>(
@@ -170,7 +197,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         /// <param name="x">The horizontal window position.</param>
         /// <param name="y">The vertical window position.</param>
         /// <param name="modal">Whether the window is modal.</param>
-        private void CreateWindow<TContent>(int x, int y, bool modal)
+        private UIWindow CreateWindow<TContent>(int x, int y, bool modal)
             where TContent : MonoBehaviour
         {
             GameObject windowObject = new GameObject(
@@ -184,6 +211,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             window.SetContent(windowObject.GetComponent<TContent>());
             window.Configure(1 + _windowManager.Windows.Count, x, y, 100, 80, modal, true, false);
             _windowManager.Register(window, false);
+            return window;
         }
 
         private sealed class TestWindowContent : MonoBehaviour { }

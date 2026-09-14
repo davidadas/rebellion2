@@ -9,8 +9,7 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
     where TView : class
 {
     private readonly Func<TView, string> getTargetInstanceID;
-    private readonly Func<WindowState, bool> restore;
-    private readonly Func<TView, string, UIWindow, int, WindowState> capture;
+    private readonly Func<WindowState, UIWindow> restore;
 
     public string WindowTypeID { get; }
 
@@ -23,8 +22,7 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
     public StrategyWindowStateAdapter(
         string windowTypeID,
         Func<TView, string> getTargetInstanceID,
-        Func<WindowState, bool> restore,
-        Func<TView, string, UIWindow, int, WindowState> capture = null
+        Func<WindowState, UIWindow> restore
     )
     {
         if (string.IsNullOrWhiteSpace(windowTypeID))
@@ -34,7 +32,6 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
         this.getTargetInstanceID =
             getTargetInstanceID ?? throw new ArgumentNullException(nameof(getTargetInstanceID));
         this.restore = restore ?? throw new ArgumentNullException(nameof(restore));
-        this.capture = capture ?? DefaultCapture;
     }
 
     /// <summary>
@@ -54,22 +51,24 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
         if (string.IsNullOrEmpty(targetInstanceID))
             return false;
 
-        state = capture(view, targetInstanceID, window, zOrder);
-        return state != null;
+        state = CreateState(targetInstanceID, window, zOrder);
+        return true;
     }
 
     /// <inheritdoc />
-    public bool Restore(WindowState state)
+    public UIWindow Restore(WindowState state)
     {
-        return state != null && restore(state);
+        return state == null ? null : restore(state);
     }
 
-    private WindowState DefaultCapture(
-        TView _,
-        string targetInstanceID,
-        UIWindow window,
-        int zOrder
-    )
+    /// <summary>
+    /// Creates the default persisted state for one supported runtime window.
+    /// </summary>
+    /// <param name="targetInstanceID">The represented game-object identifier.</param>
+    /// <param name="window">The runtime window being captured.</param>
+    /// <param name="zOrder">The runtime window stacking position.</param>
+    /// <returns>The captured window state.</returns>
+    private WindowState CreateState(string targetInstanceID, UIWindow window, int zOrder)
     {
         return new WindowState(
             WindowTypeID,

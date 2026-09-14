@@ -360,44 +360,28 @@ public sealed class StrategyController
         RegisterPlanetWindowState<FacilityWindowView>(
             _facilityWindowTypeID,
             facilityWindowController.GetPlanet,
-            (planet, x, y) => facilityWindowController.Open(planet, x, y, out _) != null
+            (planet, x, y) => facilityWindowController.Open(planet, x, y, out _)
         );
         RegisterPlanetWindowState<DefenseWindowView>(
             _defenseWindowTypeID,
             defenseWindowController.GetPlanet,
-            (planet, x, y) => defenseWindowController.Open(planet, x, y, out _) != null
+            (planet, x, y) => defenseWindowController.Open(planet, x, y, out _)
         );
         RegisterPlanetWindowState<FleetWindowView>(
             _fleetWindowTypeID,
             fleetWindowController.GetPlanet,
-            (planet, x, y) => fleetWindowController.Open(planet, x, y, out _) != null
+            (planet, x, y) => fleetWindowController.Open(planet, x, y, out _)
         );
         RegisterPlanetWindowState<MissionsWindowView>(
             _missionsWindowTypeID,
             missionsWindowController.GetPlanet,
-            (planet, x, y) => missionsWindowController.Open(planet, x, y, out _) != null
+            (planet, x, y) => missionsWindowController.Open(planet, x, y, out _)
         );
         windowStateManager.Register(
             new StrategyWindowStateAdapter<PlanetSectorWindowView>(
                 _sectorWindowTypeID,
                 view => planetSectorWindowController.GetSector(view)?.PlanetSector?.InstanceID,
-                RestoreSectorWindow,
-                (view, targetInstanceID, window, zOrder) =>
-                {
-                    int sectorPosition = planetSectorWindowController.GetSectorPosition(view);
-                    return new WindowState(
-                        _sectorWindowTypeID,
-                        targetInstanceID,
-                        sectorPosition >= SectorWindowPositions.Left
-                        && sectorPosition <= SectorWindowPositions.Right
-                            ? sectorPosition
-                            : window.X,
-                        window.Y,
-                        window.Width,
-                        window.Height,
-                        zOrder
-                    );
-                }
+                RestoreSectorWindow
             )
         );
     }
@@ -412,7 +396,7 @@ public sealed class StrategyController
     private void RegisterPlanetWindowState<TView>(
         string windowTypeID,
         Func<TView, GalaxyMapPlanet> getPlanet,
-        Func<GalaxyMapPlanet, int, int, bool> open
+        Func<GalaxyMapPlanet, int, int, UIWindow> open
     )
         where TView : class
     {
@@ -425,7 +409,7 @@ public sealed class StrategyController
                     GalaxyMapPlanet planet = galaxyMapController.FindPlanet(
                         state.GetTargetInstanceID()
                     );
-                    return planet != null && open(planet, state.GetX(), state.GetY());
+                    return planet == null ? null : open(planet, state.GetX(), state.GetY());
                 }
             )
         );
@@ -435,22 +419,19 @@ public sealed class StrategyController
     /// Restores one planet-sector window into its saved authored slot.
     /// </summary>
     /// <param name="state">The saved sector window state.</param>
-    /// <returns>True when the sector and slot were restored.</returns>
-    private bool RestoreSectorWindow(WindowState state)
+    /// <returns>The restored sector window, or null when restoration failed.</returns>
+    private UIWindow RestoreSectorWindow(WindowState state)
     {
-        if (state == null)
-            return false;
-
         if (
-            !windowPlacementController.TryResolveSectorWindowPosition(
-                state.GetX(),
-                out int position
-            )
+            state == null
+            || !windowPlacementController.TryGetSectorWindowSlot(state.GetX(), out int slot)
+            || galaxyMapController.FindSector(state.GetTargetInstanceID())
+                is not GalaxyMapSector sector
+            || !planetSectorWindowController.TryOpenAtPosition(sector, slot)
         )
-            return false;
+            return null;
 
-        return galaxyMapController.FindSector(state.GetTargetInstanceID()) is GalaxyMapSector sector
-            && planetSectorWindowController.TryOpenAtPosition(sector, position);
+        return planetSectorWindowController.FindWindow(sector);
     }
 
     /// <summary>

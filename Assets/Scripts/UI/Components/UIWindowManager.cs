@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -261,6 +262,32 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         if (!window.CanFocus || !Focus(window, false))
             ApplyActiveState();
 
+        WindowsChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Replaces the stacking order of all registered windows.
+    /// </summary>
+    /// <param name="orderedWindows">Every registered window ordered from back to front.</param>
+    public void SetStackOrder(IReadOnlyList<UIWindow> orderedWindows)
+    {
+        if (
+            orderedWindows == null
+            || orderedWindows.Count != windows.Count
+            || orderedWindows.Any(window => window == null || !windows.Contains(window))
+            || orderedWindows.Distinct().Count() != windows.Count
+        )
+            throw new ArgumentException(
+                "Stack order must contain every registered window once.",
+                nameof(orderedWindows)
+            );
+
+        windows.Clear();
+        windows.AddRange(orderedWindows);
+        for (int index = 0; index < windows.Count; index++)
+            windows[index].transform.SetSiblingIndex(index);
+
+        ApplyActiveState();
         WindowsChanged?.Invoke();
     }
 

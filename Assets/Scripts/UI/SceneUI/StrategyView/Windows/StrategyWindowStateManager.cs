@@ -23,8 +23,8 @@ public interface IStrategyWindowStateAdapter
     /// Attempts to restore one persisted window.
     /// </summary>
     /// <param name="state">The persisted window state.</param>
-    /// <returns>True when the window was restored.</returns>
-    bool Restore(WindowState state);
+    /// <returns>The restored runtime window, or null when restoration failed.</returns>
+    UIWindow Restore(WindowState state);
 }
 
 /// <summary>
@@ -108,19 +108,44 @@ public sealed class StrategyWindowStateManager
     /// </summary>
     public void Restore()
     {
-        foreach (WindowState state in states.OrderBy(state => state.GetZOrder()).ToList())
+        List<(WindowState State, UIWindow Window)> restored = new List<(WindowState, UIWindow)>();
+        foreach (
+            WindowState state in states
+                .Where(state => state != null)
+                .OrderBy(state => state.GetZOrder())
+                .ToList()
+        )
         {
             if (
-                state != null
-                && !string.IsNullOrEmpty(state.GetWindowTypeID())
+                !string.IsNullOrEmpty(state.GetWindowTypeID())
                 && adapters.TryGetValue(
                     state.GetWindowTypeID(),
                     out IStrategyWindowStateAdapter adapter
                 )
             )
             {
-                adapter.Restore(state);
+                UIWindow window = adapter.Restore(state);
+                if (window == null)
+                    continue;
+
+                window.Resize(state.GetWidth(), state.GetHeight());
+                restored.Add((state, window));
             }
         }
+
+        List<UIWindow> orderedWindows = windowManager
+            .Windows.Where(window => restored.All(item => item.Window != window))
+            .ToList();
+        foreach (
+            (WindowState State, UIWindow Window) restoredWindow in restored.OrderBy(item =>
+                item.State.GetZOrder()
+            )
+        )
+        {
+            int index = Math.Clamp(restoredWindow.State.GetZOrder(), 0, orderedWindows.Count);
+            orderedWindows.Insert(index, restoredWindow.Window);
+        }
+
+        windowManager.SetStackOrder(orderedWindows);
     }
 }
