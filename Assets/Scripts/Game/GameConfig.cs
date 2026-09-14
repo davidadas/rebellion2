@@ -668,6 +668,33 @@ namespace Rebellion.Game
             public int FleetFinalReadinessGateUnitCount { get; set; } = 2;
             public AIProductionDemandUtilityConfig DemandUtility { get; set; } =
                 new AIProductionDemandUtilityConfig();
+            public AIFleetProductionAllocationUtilityConfig FleetAllocationUtility { get; set; } =
+                new AIFleetProductionAllocationUtilityConfig();
+        }
+
+        /// <summary>
+        /// Utility considerations used to route production among eligible fleets.
+        /// </summary>
+        [PersistableObject]
+        public class AIFleetProductionAllocationUtilityConfig
+        {
+            public AIConsiderationConfig AttackTarget { get; set; } = Weighted(1000000000000000d);
+            public AIConsiderationConfig AttackReadiness { get; set; } = Weighted(1000000000000d);
+            public AIConsiderationConfig AttackRequirements { get; set; } =
+                Weighted(1000000000d, 10);
+            public AIConsiderationConfig SystemPresence { get; set; } = Weighted(1000000d);
+            public AIConsiderationConfig Headquarters { get; set; } = Weighted(1000d);
+            public AIConsiderationConfig TargetValue { get; set; } = Weighted(1d, 1000);
+            public AIConsiderationConfig ColonyRegiments { get; set; } = Weighted(1000d, 100);
+            public AIConsiderationConfig ColonyCapacity { get; set; } = Weighted(1d, 100);
+            public AIConsiderationConfig AssemblyWeakness { get; set; } = Weighted(1000d);
+            public AIConsiderationConfig AssemblyCapacityNeed { get; set; } = Weighted(1d);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
         }
 
         /// <summary>

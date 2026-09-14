@@ -62,6 +62,10 @@ Sector production hubs are assigned once per turn-scoped development allocation 
 `AIInfrastructureAllocationScorer`. `AllocationUtility` expresses hub capacity, existing
 investment, role separation, feasible capacity, and strategic value in non-overlapping score bands.
 
+Production capacity is routed among attack, colonization, and unassigned battle fleets through
+`AIFleetProductionAllocationScorer`. `FleetAllocationUtility` owns the ordering considerations;
+the demand generator only enumerates fleets that are eligible to receive reinforcement.
+
 When established behavior requires a strict preference order, give considerations non-overlapping
 score bands in configuration. Lower bands may break ties within a higher band but cannot reverse
 it. This keeps the hierarchy explicit and tunable without hiding it in chained LINQ ordering.

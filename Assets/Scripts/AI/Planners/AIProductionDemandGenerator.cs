@@ -1285,23 +1285,14 @@ namespace Rebellion.AI.Planners
                     Fleet = fleet,
                     Target = GetAttackTargetPlanet(context, fleet),
                 })
-                .OrderByDescending(candidate => candidate.Target != null)
-                .ThenByDescending(candidate =>
-                    GetProjectedAttackReadiness(context, candidate.Fleet, candidate.Target)
-                )
-                .ThenByDescending(candidate =>
-                    context.Assessment.CountCurrentAttackRequirementsMet(
+                .OrderByDescending(candidate =>
+                    AIFleetProductionAllocationScorer.ScoreAttack(
+                        context,
                         candidate.Fleet,
-                        candidate.Target
+                        candidate.Target,
+                        GetProjectedAttackReadiness(context, candidate.Fleet, candidate.Target)
                     )
                 )
-                .ThenByDescending(candidate =>
-                    context.Assessment.GetOwnedSystemPresenceRatio(
-                        context.Assessment.GetPlanetSystemId(candidate.Target)
-                    )
-                )
-                .ThenByDescending(candidate => candidate.Target?.IsHeadquarters == true)
-                .ThenByDescending(candidate => context.Assessment.GetPlanetValue(candidate.Target))
                 .ThenBy(candidate => candidate.Fleet.InstanceID, StringComparer.Ordinal)
                 .Select(candidate => candidate.Fleet)
                 .ToList();
@@ -1370,8 +1361,9 @@ namespace Rebellion.AI.Planners
                 .Assessment.OwnedFleets.Where(fleet =>
                     fleet.RoleType == FleetRoleType.Colonization && CanReinforceFleet(fleet)
                 )
-                .OrderByDescending(fleet => fleet.GetCurrentRegimentCount())
-                .ThenByDescending(fleet => fleet.GetRegimentCapacity())
+                .OrderByDescending(fleet =>
+                    AIFleetProductionAllocationScorer.ScoreColonization(context, fleet)
+                )
                 .ThenBy(fleet => fleet.InstanceID, StringComparer.Ordinal)
                 .ToList();
         }
@@ -1390,8 +1382,9 @@ namespace Rebellion.AI.Planners
                     && fleet.Order == null
                     && context.StrategicPlan.CanFleetDepart(fleet)
                 )
-                .OrderBy(context.Assessment.GetProjectedFleetCombatValue)
-                .ThenBy(fleet => fleet.GetRegimentCapacity())
+                .OrderByDescending(fleet =>
+                    AIFleetProductionAllocationScorer.ScoreAssembly(context, fleet)
+                )
                 .ThenBy(fleet => fleet.InstanceID, StringComparer.Ordinal)
                 .ToList();
         }
