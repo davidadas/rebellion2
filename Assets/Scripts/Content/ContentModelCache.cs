@@ -47,7 +47,7 @@ public sealed class ContentModelCache : IDisposable
     /// </summary>
     /// <param name="address">The address.</param>
     /// <param name="parent">The parent.</param>
-    /// <param name="cancellationToken">Whether cancellation token.</param>
+    /// <param name="cancellationToken">Cancels model instantiation.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task<ContentModelInstance> InstantiateAsync(
         string address,

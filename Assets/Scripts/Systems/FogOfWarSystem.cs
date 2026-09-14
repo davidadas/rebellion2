@@ -339,8 +339,8 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="existing">The existing.</param>
         /// <param name="additions">The additions.</param>
-        /// <typeparam name="T">The t type.</typeparam>
-        /// <returns>The result of merge missing by instance id.</returns>
+        /// <typeparam name="T">The scene-node type being merged.</typeparam>
+        /// <returns>The existing nodes followed by additions with previously unseen instance IDs.</returns>
         private static IEnumerable<T> MergeMissingByInstanceID<T>(
             IEnumerable<T> existing,
             IEnumerable<T> additions

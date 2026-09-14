@@ -12,21 +12,21 @@ namespace Rebellion.Game.Units
         MovementState Movement { get; set; }
 
         /// <summary>
-        /// Checks whether the movable condition is met.
+        /// Gets whether this unit is currently eligible to move.
         /// </summary>
-        /// <returns>True when the movable condition is met; otherwise false.</returns>
+        /// <returns>True when this unit can move; otherwise false.</returns>
         bool IsMovable();
 
         /// <summary>
-        /// Checks whether the blockade condition is met.
+        /// Gets whether this unit can impose a blockade.
         /// </summary>
-        /// <returns>True when the blockade condition is met; otherwise false.</returns>
+        /// <returns>True when this unit can impose a blockade; otherwise false.</returns>
         bool CanBlockade() => false;
 
         /// <summary>
-        /// Executes ignores blockade.
+        /// Gets whether this unit can move despite a blockade.
         /// </summary>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when blockades do not prevent this unit from moving; otherwise false.</returns>
         bool IgnoresBlockade() => false;
     }
 }

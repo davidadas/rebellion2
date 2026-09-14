@@ -13,7 +13,7 @@ public static class ContentModelLoader
     /// Parses a GLB into a reusable model resource without instantiating its scene.
     /// </summary>
     /// <param name="filePath">The file path.</param>
-    /// <param name="cancellationToken">Whether cancellation token.</param>
+    /// <param name="cancellationToken">Cancels GLB loading.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     internal static async Task<ContentModelResource> LoadResourceAsync(
         string filePath,
@@ -69,7 +69,7 @@ internal sealed class ContentModelResource : IDisposable
     /// Creates one scene hierarchy backed by this parsed model resource.
     /// </summary>
     /// <param name="parent">The parent.</param>
-    /// <param name="cancellationToken">Whether cancellation token.</param>
+    /// <param name="cancellationToken">Cancels scene instantiation.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task<ContentModelInstance> InstantiateAsync(
         Transform parent,

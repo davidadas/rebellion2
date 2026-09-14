@@ -1159,10 +1159,10 @@ namespace Rebellion.Game.Messages
             );
 
         /// <summary>
-        /// Checks whether the use generic mission definition condition is met.
+        /// Checks whether the completion reason can use a generic mission definition.
         /// </summary>
         /// <param name="completionReason">The completion reason.</param>
-        /// <returns>True when the use generic mission definition condition is met; otherwise false.</returns>
+        /// <returns>True when a generic mission definition supports the reason; otherwise false.</returns>
         private static bool CanUseGenericMissionDefinition(
             MissionCompletionReason completionReason
         ) =>
@@ -2099,11 +2099,11 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Executes key.
+        /// Builds the grouping key for one arriving unit.
         /// </summary>
         /// <param name="unit">The unit.</param>
         /// <param name="arrival">The arrival.</param>
-        /// <returns>The result of key.</returns>
+        /// <returns>The unit owner, destination, and arrival group.</returns>
         private static (string Owner, string Destination, string Group) Key(
             IGameEntity unit,
             UnitArrivedResult arrival
@@ -2124,7 +2124,7 @@ namespace Rebellion.Game.Messages
         /// <param name="key">The key.</param>
         /// <param name="item">The item.</param>
         /// <param name="destination">The destination.</param>
-        /// <typeparam name="T">The t type.</typeparam>
+        /// <typeparam name="T">The delivered scene-node type grouped for the message.</typeparam>
         private static void AddGroup<T>(
             IDictionary<(string Owner, string Destination, string Group), List<T>> groups,
             IDictionary<(string Owner, string Destination, string Group), Planet> destinations,
@@ -2742,22 +2742,22 @@ namespace Rebellion.Game.Messages
                 : Ownership(result?.Planet?.OwnerInstanceID);
 
         /// <summary>
-        /// Executes ownership.
+        /// Classifies a planet by whether it has an owner.
         /// </summary>
         /// <param name="ownerID">The owner id.</param>
-        /// <returns>The result of ownership.</returns>
+        /// <returns>Owned when an owner ID is present; otherwise neutral.</returns>
         private static MessagePlanetOwnership Ownership(string ownerID) =>
             string.IsNullOrEmpty(ownerID)
                 ? MessagePlanetOwnership.Neutral
                 : MessagePlanetOwnership.Owned;
 
         /// <summary>
-        /// Executes combat values.
+        /// Builds template values describing combat participants and location.
         /// </summary>
         /// <param name="attacker">The attacker.</param>
         /// <param name="target">The target.</param>
         /// <param name="planet">The planet.</param>
-        /// <returns>The result of combat values.</returns>
+        /// <returns>The combat message template values.</returns>
         private static Dictionary<string, string> CombatValues(
             Faction attacker,
             Faction target,
@@ -3668,11 +3668,11 @@ namespace Rebellion.Game.Messages
         ) => AddDelivery(deliveries, faction, message);
 
         /// <summary>
-        /// Executes values.
+        /// Builds template values describing a faction and planet.
         /// </summary>
         /// <param name="faction">The faction.</param>
         /// <param name="planetName">The planet name.</param>
-        /// <returns>The result of values.</returns>
+        /// <returns>The political message template values.</returns>
         private static Dictionary<string, string> Values(Faction faction, string planetName) =>
             new Dictionary<string, string>
             {

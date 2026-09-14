@@ -85,7 +85,7 @@ namespace Rebellion.Game.Events
         /// </summary>
         /// <param name="name">The name.</param>
         /// <param name="value">Receives the value.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the named binding exists; otherwise false.</returns>
         public bool TryGetBinding(string name, out object value) =>
             _bindings.TryGetValue(name, out value);
 

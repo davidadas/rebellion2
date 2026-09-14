@@ -30,8 +30,8 @@ namespace Rebellion.Game.Events
         /// Returns registered nodes that remain attached to active gameplay containment.
         /// </summary>
         /// <param name="game">The game.</param>
-        /// <typeparam name="T">The t type.</typeparam>
-        /// <returns>The result of active.</returns>
+        /// <typeparam name="T">The active scene-node type to select.</typeparam>
+        /// <returns>The attached, active nodes of the requested type.</returns>
         protected static IEnumerable<T> Active<T>(GameRoot game)
             where T : class, ISceneNode
         {

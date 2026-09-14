@@ -440,7 +440,7 @@ internal sealed class OptionsSettingsSession
     /// </summary>
     /// <param name="channel">The channel.</param>
     /// <param name="value">The value.</param>
-    /// <returns>True when the operation succeeds; otherwise false.</returns>
+    /// <returns>True when the channel index is valid and the volume is stored; otherwise false.</returns>
     private bool SetVolumeValue(int channel, float value)
     {
         value = Mathf.Clamp01(value);

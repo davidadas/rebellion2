@@ -128,7 +128,7 @@ namespace Rebellion.Systems
         /// <param name="opposingCombat">The opposing combat.</param>
         /// <param name="request">The request.</param>
         /// <param name="reactions">The reactions.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the encountered officer is captured; otherwise false.</returns>
         private bool TryCaptureEncounteredOfficer(
             Officer encountered,
             Officer opposing,

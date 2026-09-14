@@ -1443,7 +1443,7 @@ namespace Rebellion.AI.Planners
         /// <param name="fleet">The fleet to inspect.</param>
         /// <param name="typeId">Unit type id to count.</param>
         /// <returns>The matching unit count.</returns>
-        /// <typeparam name="T">The t type.</typeparam>
+        /// <typeparam name="T">The manufacturable fleet-unit type to count.</typeparam>
         private int CountFleetUnitsByType<T>(Fleet fleet, string typeId)
             where T : class, IManufacturable
         {

@@ -40,8 +40,8 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="typeID">The type id.</param>
         /// <param name="ownerInstanceID">The owner instance id.</param>
-        /// <typeparam name="T">The t type.</typeparam>
-        /// <returns>The created value.</returns>
+        /// <typeparam name="T">The manufacturable scene-node type to create.</typeparam>
+        /// <returns>The created unit.</returns>
         public T Create<T>(string typeID, string ownerInstanceID)
             where T : class, ISceneNode, IManufacturable
         {

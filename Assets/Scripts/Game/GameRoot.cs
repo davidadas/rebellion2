@@ -457,7 +457,7 @@ namespace Rebellion.Game
         /// type T is found. An optional predicate filters which matching nodes are included.
         /// </summary>
         /// <param name="predicate">The predicate.</param>
-        /// <typeparam name="T">The t type.</typeparam>
+        /// <typeparam name="T">The scene-node type that stops traversal and is returned.</typeparam>
         /// <returns>The requested scene nodes by type.</returns>
         public List<T> GetSceneNodesByType<T>(Func<T, bool> predicate = null)
             where T : class

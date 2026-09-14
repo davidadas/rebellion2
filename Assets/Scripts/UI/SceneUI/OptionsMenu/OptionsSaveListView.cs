@@ -612,7 +612,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// </summary>
     /// <param name="items">The items.</param>
     /// <param name="firstHiddenIndex">The first hidden index.</param>
-    /// <typeparam name="T">The t type.</typeparam>
+    /// <typeparam name="T">The pooled Unity component type to hide.</typeparam>
     private static void HideFrom<T>(List<T> items, int firstHiddenIndex)
         where T : Component
     {

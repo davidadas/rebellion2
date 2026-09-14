@@ -136,7 +136,7 @@ namespace Rebellion.Util.Common
         /// </summary>
         /// <param name="message">The message.</param>
         /// <param name="level">The level.</param>
-        /// <typeparam name="T">The t type.</typeparam>
+        /// <typeparam name="T">The type of value being formatted for the log.</typeparam>
         /// <returns>The formatted message.</returns>
         private static string FormatMessage<T>(T message, LogLevel level)
         {

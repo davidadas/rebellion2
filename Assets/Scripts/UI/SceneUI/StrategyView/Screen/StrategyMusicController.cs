@@ -38,7 +38,7 @@ internal sealed class StrategyMusicController
     }
 
     /// <summary>
-    /// Executes resume.
+    /// Resumes dynamic strategy music selection.
     /// </summary>
     internal void Resume()
     {
@@ -46,7 +46,7 @@ internal sealed class StrategyMusicController
     }
 
     /// <summary>
-    /// Executes reset.
+    /// Clears playlist state and stops strategy music.
     /// </summary>
     internal void Reset()
     {

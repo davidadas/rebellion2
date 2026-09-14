@@ -208,7 +208,7 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="snapshot">The snapshot.</param>
         /// <param name="planet">The planet.</param>
         /// <param name="observation">The observation.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the observation was a queued item and was recorded; otherwise false.</returns>
         private static bool RecordManufacturingObservation(
             PlanetSnapshot snapshot,
             Planet planet,
@@ -276,7 +276,7 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="snapshot">The snapshot.</param>
         /// <param name="source">The source.</param>
         /// <param name="copy">The copy.</param>
-        /// <typeparam name="T">The t type.</typeparam>
+        /// <typeparam name="T">The carried scene-node type being copied.</typeparam>
         private static void RecordCarriedUnitSnapshot<T>(PlanetSnapshot snapshot, T source, T copy)
             where T : class, ISceneNode
         {
@@ -373,7 +373,7 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="items">The items.</param>
         /// <param name="item">The item.</param>
-        /// <typeparam name="T">The t type.</typeparam>
+        /// <typeparam name="T">The scene-node type stored by the snapshot collection.</typeparam>
         private static void Upsert<T>(List<T> items, T item)
             where T : class, ISceneNode
         {
@@ -386,7 +386,7 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="container">The container.</param>
         /// <param name="item">The item.</param>
-        /// <typeparam name="T">The t type.</typeparam>
+        /// <typeparam name="T">The detached child scene-node type.</typeparam>
         private static void UpsertChild<T>(ContainerNode container, T item)
             where T : class, ISceneNode
         {
@@ -1226,7 +1226,7 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="destination">The destination.</param>
         /// <param name="source">The source.</param>
-        /// <typeparam name="T">The t type.</typeparam>
+        /// <typeparam name="T">The manufacturable scene-node type being merged.</typeparam>
         internal static void MergeManufacturingEntities<T>(
             ContainerNode destination,
             IEnumerable<T> source

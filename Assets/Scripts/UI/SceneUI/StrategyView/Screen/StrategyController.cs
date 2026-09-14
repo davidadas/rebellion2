@@ -1670,7 +1670,7 @@ public sealed class StrategyController
     /// <summary>
     /// Returns the saved mission-odds visibility, defaulting to visible before settings initialize.
     /// </summary>
-    /// <returns>True when the operation succeeds; otherwise false.</returns>
+    /// <returns>The saved visibility setting, or true when settings are unavailable.</returns>
     private static bool GetShowMissionOdds()
     {
         return AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowMissionOdds

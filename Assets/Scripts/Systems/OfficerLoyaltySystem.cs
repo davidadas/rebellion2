@@ -53,7 +53,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission.</param>
         /// <param name="results">Receives the results.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the officer betrays the mission; otherwise false.</returns>
         public bool TryResolveMissionBetrayal(Mission mission, out List<GameResult> results)
         {
             if (mission == null)
@@ -97,7 +97,7 @@ namespace Rebellion.Systems
         /// the percentage chance.
         /// </summary>
         /// <param name="officer">The officer.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the officer betrays the mission; otherwise false.</returns>
         private bool BetraysMission(Officer officer)
         {
             if (

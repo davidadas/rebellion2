@@ -35,7 +35,7 @@ namespace Rebellion.Game.Units
             };
 
         /// <summary>
-        /// Executes merge from.
+        /// Applies authored image paths over the current image set.
         /// </summary>
         /// <param name="authored">The authored.</param>
         public void MergeFrom(OfficerImageSet authored)

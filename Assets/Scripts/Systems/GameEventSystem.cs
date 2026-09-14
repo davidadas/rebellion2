@@ -506,7 +506,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="gameEvent">The event definition.</param>
         /// <param name="state">The persistent runtime state to initialize.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the schedule is initialized or was already initialized; otherwise false.</returns>
         private bool InitializeSchedule(GameEvent gameEvent, GameEventState state)
         {
             if (state.IsInitialized)

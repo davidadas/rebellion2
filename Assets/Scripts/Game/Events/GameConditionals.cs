@@ -135,7 +135,7 @@ namespace Rebellion.Game.Events
         /// <param name="actual">The actual.</param>
         /// <param name="operation">The operation.</param>
         /// <param name="expected">The expected.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the comparison between the actual and expected values holds.</returns>
         internal static bool Evaluate(int actual, ComparisonOperator operation, int expected) =>
             operation switch
             {
@@ -481,7 +481,7 @@ namespace Rebellion.Game.Events
         /// Evaluates the requested operation.
         /// </summary>
         /// <param name="officer">The officer.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the officer satisfies the specialized condition; otherwise false.</returns>
         protected abstract bool Evaluate(Officer officer);
     }
 
@@ -495,7 +495,7 @@ namespace Rebellion.Game.Events
         /// Evaluates the requested operation.
         /// </summary>
         /// <param name="officer">The officer.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the officer is captured by the configured faction; otherwise false.</returns>
         protected override bool Evaluate(Officer officer) =>
             officer.IsCaptured
             && (
@@ -511,7 +511,7 @@ namespace Rebellion.Game.Events
         /// Evaluates the requested operation.
         /// </summary>
         /// <param name="officer">The officer.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the officer is killed; otherwise false.</returns>
         protected override bool Evaluate(Officer officer) => officer.IsKilled;
     }
 
@@ -522,7 +522,7 @@ namespace Rebellion.Game.Events
         /// Evaluates the requested operation.
         /// </summary>
         /// <param name="officer">The officer.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the officer is injured; otherwise false.</returns>
         protected override bool Evaluate(Officer officer) => officer.InjuryPoints > 0;
     }
 
@@ -533,7 +533,7 @@ namespace Rebellion.Game.Events
         /// Evaluates the requested operation.
         /// </summary>
         /// <param name="officer">The officer.</param>
-        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        /// <returns>True when the officer is eligible to use the Force; otherwise false.</returns>
         protected override bool Evaluate(Officer officer) => officer.IsForceEligible;
     }
 

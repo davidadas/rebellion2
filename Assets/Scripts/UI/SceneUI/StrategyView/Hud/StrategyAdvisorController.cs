@@ -217,11 +217,11 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Executes merge animation.
+    /// Merges authored advisor animation settings over a preset.
     /// </summary>
     /// <param name="preset">The preset.</param>
     /// <param name="authored">The authored.</param>
-    /// <returns>The result of merge animation.</returns>
+    /// <returns>The merged advisor animation theme.</returns>
     private static StrategyAdvisorAnimationTheme MergeAnimation(
         StrategyAdvisorAnimationTheme preset,
         AdvisorAnimation authored

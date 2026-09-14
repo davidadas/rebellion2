@@ -156,7 +156,7 @@ internal static class GameRecordingSession
     /// <summary>
     /// Starts the configured Recorder session and cleans up if startup fails.
     /// </summary>
-    /// <returns>True when the operation succeeds; otherwise false.</returns>
+    /// <returns>True when recording starts; otherwise false.</returns>
     private static bool TryStartRecorder()
     {
         try
