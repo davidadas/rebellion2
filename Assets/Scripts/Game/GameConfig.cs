@@ -602,6 +602,7 @@ namespace Rebellion.Game
             public AIConsiderationConfig TrainingBacklog { get; set; } = Weighted(5);
             public AIConsiderationConfig SectorCoverage { get; set; } = Weighted(100);
             public AIConsiderationConfig PrimaryHub { get; set; } = Weighted(50);
+            public AIConsiderationConfig FacilityBalance { get; set; } = Weighted(100);
             public AIConsiderationConfig FacilityInvestment { get; set; } = Weighted(100);
             public AIConsiderationConfig UpgradeValue { get; set; } = Weighted(20);
             public AIConsiderationConfig UpgradeHeadquarters { get; set; } = Weighted(10);

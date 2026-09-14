@@ -800,7 +800,7 @@ namespace Rebellion.AI.Planners
                 sectors,
                 buildingType,
                 hubTarget,
-                baseDemandPercent
+                config.DemandUtility.FacilityBalance
             );
             bool hasIncompleteShipyardHub =
                 buildingType == BuildingType.Shipyard
@@ -922,13 +922,13 @@ namespace Rebellion.AI.Planners
         /// <param name="sectors">Owned planets grouped by system.</param>
         /// <param name="buildingType">The production facility category.</param>
         /// <param name="hubTarget">The desired facility count at each primary site.</param>
-        /// <param name="baseDemandPercent">The category's base demand pressure.</param>
+        /// <param name="consideration">The category-balance utility consideration.</param>
         /// <returns>The category balance pressure.</returns>
         private static double GetFacilityCategoryBalancePressure(
             IReadOnlyCollection<IGrouping<string, Planet>> sectors,
             BuildingType buildingType,
             int hubTarget,
-            int baseDemandPercent
+            GameConfig.AIConsiderationConfig consideration
         )
         {
             if (sectors.Count == 0 || hubTarget <= 0)
@@ -942,7 +942,7 @@ namespace Rebellion.AI.Planners
             );
             double targetHubProgress = sectors.Count * (double)hubTarget;
             double completion = completedHubProgress / targetHubProgress;
-            return baseDemandPercent * (0.5 - completion);
+            return AIUtility.EvaluateCentered(1 - completion, consideration);
         }
 
         /// <summary>

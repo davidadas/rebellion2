@@ -37,6 +37,23 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
+        /// Evaluates a normalized input around a neutral midpoint.
+        /// </summary>
+        /// <param name="input">The normalized consideration input.</param>
+        /// <param name="consideration">The response curve and full contribution range.</param>
+        /// <returns>A utility contribution from negative half-weight through positive half-weight.</returns>
+        public static double EvaluateCentered(
+            double input,
+            GameConfig.AIConsiderationConfig consideration
+        )
+        {
+            if (consideration == null || consideration.Weight == 0)
+                return 0;
+
+            return (EvaluateCurve(input, consideration.Curve) - 0.5) * consideration.Weight;
+        }
+
+        /// <summary>
         /// Normalizes a raw consideration value against its configured maximum before evaluation.
         /// </summary>
         /// <param name="value">The raw consideration value.</param>

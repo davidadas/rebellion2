@@ -71,6 +71,22 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(AIUtility.EvaluateDiscrete(1.0 / 3, consideration), Is.EqualTo(6));
         }
 
+        [TestCase(0, -50)]
+        [TestCase(0.5, 0)]
+        [TestCase(1, 50)]
+        public void CenteredConsiderationSpansBothSidesOfNeutral(double input, double expected)
+        {
+            GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
+            {
+                Weight = 100,
+            };
+
+            Assert.That(
+                AIUtility.EvaluateCentered(input, consideration),
+                Is.EqualTo(expected).Within(0.000001)
+            );
+        }
+
         [Test]
         public void SmoothStepPreservesEndpointsAndMidpoint()
         {
