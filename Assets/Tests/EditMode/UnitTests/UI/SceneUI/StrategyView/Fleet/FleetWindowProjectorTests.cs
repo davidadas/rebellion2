@@ -206,17 +206,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         /// <summary>
-        /// Verifies build fleet with capital ship in transit returns fleet transit presentation.
+        /// Verifies that an independently moving capital ship does not mark its stationary fleet
+        /// as enroute.
         /// </summary>
         [Test]
-        public void Build_FleetWithCapitalShipInTransit_ReturnsFleetTransitPresentation()
+        public void Build_StationaryFleetWithMovingCapitalShip_ReturnsStationaryFleetAndMovingShipPresentation()
         {
             _capitalShip.Movement = new MovementState { TransitTicks = 10 };
 
             FleetWindowRenderData data = _projector.Build(_session, _window, true);
 
-            Assert.IsNotNull(data.FleetRows[0].EnrouteOverlayTexture);
-            Assert.IsNotNull(data.BannerEnrouteOverlayTexture);
+            Assert.IsNull(data.FleetRows[0].EnrouteOverlayTexture);
+            Assert.IsNull(data.BannerEnrouteOverlayTexture);
+            Assert.IsNotNull(data.DetailItems[0].EnrouteOverlayTexture);
+        }
+
+        /// <summary>
+        /// Verifies that an arrived fleet remains stationary while an attached capital ship is
+        /// still moving.
+        /// </summary>
+        [Test]
+        public void Build_ArrivedFleetWithMovingCapitalShip_ReturnsStationaryFleetAndMovingShipPresentation()
+        {
+            _fleet.Movement = new MovementState { TransitTicks = 5, TicksElapsed = 5 };
+            _capitalShip.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 4 };
+            _fleet.Movement = null;
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.IsNull(data.FleetRows[0].EnrouteOverlayTexture);
+            Assert.IsNull(data.BannerEnrouteOverlayTexture);
             Assert.IsNotNull(data.DetailItems[0].EnrouteOverlayTexture);
         }
 

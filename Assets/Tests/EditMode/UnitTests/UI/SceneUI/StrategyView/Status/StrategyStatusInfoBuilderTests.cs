@@ -765,6 +765,78 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         /// <summary>
+        /// Verifies that an independently moving capital ship does not give its stationary fleet
+        /// an enroute status or fleet arrival day.
+        /// </summary>
+        [Test]
+        public void Build_StationaryFleetWithMovingCapitalShip_ReturnsAwaitingOrdersWithoutFleetArrivalDay()
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "stationary-fleet",
+                DisplayName = "Stationary Fleet",
+                OwnerInstanceID = _ownerId,
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "incoming-ship",
+                    DisplayName = "Incoming Ship",
+                    OwnerInstanceID = _ownerId,
+                    Movement = new MovementState { TransitTicks = 12, TicksElapsed = 5 },
+                },
+                fleet
+            );
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, fleet));
+
+            Assert.AreEqual(
+                "Awaiting Orders",
+                info.Rows.Single(row => row.Left == "Status:").Right
+            );
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "ETA Destination:"));
+            CollectionAssert.DoesNotContain(info.Images, StatusWindowImage.FleetBannerEnroute);
+        }
+
+        /// <summary>
+        /// Verifies that a fleet stops presenting transit after its own arrival even when an
+        /// attached capital ship remains in transit.
+        /// </summary>
+        [Test]
+        public void Build_ArrivedFleetWithMovingCapitalShip_ReturnsAwaitingOrdersWithoutFleetArrivalDay()
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "arrived-fleet",
+                DisplayName = "Arrived Fleet",
+                OwnerInstanceID = _ownerId,
+                Movement = new MovementState { TransitTicks = 5, TicksElapsed = 5 },
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "following-ship",
+                    DisplayName = "Following Ship",
+                    OwnerInstanceID = _ownerId,
+                    Movement = new MovementState { TransitTicks = 10, TicksElapsed = 4 },
+                },
+                fleet
+            );
+            fleet.Movement = null;
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, fleet));
+
+            Assert.AreEqual(
+                "Awaiting Orders",
+                info.Rows.Single(row => row.Left == "Status:").Right
+            );
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "ETA Destination:"));
+            CollectionAssert.DoesNotContain(info.Images, StatusWindowImage.FleetBannerEnroute);
+        }
+
+        /// <summary>
         /// Verifies build capital ship returns complete ship status.
         /// </summary>
         [Test]
