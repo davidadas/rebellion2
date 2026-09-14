@@ -36,6 +36,9 @@ discard the best-scoring result. Greedy preselection is allocation policy, not c
 it belongs behind a documented shared boundary or must be represented by proposals with mutually
 exclusive claim keys.
 
+Generators that emit every feasible candidate do not sort by preference. The scoring and selection
+phases own ordering, including deterministic sort-key resolution for equal utility.
+
 Candidate generation and scoring reuse the turn assessment. They must not introduce per-candidate
 scene-graph scans, nested materialization, or repeated sorting of the same source collection.
 

@@ -580,15 +580,9 @@ namespace Rebellion.AI.Planners
                 return;
 
             foreach (
-                Planet targetPlanet in context
-                    .Assessment.KnownUncolonizedPlanets.Where(targetPlanet =>
-                        !HasColonizationFleetForTarget(context, targetPlanet, fleet)
-                    )
-                    .OrderBy(targetPlanet =>
-                        currentPlanet?.GetRawDistanceTo(targetPlanet) ?? double.MaxValue
-                    )
-                    .ThenByDescending(context.Assessment.GetPlanetValue)
-                    .ThenBy(targetPlanet => targetPlanet.InstanceID)
+                Planet targetPlanet in context.Assessment.KnownUncolonizedPlanets.Where(
+                    targetPlanet => !HasColonizationFleetForTarget(context, targetPlanet, fleet)
+                )
             )
             {
                 proposals.Add(

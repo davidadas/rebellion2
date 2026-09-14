@@ -70,7 +70,7 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns favorable hostile-fleet targets ordered by proximity.
+        /// Returns favorable hostile-fleet targets.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">Fleet being assigned.</param>
@@ -85,15 +85,11 @@ namespace Rebellion.AI.Planners
             if (origin == null || !context.StrategicPlan.CanFleetDepart(fleet))
                 return Enumerable.Empty<Planet>();
 
-            return context
-                .Assessment.EnemyPlanets.Where(target =>
-                    target.InstanceID != origin.InstanceID
-                    && context.Assessment.GetStrongestHostileFleetStrength(target) > 0
-                    && context.Assessment.CanWinOrbitalCombat(fleet, target)
-                )
-                .OrderBy(target => origin.GetRawDistanceTo(target))
-                .ThenByDescending(context.Assessment.GetPlanetValue)
-                .ThenBy(target => target.InstanceID);
+            return context.Assessment.EnemyPlanets.Where(target =>
+                target.InstanceID != origin.InstanceID
+                && context.Assessment.GetStrongestHostileFleetStrength(target) > 0
+                && context.Assessment.CanWinOrbitalCombat(fleet, target)
+            );
         }
     }
 }
