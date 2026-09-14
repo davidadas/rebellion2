@@ -15,6 +15,9 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public sealed class AIFacilityRemovalProposalTests
     {
+        /// <summary>
+        /// Verifies plan with one facility planet per sector removes facility from second planet.
+        /// </summary>
         [Test]
         public void Plan_WithOneFacilityPlanetPerSector_RemovesFacilityFromSecondPlanet()
         {
@@ -63,6 +66,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreSame(second, proposal.Planet);
         }
 
+        /// <summary>
+        /// Verifies execute with equal facility rates removes unfinished facility.
+        /// </summary>
         [Test]
         public void Execute_WithEqualFacilityRates_RemovesUnfinishedFacility()
         {
@@ -140,6 +146,9 @@ namespace Rebellion.Tests.AI.Proposals
             );
         }
 
+        /// <summary>
+        /// Verifies plan and execute with facility outside allocation scraps facility.
+        /// </summary>
         [Test]
         public void PlanAndExecute_WithFacilityOutsideAllocation_ScrapsFacility()
         {

@@ -21,6 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private GameObject _rootObject;
         private GalacticInformationLegendView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -40,6 +43,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -50,6 +56,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render legend applies bounds artwork frame and close control.
+        /// </summary>
         [Test]
         public void Render_Legend_AppliesBoundsArtworkFrameAndCloseControl()
         {
@@ -84,6 +93,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies render subsequent bounds preserves initial source position.
+        /// </summary>
         [Test]
         public void Render_SubsequentBounds_PreservesInitialSourcePosition()
         {
@@ -98,6 +110,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(135, bounds.height);
         }
 
+        /// <summary>
+        /// Verifies render initial position outside parent clamps to parent bounds.
+        /// </summary>
         [Test]
         public void Render_InitialPositionOutsideParent_ClampsToParentBounds()
         {
@@ -112,6 +127,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(expectedY, bounds.y);
         }
 
+        /// <summary>
+        /// Verifies render missing legend texture hides legend.
+        /// </summary>
         [Test]
         public void Render_MissingLegendTexture_HidesLegend()
         {
@@ -129,6 +147,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render null data hides visible legend.
+        /// </summary>
         [Test]
         public void Render_NullData_HidesVisibleLegend()
         {
@@ -139,6 +160,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies close hit area press release and click updates texture and raises request.
+        /// </summary>
         [Test]
         public void CloseHitArea_PressReleaseAndClick_UpdatesTextureAndRaisesRequest()
         {
@@ -160,6 +184,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, closeCount);
         }
 
+        /// <summary>
+        /// Verifies hide visible legend deactivates legend.
+        /// </summary>
         [Test]
         public void Hide_VisibleLegend_DeactivatesLegend()
         {
@@ -170,6 +197,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds close and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsCloseAndRaisesDestroyedEvent()
         {
@@ -191,6 +221,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, closeCount);
         }
 
+        /// <summary>
+        /// Creates legend.
+        /// </summary>
+        /// <param name="position">The position.</param>
+        /// <returns>The created legend.</returns>
         private GalacticInformationLegendRenderData CreateLegend(Vector2Int position)
         {
             return new GalacticInformationLegendRenderData(
@@ -203,6 +238,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Creates frame.
+        /// </summary>
+        /// <returns>The created frame.</returns>
         private GalacticInformationFrameRenderData CreateFrame()
         {
             return new GalacticInformationFrameRenderData(
@@ -212,6 +251,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {

@@ -13,14 +13,8 @@ using Rebellion.Util.Extensions;
 /// </summary>
 public enum AdvisorReportMode
 {
-    /// <summary>
-    /// Summarizes completed stationary faction assets by type.
-    /// </summary>
     GalaxyOverview,
 
-    /// <summary>
-    /// Reports configured game objectives in display order.
-    /// </summary>
     Objectives,
 }
 

@@ -44,6 +44,9 @@ namespace Rebellion.AI.Phases
         /// Reserves every special-forces role whose mission capabilities are fully covered by
         /// available officers.
         /// </summary>
+        /// <param name="context">The context.</param>
+        /// <param name="specialForces">The special forces.</param>
+        /// <param name="officers">The officers.</param>
         private static void AssignOfficerReplaceableUnitsAsDecoys(
             AITurnContext context,
             IEnumerable<SpecialForces> specialForces,
@@ -63,6 +66,9 @@ namespace Rebellion.AI.Phases
         }
 
         /// <summary>Assigns one turn-scoped intent to each supplied special-forces unit.</summary>
+        /// <param name="context">The context.</param>
+        /// <param name="units">The units.</param>
+        /// <param name="intent">The intent.</param>
         private static void AssignIntent(
             AITurnContext context,
             IEnumerable<SpecialForces> units,

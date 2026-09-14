@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private BattleAlertWindowView _view;
         private GameObject _viewObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -27,6 +30,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -34,12 +40,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render pending summary applies window summary and buttons.
+        /// </summary>
         [Test]
         public void Render_PendingSummary_AppliesWindowSummaryAndButtons()
         {
@@ -67,6 +79,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindComponent<Button>("AutoResolveButtonImage").interactable);
         }
 
+        /// <summary>
+        /// Verifies render pending rows applies header icons labels and cached visibility.
+        /// </summary>
         [Test]
         public void Render_PendingRows_AppliesHeaderIconsLabelsAndCachedVisibility()
         {
@@ -98,6 +113,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(secondRow.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render hidden after pending clears and deactivates window.
+        /// </summary>
         [Test]
         public void Render_HiddenAfterPending_ClearsAndDeactivatesWindow()
         {
@@ -118,6 +136,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("RetreatButtonImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render result summary applies summary and close control.
+        /// </summary>
         [Test]
         public void Render_ResultSummary_AppliesSummaryAndCloseControl()
         {
@@ -160,6 +181,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("ResultDirectSectorButtonImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render standard result detail applies headers categories and both columns.
+        /// </summary>
         [Test]
         public void Render_StandardResultDetail_AppliesHeadersCategoriesAndBothColumns()
         {
@@ -248,6 +272,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("Destroyed Ship", FindItemText(destroyed, "NameTextField").text);
         }
 
+        /// <summary>
+        /// Verifies render planetary result detail uses source labels without filters.
+        /// </summary>
         [Test]
         public void Render_PlanetaryResultDetail_UsesSourceLabelsWithoutFilters()
         {
@@ -302,6 +329,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
+        /// <summary>
+        /// Verifies render personnel result detail uses personnel headers and columns.
+        /// </summary>
         [Test]
         public void Render_PersonnelResultDetail_UsesPersonnelHeadersAndColumns()
         {
@@ -335,6 +365,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(TextAlignmentOptions.Center, emptyText.alignment);
         }
 
+        /// <summary>
+        /// Verifies render result detail without table hides result columns.
+        /// </summary>
         [Test]
         public void Render_ResultDetailWithoutTable_HidesResultColumns()
         {
@@ -353,6 +386,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("ResultPersonnelDestroyedColumn").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render switching result layouts hides cached items from inactive layout.
+        /// </summary>
         [Test]
         public void Render_SwitchingResultLayouts_HidesCachedItemsFromInactiveLayout()
         {
@@ -400,6 +436,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
+        /// <summary>
+        /// Verifies render shorter result columns hides unused cached items.
+        /// </summary>
         [Test]
         public void Render_ShorterResultColumns_HidesUnusedCachedItems()
         {
@@ -450,6 +489,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
+        /// <summary>
+        /// Verifies render result rows leaves room below final name.
+        /// </summary>
         [Test]
         public void Render_ResultRows_LeavesRoomBelowFinalName()
         {
@@ -487,6 +529,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.GreaterOrEqual(scrollArea.ContentRoot.rect.height, requiredHeight);
         }
 
+        /// <summary>
+        /// Verifies render direct result shows authored navigation prompt.
+        /// </summary>
         [Test]
         public void Render_DirectResult_ShowsAuthoredNavigationPrompt()
         {
@@ -505,6 +550,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("ResultSummaryTextField").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render direct result shows navigation controls.
+        /// </summary>
         [Test]
         public void Render_DirectResult_ShowsNavigationControls()
         {
@@ -518,6 +566,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("ResultRowsScrollArea").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render result with unsupported category ignores category button.
+        /// </summary>
         [Test]
         public void Render_ResultWithUnsupportedCategory_IgnoresCategoryButton()
         {
@@ -535,6 +586,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("ResultCapitalShipsButtonImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies primary panel button press then click raises control before ordered panel request.
+        /// </summary>
         [Test]
         public void PrimaryPanelButton_PressThenClick_RaisesControlBeforeOrderedPanelRequest()
         {
@@ -561,6 +615,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(BattleAlertPanel.SecondForces, requested);
         }
 
+        /// <summary>
+        /// Verifies command button click raises ordered choice request.
+        /// </summary>
         [Test]
         public void CommandButton_Click_RaisesOrderedChoiceRequest()
         {
@@ -573,6 +630,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(BattleAlertChoice.AutoResolve, requested);
         }
 
+        /// <summary>
+        /// Verifies result category button click raises ordered category request.
+        /// </summary>
         [Test]
         public void ResultCategoryButton_Click_RaisesOrderedCategoryRequest()
         {
@@ -585,6 +645,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(BattleResultCategory.Troops, requested);
         }
 
+        /// <summary>
+        /// Verifies result controls press then click raise control before semantic requests.
+        /// </summary>
         [Test]
         public void ResultControls_PressThenClick_RaiseControlBeforeSemanticRequests()
         {
@@ -627,6 +690,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(1, fleetCount);
         }
 
+        /// <summary>
+        /// Verifies child views null render data throw argument null exception.
+        /// </summary>
         [Test]
         public void ChildViews_NullRenderData_ThrowArgumentNullException()
         {
@@ -644,6 +710,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.Throws<ArgumentNullException>(() => itemTemplates[1].Render(null));
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds controls and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsControlsAndRaisesDestroyedEvent()
         {
@@ -671,6 +740,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(0, panelRequestCount);
         }
 
+        /// <summary>
+        /// Creates window data.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="pending">The pending.</param>
+        /// <param name="result">The result.</param>
+        /// <returns>The created window data.</returns>
         private BattleAlertWindowRenderData CreateWindowData(
             BattleAlertWindowMode mode,
             BattleAlertPendingRenderData pending,
@@ -690,6 +766,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
+        /// <summary>
+        /// Creates pending.
+        /// </summary>
+        /// <param name="panel">The panel.</param>
+        /// <param name="rows">The rows.</param>
+        /// <returns>The created pending.</returns>
         private BattleAlertPendingRenderData CreatePending(
             BattleAlertPanel panel,
             BattleAlertRowRenderData[] rows = null
@@ -711,6 +793,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
+        /// <summary>
+        /// Creates result.
+        /// </summary>
+        /// <param name="panel">The panel.</param>
+        /// <param name="category">The category.</param>
+        /// <param name="table">The table.</param>
+        /// <param name="planetary">Whether planetary.</param>
+        /// <param name="categoryButtons">The category buttons.</param>
+        /// <returns>The created result.</returns>
         private BattleAlertResultRenderData CreateResult(
             BattleResultPanel panel,
             BattleResultCategory category = BattleResultCategory.CapitalShips,
@@ -761,6 +852,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
+        /// <summary>
+        /// Creates view buttons.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <returns>The created view buttons.</returns>
         private BattleAlertButtonRenderData[] CreateViewButtons(BattleAlertWindowMode mode)
         {
             int[] yPositions =
@@ -772,16 +868,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 .ToArray();
         }
 
+        /// <summary>
+        /// Creates buttons.
+        /// </summary>
+        /// <param name="count">The count.</param>
+        /// <returns>The created buttons.</returns>
         private BattleAlertButtonRenderData[] CreateButtons(int count)
         {
             return Enumerable.Range(0, count).Select(_ => CreateButton(true)).ToArray();
         }
 
+        /// <summary>
+        /// Creates button.
+        /// </summary>
+        /// <param name="interactable">Whether interactable.</param>
+        /// <param name="bounds">The bounds.</param>
+        /// <returns>The created button.</returns>
         private BattleAlertButtonRenderData CreateButton(bool interactable, RectInt? bounds = null)
         {
             return new BattleAlertButtonRenderData(interactable, _texture, _texture, bounds);
         }
 
+        /// <summary>
+        /// Finds rows.
+        /// </summary>
+        /// <returns>The matching rows.</returns>
         private BattleAlertRowView[] FindRows()
         {
             return _viewObject
@@ -791,6 +902,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds result items.
+        /// </summary>
+        /// <param name="columnName">The column name.</param>
+        /// <returns>The matching result items.</returns>
         private BattleResultItemView[] FindResultItems(string columnName)
         {
             Transform column = FindObject(columnName).transform;
@@ -803,6 +919,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {
@@ -811,6 +933,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Executes press.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
         private void Press(string objectName)
         {
             FindComponent<RawImagePressVisual>(objectName)
@@ -819,11 +945,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 );
         }
 
+        /// <summary>
+        /// Finds text.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching text.</returns>
         private TextMeshProUGUI FindText(string objectName)
         {
             return FindComponent<TextMeshProUGUI>(objectName);
         }
 
+        /// <summary>
+        /// Finds object.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching object.</returns>
         private GameObject FindObject(string objectName)
         {
             return _viewObject
@@ -832,12 +968,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds item image.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching item image.</returns>
         private static RawImage FindItemImage(BattleResultItemView item, string objectName)
         {
             return item.GetComponentsInChildren<RawImage>(true)
                 .Single(image => image.name == objectName);
         }
 
+        /// <summary>
+        /// Finds item object.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching item object.</returns>
         private static GameObject FindItemObject(BattleResultItemView item, string objectName)
         {
             return item.GetComponentsInChildren<Transform>(true)
@@ -845,18 +993,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds item text.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching item text.</returns>
         private static TextMeshProUGUI FindItemText(BattleResultItemView item, string objectName)
         {
             return item.GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == objectName);
         }
 
+        /// <summary>
+        /// Finds row image.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching row image.</returns>
         private static RawImage FindRowImage(BattleAlertRowView row, string objectName)
         {
             return row.GetComponentsInChildren<RawImage>(true)
                 .Single(image => image.name == objectName);
         }
 
+        /// <summary>
+        /// Finds row object.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching row object.</returns>
         private static GameObject FindRowObject(BattleAlertRowView row, string objectName)
         {
             return row.GetComponentsInChildren<Transform>(true)
@@ -864,6 +1030,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds row text.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching row text.</returns>
         private static TextMeshProUGUI FindRowText(BattleAlertRowView row, string objectName)
         {
             return row.GetComponentsInChildren<TextMeshProUGUI>(true)

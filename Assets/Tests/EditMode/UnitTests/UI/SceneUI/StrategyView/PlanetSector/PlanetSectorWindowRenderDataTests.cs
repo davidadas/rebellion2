@@ -11,6 +11,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private PlanetSectorBarRenderData _bar;
         private Texture2D _texture;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -26,12 +29,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _texture = new Texture2D(1, 1);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_texture);
         }
 
+        /// <summary>
+        /// Verifies window source changes preserves read only planet snapshot.
+        /// </summary>
         [Test]
         public void Window_SourceChanges_PreservesReadOnlyPlanetSnapshot()
         {
@@ -48,6 +57,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies window null planets returns empty snapshot.
+        /// </summary>
         [Test]
         public void Window_NullPlanets_ReturnsEmptySnapshot()
         {
@@ -57,6 +69,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsEmpty(data.Planets);
         }
 
+        /// <summary>
+        /// Verifies planet missing bar throws argument null exception.
+        /// </summary>
+        /// <param name="missingBarIndex">The missing bar index.</param>
         [TestCase(0)]
         [TestCase(1)]
         [TestCase(2)]
@@ -71,6 +87,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies planet null name returns empty name.
+        /// </summary>
         [Test]
         public void Planet_NullName_ReturnsEmptyName()
         {
@@ -100,6 +119,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(string.Empty, data.Name);
         }
 
+        /// <summary>
+        /// Creates planet data.
+        /// </summary>
+        /// <param name="energyBar">The energy bar.</param>
+        /// <param name="rawResourceBar">The raw resource bar.</param>
+        /// <param name="supportBar">The support bar.</param>
+        /// <returns>The created planet data.</returns>
         private PlanetSectorPlanetRenderData CreatePlanetData(
             PlanetSectorBarRenderData energyBar,
             PlanetSectorBarRenderData rawResourceBar,

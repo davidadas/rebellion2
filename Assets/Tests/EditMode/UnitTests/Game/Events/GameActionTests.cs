@@ -12,6 +12,9 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public sealed class GameActionTests
     {
+        /// <summary>
+        /// Verifies execute all action throws executes remaining actions.
+        /// </summary>
         [Test]
         public void ExecuteAll_ActionThrows_ExecutesRemainingActions()
         {
@@ -45,6 +48,10 @@ namespace Rebellion.Tests.Game.Events
         {
             public bool Executed { get; private set; }
 
+            /// <summary>
+            /// Executes the requested operation.
+            /// </summary>
+            /// <param name="context">The context.</param>
             internal override void Execute(GameActionContext context)
             {
                 Executed = true;
@@ -53,6 +60,10 @@ namespace Rebellion.Tests.Game.Events
 
         private sealed class ThrowingAction : GameAction
         {
+            /// <summary>
+            /// Executes the requested operation.
+            /// </summary>
+            /// <param name="context">The context.</param>
             internal override void Execute(GameActionContext context)
             {
                 throw new InvalidOperationException("test failure");

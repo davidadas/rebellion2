@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private const string _playerFactionId = "FNALL1";
         private const string _opponentFactionId = "FNEMP1";
 
+        /// <summary>
+        /// Verifies project capital ship damage separates survivors and destroyed ships.
+        /// </summary>
         [Test]
         public void Project_CapitalShipDamage_SeparatesSurvivorsAndDestroyedShips()
         {
@@ -83,6 +86,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotNull(table.Destroyed[0].DamagedOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies project duplicate capital ship damage keeps one operational row.
+        /// </summary>
         [Test]
         public void Project_DuplicateCapitalShipDamage_KeepsOneOperationalRow()
         {
@@ -119,6 +125,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project starfighter losses separates surviving and destroyed squadrons.
+        /// </summary>
         [Test]
         public void Project_StarfighterLosses_SeparatesSurvivingAndDestroyedSquadrons()
         {
@@ -181,6 +190,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotNull(table.Destroyed[0].DamagedOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies project planetary starfighter without fleet returns operational squadron.
+        /// </summary>
         [Test]
         public void Project_PlanetaryStarfighterWithoutFleet_ReturnsOperationalSquadron()
         {
@@ -216,6 +228,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project troops returns fleet regiments in carrier order.
+        /// </summary>
         [Test]
         public void Project_Troops_ReturnsFleetRegimentsInCarrierOrder()
         {
@@ -250,6 +265,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project personnel combines officers then special forces.
+        /// </summary>
         [Test]
         public void Project_Personnel_CombinesOfficersThenSpecialForces()
         {
@@ -287,6 +305,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project captured officer includes captured overlay.
+        /// </summary>
         [Test]
         public void Project_CapturedOfficer_IncludesCapturedOverlay()
         {
@@ -316,6 +337,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotNull(table.Operational[0].CapturedOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies project bombardment manufacturing separates operational and destroyed facilities.
+        /// </summary>
         [Test]
         public void Project_BombardmentManufacturing_SeparatesOperationalAndDestroyedFacilities()
         {
@@ -359,6 +383,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNull(table.Destroyed[0].DamagedOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies project planetary assault troops separates surviving and destroyed regiments.
+        /// </summary>
         [Test]
         public void Project_PlanetaryAssaultTroops_SeparatesSurvivingAndDestroyedRegiments()
         {
@@ -402,6 +429,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNull(table.Destroyed[0].DamagedOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies project unknown owner returns both empty state rows.
+        /// </summary>
         [Test]
         public void Project_UnknownOwner_ReturnsBothEmptyStateRows()
         {
@@ -420,6 +450,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project live unit changes after capture do not rewrite result rows.
+        /// </summary>
         [Test]
         public void Project_LiveUnitChangesAfterCapture_DoNotRewriteResultRows()
         {
@@ -448,6 +481,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreNotSame(officer, result.AttackingUnits[0].Unit);
         }
 
+        /// <summary>
+        /// Creates context.
+        /// </summary>
+        /// <returns>The created context.</returns>
         private static UIContext CreateContext()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -463,11 +500,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
+        /// <summary>
+        /// Creates fleet.
+        /// </summary>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="ships">The ships.</param>
+        /// <returns>The created fleet.</returns>
         private static GameFleet CreateFleet(string ownerId, params CapitalShip[] ships)
         {
             return new GameFleet(ownerId, "Fleet", ships.ToList()) { InstanceID = "fleet" };
         }
 
+        /// <summary>
+        /// Creates capital ship.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created capital ship.</returns>
         private static CapitalShip CreateCapitalShip(
             string instanceId,
             string ownerId,
@@ -496,6 +546,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        /// <summary>
+        /// Creates starfighter.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created starfighter.</returns>
         private static Starfighter CreateStarfighter(
             string instanceId,
             string ownerId,
@@ -524,6 +581,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        /// <summary>
+        /// Creates building.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <returns>The created building.</returns>
         private static Building CreateBuilding(
             string instanceId,
             string ownerId,
@@ -549,6 +614,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        /// <summary>
+        /// Creates regiment.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created regiment.</returns>
         private static Regiment CreateRegiment(
             string instanceId,
             string ownerId,
@@ -569,6 +641,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        /// <summary>
+        /// Creates officer.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created officer.</returns>
         private static Officer CreateOfficer(string instanceId, string ownerId, string displayName)
         {
             Officer definition = TestContent.Data.Officers.First(item =>
@@ -586,6 +665,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        /// <summary>
+        /// Creates special forces.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created special forces.</returns>
         private static SpecialForces CreateSpecialForces(
             string instanceId,
             string ownerId,
@@ -607,6 +693,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        /// <summary>
+        /// Captures the requested operation.
+        /// </summary>
+        /// <param name="unit">The unit.</param>
+        /// <param name="damaged">Whether damaged.</param>
+        /// <param name="destroyed">Whether destroyed.</param>
+        /// <returns>The result of capture.</returns>
         private static CombatUnitSnapshot Capture(
             ISceneNode unit,
             bool damaged = false,

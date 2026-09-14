@@ -10,11 +10,22 @@ namespace Rebellion.Tests.Systems
 {
     public abstract class CombatTestBase
     {
+        /// <summary>
+        /// Executes make space combat.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The result of make space combat.</returns>
         protected SpaceCombatSystem MakeSpaceCombat(GameRoot game)
         {
             return new SpaceCombatSystem(game, CreateMovement(game));
         }
 
+        /// <summary>
+        /// Executes make bombardment.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="rng">The rng.</param>
+        /// <returns>The result of make bombardment.</returns>
         protected BombardmentSystem MakeBombardment(GameRoot game, IRandomNumberProvider rng)
         {
             (MovementSystem movement, PlanetaryControlSystem planetaryControl) =
@@ -22,6 +33,12 @@ namespace Rebellion.Tests.Systems
             return new BombardmentSystem(game, rng, movement, planetaryControl);
         }
 
+        /// <summary>
+        /// Executes make planetary assault.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="rng">The rng.</param>
+        /// <returns>The result of make planetary assault.</returns>
         protected PlanetaryAssaultSystem MakePlanetaryAssault(
             GameRoot game,
             IRandomNumberProvider rng
@@ -31,11 +48,21 @@ namespace Rebellion.Tests.Systems
             return new PlanetaryAssaultSystem(game, rng, planetaryControl);
         }
 
+        /// <summary>
+        /// Creates movement.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The created movement.</returns>
         private static MovementSystem CreateMovement(GameRoot game)
         {
             return new MovementSystem(game, new FogOfWarSystem(game), new FleetSystem(game));
         }
 
+        /// <summary>
+        /// Creates planetary combat systems.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The created planetary combat systems.</returns>
         private static (
             MovementSystem movement,
             PlanetaryControlSystem planetaryControl
@@ -52,6 +79,10 @@ namespace Rebellion.Tests.Systems
             return (movement, planetaryControl);
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
         protected GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -88,6 +119,14 @@ namespace Rebellion.Tests.Systems
             return game;
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="id">The id.</param>
+        /// <param name="owner">The owner.</param>
+        /// <param name="energy">The energy.</param>
+        /// <returns>The created planet.</returns>
         protected (Planet planet, PlanetSector planetSector) CreatePlanet(
             GameRoot game,
             string id,

@@ -15,6 +15,9 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class RescueMissionTests
     {
+        /// <summary>
+        /// Verifies try create target in transit returns null.
+        /// </summary>
         [Test]
         public void TryCreate_TargetInTransit_ReturnsNull()
         {
@@ -42,6 +45,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies try create null target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NullTarget_ReturnsNull()
         {
@@ -65,6 +71,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null when target is null");
         }
 
+        /// <summary>
+        /// Verifies try create non planet target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NonPlanetTarget_ReturnsNull()
         {
@@ -88,6 +97,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null when target is not a Planet");
         }
 
+        /// <summary>
+        /// Verifies try create no valid target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NoValidTarget_ReturnsNull()
         {
@@ -113,6 +125,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create enemy officer as target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_EnemyOfficerAsTarget_ReturnsNull()
         {
@@ -143,6 +158,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create target not captured returns null.
+        /// </summary>
         [Test]
         public void TryCreate_TargetNotCaptured_ReturnsNull()
         {
@@ -169,6 +187,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null when target is not captured");
         }
 
+        /// <summary>
+        /// Verifies try create target on wrong planet returns null.
+        /// </summary>
         [Test]
         public void TryCreate_TargetOnWrongPlanet_ReturnsNull()
         {
@@ -199,6 +220,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create valid target returns not null.
+        /// </summary>
         [Test]
         public void TryCreate_ValidTarget_ReturnsNotNull()
         {
@@ -230,6 +254,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("captive", ((RescueMission)mission).TargetOfficerInstanceID);
         }
 
+        /// <summary>
+        /// Verifies resolve objective captured officer on target planet frees officer.
+        /// </summary>
         [Test]
         public void ResolveObjective_CapturedOfficerOnTargetPlanet_FreesOfficer()
         {
@@ -261,6 +288,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(captive.IsCaptured, "Rescued officer should no longer be captured");
         }
 
+        /// <summary>
+        /// Verifies resolve objective captured officer on target planet returns officer rescued result.
+        /// </summary>
         [Test]
         public void ResolveObjective_CapturedOfficerOnTargetPlanet_ReturnsOfficerRescuedResult()
         {
@@ -298,6 +328,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("captive", rescueResult.Officer.InstanceID);
         }
 
+        /// <summary>
+        /// Verifies resolve objective captured officer on target planet emits capture state released.
+        /// </summary>
         [Test]
         public void ResolveObjective_CapturedOfficerOnTargetPlanet_EmitsCaptureStateReleased()
         {
@@ -336,6 +369,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(captureState.IsCaptured, "IsCaptured should be false on release");
         }
 
+        /// <summary>
+        /// Verifies update mission officer not captured returns failed.
+        /// </summary>
         [Test]
         public void UpdateMission_OfficerNotCaptured_ReturnsFailed()
         {
@@ -383,6 +419,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies update mission target officer already freed returns failed.
+        /// </summary>
         [Test]
         public void UpdateMission_TargetOfficerAlreadyFreed_ReturnsFailed()
         {
@@ -429,6 +468,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies update mission target moved to different planet returns failed.
+        /// </summary>
         [Test]
         public void UpdateMission_TargetMovedToDifferentPlanet_ReturnsFailed()
         {
@@ -475,6 +517,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies update mission target removed from scene returns failed.
+        /// </summary>
         [Test]
         public void UpdateMission_TargetRemovedFromScene_ReturnsFailed()
         {
@@ -521,6 +566,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies update mission successful rescue moves target to rescuer origin.
+        /// </summary>
         [Test]
         public void UpdateMission_SuccessfulRescue_MovesTargetToRescuerOrigin()
         {
@@ -569,6 +617,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies update mission rescued officer already in transit returns rescuer only.
+        /// </summary>
         [Test]
         public void UpdateMission_RescuedOfficerAlreadyInTransit_ReturnsRescuerOnly()
         {
@@ -610,6 +661,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNotNull(captive.Movement);
         }
 
+        /// <summary>
+        /// Verifies get successful return passengers target rescued by owner returns target.
+        /// </summary>
         [Test]
         public void GetSuccessfulReturnPassengers_TargetRescuedByOwner_ReturnsTarget()
         {
@@ -635,6 +689,9 @@ namespace Rebellion.Tests.Game.Missions
             CollectionAssert.AreEqual(new IMovable[] { captive }, passengers);
         }
 
+        /// <summary>
+        /// Verifies get successful return passengers target still captured returns empty.
+        /// </summary>
         [Test]
         public void GetSuccessfulReturnPassengers_TargetStillCaptured_ReturnsEmpty()
         {
@@ -658,6 +715,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsEmpty(passengers);
         }
 
+        /// <summary>
+        /// Verifies serialize round trip preserves data.
+        /// </summary>
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
@@ -686,6 +746,16 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(8, deserialized.CurrentProgress);
         }
 
+        /// <summary>
+        /// Creates rescue mission.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="target">The target.</param>
+        /// <param name="mainParticipants">The main participants.</param>
+        /// <param name="decoyParticipants">The decoy participants.</param>
+        /// <param name="targetOfficer">The target officer.</param>
+        /// <returns>The created rescue mission.</returns>
         private static Mission CreateRescueMission(
             GameRoot game,
             string ownerInstanceId,

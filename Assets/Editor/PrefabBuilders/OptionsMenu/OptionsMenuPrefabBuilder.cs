@@ -349,6 +349,9 @@ public static class OptionsMenuPrefabBuilder
     /// <summary>
     /// Builds and wires the Gameplay page controls.
     /// </summary>
+    /// <param name="view">The view.</param>
+    /// <param name="gameplayPage">The gameplay page.</param>
+    /// <param name="accent">The accent.</param>
     private static void BuildGameplayPage(
         OptionsMenuView view,
         RectTransform gameplayPage,
@@ -1147,6 +1150,10 @@ public static class OptionsMenuPrefabBuilder
     /// <summary>
     /// Creates the navigation layout.
     /// </summary>
+    /// <param name="navigationRoot">The navigation root.</param>
+    /// <param name="backToGameButton">The back to game button.</param>
+    /// <param name="mainMenuButton">The main menu button.</param>
+    /// <param name="quitButton">The quit button.</param>
     private static void ConfigureOptionsNavigationLayout(
         RectTransform navigationRoot,
         Button backToGameButton,

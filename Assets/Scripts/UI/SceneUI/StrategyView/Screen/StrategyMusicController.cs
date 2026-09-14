@@ -12,6 +12,14 @@ internal sealed class StrategyMusicController
     private readonly Action stopMusic;
     private int neutralTracksRemaining;
 
+    /// <summary>
+    /// Initializes a new instance of the StrategyMusicController class.
+    /// </summary>
+    /// <param name="getGame">The get game.</param>
+    /// <param name="getTheme">The get theme.</param>
+    /// <param name="getRandomIndex">The get random index.</param>
+    /// <param name="playDynamicPlaylist">The play dynamic playlist.</param>
+    /// <param name="stopMusic">The stop music.</param>
     internal StrategyMusicController(
         Func<GameRoot> getGame,
         Func<StrategyMusicTheme> getTheme,
@@ -29,17 +37,27 @@ internal sealed class StrategyMusicController
         this.stopMusic = stopMusic ?? throw new ArgumentNullException(nameof(stopMusic));
     }
 
+    /// <summary>
+    /// Resumes dynamic strategy music selection.
+    /// </summary>
     internal void Resume()
     {
         playDynamicPlaylist(SelectNextTrack);
     }
 
+    /// <summary>
+    /// Clears playlist state and stops strategy music.
+    /// </summary>
     internal void Reset()
     {
         neutralTracksRemaining = 0;
         stopMusic();
     }
 
+    /// <summary>
+    /// Selects next track.
+    /// </summary>
+    /// <returns>The selected next track.</returns>
     private string SelectNextTrack()
     {
         StrategyMusicTheme theme =
@@ -59,6 +77,11 @@ internal sealed class StrategyMusicController
         return SelectStrategicTrack(theme);
     }
 
+    /// <summary>
+    /// Selects strategic track.
+    /// </summary>
+    /// <param name="theme">The theme.</param>
+    /// <returns>The selected strategic track.</returns>
     private string SelectStrategicTrack(StrategyMusicTheme theme)
     {
         int planetRatio = GetPlanetRatio(theme);
@@ -78,6 +101,11 @@ internal sealed class StrategyMusicController
         return SelectNeutralTrack(theme);
     }
 
+    /// <summary>
+    /// Gets planet ratio.
+    /// </summary>
+    /// <param name="theme">The theme.</param>
+    /// <returns>The requested planet ratio.</returns>
     private int GetPlanetRatio(StrategyMusicTheme theme)
     {
         GameRoot game =
@@ -92,6 +120,11 @@ internal sealed class StrategyMusicController
             : playerPlanetCount * theme.PlanetRatioScale / opponentPlanetCount;
     }
 
+    /// <summary>
+    /// Selects neutral track.
+    /// </summary>
+    /// <param name="theme">The theme.</param>
+    /// <returns>The selected neutral track.</returns>
     private string SelectNeutralTrack(StrategyMusicTheme theme)
     {
         int trackIndex = getRandomIndex(0, theme.NeutralTrackPaths.Count);
@@ -108,6 +141,12 @@ internal sealed class StrategyMusicController
         );
     }
 
+    /// <summary>
+    /// Requires track path.
+    /// </summary>
+    /// <param name="resourcePath">The resource path.</param>
+    /// <param name="propertyName">The property name.</param>
+    /// <returns>The result of require track path.</returns>
     private static string RequireTrackPath(string resourcePath, string propertyName)
     {
         if (string.IsNullOrWhiteSpace(resourcePath))
@@ -118,6 +157,10 @@ internal sealed class StrategyMusicController
         return resourcePath;
     }
 
+    /// <summary>
+    /// Validates theme.
+    /// </summary>
+    /// <param name="theme">The theme.</param>
     private static void ValidateTheme(StrategyMusicTheme theme)
     {
         if (theme.NeutralTrackPaths == null || theme.NeutralTrackPaths.Count == 0)

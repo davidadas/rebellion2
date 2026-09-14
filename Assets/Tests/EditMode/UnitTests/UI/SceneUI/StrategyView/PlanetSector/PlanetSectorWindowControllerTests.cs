@@ -43,6 +43,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -65,6 +68,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _controller.Initialize(_actions, _actions, _actions, _actions, (_, _) => { });
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -72,6 +78,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null dependency throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullDependency_ThrowsArgumentNullException()
         {
@@ -92,6 +101,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies initialize null window actions throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullWindowActions_ThrowsArgumentNullException()
         {
@@ -100,6 +112,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies bind window before initialize throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -113,6 +128,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view, window));
         }
 
+        /// <summary>
+        /// Verifies try initialize window null input returns false.
+        /// </summary>
         [Test]
         public void TryInitializeWindow_NullInput_ReturnsFalse()
         {
@@ -121,6 +139,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(initialized);
         }
 
+        /// <summary>
+        /// Verifies open valid sector creates named window in first slot.
+        /// </summary>
         [Test]
         public void Open_ValidSector_CreatesNamedWindowInFirstSlot()
         {
@@ -136,6 +157,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open existing sector returns false without additional window.
+        /// </summary>
         [Test]
         public void Open_ExistingSector_ReturnsFalseWithoutAdditionalWindow()
         {
@@ -149,6 +173,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies set sector position initialized window updates session slot.
+        /// </summary>
         [Test]
         public void TryOpenInAvailableSlot_AvailableSlot_OpensWithoutReplacingWindow()
         {
@@ -163,6 +190,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNotNull(_controller.FindWindow(secondSector));
         }
 
+        /// <summary>
+        /// Verifies that opening with every slot occupied does not replace a window.
+        /// </summary>
         [Test]
         public void TryOpenInAvailableSlot_AllSlotsOccupied_DoesNotReplaceWindow()
         {
@@ -183,6 +213,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(_controller.FindWindow(fourthSector));
         }
 
+        /// <summary>
+        /// Verifies that moving an initialized sector window updates its session slot.
+        /// </summary>
         [Test]
         public void SetSectorPosition_InitializedWindow_UpdatesSessionSlot()
         {
@@ -193,6 +226,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(SectorWindowPositions.Right, _controller.GetSectorPosition(view));
         }
 
+        /// <summary>
+        /// Verifies swap initialized window moves to next slot and marks dirty.
+        /// </summary>
         [Test]
         public void Swap_InitializedWindow_MovesToNextSlotAndMarksDirty()
         {
@@ -206,6 +242,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(2, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies reconcile windows matching sector identity replaces sector snapshot.
+        /// </summary>
         [Test]
         public void ReconcileWindows_MatchingSectorIdentity_ReplacesSectorSnapshot()
         {
@@ -218,6 +257,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(window, _controller.FindWindow(freshSector));
         }
 
+        /// <summary>
+        /// Verifies try create context menu no element returns disabled planet commands.
+        /// </summary>
         [Test]
         public void TryCreateContextMenu_NoElement_ReturnsDisabledPlanetCommands()
         {
@@ -243,6 +285,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(((StrategyMenuCommand)request.Commands[1]).Enabled);
         }
 
+        /// <summary>
+        /// Verifies try create context menu fleet element selects fleet context and status.
+        /// </summary>
         [Test]
         public void TryCreateContextMenu_FleetElement_SelectsFleetContextAndStatus()
         {
@@ -279,6 +324,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(_fleet, target.Item);
         }
 
+        /// <summary>
+        /// Verifies try create context menu planet image offers planet tracking.
+        /// </summary>
         [Test]
         public void TryCreateContextMenu_PlanetImage_OffersPlanetTracking()
         {
@@ -308,6 +356,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(_planet.Planet, _actions.LastTrackedEntity);
         }
 
+        /// <summary>
+        /// Verifies create planet context menu planet uses normal planet commands.
+        /// </summary>
         [Test]
         public void CreatePlanetContextMenu_Planet_UsesNormalPlanetCommands()
         {
@@ -335,6 +386,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(_controller, request.Receiver);
         }
 
+        /// <summary>
+        /// Verifies try create context menu facility image does not offer planet tracking.
+        /// </summary>
         [Test]
         public void TryCreateContextMenu_FacilityImage_DoesNotOfferPlanetTracking()
         {
@@ -362,6 +416,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies context menu planetary assault executes and routes battle result.
+        /// </summary>
         [Test]
         public void ContextMenu_PlanetaryAssault_ExecutesAndRoutesBattleResult()
         {
@@ -411,6 +468,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1, _actions.RefreshCount);
         }
 
+        /// <summary>
+        /// Verifies clear selection selected fleet clears context and status.
+        /// </summary>
         [Test]
         public void ClearSelection_SelectedFleet_ClearsContextAndStatus()
         {
@@ -424,6 +484,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(_controller.GetStatusTarget(view));
         }
 
+        /// <summary>
+        /// Verifies planet pressed fleet icon marks dirty.
+        /// </summary>
         [Test]
         public void PlanetPressed_FleetIcon_MarksDirty()
         {
@@ -442,6 +505,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(2, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies on target selected known actions route shared commands.
+        /// </summary>
         [Test]
         public void OnTargetSelected_KnownActions_RouteSharedCommands()
         {
@@ -464,6 +530,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(target, _actions.LastTarget);
         }
 
+        /// <summary>
+        /// Verifies view destroyed initialized session releases sector association.
+        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesSectorAssociation()
         {
@@ -475,6 +544,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(-1, _controller.GetSectorPosition(view));
         }
 
+        /// <summary>
+        /// Verifies create target for hit create mission on planet overlay icon targets planet.
+        /// </summary>
         [Test]
         public void CreateTargetForHit_CreateMissionOnPlanetOverlayIcon_TargetsPlanet()
         {
@@ -493,6 +565,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
         }
 
+        /// <summary>
+        /// Verifies create target for hit destination on fleet overlay icon targets planet.
+        /// </summary>
         [Test]
         public void CreateTargetForHit_DestinationOnFleetOverlayIcon_TargetsPlanet()
         {
@@ -511,6 +586,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
         }
 
+        /// <summary>
+        /// Verifies create target for hit move on fleet overlay icon targets fleet.
+        /// </summary>
         [Test]
         public void CreateTargetForHit_MoveOnFleetOverlayIcon_TargetsFleet()
         {
@@ -529,6 +607,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(fleet, target.Item);
         }
 
+        /// <summary>
+        /// Verifies create target for hit move confirm on fleet overlay icon targets fleet.
+        /// </summary>
         [Test]
         public void CreateTargetForHit_MoveConfirmOnFleetOverlayIcon_TargetsFleet()
         {
@@ -547,6 +628,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(fleet, target.Item);
         }
 
+        /// <summary>
+        /// Verifies create target for hit empty hit returns null.
+        /// </summary>
         [Test]
         public void CreateTargetForHit_EmptyHit_ReturnsNull()
         {
@@ -567,6 +651,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(emptyHit);
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private PlanetSectorWindowController CreateController()
         {
             return new PlanetSectorWindowController(
@@ -582,6 +670,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Creates fleet command controller.
+        /// </summary>
+        /// <returns>The created fleet command controller.</returns>
         private StrategyFleetCommandController CreateFleetCommandController()
         {
             return new StrategyFleetCommandController(
@@ -592,6 +684,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -601,6 +697,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             return game;
         }
 
+        /// <summary>
+        /// Creates sector.
+        /// </summary>
+        /// <returns>The created sector.</returns>
         private GalaxyMapSector CreateSector()
         {
             _planetSector = new GalaxyPlanetSector
@@ -628,6 +728,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             return new GalaxyMapSector(_planetSector, new[] { _planet });
         }
 
+        /// <summary>
+        /// Creates fresh sector.
+        /// </summary>
+        /// <returns>The created fresh sector.</returns>
         private GalaxyMapSector CreateFreshSector()
         {
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector
@@ -650,6 +754,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             return new GalaxyMapSector(planetSector, new[] { strategyPlanet });
         }
 
+        /// <summary>
+        /// Creates an empty galaxy-map sector with the requested identity and label.
+        /// </summary>
+        /// <param name="instanceId">The sector instance identifier.</param>
+        /// <param name="displayName">The displayed sector name.</param>
+        /// <returns>The created galaxy-map sector.</returns>
         private static GalaxyMapSector CreateSector(string instanceId, string displayName)
         {
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector
@@ -660,12 +770,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             return new GalaxyMapSector(planetSector, Array.Empty<GalaxyMapPlanet>());
         }
 
+        /// <summary>
+        /// Opens the configured planet-sector window.
+        /// </summary>
+        /// <param name="window">Receives the opened window container.</param>
+        /// <returns>The opened planet-sector view.</returns>
         private PlanetSectorWindowView OpenWindow(out UIWindow window)
         {
             _controller.Open(_sector);
             return GetOpenView(out window);
         }
 
+        /// <summary>
+        /// Gets open view.
+        /// </summary>
+        /// <param name="window">Receives the window.</param>
+        /// <returns>The requested open view.</returns>
         private PlanetSectorWindowView GetOpenView(out UIWindow window)
         {
             window = _windowManager.Windows.Single();
@@ -673,6 +793,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             return view;
         }
 
+        /// <summary>
+        /// Captures fleet context.
+        /// </summary>
+        /// <param name="view">The view.</param>
+        /// <param name="window">The window.</param>
         private void CaptureFleetContext(PlanetSectorWindowView view, UIWindow window)
         {
             StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
@@ -685,6 +810,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _controller.TryCreateContextMenu(context, out _, out _);
         }
 
+        /// <summary>
+        /// Creates fleet pointer event.
+        /// </summary>
+        /// <param name="view">The view.</param>
+        /// <param name="button">The button.</param>
+        /// <returns>The created fleet pointer event.</returns>
         private static PointerEventData CreateFleetPointerEvent(
             PlanetSectorWindowView view,
             PointerEventData.InputButton button = PointerEventData.InputButton.Right
@@ -702,6 +833,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             };
         }
 
+        /// <summary>
+        /// Creates planet pointer event.
+        /// </summary>
+        /// <param name="view">The view.</param>
+        /// <param name="button">The button.</param>
+        /// <returns>The created planet pointer event.</returns>
         private static PointerEventData CreatePlanetPointerEvent(
             PlanetSectorWindowView view,
             PointerEventData.InputButton button = PointerEventData.InputButton.Right
@@ -719,6 +856,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             };
         }
 
+        /// <summary>
+        /// Creates overlay pointer event.
+        /// </summary>
+        /// <param name="view">The view.</param>
+        /// <param name="imageFieldName">The image field name.</param>
+        /// <returns>The created overlay pointer event.</returns>
         private static PointerEventData CreateOverlayPointerEvent(
             PlanetSectorWindowView view,
             string imageFieldName
@@ -736,6 +879,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             };
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private static T GetField<T>(object owner, string fieldName)
         {
             return (T)
@@ -745,26 +895,50 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                     .GetValue(owner);
         }
 
+        /// <summary>
+        /// Gets window position.
+        /// </summary>
+        /// <param name="position">The position.</param>
+        /// <returns>The requested window position.</returns>
         private static Vector2Int GetWindowPosition(int position)
         {
             return new Vector2Int(100 + position * 10, 200 + position * 20);
         }
 
+        /// <summary>
+        /// Executes close window.
+        /// </summary>
+        /// <param name="window">The window.</param>
+        /// <param name="immediate">Whether immediate.</param>
         private void CloseWindow(UIWindow window, bool immediate)
         {
             _windowManager.DestroyWindow(window);
         }
 
+        /// <summary>
+        /// Executes mark dirty.
+        /// </summary>
         private void MarkDirty()
         {
             _dirtyCount++;
         }
 
+        /// <summary>
+        /// Creates request.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <returns>The created request.</returns>
         private static TargetingRequest CreateRequest(StrategyMenuAction action)
         {
             return CreateRequest(action, Array.Empty<ISceneNode>());
         }
 
+        /// <summary>
+        /// Creates request.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="items">The items.</param>
+        /// <returns>The created request.</returns>
         private static TargetingRequest CreateRequest(
             StrategyMenuAction action,
             IReadOnlyList<ISceneNode> items
@@ -777,6 +951,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Creates hit.
+        /// </summary>
+        /// <param name="icon">The icon.</param>
+        /// <param name="planetImage">Whether planet image.</param>
+        /// <returns>The created hit.</returns>
         private static PlanetSectorWindowHit CreateHit(PlanetIcon icon, bool planetImage)
         {
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector();
@@ -791,8 +971,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
         private sealed class TestTargetingReceiver : ITargetingReceiver
         {
+            /// <summary>
+            /// Executes on target selected.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="target">The target.</param>
             public void OnTargetSelected(TargetingRequest request, object target) { }
 
+            /// <summary>
+            /// Executes on targeting cancelled.
+            /// </summary>
+            /// <param name="request">The request.</param>
             public void OnTargetingCancelled(TargetingRequest request) { }
         }
 
@@ -812,15 +1001,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             public bool IsIdleBarEnabled => true;
 
+            /// <summary>
+            /// Checks whether the idle bar tracked condition is met.
+            /// </summary>
+            /// <param name="entity">The entity.</param>
+            /// <returns>True when the idle bar tracked condition is met; otherwise false.</returns>
             public bool IsIdleBarTracked(ISceneNode entity) => true;
 
+            /// <summary>
+            /// Executes toggle idle bar tracking.
+            /// </summary>
+            /// <param name="entity">The entity.</param>
             public void ToggleIdleBarTracking(ISceneNode entity)
             {
                 LastTrackedEntity = entity;
             }
 
+            /// <summary>
+            /// Checks whether the retire condition is met.
+            /// </summary>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the retire condition is met; otherwise false.</returns>
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
 
+            /// <summary>
+            /// Executes targeted command.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <param name="target">The target.</param>
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
@@ -831,16 +1039,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 LastTarget = target;
             }
 
+            /// <summary>
+            /// Opens planet sector battle result.
+            /// </summary>
+            /// <param name="result">The result.</param>
             public void OpenPlanetSectorBattleResult(GameResult result)
             {
                 LastBattleResult = result;
             }
 
+            /// <summary>
+            /// Refreshes planet sector state.
+            /// </summary>
             public void RefreshPlanetSectorState()
             {
                 RefreshCount++;
             }
 
+            /// <summary>
+            /// Opens planet sector planet window.
+            /// </summary>
+            /// <param name="planet">The planet.</param>
+            /// <param name="icon">The icon.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenPlanetSectorPlanetWindow(
                 GalaxyMapPlanet planet,
                 PlanetIcon icon,
@@ -848,25 +1070,53 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Opens planet sector info.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenPlanetSectorInfo(StrategyStatusTarget target) { }
 
+            /// <summary>
+            /// Opens planet sector status.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenPlanetSectorStatus(StrategyStatusTarget target) { }
 
+            /// <summary>
+            /// Opens scrap confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenScrapConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Opens stop construction confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenStopConstructionConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Opens retire confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenRetireConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Opens mission create window.
+            /// </summary>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
             public void OpenMissionCreateWindow(
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
@@ -875,6 +1125,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 LastItems = items;
             }
 
+            /// <summary>
+            /// Attempts execute move.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryExecuteMove(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
@@ -885,6 +1142,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 return true;
             }
 
+            /// <summary>
+            /// Opens move confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
             public void OpenMoveConfirmWindow(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
@@ -894,15 +1157,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 LastItems = items;
             }
 
+            /// <summary>
+            /// Attempts append fleet waypoint.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <param name="target">The target.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryAppendFleetWaypoint(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
             ) => false;
 
+            /// <summary>
+            /// Attempts commit fleet waypoint plan.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
+            /// <summary>
+            /// Attempts undo fleet waypoint plan.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
+            /// <summary>
+            /// Executes clear fleet waypoints.
+            /// </summary>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
         }
     }

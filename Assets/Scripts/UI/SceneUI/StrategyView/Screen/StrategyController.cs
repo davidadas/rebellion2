@@ -1629,6 +1629,7 @@ public sealed class StrategyController
     /// <summary>
     /// Pauses after an enemy bombardment against the player's faction when configured.
     /// </summary>
+    /// <param name="result">The result.</param>
     private void HandleBombardmentCompleted(BombardmentResult result)
     {
         string playerFactionId = gameManager?.GetPlayerFaction()?.InstanceID;
@@ -1667,6 +1668,7 @@ public sealed class StrategyController
     /// <summary>
     /// Pauses the strategy clock when the selected gameplay option is enabled.
     /// </summary>
+    /// <param name="option">The option.</param>
     private void PauseForGameplayOption(UserGameplayOption option)
     {
         UserGameplaySettings settings = AppBootstrap
@@ -1679,6 +1681,7 @@ public sealed class StrategyController
     /// <summary>
     /// Returns the saved mission-odds visibility, defaulting to visible before settings initialize.
     /// </summary>
+    /// <returns>The saved visibility setting, or true when settings are unavailable.</returns>
     private static bool GetShowMissionOdds()
     {
         return AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowMissionOdds
@@ -3073,6 +3076,7 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="target">The context-clicked strategy entity.</param>
     /// <param name="eventData">The source pointer event.</param>
+    /// <returns>The result of open idle bar context menu.</returns>
     ContextMenuRequest IIdleBarActions.OpenIdleBarContextMenu(
         ISceneNode target,
         PointerEventData eventData
@@ -3399,6 +3403,9 @@ public sealed class StrategyController
     /// <summary>
     /// Applies the information filter selected by a keyboard shortcut.
     /// </summary>
+    /// <param name="asset">The asset.</param>
+    /// <param name="actionName">The action name.</param>
+    /// <param name="mode">The mode.</param>
     private void BindGalacticInformationAction(
         InputActionAsset asset,
         string actionName,

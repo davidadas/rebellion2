@@ -106,6 +106,7 @@ public sealed class ContentModelBinding : MonoBehaviour
     /// Resolves the model file from installation content, instantiates it, and applies posing.
     /// </summary>
     /// <param name="cancellationToken">Token that cancels the load when the binding is destroyed.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private async Task LoadModelAsync(CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(address))

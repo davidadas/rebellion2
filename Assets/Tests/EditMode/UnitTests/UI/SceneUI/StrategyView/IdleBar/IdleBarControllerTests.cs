@@ -28,6 +28,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         private GameObject _rootObject;
         private IdleBarView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -51,6 +54,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _controller.BindView(_view);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -58,6 +64,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies bind view before initialize throws.
+        /// </summary>
         [Test]
         public void BindView_BeforeInitialize_Throws()
         {
@@ -73,6 +82,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.Throws<InvalidOperationException>(() => controller.BindView(_view));
         }
 
+        /// <summary>
+        /// Verifies select entry resolves and routes entity.
+        /// </summary>
         [Test]
         public void SelectEntry_ResolvesAndRoutesEntity()
         {
@@ -86,6 +98,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreSame(_officer, _actions.OpenedTarget);
         }
 
+        /// <summary>
+        /// Verifies toggle tracking changes state and requests render.
+        /// </summary>
         [Test]
         public void ToggleTracking_ChangesStateAndRequestsRender()
         {
@@ -102,6 +117,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(2, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies secondary click resolves and routes context menu without untracking.
+        /// </summary>
         [Test]
         public void IgnoreButton_UntracksEntryAndRequestsRender()
         {
@@ -115,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies that secondary click routes a context menu without untracking the item.
+        /// </summary>
         [Test]
         public void SecondaryClick_ResolvesAndRoutesContextMenuWithoutUntracking()
         {
@@ -134,6 +155,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(0, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies entry hover active entry highlights location until pointer exits.
+        /// </summary>
         [Test]
         public void EntryHover_ActiveEntry_HighlightsLocationUntilPointerExits()
         {
@@ -149,6 +173,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsNull(_actions.HighlightedTarget);
         }
 
+        /// <summary>
+        /// Verifies entry drag movable entity routes candidate movement and completion.
+        /// </summary>
         [Test]
         public void EntryDrag_MovableEntity_RoutesCandidateMovementAndCompletion()
         {
@@ -166,6 +193,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(1, _actions.DragEndCount);
         }
 
+        /// <summary>
+        /// Verifies entry drag planet does not start item drag.
+        /// </summary>
         [Test]
         public void EntryDrag_Planet_DoesNotStartItemDrag()
         {
@@ -185,6 +215,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsNull(_actions.DraggedTarget);
         }
 
+        /// <summary>
+        /// Verifies reset session restores tracking.
+        /// </summary>
         [Test]
         public void ResetSession_PreservesUntrackedState()
         {
@@ -195,6 +228,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsFalse(_controller.IsIdleBarTracked(_officer));
         }
 
+        /// <summary>
+        /// Verifies that resetting the session replaces the active exclusions.
+        /// </summary>
         [Test]
         public void ResetSession_ReplacementState_UsesReplacementExclusions()
         {
@@ -212,6 +248,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsFalse(_controller.IsIdleBarTracked(_officer));
         }
 
+        /// <summary>
+        /// Verifies that a recreated controller uses the player's persisted UI state.
+        /// </summary>
         [Test]
         public void RecreatedController_UsesPlayerUIState()
         {
@@ -230,6 +269,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             recreated.Dispose();
         }
 
+        /// <summary>
+        /// Verifies that toggling a planet persists each manufacturing-lane identity.
+        /// </summary>
         [Test]
         public void ToggleTracking_PlanetPersistsEachManufacturingLane()
         {
@@ -253,6 +295,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
         }
 
+        /// <summary>
+        /// Verifies render disabled feature hides view without theme data.
+        /// </summary>
         [Test]
         public void Render_DisabledFeature_HidesViewWithoutThemeData()
         {
@@ -272,6 +317,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies dispose bound view releases view subscriptions.
+        /// </summary>
         [Test]
         public void Dispose_BoundView_ReleasesViewSubscriptions()
         {
@@ -286,6 +334,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsNull(_actions.OpenedTarget);
         }
 
+        /// <summary>
+        /// Verifies bind view disposed controller throws object disposed exception.
+        /// </summary>
         [Test]
         public void BindView_DisposedController_ThrowsObjectDisposedException()
         {
@@ -294,6 +345,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.Throws<ObjectDisposedException>(() => _controller.BindView(_view));
         }
 
+        /// <summary>
+        /// Renders officer directly.
+        /// </summary>
         private void RenderOfficerDirectly()
         {
             _view.Render(
@@ -305,6 +359,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
         }
 
+        /// <summary>
+        /// Creates pointer event.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <returns>The created pointer event.</returns>
         private static PointerEventData CreatePointerEvent(GameObject target)
         {
             return new PointerEventData(null)
@@ -335,11 +394,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
             public int DragEndCount { get; private set; }
 
+            /// <summary>
+            /// Opens idle bar target.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenIdleBarTarget(ISceneNode target)
             {
                 OpenedTarget = target;
             }
 
+            /// <summary>
+            /// Opens idle bar context menu.
+            /// </summary>
+            /// <param name="target">The target.</param>
+            /// <param name="eventData">The event data.</param>
+            /// <returns>The result of open idle bar context menu.</returns>
             public ContextMenuRequest OpenIdleBarContextMenu(
                 ISceneNode target,
                 PointerEventData eventData
@@ -350,16 +419,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 return null;
             }
 
+            /// <summary>
+            /// Executes request idle bar render.
+            /// </summary>
             public void RequestIdleBarRender()
             {
                 RenderRequestCount++;
             }
 
+            /// <summary>
+            /// Sets idle bar location highlight.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void SetIdleBarLocationHighlight(ISceneNode target)
             {
                 HighlightedTarget = target;
             }
 
+            /// <summary>
+            /// Attempts start idle bar item drag.
+            /// </summary>
+            /// <param name="target">The target.</param>
+            /// <param name="preview">The preview.</param>
+            /// <param name="eventData">The event data.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryStartIdleBarItemDrag(
                 ISceneNode target,
                 DragPreview preview,
@@ -370,16 +453,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 return true;
             }
 
+            /// <summary>
+            /// Executes move idle bar item drag.
+            /// </summary>
+            /// <param name="eventData">The event data.</param>
             public void MoveIdleBarItemDrag(PointerEventData eventData)
             {
                 DragMoveCount++;
             }
 
+            /// <summary>
+            /// Executes end idle bar item drag.
+            /// </summary>
+            /// <param name="eventData">The event data.</param>
             public void EndIdleBarItemDrag(PointerEventData eventData)
             {
                 DragEndCount++;
             }
 
+            /// <summary>
+            /// Checks whether the cel idle bar item drag condition is met.
+            /// </summary>
             public void CancelIdleBarItemDrag() { }
         }
     }

@@ -625,7 +625,7 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Replaces the completed facility and restores it if manufacturing cannot start.
+        /// Replaces the selected production facility with its planned upgrade.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         private void ExecuteBuildingUpgrade(AITurnContext context)

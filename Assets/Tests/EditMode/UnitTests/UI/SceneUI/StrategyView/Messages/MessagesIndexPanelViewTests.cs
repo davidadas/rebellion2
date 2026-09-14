@@ -23,6 +23,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         private MessagesIndexPanelView _view;
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -37,6 +40,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             _view.Initialize(() => false, _windowObject.transform);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -48,6 +54,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies initialize null navigation predicate throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullNavigationPredicate_ThrowsArgumentNullException()
         {
@@ -56,18 +65,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Verifies initialize null navigation scope throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullNavigationScope_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Initialize(() => true, null));
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render index applies tabs title rows and selection artwork.
+        /// </summary>
         [Test]
         public void Render_Index_AppliesTabsTitleRowsAndSelectionArtwork()
         {
@@ -105,6 +123,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Verifies render tab without texture disables authored control.
+        /// </summary>
         [Test]
         public void Render_TabWithoutTexture_DisablesAuthoredControl()
         {
@@ -124,6 +145,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(FindComponent<RawImage>("FleetTabButtonImage").raycastTarget);
         }
 
+        /// <summary>
+        /// Verifies render incomplete tabs throws argument exception.
+        /// </summary>
         [Test]
         public void Render_IncompleteTabs_ThrowsArgumentException()
         {
@@ -137,6 +161,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render tabs outside authored order throws argument exception.
+        /// </summary>
         [Test]
         public void Render_TabsOutsideAuthoredOrder_ThrowsArgumentException()
         {
@@ -152,6 +179,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render shorter rows hides unused cached row views.
+        /// </summary>
         [Test]
         public void Render_ShorterRows_HidesUnusedCachedRowViews()
         {
@@ -175,6 +205,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual("Replacement", FindRowText(FindRows().Single()).text);
         }
 
+        /// <summary>
+        /// Verifies index controls click raise tab select all and remove requests.
+        /// </summary>
         [Test]
         public void IndexControls_Click_RaiseTabSelectAllAndRemoveRequests()
         {
@@ -194,6 +227,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(1, removeCount);
         }
 
+        /// <summary>
+        /// Verifies row gestures rendered row raise selection activation and context requests.
+        /// </summary>
         [Test]
         public void RowGestures_RenderedRow_RaiseSelectionActivationAndContextRequests()
         {
@@ -226,6 +262,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreSame(secondary, context);
         }
 
+        /// <summary>
+        /// Verifies hide visible panel deactivates panel.
+        /// </summary>
         [Test]
         public void Hide_VisiblePanel_DeactivatesPanel()
         {
@@ -236,6 +275,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds index controls.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsIndexControls()
         {
@@ -256,6 +298,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(0, removeCount);
         }
 
+        /// <summary>
+        /// Creates index.
+        /// </summary>
+        /// <param name="rows">The rows.</param>
+        /// <returns>The created index.</returns>
         private MessagesIndexPanelRenderData CreateIndex(MessageWindowRowRenderData[] rows)
         {
             return new MessagesIndexPanelRenderData(
@@ -266,6 +313,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Creates tabs.
+        /// </summary>
+        /// <returns>The created tabs.</returns>
         private MessagesTabRenderData[] CreateTabs()
         {
             return Enumerable
@@ -278,6 +329,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 .ToArray();
         }
 
+        /// <summary>
+        /// Creates row.
+        /// </summary>
+        /// <param name="messageId">The message id.</param>
+        /// <param name="header">The header.</param>
+        /// <param name="selected">Whether selected.</param>
+        /// <param name="headerColor">The header color.</param>
+        /// <returns>The created row.</returns>
         private MessageWindowRowRenderData CreateRow(
             string messageId,
             string header,
@@ -298,6 +357,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Finds rows.
+        /// </summary>
+        /// <returns>The matching rows.</returns>
         private MessageWindowRowView[] FindRows()
         {
             return _windowObject
@@ -308,11 +371,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds row text.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <returns>The matching row text.</returns>
         private static TextMeshProUGUI FindRowText(MessageWindowRowView row)
         {
             return FindRowComponent<TextMeshProUGUI>(row, "HeaderTextField");
         }
 
+        /// <summary>
+        /// Finds row component.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching row component.</returns>
         private static T FindRowComponent<T>(MessageWindowRowView row, string objectName)
             where T : Component
         {
@@ -320,6 +395,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {
@@ -328,6 +409,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds object.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching object.</returns>
         private GameObject FindObject(string objectName)
         {
             return _windowObject
@@ -336,6 +422,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds text.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching text.</returns>
         private TextMeshProUGUI FindText(string objectName)
         {
             return FindComponent<TextMeshProUGUI>(objectName);

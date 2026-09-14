@@ -536,6 +536,9 @@ namespace Rebellion.Game
         /// Retrieves all nodes of a specified type T, stopping further traversal of a branch when
         /// type T is found. An optional predicate filters which matching nodes are included.
         /// </summary>
+        /// <param name="predicate">The predicate.</param>
+        /// <typeparam name="T">The scene-node type that stops traversal and is returned.</typeparam>
+        /// <returns>The requested scene nodes by type.</returns>
         public List<T> GetSceneNodesByType<T>(Func<T, bool> predicate = null)
             where T : class
         {
@@ -697,6 +700,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Initializes and returns the supplied galaxy scene root.
         /// </summary>
+        /// <param name="galaxy">The galaxy.</param>
+        /// <returns>The result of initialize galaxy.</returns>
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
             InitializeSceneRoot(galaxy);
@@ -706,6 +711,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Rebuilds parent links and runtime indexes beneath one scene root.
         /// </summary>
+        /// <param name="root">The root.</param>
         private void InitializeSceneRoot(ISceneNode root)
         {
             ((BaseSceneNode)root).TraverseIncludingDisabled(

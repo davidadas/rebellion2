@@ -17,6 +17,9 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class ReconnaissanceMissionTests
     {
+        /// <summary>
+        /// Verifies resolve objective unvisited planet captures snapshot without success roll.
+        /// </summary>
         [Test]
         public void ResolveObjective_UnvisitedPlanet_CapturesSnapshotWithoutSuccessRoll()
         {
@@ -63,6 +66,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(viewPlanet.IsUnexploredView);
         }
 
+        /// <summary>
+        /// Verifies update mission enemy detector succeeds foils reconnaissance.
+        /// </summary>
         [Test]
         public void UpdateMission_EnemyDetectorSucceeds_FoilsReconnaissance()
         {
@@ -120,6 +126,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(0, game.GetSceneNodesByType<SpecialForces>().Count);
         }
 
+        /// <summary>
+        /// Verifies try create no participants returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NoParticipants_ReturnsNull()
         {
@@ -142,12 +151,18 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies try create null context returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NullContext_ReturnsNull()
         {
             Assert.IsNull(ReconnaissanceMission.TryCreate(null));
         }
 
+        /// <summary>
+        /// Verifies try create visited planet returns null.
+        /// </summary>
         [Test]
         public void TryCreate_VisitedPlanet_ReturnsNull()
         {
@@ -174,6 +189,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies try create officer participant only returns null.
+        /// </summary>
         [Test]
         public void TryCreate_OfficerParticipantOnly_ReturnsNull()
         {
@@ -196,6 +214,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies try create mixed primary participants returns null.
+        /// </summary>
         [Test]
         public void TryCreate_MixedPrimaryParticipants_ReturnsNull()
         {
@@ -221,6 +242,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies serialize round trip preserves data.
+        /// </summary>
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
@@ -249,6 +273,15 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(5, deserialized.CurrentProgress);
         }
 
+        /// <summary>
+        /// Creates mission.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="owner">The owner.</param>
+        /// <param name="target">The target.</param>
+        /// <param name="main">The main.</param>
+        /// <param name="decoy">The decoy.</param>
+        /// <returns>The created mission.</returns>
         private static Mission CreateMission(
             GameRoot game,
             string owner,
@@ -267,6 +300,11 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Creates recon team.
+        /// </summary>
+        /// <param name="owner">The owner.</param>
+        /// <returns>The created recon team.</returns>
         private static SpecialForces CreateReconTeam(string owner)
         {
             return new SpecialForces
@@ -280,11 +318,21 @@ namespace Rebellion.Tests.Game.Missions
 
         private class ThrowingRNG : IRandomNumberProvider
         {
+            /// <summary>
+            /// Executes next double.
+            /// </summary>
+            /// <returns>The result of next double.</returns>
             public double NextDouble()
             {
                 throw new InvalidOperationException();
             }
 
+            /// <summary>
+            /// Executes next int.
+            /// </summary>
+            /// <param name="min">The min.</param>
+            /// <param name="max">The max.</param>
+            /// <returns>The result of next int.</returns>
             public int NextInt(int min, int max)
             {
                 throw new InvalidOperationException();

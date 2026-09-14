@@ -23,6 +23,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private int _pointerY;
         private PointerEventData _pointerEvent;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -44,6 +47,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _pointerEvent = CreatePointerEvent(_window.gameObject);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -53,6 +59,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null resolver or negative threshold throws.
+        /// </summary>
         [Test]
         public void Constructor_NullResolverOrNegativeThreshold_Throws()
         {
@@ -82,6 +91,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Verifies event results static factories expose expected effects.
+        /// </summary>
         [Test]
         public void EventResults_StaticFactories_ExposeExpectedEffects()
         {
@@ -110,6 +122,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(finished.Dirty);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move no candidate returns none.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_NoCandidate_ReturnsNone()
         {
@@ -120,6 +135,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(result.Handled);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move below threshold returns handled only.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_BelowThreshold_ReturnsHandledOnly()
         {
@@ -138,6 +156,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(result.ClearPressedWindow);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move empty candidate crosses threshold clears candidate.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_EmptyCandidateCrossesThreshold_ClearsCandidate()
         {
@@ -160,6 +181,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(next.Handled);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move items without preview starts targeting.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_ItemsWithoutPreview_StartsTargeting()
         {
@@ -179,6 +203,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(_targetingController.IsTargeting);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move preview candidate starts and moves source drag.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_PreviewCandidate_StartsAndMovesSourceDrag()
         {
@@ -210,6 +237,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(new RectInt(48, 57, 20, 30), bounds);
         }
 
+        /// <summary>
+        /// Verifies try start item candidate direct entity uses shared drag flow.
+        /// </summary>
         [Test]
         public void TryStartItemCandidate_DirectEntity_UsesSharedDragFlow()
         {
@@ -237,6 +267,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreSame(_texture, texture);
         }
 
+        /// <summary>
+        /// Verifies try cancel direct item interaction direct candidate clears only direct state.
+        /// </summary>
         [Test]
         public void TryCancelDirectItemInteraction_DirectCandidate_ClearsOnlyDirectState()
         {
@@ -261,6 +294,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(nextMove.Handled);
         }
 
+        /// <summary>
+        /// Verifies try cancel direct item interaction window candidate preserves window state.
+        /// </summary>
         [Test]
         public void TryCancelDirectItemInteraction_WindowCandidate_PreservesWindowState()
         {
@@ -280,6 +316,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(nextMove.Handled);
         }
 
+        /// <summary>
+        /// Verifies try cancel direct item interaction direct targeting cancels targeting.
+        /// </summary>
         [Test]
         public void TryCancelDirectItemInteraction_DirectTargeting_CancelsTargeting()
         {
@@ -294,6 +333,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(_targetingController.IsTargeting);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move different press clears candidate without dragging.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_DifferentPress_ClearsCandidateWithoutDragging()
         {
@@ -322,6 +364,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(_targetingController.IsTargeting);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer up unresolved without state returns none.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerUp_UnresolvedWithoutState_ReturnsNone()
         {
@@ -332,6 +377,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(result.Handled);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer up unresolved with candidate clears and finishes.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerUp_UnresolvedWithCandidate_ClearsAndFinishes()
         {
@@ -351,6 +399,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(nextMove.Handled);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer up resolved candidate without source drag clears and returns none.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerUp_ResolvedCandidateWithoutSourceDrag_ClearsAndReturnsNone()
         {
@@ -369,6 +420,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(nextMove.Handled);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer up resolved source drag finishes drag.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerUp_ResolvedSourceDrag_FinishesDrag()
         {
@@ -388,6 +442,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(_targetingController.IsTargeting);
         }
 
+        /// <summary>
+        /// Verifies clear window matching source clears drag presentation.
+        /// </summary>
         [Test]
         public void ClearWindow_MatchingSource_ClearsDragPresentation()
         {
@@ -402,6 +459,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(controller.TryGetOverlay(out _, out _));
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private StrategyDragController CreateController()
         {
             return new StrategyDragController(
@@ -416,6 +477,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Resolves preview.
+        /// </summary>
+        /// <param name="window">The window.</param>
+        /// <param name="sourceX">The source x.</param>
+        /// <param name="sourceY">The source y.</param>
+        /// <param name="preview">Receives the preview.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         private bool ResolvePreview(
             UIWindow window,
             int sourceX,
@@ -427,6 +496,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             return _hasPreview;
         }
 
+        /// <summary>
+        /// Resolves pointer.
+        /// </summary>
+        /// <param name="eventData">The event data.</param>
+        /// <param name="screenPosition">The screen position.</param>
+        /// <param name="x">Receives the x.</param>
+        /// <param name="y">Receives the y.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         private bool ResolvePointer(
             PointerEventData eventData,
             Vector2 screenPosition,
@@ -439,6 +516,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             return _pointerResolved;
         }
 
+        /// <summary>
+        /// Creates pointer event.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <returns>The created pointer event.</returns>
         private static PointerEventData CreatePointerEvent(GameObject target)
         {
             return new PointerEventData(null)
@@ -453,16 +535,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
         private sealed class RecordingWindowCommands : IStrategyWindowCommandActions
         {
+            /// <summary>
+            /// Executes targeted command.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <param name="target">The target.</param>
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
             ) { }
 
+            /// <summary>
+            /// Opens mission create window.
+            /// </summary>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
             public void OpenMissionCreateWindow(
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Attempts execute move.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryExecuteMove(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
@@ -472,21 +571,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 return true;
             }
 
+            /// <summary>
+            /// Opens move confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
             public void OpenMoveConfirmWindow(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Attempts append fleet waypoint.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <param name="target">The target.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryAppendFleetWaypoint(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
             ) => false;
 
+            /// <summary>
+            /// Attempts commit fleet waypoint plan.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
+            /// <summary>
+            /// Attempts undo fleet waypoint plan.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
+            /// <summary>
+            /// Executes clear fleet waypoints.
+            /// </summary>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
         }
     }

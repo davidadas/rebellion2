@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private UIWindow _window;
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -48,12 +51,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             };
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor missing required input throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_MissingRequiredInput_ThrowsArgumentNullException()
         {
@@ -71,6 +80,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies constructor choices and participants returns initial mission state.
+        /// </summary>
         [Test]
         public void Constructor_ChoicesAndParticipants_ReturnsInitialMissionState()
         {
@@ -90,6 +102,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(session.SelectedDecoys);
         }
 
+        /// <summary>
+        /// Verifies set show mission odds changed value updates visibility.
+        /// </summary>
         [Test]
         public void SetShowMissionOdds_ChangedValue_UpdatesVisibility()
         {
@@ -103,6 +118,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(session.ShowMissionOdds);
         }
 
+        /// <summary>
+        /// Verifies constructor empty choices returns no selected mission.
+        /// </summary>
         [Test]
         public void Constructor_EmptyChoices_ReturnsNoSelectedMission()
         {
@@ -117,6 +135,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(session.SelectedChoice);
         }
 
+        /// <summary>
+        /// Verifies dropdown toggle and dismiss updates visibility.
+        /// </summary>
         [Test]
         public void Dropdown_ToggleAndDismiss_UpdatesVisibility()
         {
@@ -131,6 +152,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(session.DropdownOpen);
         }
 
+        /// <summary>
+        /// Verifies select mission valid index selects choice and closes dropdown.
+        /// </summary>
         [Test]
         public void SelectMission_ValidIndex_SelectsChoiceAndClosesDropdown()
         {
@@ -148,6 +172,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(session.IsMissionIndexValid(2));
         }
 
+        /// <summary>
+        /// Verifies select mission invalid index preserves selection.
+        /// </summary>
         [Test]
         public void SelectMission_InvalidIndex_PreservesSelection()
         {
@@ -159,6 +186,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(0, session.SelectedMissionIndex);
         }
 
+        /// <summary>
+        /// Verifies select tab valid tab changes tab and closes dropdown.
+        /// </summary>
         [Test]
         public void SelectTab_ValidTab_ChangesTabAndClosesDropdown()
         {
@@ -175,6 +205,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(session.IsTabValid((MissionCreateWindowTab)10));
         }
 
+        /// <summary>
+        /// Verifies select tab invalid tab preserves active tab.
+        /// </summary>
         [Test]
         public void SelectTab_InvalidTab_PreservesActiveTab()
         {
@@ -186,6 +219,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(MissionCreateWindowTab.Mission, session.ActiveTab);
         }
 
+        /// <summary>
+        /// Verifies move selected participants agent selection moves participant in source order.
+        /// </summary>
         [Test]
         public void MoveSelectedParticipants_AgentSelection_MovesParticipantInSourceOrder()
         {
@@ -203,6 +239,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(session.SelectedAgents);
         }
 
+        /// <summary>
+        /// Verifies select participant double click moves participant to opposite role.
+        /// </summary>
         [Test]
         public void SelectParticipant_DoubleClick_MovesParticipantToOppositeRole()
         {
@@ -217,6 +256,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(session.SelectedAgents);
         }
 
+        /// <summary>
+        /// Verifies participant operations invalid role or index return false.
+        /// </summary>
         [Test]
         public void ParticipantOperations_InvalidRoleOrIndex_ReturnFalse()
         {
@@ -237,6 +279,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(session.IsParticipantIndexValid((MissionParticipantRole)10, 0));
         }
 
+        /// <summary>
+        /// Creates choice.
+        /// </summary>
+        /// <param name="typeId">The type id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created choice.</returns>
         private static StrategyMissionChoice CreateChoice(string typeId, string displayName)
         {
             return new StrategyMissionChoice(
@@ -249,11 +297,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Creates officer.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created officer.</returns>
         private static Officer CreateOfficer(string instanceId, string displayName)
         {
             return new Officer { InstanceID = instanceId, DisplayName = displayName };
         }
 
+        /// <summary>
+        /// Creates session.
+        /// </summary>
+        /// <returns>The created session.</returns>
         private MissionCreateWindowSession CreateSession()
         {
             return new MissionCreateWindowSession(_window, _target, _choices, _participants);

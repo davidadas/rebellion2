@@ -22,6 +22,7 @@ public sealed class ContentModelCache : IDisposable
     /// <summary>
     /// Creates a model cache backed by the active external content source.
     /// </summary>
+    /// <param name="assets">The assets.</param>
     public ContentModelCache(ContentAssets assets)
     {
         contentAssets = assets ?? throw new ArgumentNullException(nameof(assets));
@@ -30,6 +31,8 @@ public sealed class ContentModelCache : IDisposable
     /// <summary>
     /// Parses all requested models so later scene instantiation does not touch disk or decode GLB data.
     /// </summary>
+    /// <param name="addresses">The addresses.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public Task PreloadAsync(IEnumerable<string> addresses)
     {
         ThrowIfDisposed();
@@ -42,6 +45,10 @@ public sealed class ContentModelCache : IDisposable
     /// <summary>
     /// Instantiates a parsed model beneath an authored scene transform.
     /// </summary>
+    /// <param name="address">The address.</param>
+    /// <param name="parent">The parent.</param>
+    /// <param name="cancellationToken">Cancels model instantiation.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task<ContentModelInstance> InstantiateAsync(
         string address,
         Transform parent,
@@ -77,6 +84,8 @@ public sealed class ContentModelCache : IDisposable
     /// <summary>
     /// Returns the shared parse task for an address, starting it when necessary.
     /// </summary>
+    /// <param name="address">The address.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private Task<ContentModelResource> GetOrLoadAsync(string address)
     {
         if (string.IsNullOrWhiteSpace(address))
@@ -95,6 +104,8 @@ public sealed class ContentModelCache : IDisposable
     /// <summary>
     /// Loads a resource owned by this cache and releases it if shutdown wins the load race.
     /// </summary>
+    /// <param name="filePath">The file path.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private async Task<ContentModelResource> LoadOwnedResourceAsync(string filePath)
     {
         ContentModelResource resource = await ContentModelLoader.LoadResourceAsync(

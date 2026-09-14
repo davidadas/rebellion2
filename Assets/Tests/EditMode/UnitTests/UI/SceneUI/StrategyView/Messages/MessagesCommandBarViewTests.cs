@@ -17,6 +17,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         private MessagesCommandBarView _view;
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -27,6 +30,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -35,12 +41,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render projected buttons applies textures visibility and interaction.
+        /// </summary>
         [Test]
         public void Render_ProjectedButtons_AppliesTexturesVisibilityAndInteraction()
         {
@@ -68,6 +80,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(FindComponent<Button>("SignalButtonImage").interactable);
         }
 
+        /// <summary>
+        /// Verifies render faction specific button bounds applies every command layout.
+        /// </summary>
         [Test]
         public void Render_FactionSpecificButtonBounds_AppliesEveryCommandLayout()
         {
@@ -97,6 +112,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             AssertSourceRect("ChatCommandButtonImage", chatBounds);
         }
 
+        /// <summary>
+        /// Verifies command buttons press then click raise control before semantic requests.
+        /// </summary>
         [Test]
         public void CommandButtons_PressThenClick_RaiseControlBeforeSemanticRequests()
         {
@@ -152,6 +170,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(1, chatCount);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds command controls.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsCommandControls()
         {
@@ -172,6 +193,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(0, closeCount);
         }
 
+        /// <summary>
+        /// Creates render data.
+        /// </summary>
+        /// <returns>The created render data.</returns>
         private MessagesCommandBarRenderData CreateRenderData()
         {
             MessagesCommandButtonRenderData button = CreateButton(
@@ -191,6 +216,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Creates button.
+        /// </summary>
+        /// <param name="texture">The texture.</param>
+        /// <param name="pressedTexture">The pressed texture.</param>
+        /// <param name="visible">Whether visible.</param>
+        /// <param name="enabled">Whether enabled.</param>
+        /// <param name="sourceBounds">The source bounds.</param>
+        /// <returns>The created button.</returns>
         private static MessagesCommandButtonRenderData CreateButton(
             Texture texture,
             Texture pressedTexture,
@@ -208,6 +242,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Executes assert source rect.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <param name="expected">The expected.</param>
         private void AssertSourceRect(string objectName, RectInt expected)
         {
             RectInt actual = UILayout.GetSourceRect(
@@ -219,6 +258,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(expected.height, actual.height, objectName);
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {
@@ -227,6 +272,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds object.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching object.</returns>
         private GameObject FindObject(string objectName)
         {
             return _windowObject

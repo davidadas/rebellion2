@@ -1126,6 +1126,7 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Authors the persistent services, camera, and event system required by the Strategy scene.
     /// </summary>
+    /// <param name="sceneRoot">The scene root.</param>
     private static void BuildSceneInfrastructure(GameObject sceneRoot)
     {
         GameObject services = new GameObject("Services");

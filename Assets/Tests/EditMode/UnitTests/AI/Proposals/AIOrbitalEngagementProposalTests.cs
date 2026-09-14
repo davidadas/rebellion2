@@ -12,6 +12,9 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AIOrbitalEngagementProposalTests
     {
+        /// <summary>
+        /// Verifies execute new engagement moves fleet and records origin.
+        /// </summary>
         [Test]
         public void Execute_NewEngagement_MovesFleetAndRecordsOrigin()
         {
@@ -30,6 +33,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(scenario.Origin.InstanceID, scenario.Fleet.Order.OriginPlanetId);
         }
 
+        /// <summary>
+        /// Verifies execute engagement completed without invasion force returns to origin.
+        /// </summary>
         [Test]
         public void Execute_EngagementCompletedWithoutInvasionForce_ReturnsToOrigin()
         {
@@ -49,6 +55,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(FleetOrderStatus.Returning, scenario.Fleet.Order.Status);
         }
 
+        /// <summary>
+        /// Verifies execute engagement completed with invasion force converts to attack order.
+        /// </summary>
         [Test]
         public void Execute_EngagementCompletedWithInvasionForce_ConvertsToAttackOrder()
         {
@@ -87,6 +96,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(FleetOrderStatus.Ready, scenario.Fleet.Order.Status);
         }
 
+        /// <summary>
+        /// Verifies execute returned fleet clears engagement order.
+        /// </summary>
         [Test]
         public void Execute_ReturnedFleet_ClearsEngagementOrder()
         {
@@ -104,6 +116,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNull(scenario.Fleet.Order);
         }
 
+        /// <summary>
+        /// Verifies execute target no longer has known hostile fleet clears order before departure.
+        /// </summary>
         [Test]
         public void Execute_TargetNoLongerHasKnownHostileFleet_ClearsOrderBeforeDeparture()
         {
@@ -121,6 +136,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNull(scenario.Fleet.Movement);
         }
 
+        /// <summary>
+        /// Verifies execute returning fleet still in enemy territory continues returning.
+        /// </summary>
         [Test]
         public void Execute_ReturningFleetStillInEnemyTerritory_ContinuesReturning()
         {
@@ -140,6 +158,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNotNull(scenario.Fleet.Movement);
         }
 
+        /// <summary>
+        /// Verifies execute existing engagement can no longer win returns to origin.
+        /// </summary>
         [Test]
         public void Execute_ExistingEngagementCanNoLongerWin_ReturnsToOrigin()
         {

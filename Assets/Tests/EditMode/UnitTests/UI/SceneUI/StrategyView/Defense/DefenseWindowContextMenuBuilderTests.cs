@@ -9,6 +9,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
     [TestFixture]
     public class DefenseWindowContextMenuBuilderTests
     {
+        /// <summary>
+        /// Verifies build empty selection returns disabled inspection commands.
+        /// </summary>
         [Test]
         public void Build_EmptySelection_ReturnsDisabledInspectionCommands()
         {
@@ -28,6 +31,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsTrue(commands.All(command => !command.Enabled));
         }
 
+        /// <summary>
+        /// Verifies build personnel selection returns personnel command order and eligibility.
+        /// </summary>
         [Test]
         public void Build_PersonnelSelection_ReturnsPersonnelCommandOrderAndEligibility()
         {
@@ -60,6 +66,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Verifies build regiment under construction returns enabled stop command.
+        /// </summary>
         [Test]
         public void Build_RegimentUnderConstruction_ReturnsEnabledStopCommand()
         {
@@ -79,6 +88,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsTrue(commands.Last().Enabled);
         }
 
+        /// <summary>
+        /// Verifies build completed starfighter returns scrap using move eligibility.
+        /// </summary>
         [Test]
         public void Build_CompletedStarfighter_ReturnsScrapUsingMoveEligibility()
         {
@@ -101,6 +113,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsFalse(commands.Last().Enabled);
         }
 
+        /// <summary>
+        /// Verifies build defense building under construction returns stop using control eligibility.
+        /// </summary>
         [Test]
         public void Build_DefenseBuildingUnderConstruction_ReturnsStopUsingControlEligibility()
         {
@@ -127,6 +142,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsFalse(commands.Last().Enabled);
         }
 
+        /// <summary>
+        /// Verifies build completed defense building returns scrap using control eligibility.
+        /// </summary>
         [Test]
         public void Build_CompletedDefenseBuilding_ReturnsScrapUsingControlEligibility()
         {

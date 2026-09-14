@@ -672,6 +672,7 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
     /// <summary>
     /// Validates the facility view's authored child references.
     /// </summary>
+    /// <param name="verifyContent">Whether verify content.</param>
     private void VerifyReferences(bool verifyContent = true)
     {
         if (titleImage == null)

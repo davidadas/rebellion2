@@ -15,6 +15,9 @@ namespace Rebellion.Tests.UI.Components
         private UIWindow _window;
         private GameObject _windowManagerObject;
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -25,6 +28,9 @@ namespace Rebellion.Tests.UI.Components
                 Object.DestroyImmediate(_eventSystem.gameObject);
         }
 
+        /// <summary>
+        /// Verifies on drag movable window previews and commits move on release.
+        /// </summary>
         [Test]
         public void OnDrag_MovableWindow_PreviewsAndCommitsMoveOnRelease()
         {
@@ -55,6 +61,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(82, _window.Y);
         }
 
+        /// <summary>
+        /// Verifies on drag locked window does not preview or move window.
+        /// </summary>
         [Test]
         public void OnDrag_LockedWindow_DoesNotPreviewOrMoveWindow()
         {
@@ -73,6 +82,10 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(50, _window.Y);
         }
 
+        /// <summary>
+        /// Creates window.
+        /// </summary>
+        /// <param name="canMove">Whether can move.</param>
         private void CreateWindow(bool canMove)
         {
             _eventSystem = new GameObject("EventSystem").AddComponent<EventSystem>();
@@ -116,6 +129,12 @@ namespace Rebellion.Tests.UI.Components
                 .SetValue(_handle, _window);
         }
 
+        /// <summary>
+        /// Creates pointer data.
+        /// </summary>
+        /// <param name="x">The x.</param>
+        /// <param name="y">The y.</param>
+        /// <returns>The created pointer data.</returns>
         private PointerEventData CreatePointerData(int x, int y)
         {
             return new PointerEventData(_eventSystem)
@@ -125,6 +144,12 @@ namespace Rebellion.Tests.UI.Components
             };
         }
 
+        /// <summary>
+        /// Gets screen point.
+        /// </summary>
+        /// <param name="x">The x.</param>
+        /// <param name="y">The y.</param>
+        /// <returns>The requested screen point.</returns>
         private Vector2 GetScreenPoint(int x, int y)
         {
             Vector3 local = new Vector3(

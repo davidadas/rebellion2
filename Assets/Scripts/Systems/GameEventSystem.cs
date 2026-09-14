@@ -297,6 +297,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Executes events whose authored trigger type matches a newly produced simulation result.
         /// </summary>
+        /// <param name="results">The results.</param>
+        /// <returns>The result of handle results.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
         {
             List<GameResult> eventResults = new List<GameResult>();
@@ -341,6 +343,10 @@ namespace Rebellion.Systems
             return eventResults;
         }
 
+        /// <summary>
+        /// Builds trigger index.
+        /// </summary>
+        /// <returns>The constructed trigger index.</returns>
         private Dictionary<
             Type,
             List<(GameEvent Event, GameEventTrigger Trigger)>
@@ -453,6 +459,10 @@ namespace Rebellion.Systems
         /// <summary>
         /// Permanently completes a recurring schedule when all of its terminal conditions are met.
         /// </summary>
+        /// <param name="gameEvent">The game event.</param>
+        /// <param name="state">The state.</param>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the complete schedule condition is met; otherwise false.</returns>
         private bool ShouldCompleteSchedule(
             GameEvent gameEvent,
             GameEventState state,
@@ -475,6 +485,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="gameEvent">The event definition.</param>
         /// <param name="state">The event's current runtime state.</param>
+        /// <returns>True when the reached maximum activations condition is met; otherwise false.</returns>
         private static bool HasReachedMaximumActivations(GameEvent gameEvent, GameEventState state)
         {
             int? maximum = gameEvent.MaximumActivations;
@@ -495,6 +506,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="gameEvent">The event definition.</param>
         /// <param name="state">The persistent runtime state to initialize.</param>
+        /// <returns>True when the schedule is initialized or was already initialized; otherwise false.</returns>
         private bool InitializeSchedule(GameEvent gameEvent, GameEventState state)
         {
             if (state.IsInitialized)

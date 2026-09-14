@@ -1443,6 +1443,7 @@ namespace Rebellion.AI.Planners
         /// <param name="fleet">The fleet to inspect.</param>
         /// <param name="typeId">Unit type id to count.</param>
         /// <returns>The matching unit count.</returns>
+        /// <typeparam name="T">The manufacturable fleet-unit type to count.</typeparam>
         private int CountFleetUnitsByType<T>(Fleet fleet, string typeId)
             where T : class, IManufacturable
         {
@@ -1546,19 +1547,10 @@ namespace Rebellion.AI.Planners
         /// </summary>
         private enum ProducerMode
         {
-            /// <summary>
-            /// Requires currently available manufacturing capacity.
-            /// </summary>
             AvailableCapacity,
 
-            /// <summary>
-            /// Requires an appropriate manufacturing facility.
-            /// </summary>
             Distributed,
 
-            /// <summary>
-            /// Requires a planet eligible for facility expansion.
-            /// </summary>
             FacilityExpansion,
         }
     }

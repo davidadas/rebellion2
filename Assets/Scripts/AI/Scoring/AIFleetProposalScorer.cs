@@ -274,6 +274,9 @@ namespace Rebellion.AI.Scoring
         /// Returns whether an undefended enemy orbit exposes military targets whose removal can
         /// produce a sector-wide support gain.
         /// </summary>
+        /// <param name="context">The context.</param>
+        /// <param name="targetPlanet">The target planet.</param>
+        /// <returns>True when the exposed sector bombardment target condition is met; otherwise false.</returns>
         private static bool IsExposedSectorBombardmentTarget(
             AITurnContext context,
             Planet targetPlanet

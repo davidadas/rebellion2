@@ -941,6 +941,9 @@ namespace Rebellion.Systems
         }
 
         /// <summary>Adds probability to an existing or new decoy-pool outcome.</summary>
+        /// <param name="probabilities">The probabilities.</param>
+        /// <param name="decoyPool">The decoy pool.</param>
+        /// <param name="probability">The probability.</param>
         private static void AddProbability(
             Dictionary<BigInteger, double> probabilities,
             BigInteger decoyPool,

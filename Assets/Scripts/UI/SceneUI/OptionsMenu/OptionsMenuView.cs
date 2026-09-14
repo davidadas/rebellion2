@@ -351,6 +351,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Applies behavior-toggle values to the Gameplay page.
     /// </summary>
+    /// <param name="data">The data.</param>
     private void RenderGameplayPage(OptionsMenuRenderData data)
     {
         foreach (OptionsToggleRowView row in _gameplayRows)
@@ -390,6 +391,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Applies Idle Bar toggle values to the Gameplay page.
     /// </summary>
+    /// <param name="data">The options state to present.</param>
     private void RenderUserInterfaceOptions(OptionsMenuRenderData data)
     {
         foreach (OptionsToggleRowView row in _userInterfaceRows)
@@ -1063,6 +1065,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Forwards a gameplay-toggle request to subscribers.
     /// </summary>
+    /// <param name="option">The option.</param>
     private void HandleGameplayToggle(int option)
     {
         GameplayToggleRequested?.Invoke((UserGameplayOption)option);

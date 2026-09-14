@@ -19,6 +19,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         private AdvisorReportWindowView _view;
         private GameObject _viewObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -30,6 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -39,12 +45,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render galaxy overview applies frame and overview rows.
+        /// </summary>
         [Test]
         public void Render_GalaxyOverview_AppliesFrameAndOverviewRows()
         {
@@ -75,6 +87,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.IsFalse(FindRowImage(rows[1]).gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render objectives uses objective template and hides overview rows.
+        /// </summary>
         [Test]
         public void Render_Objectives_UsesObjectiveTemplateAndHidesOverviewRows()
         {
@@ -112,6 +127,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             );
         }
 
+        /// <summary>
+        /// Verifies render shorter same mode reuses rows and hides unused rows.
+        /// </summary>
         [Test]
         public void Render_ShorterSameMode_ReusesRowsAndHidesUnusedRows()
         {
@@ -142,6 +160,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.IsFalse(originalRows[1].gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render empty rows hides cached rows.
+        /// </summary>
         [Test]
         public void Render_EmptyRows_HidesCachedRows()
         {
@@ -166,6 +187,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreEqual(0, FindActiveRows().Length);
         }
 
+        /// <summary>
+        /// Verifies render invalid mode throws argument out of range exception.
+        /// </summary>
         [Test]
         public void Render_InvalidMode_ThrowsArgumentOutOfRangeException()
         {
@@ -178,6 +202,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.Throws<ArgumentOutOfRangeException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies request close subscribed handler emits semantic request.
+        /// </summary>
         [Test]
         public void RequestClose_SubscribedHandler_EmitsSemanticRequest()
         {
@@ -189,6 +216,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreSame(_view, requestedView);
         }
 
+        /// <summary>
+        /// Verifies authored close button click emits semantic request.
+        /// </summary>
         [Test]
         public void AuthoredCloseButton_Click_EmitsSemanticRequest()
         {
@@ -200,6 +230,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreEqual(1, closeCount);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds close button and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsCloseButtonAndRaisesDestroyedEvent()
         {
@@ -215,6 +248,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreEqual(0, closeCount);
         }
 
+        /// <summary>
+        /// Creates render data.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="rows">The rows.</param>
+        /// <returns>The created render data.</returns>
         private AdvisorReportWindowRenderData CreateRenderData(
             AdvisorReportMode mode,
             string title,
@@ -232,6 +272,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             );
         }
 
+        /// <summary>
+        /// Finds active rows.
+        /// </summary>
+        /// <returns>The matching active rows.</returns>
         private AdvisorReportRowView[] FindActiveRows()
         {
             return _viewObject
@@ -242,6 +286,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {
@@ -250,17 +300,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds text.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching text.</returns>
         private TextMeshProUGUI FindText(string objectName)
         {
             return FindComponent<TextMeshProUGUI>(objectName);
         }
 
+        /// <summary>
+        /// Finds row image.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <returns>The matching row image.</returns>
         private static RawImage FindRowImage(AdvisorReportRowView row)
         {
             return row.GetComponentsInChildren<RawImage>(true)
                 .Single(image => image.name == "Image");
         }
 
+        /// <summary>
+        /// Finds row text.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching row text.</returns>
         private static TextMeshProUGUI FindRowText(AdvisorReportRowView row, string objectName)
         {
             return row.GetComponentsInChildren<TextMeshProUGUI>(true)

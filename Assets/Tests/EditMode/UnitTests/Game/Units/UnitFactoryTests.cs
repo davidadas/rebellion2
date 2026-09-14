@@ -10,6 +10,9 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public sealed class UnitFactoryTests
     {
+        /// <summary>
+        /// Verifies create known type creates initialized independent instance.
+        /// </summary>
         [Test]
         public void Create_KnownType_CreatesInitializedIndependentInstance()
         {
@@ -36,6 +39,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsNull(unit.GetParent());
         }
 
+        /// <summary>
+        /// Verifies create unknown type throws invalid operation exception.
+        /// </summary>
         [Test]
         public void Create_UnknownType_ThrowsInvalidOperationException()
         {
@@ -48,6 +54,9 @@ namespace Rebellion.Tests.Game.Units
             StringAssert.Contains("Unknown unit TypeID 'UNKNOWN'", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies create wrong category throws invalid operation exception.
+        /// </summary>
         [Test]
         public void Create_WrongCategory_ThrowsInvalidOperationException()
         {
@@ -63,6 +72,8 @@ namespace Rebellion.Tests.Game.Units
         /// <summary>
         /// Creates a unit factory containing only the supplied starfighter definitions.
         /// </summary>
+        /// <param name="starfighters">The starfighters.</param>
+        /// <returns>The created factory.</returns>
         private static UnitFactory CreateFactory(params Starfighter[] starfighters) =>
             new UnitFactory(
                 Array.Empty<Building>(),

@@ -12,6 +12,9 @@ public static class ContentModelLoader
     /// <summary>
     /// Parses a GLB into a reusable model resource without instantiating its scene.
     /// </summary>
+    /// <param name="filePath">The file path.</param>
+    /// <param name="cancellationToken">Cancels GLB loading.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     internal static async Task<ContentModelResource> LoadResourceAsync(
         string filePath,
         CancellationToken cancellationToken
@@ -54,6 +57,8 @@ internal sealed class ContentModelResource : IDisposable
     /// <summary>
     /// Takes ownership of one successfully parsed glTFast resource.
     /// </summary>
+    /// <param name="gltfImporter">The gltf importer.</param>
+    /// <param name="loadedFilePath">The loaded file path.</param>
     internal ContentModelResource(GLTFast.GltfImport gltfImporter, string loadedFilePath)
     {
         importer = gltfImporter ?? throw new ArgumentNullException(nameof(gltfImporter));
@@ -63,6 +68,9 @@ internal sealed class ContentModelResource : IDisposable
     /// <summary>
     /// Creates one scene hierarchy backed by this parsed model resource.
     /// </summary>
+    /// <param name="parent">The parent.</param>
+    /// <param name="cancellationToken">Cancels scene instantiation.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task<ContentModelInstance> InstantiateAsync(
         Transform parent,
         CancellationToken cancellationToken
@@ -145,6 +153,7 @@ public sealed class ContentModelInstance : IDisposable
     /// <summary>
     /// Transfers ownership of a one-off parsed resource to this model instance.
     /// </summary>
+    /// <param name="resource">The resource.</param>
     internal void TakeOwnership(ContentModelResource resource)
     {
         ownedResource = resource ?? throw new ArgumentNullException(nameof(resource));

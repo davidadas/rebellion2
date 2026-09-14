@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
         private PlayerUIState _state;
         private UIContext _uiContext;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -34,6 +37,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             _controller = new BookmarkController(_uiContext, _state.Bookmarks);
         }
 
+        /// <summary>
+        /// Verifies constructor null context throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContext_ThrowsArgumentNullException()
         {
@@ -42,12 +48,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             );
         }
 
+        /// <summary>
+        /// Verifies that constructing with null saved bookmarks is rejected.
+        /// </summary>
         [Test]
         public void Constructor_NullSavedBookmarks_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new BookmarkController(_uiContext, null));
         }
 
+        /// <summary>
+        /// Verifies build render data empty controller returns inactive authored slots.
+        /// </summary>
         [Test]
         public void BuildRenderData_EmptyController_ReturnsInactiveAuthoredSlots()
         {
@@ -70,6 +82,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             );
         }
 
+        /// <summary>
+        /// Verifies try add invalid bookmark rejects without consuming slot.
+        /// </summary>
         [Test]
         public void TryAdd_InvalidBookmark_RejectsWithoutConsumingSlot()
         {
@@ -86,6 +101,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             );
         }
 
+        /// <summary>
+        /// Verifies try add available slot projects bookmark into first slot.
+        /// </summary>
         [Test]
         public void TryAdd_AvailableSlot_ProjectsBookmarkIntoFirstSlot()
         {
@@ -109,6 +127,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreEqual(PlanetBookmarkType.Fleet, _state.Bookmarks.Single().Type);
         }
 
+        /// <summary>
+        /// Verifies try add full controller rejects additional bookmark.
+        /// </summary>
         [Test]
         public void TryAdd_FullController_RejectsAdditionalBookmark()
         {
@@ -139,6 +160,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             );
         }
 
+        /// <summary>
+        /// Verifies try take valid occupied index removes and returns bookmark.
+        /// </summary>
         [Test]
         public void TryTake_ValidOccupiedIndex_RemovesAndReturnsBookmark()
         {
@@ -156,6 +180,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsEmpty(_state.Bookmarks);
         }
 
+        /// <summary>
+        /// Verifies try take invalid or empty index returns false.
+        /// </summary>
+        /// <param name="index">The index.</param>
         [TestCase(-1)]
         [TestCase(int.MaxValue)]
         [TestCase(0)]
@@ -167,6 +195,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsNull(bookmark);
         }
 
+        /// <summary>
+        /// Verifies take matching planet and icon removes only matching bookmark.
+        /// </summary>
         [Test]
         public void Take_MatchingPlanetAndIcon_RemovesOnlyMatchingBookmark()
         {
@@ -182,6 +213,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsFalse(_controller.BuildRenderData()[1].Active);
         }
 
+        /// <summary>
+        /// Verifies take missing bookmark returns null without mutation.
+        /// </summary>
         [Test]
         public void Take_MissingBookmark_ReturnsNullWithoutMutation()
         {
@@ -194,6 +228,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsTrue(_controller.BuildRenderData()[0].Active);
         }
 
+        /// <summary>
+        /// Verifies reconcile planets matching persistent id replaces stale projection.
+        /// </summary>
         [Test]
         public void ReconcilePlanets_MatchingPersistentID_ReplacesStaleProjection()
         {
@@ -209,6 +246,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreEqual("Coruscant", bookmark.Planet.Planet.GetDisplayName());
         }
 
+        /// <summary>
+        /// Verifies reconcile planets null sectors preserves current projection.
+        /// </summary>
         [Test]
         public void ReconcilePlanets_NullSectors_PreservesCurrentProjection()
         {
@@ -221,6 +261,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreSame(original, bookmark.Planet);
         }
 
+        /// <summary>
+        /// Verifies that resetting the session projects replacement bookmark state.
+        /// </summary>
         [Test]
         public void ResetSession_ReplacementBookmarks_ProjectsReplacementState()
         {
@@ -243,6 +286,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreEqual("Corellia", _controller.BuildRenderData()[1].Label);
         }
 
+        /// <summary>
+        /// Creates a galaxy-map planet with the requested identity and label.
+        /// </summary>
+        /// <param name="instanceId">The planet instance identifier.</param>
+        /// <param name="displayName">The displayed planet name.</param>
+        /// <returns>The created galaxy-map planet.</returns>
         private static GalaxyMapPlanet CreatePlanet(string instanceId, string displayName)
         {
             Planet planet = new Planet { InstanceID = instanceId, DisplayName = displayName };

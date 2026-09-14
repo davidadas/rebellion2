@@ -25,6 +25,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         private bool _hasPreview;
         private StrategyMissionTarget _dropTarget;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -44,6 +47,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             _dropTarget = null;
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -53,6 +59,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                 UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null dependency throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullDependency_ThrowsArgumentNullException()
         {
@@ -142,6 +151,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             );
         }
 
+        /// <summary>
+        /// Verifies start candidate null window does not create candidate.
+        /// </summary>
         [Test]
         public void StartCandidate_NullWindow_DoesNotCreateCandidate()
         {
@@ -153,6 +165,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(controller.SourceDragActive);
         }
 
+        /// <summary>
+        /// Verifies try start move drag from candidate below threshold preserves candidate.
+        /// </summary>
         [Test]
         public void TryStartMoveDragFromCandidate_BelowThreshold_PreservesCandidate()
         {
@@ -170,6 +185,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(controller.SourceDragActive);
         }
 
+        /// <summary>
+        /// Verifies try start move drag from candidate valid preview starts source drag.
+        /// </summary>
         [Test]
         public void TryStartMoveDragFromCandidate_ValidPreview_StartsSourceDrag()
         {
@@ -201,6 +219,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(officer, source.Items[0]);
         }
 
+        /// <summary>
+        /// Verifies direct candidate valid preview moves without source window.
+        /// </summary>
         [Test]
         public void DirectCandidate_ValidPreview_MovesWithoutSourceWindow()
         {
@@ -222,6 +243,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(officer, _commands.LastItems[0]);
         }
 
+        /// <summary>
+        /// Verifies direct candidate enemy planet opens mission creation.
+        /// </summary>
         [Test]
         public void DirectCandidate_EnemyPlanet_OpensMissionCreation()
         {
@@ -240,6 +264,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(0, _commands.MoveCount);
         }
 
+        /// <summary>
+        /// Verifies try start move drag from candidate items without preview starts targeting.
+        /// </summary>
         [Test]
         public void TryStartMoveDragFromCandidate_ItemsWithoutPreview_StartsTargeting()
         {
@@ -264,6 +291,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(officer, source.Items[0]);
         }
 
+        /// <summary>
+        /// Verifies try start move drag from candidate invalid preview with items starts targeting.
+        /// </summary>
         [Test]
         public void TryStartMoveDragFromCandidate_InvalidPreviewWithItems_StartsTargeting()
         {
@@ -283,6 +313,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(controller.SourceDragActive);
         }
 
+        /// <summary>
+        /// Verifies try start move drag from candidate no items or preview clears candidate.
+        /// </summary>
         [Test]
         public void TryStartMoveDragFromCandidate_NoItemsOrPreview_ClearsCandidate()
         {
@@ -299,6 +332,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(_targetingController.IsTargeting);
         }
 
+        /// <summary>
+        /// Verifies try move source drag active drag updates overlay.
+        /// </summary>
         [Test]
         public void TryMoveSourceDrag_ActiveDrag_UpdatesOverlay()
         {
@@ -324,6 +360,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(new RectInt(48, 57, 20, 30), bounds);
         }
 
+        /// <summary>
+        /// Verifies try handle source drag pointer up friendly planet executes move.
+        /// </summary>
         [Test]
         public void TryHandleSourceDragPointerUp_FriendlyPlanet_ExecutesMove()
         {
@@ -347,6 +386,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(0, _commands.MissionCount);
         }
 
+        /// <summary>
+        /// Verifies try handle source drag pointer up enemy planet and officer opens mission creation.
+        /// </summary>
         [Test]
         public void TryHandleSourceDragPointerUp_EnemyPlanetAndOfficer_OpensMissionCreation()
         {
@@ -366,6 +408,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(0, _commands.MoveCount);
         }
 
+        /// <summary>
+        /// Verifies try handle source drag pointer up missing drop target cancels targeting.
+        /// </summary>
         [Test]
         public void TryHandleSourceDragPointerUp_MissingDropTarget_CancelsTargeting()
         {
@@ -382,6 +427,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(0, _commands.MissionCount);
         }
 
+        /// <summary>
+        /// Verifies try handle source drag pointer up no source drag returns false.
+        /// </summary>
         [Test]
         public void TryHandleSourceDragPointerUp_NoSourceDrag_ReturnsFalse()
         {
@@ -392,6 +440,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(handled);
         }
 
+        /// <summary>
+        /// Verifies clear window owned candidate and source drag clears matching state.
+        /// </summary>
         [Test]
         public void ClearWindow_OwnedCandidateAndSourceDrag_ClearsMatchingState()
         {
@@ -412,6 +463,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(sourceController.SourceDragActive);
         }
 
+        /// <summary>
+        /// Verifies clear candidate and source drag clears all state.
+        /// </summary>
         [Test]
         public void Clear_CandidateAndSourceDrag_ClearsAllState()
         {
@@ -429,6 +483,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(controller.TryGetOverlay(out _, out _));
         }
 
+        /// <summary>
+        /// Verifies on target selected invalid request or target does not execute command.
+        /// </summary>
         [Test]
         public void OnTargetSelected_InvalidRequestOrTarget_DoesNotExecuteCommand()
         {
@@ -459,6 +516,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(0, _commands.MissionCount);
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private StrategyWindowItemDragController CreateController()
         {
             return new StrategyWindowItemDragController(
@@ -472,6 +533,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             );
         }
 
+        /// <summary>
+        /// Resolves preview.
+        /// </summary>
+        /// <param name="window">The window.</param>
+        /// <param name="sourceX">The source x.</param>
+        /// <param name="sourceY">The source y.</param>
+        /// <param name="preview">Receives the preview.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         private bool ResolvePreview(
             UIWindow window,
             int sourceX,
@@ -483,11 +552,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             return _hasPreview;
         }
 
+        /// <summary>
+        /// Creates officer.
+        /// </summary>
+        /// <param name="ownerId">The owner id.</param>
+        /// <returns>The created officer.</returns>
         private static Officer CreateOfficer(string ownerId)
         {
             return new Officer { OwnerInstanceID = ownerId };
         }
 
+        /// <summary>
+        /// Creates mission target.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <returns>The created mission target.</returns>
         private static StrategyMissionTarget CreateMissionTarget(string instanceId, string ownerId)
         {
             Planet planet = new Planet { InstanceID = instanceId, OwnerInstanceID = ownerId };
@@ -499,6 +579,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             return new StrategyMissionTarget(mapPlanet, null);
         }
 
+        /// <summary>
+        /// Starts source drag.
+        /// </summary>
+        /// <param name="controller">The controller.</param>
         private void StartSourceDrag(StrategyWindowItemDragController controller)
         {
             controller.StartCandidate(_window, 10, 20);
@@ -513,11 +597,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             public int MissionCount { get; private set; }
             public int MoveCount { get; private set; }
 
+            /// <summary>
+            /// Executes targeted command.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <param name="target">The target.</param>
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
             ) { }
 
+            /// <summary>
+            /// Opens mission create window.
+            /// </summary>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
             public void OpenMissionCreateWindow(
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
@@ -528,6 +622,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                 LastItems = items;
             }
 
+            /// <summary>
+            /// Attempts execute move.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryExecuteMove(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
@@ -541,21 +642,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                 return true;
             }
 
+            /// <summary>
+            /// Opens move confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
             public void OpenMoveConfirmWindow(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Attempts append fleet waypoint.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <param name="target">The target.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryAppendFleetWaypoint(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
             ) => false;
 
+            /// <summary>
+            /// Attempts commit fleet waypoint plan.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
+            /// <summary>
+            /// Attempts undo fleet waypoint plan.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
+            /// <summary>
+            /// Executes clear fleet waypoints.
+            /// </summary>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
         }
     }

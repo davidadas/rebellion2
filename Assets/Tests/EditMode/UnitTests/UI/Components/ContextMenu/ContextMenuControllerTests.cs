@@ -7,6 +7,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
     [TestFixture]
     public class ContextMenuControllerTests
     {
+        /// <summary>
+        /// Verifies request null receiver throws argument null exception.
+        /// </summary>
         [Test]
         public void Request_NullReceiver_ThrowsArgumentNullException()
         {
@@ -15,6 +18,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             );
         }
 
+        /// <summary>
+        /// Verifies request null commands uses empty command collection.
+        /// </summary>
         [Test]
         public void Request_NullCommands_UsesEmptyCommandCollection()
         {
@@ -28,6 +34,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.IsEmpty(request.Commands);
         }
 
+        /// <summary>
+        /// Verifies request mutable commands copies input collection.
+        /// </summary>
         [Test]
         public void Request_MutableCommands_CopiesInputCollection()
         {
@@ -42,6 +51,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreEqual(1, request.Commands.Count);
         }
 
+        /// <summary>
+        /// Verifies open null request throws argument null exception.
+        /// </summary>
         [Test]
         public void Open_NullRequest_ThrowsArgumentNullException()
         {
@@ -50,6 +62,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.Throws<ArgumentNullException>(() => controller.Open(null));
         }
 
+        /// <summary>
+        /// Verifies open existing request cancels previous request and activates replacement.
+        /// </summary>
         [Test]
         public void Open_ExistingRequest_CancelsPreviousRequestAndActivatesReplacement()
         {
@@ -69,6 +84,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreSame(second, controller.ActiveRequest);
         }
 
+        /// <summary>
+        /// Verifies try select command enabled root command completes request.
+        /// </summary>
         [Test]
         public void TrySelectCommand_EnabledRootCommand_CompletesRequest()
         {
@@ -87,6 +105,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreEqual(1, receiver.SelectedCount);
         }
 
+        /// <summary>
+        /// Verifies try select command enabled command emits closed request before receiver.
+        /// </summary>
         [Test]
         public void TrySelectCommand_EnabledCommand_EmitsClosedRequestBeforeReceiver()
         {
@@ -107,6 +128,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreSame(request, closedRequest);
         }
 
+        /// <summary>
+        /// Verifies try select command enabled nested command completes request.
+        /// </summary>
         [Test]
         public void TrySelectCommand_EnabledNestedCommand_CompletesRequest()
         {
@@ -126,6 +150,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreSame(child, receiver.SelectedCommand);
         }
 
+        /// <summary>
+        /// Verifies try select command invalid command preserves active request.
+        /// </summary>
         [Test]
         public void TrySelectCommand_InvalidCommand_PreservesActiveRequest()
         {
@@ -146,6 +173,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreEqual(0, receiver.SelectedCount);
         }
 
+        /// <summary>
+        /// Verifies try select command missing request returns false.
+        /// </summary>
         [Test]
         public void TrySelectCommand_MissingRequest_ReturnsFalse()
         {
@@ -156,6 +186,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.IsFalse(selected);
         }
 
+        /// <summary>
+        /// Verifies cancel active request notifies receiver and clears state.
+        /// </summary>
         [Test]
         public void Cancel_ActiveRequest_NotifiesReceiverAndClearsState()
         {
@@ -172,6 +205,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.IsNull(controller.ActiveRequest);
         }
 
+        /// <summary>
+        /// Verifies cancel active request emits closed request before receiver.
+        /// </summary>
         [Test]
         public void Cancel_ActiveRequest_EmitsClosedRequestBeforeReceiver()
         {
@@ -191,6 +227,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreSame(request, closedRequest);
         }
 
+        /// <summary>
+        /// Verifies try cancel open then closed request reports state transition.
+        /// </summary>
         [Test]
         public void TryCancel_OpenThenClosedRequest_ReportsStateTransition()
         {
@@ -206,6 +245,12 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreEqual(1, receiver.CancelledCount);
         }
 
+        /// <summary>
+        /// Creates request.
+        /// </summary>
+        /// <param name="receiver">The receiver.</param>
+        /// <param name="commands">The commands.</param>
+        /// <returns>The created request.</returns>
         private static ContextMenuRequest CreateRequest(
             TestReceiver receiver,
             params IContextMenuCommand[] commands
@@ -220,6 +265,11 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
 
             public bool Enabled { get; }
 
+            /// <summary>
+            /// Initializes a new instance of the TestCommand class.
+            /// </summary>
+            /// <param name="text">The text.</param>
+            /// <param name="enabled">Whether enabled.</param>
             public TestCommand(string text, bool enabled)
             {
                 Text = text;
@@ -235,6 +285,12 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
 
             public IReadOnlyList<IContextMenuCommand> ChildCommands { get; }
 
+            /// <summary>
+            /// Initializes a new instance of the TestParentCommand class.
+            /// </summary>
+            /// <param name="text">The text.</param>
+            /// <param name="enabled">Whether enabled.</param>
+            /// <param name="childCommands">The child commands.</param>
             public TestParentCommand(
                 string text,
                 bool enabled,
@@ -259,6 +315,11 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
 
             public ContextMenuRequest SelectedRequest { get; private set; }
 
+            /// <summary>
+            /// Executes on context menu command selected.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="command">The command.</param>
             public void OnContextMenuCommandSelected(
                 ContextMenuRequest request,
                 IContextMenuCommand command
@@ -269,6 +330,10 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
                 SelectedCommand = command;
             }
 
+            /// <summary>
+            /// Executes on context menu cancelled.
+            /// </summary>
+            /// <param name="request">The request.</param>
             public void OnContextMenuCancelled(ContextMenuRequest request)
             {
                 CancelledCount++;

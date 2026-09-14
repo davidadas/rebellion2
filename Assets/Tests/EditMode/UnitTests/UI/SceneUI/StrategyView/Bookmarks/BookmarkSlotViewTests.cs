@@ -17,6 +17,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
         private Texture2D _texture;
         private BookmarkSlotView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -29,6 +32,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Canvas.ForceUpdateCanvases();
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -36,6 +42,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render authored geometry applies slot icon label and input bounds.
+        /// </summary>
         [Test]
         public void Render_AuthoredGeometry_AppliesSlotIconLabelAndInputBounds()
         {
@@ -62,6 +71,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsTrue(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render derived geometry uses texture dimensions and centers icon.
+        /// </summary>
         [Test]
         public void Render_DerivedGeometry_UsesTextureDimensionsAndCentersIcon()
         {
@@ -84,6 +96,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             );
         }
 
+        /// <summary>
+        /// Verifies on pointer click left double click raises view event.
+        /// </summary>
         [Test]
         public void OnPointerClick_LeftDoubleClick_RaisesViewEvent()
         {
@@ -100,6 +115,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreSame(_view, requestedView);
         }
 
+        /// <summary>
+        /// Verifies on pointer click non activation gesture does not raise event.
+        /// </summary>
+        /// <param name="button">The button.</param>
+        /// <param name="clickCount">The click count.</param>
         [TestCase(PointerEventData.InputButton.Left, 1)]
         [TestCase(PointerEventData.InputButton.Right, 2)]
         [TestCase(PointerEventData.InputButton.Middle, 2)]
@@ -121,6 +141,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreEqual(0, requestCount);
         }
 
+        /// <summary>
+        /// Creates layout.
+        /// </summary>
+        /// <returns>The created layout.</returns>
         private static StrategyBookmarkLayout CreateLayout()
         {
             return new StrategyBookmarkLayout
@@ -136,6 +160,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             };
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="instance">The instance.</param>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private static T GetField<T>(object instance, string fieldName)
         {
             return (T)
@@ -145,6 +176,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
                     .GetValue(instance);
         }
 
+        /// <summary>
+        /// Gets source rect.
+        /// </summary>
+        /// <param name="transform">The transform.</param>
+        /// <returns>The requested source rect.</returns>
         private static RectInt GetSourceRect(Transform transform)
         {
             return UILayout.GetSourceRect(transform as RectTransform);

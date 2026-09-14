@@ -23,6 +23,9 @@ namespace Rebellion.Tests.Systems
         private Planet _coruscant;
         private Building _shipyard;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -99,6 +102,9 @@ namespace Rebellion.Tests.Systems
             _manager = new ManufacturingSystem(_game, new FleetSystem(_game), _movement);
         }
 
+        /// <summary>
+        /// Verifies constructor with null game throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
@@ -111,6 +117,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("game", exception.ParamName);
         }
 
+        /// <summary>
+        /// Verifies constructor with null fleet system throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_WithNullFleetSystem_ThrowsArgumentNullException()
         {
@@ -121,6 +130,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("fleetSystem", exception.ParamName);
         }
 
+        /// <summary>
+        /// Verifies process tick empty game returns no results.
+        /// </summary>
         [Test]
         public void ProcessTick_EmptyGame_ReturnsNoResults()
         {
@@ -141,6 +153,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results);
         }
 
+        /// <summary>
+        /// Verifies process tick single item advances progress.
+        /// </summary>
         [Test]
         public void ProcessTick_SingleItem_AdvancesProgress()
         {
@@ -169,6 +184,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(_coruscant, progress.Context);
         }
 
+        /// <summary>
+        /// Verifies process tick building complete removes from queue.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingComplete_RemovesFromQueue()
         {
@@ -203,6 +221,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(mine, created.GameObject);
         }
 
+        /// <summary>
+        /// Verifies process tick building complete does not change popular support.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingComplete_DoesNotChangePopularSupport()
         {
@@ -222,6 +243,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(47, _coruscant.GetPopularSupport(_empire.InstanceID));
         }
 
+        /// <summary>
+        /// Verifies process tick building complete sets status complete.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingComplete_SetsStatusComplete()
         {
@@ -244,6 +268,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
         }
 
+        /// <summary>
+        /// Verifies process tick building complete remains attached to parent.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingComplete_RemainsAttachedToParent()
         {
@@ -266,6 +293,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(_coruscant.GetAllBuildings().Contains(mine));
         }
 
+        /// <summary>
+        /// Verifies process tick overflow progress carries to next item.
+        /// </summary>
         [Test]
         public void ProcessTick_OverflowProgress_CarriesToNextItem()
         {
@@ -314,6 +344,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingStatus.Building, mine2.ManufacturingStatus);
         }
 
+        /// <summary>
+        /// Verifies process tick exact completion does not advance next item.
+        /// </summary>
         [Test]
         public void ProcessTick_ExactCompletion_DoesNotAdvanceNextItem()
         {
@@ -358,6 +391,9 @@ namespace Rebellion.Tests.Systems
             Assert.Greater(mine2.ManufacturingProgress, 0);
         }
 
+        /// <summary>
+        /// Verifies process tick overflow progress starts next item.
+        /// </summary>
         [Test]
         public void ProcessTick_OverflowProgress_StartsNextItem()
         {
@@ -396,6 +432,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count); // Only mine2 remains
         }
 
+        /// <summary>
+        /// Verifies process tick multiple completions same tick.
+        /// </summary>
         [Test]
         public void ProcessTick_MultipleCompletions_SameTick()
         {
@@ -461,6 +500,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick queue mutation does not skip items.
+        /// </summary>
         [Test]
         public void ProcessTick_QueueMutation_DoesNotSkipItems()
         {
@@ -520,6 +562,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingStatus.Complete, mine3.ManufacturingStatus);
         }
 
+        /// <summary>
+        /// Verifies process tick production building removed stops progress.
+        /// </summary>
         [Test]
         public void ProcessTick_ProductionBuildingRemoved_StopsProgress()
         {
@@ -549,6 +594,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(progressAfterTick1, mine.ManufacturingProgress); // No change
         }
 
+        /// <summary>
+        /// Verifies handle results last production building destroyed cancels queued work.
+        /// </summary>
         [Test]
         public void HandleResults_LastProductionBuildingDestroyed_CancelsQueuedWork()
         {
@@ -580,6 +628,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(mine.GetParent());
         }
 
+        /// <summary>
+        /// Verifies handle results another production building survives retains queued work.
+        /// </summary>
         [Test]
         public void HandleResults_AnotherProductionBuildingSurvives_RetainsQueuedWork()
         {
@@ -622,6 +673,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(_coruscant, mine.GetParent());
         }
 
+        /// <summary>
+        /// Verifies handle results bombardment destroys last producer cancels queued work.
+        /// </summary>
         [Test]
         public void HandleResults_BombardmentDestroysLastProducer_CancelsQueuedWork()
         {
@@ -653,6 +707,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(mine.GetParent());
         }
 
+        /// <summary>
+        /// Verifies process tick multiple production sources stack correctly.
+        /// </summary>
         [Test]
         public void ProcessTick_MultipleProductionSources_StackCorrectly()
         {
@@ -703,6 +760,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0.5, productionRate);
         }
 
+        /// <summary>
+        /// Verifies process tick faster production source completes cycle first.
+        /// </summary>
         [Test]
         public void ProcessTick_FasterProductionSource_CompletesCycleFirst()
         {
@@ -749,6 +809,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(3, mine.ManufacturingProgress);
         }
 
+        /// <summary>
+        /// Verifies process tick with no refined materials continues production.
+        /// </summary>
         [Test]
         public void ProcessTick_WithNoRefinedMaterials_ContinuesProduction()
         {
@@ -774,6 +837,9 @@ namespace Rebellion.Tests.Systems
             CollectionAssert.IsEmpty(_empire.PendingRefinedMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies process tick at former ai refined material reserve continues production.
+        /// </summary>
         [Test]
         public void ProcessTick_AtFormerAIRefinedMaterialReserve_ContinuesProduction()
         {
@@ -801,6 +867,9 @@ namespace Rebellion.Tests.Systems
             CollectionAssert.IsEmpty(_empire.PendingRefinedMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies process tick at player refined material reserve continues production.
+        /// </summary>
         [Test]
         public void ProcessTick_AtPlayerRefinedMaterialReserve_ContinuesProduction()
         {
@@ -836,6 +905,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(reserve, _empire.RefinedMaterialStockpile);
         }
 
+        /// <summary>
+        /// Verifies process tick available refined material is not consumed by manufacturing.
+        /// </summary>
         [Test]
         public void ProcessTick_AvailableRefinedMaterial_IsNotConsumedByManufacturing()
         {
@@ -862,6 +934,9 @@ namespace Rebellion.Tests.Systems
             CollectionAssert.IsEmpty(_empire.PendingRefinedMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies process tick building complete no duplicate nodes.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingComplete_NoDuplicateNodes()
         {
@@ -894,6 +969,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, planetBuildings.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick building complete bidirectional relationship valid.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingComplete_BidirectionalRelationshipValid()
         {
@@ -916,6 +994,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(_coruscant.GetAllBuildings().Contains(mine)); // parent -> child
         }
 
+        /// <summary>
+        /// Verifies process tick owner change mid build retains original owner.
+        /// </summary>
         [Test]
         public void ProcessTick_OwnerChangeMidBuild_RetainsOriginalOwner()
         {
@@ -944,6 +1025,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("EMPIRE", mine.ProducerOwnerID);
         }
 
+        /// <summary>
+        /// Verifies process tick zero production rate no progress.
+        /// </summary>
         [Test]
         public void ProcessTick_ZeroProductionRate_NoProgress()
         {
@@ -970,6 +1054,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(initialProgress, mine.ManufacturingProgress);
         }
 
+        /// <summary>
+        /// Verifies process tick capital ship building remains in fleet with progress.
+        /// </summary>
         [Test]
         public void ProcessTick_CapitalShipBuilding_RemainsInFleetWithProgress()
         {
@@ -1015,6 +1102,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(planet, fleet.GetParent(), "Fleet should be at production planet.");
         }
 
+        /// <summary>
+        /// Verifies process tick capital ship uses every ready facility without consuming material.
+        /// </summary>
         [Test]
         public void ProcessTick_CapitalShip_UsesEveryReadyFacilityWithoutConsumingMaterial()
         {
@@ -1065,6 +1155,9 @@ namespace Rebellion.Tests.Systems
             CollectionAssert.IsEmpty(faction.PendingRefinedMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies process tick capital ship complete removed from queue.
+        /// </summary>
         [Test]
         public void ProcessTick_CapitalShipComplete_RemovedFromQueue()
         {
@@ -1107,6 +1200,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(inQueue, "Completed ship should be removed from queue.");
         }
 
+        /// <summary>
+        /// Verifies process tick capital ship complete on same planet no movement.
+        /// </summary>
         [Test]
         public void ProcessTick_CapitalShipCompleteOnSamePlanet_NoMovement()
         {
@@ -1146,6 +1242,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(ship.Movement, "No _movement needed for same-planet destination.");
         }
 
+        /// <summary>
+        /// Verifies process tick capital ship complete on different planet ships fleet.
+        /// </summary>
         [Test]
         public void ProcessTick_CapitalShipCompleteOnDifferentPlanet_ShipsFleet()
         {
@@ -1191,6 +1290,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(fleet.Movement, "Fleet should not move — the ship travels to it.");
         }
 
+        /// <summary>
+        /// Verifies process tick capital ship complete fleet over hostile planet ship travels to fleet.
+        /// </summary>
         [Test]
         public void ProcessTick_CapitalShipCompleteFleetOverHostilePlanet_ShipTravelsToFleet()
         {
@@ -1255,6 +1357,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick starfighter complete ships to destination.
+        /// </summary>
         [Test]
         public void ProcessTick_StarfighterComplete_ShipsToDestination()
         {
@@ -1299,6 +1404,9 @@ namespace Rebellion.Tests.Systems
             Assert.Greater(fighter.Movement.TransitTicks, 0, "Should have travel time.");
         }
 
+        /// <summary>
+        /// Verifies process tick starfighter complete remains inside destination fleet.
+        /// </summary>
         [Test]
         public void ProcessTick_StarfighterComplete_RemainsInsideDestinationFleet()
         {
@@ -1347,6 +1455,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick regiment complete ships to destination.
+        /// </summary>
         [Test]
         public void ProcessTick_RegimentComplete_ShipsToDestination()
         {
@@ -1386,6 +1497,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick regiment complete on same planet attached immediately.
+        /// </summary>
         [Test]
         public void ProcessTick_RegimentCompleteOnSamePlanet_AttachedImmediately()
         {
@@ -1424,6 +1538,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick destination destroyed unit is also destroyed.
+        /// </summary>
         [Test]
         public void ProcessTick_DestinationDestroyed_UnitIsAlsoDestroyed()
         {
@@ -1472,6 +1589,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick building complete on different planet ships to destination.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingCompleteOnDifferentPlanet_ShipsToDestination()
         {
@@ -1518,6 +1638,9 @@ namespace Rebellion.Tests.Systems
             Assert.Greater(mine.Movement.TransitTicks, 0, "Should have travel time.");
         }
 
+        /// <summary>
+        /// Verifies process tick building for owned uncolonized planet colonizes on arrival.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingForOwnedUncolonizedPlanet_ColonizesOnArrival()
         {
@@ -1561,6 +1684,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(destination, mine.GetParent());
         }
 
+        /// <summary>
+        /// Verifies process tick building destination changed sides cancels order.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingDestinationChangedSides_CancelsOrder()
         {
@@ -1642,6 +1768,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(planetA.GetManufacturingQueue());
         }
 
+        /// <summary>
+        /// Verifies process tick building destination changed sides cancels regardless of producer capacity.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingDestinationChangedSides_CancelsRegardlessOfProducerCapacity()
         {
@@ -1732,6 +1861,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(planetA.GetManufacturingQueue());
         }
 
+        /// <summary>
+        /// Verifies process tick blockade applies graduated rate and kdy restores full rate.
+        /// </summary>
         [Test]
         public void ProcessTick_Blockade_AppliesGraduatedRateAndKdyRestoresFullRate()
         {
@@ -1824,6 +1956,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick full blockade halts production without reserving input.
+        /// </summary>
         [Test]
         public void ProcessTick_FullBlockade_HaltsProductionWithoutReservingInput()
         {
@@ -1881,6 +2016,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(empire.PendingRefinedMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies process tick uprising halts production without reserving input.
+        /// </summary>
         [Test]
         public void ProcessTick_Uprising_HaltsProductionWithoutReservingInput()
         {
@@ -1926,6 +2064,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(empire.PendingRefinedMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies process tick three manufacturing types all advance.
+        /// </summary>
         [Test]
         public void ProcessTick_ThreeManufacturingTypes_AllAdvance()
         {
@@ -2019,6 +2160,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick no shipyard ship makes no progress.
+        /// </summary>
         [Test]
         public void ProcessTick_NoShipyard_ShipMakesNoProgress()
         {
@@ -2074,6 +2218,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick no training facility regiment makes no progress.
+        /// </summary>
         [Test]
         public void ProcessTick_NoTrainingFacility_RegimentMakesNoProgress()
         {
@@ -2138,6 +2285,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick no construction yard building makes no progress.
+        /// </summary>
         [Test]
         public void ProcessTick_NoConstructionYard_BuildingMakesNoProgress()
         {
@@ -2192,6 +2342,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick capital ship complete destination fleet destroyed ship is lost.
+        /// </summary>
         [Test]
         public void ProcessTick_CapitalShipCompleteDestinationFleetDestroyed_ShipIsLost()
         {
@@ -2251,6 +2404,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick starfighter complete fleet over hostile planet travels to carrier.
+        /// </summary>
         [Test]
         public void ProcessTick_StarfighterCompleteFleetOverHostilePlanet_TravelsToCarrier()
         {
@@ -2309,6 +2465,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick regiment complete fleet over hostile planet travels to transport.
+        /// </summary>
         [Test]
         public void ProcessTick_RegimentCompleteFleetOverHostilePlanet_TravelsToTransport()
         {
@@ -2367,6 +2526,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick regiment destination changed sides cancels order.
+        /// </summary>
         [Test]
         public void ProcessTick_RegimentDestinationChangedSides_CancelsOrder()
         {
@@ -2396,6 +2558,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(_coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Troop));
         }
 
+        /// <summary>
+        /// Verifies process tick local building order producer changed sides cancels order.
+        /// </summary>
         [Test]
         public void ProcessTick_LocalBuildingOrderProducerChangedSides_CancelsOrder()
         {
@@ -2417,6 +2582,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick six invalid orders before valid order cancels invalid and advances valid.
+        /// </summary>
         [Test]
         public void ProcessTick_SixInvalidOrdersBeforeValidOrder_CancelsInvalidAndAdvancesValid()
         {
@@ -2455,6 +2623,9 @@ namespace Rebellion.Tests.Systems
             Assert.Greater(validOrder.ManufacturingProgress, 0);
         }
 
+        /// <summary>
+        /// Verifies process tick orders for two captured planets cancels entire lane.
+        /// </summary>
         [Test]
         public void ProcessTick_OrdersForTwoCapturedPlanets_CancelsEntireLane()
         {
@@ -2494,6 +2665,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick building batch destination changed sides cancels all targeted orders.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingBatchDestinationChangedSides_CancelsAllTargetedOrders()
         {
@@ -2605,6 +2779,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(planetA.GetManufacturingQueue());
         }
 
+        /// <summary>
+        /// Verifies process tick building batch destination changed sides cancels without fallback capacity.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingBatchDestinationChangedSides_CancelsWithoutFallbackCapacity()
         {
@@ -2731,6 +2908,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(planetA.GetManufacturingQueue());
         }
 
+        /// <summary>
+        /// Verifies process tick building complete emits deployed result.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingComplete_EmitsDeployedResult()
         {
@@ -2751,6 +2931,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(results.OfType<ManufacturingDeployedResult>().Any());
         }
 
+        /// <summary>
+        /// Verifies process tick building complete deployed result has correct faction and object.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingComplete_DeployedResultHasCorrectFactionAndObject()
         {
@@ -2775,6 +2958,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(mine, deployed.DeployedObject);
         }
 
+        /// <summary>
+        /// Verifies process tick last item completes emits idle result.
+        /// </summary>
         [Test]
         public void ProcessTick_LastItemCompletes_EmitsIdleResult()
         {
@@ -2798,6 +2984,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingType.Building, idle.ManufacturingType);
         }
 
+        /// <summary>
+        /// Verifies process tick first of two items completes does not emit idle result.
+        /// </summary>
         [Test]
         public void ProcessTick_FirstOfTwoItemsCompletes_DoesNotEmitIdleResult()
         {
@@ -2836,6 +3025,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick building complete emits remaining result.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingComplete_EmitsRemainingResult()
         {
@@ -2856,6 +3048,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(results.OfType<ManufacturingRemainingResult>().Any());
         }
 
+        /// <summary>
+        /// Verifies process tick first of two items completes remaining count is one.
+        /// </summary>
         [Test]
         public void ProcessTick_FirstOfTwoItemsCompletes_RemainingCountIsOne()
         {
@@ -2890,6 +3085,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, remaining.RemainingCount);
         }
 
+        /// <summary>
+        /// Verifies process tick building complete emits points required result.
+        /// </summary>
         [Test]
         public void ProcessTick_BuildingComplete_EmitsPointsRequiredResult()
         {
@@ -2910,6 +3108,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(results.OfType<ManufacturingPointsRequiredResult>().Any());
         }
 
+        /// <summary>
+        /// Verifies process tick first of two items completes points required matches remaining item.
+        /// </summary>
         [Test]
         public void ProcessTick_FirstOfTwoItemsCompletes_PointsRequiredMatchesRemainingItem()
         {
@@ -2944,6 +3145,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(50, pointsResult.RequiredPoints);
         }
 
+        /// <summary>
+        /// Verifies enqueue valid building adds to queue.
+        /// </summary>
         [Test]
         public void Enqueue_ValidBuilding_AddsToQueue()
         {
@@ -2966,6 +3170,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("MINE1", queue[ManufacturingType.Building][0].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies enqueue regiment to uncolonized planet returns false.
+        /// </summary>
         [Test]
         public void Enqueue_RegimentToUncolonizedPlanet_ReturnsFalse()
         {
@@ -2992,6 +3199,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(_coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Troop));
         }
 
+        /// <summary>
+        /// Verifies enqueue multiple buildings maintains order.
+        /// </summary>
         [Test]
         public void Enqueue_MultipleBuildings_MaintainsOrder()
         {
@@ -3033,6 +3243,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("B3", queue[2].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies enqueue order using remaining maintenance capacity succeeds.
+        /// </summary>
         [Test]
         public void Enqueue_OrderUsingRemainingMaintenanceCapacity_Succeeds()
         {
@@ -3052,6 +3265,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, _empire.ProjectedMaintenanceHeadroom);
         }
 
+        /// <summary>
+        /// Verifies enqueue valid building attaches to scene graph.
+        /// </summary>
         [Test]
         public void Enqueue_ValidBuilding_AttachesToSceneGraph()
         {
@@ -3072,6 +3288,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("MINE1", retrievedBuilding.InstanceID);
         }
 
+        /// <summary>
+        /// Verifies enqueue building in building state succeeds.
+        /// </summary>
         [Test]
         public void Enqueue_BuildingInBuildingState_Succeeds()
         {
@@ -3112,6 +3331,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(2, queue.Count);
         }
 
+        /// <summary>
+        /// Verifies enqueue attached to different parent throws exception.
+        /// </summary>
         [Test]
         public void Enqueue_AttachedToDifferentParent_ThrowsException()
         {
@@ -3148,6 +3370,9 @@ namespace Rebellion.Tests.Systems
             });
         }
 
+        /// <summary>
+        /// Verifies enqueue duplicate instance throws exception.
+        /// </summary>
         [Test]
         public void Enqueue_DuplicateInstance_ThrowsException()
         {
@@ -3169,6 +3394,9 @@ namespace Rebellion.Tests.Systems
             });
         }
 
+        /// <summary>
+        /// Verifies enqueue two instances same type both added.
+        /// </summary>
         [Test]
         public void Enqueue_TwoInstancesSameType_BothAdded()
         {
@@ -3200,6 +3428,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("MINE2", queue[ManufacturingType.Building][1].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies enqueue different faction returns false.
+        /// </summary>
         [Test]
         public void Enqueue_DifferentFaction_ReturnsFalse()
         {
@@ -3219,6 +3450,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies enqueue insufficient refined materials still queues.
+        /// </summary>
         [Test]
         public void Enqueue_InsufficientRefinedMaterials_StillQueues()
         {
@@ -3244,6 +3478,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count);
         }
 
+        /// <summary>
+        /// Verifies enqueue ignore cost flag bypasses funds.
+        /// </summary>
         [Test]
         public void Enqueue_IgnoreCostFlag_BypassesFunds()
         {
@@ -3269,6 +3506,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count);
         }
 
+        /// <summary>
+        /// Verifies enqueue with sufficient stockpile does not deduct construction cost.
+        /// </summary>
         [Test]
         public void Enqueue_WithSufficientStockpile_DoesNotDeductConstructionCost()
         {
@@ -3288,6 +3528,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(500, _empire.RefinedMaterialStockpile);
         }
 
+        /// <summary>
+        /// Verifies enqueue with ignore cost true does not deduct stockpile.
+        /// </summary>
         [Test]
         public void Enqueue_WithIgnoreCostTrue_DoesNotDeductStockpile()
         {
@@ -3307,6 +3550,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(500, _empire.RefinedMaterialStockpile);
         }
 
+        /// <summary>
+        /// Verifies enqueue zero cost item completes immediately.
+        /// </summary>
         [Test]
         public void Enqueue_ZeroCostItem_CompletesImmediately()
         {
@@ -3339,6 +3585,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies enqueue fleet destination owned by different faction returns false.
+        /// </summary>
         [Test]
         public void Enqueue_FleetDestinationOwnedByDifferentFaction_ReturnsFalse()
         {
@@ -3377,6 +3626,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(fighter.GetParent());
         }
 
+        /// <summary>
+        /// Verifies enqueue capital ship destination available queues passenger on ship.
+        /// </summary>
         [Test]
         public void Enqueue_CapitalShipDestinationAvailable_QueuesPassengerOnShip()
         {
@@ -3415,6 +3667,9 @@ namespace Rebellion.Tests.Systems
             Assert.Contains(fighter, carrier.GetChildren<Starfighter>().ToList());
         }
 
+        /// <summary>
+        /// Verifies enqueue capital ship destination in transit returns false.
+        /// </summary>
         [Test]
         public void Enqueue_CapitalShipDestinationInTransit_ReturnsFalse()
         {
@@ -3453,6 +3708,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(fighter.GetParent());
         }
 
+        /// <summary>
+        /// Verifies enqueue capital ship destination under construction returns false.
+        /// </summary>
         [Test]
         public void Enqueue_CapitalShipDestinationUnderConstruction_ReturnsFalse()
         {
@@ -3490,6 +3748,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(fighter.GetParent());
         }
 
+        /// <summary>
+        /// Verifies enqueue fleet destination with only unfinished carrier returns false.
+        /// </summary>
         [Test]
         public void Enqueue_FleetDestinationWithOnlyUnfinishedCarrier_ReturnsFalse()
         {
@@ -3527,6 +3788,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(fighter.GetParent());
         }
 
+        /// <summary>
+        /// Verifies clear queue queued building removes item and queue bucket.
+        /// </summary>
         [Test]
         public void ClearQueue_QueuedBuilding_RemovesItemAndQueueBucket()
         {
@@ -3549,6 +3813,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>("MINE1"));
         }
 
+        /// <summary>
+        /// Verifies clear queue building queue clears queue and queued destination buildings.
+        /// </summary>
         [Test]
         public void ClearQueue_BuildingQueue_ClearsQueueAndQueuedDestinationBuildings()
         {
@@ -3575,6 +3842,9 @@ namespace Rebellion.Tests.Systems
                 Assert.IsNull(((ISceneNode)item).GetParent());
         }
 
+        /// <summary>
+        /// Verifies clear queue empty queue returns false.
+        /// </summary>
         [Test]
         public void ClearQueue_EmptyQueue_ReturnsFalse()
         {
@@ -3587,6 +3857,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(stopped);
         }
 
+        /// <summary>
+        /// Verifies attach node different owner throws exception.
+        /// </summary>
         [Test]
         public void AttachNode_DifferentOwner_ThrowsException()
         {
@@ -3605,6 +3878,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies cancel manufacturing reserved input completes and discards facility cycle.
+        /// </summary>
         [Test]
         public void CancelManufacturing_ReservedInput_CompletesAndDiscardsFacilityCycle()
         {
@@ -3632,6 +3908,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
         }
 
+        /// <summary>
+        /// Verifies cancel manufacturing queued item restores maintenance headroom.
+        /// </summary>
         [Test]
         public void CancelManufacturing_QueuedItem_RestoresMaintenanceHeadroom()
         {
@@ -3658,6 +3937,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(initialHeadroom, _empire.ProjectedMaintenanceHeadroom);
         }
 
+        /// <summary>
+        /// Verifies cancel manufacturing queued item removes only selected item.
+        /// </summary>
         [Test]
         public void CancelManufacturing_QueuedItem_RemovesOnlySelectedItem()
         {
@@ -3684,6 +3966,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(destination, ((ISceneNode)retained).GetParent());
         }
 
+        /// <summary>
+        /// Verifies cancel manufacturing queued items removes complete selection.
+        /// </summary>
         [Test]
         public void CancelManufacturing_QueuedItems_RemovesCompleteSelection()
         {
@@ -3706,6 +3991,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(queued.All(item => ((ISceneNode)item).GetParent() == null));
         }
 
+        /// <summary>
+        /// Verifies cancel manufacturing last capital ship removes destination fleet.
+        /// </summary>
         [Test]
         public void CancelManufacturing_LastCapitalShip_RemovesDestinationFleet()
         {
@@ -3727,6 +4015,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(((ISceneNode)queued).GetParent());
         }
 
+        /// <summary>
+        /// Verifies cancel manufacturing other faction does not remove item.
+        /// </summary>
         [Test]
         public void CancelManufacturing_OtherFaction_DoesNotRemoveItem()
         {
@@ -3747,6 +4038,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(queued, producer.GetManufacturingQueue()[ManufacturingType.Building][0]);
         }
 
+        /// <summary>
+        /// Verifies get manufacturing queue no items returns empty dictionary.
+        /// </summary>
         [Test]
         public void GetManufacturingQueue_NoItems_ReturnsEmptyDictionary()
         {
@@ -3757,6 +4051,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(queue);
         }
 
+        /// <summary>
+        /// Verifies get manufacturing queue two items returns correct state.
+        /// </summary>
         [Test]
         public void GetManufacturingQueue_TwoItems_ReturnsCorrectState()
         {
@@ -3789,6 +4086,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(mine2, queue[ManufacturingType.Building][1]);
         }
 
+        /// <summary>
+        /// Verifies rebuild queues empty game no queues.
+        /// </summary>
         [Test]
         public void RebuildQueues_EmptyGame_NoQueues()
         {
@@ -3815,6 +4115,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, queue.Count, "Empty game should have no queues");
         }
 
+        /// <summary>
+        /// Verifies rebuild queues persisted order restores original queue order.
+        /// </summary>
         [Test]
         public void RebuildQueues_PersistedOrder_RestoresOriginalQueueOrder()
         {
@@ -3842,6 +4145,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies rebuild queues multiple planets correct grouping.
+        /// </summary>
         [Test]
         public void RebuildQueues_MultiplePlanets_CorrectGrouping()
         {
@@ -3921,6 +4227,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, queue2[ManufacturingType.Building].Count);
         }
 
+        /// <summary>
+        /// Verifies rebuild queues called twice no duplication.
+        /// </summary>
         [Test]
         public void RebuildQueues_CalledTwice_NoDuplication()
         {
@@ -3962,6 +4271,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count, "No duplication");
         }
 
+        /// <summary>
+        /// Verifies rebuild queues only building ignores complete.
+        /// </summary>
         [Test]
         public void RebuildQueues_OnlyBuilding_IgnoresComplete()
         {
@@ -4016,6 +4328,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("b1", queue[ManufacturingType.Building][0].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies rebuild queues no producer planet id skips item.
+        /// </summary>
         [Test]
         public void RebuildQueues_NoProducerPlanetID_SkipsItem()
         {
@@ -4056,6 +4371,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, queue.Count, "Should skip null ProducerPlanetID");
         }
 
+        /// <summary>
+        /// Verifies rebuild queues invalid producer planet id skips item.
+        /// </summary>
         [Test]
         public void RebuildQueues_InvalidProducerPlanetID_SkipsItem()
         {
@@ -4096,6 +4414,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, queue.Count, "Should skip invalid ProducerPlanetID");
         }
 
+        /// <summary>
+        /// Verifies enqueue capital ship valid ship attaches to fleet at planet.
+        /// </summary>
         [Test]
         public void EnqueueCapitalShip_ValidShip_AttachesToFleetAtPlanet()
         {
@@ -4138,6 +4459,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(found, "Ship should be in the scene graph during production.");
         }
 
+        /// <summary>
+        /// Verifies enqueue capital ship planet destination returns false.
+        /// </summary>
         [Test]
         public void EnqueueCapitalShip_PlanetDestination_ReturnsFalse()
         {
@@ -4168,6 +4492,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies enqueue capital ship with fleet destination joins fleet.
+        /// </summary>
         [Test]
         public void EnqueueCapitalShip_WithFleetDestination_JoinsFleet()
         {
@@ -4208,6 +4535,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingStatus.Building, newShip.ManufacturingStatus);
         }
 
+        /// <summary>
+        /// Verifies enqueue capital ship planet destination with fleet present still returns false.
+        /// </summary>
         [Test]
         public void EnqueueCapitalShip_PlanetDestinationWithFleetPresent_StillReturnsFalse()
         {
@@ -4253,6 +4583,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies enqueue capital ship no owner returns false.
+        /// </summary>
         [Test]
         public void EnqueueCapitalShip_NoOwner_ReturnsFalse()
         {
@@ -4290,6 +4623,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(result, "Enqueueing a capital ship with no owner should fail.");
         }
 
+        /// <summary>
+        /// Verifies enqueue two capital ships same fleet both join.
+        /// </summary>
         [Test]
         public void EnqueueTwoCapitalShips_SameFleet_BothJoin()
         {
@@ -4339,6 +4675,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies enqueue two capital ships same explicit fleet join same fleet.
+        /// </summary>
         [Test]
         public void EnqueueTwoCapitalShips_SameExplicitFleet_JoinSameFleet()
         {
@@ -4379,6 +4718,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(2, fleets[0].GetChildren<CapitalShip>().Count);
         }
 
+        /// <summary>
+        /// Verifies enqueue building valid building parent is destination planet.
+        /// </summary>
         [Test]
         public void EnqueueBuilding_ValidBuilding_ParentIsDestinationPlanet()
         {
@@ -4425,6 +4767,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingStatus.Building, mine.ManufacturingStatus);
         }
 
+        /// <summary>
+        /// Verifies enqueue starfighter valid fighter parent is destination fleet.
+        /// </summary>
         [Test]
         public void EnqueueStarfighter_ValidFighter_ParentIsDestinationFleet()
         {
@@ -4469,6 +4814,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingStatus.Building, fighter.ManufacturingStatus);
         }
 
+        /// <summary>
+        /// Verifies enqueue regiment valid regiment parent is destination planet.
+        /// </summary>
         [Test]
         public void EnqueueRegiment_ValidRegiment_ParentIsDestinationPlanet()
         {
@@ -4503,6 +4851,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingStatus.Building, regiment.ManufacturingStatus);
         }
 
+        /// <summary>
+        /// Verifies can accept manufacturing order without maintenance headroom returns true.
+        /// </summary>
         [Test]
         public void CanAcceptManufacturingOrder_WithoutMaintenanceHeadroom_ReturnsTrue()
         {
@@ -4527,6 +4878,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(manager.CanStartManufacturing(planet, template, planet, 1, "empire"));
         }
 
+        /// <summary>
+        /// Verifies start manufacturing capital ships creates one destination fleet.
+        /// </summary>
         [Test]
         public void StartManufacturing_CapitalShips_CreatesOneDestinationFleet()
         {
@@ -4556,6 +4910,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies start manufacturing same project appends requested copies.
+        /// </summary>
         [Test]
         public void StartManufacturing_SameProject_AppendsRequestedCopies()
         {
@@ -4575,6 +4932,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(queue.All(item => item.GetTypeID() == "mine"));
         }
 
+        /// <summary>
+        /// Verifies start manufacturing different project replaces entire production lane.
+        /// </summary>
         [Test]
         public void StartManufacturing_DifferentProject_ReplacesEntireProductionLane()
         {
@@ -4599,6 +4959,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(replacedItems.All(item => item.GetParent() == null));
         }
 
+        /// <summary>
+        /// Verifies retarget manufacturing destination queued lane moves every item.
+        /// </summary>
         [Test]
         public void RetargetManufacturingDestination_QueuedLaneMovesEveryItem()
         {
@@ -4635,6 +4998,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies start manufacturing capital ship rejected removes empty destination fleet.
+        /// </summary>
         [Test]
         public void StartManufacturing_CapitalShipRejected_RemovesEmptyDestinationFleet()
         {
@@ -4654,6 +5020,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship));
         }
 
+        /// <summary>
+        /// Verifies start manufacturing order exceeds destination capacity does not queue partial order.
+        /// </summary>
         [Test]
         public void StartManufacturing_OrderExceedsDestinationCapacity_DoesNotQueuePartialOrder()
         {
@@ -4673,6 +5042,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies estimate manufacturing ticks mixed facility rates uses integer rate shares.
+        /// </summary>
         [Test]
         public void EstimateManufacturingTicks_MixedFacilityRates_UsesIntegerRateShares()
         {
@@ -4688,6 +5060,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(3, estimate);
         }
 
+        /// <summary>
+        /// Verifies estimate manufacturing ticks inactive facilities do not contribute.
+        /// </summary>
         [Test]
         public void EstimateManufacturingTicks_InactiveFacilities_DoNotContribute()
         {
@@ -4709,6 +5084,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(4, estimate);
         }
 
+        /// <summary>
+        /// Verifies estimate completion ticks includes earlier queued work and current progress.
+        /// </summary>
         [Test]
         public void EstimateCompletionTicks_IncludesEarlierQueuedWorkAndCurrentProgress()
         {
@@ -4735,6 +5113,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(42, estimate);
         }
 
+        /// <summary>
+        /// Verifies estimate completion ticks active facility cycle uses remaining cycle time.
+        /// </summary>
         [Test]
         public void EstimateCompletionTicks_ActiveFacilityCycle_UsesRemainingCycleTime()
         {
@@ -4756,6 +5137,13 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(3, estimate);
         }
 
+        /// <summary>
+        /// Builds shipyard planet.
+        /// </summary>
+        /// <param name="_game">The game.</param>
+        /// <param name="planetId">The planet id.</param>
+        /// <param name="factionId">The faction id.</param>
+        /// <returns>The constructed shipyard planet.</returns>
         private Planet BuildShipyardPlanet(GameRoot _game, string planetId, string factionId)
         {
             PlanetSector planetSector = new PlanetSector
@@ -4807,6 +5195,13 @@ namespace Rebellion.Tests.Systems
             return planet;
         }
 
+        /// <summary>
+        /// Adds resource supply.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="factionId">The faction id.</param>
+        /// <param name="count">The count.</param>
         private void AddResourceSupply(GameRoot game, Planet planet, string factionId, int count)
         {
             for (int i = 0; i < count; i++)
@@ -4834,6 +5229,12 @@ namespace Rebellion.Tests.Systems
             }
         }
 
+        /// <summary>
+        /// Adds resource supply planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planetId">The planet id.</param>
+        /// <param name="factionId">The faction id.</param>
         private void AddResourceSupplyPlanet(GameRoot game, string planetId, string factionId)
         {
             PlanetSector planetSector = new PlanetSector { InstanceID = $"{planetId}_sector" };
@@ -4850,6 +5251,10 @@ namespace Rebellion.Tests.Systems
             AddResourceSupply(game, planet, factionId, 20);
         }
 
+        /// <summary>
+        /// Creates order test game.
+        /// </summary>
+        /// <returns>The created order test game.</returns>
         private static GameRoot CreateOrderTestGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -4857,6 +5262,13 @@ namespace Rebellion.Tests.Systems
             return game;
         }
 
+        /// <summary>
+        /// Creates order test shipyard planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planetId">The planet id.</param>
+        /// <param name="factionId">The faction id.</param>
+        /// <returns>The created order test shipyard planet.</returns>
         private static Planet CreateOrderTestShipyardPlanet(
             GameRoot game,
             string planetId,
@@ -4879,6 +5291,13 @@ namespace Rebellion.Tests.Systems
             return planet;
         }
 
+        /// <summary>
+        /// Creates order test construction planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planetId">The planet id.</param>
+        /// <param name="factionId">The faction id.</param>
+        /// <returns>The created order test construction planet.</returns>
         private static Planet CreateOrderTestConstructionPlanet(
             GameRoot game,
             string planetId,
@@ -4893,6 +5312,13 @@ namespace Rebellion.Tests.Systems
             return planet;
         }
 
+        /// <summary>
+        /// Creates order test construction facility.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="factionId">The faction id.</param>
+        /// <param name="processRate">The process rate.</param>
+        /// <returns>The created order test construction facility.</returns>
         private static Building CreateOrderTestConstructionFacility(
             string instanceId,
             string factionId,
@@ -4910,6 +5336,13 @@ namespace Rebellion.Tests.Systems
             };
         }
 
+        /// <summary>
+        /// Creates order test planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planetId">The planet id.</param>
+        /// <param name="factionId">The faction id.</param>
+        /// <returns>The created order test planet.</returns>
         private static Planet CreateOrderTestPlanet(
             GameRoot game,
             string planetId,
@@ -4930,6 +5363,13 @@ namespace Rebellion.Tests.Systems
             return planet;
         }
 
+        /// <summary>
+        /// Creates order test capital ship template.
+        /// </summary>
+        /// <param name="typeId">The type id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="maintenanceCost">The maintenance cost.</param>
+        /// <returns>The created order test capital ship template.</returns>
         private static CapitalShip CreateOrderTestCapitalShipTemplate(
             string typeId,
             string displayName,
@@ -4946,6 +5386,11 @@ namespace Rebellion.Tests.Systems
             };
         }
 
+        /// <summary>
+        /// Creates order test building template.
+        /// </summary>
+        /// <param name="typeId">The type id.</param>
+        /// <returns>The created order test building template.</returns>
         private static Building CreateOrderTestBuildingTemplate(string typeId)
         {
             return new Building

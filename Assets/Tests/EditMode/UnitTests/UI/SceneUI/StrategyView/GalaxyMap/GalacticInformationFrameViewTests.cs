@@ -15,6 +15,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private GameObject _rootObject;
         private Texture2D _texture;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -25,6 +28,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -32,6 +38,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render complete frame applies textures and section geometry.
+        /// </summary>
         [Test]
         public void Render_CompleteFrame_AppliesTexturesAndSectionGeometry()
         {
@@ -69,6 +78,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(FindImage("BottomRightImage").raycastTarget);
         }
 
+        /// <summary>
+        /// Verifies render null data hides all frame sections.
+        /// </summary>
         [Test]
         public void Render_NullData_HidesAllFrameSections()
         {
@@ -90,6 +102,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             }
         }
 
+        /// <summary>
+        /// Verifies render incomplete texture collection throws argument exception.
+        /// </summary>
         [Test]
         public void Render_IncompleteTextureCollection_ThrowsArgumentException()
         {
@@ -102,6 +117,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render missing section texture hides only missing section.
+        /// </summary>
         [Test]
         public void Render_MissingSectionTexture_HidesOnlyMissingSection()
         {
@@ -114,6 +132,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsTrue(FindImage("TopRightImage").gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Finds image.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching image.</returns>
         private RawImage FindImage(string objectName)
         {
             return _view
@@ -121,6 +144,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 .Single(image => image.name == objectName);
         }
 
+        /// <summary>
+        /// Finds transform.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching transform.</returns>
         private Transform FindTransform(string objectName)
         {
             return _rootObject

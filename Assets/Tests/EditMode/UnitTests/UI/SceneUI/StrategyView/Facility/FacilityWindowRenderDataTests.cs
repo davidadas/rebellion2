@@ -8,6 +8,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
     [TestFixture]
     public class FacilityWindowRenderDataTests
     {
+        /// <summary>
+        /// Verifies ordered tabs default catalog returns authored tab order.
+        /// </summary>
         [Test]
         public void OrderedTabs_DefaultCatalog_ReturnsAuthoredTabOrder()
         {
@@ -26,12 +29,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(6, FacilityWindowRenderData.TabCount);
         }
 
+        /// <summary>
+        /// Verifies count default catalog returns manufacturing lane count.
+        /// </summary>
         [Test]
         public void Count_DefaultCatalog_ReturnsManufacturingLaneCount()
         {
             Assert.AreEqual(3, FacilityManufacturingLaneCatalog.Count);
         }
 
+        /// <summary>
+        /// Verifies get tab manufacturing card index returns authored tab.
+        /// </summary>
+        /// <param name="cardIndex">The card index.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(0, FacilityWindowTab.Shipyards)]
         [TestCase(1, FacilityWindowTab.Training)]
         [TestCase(2, FacilityWindowTab.Construction)]
@@ -43,6 +54,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(expected, FacilityManufacturingLaneCatalog.GetTab(cardIndex));
         }
 
+        /// <summary>
+        /// Verifies get tab invalid card index returns null.
+        /// </summary>
+        /// <param name="cardIndex">The card index.</param>
         [TestCase(-1)]
         [TestCase(3)]
         public void GetTab_InvalidCardIndex_ReturnsNull(int cardIndex)
@@ -50,6 +65,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsNull(FacilityManufacturingLaneCatalog.GetTab(cardIndex));
         }
 
+        /// <summary>
+        /// Verifies get card index manufacturing tab returns authored card index.
+        /// </summary>
+        /// <param name="tab">The tab.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(FacilityWindowTab.Shipyards, 0)]
         [TestCase(FacilityWindowTab.Training, 1)]
         [TestCase(FacilityWindowTab.Construction, 2)]
@@ -61,12 +81,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(expected, FacilityManufacturingLaneCatalog.GetCardIndex(tab));
         }
 
+        /// <summary>
+        /// Verifies get card index non manufacturing tab returns null.
+        /// </summary>
         [Test]
         public void GetCardIndex_NonManufacturingTab_ReturnsNull()
         {
             Assert.IsNull(FacilityManufacturingLaneCatalog.GetCardIndex(FacilityWindowTab.Mines));
         }
 
+        /// <summary>
+        /// Verifies get manufacturing type manufacturing tab returns mapped type.
+        /// </summary>
+        /// <param name="tab">The tab.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(FacilityWindowTab.Shipyards, ManufacturingType.Ship)]
         [TestCase(FacilityWindowTab.Training, ManufacturingType.Troop)]
         [TestCase(FacilityWindowTab.Construction, ManufacturingType.Building)]
@@ -78,6 +106,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(expected, FacilityManufacturingLaneCatalog.GetManufacturingType(tab));
         }
 
+        /// <summary>
+        /// Verifies get manufacturing type non manufacturing tab returns null.
+        /// </summary>
         [Test]
         public void GetManufacturingType_NonManufacturingTab_ReturnsNull()
         {
@@ -86,6 +117,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies get tab manufacturing type returns mapped tab.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(ManufacturingType.Ship, FacilityWindowTab.Shipyards)]
         [TestCase(ManufacturingType.Troop, FacilityWindowTab.Training)]
         [TestCase(ManufacturingType.Building, FacilityWindowTab.Construction)]
@@ -97,12 +133,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(expected, FacilityManufacturingLaneCatalog.GetTab(type));
         }
 
+        /// <summary>
+        /// Verifies get tab unsupported manufacturing type returns null.
+        /// </summary>
         [Test]
         public void GetTab_UnsupportedManufacturingType_ReturnsNull()
         {
             Assert.IsNull(FacilityManufacturingLaneCatalog.GetTab(ManufacturingType.None));
         }
 
+        /// <summary>
+        /// Verifies constructor mutable collections copies input collections.
+        /// </summary>
         [Test]
         public void Constructor_MutableCollections_CopiesInputCollections()
         {
@@ -160,6 +202,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsTrue(data.ShowManufacturing);
         }
 
+        /// <summary>
+        /// Verifies constructor null text normalizes text to empty strings.
+        /// </summary>
         [Test]
         public void Constructor_NullText_NormalizesTextToEmptyStrings()
         {
@@ -201,6 +246,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(data.ShowManufacturing);
         }
 
+        /// <summary>
+        /// Verifies constructor null tabs throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullTabs_ThrowsArgumentNullException()
         {
@@ -222,6 +270,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies constructor null manufacturing cards throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullManufacturingCards_ThrowsArgumentNullException()
         {
@@ -243,6 +294,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies constructor null inventory items throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullInventoryItems_ThrowsArgumentNullException()
         {

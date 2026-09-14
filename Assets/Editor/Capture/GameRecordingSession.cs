@@ -24,6 +24,9 @@ internal static class GameRecordingSession
     /// </summary>
     public static bool IsRecording => _recorderController?.IsRecording() == true;
 
+    /// <summary>
+    /// Initializes a new instance of the GameRecordingSession class.
+    /// </summary>
     static GameRecordingSession()
     {
         EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
@@ -83,6 +86,7 @@ internal static class GameRecordingSession
     /// <summary>
     /// Stops and releases the Recorder session before Unity leaves Play mode.
     /// </summary>
+    /// <param name="state">The state.</param>
     private static void OnPlayModeStateChanged(PlayModeStateChange state)
     {
         if (state == PlayModeStateChange.ExitingPlayMode && _recorderController != null)
@@ -94,6 +98,7 @@ internal static class GameRecordingSession
     /// <summary>
     /// Configures capture using the resolution selected by the editor's Game view.
     /// </summary>
+    /// <returns>The created game view input settings.</returns>
     private static GameViewInputSettings CreateGameViewInputSettings()
     {
         GameViewInputSettings settings = new GameViewInputSettings();
@@ -115,6 +120,9 @@ internal static class GameRecordingSession
     /// <summary>
     /// Creates the MP4 and audio settings for a Game view recording.
     /// </summary>
+    /// <param name="gameViewInputSettings">The game view input settings.</param>
+    /// <param name="outputPathWithoutExtension">The output path without extension.</param>
+    /// <returns>The created movie recorder settings.</returns>
     private static MovieRecorderSettings CreateMovieRecorderSettings(
         GameViewInputSettings gameViewInputSettings,
         string outputPathWithoutExtension
@@ -138,6 +146,8 @@ internal static class GameRecordingSession
     /// <summary>
     /// Creates a manually controlled, variable-frame-rate Recorder session.
     /// </summary>
+    /// <param name="movieRecorderSettings">The movie recorder settings.</param>
+    /// <returns>The created recorder controller settings.</returns>
     private static RecorderControllerSettings CreateRecorderControllerSettings(
         MovieRecorderSettings movieRecorderSettings
     )
@@ -155,6 +165,7 @@ internal static class GameRecordingSession
     /// <summary>
     /// Starts the configured Recorder session and cleans up if startup fails.
     /// </summary>
+    /// <returns>True when recording starts; otherwise false.</returns>
     private static bool TryStartRecorder()
     {
         try
@@ -181,6 +192,7 @@ internal static class GameRecordingSession
     /// <summary>
     /// Resolves the local recording directory beside the Assets directory.
     /// </summary>
+    /// <returns>The requested recording directory.</returns>
     private static string GetRecordingDirectory()
     {
         return Path.GetFullPath(Path.Combine(Application.dataPath, "..", _recordingDirectoryName));

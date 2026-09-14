@@ -37,6 +37,8 @@ namespace Rebellion.Systems
         /// Validates queued duel requests and emits capture, injury, and duel outcomes for each
         /// eligible opposing officer pair.
         /// </summary>
+        /// <param name="results">The results.</param>
+        /// <returns>The result of handle requests.</returns>
         public List<GameResult> HandleRequests(IReadOnlyList<DuelRequest> results)
         {
             List<GameResult> reactions = new List<GameResult>();
@@ -119,6 +121,14 @@ namespace Rebellion.Systems
         /// Resolves whether the encountered officer avoids capture and records capture state when
         /// the opposing officer succeeds.
         /// </summary>
+        /// <param name="encountered">The encountered.</param>
+        /// <param name="opposing">The opposing.</param>
+        /// <param name="location">The location.</param>
+        /// <param name="encounteredCombat">The encountered combat.</param>
+        /// <param name="opposingCombat">The opposing combat.</param>
+        /// <param name="request">The request.</param>
+        /// <param name="reactions">The reactions.</param>
+        /// <returns>True when the encountered officer is captured; otherwise false.</returns>
         private bool TryCaptureEncounteredOfficer(
             Officer encountered,
             Officer opposing,
@@ -157,6 +167,10 @@ namespace Rebellion.Systems
         /// <summary>
         /// Resolves injury to the encountered officer after capture or successful evasion.
         /// </summary>
+        /// <param name="captured">Whether captured.</param>
+        /// <param name="encounteredCombat">The encountered combat.</param>
+        /// <param name="opposingCombat">The opposing combat.</param>
+        /// <returns>The calculated encountered officer injury.</returns>
         private int CalculateEncounteredOfficerInjury(
             bool captured,
             int encounteredCombat,
@@ -182,6 +196,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Resolves injury to the opposing officer from the encountered officer's combat advantage.
         /// </summary>
+        /// <param name="encounteredCombat">The encountered combat.</param>
+        /// <param name="opposingCombat">The opposing combat.</param>
+        /// <returns>The calculated opposing officer injury.</returns>
         private int CalculateOpposingOfficerInjury(int encounteredCombat, int opposingCombat) =>
             TryRollInjury(
                 Math.Max(
@@ -193,6 +210,12 @@ namespace Rebellion.Systems
         /// <summary>
         /// Records the complete duel outcome after capture and injury consequences are applied.
         /// </summary>
+        /// <param name="request">The request.</param>
+        /// <param name="location">The location.</param>
+        /// <param name="captured">Whether captured.</param>
+        /// <param name="encounteredInjury">The encountered injury.</param>
+        /// <param name="opposingInjury">The opposing injury.</param>
+        /// <param name="reactions">The reactions.</param>
         private void RecordDuelOutcome(
             DuelRequest request,
             Planet location,

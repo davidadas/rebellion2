@@ -18,6 +18,9 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public class AIProductionPlannerTests
     {
+        /// <summary>
+        /// Verifies plan with claimed uncolonized planet adds colony manufacture proposal.
+        /// </summary>
         [Test]
         public void Plan_WithClaimedUncolonizedPlanet_AddsColonyManufactureProposal()
         {
@@ -69,6 +72,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(mine, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with mine demand and unlocked mine adds manufacture proposal.
+        /// </summary>
         [Test]
         public void Plan_WithMineDemandAndUnlockedMine_AddsManufactureProposal()
         {
@@ -107,6 +113,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan with advanced shipyard unlocked selects faster facility.
+        /// </summary>
         [Test]
         public void Plan_WithAdvancedShipyardUnlocked_SelectsFasterFacility()
         {
@@ -156,6 +165,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(advancedShipyard, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with facility upgrade exactly at net maintenance budget selects upgrade.
+        /// </summary>
         [Test]
         public void Plan_WithFacilityUpgradeExactlyAtNetMaintenanceBudget_SelectsUpgrade()
         {
@@ -179,6 +191,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(maintenanceBudget, proposal.GetMaintenanceCost());
         }
 
+        /// <summary>
+        /// Verifies plan with facility upgrade one over net maintenance budget does not add upgrade.
+        /// </summary>
         [Test]
         public void Plan_WithFacilityUpgradeOneOverNetMaintenanceBudget_DoesNotAddUpgrade()
         {
@@ -195,6 +210,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan without authored facility upgrade does not add upgrade.
+        /// </summary>
         [Test]
         public void Plan_WithoutAuthoredFacilityUpgrade_DoesNotAddUpgrade()
         {
@@ -213,6 +231,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan with shipyard exactly at maintenance budget selects shipyard.
+        /// </summary>
         [Test]
         public void Plan_WithShipyardExactlyAtMaintenanceBudget_SelectsShipyard()
         {
@@ -233,6 +254,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(shipyard, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with primary hub and global headroom selects faster shipyard.
+        /// </summary>
         [Test]
         public void Plan_WithPrimaryHubAndGlobalHeadroom_SelectsFasterShipyard()
         {
@@ -248,6 +272,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(fasterShipyard, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with primary hub and global headroom adds shipyard proposal.
+        /// </summary>
         [Test]
         public void Plan_WithPrimaryHubAndGlobalHeadroom_AddsShipyardProposal()
         {
@@ -268,6 +295,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan with facility expansion queues one facility.
+        /// </summary>
         [Test]
         public void Plan_WithFacilityExpansion_QueuesOneFacility()
         {
@@ -283,6 +313,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies plan with remaining shared facility budget adds proposal.
+        /// </summary>
         [Test]
         public void Plan_WithRemainingSharedFacilityBudget_AddsProposal()
         {
@@ -313,6 +346,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies plan with headroom below facility allocation but enough for primary hub adds proposal.
+        /// </summary>
         [Test]
         public void Plan_WithHeadroomBelowFacilityAllocationButEnoughForPrimaryHub_AddsProposal()
         {
@@ -341,6 +377,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan with busy construction queue adds counted facility proposal.
+        /// </summary>
         [Test]
         public void Plan_WithBusyConstructionQueue_AddsCountedFacilityProposal()
         {
@@ -365,6 +404,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies plan with same facility state returns deterministic batch.
+        /// </summary>
         [Test]
         public void Plan_WithSameFacilityState_ReturnsDeterministicBatch()
         {
@@ -383,6 +425,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(first.Product.GetReference(), second.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with construction facility exactly at maintenance allocation adds proposal.
+        /// </summary>
         [Test]
         public void Plan_WithConstructionFacilityExactlyAtMaintenanceAllocation_AddsProposal()
         {
@@ -400,6 +445,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies plan with construction facility one over maintenance allocation does not add proposal.
+        /// </summary>
         [Test]
         public void Plan_WithConstructionFacilityOneOverMaintenanceAllocation_DoesNotAddProposal()
         {
@@ -418,6 +466,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan with construction facility demand uses every construction lane.
+        /// </summary>
         [Test]
         public void Plan_WithConstructionFacilityDemand_UsesEveryConstructionLane()
         {
@@ -436,6 +487,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies plan with planetary shield demand selects strongest shield.
+        /// </summary>
         [Test]
         public void Plan_WithPlanetaryShieldDemand_SelectsStrongestShield()
         {
@@ -487,6 +541,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(shield, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with shield pair exactly at defensive budget queues complete pair.
+        /// </summary>
         [Test]
         public void Plan_WithShieldPairExactlyAtDefensiveBudget_QueuesCompletePair()
         {
@@ -508,6 +565,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(14, proposal.GetMaintenanceCost());
         }
 
+        /// <summary>
+        /// Verifies plan with shield pair one over defensive budget queues affordable shield.
+        /// </summary>
         [Test]
         public void Plan_WithShieldPairOneOverDefensiveBudget_QueuesAffordableShield()
         {
@@ -529,6 +589,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(7, proposal.GetMaintenanceCost());
         }
 
+        /// <summary>
+        /// Verifies plan with no affordable shield does not add shield proposal.
+        /// </summary>
         [Test]
         public void Plan_WithNoAffordableShield_DoesNotAddShieldProposal()
         {
@@ -550,6 +613,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan with planetary starfighter demand selects efficient defender.
+        /// </summary>
         [Test]
         public void Plan_WithPlanetaryStarfighterDemand_SelectsEfficientDefender()
         {
@@ -572,6 +638,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(efficient, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with planetary fighter batch exactly at defensive budget queues planning batch.
+        /// </summary>
         [Test]
         public void Plan_WithPlanetaryFighterBatchExactlyAtDefensiveBudget_QueuesPlanningBatch()
         {
@@ -588,6 +657,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(30, proposal.GetMaintenanceCost());
         }
 
+        /// <summary>
+        /// Verifies plan with planetary fighter batch one over defensive budget queues affordable count.
+        /// </summary>
         [Test]
         public void Plan_WithPlanetaryFighterBatchOneOverDefensiveBudget_QueuesAffordableCount()
         {
@@ -604,6 +676,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(30, proposal.GetMaintenanceCost());
         }
 
+        /// <summary>
+        /// Verifies plan with no affordable planetary fighter does not add proposal.
+        /// </summary>
         [Test]
         public void Plan_WithNoAffordablePlanetaryFighter_DoesNotAddProposal()
         {
@@ -620,6 +695,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan with special forces mission demand selects requested unlocked type.
+        /// </summary>
         [Test]
         public void Plan_WithSpecialForcesMissionDemand_SelectsRequestedUnlockedType()
         {
@@ -694,6 +772,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(spies, spyProposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with fleet deficit adds fleet seed capital ship proposal.
+        /// </summary>
         [Test]
         public void Plan_WithFleetDeficit_AddsFleetSeedCapitalShipProposal()
         {
@@ -734,6 +815,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(AICapitalShipProductionRole.General, proposal.Demand.CapitalShipRole);
         }
 
+        /// <summary>
+        /// Verifies plan with fleet deficit selects highest general role metric.
+        /// </summary>
         [Test]
         public void Plan_WithFleetDeficit_SelectsHighestGeneralRoleMetric()
         {
@@ -792,6 +876,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(battleShip, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with fleet deficit uses configured laser cannon damage multiplier.
+        /// </summary>
         [Test]
         public void Plan_WithFleetDeficit_UsesConfiguredLaserCannonDamageMultiplier()
         {
@@ -849,6 +936,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(laserShip, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with general deficit does not select planet destroying capital ship.
+        /// </summary>
         [Test]
         public void Plan_WithGeneralDeficit_DoesNotSelectPlanetDestroyingCapitalShip()
         {
@@ -900,6 +990,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(battleShip, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with combat and transport deficits selects efficient transport.
+        /// </summary>
         [Test]
         public void Plan_WithCombatAndTransportDeficits_SelectsEfficientTransport()
         {
@@ -991,6 +1084,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan with regiment strength gap and full capacity selects transport.
+        /// </summary>
         [Test]
         public void Plan_WithRegimentStrengthGapAndFullCapacity_SelectsTransport()
         {
@@ -1080,6 +1176,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(transport, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with understrength headquarters defense fleet selects combat ship.
+        /// </summary>
         [Test]
         public void Plan_WithUnderstrengthHeadquartersDefenseFleet_SelectsCombatShip()
         {
@@ -1159,6 +1258,10 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(lineShip, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan general role selection selects eligible warship.
+        /// </summary>
+        /// <param name="hasCommittedCombatShip">Whether has committed combat ship.</param>
         [TestCase(false, TestName = "Plan_WithNoCommittedCombatShip_SelectsEligibleWarship")]
         [TestCase(true, TestName = "Plan_WithCommittedCombatShip_SelectsEligibleWarship")]
         public void Plan_GeneralRoleSelectionSelectsEligibleWarship(bool hasCommittedCombatShip)
@@ -1246,6 +1349,10 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(higherMetricTemplate, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan general combat selection fills missing carrier role.
+        /// </summary>
+        /// <param name="hasCarrier">Whether has carrier.</param>
         [TestCase(false, TestName = "Plan_WithNoCarrier_SelectsCarrierCapableWarship")]
         [TestCase(true, TestName = "Plan_WithCarrier_SelectsHigherQualityWarship")]
         public void Plan_GeneralCombatSelectionFillsMissingCarrierRole(bool hasCarrier)
@@ -1321,6 +1428,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(AICapitalShipProductionRole.General, proposal.Demand.CapitalShipRole);
         }
 
+        /// <summary>
+        /// Verifies plan with bombardment deficit selects efficient bombardment ship.
+        /// </summary>
         [Test]
         public void Plan_WithBombardmentDeficit_SelectsEfficientBombardmentShip()
         {
@@ -1423,6 +1533,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan with interdiction demand selects eligible interdiction ship.
+        /// </summary>
         [Test]
         public void Plan_WithInterdictionDemand_SelectsEligibleInterdictionShip()
         {
@@ -1512,6 +1625,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan with only bombardment deficit ignores carrier capacity.
+        /// </summary>
         [Test]
         public void Plan_WithOnlyBombardmentDeficit_IgnoresCarrierCapacity()
         {
@@ -1602,6 +1718,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(bombardmentShip, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with multiple general candidates and first roll selects first candidate.
+        /// </summary>
         [Test]
         public void Plan_WithMultipleGeneralCandidatesAndFirstRoll_SelectsFirstCandidate()
         {
@@ -1646,6 +1765,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(alternateTemplate, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with multiple general candidates and second roll selects second candidate.
+        /// </summary>
         [Test]
         public void Plan_WithMultipleGeneralCandidatesAndSecondRoll_SelectsSecondCandidate()
         {
@@ -1688,6 +1810,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(secondTemplate, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with repeated starfighter type selects different competitive type.
+        /// </summary>
         [Test]
         public void Plan_WithRepeatedStarfighterType_SelectsDifferentCompetitiveType()
         {
@@ -1763,6 +1888,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(alternateTemplate, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan with starfighter deficit queues work through next planning tick.
+        /// </summary>
         [Test]
         public void Plan_WithStarfighterDeficit_QueuesWorkThroughNextPlanningTick()
         {
@@ -1781,6 +1909,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(2, proposal.Demand.QuantityNeeded);
         }
 
+        /// <summary>
+        /// Verifies plan with starfighter deficit distributes batch across producer planets.
+        /// </summary>
         [Test]
         public void Plan_WithStarfighterDeficit_DistributesBatchAcrossProducerPlanets()
         {
@@ -1809,6 +1940,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(4, quantities.Values.Sum());
         }
 
+        /// <summary>
+        /// Verifies plan with distributed starfighter batch uses preferred fleet type count.
+        /// </summary>
         [Test]
         public void Plan_WithDistributedStarfighterBatch_UsesPreferredFleetTypeCount()
         {
@@ -1828,6 +1962,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(4, quantity);
         }
 
+        /// <summary>
+        /// Verifies plan with queue covering next planning tick does not add more work.
+        /// </summary>
         [Test]
         public void Plan_WithQueueCoveringNextPlanningTick_DoesNotAddMoreWork()
         {
@@ -1858,6 +1995,11 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsEmpty(proposals);
         }
 
+        /// <summary>
+        /// Gets shipyard proposal.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>The requested shipyard proposal.</returns>
         private static AIManufactureProposal GetShipyardProposal(AITurnContext context)
         {
             return new AIProductionPlanner()
@@ -1866,6 +2008,11 @@ namespace Rebellion.Tests.AI.Planners
                 .Single(item => item.Demand.Kind == AIDemandKind.Shipyard);
         }
 
+        /// <summary>
+        /// Creates distributed starfighter scene.
+        /// </summary>
+        /// <param name="includeSecondProducer">Whether include second producer.</param>
+        /// <returns>The created distributed starfighter scene.</returns>
         private static (
             GameRoot game,
             Faction faction,
@@ -1944,6 +2091,12 @@ namespace Rebellion.Tests.AI.Planners
             return (game, empire, fleet, firstProducer, secondProducer);
         }
 
+        /// <summary>
+        /// Creates planetary defense scene.
+        /// </summary>
+        /// <param name="minimumMaintenanceHeadroom">The minimum maintenance headroom.</param>
+        /// <param name="shieldMaintenance">The shield maintenance.</param>
+        /// <returns>The created planetary defense scene.</returns>
         private static (
             GameRoot game,
             Faction faction,
@@ -1986,6 +2139,13 @@ namespace Rebellion.Tests.AI.Planners
             return (game, empire, shield);
         }
 
+        /// <summary>
+        /// Creates planetary starfighter scene.
+        /// </summary>
+        /// <param name="minimumMaintenanceHeadroom">The minimum maintenance headroom.</param>
+        /// <param name="fighterMaintenance">The fighter maintenance.</param>
+        /// <param name="fighterStrength">The fighter strength.</param>
+        /// <returns>The created planetary starfighter scene.</returns>
         private static (
             GameRoot game,
             Faction faction,
@@ -2032,6 +2192,13 @@ namespace Rebellion.Tests.AI.Planners
             return (game, empire, planet, starfighter);
         }
 
+        /// <summary>
+        /// Creates shipyard batch scene.
+        /// </summary>
+        /// <param name="constructionFacilityCount">The construction facility count.</param>
+        /// <param name="energyCapacity">The energy capacity.</param>
+        /// <param name="shipyardMaintenance">The shipyard maintenance.</param>
+        /// <returns>The created shipyard batch scene.</returns>
         private static (
             GameRoot game,
             Faction faction,
@@ -2081,6 +2248,12 @@ namespace Rebellion.Tests.AI.Planners
             return (game, empire, planet, shipyard);
         }
 
+        /// <summary>
+        /// Creates construction facility batch scene.
+        /// </summary>
+        /// <param name="constructionFacilityCount">The construction facility count.</param>
+        /// <param name="constructionFacilityMaintenance">The construction facility maintenance.</param>
+        /// <returns>The created construction facility batch scene.</returns>
         private static (
             GameRoot game,
             Faction faction,
@@ -2137,6 +2310,11 @@ namespace Rebellion.Tests.AI.Planners
             return (game, empire, constructionFacility);
         }
 
+        /// <summary>
+        /// Adds resource economy.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
         private static void AddResourceEconomy(GameRoot game, Planet planet)
         {
             planet.NumRawResourceNodes += 2;
@@ -2159,6 +2337,12 @@ namespace Rebellion.Tests.AI.Planners
             }
         }
 
+        /// <summary>
+        /// Adds maintenance capacity.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="count">The count.</param>
         private static void AddMaintenanceCapacity(GameRoot game, Planet planet, int count)
         {
             planet.NumRawResourceNodes += count;
@@ -2181,6 +2365,14 @@ namespace Rebellion.Tests.AI.Planners
             }
         }
 
+        /// <summary>
+        /// Adds shield.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="strength">The strength.</param>
         private static void AddShield(
             GameRoot game,
             Planet planet,
@@ -2198,6 +2390,10 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(shield, planet);
         }
 
+        /// <summary>
+        /// Creates capital selection scene.
+        /// </summary>
+        /// <returns>The created capital selection scene.</returns>
         private static (GameRoot game, Faction faction, Fleet fleet) CreateCapitalSelectionScene()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -2250,6 +2446,11 @@ namespace Rebellion.Tests.AI.Planners
             return (game, empire, fleet);
         }
 
+        /// <summary>
+        /// Creates facility upgrade scene.
+        /// </summary>
+        /// <param name="maintenanceBudgetOffset">The maintenance budget offset.</param>
+        /// <returns>The created facility upgrade scene.</returns>
         private static (
             GameRoot game,
             Faction faction,
@@ -2324,6 +2525,12 @@ namespace Rebellion.Tests.AI.Planners
             return (game, empire, planet, replacement, advancedShipyard, maintenanceBudget);
         }
 
+        /// <summary>
+        /// Creates shipyard selection scene.
+        /// </summary>
+        /// <param name="affordableMaintenance">The affordable maintenance.</param>
+        /// <param name="overBudgetMaintenance">The over budget maintenance.</param>
+        /// <returns>The created shipyard selection scene.</returns>
         private static (
             GameRoot game,
             Faction faction,

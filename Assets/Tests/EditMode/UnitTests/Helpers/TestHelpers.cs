@@ -28,6 +28,8 @@ public static class SceneTestExtensions
     /// <summary>
     /// Adds a child directly to a detached test or projection node without invoking placement validation.
     /// </summary>
+    /// <param name="parent">The parent.</param>
+    /// <param name="child">The child.</param>
     public static void AddTestChild(this ISceneNode parent, ISceneNode child)
     {
         switch (parent)
@@ -80,6 +82,10 @@ public static class SceneTestExtensions
     /// <summary>
     /// Appends a child when it matches the requested collection type.
     /// </summary>
+    /// <param name="existing">The existing.</param>
+    /// <param name="child">The child.</param>
+    /// <typeparam name="T">The t type.</typeparam>
+    /// <returns>The result of append when.</returns>
     private static IEnumerable<T> AppendWhen<T>(IEnumerable<T> existing, ISceneNode child)
         where T : class, ISceneNode
     {
@@ -93,8 +99,18 @@ public static class SceneTestExtensions
 /// </summary>
 public class StubRNG : IRandomNumberProvider
 {
+    /// <summary>
+    /// Executes next double.
+    /// </summary>
+    /// <returns>The result of next double.</returns>
     public double NextDouble() => 0.01;
 
+    /// <summary>
+    /// Executes next int.
+    /// </summary>
+    /// <param name="min">The min.</param>
+    /// <param name="max">The max.</param>
+    /// <returns>The result of next int.</returns>
     public int NextInt(int min, int max) => min;
 }
 
@@ -106,13 +122,27 @@ public class FixedRNG : IRandomNumberProvider
 {
     private readonly double _value;
 
+    /// <summary>
+    /// Initializes a new instance of the FixedRNG class.
+    /// </summary>
+    /// <param name="value">The value.</param>
     public FixedRNG(double value = 0.5)
     {
         _value = value;
     }
 
+    /// <summary>
+    /// Executes next double.
+    /// </summary>
+    /// <returns>The result of next double.</returns>
     public double NextDouble() => _value;
 
+    /// <summary>
+    /// Executes next int.
+    /// </summary>
+    /// <param name="min">The min.</param>
+    /// <param name="max">The max.</param>
+    /// <returns>The result of next int.</returns>
     public int NextInt(int min, int max) => min;
 }
 
@@ -121,8 +151,18 @@ public class FixedRNG : IRandomNumberProvider
 /// </summary>
 public sealed class ThrowingRNG : IRandomNumberProvider
 {
+    /// <summary>
+    /// Executes next double.
+    /// </summary>
+    /// <returns>The result of next double.</returns>
     public double NextDouble() => throw new InvalidOperationException("Unexpected random roll.");
 
+    /// <summary>
+    /// Executes next int.
+    /// </summary>
+    /// <param name="min">The min.</param>
+    /// <param name="max">The max.</param>
+    /// <returns>The result of next int.</returns>
     public int NextInt(int min, int max) =>
         throw new InvalidOperationException("Unexpected random roll.");
 }
@@ -132,8 +172,18 @@ public sealed class ThrowingRNG : IRandomNumberProvider
 /// </summary>
 public sealed class MaximumRNG : IRandomNumberProvider
 {
+    /// <summary>
+    /// Executes next double.
+    /// </summary>
+    /// <returns>The result of next double.</returns>
     public double NextDouble() => 0.99;
 
+    /// <summary>
+    /// Executes next int.
+    /// </summary>
+    /// <param name="min">The min.</param>
+    /// <param name="max">The max.</param>
+    /// <returns>The result of next int.</returns>
     public int NextInt(int min, int max) => max > min ? max - 1 : min;
 }
 
@@ -145,13 +195,27 @@ public class QueueRNG : IRandomNumberProvider
 {
     private Queue<double> _values;
 
+    /// <summary>
+    /// Initializes a new instance of the QueueRNG class.
+    /// </summary>
+    /// <param name="values">The values.</param>
     public QueueRNG(params double[] values)
     {
         _values = new Queue<double>(values);
     }
 
+    /// <summary>
+    /// Executes next double.
+    /// </summary>
+    /// <returns>The result of next double.</returns>
     public double NextDouble() => _values.Count > 0 ? _values.Dequeue() : 0.5;
 
+    /// <summary>
+    /// Executes next int.
+    /// </summary>
+    /// <param name="min">The min.</param>
+    /// <param name="max">The max.</param>
+    /// <returns>The result of next int.</returns>
     public int NextInt(int min, int max) => (int)(NextDouble() * (max - min)) + min;
 }
 
@@ -177,6 +241,8 @@ public class StubMission : Mission
     /// Full constructor — use when the mission is attached to a planet in the scene graph.
     /// Runs for exactly 1 tick and always succeeds.
     /// </summary>
+    /// <param name="ownerInstanceId">The owner instance id.</param>
+    /// <param name="locationInstanceId">The location instance id.</param>
     public StubMission(string ownerInstanceId, string locationInstanceId)
         : base(
             "Stub",
@@ -187,12 +253,24 @@ public class StubMission : Mission
             OfficerRating.Diplomacy
         ) { }
 
+    /// <summary>
+    /// Executes on success.
+    /// </summary>
+    /// <param name="game">The game.</param>
+    /// <param name="provider">The provider.</param>
+    /// <param name="successfulParticipant">The successful participant.</param>
+    /// <returns>The result of on success.</returns>
     protected override List<GameResult> OnSuccess(
         GameRoot game,
         IRandomNumberProvider provider,
         IMissionParticipant successfulParticipant
     ) => new List<GameResult>();
 
+    /// <summary>
+    /// Checks whether the repeat after completion condition is met.
+    /// </summary>
+    /// <param name="game">The game.</param>
+    /// <returns>True when the repeat after completion condition is met; otherwise false.</returns>
     public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
 }
 
@@ -204,8 +282,18 @@ public class CyclingRNG : IRandomNumberProvider
 {
     private int _counter;
 
+    /// <summary>
+    /// Executes next double.
+    /// </summary>
+    /// <returns>The result of next double.</returns>
     public double NextDouble() => 0.5;
 
+    /// <summary>
+    /// Executes next int.
+    /// </summary>
+    /// <param name="min">The min.</param>
+    /// <param name="max">The max.</param>
+    /// <returns>The result of next int.</returns>
     public int NextInt(int min, int max)
     {
         int range = max - min;
@@ -226,14 +314,29 @@ public class SequenceRNG : IRandomNumberProvider
     private readonly Queue<int> _ints;
     private readonly Queue<double> _doubles;
 
+    /// <summary>
+    /// Initializes a new instance of the SequenceRNG class.
+    /// </summary>
+    /// <param name="intValues">The int values.</param>
+    /// <param name="doubleValues">The double values.</param>
     public SequenceRNG(int[] intValues = null, double[] doubleValues = null)
     {
         _ints = new Queue<int>(intValues ?? new int[0]);
         _doubles = new Queue<double>(doubleValues ?? new double[0]);
     }
 
+    /// <summary>
+    /// Executes next double.
+    /// </summary>
+    /// <returns>The result of next double.</returns>
     public double NextDouble() => _doubles.Count > 0 ? _doubles.Dequeue() : 0.0;
 
+    /// <summary>
+    /// Executes next int.
+    /// </summary>
+    /// <param name="min">The min.</param>
+    /// <param name="max">The max.</param>
+    /// <returns>The result of next int.</returns>
     public int NextInt(int min, int max) =>
         _ints.Count > 0 ? System.Math.Max(min, System.Math.Min(max - 1, _ints.Dequeue())) : min;
 }
@@ -246,13 +349,27 @@ public class FixedRandomProvider : IRandomNumberProvider
     private readonly double[] _values;
     private int _index;
 
+    /// <summary>
+    /// Initializes a new instance of the FixedRandomProvider class.
+    /// </summary>
+    /// <param name="values">The values.</param>
     public FixedRandomProvider(double[] values)
     {
         _values = values;
     }
 
+    /// <summary>
+    /// Executes next double.
+    /// </summary>
+    /// <returns>The result of next double.</returns>
     public double NextDouble() => _values[_index++ % _values.Length];
 
+    /// <summary>
+    /// Executes next int.
+    /// </summary>
+    /// <param name="min">The min.</param>
+    /// <param name="max">The max.</param>
+    /// <returns>The result of next int.</returns>
     public int NextInt(int min, int max) => (int)(NextDouble() * (max - min)) + min;
 }
 
@@ -261,6 +378,10 @@ public static class TestConfig
     private static string SchemaPath =>
         Path.Combine(TestContent.Pack.ContentRootPath, "Application", "Schemas", "game-config.xsd");
 
+    /// <summary>
+    /// Creates the requested operation.
+    /// </summary>
+    /// <returns>The created value.</returns>
     public static GameConfig Create()
     {
         return ContentPackLoader.LoadGameConfig(
@@ -270,11 +391,19 @@ public static class TestConfig
         );
     }
 
+    /// <summary>
+    /// Creates with schema.
+    /// </summary>
+    /// <returns>The created with schema.</returns>
     public static GameConfig CreateWithSchema()
     {
         return Create();
     }
 
+    /// <summary>
+    /// Deserializes with schema.
+    /// </summary>
+    /// <param name="xml">The xml.</param>
     public static void DeserializeWithSchema(string xml)
     {
         GameSerializerSettings settings = BuildSchemaSettings();
@@ -283,6 +412,10 @@ public static class TestConfig
         serializer.Deserialize(reader);
     }
 
+    /// <summary>
+    /// Builds schema settings.
+    /// </summary>
+    /// <returns>The constructed schema settings.</returns>
     private static GameSerializerSettings BuildSchemaSettings()
     {
         XmlSchemaSet schemas = new XmlSchemaSet();
@@ -299,6 +432,9 @@ public static class TestGameData
     /// <summary>
     /// Creates a synthetic catalog around the supplied configuration and message definitions.
     /// </summary>
+    /// <param name="config">The config.</param>
+    /// <param name="messageDefinitions">The message definitions.</param>
+    /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
         MessageDefinition[] messageDefinitions = null
@@ -325,6 +461,13 @@ public static class TestGameData
 
 public static class MapPositionTestHelper
 {
+    /// <summary>
+    /// Executes with map position.
+    /// </summary>
+    /// <param name="planet">The planet.</param>
+    /// <param name="x">The x.</param>
+    /// <param name="y">The y.</param>
+    /// <returns>The result of with map position.</returns>
     public static Planet WithMapPosition(this Planet planet, int x, int y)
     {
         planet.PositionX = x;
@@ -332,6 +475,13 @@ public static class MapPositionTestHelper
         return planet;
     }
 
+    /// <summary>
+    /// Executes with map position.
+    /// </summary>
+    /// <param name="planetSector">The planet sector.</param>
+    /// <param name="x">The x.</param>
+    /// <param name="y">The y.</param>
+    /// <returns>The result of with map position.</returns>
     public static PlanetSector WithMapPosition(this PlanetSector planetSector, int x, int y)
     {
         planetSector.PositionX = x;
@@ -342,6 +492,11 @@ public static class MapPositionTestHelper
 
 public static class MissionSceneBuilder
 {
+    /// <summary>
+    /// Builds the requested operation.
+    /// </summary>
+    /// <param name="config">The config.</param>
+    /// <returns>The constructed value.</returns>
     public static (
         GameRoot game,
         Planet empirePlanet,
@@ -397,6 +552,11 @@ public static class MissionSceneBuilder
         return (game, empirePlanet, enemyPlanet, officer, fog);
     }
 
+    /// <summary>
+    /// Executes run to success.
+    /// </summary>
+    /// <param name="mission">The mission.</param>
+    /// <param name="game">The game.</param>
     public static void RunToSuccess(Mission mission, GameRoot game)
     {
         while (!mission.IsComplete())
@@ -439,6 +599,19 @@ public static class TestSystems
 
 public static class MissionTestFactory
 {
+    /// <summary>
+    /// Attempts create.
+    /// </summary>
+    /// <param name="missionTypeId">The mission type id.</param>
+    /// <param name="game">The game.</param>
+    /// <param name="ownerInstanceId">The owner instance id.</param>
+    /// <param name="target">The target.</param>
+    /// <param name="mainParticipants">The main participants.</param>
+    /// <param name="decoyParticipants">The decoy participants.</param>
+    /// <param name="selectedTarget">The selected target.</param>
+    /// <param name="targetOfficer">The target officer.</param>
+    /// <param name="discipline">The discipline.</param>
+    /// <returns>The result of try create.</returns>
     public static Mission TryCreate(
         string missionTypeId,
         GameRoot game,
@@ -491,6 +664,12 @@ public static class MissionTestFactory
 /// </summary>
 public static class EntityFactory
 {
+    /// <summary>
+    /// Creates officer.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="factionId">The faction id.</param>
+    /// <returns>The created officer.</returns>
     public static Officer CreateOfficer(string id, string factionId)
     {
         return new Officer
@@ -508,6 +687,12 @@ public static class EntityFactory
         };
     }
 
+    /// <summary>
+    /// Creates fleet.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="factionId">The faction id.</param>
+    /// <returns>The created fleet.</returns>
     public static Fleet CreateFleet(string id, string factionId)
     {
         return new Fleet
@@ -518,6 +703,12 @@ public static class EntityFactory
         };
     }
 
+    /// <summary>
+    /// Creates regiment.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="factionId">The faction id.</param>
+    /// <returns>The created regiment.</returns>
     public static Regiment CreateRegiment(string id, string factionId)
     {
         return new Regiment
@@ -528,6 +719,12 @@ public static class EntityFactory
         };
     }
 
+    /// <summary>
+    /// Creates building.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="factionId">The faction id.</param>
+    /// <returns>The created building.</returns>
     public static Building CreateBuilding(string id, string factionId)
     {
         return new Building
@@ -538,6 +735,12 @@ public static class EntityFactory
         };
     }
 
+    /// <summary>
+    /// Creates starfighter.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="factionId">The faction id.</param>
+    /// <returns>The created starfighter.</returns>
     public static Starfighter CreateStarfighter(string id, string factionId)
     {
         return new Starfighter
@@ -548,6 +751,13 @@ public static class EntityFactory
         };
     }
 
+    /// <summary>
+    /// Creates mission.
+    /// </summary>
+    /// <param name="id">The id.</param>
+    /// <param name="ownerInstanceId">The owner instance id.</param>
+    /// <param name="locationInstanceId">The location instance id.</param>
+    /// <returns>The created mission.</returns>
     public static StubMission CreateMission(
         string id,
         string ownerInstanceId,
@@ -565,6 +775,10 @@ public static class EntityFactory
 /// </summary>
 public static class GenerationContextFactory
 {
+    /// <summary>
+    /// Creates default.
+    /// </summary>
+    /// <returns>The created default.</returns>
     public static GenerationContext CreateDefault()
     {
         return new GenerationContext

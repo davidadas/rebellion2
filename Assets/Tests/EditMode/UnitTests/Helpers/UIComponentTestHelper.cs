@@ -6,6 +6,11 @@ using UnityEngine;
 
 public static class UIComponentTestHelper
 {
+    /// <summary>
+    /// Executes instantiate prefab.
+    /// </summary>
+    /// <param name="prefabPath">The prefab path.</param>
+    /// <returns>The result of instantiate prefab.</returns>
     public static GameObject InstantiatePrefab(string prefabPath)
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
@@ -15,6 +20,12 @@ public static class UIComponentTestHelper
         return UnityEngine.Object.Instantiate(prefab);
     }
 
+    /// <summary>
+    /// Executes instantiate prefab component.
+    /// </summary>
+    /// <param name="prefabPath">The prefab path.</param>
+    /// <typeparam name="T">The t type.</typeparam>
+    /// <returns>The result of instantiate prefab component.</returns>
     public static T InstantiatePrefabComponent<T>(string prefabPath)
         where T : Component
     {
@@ -28,6 +39,11 @@ public static class UIComponentTestHelper
         return UnityEngine.Object.Instantiate(component);
     }
 
+    /// <summary>
+    /// Executes invoke lifecycle.
+    /// </summary>
+    /// <param name="component">The component.</param>
+    /// <param name="methodName">The method name.</param>
     public static void InvokeLifecycle(Component component, string methodName)
     {
         if (component == null)

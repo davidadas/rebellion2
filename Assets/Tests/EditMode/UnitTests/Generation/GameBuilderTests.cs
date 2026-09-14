@@ -22,11 +22,18 @@ namespace Rebellion.Tests.Generation
         private readonly GameSize _size;
         private GameRoot _game;
 
+        /// <summary>
+        /// Initializes a new instance of the GameBuilderTests class.
+        /// </summary>
+        /// <param name="size">The size.</param>
         public GameBuilderTests(GameSize size)
         {
             _size = size;
         }
 
+        /// <summary>
+        /// Executes one time set up.
+        /// </summary>
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
@@ -43,6 +50,9 @@ namespace Rebellion.Tests.Generation
             _game = builder.Build();
         }
 
+        /// <summary>
+        /// Verifies build valid config sets consistent owners.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_SetsConsistentOwners()
         {
@@ -66,6 +76,9 @@ namespace Rebellion.Tests.Generation
             });
         }
 
+        /// <summary>
+        /// Verifies build valid config sets child parent relationships.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_SetsChildParentRelationships()
         {
@@ -84,6 +97,9 @@ namespace Rebellion.Tests.Generation
             });
         }
 
+        /// <summary>
+        /// Verifies build valid config sets game summary.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_SetsGameSummary()
         {
@@ -116,6 +132,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies build valid config sets factions.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_CreatesOnePlayerPerFaction()
         {
@@ -132,6 +151,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies that building a valid game assigns its factions.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_SetsFactions()
         {
@@ -144,6 +166,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies build valid config sets faction research catalog.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_SetsFactionResearchCatalog()
         {
@@ -166,6 +191,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies build after rebuild technologies survive.
+        /// </summary>
         [Test]
         public void Build_AfterRebuild_TechnologiesSurvive()
         {
@@ -205,6 +233,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies build rebuild technologies includes all manufacturing types.
+        /// </summary>
         [Test]
         public void Build_RebuildTechnologies_IncludesAllManufacturingTypes()
         {
@@ -236,6 +267,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies build valid config sets h qs.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_SetsHQs()
         {
@@ -258,6 +292,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies build valid config assigns factions planets.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_AssignsFactionsPlanets()
         {
@@ -285,6 +322,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies build colonized planets do not exceed energy capacity.
+        /// </summary>
         [Test]
         public void Build_ColonizedPlanets_DoNotExceedEnergyCapacity()
         {
@@ -301,6 +341,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies build each faction owns at least one construction facility.
+        /// </summary>
         [Test]
         public void Build_EachFaction_OwnsAtLeastOneConstructionFacility()
         {
@@ -322,6 +365,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies build valid config deploys officers.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_DeploysOfficers()
         {
@@ -338,6 +384,9 @@ namespace Rebellion.Tests.Generation
             Assert.GreaterOrEqual(officers.Count, 2, "Game should have at least two officers.");
         }
 
+        /// <summary>
+        /// Verifies build valid config initializes officer skills.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_InitializesOfficerSkills()
         {
@@ -354,6 +403,9 @@ namespace Rebellion.Tests.Generation
             });
         }
 
+        /// <summary>
+        /// Verifies build valid config deploys fleets.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_DeploysFleets()
         {
@@ -384,6 +436,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies build valid config deploys max one fleet per planet.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_DeploysMaxOneFleetPerPlanet()
         {
@@ -400,6 +455,9 @@ namespace Rebellion.Tests.Generation
             });
         }
 
+        /// <summary>
+        /// Verifies build valid config deploys capital ships.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_DeploysCapitalShips()
         {
@@ -417,6 +475,9 @@ namespace Rebellion.Tests.Generation
             });
         }
 
+        /// <summary>
+        /// Verifies build valid config sets game events.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_SetsGameEvents()
         {
@@ -427,6 +488,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies build fog of war cores have initial resource snapshots for non owners.
+        /// </summary>
         [Test]
         public void Build_FogOfWar_CoresHaveInitialResourceSnapshotsForNonOwners()
         {
@@ -473,6 +537,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies build fog of war outer rim planets start unexplored.
+        /// </summary>
         [Test]
         public void Build_FogOfWar_OuterRimPlanetsStartUnexplored()
         {
@@ -534,6 +601,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies build fog of war outer rim owner can see own planet.
+        /// </summary>
         [Test]
         public void Build_FogOfWar_OuterRimOwnerCanSeeOwnPlanet()
         {
@@ -563,6 +633,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies build fog of war outer rim enemy planet not visible.
+        /// </summary>
         [Test]
         public void Build_FogOfWar_OuterRimEnemyPlanetNotVisible()
         {

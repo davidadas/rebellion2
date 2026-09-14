@@ -11,6 +11,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private Texture2D _firstTexture;
         private Texture2D _secondTexture;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -18,6 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _secondTexture = new Texture2D(1, 1);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -25,6 +31,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             UnityEngine.Object.DestroyImmediate(_secondTexture);
         }
 
+        /// <summary>
+        /// Verifies ordered tabs default catalog returns authored immutable order.
+        /// </summary>
         [Test]
         public void OrderedTabs_DefaultCatalog_ReturnsAuthoredImmutableOrder()
         {
@@ -45,6 +54,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies fleet list row render data null name normalizes to empty string.
+        /// </summary>
         [Test]
         public void FleetListRowRenderData_NullName_NormalizesToEmptyString()
         {
@@ -62,6 +74,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(string.Empty, data.Name);
         }
 
+        /// <summary>
+        /// Verifies constructor null required collection throws argument null exception.
+        /// </summary>
+        /// <param name="index">The index.</param>
         [TestCase(0)]
         [TestCase(1)]
         [TestCase(2)]
@@ -77,6 +93,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.Throws<ArgumentNullException>(() => CreateRenderData(rows, tabs, items));
         }
 
+        /// <summary>
+        /// Verifies constructor source collections change preserves complete normalized snapshot.
+        /// </summary>
         [Test]
         public void Constructor_SourceCollectionsChange_PreservesCompleteNormalizedSnapshot()
         {
@@ -155,6 +174,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Creates render data.
+        /// </summary>
+        /// <param name="rows">The rows.</param>
+        /// <param name="tabs">The tabs.</param>
+        /// <param name="items">The items.</param>
+        /// <returns>The created render data.</returns>
         private FleetWindowRenderData CreateRenderData(
             IReadOnlyList<FleetListRowRenderData> rows,
             IReadOnlyList<FleetWindowTabRenderData> tabs,
@@ -187,6 +213,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Creates unit card.
+        /// </summary>
+        /// <returns>The created unit card.</returns>
         private StrategyUnitCardRenderData CreateUnitCard()
         {
             return new StrategyUnitCardRenderData(

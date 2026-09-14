@@ -591,6 +591,7 @@ namespace Rebellion.Game.Factions
         /// <summary>
         /// Returns all owned entities that implement IManufacturable.
         /// </summary>
+        /// <returns>The requested all owned manufacturables.</returns>
         public List<IManufacturable> GetAllOwnedManufacturables()
         {
             return _ownedEntities
@@ -731,6 +732,9 @@ namespace Rebellion.Game.Factions
         /// Returns a detached fleet — caller must attach to scene graph via game.AttachNode().
         /// Capital ships must be detached (no parent) before passing in.
         /// </summary>
+        /// <param name="capitalShips">The capital ships.</param>
+        /// <param name="roleType">The role type.</param>
+        /// <returns>The created fleet.</returns>
         public Fleet CreateFleet(
             CapitalShip[] capitalShips = null,
             FleetRoleType roleType = FleetRoleType.None
@@ -919,6 +923,8 @@ namespace Rebellion.Game.Factions
         /// <summary>
         /// Maps a manufacturable template to its faction research queue.
         /// </summary>
+        /// <param name="template">The template.</param>
+        /// <returns>The requested research queue type.</returns>
         private static ManufacturingType GetResearchQueueType(IManufacturable template)
         {
             return template switch

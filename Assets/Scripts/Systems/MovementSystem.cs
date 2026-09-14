@@ -122,6 +122,8 @@ namespace Rebellion.Systems
         /// Accepts event-authored movement requests, tries their destinations in authored order,
         /// and submits the complete unit group through normal movement validation and transit.
         /// </summary>
+        /// <param name="requests">The requests.</param>
+        /// <returns>The result of handle requests.</returns>
         List<GameResult> IGameRequestHandler<UnitMovementRequest>.HandleRequests(
             IReadOnlyList<UnitMovementRequest> requests
         )
@@ -181,6 +183,11 @@ namespace Rebellion.Systems
             return false;
         }
 
+        /// <summary>
+        /// Handles requests.
+        /// </summary>
+        /// <param name="requests">The requests.</param>
+        /// <returns>The result of handle requests.</returns>
         List<GameResult> IGameRequestHandler<UnitPlacementRequest>.HandleRequests(
             IReadOnlyList<UnitPlacementRequest> requests
         )
@@ -296,6 +303,7 @@ namespace Rebellion.Systems
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The movement destination.</param>
         /// <param name="sourceEventInstanceID">The originating event identifier.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         private bool TryRequestMove(
             IMovable unit,
             ContainerNode destination,

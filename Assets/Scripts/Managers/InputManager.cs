@@ -129,6 +129,7 @@ public sealed class InputManager : MonoBehaviour
     /// <summary>
     /// Creates the generated actions and selects the native desktop shortcut modifier.
     /// </summary>
+    /// <returns>The configured player input actions.</returns>
     private static PlayerInputActions CreateActions()
     {
         PlayerInputActions actions = new PlayerInputActions();
@@ -143,6 +144,7 @@ public sealed class InputManager : MonoBehaviour
     /// Prevents persisted rebinding data from replacing the fixed Escape and Shift+Escape
     /// navigation shortcuts.
     /// </summary>
+    /// <param name="asset">The asset.</param>
     private static void RemoveReservedShortcutOverrides(InputActionAsset asset)
     {
         RemovePrimaryShortcutOverride(asset.FindAction("Global/CancelOrSettings", true));
@@ -153,6 +155,7 @@ public sealed class InputManager : MonoBehaviour
     /// Removes overrides from one action's authored primary binding, including every part of
     /// its optional composite chord.
     /// </summary>
+    /// <param name="action">The action.</param>
     private static void RemovePrimaryShortcutOverride(InputAction action)
     {
         bool insidePrimaryChord = false;

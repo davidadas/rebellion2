@@ -7,6 +7,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
     [TestFixture]
     public class StrategyOverlayRenderDataTests
     {
+        /// <summary>
+        /// Verifies constructor texture without bounds throws argument exception.
+        /// </summary>
         [Test]
         public void Constructor_TextureWithoutBounds_ThrowsArgumentException()
         {
@@ -19,6 +22,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             UnityEngine.Object.DestroyImmediate(texture);
         }
 
+        /// <summary>
+        /// Verifies constructor bounds without texture throws argument exception.
+        /// </summary>
         [Test]
         public void Constructor_BoundsWithoutTexture_ThrowsArgumentException()
         {
@@ -27,6 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             );
         }
 
+        /// <summary>
+        /// Verifies constructor multiple drag images stores preview and pointer position.
+        /// </summary>
         [Test]
         public void Constructor_MultipleDragImages_StoresPreviewAndPointerPosition()
         {

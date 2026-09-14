@@ -17,6 +17,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
         private GameRoot _game;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -25,6 +28,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _game.GetFactions().Add(new Faction { InstanceID = _opponentFactionId });
         }
 
+        /// <summary>
+        /// Verifies evaluate missing input returns lowest unowned marker.
+        /// </summary>
+        /// <param name="missingPlanet">Whether missing planet.</param>
         [TestCase(true)]
         [TestCase(false)]
         public void Evaluate_MissingInput_ReturnsLowestUnownedMarker(bool missingPlanet)
@@ -44,6 +51,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate popular support maps configured threshold boundaries.
+        /// </summary>
+        /// <param name="support">The support.</param>
+        /// <param name="expectedIndex">The expected index.</param>
         [TestCase(0, 0)]
         [TestCase(1, 1)]
         [TestCase(2, 2)]
@@ -72,6 +84,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate scalar mode with one matching value returns low marker.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
         [TestCase(GalacticInformationFilterMode.Uprisings)]
         [TestCase(GalacticInformationFilterMode.AvailableEnergy)]
         [TestCase(GalacticInformationFilterMode.AvailableRawMaterial)]
@@ -105,6 +121,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate idle manufacturing player owned empty queue returns low marker.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="type">The type.</param>
         [TestCase(GalacticInformationFilterMode.IdleShipyards, ManufacturingType.Ship)]
         [TestCase(GalacticInformationFilterMode.IdleTrainingFacilities, ManufacturingType.Troop)]
         [TestCase(GalacticInformationFilterMode.IdleConstructionYards, ManufacturingType.Building)]
@@ -126,6 +147,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, marker.Index);
         }
 
+        /// <summary>
+        /// Verifies evaluate idle manufacturing foreign owner or queued work returns lowest marker.
+        /// </summary>
         [Test]
         public void Evaluate_IdleManufacturing_ForeignOwnerOrQueuedWorkReturnsLowestMarker()
         {
@@ -158,6 +182,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, busy.Index);
         }
 
+        /// <summary>
+        /// Verifies evaluate active units excludes building and moving entities.
+        /// </summary>
         [Test]
         public void Evaluate_ActiveUnits_ExcludesBuildingAndMovingEntities()
         {
@@ -189,6 +216,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, marker.Index);
         }
 
+        /// <summary>
+        /// Verifies evaluate idle fleets both factions returns highest mixed marker.
+        /// </summary>
         [Test]
         public void Evaluate_IdleFleets_BothFactionsReturnsHighestMixedMarker()
         {
@@ -208,6 +238,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsTrue(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate fleets enroute opposing fleets returns opponent intensity.
+        /// </summary>
         [Test]
         public void Evaluate_FleetsEnroute_OpposingFleetsReturnsOpponentIntensity()
         {
@@ -228,6 +261,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate fleet waypoints player route returns player intensity.
+        /// </summary>
         [Test]
         public void Evaluate_FleetWaypoints_PlayerRouteReturnsPlayerIntensity()
         {
@@ -249,6 +285,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate faction count without matches returns planet owner at lowest intensity.
+        /// </summary>
         [Test]
         public void Evaluate_FactionCountWithoutMatches_ReturnsPlanetOwnerAtLowestIntensity()
         {
@@ -266,6 +305,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate idle personnel excludes unavailable personnel and incomplete forces.
+        /// </summary>
         [Test]
         public void Evaluate_IdlePersonnel_ExcludesUnavailablePersonnelAndIncompleteForces()
         {
@@ -309,6 +351,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(_playerFactionId, marker.FactionInstanceId);
         }
 
+        /// <summary>
+        /// Verifies evaluate active personnel counts non idle opposing personnel.
+        /// </summary>
         [Test]
         public void Evaluate_ActivePersonnel_CountsNonIdleOpposingPersonnel()
         {
@@ -332,6 +377,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate personnel carried by moving fleet counts as active.
+        /// </summary>
         [Test]
         public void Evaluate_PersonnelCarriedByMovingFleet_CountsAsActive()
         {
@@ -367,6 +415,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, activeMarker.Index);
         }
 
+        /// <summary>
+        /// Creates filter.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <returns>The created filter.</returns>
         private static GalacticInformationFilterTheme CreateFilter(
             GalacticInformationFilterMode mode = GalacticInformationFilterMode.PopularSupport
         )
@@ -380,11 +433,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="ownerId">The owner id.</param>
+        /// <returns>The created planet.</returns>
         private static Planet CreatePlanet(string ownerId)
         {
             return new Planet { OwnerInstanceID = ownerId };
         }
 
+        /// <summary>
+        /// Adds scalar value.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="mode">The mode.</param>
         private static void AddScalarValue(Planet planet, GalacticInformationFilterMode mode)
         {
             switch (mode)
@@ -435,6 +498,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             }
         }
 
+        /// <summary>
+        /// Creates building.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <returns>The created building.</returns>
         private static Building CreateBuilding(BuildingType type)
         {
             return new Building
@@ -444,6 +512,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
+        /// <summary>
+        /// Creates production facility.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <returns>The created production facility.</returns>
         private static Building CreateProductionFacility(ManufacturingType type)
         {
             return new Building
@@ -454,6 +527,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
+        /// <summary>
+        /// Creates unit shield generator.
+        /// </summary>
+        /// <returns>The created unit shield generator.</returns>
         private static Building CreateUnitShieldGenerator()
         {
             Building building = new Building
@@ -465,6 +542,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             return building;
         }
 
+        /// <summary>
+        /// Creates planetary shield generator.
+        /// </summary>
+        /// <returns>The created planetary shield generator.</returns>
         private static Building CreatePlanetaryShieldGenerator()
         {
             return new Building
@@ -475,6 +556,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
+        /// <summary>
+        /// Creates defense weapon.
+        /// </summary>
+        /// <returns>The created defense weapon.</returns>
         private static Building CreateDefenseWeapon()
         {
             return new Building
@@ -484,6 +569,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
+        /// <summary>
+        /// Creates fleet.
+        /// </summary>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="enroute">Whether enroute.</param>
+        /// <returns>The created fleet.</returns>
         private static GameFleet CreateFleet(string ownerId, bool enroute)
         {
             return new GameFleet

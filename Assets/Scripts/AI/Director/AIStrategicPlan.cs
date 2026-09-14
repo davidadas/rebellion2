@@ -76,6 +76,8 @@ namespace Rebellion.AI.Director
         /// Returns whether the fleet may leave without violating this turn's defense allocation.
         /// Fleets in hostile territory are never trapped by friendly-defense commitments.
         /// </summary>
+        /// <param name="fleet">The fleet.</param>
+        /// <returns>True when the fleet depart condition is met; otherwise false.</returns>
         public bool CanFleetDepart(Fleet fleet)
         {
             Planet planet = _context?.Assessment?.GetFleetPlanet(fleet);
@@ -133,6 +135,11 @@ namespace Rebellion.AI.Director
             internal bool HoldAllLocalFleets { get; }
             internal int RequiredStrength { get; }
 
+            /// <summary>
+            /// Initializes a new instance of the AIPlanetDefenseCommitment class.
+            /// </summary>
+            /// <param name="holdAllLocalFleets">Whether hold all local fleets.</param>
+            /// <param name="requiredStrength">The required strength.</param>
             internal AIPlanetDefenseCommitment(bool holdAllLocalFleets, int requiredStrength)
             {
                 HoldAllLocalFleets = holdAllLocalFleets;

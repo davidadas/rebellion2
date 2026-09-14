@@ -12,6 +12,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         private MessagesWindowSession _session;
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -25,12 +28,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             _session = new MessagesWindowSession(window);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies select tab with selected detail clears selection and detail.
+        /// </summary>
         [Test]
         public void SelectTab_WithSelectedDetail_ClearsSelectionAndDetail()
         {
@@ -50,6 +59,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
+        /// <summary>
+        /// Verifies select tab active tab still resets transient state.
+        /// </summary>
         [Test]
         public void SelectTab_ActiveTab_StillResetsTransientState()
         {
@@ -66,6 +78,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
+        /// <summary>
+        /// Verifies reconcile replacement with same id preserves selection identity.
+        /// </summary>
         [Test]
         public void Reconcile_ReplacementWithSameID_PreservesSelectionIdentity()
         {
@@ -86,6 +101,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreSame(replacement, _session.GetSelectedMessage());
         }
 
+        /// <summary>
+        /// Verifies reconcile empty messages clears selection and detail.
+        /// </summary>
         [Test]
         public void Reconcile_EmptyMessages_ClearsSelectionAndDetail()
         {
@@ -104,6 +122,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
+        /// <summary>
+        /// Verifies reconcile source changes preserves message snapshot.
+        /// </summary>
         [Test]
         public void Reconcile_SourceChanges_PreservesMessageSnapshot()
         {
@@ -119,6 +140,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreSame(second, _session.Messages[1]);
         }
 
+        /// <summary>
+        /// Verifies reconcile selected message removed while detail visible selects first message.
+        /// </summary>
         [Test]
         public void Reconcile_SelectedMessageRemovedWhileDetailVisible_SelectsFirstMessage()
         {
@@ -135,12 +159,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreSame(first, _session.GetSelectedMessage());
         }
 
+        /// <summary>
+        /// Verifies constructor null window throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullWindow_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new MessagesWindowSession(null));
         }
 
+        /// <summary>
+        /// Verifies constructor window returns initial all messages state.
+        /// </summary>
         [Test]
         public void Constructor_Window_ReturnsInitialAllMessagesState()
         {
@@ -152,6 +182,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
+        /// <summary>
+        /// Verifies select only message replaces selection and primary identity.
+        /// </summary>
         [Test]
         public void SelectOnly_Message_ReplacesSelectionAndPrimaryIdentity()
         {
@@ -170,6 +203,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Verifies select only null message clears selection.
+        /// </summary>
         [Test]
         public void SelectOnly_NullMessage_ClearsSelection()
         {
@@ -184,6 +220,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
+        /// <summary>
+        /// Verifies select all messages selects every stable identity and preserves primary.
+        /// </summary>
         [Test]
         public void SelectAll_Messages_SelectsEveryStableIdentityAndPreservesPrimary()
         {
@@ -204,6 +243,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Verifies clear selection selected messages clears primary and multi selection.
+        /// </summary>
         [Test]
         public void ClearSelection_SelectedMessages_ClearsPrimaryAndMultiSelection()
         {
@@ -220,6 +262,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
+        /// <summary>
+        /// Verifies move selection messages moves within source bounds.
+        /// </summary>
         [Test]
         public void MoveSelection_Messages_MovesWithinSourceBounds()
         {
@@ -239,6 +284,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(_session.MoveSelection(1));
         }
 
+        /// <summary>
+        /// Verifies move selection empty messages returns false.
+        /// </summary>
         [Test]
         public void MoveSelection_EmptyMessages_ReturnsFalse()
         {
@@ -248,6 +296,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsNull(_session.SelectedMessageId);
         }
 
+        /// <summary>
+        /// Verifies show and hide detail selection preserves selection and changes panel.
+        /// </summary>
         [Test]
         public void ShowAndHideDetail_Selection_PreservesSelectionAndChangesPanel()
         {
@@ -263,6 +314,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(message.InstanceID, _session.SelectedMessageId);
         }
 
+        /// <summary>
+        /// Creates message.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="title">The title.</param>
+        /// <returns>The created message.</returns>
         private static Message CreateMessage(string instanceId, string title)
         {
             return new StatusMessage(MessageType.Fleet, title) { InstanceID = instanceId };

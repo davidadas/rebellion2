@@ -134,6 +134,10 @@ namespace Rebellion.Util.Common
         /// <summary>
         /// Formats the log message with timestamp and log level.
         /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="level">The level.</param>
+        /// <typeparam name="T">The type of value being formatted for the log.</typeparam>
+        /// <returns>The formatted message.</returns>
         private static string FormatMessage<T>(T message, LogLevel level)
         {
             string timestamp = _includeTimestamp

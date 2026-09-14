@@ -35,6 +35,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -66,12 +69,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             _controller.Initialize(actions, actions);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null game provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullGameProvider_ThrowsArgumentNullException()
         {
@@ -90,6 +99,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies constructor null manufacturing system provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullManufacturingSystemProvider_ThrowsArgumentNullException()
         {
@@ -108,6 +120,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies initialize null actions throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullActions_ThrowsArgumentNullException()
         {
@@ -116,6 +131,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies bind window before initialize throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -128,6 +146,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
         }
 
+        /// <summary>
+        /// Verifies try initialize window null planet returns false.
+        /// </summary>
         [Test]
         public void TryInitializeWindow_NullPlanet_ReturnsFalse()
         {
@@ -143,6 +164,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Verifies open valid planet creates named window at resolved position.
+        /// </summary>
         [Test]
         public void Open_ValidPlanet_CreatesNamedWindowAtResolvedPosition()
         {
@@ -160,6 +184,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreSame(_planet, _controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Verifies open existing planet reuses window without additional invalidation.
+        /// </summary>
         [Test]
         public void Open_ExistingPlanet_ReusesWindowWithoutAdditionalInvalidation()
         {
@@ -174,6 +201,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies select target matching building selects inventory status and scrap target.
+        /// </summary>
         [Test]
         public void SelectTarget_MatchingBuilding_SelectsInventoryStatusAndScrapTarget()
         {
@@ -191,6 +221,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies try get construction destination i ds manufacturing tab returns planet fallback.
+        /// </summary>
         [Test]
         public void TryGetConstructionDestinationIDs_ManufacturingTab_ReturnsPlanetFallback()
         {
@@ -208,6 +241,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsNull(destinationItemId);
         }
 
+        /// <summary>
+        /// Verifies reconcile window fresh projection rebinds planet and selection by identity.
+        /// </summary>
         [Test]
         public void ReconcileWindow_FreshProjection_RebindsPlanetAndSelectionByIdentity()
         {
@@ -241,6 +277,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies clear selection selected building removes status and scrap targets.
+        /// </summary>
         [Test]
         public void ClearSelection_SelectedBuilding_RemovesStatusAndScrapTargets()
         {
@@ -253,6 +292,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsEmpty(_controller.GetScrapItems(view));
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected manufacturing reservation toggles selected lane.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ManufacturingReservation_TogglesSelectedLane()
         {
@@ -296,6 +338,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(_planet.Planet.IsManufacturingReserved(ManufacturingType.Troop));
         }
 
+        /// <summary>
+        /// Verifies view destroyed initialized session releases planet association.
+        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
@@ -306,6 +351,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private FacilityWindowController CreateController()
         {
             return new FacilityWindowController(
@@ -321,6 +370,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Creates construction controller.
+        /// </summary>
+        /// <returns>The created construction controller.</returns>
         private ConstructionWindowController CreateConstructionController()
         {
             return new ConstructionWindowController(
@@ -337,6 +390,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -345,6 +402,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             return game;
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The created planet.</returns>
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
             GalaxyPlanetSector sector = new GalaxyPlanetSector
@@ -364,6 +426,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             return new GalaxyMapPlanet(sector, planet, _playerFactionId);
         }
 
+        /// <summary>
+        /// Opens window.
+        /// </summary>
+        /// <param name="window">Receives the window.</param>
+        /// <returns>The result of open window.</returns>
         private FacilityWindowView OpenWindow(out UIWindow window)
         {
             window = _controller.Open(_planet, 20, 30, out bool _);
@@ -373,36 +440,78 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 
         private sealed class ConstructionActions : IConstructionWindowActions
         {
+            /// <summary>
+            /// Opens construction info.
+            /// </summary>
+            /// <param name="item">The item.</param>
             public void OpenConstructionInfo(ISceneNode item) { }
 
+            /// <summary>
+            /// Opens construction status.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenConstructionStatus(StrategyStatusTarget target) { }
 
+            /// <summary>
+            /// Refreshes after construction.
+            /// </summary>
             public void RefreshAfterConstruction() { }
         }
 
         private sealed class FacilityActions : IFacilityWindowActions, IStrategyConfirmationActions
         {
+            /// <summary>
+            /// Checks whether the retire condition is met.
+            /// </summary>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the retire condition is met; otherwise false.</returns>
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
 
+            /// <summary>
+            /// Opens facility status.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenFacilityStatus(StrategyStatusTarget target) { }
 
+            /// <summary>
+            /// Opens facility info.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenFacilityInfo(StrategyStatusTarget target) { }
 
+            /// <summary>
+            /// Opens scrap confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenScrapConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Opens stop construction confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenStopConstructionConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Opens retire confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenRetireConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Refreshes facility state.
+            /// </summary>
             public void RefreshFacilityState() { }
         }
     }

@@ -77,6 +77,9 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies save then load restores mission odds visibility from disk.
+        /// </summary>
         [Test]
         public void SaveThenLoad_RestoresMissionOddsVisibilityFromDisk()
         {
@@ -162,6 +165,7 @@ namespace Rebellion.Tests.Managers
         /// <summary>
         /// Creates a deterministic display manager that does not mutate the test runner display.
         /// </summary>
+        /// <returns>The created display manager.</returns>
         private static DisplayManager CreateDisplayManager()
         {
             return new DisplayManager(
@@ -174,6 +178,9 @@ namespace Rebellion.Tests.Managers
         /// <summary>
         /// Finds a top-level authored binding by name.
         /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The matching binding.</returns>
         private static int FindBinding(UnityEngine.InputSystem.InputAction action, string name)
         {
             for (int index = 0; index < action.bindings.Count; index++)

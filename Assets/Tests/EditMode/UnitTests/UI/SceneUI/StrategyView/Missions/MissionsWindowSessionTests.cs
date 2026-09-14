@@ -20,6 +20,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private UIWindow _window;
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -38,12 +41,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _galaxyMapPlanet = new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor missing required input throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_MissingRequiredInput_ThrowsArgumentNullException()
         {
@@ -53,6 +62,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies constructor missions selects first mission and agent role.
+        /// </summary>
         [Test]
         public void Constructor_Missions_SelectsFirstMissionAndAgentRole()
         {
@@ -71,6 +83,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(session.ContextParticipant);
         }
 
+        /// <summary>
+        /// Verifies constructor empty mission list returns no selection.
+        /// </summary>
         [Test]
         public void Constructor_EmptyMissionList_ReturnsNoSelection()
         {
@@ -83,6 +98,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(session.ActiveParticipants);
         }
 
+        /// <summary>
+        /// Verifies select mission valid mission updates selection and clears participant context.
+        /// </summary>
         [Test]
         public void SelectMission_ValidMission_UpdatesSelectionAndClearsParticipantContext()
         {
@@ -101,6 +119,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(session.GetMission(2));
         }
 
+        /// <summary>
+        /// Verifies select mission uninitialized identifier generates identity and selects mission.
+        /// </summary>
         [Test]
         public void SelectMission_UninitializedIdentifier_GeneratesIdentityAndSelectsMission()
         {
@@ -114,6 +135,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_secondMission, session.SelectedMission);
         }
 
+        /// <summary>
+        /// Verifies select target valid mission updates mission and participant role.
+        /// </summary>
         [Test]
         public void SelectTarget_ValidMission_UpdatesMissionAndParticipantRole()
         {
@@ -130,6 +154,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies select role different role clears participant context.
+        /// </summary>
         [Test]
         public void SelectRole_DifferentRole_ClearsParticipantContext()
         {
@@ -146,6 +173,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(session.ContextParticipant);
         }
 
+        /// <summary>
+        /// Verifies capture participant valid index tracks participant by identifier.
+        /// </summary>
         [Test]
         public void CaptureParticipant_ValidIndex_TracksParticipantByIdentifier()
         {
@@ -165,6 +195,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(session.IsParticipantIndexValid(5));
         }
 
+        /// <summary>
+        /// Verifies capture participant invalid index clears participant context.
+        /// </summary>
         [Test]
         public void CaptureParticipant_InvalidIndex_ClearsParticipantContext()
         {
@@ -177,6 +210,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(session.ContextParticipant);
         }
 
+        /// <summary>
+        /// Verifies reconcile selection reordered missions preserves selected mission identity.
+        /// </summary>
         [Test]
         public void ReconcileSelection_ReorderedMissions_PreservesSelectedMissionIdentity()
         {
@@ -193,6 +229,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_secondMission, session.SelectedMission);
         }
 
+        /// <summary>
+        /// Verifies reconcile selection removed mission selects nearest fallback.
+        /// </summary>
         [Test]
         public void ReconcileSelection_RemovedMission_SelectsNearestFallback()
         {
@@ -206,6 +245,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_firstMission, session.SelectedMission);
         }
 
+        /// <summary>
+        /// Verifies rebind planet refreshed projection preserves mission selection.
+        /// </summary>
         [Test]
         public void RebindPlanet_RefreshedProjection_PreservesMissionSelection()
         {
@@ -229,6 +271,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentNullException>(() => session.RebindPlanet(null));
         }
 
+        /// <summary>
+        /// Creates mission.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created mission.</returns>
         private static TestMission CreateMission(string instanceId, string displayName)
         {
             TestMission mission = new TestMission
@@ -244,6 +292,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             return mission;
         }
 
+        /// <summary>
+        /// Creates session.
+        /// </summary>
+        /// <returns>The created session.</returns>
         private MissionsWindowSession CreateSession()
         {
             return new MissionsWindowSession(_galaxyMapPlanet, _window);
@@ -256,6 +308,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             protected override Rebellion.SceneGraph.BaseSceneNode CreateNodeCopy() =>
                 new TestMission();
 
+            /// <summary>
+            /// Checks whether the repeat after completion condition is met.
+            /// </summary>
+            /// <param name="game">The game.</param>
+            /// <returns>True when the repeat after completion condition is met; otherwise false.</returns>
             public override bool ShouldRepeatAfterCompletion(GameRoot game)
             {
                 return false;

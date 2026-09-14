@@ -827,6 +827,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <summary>
         /// Reads a private authored reference from the view under test.
         /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -835,6 +838,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     .GetValue(_view);
         }
 
+        /// <summary>
+        /// Gets private field.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested private field.</returns>
         private static T GetPrivateField<T>(object target, string fieldName)
         {
             return (T)
@@ -844,6 +854,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     .GetValue(target);
         }
 
+        /// <summary>
+        /// Sets field.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <param name="fieldName">The field name.</param>
+        /// <param name="value">The value.</param>
         private static void SetField(object target, string fieldName, object value)
         {
             target
@@ -855,6 +871,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <summary>
         /// Creates minimal render state for save-list presentation tests.
         /// </summary>
+        /// <param name="saveSlots">The save slots.</param>
+        /// <returns>The created render data.</returns>
         private static OptionsMenuRenderData CreateRenderData(params OptionsSaveSlot[] saveSlots)
         {
             return CreateRenderDataForTab(OptionsMenuTab.SaveLoad, saveSlots);
@@ -863,6 +881,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <summary>
         /// Creates minimal render state for a selected Options menu page.
         /// </summary>
+        /// <param name="activeTab">The active tab.</param>
+        /// <param name="saveSlots">The save slots.</param>
+        /// <param name="bindings">The bindings.</param>
+        /// <param name="mods">The mods.</param>
+        /// <param name="contentPackLabel">The content pack label.</param>
+        /// <returns>The created render data for tab.</returns>
         private static OptionsMenuRenderData CreateRenderDataForTab(
             OptionsMenuTab activeTab,
             OptionsSaveSlot[] saveSlots = null,

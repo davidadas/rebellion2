@@ -121,6 +121,9 @@ namespace Rebellion.Tests.Managers
         /// <summary>
         /// Creates a display manager over deterministic test modes.
         /// </summary>
+        /// <param name="modes">The modes.</param>
+        /// <param name="native">The native.</param>
+        /// <returns>The created manager.</returns>
         private static DisplayManager CreateManager(
             IReadOnlyList<Vector2Int> modes,
             Vector2Int? native = null

@@ -8,6 +8,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
     [TestFixture]
     public class StrategyAdvisorViewDataTests
     {
+        /// <summary>
+        /// Verifies animation data null frames uses empty snapshot.
+        /// </summary>
         [Test]
         public void AnimationData_NullFrames_UsesEmptySnapshot()
         {
@@ -26,6 +29,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(0f, data.MinimumPlaybackSeconds);
         }
 
+        /// <summary>
+        /// Verifies animation data source frames copies into read only snapshot.
+        /// </summary>
         [Test]
         public void AnimationData_SourceFrames_CopiesIntoReadOnlySnapshot()
         {

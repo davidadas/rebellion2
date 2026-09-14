@@ -307,6 +307,9 @@ namespace Rebellion.AI.Scoring
         /// <summary>
         /// Penalizes risking an officer on hostile work that unlocked special forces can perform.
         /// </summary>
+        /// <param name="context">The context.</param>
+        /// <param name="proposal">The proposal.</param>
+        /// <returns>The requested officer replacement penalty.</returns>
         private static int GetOfficerReplacementPenalty(
             AITurnContext context,
             AIMissionProposal proposal

@@ -214,6 +214,7 @@ public static class MainMenuPrefabBuilder
     /// <summary>
     /// Authors the event system required by the self-contained Main Menu root.
     /// </summary>
+    /// <param name="root">The root.</param>
     private static void BuildEventSystem(GameObject root)
     {
         GameObject eventSystem = NewChild("EventSystem", root.transform);
@@ -526,6 +527,7 @@ public static class MainMenuPrefabBuilder
     /// <summary>
     /// Authors the shared modal exit confirmation.
     /// </summary>
+    /// <param name="parent">The parent.</param>
     private static void BuildExitConfirmationDialog(Transform parent)
     {
         ConfirmationDialogView dialog = CommonUIPrefabBuilder.InstantiateConfirmationDialog(parent);
@@ -2257,6 +2259,22 @@ public static class MainMenuPrefabBuilder
         // Adds a short-range point light beneath icons that need extra underside detail.
         public readonly float UnderLightIntensity;
 
+        /// <summary>
+        /// Initializes a new instance of the Face class.
+        /// </summary>
+        /// <param name="factionId">The faction id.</param>
+        /// <param name="modelPath">The model path.</param>
+        /// <param name="renderTexturePath">The render texture path.</param>
+        /// <param name="buttonName">The button name.</param>
+        /// <param name="spinDirection">The spin direction.</param>
+        /// <param name="spinAxis">The spin axis.</param>
+        /// <param name="modelScale">The model scale.</param>
+        /// <param name="tilt">The tilt.</param>
+        /// <param name="pivotTilt">The pivot tilt.</param>
+        /// <param name="rtWidth">The rt width.</param>
+        /// <param name="rtHeight">The rt height.</param>
+        /// <param name="isToggle">Whether is toggle.</param>
+        /// <param name="underLightIntensity">The under light intensity.</param>
         public Face(
             string factionId,
             string modelPath,

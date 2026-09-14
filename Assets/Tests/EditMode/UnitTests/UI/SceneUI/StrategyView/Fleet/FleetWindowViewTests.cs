@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private FleetWindowView _view;
         private GameObject _viewObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -28,6 +31,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -36,12 +42,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render selected fleet applies list banner tabs capacity and details.
+        /// </summary>
         [Test]
         public void Render_SelectedFleet_AppliesListBannerTabsCapacityAndDetails()
         {
@@ -83,6 +95,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual("First Ship", items[0].NameTextField.text);
         }
 
+        /// <summary>
+        /// Verifies render no selected fleet hides selected fleet presentation and detail items.
+        /// </summary>
         [Test]
         public void Render_NoSelectedFleet_HidesSelectedFleetPresentationAndDetailItems()
         {
@@ -112,6 +127,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(detailItem.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render selected fleet without capacity hides capacity fields.
+        /// </summary>
         [Test]
         public void Render_SelectedFleetWithoutCapacity_HidesCapacityFields()
         {
@@ -128,6 +146,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(FindObject("CapacityRightTextField").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render shorter collections hides unused cached rows and detail items.
+        /// </summary>
         [Test]
         public void Render_ShorterCollections_HidesUnusedCachedRowsAndDetailItems()
         {
@@ -155,6 +176,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual("Replacement", FindDetailItems()[0].NameTextField.text);
         }
 
+        /// <summary>
+        /// Verifies render invalid tab count throws argument exception.
+        /// </summary>
         [Test]
         public void Render_InvalidTabCount_ThrowsArgumentException()
         {
@@ -169,6 +193,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render invalid tab order throws argument exception.
+        /// </summary>
         [Test]
         public void Render_InvalidTabOrder_ThrowsArgumentException()
         {
@@ -185,6 +212,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render fleet row rename submit emits trimmed value and restores label.
+        /// </summary>
         [Test]
         public void Render_FleetRowRename_SubmitEmitsTrimmedValueAndRestoresLabel()
         {
@@ -212,6 +242,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(row.NameTextField.enabled);
         }
 
+        /// <summary>
+        /// Verifies render detail item rename end edit emits cancellation and restores label.
+        /// </summary>
         [Test]
         public void Render_DetailItemRename_EndEditEmitsCancellationAndRestoresLabel()
         {
@@ -238,6 +271,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(item.NameTextField.enabled);
         }
 
+        /// <summary>
+        /// Verifies render removed rename target ends presentation without submitting.
+        /// </summary>
         [Test]
         public void Render_RemovedRenameTarget_EndsPresentationWithoutSubmitting()
         {
@@ -273,6 +309,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies on pointer click primary then secondary click raises only primary surface event.
+        /// </summary>
         [Test]
         public void OnPointerClick_PrimaryThenSecondaryClick_RaisesOnlyPrimarySurfaceEvent()
         {
@@ -300,6 +339,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(leftClick, received);
         }
 
+        /// <summary>
+        /// Verifies authored tab button click raises semantic tab request.
+        /// </summary>
         [Test]
         public void AuthoredTabButton_Click_RaisesSemanticTabRequest()
         {
@@ -312,6 +354,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(FleetWindowTab.Personnel, requested);
         }
 
+        /// <summary>
+        /// Verifies fleet row gestures rendered row raise indexed semantic events.
+        /// </summary>
         [Test]
         public void FleetRowGestures_RenderedRow_RaiseIndexedSemanticEvents()
         {
@@ -345,6 +390,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(0, doubleClickedIndex);
         }
 
+        /// <summary>
+        /// Verifies detail item gestures rendered item raise indexed semantic events.
+        /// </summary>
         [Test]
         public void DetailItemGestures_RenderedItem_RaiseIndexedSemanticEvents()
         {
@@ -378,6 +426,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(0, doubleClickedIndex);
         }
 
+        /// <summary>
+        /// Verifies scroll gestures both scroll areas raise their destination events.
+        /// </summary>
         [Test]
         public void ScrollGestures_BothScrollAreas_RaiseTheirDestinationEvents()
         {
@@ -415,6 +466,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(1, fleetListDropCount);
         }
 
+        /// <summary>
+        /// Verifies tab drops all authored tabs raise detail destination event.
+        /// </summary>
         [Test]
         public void TabDrops_AllAuthoredTabs_RaiseDetailDestinationEvent()
         {
@@ -437,6 +491,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(FleetWindowRenderData.TabCount, dropCount);
         }
 
+        /// <summary>
+        /// Verifies window background drop routes to fleet destination.
+        /// </summary>
         [Test]
         public void WindowBackgroundDrop_RoutesToFleetDestination()
         {
@@ -461,6 +518,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies selection queries rendered rows and items resolve semantic indexes.
+        /// </summary>
         [Test]
         public void SelectionQueries_RenderedRowsAndItems_ResolveSemanticIndexes()
         {
@@ -491,6 +551,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(missingSelection);
         }
 
+        /// <summary>
+        /// Verifies fleet row contains drag source row label raycast returns true.
+        /// </summary>
         [Test]
         public void FleetRowContainsDragSource_RowLabelRaycast_ReturnsTrue()
         {
@@ -510,6 +573,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(contains);
         }
 
+        /// <summary>
+        /// Verifies drag preview multiple fleet and detail items preserves source spacing.
+        /// </summary>
         [Test]
         public void DragPreview_MultipleFleetAndDetailItems_PreservesSourceSpacing()
         {
@@ -573,6 +639,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(_view.DetailItemContainsDragSource(-1, null));
         }
 
+        /// <summary>
+        /// Verifies detail drag preview card background and entity preserve their rendered layering.
+        /// </summary>
         [Test]
         public void DetailDragPreview_CardBackgroundAndEntity_PreserveTheirRenderedLayering()
         {
@@ -605,6 +674,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies child views null render data throw argument null exception.
+        /// </summary>
         [Test]
         public void ChildViews_NullRenderData_ThrowArgumentNullException()
         {
@@ -619,6 +691,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.Throws<ArgumentNullException>(() => itemTemplate.Render(null));
         }
 
+        /// <summary>
+        /// Verifies detail item template status renders above entity.
+        /// </summary>
         [Test]
         public void DetailItemTemplate_StatusRendersAboveEntity()
         {
@@ -637,6 +712,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_RaisesDestroyedEvent()
         {
@@ -648,6 +726,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_view, destroyed);
         }
 
+        /// <summary>
+        /// Creates render data.
+        /// </summary>
+        /// <param name="hasSelectedFleet">Whether has selected fleet.</param>
+        /// <param name="rows">The rows.</param>
+        /// <param name="items">The items.</param>
+        /// <param name="showCapacity">Whether show capacity.</param>
+        /// <param name="tabs">The tabs.</param>
+        /// <param name="renameFleetRowIndex">The rename fleet row index.</param>
+        /// <param name="renameDetailItemIndex">The rename detail item index.</param>
+        /// <param name="renameText">The rename text.</param>
+        /// <returns>The created render data.</returns>
         private FleetWindowRenderData CreateRenderData(
             bool hasSelectedFleet,
             FleetListRowRenderData[] rows,
@@ -685,6 +775,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Creates tabs.
+        /// </summary>
+        /// <returns>The created tabs.</returns>
         private FleetWindowTabRenderData[] CreateTabs()
         {
             return FleetWindowRenderData
@@ -692,6 +786,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 .ToArray();
         }
 
+        /// <summary>
+        /// Creates fleet row.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <param name="showOptionalImages">Whether show optional images.</param>
+        /// <returns>The created fleet row.</returns>
         private FleetListRowRenderData CreateFleetRow(string name, bool showOptionalImages = false)
         {
             Texture optionalTexture = showOptionalImages ? _texture : null;
@@ -707,6 +807,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Creates detail item.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <param name="showOptionalImages">Whether show optional images.</param>
+        /// <param name="backgroundTexture">The background texture.</param>
+        /// <returns>The created detail item.</returns>
         private StrategyUnitCardRenderData CreateDetailItem(
             string name,
             bool showOptionalImages = false,
@@ -733,6 +840,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Executes assert layer layout matches card.
+        /// </summary>
+        /// <param name="card">The card.</param>
+        /// <param name="firstName">The first name.</param>
+        /// <param name="first">The first.</param>
+        /// <param name="secondName">The second name.</param>
+        /// <param name="second">The second.</param>
         private static void AssertLayerLayoutMatchesCard(
             StrategyUnitCardView card,
             string firstName,
@@ -753,6 +868,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(secondRect.y - firstRect.y, second.Bounds.y - first.Bounds.y);
         }
 
+        /// <summary>
+        /// Creates double click event.
+        /// </summary>
+        /// <returns>The created double click event.</returns>
         private static PointerEventData CreateDoubleClickEvent()
         {
             return new PointerEventData(null)
@@ -762,6 +881,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             };
         }
 
+        /// <summary>
+        /// Creates raycast event.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <returns>The created raycast event.</returns>
         private static PointerEventData CreateRaycastEvent(GameObject target)
         {
             return new PointerEventData(null)
@@ -770,6 +894,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             };
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {
@@ -778,6 +908,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds detail items.
+        /// </summary>
+        /// <returns>The matching detail items.</returns>
         private StrategyUnitCardView[] FindDetailItems()
         {
             return _viewObject
@@ -790,6 +924,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds fleet rows.
+        /// </summary>
+        /// <returns>The matching fleet rows.</returns>
         private FleetListRowView[] FindFleetRows()
         {
             return _viewObject
@@ -802,6 +940,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds object.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching object.</returns>
         private GameObject FindObject(string objectName)
         {
             return _viewObject
@@ -810,6 +953,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds card object.
+        /// </summary>
+        /// <param name="card">The card.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching card object.</returns>
         private static GameObject FindCardObject(StrategyUnitCardView card, string objectName)
         {
             return card.GetComponentsInChildren<Transform>(true)
@@ -817,6 +966,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds row object.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching row object.</returns>
         private static GameObject FindRowObject(FleetListRowView row, string objectName)
         {
             return row.GetComponentsInChildren<Transform>(true)

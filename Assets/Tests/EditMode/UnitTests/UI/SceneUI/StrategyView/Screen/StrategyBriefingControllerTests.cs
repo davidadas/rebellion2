@@ -23,6 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         /// <summary>
         /// Verifies the briefing owner prepares its opening segment and skip response.
         /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         [Test]
         public async Task PrepareAsync_Briefing_LoadsOpeningMediaAndRegistersAudioAsync()
         {
@@ -82,6 +83,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         /// <summary>
         /// Verifies that briefing segments preload and play sequentially before completion.
         /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         [Test]
         public async Task Play_MultipleSegments_PlaysInOrderAndCompletesAsync()
         {
@@ -135,6 +137,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         /// <summary>
         /// Verifies the next segment starts loading only after the current segment completes.
         /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         [Test]
         public async Task Play_OpeningSegment_DoesNotLoadOrPlayNextUntilReadyAsync()
         {
@@ -205,6 +208,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies play no segments completes without skipping.
+        /// </summary>
         [Test]
         public void Play_NoSegments_CompletesWithoutSkipping()
         {
@@ -233,6 +239,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies play invalid segment throws invalid operation exception.
+        /// </summary>
+        /// <param name="animation">The animation.</param>
+        /// <param name="frameCount">The frame count.</param>
         [TestCase(null, 0)]
         [TestCase("Missing", 1)]
         public void Play_InvalidSegment_ThrowsInvalidOperationException(
@@ -269,6 +280,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         /// <summary>
         /// Verifies skipping abandons a segment transition that is still loading.
         /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         [Test]
         public async Task Skip_SegmentLoading_DoesNotStartAbandonedSegmentAsync()
         {
@@ -328,6 +340,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies skip configured response completes immediately and plays response.
+        /// </summary>
         [Test]
         public void Skip_ConfiguredResponse_CompletesImmediatelyAndPlaysResponse()
         {
@@ -372,6 +387,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies skip no active briefing does not throw.
+        /// </summary>
         [Test]
         public void Skip_NoActiveBriefing_DoesNotThrow()
         {
@@ -397,6 +415,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies pause and resume no active briefing do not throw.
+        /// </summary>
         [Test]
         public void PauseAndResume_NoActiveBriefing_DoNotThrow()
         {
@@ -423,6 +444,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies create map presentation target resolves planet and sector.
+        /// </summary>
         [Test]
         public void CreateMapPresentation_Target_ResolvesPlanetAndSector()
         {
@@ -446,6 +470,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsTrue(presentation.DimBackground);
         }
 
+        /// <summary>
+        /// Verifies create map presentation missing target throws invalid operation exception.
+        /// </summary>
         [Test]
         public void CreateMapPresentation_MissingTarget_ThrowsInvalidOperationException()
         {
@@ -461,6 +488,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies create map presentation null game throws argument null exception.
+        /// </summary>
         [Test]
         public void CreateMapPresentation_NullGame_ThrowsArgumentNullException()
         {
@@ -469,6 +499,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies create map presentation null segment throws argument null exception.
+        /// </summary>
         [Test]
         public void CreateMapPresentation_NullSegment_ThrowsArgumentNullException()
         {
@@ -477,6 +510,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies create map presentation headquarters without target throws invalid operation exception.
+        /// </summary>
+        /// <param name="focus">The focus.</param>
         [TestCase(StrategyBriefingFocus.PlayerHeadquarters)]
         [TestCase(StrategyBriefingFocus.OpponentHeadquarters)]
         public void CreateMapPresentation_HeadquartersWithoutTarget_ThrowsInvalidOperationException(
@@ -493,6 +530,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies create map presentation target outside planet sector throws invalid operation exception.
+        /// </summary>
         [Test]
         public void CreateMapPresentation_TargetOutsidePlanetSector_ThrowsInvalidOperationException()
         {
@@ -510,6 +550,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="advisorTheme">The advisor theme.</param>
+        /// <param name="textures">The textures.</param>
+        /// <param name="rootObject">The root object.</param>
+        /// <param name="preloadContent">The preload content.</param>
+        /// <param name="preloadSfx">The preload sfx.</param>
+        /// <returns>The created controller.</returns>
         private static StrategyBriefingController CreateController(
             GameRoot game,
             StrategyAdvisorTheme advisorTheme,
@@ -544,6 +594,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
         private static GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -553,6 +607,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             return game;
         }
 
+        /// <summary>
+        /// Creates advisor theme.
+        /// </summary>
+        /// <returns>The created advisor theme.</returns>
         private static StrategyAdvisorTheme CreateAdvisorTheme()
         {
             return new StrategyAdvisorTheme
@@ -564,6 +622,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             };
         }
 
+        /// <summary>
+        /// Creates briefing.
+        /// </summary>
+        /// <returns>The created briefing.</returns>
         private static StrategyBriefingTheme CreateBriefing()
         {
             return new StrategyBriefingTheme
@@ -573,11 +635,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             };
         }
 
+        /// <summary>
+        /// Creates segment.
+        /// </summary>
+        /// <param name="animation">The animation.</param>
+        /// <returns>The created segment.</returns>
         private static StrategyBriefingSegmentTheme CreateSegment(string animation)
         {
             return new StrategyBriefingSegmentTheme { Animation = animation, FrameCount = 1 };
         }
 
+        /// <summary>
+        /// Creates textures.
+        /// </summary>
+        /// <param name="theme">The theme.</param>
+        /// <param name="idle">The idle.</param>
+        /// <returns>The created textures.</returns>
         private static Dictionary<string, Texture2D> CreateTextures(
             StrategyAdvisorTheme theme,
             Texture2D idle
@@ -590,6 +663,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             };
         }
 
+        /// <summary>
+        /// Gets protocol image.
+        /// </summary>
+        /// <param name="rootObject">The root object.</param>
+        /// <returns>The requested protocol image.</returns>
         private static UnityEngine.UI.RawImage GetProtocolImage(GameObject rootObject)
         {
             return Array.Find(
@@ -617,51 +695,109 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 
         private sealed class TestGalaxyMapActions : IGalaxyMapActions
         {
+            /// <summary>
+            /// Opens planet sector window.
+            /// </summary>
+            /// <param name="planetSector">The planet sector.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenPlanetSectorWindow(
                 GalaxyPlanetSector planetSector,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Executes request galaxy map render.
+            /// </summary>
             public void RequestGalaxyMapRender() { }
         }
 
         private sealed class TestHudActions : IStrategyHudActions
         {
+            /// <summary>
+            /// Executes begin advisor construction.
+            /// </summary>
+            /// <param name="manufacturingType">The manufacturing type.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void BeginAdvisorConstruction(
                 ManufacturingType manufacturingType,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Opens advisor command context menu.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenAdvisorCommandContextMenu(
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Opens advisor notification context menu.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenAdvisorNotificationContextMenu(
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Opens advisor report.
+            /// </summary>
+            /// <param name="mode">The mode.</param>
             public void OpenAdvisorReport(AdvisorReportMode mode) { }
 
+            /// <summary>
+            /// Opens messages tab.
+            /// </summary>
+            /// <param name="tab">The tab.</param>
             public void OpenMessagesTab(MessagesTab tab) { }
 
+            /// <summary>
+            /// Processes advisor automation.
+            /// </summary>
+            /// <param name="faction">The faction.</param>
             public void ProcessAdvisorAutomation(Faction faction) { }
 
+            /// <summary>
+            /// Opens speed context menu.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenSpeedContextMenu(
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Executes release hud button.
+            /// </summary>
+            /// <param name="action">The action.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void ReleaseHudButton(StrategyHudAction action, int sourceX, int sourceY) { }
 
+            /// <summary>
+            /// Executes request hud render.
+            /// </summary>
             public void RequestHudRender() { }
 
+            /// <summary>
+            /// Sets game speed.
+            /// </summary>
+            /// <param name="speed">The speed.</param>
             public void SetGameSpeed(TickSpeed speed) { }
         }
     }

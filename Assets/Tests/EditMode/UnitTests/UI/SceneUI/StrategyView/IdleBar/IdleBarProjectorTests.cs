@@ -16,12 +16,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
         private Faction _playerFaction;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
             _playerFaction = new Faction { InstanceID = _playerFactionId };
         }
 
+        /// <summary>
+        /// Verifies project available entities returns every entity grouped and sorted.
+        /// </summary>
         [Test]
         public void Project_AvailableEntities_ReturnsEveryEntityGroupedAndSorted()
         {
@@ -62,6 +68,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(new RectInt(10, 20, 300, 200), result.DesktopBounds);
         }
 
+        /// <summary>
+        /// Verifies project no available entities returns empty strip.
+        /// </summary>
         [Test]
         public void Project_NoAvailableEntities_ReturnsEmptyStrip()
         {
@@ -73,6 +82,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsEmpty(result.Entries);
         }
 
+        /// <summary>
+        /// Verifies project main characters precede other officers.
+        /// </summary>
         [Test]
         public void Project_MainCharacters_PrecedeOtherOfficers()
         {
@@ -91,6 +103,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
         }
 
+        /// <summary>
+        /// Verifies project participants with unavailable status are excluded.
+        /// </summary>
         [Test]
         public void Project_ParticipantsWithUnavailableStatus_AreExcluded()
         {
@@ -109,6 +124,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsEmpty(result.Entries);
         }
 
+        /// <summary>
+        /// Creates officer.
+        /// </summary>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created officer.</returns>
         private Officer CreateOfficer(string displayName)
         {
             Officer officer = new Officer
@@ -121,6 +141,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             return officer;
         }
 
+        /// <summary>
+        /// Creates special forces.
+        /// </summary>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created special forces.</returns>
         private SpecialForces CreateSpecialForces(string displayName)
         {
             SpecialForces specialForces = new SpecialForces
@@ -135,6 +160,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             return specialForces;
         }
 
+        /// <summary>
+        /// Creates manufacturing planet.
+        /// </summary>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created manufacturing planet.</returns>
         private Planet CreateManufacturingPlanet(string displayName)
         {
             Planet planet = new Planet

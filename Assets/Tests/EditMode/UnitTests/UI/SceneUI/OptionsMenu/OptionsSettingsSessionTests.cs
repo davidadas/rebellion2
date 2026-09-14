@@ -187,6 +187,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <summary>
         /// Finds one authored top-level binding by name.
         /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The matching binding.</returns>
         private static int FindBinding(InputAction action, string name)
         {
             for (int index = 0; index < action.bindings.Count; index++)
@@ -220,6 +223,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <summary>
         /// Deletes a test file when it exists.
         /// </summary>
+        /// <param name="path">The path.</param>
         private static void DeleteIfPresent(string path)
         {
             if (!string.IsNullOrEmpty(path) && File.Exists(path))

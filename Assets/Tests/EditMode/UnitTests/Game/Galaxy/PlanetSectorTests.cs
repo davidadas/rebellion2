@@ -15,6 +15,9 @@ namespace Rebellion.Tests.Game.Galaxy
         private Planet _planet1;
         private Planet _planet2;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -31,6 +34,9 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet2 = new Planet { InstanceID = "PLANET2", OwnerInstanceID = "FACTION1" };
         }
 
+        /// <summary>
+        /// Verifies add child with planet adds planet.
+        /// </summary>
         [Test]
         public void AddChild_WithPlanet_AddsPlanet()
         {
@@ -39,6 +45,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsTrue(_planetSector.GetChildren<Planet>().Contains(_planet1));
         }
 
+        /// <summary>
+        /// Verifies add child multiple planets adds all planets.
+        /// </summary>
         [Test]
         public void AddChild_MultiplePlanets_AddsAllPlanets()
         {
@@ -57,6 +66,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsTrue(_planetSector.GetChildren<Planet>().Contains(planet4));
         }
 
+        /// <summary>
+        /// Verifies add child same planet twice adds planet twice.
+        /// </summary>
         [Test]
         public void AddChild_SamePlanetTwice_AddsPlanetTwice()
         {
@@ -66,6 +78,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(2, _planetSector.GetChildren<Planet>().Count);
         }
 
+        /// <summary>
+        /// Verifies remove child with added planet removes planet.
+        /// </summary>
         [Test]
         public void RemoveChild_WithAddedPlanet_RemovesPlanet()
         {
@@ -76,6 +91,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsFalse(_planetSector.GetChildren<Planet>().Contains(_planet1));
         }
 
+        /// <summary>
+        /// Verifies remove child from multiple planets removes only specified planet.
+        /// </summary>
         [Test]
         public void RemoveChild_FromMultiplePlanets_RemovesOnlySpecifiedPlanet()
         {
@@ -89,6 +107,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsTrue(_planetSector.GetChildren<Planet>().Contains(_planet2));
         }
 
+        /// <summary>
+        /// Verifies get children with two planets returns all planets.
+        /// </summary>
         [Test]
         public void GetChildren_WithTwoPlanets_ReturnsAllPlanets()
         {
@@ -104,6 +125,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize with populated sector maintains state.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_WithPopulatedSector_MaintainsState()
         {
@@ -150,6 +174,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies sector type set to core sector returns core sector.
+        /// </summary>
         [Test]
         public void SectorType_SetToCoreSector_ReturnsCoreSector()
         {
@@ -158,6 +185,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(PlanetSectorType.Core, _planetSector.SectorType);
         }
 
+        /// <summary>
+        /// Verifies sector type set to outer rim returns outer rim.
+        /// </summary>
         [Test]
         public void SectorType_SetToOuterRim_ReturnsOuterRim()
         {
@@ -166,6 +196,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(PlanetSectorType.OuterRim, _planetSector.SectorType);
         }
 
+        /// <summary>
+        /// Verifies visibility set to small returns small.
+        /// </summary>
         [Test]
         public void Visibility_SetToSmall_ReturnsSmall()
         {
@@ -174,6 +207,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(GameSize.Small, _planetSector.Visibility);
         }
 
+        /// <summary>
+        /// Verifies visibility set to medium returns medium.
+        /// </summary>
         [Test]
         public void Visibility_SetToMedium_ReturnsMedium()
         {
@@ -182,6 +218,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(GameSize.Medium, _planetSector.Visibility);
         }
 
+        /// <summary>
+        /// Verifies visibility set to large returns large.
+        /// </summary>
         [Test]
         public void Visibility_SetToLarge_ReturnsLarge()
         {
@@ -190,6 +229,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(GameSize.Large, _planetSector.Visibility);
         }
 
+        /// <summary>
+        /// Verifies importance set to low returns low.
+        /// </summary>
         [Test]
         public void Importance_SetToLow_ReturnsLow()
         {
@@ -198,6 +240,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(PlanetSectorImportance.Low, _planetSector.Importance);
         }
 
+        /// <summary>
+        /// Verifies importance set to medium returns medium.
+        /// </summary>
         [Test]
         public void Importance_SetToMedium_ReturnsMedium()
         {
@@ -206,6 +251,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(PlanetSectorImportance.Medium, _planetSector.Importance);
         }
 
+        /// <summary>
+        /// Verifies importance set to high returns high.
+        /// </summary>
         [Test]
         public void Importance_SetToHigh_ReturnsHigh()
         {
@@ -214,6 +262,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(PlanetSectorImportance.High, _planetSector.Importance);
         }
 
+        /// <summary>
+        /// Verifies get position with zero coordinates returns zero point.
+        /// </summary>
         [Test]
         public void GetPosition_WithZeroCoordinates_ReturnsZeroPoint()
         {

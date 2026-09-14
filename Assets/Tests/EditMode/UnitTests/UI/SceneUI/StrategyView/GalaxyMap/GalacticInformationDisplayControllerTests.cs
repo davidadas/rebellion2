@@ -25,6 +25,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private GameObject _rootObject;
         private UIContext _uiContext;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -71,12 +74,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _controller.BindViews(_displayView, _legendView);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null dependencies throw argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullDependencies_ThrowArgumentNullException()
         {
@@ -88,6 +97,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies show closed selector opens authored display.
+        /// </summary>
         [Test]
         public void Show_ClosedSelector_OpensAuthoredDisplay()
         {
@@ -100,6 +112,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies try cancel open selector closes display plays control sound and requests render.
+        /// </summary>
         [Test]
         public void TryCancel_OpenSelector_ClosesDisplayPlaysControlSoundAndRequestsRender()
         {
@@ -117,6 +132,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies try cancel closed selector returns false without side effects.
+        /// </summary>
         [Test]
         public void TryCancel_ClosedSelector_ReturnsFalseWithoutSideEffects()
         {
@@ -127,6 +145,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies select filter changed visible filter requests render without pointer audio.
+        /// </summary>
         [Test]
         public void SelectFilter_ChangedVisibleFilter_RequestsRenderWithoutPointerAudio()
         {
@@ -137,6 +158,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies select filter active filter requests render without repeating audio.
+        /// </summary>
         [Test]
         public void SelectFilter_ActiveFilter_RequestsRenderWithoutRepeatingAudio()
         {
@@ -181,6 +205,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies selector controls filter selection route semantic controller action.
+        /// </summary>
         [Test]
         public void SelectorControls_FilterSelection_RouteSemanticControllerAction()
         {
@@ -210,6 +237,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies dismiss pointer down plays control sound before selector closes.
+        /// </summary>
         [Test]
         public void DismissPointerDown_PlaysControlSoundBeforeSelectorCloses()
         {
@@ -234,6 +264,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Finds raycast area.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching raycast area.</returns>
         private UIRaycastArea FindRaycastArea(string objectName)
         {
             return _displayView
@@ -245,6 +280,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             public int RenderRequestCount { get; set; }
 
+            /// <summary>
+            /// Executes request galactic information render.
+            /// </summary>
             public void RequestGalacticInformationRender()
             {
                 RenderRequestCount++;

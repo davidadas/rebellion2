@@ -9,6 +9,10 @@ namespace Rebellion.Util.Common
 
         private readonly Dictionary<int, int> _table;
 
+        /// <summary>
+        /// Initializes a new instance of the ProbabilityTable class.
+        /// </summary>
+        /// <param name="entries">The entries.</param>
         public ProbabilityTable(Dictionary<int, int> entries)
         {
             _table = entries;

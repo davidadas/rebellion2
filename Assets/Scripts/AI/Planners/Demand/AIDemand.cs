@@ -35,19 +35,14 @@ namespace Rebellion.AI.Planners.Demand
     /// </summary>
     public enum AICapitalShipProductionRole
     {
-        /// <summary>No specialized role is required.</summary>
         None,
 
-        /// <summary>The ship contributes general fleet combat power.</summary>
         General,
 
-        /// <summary>The ship transports regiments for planetary assaults.</summary>
         TroopTransport,
 
-        /// <summary>The ship can bombard planetary defenses.</summary>
         Bombardment,
 
-        /// <summary>The ship prevents hostile fleets from retreating.</summary>
         Interdiction,
     }
 

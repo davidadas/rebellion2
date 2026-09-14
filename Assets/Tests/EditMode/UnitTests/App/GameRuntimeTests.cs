@@ -17,6 +17,9 @@ namespace Rebellion.Tests.App
         private SaveGameManager _saveGameManager;
         private string _saveDirectoryPath;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -31,6 +34,9 @@ namespace Rebellion.Tests.App
             _runtime = new GameRuntime(_contentPack, _saveGameManager, () => _gameplaySettings);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -38,6 +44,9 @@ namespace Rebellion.Tests.App
                 Directory.Delete(_saveDirectoryPath, true);
         }
 
+        /// <summary>
+        /// Verifies start game pending combat defers autosave until resolution.
+        /// </summary>
         [Test]
         public void StartGame_PendingCombat_DefersAutosaveUntilResolution()
         {
@@ -60,6 +69,9 @@ namespace Rebellion.Tests.App
             Assert.IsTrue(_runtime.CanSave);
         }
 
+        /// <summary>
+        /// Verifies quick save pending combat does not write save.
+        /// </summary>
         [Test]
         public void QuickSave_PendingCombat_DoesNotWriteSave()
         {
@@ -74,6 +86,9 @@ namespace Rebellion.Tests.App
             );
         }
 
+        /// <summary>
+        /// Verifies save game pending combat does not write save.
+        /// </summary>
         [Test]
         public void SaveGame_PendingCombat_DoesNotWriteSave()
         {
@@ -90,6 +105,9 @@ namespace Rebellion.Tests.App
             Assert.AreEqual(40, game.CurrentTick);
         }
 
+        /// <summary>
+        /// Verifies quick load after quick save replaces mutated game with saved state.
+        /// </summary>
         [Test]
         public void QuickLoad_AfterQuickSave_ReplacesMutatedGameWithSavedState()
         {
@@ -109,6 +127,9 @@ namespace Rebellion.Tests.App
             Assert.AreEqual(123, replacement.CurrentTick);
         }
 
+        /// <summary>
+        /// Verifies validate game content matching identity does not throw.
+        /// </summary>
         [Test]
         public void ValidateGameContent_MatchingIdentity_DoesNotThrow()
         {
@@ -117,6 +138,9 @@ namespace Rebellion.Tests.App
             Assert.DoesNotThrow(() => _runtime.ValidateGameContent(game));
         }
 
+        /// <summary>
+        /// Verifies validate game content missing identity throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ValidateGameContent_MissingIdentity_ThrowsInvalidOperationException()
         {
@@ -125,6 +149,9 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
+        /// <summary>
+        /// Verifies validate game content different pack throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ValidateGameContent_DifferentPack_ThrowsInvalidOperationException()
         {
@@ -134,6 +161,9 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
+        /// <summary>
+        /// Verifies validate game content different version throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ValidateGameContent_DifferentVersion_ThrowsInvalidOperationException()
         {
@@ -143,6 +173,9 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
+        /// <summary>
+        /// Verifies validate game content different scenario throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ValidateGameContent_DifferentScenario_ThrowsInvalidOperationException()
         {
@@ -169,6 +202,10 @@ namespace Rebellion.Tests.App
             StringAssert.Contains("mods [] is active", exception.Message);
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
             return new GameRoot
@@ -182,6 +219,10 @@ namespace Rebellion.Tests.App
             };
         }
 
+        /// <summary>
+        /// Creates contested game.
+        /// </summary>
+        /// <returns>The created contested game.</returns>
         private GameRoot CreateContestedGame()
         {
             GameRoot game = CreateGame();
@@ -205,6 +246,13 @@ namespace Rebellion.Tests.App
             return game;
         }
 
+        /// <summary>
+        /// Adds fleet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
         private static void AddFleet(
             GameRoot game,
             Planet planet,

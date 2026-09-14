@@ -8,6 +8,9 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public sealed class InputManagerBindingTests
     {
+        /// <summary>
+        /// Verifies that macOS shortcuts use a resolvable Command-key binding.
+        /// </summary>
         [Test]
         public void SetShortcutModifier_MacOS_UsesResolvableCommandKey()
         {
@@ -36,6 +39,9 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies that Windows shortcuts use the Control-key binding.
+        /// </summary>
         [Test]
         public void SetShortcutModifier_Windows_UsesControl()
         {
@@ -160,6 +166,9 @@ namespace Rebellion.Tests.Managers
         /// <summary>
         /// Finds a top-level authored binding by name.
         /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The matching binding.</returns>
         private static int FindBinding(InputAction action, string name)
         {
             for (int index = 0; index < action.bindings.Count; index++)
@@ -177,6 +186,7 @@ namespace Rebellion.Tests.Managers
         /// <summary>
         /// Creates an action containing the authored cross-platform modifier alternatives.
         /// </summary>
+        /// <returns>The created input action asset.</returns>
         private static InputActionAsset CreateModifierActions()
         {
             InputActionAsset asset = ScriptableObject.CreateInstance<InputActionAsset>();
@@ -189,6 +199,8 @@ namespace Rebellion.Tests.Managers
         /// <summary>
         /// Verifies that an action uses only the expected platform modifier default.
         /// </summary>
+        /// <param name="action">The action whose bindings are inspected.</param>
+        /// <param name="expectedPath">The expected active modifier path.</param>
         private static void AssertModifierPath(InputAction action, string expectedPath)
         {
             Assert.AreEqual(expectedPath, action.bindings[0].path);

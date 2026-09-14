@@ -9,6 +9,9 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public sealed class GameEventSchemaTests
     {
+        /// <summary>
+        /// Verifies validate change energy capacity with officer selector rejects document.
+        /// </summary>
         [Test]
         public void Validate_ChangeEnergyCapacityWithOfficerSelector_RejectsDocument()
         {
@@ -29,6 +32,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.Throws<XmlSchemaValidationException>(() => Validate(xml));
         }
 
+        /// <summary>
+        /// Verifies validate change officer rating with planet selector rejects document.
+        /// </summary>
         [Test]
         public void Validate_ChangeOfficerRatingWithPlanetSelector_RejectsDocument()
         {
@@ -49,6 +55,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.Throws<XmlSchemaValidationException>(() => Validate(xml));
         }
 
+        /// <summary>
+        /// Verifies validate opaque binding name accepts document.
+        /// </summary>
         [Test]
         public void Validate_OpaqueBindingName_AcceptsDocument()
         {
@@ -70,6 +79,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.DoesNotThrow(() => Validate(xml));
         }
 
+        /// <summary>
+        /// Verifies validate typed bindings and binding comparison accepts document.
+        /// </summary>
         [Test]
         public void Validate_TypedBindingsAndBindingComparison_AcceptsDocument()
         {
@@ -101,6 +113,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.DoesNotThrow(() => Validate(xml));
         }
 
+        /// <summary>
+        /// Verifies validate random and support actions accepts document.
+        /// </summary>
         [Test]
         public void Validate_RandomAndSupportActions_AcceptsDocument()
         {
@@ -141,6 +156,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.DoesNotThrow(() => Validate(xml));
         }
 
+        /// <summary>
+        /// Verifies validate send message subject image toggle accepts document.
+        /// </summary>
         [Test]
         public void Validate_SendMessageSubjectImageToggle_AcceptsDocument()
         {
@@ -159,6 +177,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.DoesNotThrow(() => Validate(xml));
         }
 
+        /// <summary>
+        /// Verifies validate trigger argument binding accepts document.
+        /// </summary>
         [Test]
         public void Validate_TriggerArgumentBinding_AcceptsDocument()
         {
@@ -181,6 +202,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.DoesNotThrow(() => Validate(xml));
         }
 
+        /// <summary>
+        /// Verifies validate trigger result binding rejects document.
+        /// </summary>
         [Test]
         public void Validate_TriggerResultBinding_RejectsDocument()
         {
@@ -198,6 +222,10 @@ namespace Rebellion.Tests.Game.Events
             Assert.Throws<XmlSchemaValidationException>(() => Validate(xml));
         }
 
+        /// <summary>
+        /// Validates the requested operation.
+        /// </summary>
+        /// <param name="xml">The xml.</param>
         private static void Validate(string xml)
         {
             string schemaPath = Path.Combine(

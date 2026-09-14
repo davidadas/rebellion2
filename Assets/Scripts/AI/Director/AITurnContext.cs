@@ -204,6 +204,10 @@ namespace Rebellion.AI.Director
         private readonly Dictionary<BuildingType, Dictionary<string, int>> _primaryTargetsByType =
             new();
 
+        /// <summary>
+        /// Initializes a new instance of the AIFacilityAllocationPolicy class.
+        /// </summary>
+        /// <param name="context">The context.</param>
         public AIFacilityAllocationPolicy(AITurnContext context)
         {
             if (context?.Assessment == null)
@@ -214,6 +218,12 @@ namespace Rebellion.AI.Director
             BuildCaps(context, BuildingType.TrainingFacility);
         }
 
+        /// <summary>
+        /// Gets cap.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <returns>The requested cap.</returns>
         public int GetCap(Planet planet, BuildingType buildingType)
         {
             return
@@ -227,6 +237,10 @@ namespace Rebellion.AI.Director
         /// <summary>
         /// Returns whether a planet is the designated primary site and has not reached its target.
         /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <param name="targetCount">The target count.</param>
+        /// <returns>True when the incomplete primary hub condition is met; otherwise false.</returns>
         public bool IsIncompletePrimaryHub(
             Planet planet,
             BuildingType buildingType,
@@ -239,11 +253,24 @@ namespace Rebellion.AI.Director
                     < GetPrimaryTarget(planet, buildingType, targetCount);
         }
 
+        /// <summary>
+        /// Checks whether the primary hub condition is met.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <returns>True when the primary hub condition is met; otherwise false.</returns>
         public bool IsPrimaryHub(Planet planet, BuildingType buildingType) =>
             planet != null
             && _primaryPlanetIdsByType.TryGetValue(buildingType, out HashSet<string> planetIds)
             && planetIds.Contains(planet.InstanceID);
 
+        /// <summary>
+        /// Gets primary target.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <param name="fallbackTarget">The fallback target.</param>
+        /// <returns>The requested primary target.</returns>
         public int GetPrimaryTarget(Planet planet, BuildingType buildingType, int fallbackTarget)
         {
             return
@@ -257,6 +284,11 @@ namespace Rebellion.AI.Director
                 : fallbackTarget;
         }
 
+        /// <summary>
+        /// Builds caps.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <param name="buildingType">The building type.</param>
         private void BuildCaps(AITurnContext context, BuildingType buildingType)
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
@@ -316,6 +348,13 @@ namespace Rebellion.AI.Director
             _primaryTargetsByType[buildingType] = primaryTargets;
         }
 
+        /// <summary>
+        /// Gets feasible facility count.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <returns>The requested feasible facility count.</returns>
         private static int GetFeasibleFacilityCount(
             AITurnContext context,
             Planet planet,
@@ -327,6 +366,11 @@ namespace Rebellion.AI.Director
             return planet.GetTotalBuildingTypeCount(buildingType) + availableEnergy;
         }
 
+        /// <summary>
+        /// Checks whether the usable condition is met.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <returns>True when the usable condition is met; otherwise false.</returns>
         private static bool IsUsable(Planet planet) =>
             planet?.IsColonized == true && !planet.IsDestroyed;
     }
