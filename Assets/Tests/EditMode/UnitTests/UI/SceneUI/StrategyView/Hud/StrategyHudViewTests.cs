@@ -489,18 +489,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         /// <summary>
-        /// Sets field.
-        /// </summary>
-        /// <param name="fieldName">The field name.</param>
-        /// <param name="value">The value.</param>
-        private void SetField(string fieldName, object value)
-        {
-            typeof(StrategyHudView)
-                .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
-                .SetValue(_view, value);
-        }
-
-        /// <summary>
         /// Gets source rect.
         /// </summary>
         /// <param name="area">The area.</param>
