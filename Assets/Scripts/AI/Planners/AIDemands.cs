@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
+using Rebellion.AI.Scoring;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -175,7 +176,12 @@ namespace Rebellion.AI.Planners
                         BuildingType.None,
                         destination,
                         deficit,
-                        GetPressure(deficit, desiredSupply, config.SpecialForcesDemandPercent),
+                        GetPressure(
+                            context,
+                            deficit,
+                            desiredSupply,
+                            config.SpecialForcesDemandPercent
+                        ),
                         template.GetTypeID()
                     )
                 );
@@ -281,14 +287,23 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Calculates production pressure from the configured target and current deficit.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="deficit">The number of missing units.</param>
         /// <param name="targetCount">The configured target count.</param>
         /// <param name="baseDemandPercent">The base production pressure.</param>
         /// <returns>The bounded production pressure.</returns>
-        private static double GetPressure(int deficit, int targetCount, int baseDemandPercent)
+        private static double GetPressure(
+            AITurnContext context,
+            int deficit,
+            int targetCount,
+            int baseDemandPercent
+        )
         {
-            int deficitPercent = deficit * 100 / Math.Max(1, targetCount);
-            return Math.Min(100, baseDemandPercent + deficitPercent);
+            double deficitValue = AIUtility.EvaluateDiscrete(
+                deficit / (double)Math.Max(1, targetCount),
+                context.Game.Config.AI.Infrastructure.DemandUtility.Deficit
+            );
+            return Math.Min(100, baseDemandPercent + deficitValue);
         }
     }
 }
