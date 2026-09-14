@@ -1354,27 +1354,27 @@ namespace Rebellion.Tests.AI.Director
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            int shieldPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+            double shieldPriority = AIMissionProposalScorer.GetSabotageTargetValue(
                 context,
                 target,
                 shield
             );
-            int batteryPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+            double batteryPriority = AIMissionProposalScorer.GetSabotageTargetValue(
                 context,
                 target,
                 battery
             );
-            int regimentPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+            double regimentPriority = AIMissionProposalScorer.GetSabotageTargetValue(
                 context,
                 target,
                 regiment
             );
-            int starfighterPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+            double starfighterPriority = AIMissionProposalScorer.GetSabotageTargetValue(
                 context,
                 target,
                 starfighter
             );
-            int infrastructurePriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+            double infrastructurePriority = AIMissionProposalScorer.GetSabotageTargetValue(
                 context,
                 target,
                 shipyard

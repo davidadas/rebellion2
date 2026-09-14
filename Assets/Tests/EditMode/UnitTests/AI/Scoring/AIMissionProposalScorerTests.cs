@@ -187,7 +187,7 @@ namespace Rebellion.Tests.AI.Scoring
                 { -1000, 19 },
             };
             game.Config.AI.MissionPlanning.MinimumUprisingMissionSuccessPercent = 20;
-            game.Config.AI.MissionPlanning.SubdueUprisingPriorityBonus = 120;
+            game.Config.AI.MissionPlanning.Utility.Priority.SubdueUprising.Weight = 120;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             AIMissionProposal proposal = new AIMissionProposal(
@@ -400,7 +400,7 @@ namespace Rebellion.Tests.AI.Scoring
             {
                 { -1000, 75 },
             };
-            game.Config.AI.MissionPlanning.MissionFoilRiskWeight = 1;
+            game.Config.AI.MissionPlanning.Utility.Objective.FoilRisk.Weight = 100;
             game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 100;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
@@ -478,7 +478,7 @@ namespace Rebellion.Tests.AI.Scoring
                 { -1000, 100 },
             };
             game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 0;
-            game.Config.AI.MissionPlanning.MissionFoilRiskWeight = 0;
+            game.Config.AI.MissionPlanning.Utility.Objective.FoilRisk.Weight = 0;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             double score = new AIMissionProposalScorer().Score(
@@ -520,7 +520,7 @@ namespace Rebellion.Tests.AI.Scoring
             participant.AllowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
             participant.Ratings[OfficerRating.Combat] = 60;
             game.AttachNode(participant, origin);
-            game.Config.AI.MissionPlanning.SabotageShieldBonus = 123;
+            game.Config.AI.MissionPlanning.Utility.Sabotage.Shield.Weight = 123;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
 
@@ -544,8 +544,8 @@ namespace Rebellion.Tests.AI.Scoring
             );
 
             double expectedDifference =
-                AIMissionProposalScorer.GetSabotagePriorityBonus(context, target, firstShield)
-                - AIMissionProposalScorer.GetSabotagePriorityBonus(context, target, shipyard);
+                AIMissionProposalScorer.GetSabotageTargetValue(context, target, firstShield)
+                - AIMissionProposalScorer.GetSabotageTargetValue(context, target, shipyard);
 
             Assert.AreEqual(expectedDifference, shieldScore - shipyardScore);
         }
@@ -650,7 +650,7 @@ namespace Rebellion.Tests.AI.Scoring
             );
             participant.Ratings[OfficerRating.Combat] = 60;
             game.AttachNode(participant, origin);
-            game.Config.AI.MissionPlanning.SabotageFavoredSupportRegimentBonus = 37;
+            game.Config.AI.MissionPlanning.Utility.Sabotage.FavoredSupportRegiment.Weight = 37;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
 

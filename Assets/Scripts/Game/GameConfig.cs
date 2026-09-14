@@ -148,55 +148,15 @@ namespace Rebellion.Game
 
             public int MaximumJediTrainingStudents { get; set; } = 3;
 
-            public int SabotageShieldBonus { get; set; } = 150;
-
-            public int SabotageDefenseBonus { get; set; } = 125;
-
-            public int SabotageAttackTargetBonus { get; set; } = 150;
-
-            public int SabotageAttackDefenseBonus { get; set; } = 200;
-
-            public int SabotageFavoredSupportRegimentBonus { get; set; } = 50;
-
-            public int SabotageGarrisonRegimentBonus { get; set; } = 100;
-
-            public int SabotageGarrisonStarfighterBonus { get; set; } = 75;
-
-            public int SabotageOtherUnitBonus { get; set; } = 25;
-
-            public int SabotageInfrastructureBonus { get; set; } = 0;
-
             public int MinimumMissionScore { get; set; } = 20;
 
             public int MinimumUprisingMissionSuccessPercent { get; set; } = 20;
-
-            public int MissionFoilRiskWeight { get; set; } = 1;
 
             public int MaximumOfficerMissionLossProbability { get; set; } = 20;
 
             public int HostileMissionIntelAgeFoilPenaltyPerRefreshInterval { get; set; } = 5;
 
             public int MaximumUnprotectedOfficerMissionFoilProbability { get; set; } = 20;
-
-            public int ReconnaissancePriorityBonus { get; set; } = 50;
-
-            public int RecruitmentPriorityBonus { get; set; } = 80;
-
-            public int RescuePriorityBonus { get; set; } = 120;
-
-            public int SubdueUprisingPriorityBonus { get; set; } = 120;
-
-            public int ResearchPriorityBonus { get; set; } = 50;
-
-            public int JediTrainingPriorityBonus { get; set; } = 80;
-
-            public int EspionagePriorityBonus { get; set; } = 50;
-
-            public int DiplomacyPriorityBonus { get; set; } = 30;
-
-            public int DiplomacySupportDeficitWeight { get; set; } = 1;
-
-            public int DiplomacyCoreWorldPriorityBonus { get; set; } = 1000;
 
             public int DiplomacyConstructionFacilityWeight { get; set; } = 25;
 
@@ -208,7 +168,121 @@ namespace Rebellion.Game
 
             public int DiplomacySectorSupportRiskWeight { get; set; } = 25;
 
-            public int HostileOfficerReplacementPenalty { get; set; } = 100;
+            public AIMissionUtilityConfig Utility { get; set; } = new AIMissionUtilityConfig();
+        }
+
+        /// <summary>
+        /// Utility considerations used to rank mission proposals.
+        /// </summary>
+        [PersistableObject]
+        public class AIMissionUtilityConfig
+        {
+            public AIMissionObjectiveUtilityConfig Objective { get; set; } =
+                new AIMissionObjectiveUtilityConfig();
+
+            public AIMissionPriorityUtilityConfig Priority { get; set; } =
+                new AIMissionPriorityUtilityConfig();
+
+            public AISabotageUtilityConfig Sabotage { get; set; } = new AISabotageUtilityConfig();
+
+            public AIDiplomacyUtilityConfig Diplomacy { get; set; } =
+                new AIDiplomacyUtilityConfig();
+        }
+
+        /// <summary>
+        /// General mission value and risk considerations.
+        /// </summary>
+        [PersistableObject]
+        public class AIMissionObjectiveUtilityConfig
+        {
+            public AIConsiderationConfig Success { get; set; } = Weighted(100, 100);
+
+            public AIConsiderationConfig FoilRisk { get; set; } = Weighted(100, 100);
+
+            public AIConsiderationConfig TravelCost { get; set; } = Weighted(100, 100);
+
+            public AIConsiderationConfig OfficerRisk { get; set; } = Weighted(100);
+
+            public AIConsiderationConfig IntelAge { get; set; } = Weighted(1000, 1000);
+
+            public AIConsiderationConfig TrainingValue { get; set; } = Weighted(300, 300);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
+        }
+
+        /// <summary>
+        /// Mission-type strategic priority considerations.
+        /// </summary>
+        [PersistableObject]
+        public class AIMissionPriorityUtilityConfig
+        {
+            public AIConsiderationConfig Reconnaissance { get; set; } = Weighted(50);
+
+            public AIConsiderationConfig Recruitment { get; set; } = Weighted(80);
+
+            public AIConsiderationConfig Rescue { get; set; } = Weighted(120);
+
+            public AIConsiderationConfig SubdueUprising { get; set; } = Weighted(120);
+
+            public AIConsiderationConfig Research { get; set; } = Weighted(50);
+
+            public AIConsiderationConfig JediTraining { get; set; } = Weighted(80);
+
+            public AIConsiderationConfig Espionage { get; set; } = Weighted(50);
+
+            public AIConsiderationConfig Diplomacy { get; set; } = Weighted(30);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+        }
+
+        /// <summary>
+        /// Strategic value considerations for sabotage targets.
+        /// </summary>
+        [PersistableObject]
+        public class AISabotageUtilityConfig
+        {
+            public AIConsiderationConfig Infrastructure { get; set; } = Weighted(0);
+
+            public AIConsiderationConfig Defense { get; set; } = Weighted(125);
+
+            public AIConsiderationConfig Shield { get; set; } = Weighted(150);
+
+            public AIConsiderationConfig AttackTarget { get; set; } = Weighted(150);
+
+            public AIConsiderationConfig AttackDefense { get; set; } = Weighted(200);
+
+            public AIConsiderationConfig FavoredSupportRegiment { get; set; } = Weighted(50);
+
+            public AIConsiderationConfig GarrisonRegiment { get; set; } = Weighted(100);
+
+            public AIConsiderationConfig GarrisonStarfighter { get; set; } = Weighted(75);
+
+            public AIConsiderationConfig OtherUnit { get; set; } = Weighted(25);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+        }
+
+        /// <summary>
+        /// Strategic value considerations for diplomacy targets.
+        /// </summary>
+        [PersistableObject]
+        public class AIDiplomacyUtilityConfig
+        {
+            public AIConsiderationConfig SupportDeficit { get; set; } = Weighted(100, 100);
+
+            public AIConsiderationConfig CoreWorld { get; set; } = Weighted(1000);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
         }
 
         /// <summary>

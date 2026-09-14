@@ -57,11 +57,23 @@ namespace Rebellion.AI.Scoring
             double foilProbability = odds.FoilProbability;
             missionProposal.SetFoilProbability(foilProbability);
             missionProposal.SetPersonnelLossProbability(odds.PersonnelLossProbability);
+            GameConfig.AIMissionUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility;
             double score = GetMissionScore(context, missionProposal, successProbability);
-            score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, missionProposal);
-            score -= foilProbability * context.Game.Config.AI.MissionPlanning.MissionFoilRiskWeight;
-            score -= GetTravelPenalty(context, missionProposal);
-            score -= GetOfficerReplacementPenalty(context, missionProposal);
+            score += GetPriorityValue(utility.Priority, missionProposal);
+            score -= AIUtility.EvaluateRaw(foilProbability, utility.Objective.FoilRisk);
+            score -= AIUtility.EvaluateRaw(
+                GetTravelCost(context, missionProposal),
+                utility.Objective.TravelCost
+            );
+            score -= AIUtility.Evaluate(
+                HasOfficerReplacementRisk(context, missionProposal) ? 1 : 0,
+                utility.Objective.OfficerRisk
+            );
 
             return score >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? score : 0;
         }
@@ -100,9 +112,18 @@ namespace Rebellion.AI.Scoring
             if (context?.Game?.Config == null || proposal == null)
                 return 0;
 
+            GameConfig.AIMissionUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility;
             double score = GetMissionScore(context, proposal, _maximumSuccessProbability);
-            score += GetPriorityBonus(context.Game.Config.AI.MissionPlanning, proposal);
-            score -= GetTravelPenalty(context, proposal);
+            score += GetPriorityValue(utility.Priority, proposal);
+            score -= AIUtility.EvaluateRaw(
+                GetTravelCost(context, proposal),
+                utility.Objective.TravelCost
+            );
             return score;
         }
 
@@ -119,14 +140,23 @@ namespace Rebellion.AI.Scoring
             double successProbability
         )
         {
+            GameConfig.AIMissionObjectiveUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .Objective;
+            double successValue = AIUtility.EvaluateRaw(successProbability, utility.Success);
             return proposal.MissionTypeID switch
             {
-                MissionTypeIDs.Diplomacy => ScoreDiplomacy(context, proposal, successProbability),
-                MissionTypeIDs.Sabotage => ScoreSabotage(context, proposal, successProbability),
-                MissionTypeIDs.Espionage => successProbability
-                    + GetIntelAgeScore(context, proposal),
-                MissionTypeIDs.JediTraining => successProbability + GetJediTrainingValue(proposal),
-                _ => successProbability,
+                MissionTypeIDs.Diplomacy => ScoreDiplomacy(context, proposal, successValue),
+                MissionTypeIDs.Sabotage => ScoreSabotage(context, proposal, successValue),
+                MissionTypeIDs.Espionage => successValue
+                    + AIUtility.EvaluateRaw(GetIntelAge(context, proposal), utility.IntelAge),
+                MissionTypeIDs.JediTraining => successValue
+                    + AIUtility.EvaluateRaw(GetJediTrainingValue(proposal), utility.TrainingValue),
+                _ => successValue,
             };
         }
 
@@ -135,16 +165,16 @@ namespace Rebellion.AI.Scoring
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
-        /// <param name="successProbability">The calculated success probability.</param>
+        /// <param name="successValue">The calculated success utility.</param>
         /// <returns>The sabotage objective score.</returns>
         private double ScoreSabotage(
             AITurnContext context,
             AIMissionProposal proposal,
-            double successProbability
+            double successValue
         )
         {
-            return successProbability
-                + GetSabotagePriorityBonus(
+            return successValue
+                + GetSabotageTargetValue(
                     context,
                     proposal.TargetPlanet,
                     proposal.SelectedTarget as IManufacturable
@@ -158,51 +188,61 @@ namespace Rebellion.AI.Scoring
         /// <param name="planet">The target planet.</param>
         /// <param name="target">The target unit or facility.</param>
         /// <returns>The target's scoring bonus.</returns>
-        internal static int GetSabotagePriorityBonus(
+        internal static double GetSabotageTargetValue(
             AITurnContext context,
             Planet planet,
             IManufacturable target
         )
         {
-            GameConfig.AIMissionPlanningConfig config = context?.Game?.Config?.AI?.MissionPlanning;
-            if (config == null || planet == null || target == null)
+            GameConfig.AISabotageUtilityConfig utility = context
+                ?.Game
+                ?.Config
+                ?.AI
+                ?.MissionPlanning
+                ?.Utility
+                ?.Sabotage;
+            if (utility == null || planet == null || target == null)
                 return 0;
 
             bool isAttackTarget = context.Assessment.IsAttackPreparationTarget(planet);
             if (target is Building building)
             {
-                int priorityBonus = config.SabotageInfrastructureBonus;
+                double value = AIUtility.Evaluate(1, utility.Infrastructure);
                 if (IsPlanetaryDefenseBuilding(building))
-                    priorityBonus += config.SabotageDefenseBonus;
+                    value += AIUtility.Evaluate(1, utility.Defense);
 
                 if (building.IsShieldGenerator())
-                    priorityBonus += config.SabotageShieldBonus;
+                    value += AIUtility.Evaluate(1, utility.Shield);
 
                 if (isAttackTarget && IsPlanetaryDefenseBuilding(building))
                 {
-                    priorityBonus +=
-                        config.SabotageAttackTargetBonus + config.SabotageAttackDefenseBonus;
+                    value +=
+                        AIUtility.Evaluate(1, utility.AttackTarget)
+                        + AIUtility.Evaluate(1, utility.AttackDefense);
                 }
 
-                return priorityBonus;
+                return value;
             }
 
-            int unitPriorityBonus = target switch
+            double unitValue = target switch
             {
-                Regiment when IsGarrisonedAtPlanet(planet, target) =>
-                    config.SabotageGarrisonRegimentBonus
-                        + (
-                            HasOppositionSupportMajority(context, planet)
-                                ? config.SabotageFavoredSupportRegimentBonus
-                                : 0
-                        ),
-                Starfighter when IsGarrisonedAtPlanet(planet, target) =>
-                    config.SabotageGarrisonStarfighterBonus,
-                _ => config.SabotageOtherUnitBonus,
+                Regiment when IsGarrisonedAtPlanet(planet, target) => AIUtility.Evaluate(
+                    1,
+                    utility.GarrisonRegiment
+                )
+                    + AIUtility.Evaluate(
+                        HasOppositionSupportMajority(context, planet) ? 1 : 0,
+                        utility.FavoredSupportRegiment
+                    ),
+                Starfighter when IsGarrisonedAtPlanet(planet, target) => AIUtility.Evaluate(
+                    1,
+                    utility.GarrisonStarfighter
+                ),
+                _ => AIUtility.Evaluate(1, utility.OtherUnit),
             };
             return isAttackTarget
-                ? unitPriorityBonus + config.SabotageAttackTargetBonus
-                : unitPriorityBonus;
+                ? unitValue + AIUtility.Evaluate(1, utility.AttackTarget)
+                : unitValue;
         }
 
         /// <summary>
@@ -245,25 +285,29 @@ namespace Rebellion.AI.Scoring
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
-        /// <param name="successProbability">The calculated success probability.</param>
+        /// <param name="successValue">The calculated success utility.</param>
         /// <returns>The diplomacy objective score.</returns>
         private double ScoreDiplomacy(
             AITurnContext context,
             AIMissionProposal proposal,
-            double successProbability
+            double successValue
         )
         {
             int opposingSupport =
                 proposal.TargetPlanet?.GetOpposingPopularSupport(context.Faction.InstanceID) ?? 0;
-            int coreWorldBonus =
+            GameConfig.AIDiplomacyUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .Diplomacy;
+            bool isCoreWorld =
                 proposal.TargetPlanet?.GetParentOfType<PlanetSector>()?.SectorType
-                == PlanetSectorType.Core
-                    ? context.Game.Config.AI.MissionPlanning.DiplomacyCoreWorldPriorityBonus
-                    : 0;
-            return successProbability
-                + coreWorldBonus
-                + opposingSupport
-                    * context.Game.Config.AI.MissionPlanning.DiplomacySupportDeficitWeight;
+                == PlanetSectorType.Core;
+            return successValue
+                + AIUtility.Evaluate(isCoreWorld ? 1 : 0, utility.CoreWorld)
+                + AIUtility.EvaluateRaw(opposingSupport, utility.SupportDeficit);
         }
 
         /// <summary>
@@ -291,29 +335,30 @@ namespace Rebellion.AI.Scoring
         /// <param name="config">The applicable configuration.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <returns>The mission-type priority bonus.</returns>
-        private int GetPriorityBonus(
-            GameConfig.AIMissionPlanningConfig config,
+        private static double GetPriorityValue(
+            GameConfig.AIMissionPriorityUtilityConfig utility,
             AIMissionProposal proposal
         )
         {
-            return proposal.MissionTypeID switch
+            GameConfig.AIConsiderationConfig consideration = proposal.MissionTypeID switch
             {
-                MissionTypeIDs.Reconnaissance => config.ReconnaissancePriorityBonus,
-                MissionTypeIDs.Recruitment => config.RecruitmentPriorityBonus,
-                MissionTypeIDs.Rescue => config.RescuePriorityBonus,
-                MissionTypeIDs.SubdueUprising => config.SubdueUprisingPriorityBonus,
-                MissionTypeIDs.Research => config.ResearchPriorityBonus,
-                MissionTypeIDs.JediTraining => config.JediTrainingPriorityBonus,
-                MissionTypeIDs.Espionage => config.EspionagePriorityBonus,
-                MissionTypeIDs.Diplomacy => config.DiplomacyPriorityBonus,
-                _ => 0,
+                MissionTypeIDs.Reconnaissance => utility.Reconnaissance,
+                MissionTypeIDs.Recruitment => utility.Recruitment,
+                MissionTypeIDs.Rescue => utility.Rescue,
+                MissionTypeIDs.SubdueUprising => utility.SubdueUprising,
+                MissionTypeIDs.Research => utility.Research,
+                MissionTypeIDs.JediTraining => utility.JediTraining,
+                MissionTypeIDs.Espionage => utility.Espionage,
+                MissionTypeIDs.Diplomacy => utility.Diplomacy,
+                _ => null,
             };
+            return AIUtility.Evaluate(1, consideration);
         }
 
         /// <summary>
         /// Penalizes risking an officer on hostile work that unlocked special forces can perform.
         /// </summary>
-        private static int GetOfficerReplacementPenalty(
+        private static bool HasOfficerReplacementRisk(
             AITurnContext context,
             AIMissionProposal proposal
         )
@@ -324,9 +369,9 @@ namespace Rebellion.AI.Scoring
                 || proposal.TargetPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
                 || !context.HasUnlockedSpecialForcesForMission(proposal.MissionTypeID)
             )
-                return 0;
+                return false;
 
-            return context.Game.Config.AI.MissionPlanning.HostileOfficerReplacementPenalty;
+            return true;
         }
 
         /// <summary>
@@ -335,7 +380,7 @@ namespace Rebellion.AI.Scoring
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <returns>The normalized travel penalty.</returns>
-        private double GetTravelPenalty(AITurnContext context, AIMissionProposal proposal)
+        private static double GetTravelCost(AITurnContext context, AIMissionProposal proposal)
         {
             double distanceScale = context.Game.Config.Movement.DistanceScale;
             if (proposal.TargetPlanet == null || distanceScale <= 0)
@@ -358,7 +403,7 @@ namespace Rebellion.AI.Scoring
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <returns>The intelligence age measured in AI-turn intervals.</returns>
-        private double GetIntelAgeScore(AITurnContext context, AIMissionProposal proposal)
+        private static double GetIntelAge(AITurnContext context, AIMissionProposal proposal)
         {
             int tickInterval = context.Game.Config.AI.TickInterval;
             int age = context.Assessment.GetPlanetIntelAge(proposal.TargetPlanet);

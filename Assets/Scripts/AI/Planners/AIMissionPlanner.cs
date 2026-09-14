@@ -712,11 +712,7 @@ namespace Rebellion.AI.Planners
                 .ThenByDescending(planet =>
                     GetSabotageTargets(context, planet)
                         .Max(target =>
-                            AIMissionProposalScorer.GetSabotagePriorityBonus(
-                                context,
-                                planet,
-                                target
-                            )
+                            AIMissionProposalScorer.GetSabotageTargetValue(context, planet, target)
                         )
                 )
                 .ThenByDescending(context.Assessment.GetPlanetBuildingCount)
@@ -740,7 +736,7 @@ namespace Rebellion.AI.Planners
 
             targets = GetEligibleSabotageTargets(context, planet)
                 .OrderByDescending(target =>
-                    AIMissionProposalScorer.GetSabotagePriorityBonus(context, planet, target)
+                    AIMissionProposalScorer.GetSabotageTargetValue(context, planet, target)
                 )
                 .ThenByDescending(target =>
                     target.GetConstructionCost() + target.GetMaintenanceCost()
@@ -749,13 +745,13 @@ namespace Rebellion.AI.Planners
                 .ToList();
             if (targets.Count > 0)
             {
-                int highestPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                double highestPriority = AIMissionProposalScorer.GetSabotageTargetValue(
                     context,
                     planet,
                     targets[0]
                 );
                 targets.RemoveAll(target =>
-                    AIMissionProposalScorer.GetSabotagePriorityBonus(context, planet, target)
+                    AIMissionProposalScorer.GetSabotageTargetValue(context, planet, target)
                     != highestPriority
                 );
             }
@@ -1040,13 +1036,14 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to evaluate.</param>
         /// <returns>The calculated value.</returns>
-        private int GetDiplomacyCandidatePriority(AITurnContext context, Planet planet)
+        private double GetDiplomacyCandidatePriority(AITurnContext context, Planet planet)
         {
             int support = context.Assessment.GetFactionPopularSupport(planet);
             int strategicValue = context.Assessment.GetDiplomacyTargetStrategicValue(planet);
-            int coreWorldBonus = IsCoreWorld(planet)
-                ? context.Game.Config.AI.MissionPlanning.DiplomacyCoreWorldPriorityBonus
-                : 0;
+            double coreWorldValue = AIUtility.Evaluate(
+                IsCoreWorld(planet) ? 1 : 0,
+                context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.CoreWorld
+            );
 
             if (context.Assessment.IsOwnedPlanet(planet))
             {
@@ -1054,13 +1051,13 @@ namespace Rebellion.AI.Planners
                 return 100
                     - support
                     + strategicValue
-                    + coreWorldBonus
+                    + coreWorldValue
                     + supportRisk
                         * context.Game.Config.AI.MissionPlanning.DiplomacySectorSupportRiskWeight;
             }
 
             return context.Assessment.IsNeutralPlanet(planet)
-                ? support + strategicValue + coreWorldBonus
+                ? support + strategicValue + coreWorldValue
                 : 0;
         }
 
