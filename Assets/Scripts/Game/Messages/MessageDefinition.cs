@@ -102,6 +102,7 @@ namespace Rebellion.Game.Messages
         OfficerCaptured,
         EnemyOfficerCaptured,
         OfficerReleased,
+        EnemyOfficerReleased,
         OfficerInjured,
         OfficerRecovered,
         OfficerKilled,
