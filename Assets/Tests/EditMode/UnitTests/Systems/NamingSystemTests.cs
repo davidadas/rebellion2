@@ -73,7 +73,16 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessFaction_PlayerFactionWithManagement_AssignsName()
         {
-            _faction.PlayerID = "PLAYER";
+            _game
+                .GetPlayers()
+                .Add(
+                    new Player
+                    {
+                        PlayerID = "PLAYER",
+                        FactionID = _faction.InstanceID,
+                        ControllerType = PlayerControllerType.Human,
+                    }
+                );
             _faction.ManageNaming = true;
             CapitalShip ship = AddShip("SHIP", ManufacturingStatus.Complete);
 
@@ -170,7 +179,16 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessFaction_PlayerFactionWithoutManagement_DoesNotAssignName()
         {
-            _faction.PlayerID = "PLAYER";
+            _game
+                .GetPlayers()
+                .Add(
+                    new Player
+                    {
+                        PlayerID = "PLAYER",
+                        FactionID = _faction.InstanceID,
+                        ControllerType = PlayerControllerType.Human,
+                    }
+                );
             CapitalShip ship = AddShip("SHIP", ManufacturingStatus.Complete);
 
             int assignedCount = _system.ProcessFaction(_faction);

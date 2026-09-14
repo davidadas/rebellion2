@@ -177,6 +177,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// Verifies set sector position initialized window updates session slot.
         /// </summary>
         [Test]
+        public void TryOpenInAvailableSlot_AvailableSlot_OpensWithoutReplacingWindow()
+        {
+            GalaxyMapSector secondSector = CreateSector("second", "Second Sector");
+            _controller.Open(_sector);
+
+            bool opened = _controller.TryOpenInAvailableSlot(secondSector);
+
+            Assert.IsTrue(opened);
+            Assert.AreEqual(2, _windowManager.Windows.Count);
+            Assert.IsNotNull(_controller.FindWindow(_sector));
+            Assert.IsNotNull(_controller.FindWindow(secondSector));
+        }
+
+        [Test]
+        public void TryOpenInAvailableSlot_AllSlotsOccupied_DoesNotReplaceWindow()
+        {
+            GalaxyMapSector secondSector = CreateSector("second", "Second Sector");
+            GalaxyMapSector thirdSector = CreateSector("third", "Third Sector");
+            GalaxyMapSector fourthSector = CreateSector("fourth", "Fourth Sector");
+            _controller.Open(_sector);
+            _controller.Open(secondSector);
+            _controller.Open(thirdSector);
+
+            bool opened = _controller.TryOpenInAvailableSlot(fourthSector);
+
+            Assert.IsFalse(opened);
+            Assert.AreEqual(3, _windowManager.Windows.Count);
+            Assert.IsNotNull(_controller.FindWindow(_sector));
+            Assert.IsNotNull(_controller.FindWindow(secondSector));
+            Assert.IsNotNull(_controller.FindWindow(thirdSector));
+            Assert.IsNull(_controller.FindWindow(fourthSector));
+        }
+
+        [Test]
         public void SetSectorPosition_InitializedWindow_UpdatesSessionSlot()
         {
             PlanetSectorWindowView view = OpenWindow(out UIWindow _);
@@ -715,10 +749,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         /// <summary>
-        /// Opens window.
+        /// Creates an empty galaxy-map sector with the requested identity and label.
         /// </summary>
-        /// <param name="window">Receives the window.</param>
-        /// <returns>The result of open window.</returns>
+        /// <param name="instanceId">The sector instance identifier.</param>
+        /// <param name="displayName">The displayed sector name.</param>
+        /// <returns>The created galaxy-map sector.</returns>
+        private static GalaxyMapSector CreateSector(string instanceId, string displayName)
+        {
+            GalaxyPlanetSector planetSector = new GalaxyPlanetSector
+            {
+                InstanceID = instanceId,
+                DisplayName = displayName,
+            };
+            return new GalaxyMapSector(planetSector, Array.Empty<GalaxyMapPlanet>());
+        }
+
+        /// <summary>
+        /// Opens the configured planet-sector window.
+        /// </summary>
+        /// <param name="window">Receives the opened window container.</param>
+        /// <returns>The opened planet-sector view.</returns>
         private PlanetSectorWindowView OpenWindow(out UIWindow window)
         {
             _controller.Open(_sector);

@@ -136,6 +136,22 @@ namespace Rebellion.Tests.Generation
         /// Verifies build valid config sets factions.
         /// </summary>
         [Test]
+        public void Build_ValidConfig_CreatesOnePlayerPerFaction()
+        {
+            Assert.AreEqual(_game.GetFactions().Count, _game.GetPlayers().Count);
+            Assert.AreEqual(
+                PlayerControllerType.Human,
+                _game.GetFactionPlayer(_game.Summary.PlayerFactionID).ControllerType
+            );
+            Assert.IsTrue(
+                _game
+                    .GetPlayers()
+                    .Where(player => player.FactionID != _game.Summary.PlayerFactionID)
+                    .All(player => player.ControllerType == PlayerControllerType.AI)
+            );
+        }
+
+        [Test]
         public void Build_ValidConfig_SetsFactions()
         {
             Assert.IsNotNull(_game.GetFactions(), "Factions should not be null.");

@@ -226,15 +226,11 @@ namespace Rebellion.Tests.App
         private GameRoot CreateContestedGame()
         {
             GameRoot game = CreateGame();
-            Faction alliance = new Faction
-            {
-                InstanceID = "FNALL1",
-                DisplayName = "Alliance",
-                PlayerID = "player",
-            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "player", PlayerControllerType.Human);
             PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
             Planet planet = new Planet
             {

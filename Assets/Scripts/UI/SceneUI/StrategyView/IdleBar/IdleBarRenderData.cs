@@ -38,20 +38,25 @@ internal sealed class IdleBarRenderData
 
     internal RectInt DesktopBounds { get; }
 
+    internal bool AlwaysOpen { get; }
+
     /// <summary>
     /// Creates one idle-bar presentation.
     /// </summary>
     /// <param name="visible">Whether the idle bar is visible.</param>
     /// <param name="entries">The ordered entries to display.</param>
     /// <param name="desktopBounds">The strategy desktop bounds.</param>
+    /// <param name="alwaysOpen">Whether the idle bar remains expanded without pointer hover.</param>
     internal IdleBarRenderData(
         bool visible,
         IReadOnlyList<IdleBarEntry> entries,
-        RectInt desktopBounds
+        RectInt desktopBounds,
+        bool alwaysOpen = false
     )
     {
         Visible = visible;
         Entries = entries ?? Array.Empty<IdleBarEntry>();
         DesktopBounds = desktopBounds;
+        AlwaysOpen = alwaysOpen;
     }
 }

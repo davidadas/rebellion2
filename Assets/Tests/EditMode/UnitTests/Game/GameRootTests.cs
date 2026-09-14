@@ -640,6 +640,38 @@ namespace Rebellion.Tests.Game
         /// Verifies get player faction throws exception when summary is null.
         /// </summary>
         [Test]
+        public void SetFactionController_NewFaction_AddsPlayer()
+        {
+            _game.SetFactionController("FACTION1", "PLAYER1", PlayerControllerType.Human);
+
+            Player player = _game.GetFactionPlayer("FACTION1");
+            Assert.AreEqual("PLAYER1", player.PlayerID);
+            Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
+        }
+
+        [Test]
+        public void SetFactionController_ExistingFaction_UpdatesPlayer()
+        {
+            _game.SetFactionController("FACTION1", "AI_FACTION1", PlayerControllerType.AI);
+            _game.SetFactionController("FACTION1", "PLAYER1", PlayerControllerType.Human);
+
+            Assert.AreEqual(1, _game.GetPlayers().Count);
+            Assert.AreEqual("PLAYER1", _game.GetFactionPlayer("FACTION1").PlayerID);
+        }
+
+        [Test]
+        public void EnsurePlayers_LegacyGame_CreatesFactionControllers()
+        {
+            _game.EnsurePlayers();
+
+            Assert.AreEqual(_game.GetFactions().Count, _game.GetPlayers().Count);
+            Assert.AreEqual(
+                PlayerControllerType.Human,
+                _game.GetFactionPlayer(_game.Summary.PlayerFactionID).ControllerType
+            );
+        }
+
+        [Test]
         public void GetPlayerFaction_ThrowsException_WhenSummaryIsNull()
         {
             // Create game without _summary.

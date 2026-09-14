@@ -129,6 +129,10 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private OptionsToggleRowView[] _gameplayRows = Array.Empty<OptionsToggleRowView>();
 
+    [Header("Gameplay page - Idle Bar")]
+    [SerializeField]
+    private OptionsToggleRowView[] _userInterfaceRows = Array.Empty<OptionsToggleRowView>();
+
     [SerializeField]
     private TMP_InputField _autosaveIntervalInputField;
 
@@ -218,6 +222,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action QuitRequested;
     public event Action<UserTacticalOption> TacticalToggleRequested;
     public event Action<UserGameplayOption> GameplayToggleRequested;
+    public event Action<UserInterfaceOption> UserInterfaceToggleRequested;
     public event Action<int> ModToggleRequested;
     public event Action<int> ContentPackStepRequested;
     public event Action<string> AutosaveIntervalChanged;
@@ -359,6 +364,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             row.Render(enabled);
         }
 
+        RenderUserInterfaceOptions(data);
+
         bool autosaveEnabled =
             data.GameplayStates.TryGetValue(
                 UserGameplayOption.AutosaveEnabled,
@@ -379,6 +386,22 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             _autosaveIntervalInputField.SetTextWithoutNotify(data.AutosaveIntervalTicks.ToString());
         if (!_autosavesToKeepInputField.isFocused)
             _autosavesToKeepInputField.SetTextWithoutNotify(data.AutosavesToKeep.ToString());
+    }
+
+    /// <summary>
+    /// Applies Idle Bar toggle values to the Gameplay page.
+    /// </summary>
+    private void RenderUserInterfaceOptions(OptionsMenuRenderData data)
+    {
+        foreach (OptionsToggleRowView row in _userInterfaceRows)
+        {
+            if (row == null)
+                continue;
+
+            UserInterfaceOption option = (UserInterfaceOption)row.OptionIndex;
+            bool enabled = data.UserInterfaceStates.TryGetValue(option, out bool value) && value;
+            row.Render(enabled);
+        }
     }
 
     /// <summary>
@@ -883,6 +906,11 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             if (row != null)
                 row.ToggleRequested += HandleGameplayToggle;
         }
+        foreach (OptionsToggleRowView row in _userInterfaceRows)
+        {
+            if (row != null)
+                row.ToggleRequested += HandleUserInterfaceToggle;
+        }
         foreach (OptionsToggleRowView row in _modRows)
         {
             if (row != null)
@@ -957,6 +985,11 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         {
             if (row != null)
                 row.ToggleRequested -= HandleGameplayToggle;
+        }
+        foreach (OptionsToggleRowView row in _userInterfaceRows)
+        {
+            if (row != null)
+                row.ToggleRequested -= HandleUserInterfaceToggle;
         }
         foreach (OptionsToggleRowView row in _modRows)
         {
@@ -1038,6 +1071,15 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Forwards a User Interface toggle request with its typed option identifier.
+    /// </summary>
+    /// <param name="option">The toggled option identifier.</param>
+    private void HandleUserInterfaceToggle(int option)
+    {
+        UserInterfaceToggleRequested?.Invoke((UserInterfaceOption)option);
+    }
+
+    /// <summary>
     /// Forwards a mod-toggle request to subscribers.
     /// </summary>
     /// <param name="option">The displayed mod index.</param>
@@ -1104,6 +1146,10 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || _modsPage == null
         )
             throw new MissingReferenceException($"{name} is missing a page container.");
+        if (_gameplayRows.Length != 3 || Array.Exists(_gameplayRows, row => row == null))
+            throw new MissingReferenceException($"{name} expects three gameplay rows.");
+        if (_userInterfaceRows.Length != 2 || Array.Exists(_userInterfaceRows, row => row == null))
+            throw new MissingReferenceException($"{name} expects two user-interface rows.");
         if (
             _modsStatusTextField == null
             || _modsRestartTextField == null
@@ -1114,8 +1160,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || _modRowTemplate == null
         )
             throw new MissingReferenceException($"{name} is missing Mods controls.");
-        if (_gameplayRows.Length != 4 || Array.Exists(_gameplayRows, row => row == null))
-            throw new MissingReferenceException($"{name} expects four gameplay rows.");
         if (
             _autosaveIntervalInputField == null
             || _autosaveIntervalBadgeImage == null

@@ -256,12 +256,20 @@ public sealed class StrategyController
         contextMenuController = new ContextMenuController();
         idleBarController = new IdleBarController(
             () => gameManager?.GetPlayerFaction(),
+            gameManager.GetPlayerUIState().UntrackedIdleBarItems,
             contextMenuController,
             () => uiContext,
             () =>
-                AppBootstrap.Instance?.GetUserSettingsManager()?.Settings?.Gameplay?.ShowIdleBar
+                AppBootstrap
+                    .Instance?.GetUserSettingsManager()
+                    ?.Settings?.UserInterface?.ShowIdleBar
                 ?? false,
-            instanceId => gameManager?.GetGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
+            instanceId => gameManager?.GetGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId),
+            () =>
+                AppBootstrap
+                    .Instance?.GetUserSettingsManager()
+                    ?.Settings?.UserInterface?.KeepIdleBarOpen
+                ?? false
         );
         idleBarController.Initialize(this);
         idleBarController.BindView(idleBar);
@@ -308,7 +316,10 @@ public sealed class StrategyController
     private void InitializeWindowInfrastructure()
     {
         targetingController = new TargetingController(strategyOverlay);
-        bookmarkController = new BookmarkController(uiContext);
+        bookmarkController = new BookmarkController(
+            uiContext,
+            gameManager.GetPlayerUIState().Bookmarks
+        );
         windowPlacementController = new StrategyWindowPlacementController(
             uiContext,
             strategyWindowLayerView,
@@ -1698,7 +1709,9 @@ public sealed class StrategyController
     /// <param name="game">The replacement active game.</param>
     private void HandleGameReplaced(GameRoot game)
     {
-        idleBarController.ResetSession();
+        PlayerUIState uiState = gameManager.GetPlayerUIState();
+        idleBarController.ResetSession(uiState.UntrackedIdleBarItems);
+        bookmarkController.ResetSession(uiState.Bookmarks);
         ResetStrategyPresentation();
         uiContext.ReplaceGame(game);
         windowPlacementController.RefreshMovementBounds();
@@ -2209,7 +2222,7 @@ public sealed class StrategyController
     void IBattleAlertWindowActions.OpenBattleResultFleet(Planet planet, int sourceX, int sourceY)
     {
         GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planet?.InstanceID);
-        if (strategyPlanet == null || !OpenPlanetSectorWindow(strategyPlanet.Sector))
+        if (strategyPlanet == null)
             return;
 
         OpenPlanetWindowAt(strategyPlanet, PlanetIcon.Fleet, sourceX, sourceY);
@@ -2374,6 +2387,13 @@ public sealed class StrategyController
         BookmarkEntry bookmark
     )
     {
+        if (planet?.Planet == null || icon == PlanetIcon.None)
+            return null;
+
+        bool sectorWasOpen = planetSectorWindowController.FindWindow(planet.Sector) != null;
+        if (!sectorWasOpen && planetSectorWindowController.TryOpenInAvailableSlot(planet.Sector))
+            PlayStrategySfx(StrategyUISoundPaths.SectorWindowOpen);
+
         int x = bookmark?.X ?? sourceX;
         int y = bookmark?.Y ?? sourceY;
         bool created;
@@ -2428,14 +2448,14 @@ public sealed class StrategyController
         CloseWindow(strategyWindowManager.FindWindow<EncyclopediaWindowView>());
 
         Vector2Int source = GetSectorSourcePosition(sector);
-        OpenPlanetSectorWindow(sector);
-
         PlanetIcon icon = GetMessageTargetIcon(target);
         if (planet != null && icon != PlanetIcon.None)
         {
             UIWindow targetWindow = OpenPlanetWindowAt(planet, icon, source.x, source.y);
             SelectMessageTarget(targetWindow, target);
         }
+        else
+            OpenPlanetSectorWindow(sector);
 
         MarkDirty();
         return true;
@@ -2991,7 +3011,6 @@ public sealed class StrategyController
             return false;
 
         Vector2Int position = GetSectorSourcePosition(row.Planet.Sector);
-        OpenPlanetSectorWindow(row.Planet.Sector);
         UIWindow window = OpenPlanetWindowAt(row.Planet, row.TargetIcon, position.x, position.y);
         switch (row.TargetIcon)
         {
@@ -3045,7 +3064,6 @@ public sealed class StrategyController
             return;
 
         Vector2Int position = GetSectorSourcePosition(strategyPlanet.Sector);
-        OpenPlanetSectorWindow(strategyPlanet.Sector);
         PlanetIcon icon = target is Planet ? PlanetIcon.Facility : GetMessageTargetIcon(target);
         UIWindow window = OpenPlanetWindowAt(strategyPlanet, icon, position.x, position.y);
         SelectMessageTarget(window, target);

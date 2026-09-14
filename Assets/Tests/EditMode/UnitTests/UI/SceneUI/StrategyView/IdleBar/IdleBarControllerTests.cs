@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -18,7 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         private TestActions _actions;
         private ContextMenuController _contextMenuController;
         private IdleBarController _controller;
+        private Faction _faction;
         private Officer _officer;
+        private PlayerUIState _uiState;
         private ISceneNode _resolvedEntity;
         private GameObject _rootObject;
         private IdleBarView _view;
@@ -31,12 +36,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _rootObject.GetComponentInChildren<IdleBarView>(true);
+            _faction = new Faction { InstanceID = "faction" };
+            _uiState = new PlayerUIState();
             _officer = new Officer { InstanceID = "officer", DisplayName = "Officer" };
             _resolvedEntity = _officer;
             _actions = new TestActions();
             _contextMenuController = new ContextMenuController();
             _controller = new IdleBarController(
-                () => null,
+                () => _faction,
+                _uiState.UntrackedIdleBarItems,
                 _contextMenuController,
                 () => null,
                 () => true,
@@ -64,6 +72,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             IdleBarController controller = new IdleBarController(
                 () => null,
+                new List<IdleBarUntrackedItem>(),
                 new ContextMenuController(),
                 () => null,
                 () => false,
@@ -111,6 +120,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         /// <summary>
         /// Verifies secondary click resolves and routes context menu without untracking.
         /// </summary>
+        [Test]
+        public void IgnoreButton_UntracksEntryAndRequestsRender()
+        {
+            RenderOfficerDirectly();
+            IdleBarSlotView slot = _view.GetComponentInChildren<IdleBarSlotView>(false);
+            slot.OnPointerEnter(null);
+
+            slot.transform.Find("IgnoreButton").GetComponent<Button>().onClick.Invoke();
+
+            Assert.IsFalse(_controller.IsIdleBarTracked(_officer));
+            Assert.AreEqual(1, _actions.RenderRequestCount);
+        }
+
         [Test]
         public void SecondaryClick_ResolvesAndRoutesContextMenuWithoutUntracking()
         {
@@ -194,13 +216,71 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         /// Verifies reset session restores tracking.
         /// </summary>
         [Test]
-        public void ResetSession_RestoresTracking()
+        public void ResetSession_PreservesUntrackedState()
         {
             _controller.ToggleIdleBarTracking(_officer);
 
-            _controller.ResetSession();
+            _controller.ResetSession(_uiState.UntrackedIdleBarItems);
 
-            Assert.IsTrue(_controller.IsIdleBarTracked(_officer));
+            Assert.IsFalse(_controller.IsIdleBarTracked(_officer));
+        }
+
+        [Test]
+        public void ResetSession_ReplacementState_UsesReplacementExclusions()
+        {
+            List<IdleBarUntrackedItem> replacement = new List<IdleBarUntrackedItem>
+            {
+                new IdleBarUntrackedItem
+                {
+                    EntityInstanceID = _officer.InstanceID,
+                    ManufacturingType = ManufacturingType.None,
+                },
+            };
+
+            _controller.ResetSession(replacement);
+
+            Assert.IsFalse(_controller.IsIdleBarTracked(_officer));
+        }
+
+        [Test]
+        public void RecreatedController_UsesPlayerUIState()
+        {
+            _controller.ToggleIdleBarTracking(_officer);
+            IdleBarController recreated = new IdleBarController(
+                () => _faction,
+                _uiState.UntrackedIdleBarItems,
+                new ContextMenuController(),
+                () => null,
+                () => true,
+                _ => null
+            );
+
+            Assert.IsFalse(recreated.IsIdleBarTracked(_officer));
+
+            recreated.Dispose();
+        }
+
+        [Test]
+        public void ToggleTracking_PlanetPersistsEachManufacturingLane()
+        {
+            Planet planet = new Planet { InstanceID = "planet" };
+
+            _controller.ToggleIdleBarTracking(planet);
+
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    ManufacturingType.Ship,
+                    ManufacturingType.Troop,
+                    ManufacturingType.Building,
+                },
+                _uiState.UntrackedIdleBarItems.ConvertAll(item => item.ManufacturingType)
+            );
+            Assert.IsTrue(
+                _uiState.UntrackedIdleBarItems.All(item =>
+                    item.EntityInstanceID == planet.InstanceID
+                )
+            );
         }
 
         /// <summary>
@@ -211,6 +291,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             IdleBarController controller = new IdleBarController(
                 () => null,
+                new List<IdleBarUntrackedItem>(),
                 new ContextMenuController(),
                 () => null,
                 () => false,

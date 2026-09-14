@@ -74,6 +74,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     private int _renameRow = -1;
     private bool _suppressRenameCommit;
     private bool _pendingRenameFocus;
+    private bool _canSaveGame;
+    private bool _existingSaveSelected;
 
     /// <summary>
     /// Raised when the Save command is requested.
@@ -134,6 +136,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         AlignRenameInput();
         _saveButton.onClick.AddListener(HandleSaveRequested);
         _loadButton.onClick.AddListener(HandleLoadRequested);
+        _renameField.onValueChanged.AddListener(HandleRenameValueChanged);
         _renameField.onEndEdit.AddListener(HandleRenameEndEdit);
         _renameField.onSubmit.AddListener(HandleRenameSubmitted);
     }
@@ -153,6 +156,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     {
         _saveButton.onClick.RemoveListener(HandleSaveRequested);
         _loadButton.onClick.RemoveListener(HandleLoadRequested);
+        _renameField.onValueChanged.RemoveListener(HandleRenameValueChanged);
         _renameField.onEndEdit.RemoveListener(HandleRenameEndEdit);
         _renameField.onSubmit.RemoveListener(HandleRenameSubmitted);
     }
@@ -169,7 +173,9 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             selected >= 0
             && selected < data.SaveSlots.Count
             && !data.SaveSlots[selected].IsCreateNew;
-        bool canSave = data.CanSave && existingSelected;
+        _canSaveGame = data.CanSave;
+        _existingSaveSelected = existingSelected;
+        bool canSave = CanSaveCurrentEntry();
         bool canLoad = existingSelected;
         _saveButton.interactable = canSave;
         _loadButton.interactable = canLoad;
@@ -296,6 +302,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _suppressRenameCommit = true;
         _pendingRenameFocus = false;
         _renameField.gameObject.SetActive(false);
+        RenderSaveButton();
         RenameEditingChanged?.Invoke(false);
     }
 
@@ -479,6 +486,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _renameField.SetTextWithoutNotify(
             _slots[index].IsCreateNew ? string.Empty : _slots[index].Name
         );
+        RenderSaveButton();
         SetRowNameVisible(index, false);
         _pendingRenameFocus = true;
         RenameEditingChanged?.Invoke(true);
@@ -495,6 +503,15 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// </summary>
     /// <param name="value">The value.</param>
     private void HandleRenameSubmitted(string value) => CompleteRename(value, true);
+
+    /// <summary>
+    /// Refreshes the Save command as the active save name becomes valid or invalid.
+    /// </summary>
+    /// <param name="value">The current save-name text.</param>
+    private void HandleRenameValueChanged(string value)
+    {
+        RenderSaveButton();
+    }
 
     /// <summary>
     /// Closes the rename field and forwards a committed name to the controller.
@@ -515,6 +532,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _pendingRenameFocus = false;
         RenameEditingChanged?.Invoke(false);
         _renameField.gameObject.SetActive(false);
+        RenderSaveButton();
         if (_suppressRenameCommit)
         {
             _suppressRenameCommit = false;
@@ -541,7 +559,42 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void HandleSaveRequested()
     {
+        if (IsCreatingNamedSave())
+        {
+            CompleteRename(_renameField.text, true);
+            return;
+        }
+
         SaveRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Returns whether the Save command can act on the current selection or new-save editor.
+    /// </summary>
+    private bool CanSaveCurrentEntry()
+    {
+        return _canSaveGame && (_existingSaveSelected || IsCreatingNamedSave());
+    }
+
+    /// <summary>
+    /// Returns whether a valid name is being entered for the Create New Save row.
+    /// </summary>
+    private bool IsCreatingNamedSave()
+    {
+        return _renameRow >= 0
+            && _renameRow < _slots.Count
+            && _slots[_renameRow].IsCreateNew
+            && !string.IsNullOrWhiteSpace(_renameField.text);
+    }
+
+    /// <summary>
+    /// Applies the current Save command availability to its control and disabled artwork.
+    /// </summary>
+    private void RenderSaveButton()
+    {
+        bool canSave = CanSaveCurrentEntry();
+        _saveButton.interactable = canSave;
+        SetButtonDisabledVisual(_saveButton, _saveDisabledImage, canSave);
     }
 
     /// <summary>

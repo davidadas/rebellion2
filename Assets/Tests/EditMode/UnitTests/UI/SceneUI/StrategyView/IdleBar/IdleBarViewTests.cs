@@ -60,7 +60,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             RectTransform frame = template.transform.Find("CircleFrame") as RectTransform;
             RectTransform mask =
                 template.GetComponentInChildren<Mask>(true).transform as RectTransform;
-            TextMeshProUGUI overflowText = template.GetComponentInChildren<TextMeshProUGUI>(true);
+            TextMeshProUGUI overflowText = template
+                .transform.Find("OverflowTextField")
+                .GetComponent<TextMeshProUGUI>();
             Assert.IsNotNull(button);
             Assert.AreEqual(Selectable.Transition.None, button.transition);
             Assert.AreEqual(Color.black, frame.GetComponent<Image>().color);
@@ -127,7 +129,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
             Assert.AreEqual(28f, third.sizeDelta.x);
             Assert.AreEqual(28f, third.sizeDelta.y);
-            Assert.LessOrEqual(hitArea.rectTransform.sizeDelta.x, bounds.width / 2f);
+            Assert.AreEqual(94f, hitArea.rectTransform.sizeDelta.x);
             Assert.AreEqual(34f, hitArea.rectTransform.sizeDelta.y);
             Assert.AreEqual(new Color(0.08f, 0.09f, 0.11f, 0.9f), hitArea.color);
         }
@@ -158,8 +160,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             RawImage portraitImage = slot
                 .transform.Find("PortraitMask/PortraitImage")
                 .GetComponent<RawImage>();
+            Button ignoreButton = slot.transform.Find("IgnoreButton").GetComponent<Button>();
+            RectTransform hoverLabel = GetField<RectTransform>("hoverLabelRoot");
+            TextMeshProUGUI hoverLabelText = GetField<TextMeshProUGUI>("hoverLabelText");
+            RectTransform ignoreRect = ignoreButton.transform as RectTransform;
             Assert.AreEqual(Color.black, portraitBackground.color);
             Assert.AreEqual(Vector3.one, portraitImage.rectTransform.localScale);
+            Assert.IsFalse(ignoreButton.gameObject.activeSelf);
+            Assert.IsFalse(hoverLabel.gameObject.activeSelf);
+            Assert.AreEqual(new Vector2(18f, 0f), ignoreRect.anchoredPosition);
+            Assert.AreEqual(new Vector2(10f, 10f), ignoreRect.sizeDelta);
+            RectTransform ignoreTextRect =
+                ignoreButton.transform.Find("IgnoreText") as RectTransform;
+            Assert.AreEqual(Vector2.zero, ignoreTextRect.anchoredPosition);
+            Assert.AreEqual(Vector2.zero, ignoreTextRect.sizeDelta);
 
             slot.OnPointerEnter(null);
 
@@ -168,12 +182,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(Color.black, frame.color);
             Assert.AreEqual(Color.black, portraitBackground.color);
             Assert.AreEqual(Vector3.one * 1.08f, portraitImage.rectTransform.localScale);
+            Assert.IsTrue(ignoreButton.gameObject.activeSelf);
+            Assert.IsTrue(hoverLabel.gameObject.activeSelf);
+            Assert.AreEqual("Officer", hoverLabelText.text);
 
             slot.OnPointerExit(null);
 
             Assert.AreEqual(new Vector2(24f, 24f), mask.sizeDelta);
             Assert.AreEqual(Color.black, portraitBackground.color);
             Assert.AreEqual(Vector3.one, portraitImage.rectTransform.localScale);
+            Assert.IsFalse(ignoreButton.gameObject.activeSelf);
+            Assert.IsFalse(hoverLabel.gameObject.activeSelf);
         }
 
         /// <summary>
@@ -225,6 +244,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(5, slots.Count);
             Assert.AreEqual("+16", slots[4].name);
             Assert.AreEqual(1, CountRows(slots));
+            Assert.AreEqual(
+                5,
+                slots
+                    .Select(slot => slot.GetComponent<RectTransform>().anchoredPosition.x)
+                    .Distinct()
+                    .Count()
+            );
 
             _view.OnPointerEnter(new PointerEventData(null));
 
@@ -428,6 +454,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         /// <summary>
         /// Verifies render empty entries hides shelf and existing slots.
         /// </summary>
+        [Test]
+        public void Render_AlwaysOpen_KeepsExpandedWithoutHover()
+        {
+            _view.Render(
+                new IdleBarRenderData(true, CreateEntries(8), new RectInt(50, 30, 400, 350), true)
+            );
+
+            Assert.AreEqual(8, GetVisibleSlots().Count);
+        }
+
         [Test]
         public void Render_EmptyEntries_HidesShelfAndExistingSlots()
         {

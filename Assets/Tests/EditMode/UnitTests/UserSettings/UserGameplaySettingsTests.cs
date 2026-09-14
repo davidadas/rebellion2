@@ -15,7 +15,8 @@ namespace Rebellion.Tests.UserSettings
             global::UserSettings settings = new global::UserSettings();
             settings.Gameplay.PauseAfterEnemyBombardment = true;
             settings.Gameplay.PauseWhenSpaceBattleBegins = true;
-            settings.Gameplay.ShowIdleBar = true;
+            settings.UserInterface.ShowIdleBar = true;
+            settings.UserInterface.KeepIdleBarOpen = true;
             settings.Gameplay.ShowMissionOdds = false;
 
             string json = JsonUtility.ToJson(settings);
@@ -24,7 +25,8 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.IsTrue(restored.Gameplay.PauseAfterEnemyBombardment);
             Assert.IsTrue(restored.Gameplay.PauseWhenSpaceBattleBegins);
-            Assert.IsTrue(restored.Gameplay.ShowIdleBar);
+            Assert.IsTrue(restored.UserInterface.ShowIdleBar);
+            Assert.IsTrue(restored.UserInterface.KeepIdleBarOpen);
             Assert.IsFalse(restored.Gameplay.ShowMissionOdds);
         }
 
@@ -38,18 +40,15 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.IsTrue(settings.PauseAfterEnemyBombardment);
             Assert.IsTrue(settings.PauseWhenSpaceBattleBegins);
-            Assert.IsTrue(settings.ShowIdleBar);
             Assert.IsTrue(settings.ShowMissionOdds);
 
             settings.PauseAfterEnemyBombardment = false;
             settings.PauseWhenSpaceBattleBegins = false;
-            settings.ShowIdleBar = true;
             settings.ShowMissionOdds = false;
             settings.RestoreDefaults();
 
             Assert.IsTrue(settings.PauseAfterEnemyBombardment);
             Assert.IsTrue(settings.PauseWhenSpaceBattleBegins);
-            Assert.IsTrue(settings.ShowIdleBar);
             Assert.IsTrue(settings.ShowMissionOdds);
         }
 
@@ -68,11 +67,18 @@ namespace Rebellion.Tests.UserSettings
         /// Verifies json utility omitted idle bar preference defaults enabled.
         /// </summary>
         [Test]
-        public void JsonUtility_OmittedIdleBarPreference_DefaultsEnabled()
+        public void UserInterfaceOptions_DefaultsAndRestore_AreApplied()
         {
-            UserGameplaySettings settings = JsonUtility.FromJson<UserGameplaySettings>("{}");
+            UserInterfaceSettings settings = new UserInterfaceSettings
+            {
+                ShowIdleBar = false,
+                KeepIdleBarOpen = true,
+            };
+
+            settings.RestoreDefaults();
 
             Assert.IsTrue(settings.ShowIdleBar);
+            Assert.IsFalse(settings.KeepIdleBarOpen);
         }
 
         /// <summary>
