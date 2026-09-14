@@ -81,6 +81,9 @@ Policy targets and limits remain explicit typed values. Preferences use `AIConsi
 Default linear curves preserve established behavior during migration. Behavioral tuning begins only
 after the structural migration passes the deterministic baseline and held-seed validation.
 
+`AIUtilityDecisionAudit.md` records every remaining ordering category and whether it belongs to
+strategic utility, sequential allocation, feasibility, deterministic indexing, or execution.
+
 ## Verification
 
 During migration, run Medium seed `12345` for 1000 ticks and compare the complete normalized JSON
