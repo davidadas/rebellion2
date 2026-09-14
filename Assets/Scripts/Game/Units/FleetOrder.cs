@@ -7,16 +7,12 @@ namespace Rebellion.Game.Units
     /// </summary>
     public enum FleetOrderType
     {
-        /// <summary>Captures an enemy planet.</summary>
         Attack,
 
-        /// <summary>Claims an unowned planet.</summary>
         Colonize,
 
-        /// <summary>Protects a friendly planet.</summary>
         Defend,
 
-        /// <summary>Destroys a known hostile fleet without committing to an invasion.</summary>
         Engage,
     }
 
@@ -30,7 +26,6 @@ namespace Rebellion.Game.Units
         Readying,
         Ready,
 
-        /// <summary>The fleet is returning to friendly territory.</summary>
         Returning,
     }
 

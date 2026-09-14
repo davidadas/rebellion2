@@ -1547,19 +1547,10 @@ namespace Rebellion.AI.Planners
         /// </summary>
         private enum ProducerMode
         {
-            /// <summary>
-            /// Requires currently available manufacturing capacity.
-            /// </summary>
             AvailableCapacity,
 
-            /// <summary>
-            /// Requires an appropriate manufacturing facility.
-            /// </summary>
             Distributed,
 
-            /// <summary>
-            /// Requires a planet eligible for facility expansion.
-            /// </summary>
             FacilityExpansion,
         }
     }

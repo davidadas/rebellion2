@@ -14,10 +14,8 @@ namespace Rebellion.Game.Galaxy
     /// </summary>
     public enum PlanetStat
     {
-        /// <summary>The number of raw-resource sites available on the planet.</summary>
         RawResourceNodes,
 
-        /// <summary>The energy capacity available to support planetary facilities.</summary>
         EnergyCapacity,
     }
 

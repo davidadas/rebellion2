@@ -2424,14 +2424,8 @@ namespace Rebellion.Game.Events
     /// </summary>
     public enum SceneNodeState
     {
-        /// <summary>
-        /// The node participates in normal gameplay queries.
-        /// </summary>
         Active,
 
-        /// <summary>
-        /// The node remains retained but is excluded from normal gameplay queries.
-        /// </summary>
         Inactive,
     }
 
