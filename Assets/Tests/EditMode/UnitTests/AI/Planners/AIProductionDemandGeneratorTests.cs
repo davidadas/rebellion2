@@ -1401,8 +1401,8 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             GameConfig.AIInfrastructureConfig config = game.Config.AI.Infrastructure;
-            config.PlanetaryDefenseValuePressureWeight = 0;
-            config.PlanetaryShieldInstabilityPressureWeight = 50;
+            config.DemandUtility.DefenseValue.Weight = 0;
+            config.DemandUtility.ShieldSupport.Weight = 50;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1424,7 +1424,7 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.AreEqual(
                 config.PlanetaryShieldDemandPercent
-                    + config.PlanetaryDefenseDeficitPressureWeight
+                    + config.DemandUtility.DefenseDeficit.Weight
                     + 40,
                 pressure
             );
@@ -1436,9 +1436,9 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             GameConfig.AIInfrastructureConfig config = game.Config.AI.Infrastructure;
-            config.PlanetaryDefenseDeficitPressureWeight = 0;
-            config.PlanetaryDefenseValuePressureWeight = 0;
-            config.PlanetaryShieldInstabilityPressureWeight = 50;
+            config.DemandUtility.DefenseDeficit.Weight = 0;
+            config.DemandUtility.DefenseValue.Weight = 0;
+            config.DemandUtility.ShieldSupport.Weight = 50;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1463,7 +1463,7 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.AreEqual(
                 config.PlanetaryShieldDemandPercent
-                    + config.PlanetaryDefenseHeadquartersPressureBonus,
+                    + config.DemandUtility.DefenseHeadquarters.Weight,
                 pressure
             );
         }

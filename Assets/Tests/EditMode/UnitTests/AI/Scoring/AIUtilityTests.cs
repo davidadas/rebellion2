@@ -49,6 +49,17 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
+        public void DiscreteConsiderationTruncatesFractionalContribution()
+        {
+            GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
+            {
+                Weight = 20,
+            };
+
+            Assert.That(AIUtility.EvaluateDiscrete(1.0 / 3, consideration), Is.EqualTo(6));
+        }
+
+        [Test]
         public void SmoothStepPreservesEndpointsAndMidpoint()
         {
             GameConfig.AIResponseCurveConfig curve = new GameConfig.AIResponseCurveConfig

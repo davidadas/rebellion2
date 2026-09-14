@@ -436,7 +436,6 @@ namespace Rebellion.Game
             public int RegimentFleetAttackBoost { get; set; }
             public int RefinedMaterialReservePercent { get; set; } = 20;
             public int RefinedMaterialEconomyWarningPercent { get; set; } = 40;
-            public int RefinedMaterialEconomyPressureWeight { get; set; } = 100;
             public int RefinedMaterialCommitmentHorizonTicks { get; set; } = 25;
             public int MinimumMaintenanceHeadroomAfterProduction { get; set; } = 200;
             public int MaintenanceHeadroomHardFloor { get; set; } = 0;
@@ -481,25 +480,19 @@ namespace Rebellion.Game
             public int ConstructionFacilityDemandPercent { get; set; }
             public int ShipyardDemandPercent { get; set; }
             public int TrainingFacilityDemandPercent { get; set; } = 100;
-            public int TrainingFacilityBacklogPressureBonus { get; set; } = 5;
             public int FacilitySectorHubTargetCount { get; set; } = 5;
             public int ShipyardSectorHubTargetCount { get; set; } = 6;
             public int FacilitySectorHubMaximumCount { get; set; } = 7;
             public int FacilityPlanetsPerSector { get; set; } = 3;
             public int FacilitySectorSecondaryTargetCount { get; set; } = 3;
-            public int FacilitySectorCoveragePressureBonus { get; set; } = 100;
-            public int FacilitySectorPrimaryHubPressureBonus { get; set; } = 50;
             public AIInfrastructurePlacementUtilityConfig PlacementUtility { get; set; } =
                 new AIInfrastructurePlacementUtilityConfig();
             public int ProductionFacilityMaintenanceAllocationPercent { get; set; } = 30;
             public int ProductionFacilityInvestmentHorizonTicks { get; set; } = 70;
-            public int ProductionFacilityInvestmentPressureWeight { get; set; } = 100;
             public int FacilityConstructionLaneReserve { get; set; } = 1;
             public int ProductionQueueTargetPlanningIntervals { get; set; } = 1;
             public int ProductionFacilityUpgradeMinimumRemainingCount { get; set; } = 1;
             public int ProductionFacilityUpgradeDemandPercent { get; set; } = 65;
-            public int ProductionFacilityUpgradeValuePressureWeight { get; set; } = 20;
-            public int ProductionFacilityUpgradeHeadquartersPressureBonus { get; set; } = 10;
             public int FleetCapitalShipDemandPercent { get; set; } = 80;
             public int FleetStarfighterDemandPercent { get; set; } = 50;
             public int FleetRegimentDemandPercent { get; set; } = 60;
@@ -519,27 +512,52 @@ namespace Rebellion.Game
             public int PlanetaryWeaponTargetCount { get; set; } = 1;
             public int PlanetaryDefenseSurplusBatchSize { get; set; } = 1;
             public int PlanetaryShieldDemandPercent { get; set; } = 45;
-            public int PlanetaryShieldInstabilityPressureWeight { get; set; } = 50;
             public int PlanetaryWeaponDemandPercent { get; set; } = 35;
             public int PlanetaryGarrisonDemandPercent { get; set; } = 30;
-            public int PlanetaryDefenseDeficitPressureWeight { get; set; } = 20;
-            public int PlanetaryDefenseValuePressureWeight { get; set; } = 25;
-            public int PlanetaryDefenseHeadquartersPressureBonus { get; set; } = 20;
-            public int PlanetaryDefenseThreatPressureBonus { get; set; } = 50;
             public int PlanetaryDefenseMaintenanceReservePercent { get; set; } = 10;
             public int EconomyDefaultBatchSize { get; set; } = 1;
             public int EconomyDemandPercent { get; set; } = 90;
             public int EconomySevereDemandPercent { get; set; } = 100;
             public int EconomySevereDeficitPercent { get; set; } = 25;
             public int EconomyCompetingNeedSlotReserve { get; set; } = 1;
-            public int EconomyMaintenanceShortfallPressure { get; set; } = 40;
-            public int EconomyMaintenanceReservePressure { get; set; } = 20;
-            public int FleetTargetValuePressureWeight { get; set; } = 20;
-            public int AttackFleetReinforcementPressureBonus { get; set; } = 25;
-            public int FleetReadinessPressureWeight { get; set; } = 35;
-            public int FleetFinalReadinessGatePressure { get; set; } = 35;
             public int FleetFinalReadinessGateUnitCount { get; set; } = 2;
-            public int FleetStarfighterFillPressureWeight { get; set; } = 20;
+            public AIProductionDemandUtilityConfig DemandUtility { get; set; } =
+                new AIProductionDemandUtilityConfig();
+        }
+
+        /// <summary>
+        /// Utility considerations that determine relative production-demand pressure.
+        /// </summary>
+        [PersistableObject]
+        public class AIProductionDemandUtilityConfig
+        {
+            public AIConsiderationConfig Deficit { get; set; } = Weighted(100);
+            public AIConsiderationConfig TrainingBacklog { get; set; } = Weighted(5);
+            public AIConsiderationConfig SectorCoverage { get; set; } = Weighted(100);
+            public AIConsiderationConfig PrimaryHub { get; set; } = Weighted(50);
+            public AIConsiderationConfig FacilityInvestment { get; set; } = Weighted(100);
+            public AIConsiderationConfig UpgradeValue { get; set; } = Weighted(20);
+            public AIConsiderationConfig UpgradeHeadquarters { get; set; } = Weighted(10);
+            public AIConsiderationConfig ResourceShortage { get; set; } = Weighted(100);
+            public AIConsiderationConfig MaintenanceShortfall { get; set; } = Weighted(40);
+            public AIConsiderationConfig MaintenanceReserve { get; set; } = Weighted(20);
+            public AIConsiderationConfig DefenseDeficit { get; set; } = Weighted(20);
+            public AIConsiderationConfig DefenseValue { get; set; } = Weighted(25);
+            public AIConsiderationConfig DefenseHeadquarters { get; set; } = Weighted(20);
+            public AIConsiderationConfig DefenseThreat { get; set; } = Weighted(50);
+            public AIConsiderationConfig ShieldSupport { get; set; } = Weighted(50);
+            public AIConsiderationConfig ShieldSectorRisk { get; set; } = Weighted(500, 10);
+            public AIConsiderationConfig FleetTargetValue { get; set; } = Weighted(20);
+            public AIConsiderationConfig AttackReinforcement { get; set; } = Weighted(25);
+            public AIConsiderationConfig FleetReadiness { get; set; } = Weighted(35);
+            public AIConsiderationConfig FinalReadiness { get; set; } = Weighted(35);
+            public AIConsiderationConfig StarfighterFill { get; set; } = Weighted(20);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
         }
 
         /// <summary>

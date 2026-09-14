@@ -718,18 +718,21 @@ namespace Rebellion.AI.Planners
         private double GetProductionFacilityUpgradePressure(AITurnContext context, Planet planet)
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            GameConfig.AIProductionDemandUtilityConfig utility = config.DemandUtility;
             double pressure = config.ProductionFacilityUpgradeDemandPercent;
             double highestPlanetValue = context.Assessment.GetHighestOwnedPlanetValue();
             if (highestPlanetValue > 0)
             {
-                pressure +=
-                    config.ProductionFacilityUpgradeValuePressureWeight
-                    * context.Assessment.GetPlanetValue(planet)
-                    / highestPlanetValue;
+                pressure += AIUtility.Evaluate(
+                    context.Assessment.GetPlanetValue(planet) / highestPlanetValue,
+                    utility.UpgradeValue
+                );
             }
 
-            if (context.Assessment.IsFactionHeadquarters(planet))
-                pressure += config.ProductionFacilityUpgradeHeadquartersPressureBonus;
+            pressure += AIUtility.Evaluate(
+                context.Assessment.IsFactionHeadquarters(planet) ? 1 : 0,
+                utility.UpgradeHeadquarters
+            );
 
             return ClampPressure(pressure);
         }
@@ -866,13 +869,8 @@ namespace Rebellion.AI.Planners
                         hub,
                         primaryTarget,
                         baseDemandPercent,
-                        context.Game.Config.AI.Infrastructure.FacilitySectorCoveragePressureBonus
-                            + context
-                                .Game
-                                .Config
-                                .AI
-                                .Infrastructure
-                                .FacilitySectorPrimaryHubPressureBonus
+                        AIUtility.Evaluate(1, config.DemandUtility.SectorCoverage)
+                            + AIUtility.Evaluate(1, config.DemandUtility.PrimaryHub)
                             + categoryBalancePressure
                     );
                     if (
@@ -1036,17 +1034,16 @@ namespace Rebellion.AI.Planners
             int deficit = Math.Max(1, targetCount - currentCount);
             double pressure = baseDemandPercent + deficit * 100.0 / targetCount;
             if (kind == AIDemandKind.TrainingFacility)
-                pressure += context
-                    .Game
-                    .Config
-                    .AI
-                    .Infrastructure
-                    .TrainingFacilityBacklogPressureBonus;
+                pressure += AIUtility.Evaluate(
+                    1,
+                    context.Game.Config.AI.Infrastructure.DemandUtility.TrainingBacklog
+                );
 
             if (kind == AIDemandKind.ConstructionFacility)
-                pressure +=
-                    context.Game.Config.AI.Infrastructure.ProductionFacilityInvestmentPressureWeight
-                    * investmentDeficit;
+                pressure += AIUtility.Evaluate(
+                    investmentDeficit,
+                    context.Game.Config.AI.Infrastructure.DemandUtility.FacilityInvestment
+                );
 
             return pressure;
         }
@@ -1996,7 +1993,7 @@ namespace Rebellion.AI.Planners
             int baseDemandPercent
         )
         {
-            double pressure = GetBasePressure(baseDemandPercent, deficit, targetCount);
+            double pressure = GetBasePressure(context, baseDemandPercent, deficit, targetCount);
 
             if (kind is AIDemandKind.Mine or AIDemandKind.Refinery)
             {
@@ -2030,7 +2027,10 @@ namespace Rebellion.AI.Planners
                 1,
                 Math.Max(0, warningPercent - projectedPercent) / (double)pressureRange
             );
-            return Math.Max(0, config.RefinedMaterialEconomyPressureWeight) * urgency;
+            return AIUtility.Evaluate(
+                urgency,
+                context.Game.Config.AI.Infrastructure.DemandUtility.ResourceShortage
+            );
         }
 
         /// <summary>
@@ -2072,33 +2072,43 @@ namespace Rebellion.AI.Planners
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            GameConfig.AIProductionDemandUtilityConfig utility = config.DemandUtility;
             double highestPlanetValue = context.Assessment.GetHighestOwnedPlanetValue();
             double pressure =
                 baseDemandPercent
-                + config.PlanetaryDefenseDeficitPressureWeight * deficit / Math.Max(1, targetCount);
+                + AIUtility.EvaluateDiscrete(
+                    deficit / (double)Math.Max(1, targetCount),
+                    utility.DefenseDeficit
+                );
 
             if (highestPlanetValue > 0)
             {
-                pressure +=
-                    config.PlanetaryDefenseValuePressureWeight
-                    * context.Assessment.GetPlanetValue(planet)
-                    / highestPlanetValue;
+                pressure += AIUtility.Evaluate(
+                    context.Assessment.GetPlanetValue(planet) / highestPlanetValue,
+                    utility.DefenseValue
+                );
             }
 
-            if (context.Assessment.IsFactionHeadquarters(planet))
-                pressure += config.PlanetaryDefenseHeadquartersPressureBonus;
-
-            if (context.Assessment.GetPlanetDefenseThreatStrength(planet) > 0)
-                pressure += config.PlanetaryDefenseThreatPressureBonus;
+            pressure += AIUtility.Evaluate(
+                context.Assessment.IsFactionHeadquarters(planet) ? 1 : 0,
+                utility.DefenseHeadquarters
+            );
+            pressure += AIUtility.Evaluate(
+                context.Assessment.GetPlanetDefenseThreatStrength(planet) > 0 ? 1 : 0,
+                utility.DefenseThreat
+            );
 
             double boundedPressure = ClampPressure(pressure);
             return isInitialShield
                 ? boundedPressure
-                    + config.PlanetaryShieldInstabilityPressureWeight
-                        * (
-                            planet.GetOpposingPopularSupport(context.Faction.InstanceID) / 100.0
-                            + context.Assessment.GetDefensiveSupportRisk(planet)
-                        )
+                    + AIUtility.Evaluate(
+                        planet.GetOpposingPopularSupport(context.Faction.InstanceID) / 100.0,
+                        utility.ShieldSupport
+                    )
+                    + AIUtility.EvaluateRaw(
+                        context.Assessment.GetDefensiveSupportRisk(planet),
+                        utility.ShieldSectorRisk
+                    )
                 : boundedPressure;
         }
 
@@ -2121,7 +2131,7 @@ namespace Rebellion.AI.Planners
             int baseDemandPercent
         )
         {
-            double pressure = GetBasePressure(baseDemandPercent, deficit, targetCount);
+            double pressure = GetBasePressure(context, baseDemandPercent, deficit, targetCount);
             Planet targetPlanet = context.Assessment.GetAttackTargetPlanet(fleet);
 
             if (targetPlanet != null)
@@ -2131,12 +2141,10 @@ namespace Rebellion.AI.Planners
                 pressure += GetFinalReadinessGatePressure(context, fleet, targetPlanet, deficit);
                 if (kind is AIDemandKind.FleetCapitalShip or AIDemandKind.FleetRegiment)
                 {
-                    pressure += context
-                        .Game
-                        .Config
-                        .AI
-                        .Infrastructure
-                        .AttackFleetReinforcementPressureBonus;
+                    pressure += AIUtility.Evaluate(
+                        1,
+                        context.Game.Config.AI.Infrastructure.DemandUtility.AttackReinforcement
+                    );
                 }
             }
 
@@ -2149,14 +2157,27 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Returns base pressure for a demand.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="baseDemandPercent">Base pressure for the demand.</param>
         /// <param name="deficit">Current deficit.</param>
         /// <param name="targetCount">Target count.</param>
         /// <returns>The base pressure.</returns>
-        private double GetBasePressure(int baseDemandPercent, int deficit, int targetCount)
+        private static double GetBasePressure(
+            AITurnContext context,
+            int baseDemandPercent,
+            int deficit,
+            int targetCount
+        )
         {
-            int deficitPercent = deficit * 100 / Math.Max(1, targetCount);
-            return Math.Min(100, baseDemandPercent + deficitPercent);
+            double deficitRatio = deficit / (double)Math.Max(1, targetCount);
+            return Math.Min(
+                100,
+                baseDemandPercent
+                    + AIUtility.EvaluateDiscrete(
+                        deficitRatio,
+                        context.Game.Config.AI.Infrastructure.DemandUtility.Deficit
+                    )
+            );
         }
 
         /// <summary>
@@ -2166,7 +2187,12 @@ namespace Rebellion.AI.Planners
         /// <returns>The economy maintenance pressure.</returns>
         private double GetEconomyMaintenancePressure(AITurnContext context)
         {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            GameConfig.AIProductionDemandUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .Infrastructure
+                .DemandUtility;
             int headroom = context.Assessment.ProjectedMaintenanceHeadroom;
             int reserve = context
                 .Game
@@ -2176,14 +2202,15 @@ namespace Rebellion.AI.Planners
                 .MinimumMaintenanceHeadroomAfterProduction;
 
             if (headroom < 0)
-                return config.EconomyMaintenanceShortfallPressure;
+                return AIUtility.Evaluate(1, utility.MaintenanceShortfall);
 
             if (headroom >= reserve)
                 return 0;
 
-            return config.EconomyMaintenanceReservePressure
-                * (reserve - headroom)
-                / Math.Max(1, reserve);
+            return AIUtility.EvaluateDiscrete(
+                (reserve - headroom) / (double)Math.Max(1, reserve),
+                utility.MaintenanceReserve
+            );
         }
 
         /// <summary>
@@ -2198,9 +2225,10 @@ namespace Rebellion.AI.Planners
             if (highestValue <= 0)
                 return 0;
 
-            return context.Game.Config.AI.Infrastructure.FleetTargetValuePressureWeight
-                * context.Assessment.GetPlanetValue(targetPlanet)
-                / highestValue;
+            return AIUtility.Evaluate(
+                context.Assessment.GetPlanetValue(targetPlanet) / highestValue,
+                context.Game.Config.AI.Infrastructure.DemandUtility.FleetTargetValue
+            );
         }
 
         /// <summary>
@@ -2218,7 +2246,13 @@ namespace Rebellion.AI.Planners
             Planet targetPlanet
         )
         {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            GameConfig.AIConsiderationConfig readiness = context
+                .Game
+                .Config
+                .AI
+                .Infrastructure
+                .DemandUtility
+                .FleetReadiness;
             int requiredCombat = context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
             int requiredRegiments = context.Assessment.GetProjectedRequiredAttackRegimentCount(
                 fleet,
@@ -2239,15 +2273,18 @@ namespace Rebellion.AI.Planners
 
             return kind switch
             {
-                AIDemandKind.FleetRegiment => config.FleetReadinessPressureWeight
-                    * (combatReadiness + capacityReadiness)
-                    / 2,
-                AIDemandKind.FleetCapitalShip => config.FleetReadinessPressureWeight
-                    * (regimentReadiness + capacityReadiness)
-                    / 2,
-                AIDemandKind.FleetStarfighter => config.FleetReadinessPressureWeight
-                    * (combatReadiness + regimentReadiness + capacityReadiness)
-                    / 3,
+                AIDemandKind.FleetRegiment => AIUtility.Evaluate(
+                    (combatReadiness + capacityReadiness) / 2,
+                    readiness
+                ),
+                AIDemandKind.FleetCapitalShip => AIUtility.Evaluate(
+                    (regimentReadiness + capacityReadiness) / 2,
+                    readiness
+                ),
+                AIDemandKind.FleetStarfighter => AIUtility.Evaluate(
+                    (combatReadiness + regimentReadiness + capacityReadiness) / 3,
+                    readiness
+                ),
                 _ => 0,
             };
         }
@@ -2287,9 +2324,11 @@ namespace Rebellion.AI.Planners
             if (!combatReady || !capacityReady || !bombardmentReady)
                 return 0;
 
-            return config.FleetFinalReadinessGatePressure
-                * (config.FleetFinalReadinessGateUnitCount - deficit + 1)
-                / config.FleetFinalReadinessGateUnitCount;
+            return AIUtility.EvaluateDiscrete(
+                (config.FleetFinalReadinessGateUnitCount - deficit + 1)
+                    / (double)config.FleetFinalReadinessGateUnitCount,
+                config.DemandUtility.FinalReadiness
+            );
         }
 
         /// <summary>
@@ -2309,9 +2348,10 @@ namespace Rebellion.AI.Planners
                 return 0;
 
             int loadedCount = context.Assessment.GetFleetLoadedStarfighterCount(fleet);
-            return context.Game.Config.AI.Infrastructure.FleetStarfighterFillPressureWeight
-                * (targetCount - loadedCount)
-                / targetCount;
+            return AIUtility.EvaluateDiscrete(
+                (targetCount - loadedCount) / (double)targetCount,
+                context.Game.Config.AI.Infrastructure.DemandUtility.StarfighterFill
+            );
         }
 
         /// <summary>
