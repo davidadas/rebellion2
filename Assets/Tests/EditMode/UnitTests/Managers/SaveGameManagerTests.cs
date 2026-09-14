@@ -964,6 +964,8 @@ namespace Rebellion.Tests.Managers
             StringAssert.Contains("<BookmarkedItems>", xml);
             StringAssert.Contains("<TargetInstanceID>PLANET2</TargetInstanceID>", xml);
             StringAssert.Contains("<ItemTypeID>Fleet</ItemTypeID>", xml);
+            StringAssert.Contains("<X>45</X>", xml);
+            StringAssert.Contains("<Y>55</Y>", xml);
         }
 
         /// <summary>
@@ -991,10 +993,10 @@ namespace Rebellion.Tests.Managers
             );
             CollectionAssert.AreEqual(
                 section.BookmarkedItems.Select(item =>
-                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID)
+                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID, item.X, item.Y)
                 ),
                 loadedSection.BookmarkedItems.Select(item =>
-                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID)
+                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID, item.X, item.Y)
                 )
             );
         }
@@ -1523,6 +1525,8 @@ namespace Rebellion.Tests.Managers
                                 SlotIndex = 2,
                                 TargetInstanceID = "PLANET2",
                                 ItemTypeID = "Fleet",
+                                X = 45,
+                                Y = 55,
                             },
                         },
                         IgnoredItems = new List<IgnoredItem>

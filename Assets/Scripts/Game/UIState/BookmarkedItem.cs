@@ -11,5 +11,7 @@ namespace Rebellion.Game.UIState
         public int SlotIndex { get; set; }
         public string TargetInstanceID { get; set; }
         public string ItemTypeID { get; set; }
+        public int X { get; set; }
+        public int Y { get; set; }
     }
 }

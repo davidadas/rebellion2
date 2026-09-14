@@ -28,9 +28,9 @@ public sealed class BookmarkEntry
             {
                 TargetInstanceID = planet?.Planet?.InstanceID,
                 ItemTypeID = icon.ToString(),
+                X = x,
+                Y = y,
             },
-            x,
-            y,
             planet
         ) { }
 
@@ -40,21 +40,11 @@ public sealed class BookmarkEntry
     /// <param name="state">The durable bookmark state.</param>
     /// <param name="planet">The current galaxy-map planet projection.</param>
     public BookmarkEntry(BookmarkedItem state, GalaxyMapPlanet planet = null)
-        : this(state, 0, 0, planet) { }
-
-    /// <summary>
-    /// Creates a bookmark projection with its transient window placement.
-    /// </summary>
-    /// <param name="state">The durable bookmark state.</param>
-    /// <param name="x">The source-space horizontal window coordinate.</param>
-    /// <param name="y">The source-space vertical window coordinate.</param>
-    /// <param name="planet">The current galaxy-map planet projection.</param>
-    private BookmarkEntry(BookmarkedItem state, int x, int y, GalaxyMapPlanet planet)
     {
         State = state;
         Icon = ToPlanetIcon(state.ItemTypeID);
-        X = x;
-        Y = y;
+        X = state.X;
+        Y = state.Y;
         Planet = planet;
     }
 

@@ -127,6 +127,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.That(data, Has.Exactly(1).Matches<BookmarkRenderData>(item => item.Active));
             Assert.AreEqual("planet-1", _state.BookmarkedItems.Single().TargetInstanceID);
             Assert.AreEqual("Fleet", _state.BookmarkedItems.Single().ItemTypeID);
+            Assert.AreEqual(10, _state.BookmarkedItems.Single().X);
+            Assert.AreEqual(20, _state.BookmarkedItems.Single().Y);
         }
 
         /// <summary>
@@ -276,6 +278,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
                     SlotIndex = 1,
                     TargetInstanceID = "planet-2",
                     ItemTypeID = "Mission",
+                    X = 45,
+                    Y = 55,
                 },
             };
             GalaxyMapPlanet planet = CreatePlanet("planet-2", "Corellia");
@@ -286,6 +290,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsFalse(_controller.BuildRenderData()[0].Active);
             Assert.IsTrue(_controller.BuildRenderData()[1].Active);
             Assert.AreEqual("Corellia", _controller.BuildRenderData()[1].Label);
+            Assert.IsTrue(_controller.TryTake(1, out BookmarkEntry bookmark));
+            Assert.AreEqual(45, bookmark.X);
+            Assert.AreEqual(55, bookmark.Y);
         }
 
         /// <summary>
