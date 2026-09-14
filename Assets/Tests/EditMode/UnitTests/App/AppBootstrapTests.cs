@@ -59,7 +59,7 @@ namespace Rebellion.Tests.App
         }
 
         /// <summary>
-        /// Executes destroy audio managers.
+        /// Removes persistent audio managers created by bootstrap initialization.
         /// </summary>
         private static void DestroyAudioManagers()
         {
