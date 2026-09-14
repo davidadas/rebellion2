@@ -381,7 +381,23 @@ public sealed class StrategyController
             new StrategyWindowStateAdapter<PlanetSectorWindowView>(
                 _sectorWindowTypeID,
                 view => planetSectorWindowController.GetSector(view)?.PlanetSector?.InstanceID,
-                RestoreSectorWindow
+                RestoreSectorWindow,
+                (view, targetInstanceID, window, zOrder) =>
+                {
+                    int sectorPosition = planetSectorWindowController.GetSectorPosition(view);
+                    return new WindowState(
+                        _sectorWindowTypeID,
+                        targetInstanceID,
+                        sectorPosition >= SectorWindowPositions.Left
+                        && sectorPosition <= SectorWindowPositions.Right
+                            ? sectorPosition
+                            : window.X,
+                        window.Y,
+                        window.Width,
+                        window.Height,
+                        zOrder
+                    );
+                }
             )
         );
     }
@@ -422,10 +438,18 @@ public sealed class StrategyController
     /// <returns>True when the sector and slot were restored.</returns>
     private bool RestoreSectorWindow(WindowState state)
     {
-        return state != null
-            && windowPlacementController.TryGetSectorWindowSlot(state.GetX(), out int slot)
-            && galaxyMapController.FindSector(state.GetTargetInstanceID()) is GalaxyMapSector sector
-            && planetSectorWindowController.TryOpenAtPosition(sector, slot);
+        if (state == null)
+            return false;
+
+        int position = state.GetX();
+        if (position < SectorWindowPositions.Left || position > SectorWindowPositions.Right)
+        {
+            if (!windowPlacementController.TryGetSectorWindowSlot(position, out position))
+                return false;
+        }
+
+        return galaxyMapController.FindSector(state.GetTargetInstanceID()) is GalaxyMapSector sector
+            && planetSectorWindowController.TryOpenAtPosition(sector, position);
     }
 
     /// <summary>
@@ -1860,8 +1884,9 @@ public sealed class StrategyController
         windowPlacementController.RefreshMovementBounds();
         PreloadStrategySfx();
         strategyMusicController.Resume();
-        RefreshStrategyState();
+        RebuildSnapshot();
         RestoreWindows();
+        MarkDirty();
         PlayStrategyReadySound();
     }
 

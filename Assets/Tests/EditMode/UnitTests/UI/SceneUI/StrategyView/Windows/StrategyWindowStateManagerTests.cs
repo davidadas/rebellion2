@@ -61,6 +61,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         /// <summary>
+        /// Verifies adapters can capture custom persisted coordinates instead of runtime window positions.
+        /// </summary>
+        [Test]
+        public void Capture_CustomAdapterCoordinates_PersistsAdapterState()
+        {
+            List<WindowState> states = new List<WindowState>();
+            StrategyWindowStateManager manager = new StrategyWindowStateManager(
+                _windowManager,
+                states
+            );
+            manager.Register(
+                new StrategyWindowStateAdapter<TestWindowContent>(
+                    "Test.Window",
+                    _ => "TARGET1",
+                    _ => true,
+                    (_, targetInstanceID, window, zOrder) =>
+                        new WindowState(
+                            "Test.Window",
+                            targetInstanceID,
+                            2,
+                            window.Y,
+                            window.Width,
+                            window.Height,
+                            zOrder
+                        )
+                )
+            );
+            CreateWindow<TestWindowContent>(77, 11, modal: false);
+
+            manager.Capture();
+
+            Assert.AreEqual(1, states.Count);
+            Assert.AreEqual(2, states[0].GetX());
+            Assert.AreEqual(11, states[0].GetY());
+        }
+
+        /// <summary>
         /// Verifies that unsupported and modal windows are excluded from persisted state.
         /// </summary>
         [Test]

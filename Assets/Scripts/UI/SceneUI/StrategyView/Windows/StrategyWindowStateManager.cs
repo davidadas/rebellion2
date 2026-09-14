@@ -11,12 +11,13 @@ public interface IStrategyWindowStateAdapter
     string WindowTypeID { get; }
 
     /// <summary>
-    /// Attempts to identify the target represented by a supported runtime window.
+    /// Attempts to capture one runtime window into persisted state.
     /// </summary>
     /// <param name="window">The runtime window to inspect.</param>
-    /// <param name="targetInstanceID">The represented game-object identifier.</param>
-    /// <returns>True when this adapter owns the window.</returns>
-    bool TryGetTargetInstanceID(UIWindow window, out string targetInstanceID);
+    /// <param name="zOrder">The runtime window stacking position.</param>
+    /// <param name="state">The captured persisted window state.</param>
+    /// <returns>True when this adapter owns the window and captured it.</returns>
+    bool TryCapture(UIWindow window, int zOrder, out WindowState state);
 
     /// <summary>
     /// Attempts to restore one persisted window.
@@ -89,20 +90,10 @@ public sealed class StrategyWindowStateManager
 
             foreach (IStrategyWindowStateAdapter adapter in adapters.Values)
             {
-                if (!adapter.TryGetTargetInstanceID(window, out string targetInstanceID))
+                if (!adapter.TryCapture(window, zOrder, out WindowState state))
                     continue;
 
-                captured.Add(
-                    new WindowState(
-                        adapter.WindowTypeID,
-                        targetInstanceID,
-                        window.X,
-                        window.Y,
-                        window.Width,
-                        window.Height,
-                        zOrder
-                    )
-                );
+                captured.Add(state);
                 break;
             }
         }

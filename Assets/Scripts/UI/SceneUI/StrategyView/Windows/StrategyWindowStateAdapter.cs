@@ -10,6 +10,7 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
 {
     private readonly Func<TView, string> getTargetInstanceID;
     private readonly Func<WindowState, bool> restore;
+    private readonly Func<TView, string, UIWindow, int, WindowState> capture;
 
     public string WindowTypeID { get; }
 
@@ -22,7 +23,8 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
     public StrategyWindowStateAdapter(
         string windowTypeID,
         Func<TView, string> getTargetInstanceID,
-        Func<WindowState, bool> restore
+        Func<WindowState, bool> restore,
+        Func<TView, string, UIWindow, int, WindowState> capture = null
     )
     {
         if (string.IsNullOrWhiteSpace(windowTypeID))
@@ -32,25 +34,51 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
         this.getTargetInstanceID =
             getTargetInstanceID ?? throw new ArgumentNullException(nameof(getTargetInstanceID));
         this.restore = restore ?? throw new ArgumentNullException(nameof(restore));
+        this.capture = capture ?? DefaultCapture;
     }
 
-    /// <inheritdoc />
-    public bool TryGetTargetInstanceID(UIWindow window, out string targetInstanceID)
+    /// <summary>
+    /// Captures one supported runtime window into persisted state.
+    /// </summary>
+    /// <param name="window">The runtime window to inspect.</param>
+    /// <param name="zOrder">The runtime window stacking position.</param>
+    /// <param name="state">The captured persisted window state.</param>
+    /// <returns>True when this adapter owns the window and captured it.</returns>
+    public bool TryCapture(UIWindow window, int zOrder, out WindowState state)
     {
-        targetInstanceID = null;
+        state = null;
         if (window == null || !window.TryGetContent(out TView view))
             return false;
 
-        targetInstanceID = getTargetInstanceID(view);
+        string targetInstanceID = getTargetInstanceID(view);
         if (string.IsNullOrEmpty(targetInstanceID))
             return false;
 
-        return true;
+        state = capture(view, targetInstanceID, window, zOrder);
+        return state != null;
     }
 
     /// <inheritdoc />
     public bool Restore(WindowState state)
     {
         return state != null && restore(state);
+    }
+
+    private WindowState DefaultCapture(
+        TView _,
+        string targetInstanceID,
+        UIWindow window,
+        int zOrder
+    )
+    {
+        return new WindowState(
+            WindowTypeID,
+            targetInstanceID,
+            window.X,
+            window.Y,
+            window.Width,
+            window.Height,
+            zOrder
+        );
     }
 }
