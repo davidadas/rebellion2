@@ -689,7 +689,7 @@ namespace Rebellion.Game
 
             public int StarfighterRequirementDefault { get; set; }
 
-            public int StarfighterRequirementInfrastructure { get; set; }
+            public int StarfighterRequirementInfrastructure { get; set; } = 12;
 
             public int StarfighterRequirementHeadquarters { get; set; }
 

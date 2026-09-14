@@ -1469,10 +1469,11 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithUnthreatenedInfrastructure_AddsTwelveStarfighterMinimumDemand()
+        public void Generate_WithUnthreatenedInfrastructure_UsesConfiguredStarfighterRequirement()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
+            game.Config.AI.NonCapitalSummary.StarfighterRequirementInfrastructure = 7;
             game.Config.AI.NonCapitalSummary.UnthreatenedInfrastructureStarfighterBaselinePercent =
                 50;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -1509,7 +1510,7 @@ namespace Rebellion.Tests.AI.Planners
                     && item.DestinationPlanet == planet
                 );
 
-            Assert.AreEqual(10, demand.QuantityNeeded);
+            Assert.AreEqual(5, demand.QuantityNeeded);
             Assert.IsTrue(demand.UsesDefensiveReserve);
         }
 
@@ -1565,11 +1566,7 @@ namespace Rebellion.Tests.AI.Planners
             );
             for (
                 int index = 0;
-                index
-                    < System.Math.Max(
-                        12,
-                        game.Config.AI.NonCapitalSummary.StarfighterRequirementInfrastructure
-                    );
+                index < game.Config.AI.NonCapitalSummary.StarfighterRequirementInfrastructure;
                 index++
             )
             {

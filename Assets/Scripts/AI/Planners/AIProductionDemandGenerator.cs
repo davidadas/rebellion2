@@ -330,7 +330,7 @@ namespace Rebellion.AI.Planners
                 > 0;
             int baseline =
                 planet.IsHeadquarters ? config.StarfighterRequirementHeadquarters
-                : hasShipProduction ? Math.Max(12, config.StarfighterRequirementInfrastructure)
+                : hasShipProduction ? config.StarfighterRequirementInfrastructure
                 : config.StarfighterRequirementDefault;
             if (!planet.IsHeadquarters && !context.Assessment.IsPlanetThreatened(planet))
             {
