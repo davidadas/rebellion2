@@ -133,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies that secondary click routes a context menu without untracking the item.
+        /// </summary>
         [Test]
         public void SecondaryClick_ResolvesAndRoutesContextMenuWithoutUntracking()
         {
@@ -225,6 +228,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsFalse(_controller.IsIdleBarTracked(_officer));
         }
 
+        /// <summary>
+        /// Verifies that resetting the session replaces the active exclusions.
+        /// </summary>
         [Test]
         public void ResetSession_ReplacementState_UsesReplacementExclusions()
         {
@@ -242,6 +248,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsFalse(_controller.IsIdleBarTracked(_officer));
         }
 
+        /// <summary>
+        /// Verifies that a recreated controller uses the player's persisted UI state.
+        /// </summary>
         [Test]
         public void RecreatedController_UsesPlayerUIState()
         {
@@ -260,6 +269,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             recreated.Dispose();
         }
 
+        /// <summary>
+        /// Verifies that toggling a planet persists each manufacturing-lane identity.
+        /// </summary>
         [Test]
         public void ToggleTracking_PlanetPersistsEachManufacturingLane()
         {

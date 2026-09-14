@@ -571,6 +571,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Returns whether the Save command can act on the current selection or new-save editor.
     /// </summary>
+    /// <returns>True when the current save operation is valid.</returns>
     private bool CanSaveCurrentEntry()
     {
         return _canSaveGame && (_existingSaveSelected || IsCreatingNamedSave());
@@ -579,6 +580,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Returns whether a valid name is being entered for the Create New Save row.
     /// </summary>
+    /// <returns>True when a valid new-save name is being entered.</returns>
     private bool IsCreatingNamedSave()
     {
         return _renameRow >= 0

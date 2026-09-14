@@ -486,6 +486,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        /// <summary>
+        /// Verifies that save-list mutations refresh the persisted slot presentation.
+        /// </summary>
         [Test]
         public void SaveLoadActions_RenameCreateAndDelete_RefreshesPersistedSlots()
         {

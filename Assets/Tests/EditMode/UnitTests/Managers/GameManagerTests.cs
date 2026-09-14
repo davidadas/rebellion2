@@ -283,6 +283,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies that event results do not generate automatic messages during tick processing.
+        /// </summary>
         [Test]
         public void ProcessTick_EventResults_DoesNotAddAutomaticMessages()
         {

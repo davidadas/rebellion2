@@ -869,6 +869,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <summary>
     /// Toggles a user-interface option and marks settings dirty.
     /// </summary>
+    /// <param name="option">The user-interface option to toggle.</param>
     private void HandleUserInterfaceToggle(UserInterfaceOption option)
     {
         _settingsSession.ToggleUserInterface(option);

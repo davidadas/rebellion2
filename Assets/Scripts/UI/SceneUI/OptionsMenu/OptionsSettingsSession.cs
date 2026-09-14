@@ -167,6 +167,7 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Copies the staged user-interface toggles for presentation.
     /// </summary>
+    /// <returns>The staged toggle state keyed by user-interface option.</returns>
     internal Dictionary<UserInterfaceOption, bool> GetUserInterfaceStates()
     {
         Dictionary<UserInterfaceOption, bool> states = new Dictionary<UserInterfaceOption, bool>();
@@ -226,6 +227,7 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Toggles a user-interface option and marks the session dirty.
     /// </summary>
+    /// <param name="option">The user-interface option to toggle.</param>
     internal void ToggleUserInterface(UserInterfaceOption option)
     {
         UserInterface.SetEnabled(option, !UserInterface.IsEnabled(option));

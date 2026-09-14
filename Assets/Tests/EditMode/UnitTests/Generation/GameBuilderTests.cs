@@ -151,6 +151,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies that building a valid game assigns its factions.
+        /// </summary>
         [Test]
         public void Build_ValidConfig_SetsFactions()
         {

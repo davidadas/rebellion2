@@ -571,6 +571,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     /// <summary>
     /// Stretches a rectangle across its parent.
     /// </summary>
+    /// <param name="rect">The rectangle to stretch.</param>
     private static void FillParent(RectTransform rect)
     {
         rect.anchorMin = Vector2.zero;

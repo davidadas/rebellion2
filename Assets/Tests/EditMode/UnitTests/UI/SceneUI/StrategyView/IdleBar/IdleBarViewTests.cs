@@ -464,6 +464,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(8, GetVisibleSlots().Count);
         }
 
+        /// <summary>
+        /// Verifies that rendering no entries hides the shelf and existing slots.
+        /// </summary>
         [Test]
         public void Render_EmptyEntries_HidesShelfAndExistingSlots()
         {

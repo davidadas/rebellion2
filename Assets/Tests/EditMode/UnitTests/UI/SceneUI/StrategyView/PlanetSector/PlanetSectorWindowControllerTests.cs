@@ -190,6 +190,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNotNull(_controller.FindWindow(secondSector));
         }
 
+        /// <summary>
+        /// Verifies that opening with every slot occupied does not replace a window.
+        /// </summary>
         [Test]
         public void TryOpenInAvailableSlot_AllSlotsOccupied_DoesNotReplaceWindow()
         {
@@ -210,6 +213,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(_controller.FindWindow(fourthSector));
         }
 
+        /// <summary>
+        /// Verifies that moving an initialized sector window updates its session slot.
+        /// </summary>
         [Test]
         public void SetSectorPosition_InitializedWindow_UpdatesSessionSlot()
         {

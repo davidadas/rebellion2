@@ -90,6 +90,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies that loading saved player records restores them.
+        /// </summary>
         [Test]
         public void LoadGameData_SavedPlayers_RestoresPlayers()
         {
@@ -104,6 +107,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
         }
 
+        /// <summary>
+        /// Verifies that replacing a save is atomic and leaves no temporary files.
+        /// </summary>
         [Test]
         public void SaveGameData_ExistingSave_AtomicallyReplacesWithoutTemporaryFiles()
         {
@@ -919,6 +925,9 @@ namespace Rebellion.Tests.Managers
             StringAssert.Contains("<Type>Fleet</Type>", xml);
         }
 
+        /// <summary>
+        /// Verifies that loading a save restores persisted player UI state.
+        /// </summary>
         [Test]
         public void LoadGameData_SaveWithPlayerUIState_RestoresUIState()
         {
@@ -950,6 +959,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies that saving and loading preserves game metadata.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithMetadata_PreservesMetadata()
         {
@@ -1453,6 +1465,7 @@ namespace Rebellion.Tests.Managers
         /// <summary>
         /// Creates a saveable game containing independently excluded idle-bar identities.
         /// </summary>
+        /// <returns>The configured saveable game.</returns>
         private static GameRoot BuildGameWithUntrackedIdleBarItems()
         {
             Faction faction = new Faction { InstanceID = "FNALL1" };

@@ -48,6 +48,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             );
         }
 
+        /// <summary>
+        /// Verifies that constructing with null saved bookmarks is rejected.
+        /// </summary>
         [Test]
         public void Constructor_NullSavedBookmarks_ThrowsArgumentNullException()
         {
@@ -258,6 +261,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreSame(original, bookmark.Planet);
         }
 
+        /// <summary>
+        /// Verifies that resetting the session projects replacement bookmark state.
+        /// </summary>
         [Test]
         public void ResetSession_ReplacementBookmarks_ProjectsReplacementState()
         {

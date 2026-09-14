@@ -37,6 +37,8 @@ public sealed class BookmarkEntry
     /// <summary>
     /// Creates a projected entry for persisted bookmark state.
     /// </summary>
+    /// <param name="state">The durable bookmark state.</param>
+    /// <param name="planet">The current galaxy-map planet projection.</param>
     public BookmarkEntry(PlanetBookmark state, GalaxyMapPlanet planet = null)
         : this(state, 0, 0, planet) { }
 

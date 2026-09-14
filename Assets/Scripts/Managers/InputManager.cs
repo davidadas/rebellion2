@@ -129,6 +129,7 @@ public sealed class InputManager : MonoBehaviour
     /// <summary>
     /// Creates the generated actions and selects the native desktop shortcut modifier.
     /// </summary>
+    /// <returns>The configured player input actions.</returns>
     private static PlayerInputActions CreateActions()
     {
         PlayerInputActions actions = new PlayerInputActions();

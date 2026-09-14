@@ -243,6 +243,7 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// <summary>
     /// Clears transient interaction state after the active game changes.
     /// </summary>
+    /// <param name="nextUntrackedItems">The replacement persisted idle-bar exclusions.</param>
     public void ResetSession(List<IdleBarUntrackedItem> nextUntrackedItems)
     {
         untrackedItems =
@@ -308,6 +309,8 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// <summary>
     /// Gets the independently persisted idle-bar identities represented by an entity.
     /// </summary>
+    /// <param name="entity">The entity whose manufacturing identities are requested.</param>
+    /// <returns>The manufacturing identities represented by the entity.</returns>
     private static IEnumerable<ManufacturingType> GetManufacturingTypes(ISceneNode entity)
     {
         return entity is Planet ? _planetManufacturingTypes : new[] { ManufacturingType.None };
@@ -316,6 +319,10 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// <summary>
     /// Reports whether a persisted exclusion matches one idle-bar identity.
     /// </summary>
+    /// <param name="items">The persisted exclusions to search.</param>
+    /// <param name="entityInstanceId">The entity identifier to match.</param>
+    /// <param name="manufacturingType">The manufacturing identity to match.</param>
+    /// <returns>True when a matching exclusion exists.</returns>
     private static bool ContainsUntrackedItem(
         IEnumerable<IdleBarUntrackedItem> items,
         string entityInstanceId,
@@ -328,6 +335,10 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// <summary>
     /// Reports whether one exclusion matches the requested entity and manufacturing lane.
     /// </summary>
+    /// <param name="item">The persisted exclusion to inspect.</param>
+    /// <param name="entityInstanceId">The entity identifier to match.</param>
+    /// <param name="manufacturingType">The manufacturing identity to match.</param>
+    /// <returns>True when the exclusion represents the requested identity.</returns>
     private static bool IsUntrackedItem(
         IdleBarUntrackedItem item,
         string entityInstanceId,

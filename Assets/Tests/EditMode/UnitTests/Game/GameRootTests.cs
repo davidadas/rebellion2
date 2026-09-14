@@ -649,6 +649,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
         }
 
+        /// <summary>
+        /// Verifies that changing a faction controller updates its assigned player.
+        /// </summary>
         [Test]
         public void SetFactionController_ExistingFaction_UpdatesPlayer()
         {
@@ -659,6 +662,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual("PLAYER1", _game.GetFactionPlayer("FACTION1").PlayerID);
         }
 
+        /// <summary>
+        /// Verifies that legacy games receive faction-controller player records.
+        /// </summary>
         [Test]
         public void EnsurePlayers_LegacyGame_CreatesFactionControllers()
         {
@@ -671,6 +677,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies that player-faction lookup rejects a missing game summary.
+        /// </summary>
         [Test]
         public void GetPlayerFaction_ThrowsException_WhenSummaryIsNull()
         {

@@ -391,6 +391,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Applies Idle Bar toggle values to the Gameplay page.
     /// </summary>
+    /// <param name="data">The options state to present.</param>
     private void RenderUserInterfaceOptions(OptionsMenuRenderData data)
     {
         foreach (OptionsToggleRowView row in _userInterfaceRows)
