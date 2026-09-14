@@ -2889,7 +2889,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         /// <summary>
-        /// Verifies try get transit ticks fleet with unfinished slower ship ignores unfinished ship.
+        /// Verifies a fleet moves at the speed of its slowest completed capital ship.
         /// </summary>
         [Test]
         public void RequestMove_FleetWithDifferentHyperdrives_UsesSlowestCompletedShip()
@@ -2932,6 +2932,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(fleet, slowShip.GetParent());
         }
 
+        /// <summary>
+        /// Verifies an unfinished slower ship does not determine its fleet's transit time.
+        /// </summary>
         [Test]
         public void TryGetTransitTicks_FleetWithUnfinishedSlowerShip_IgnoresUnfinishedShip()
         {

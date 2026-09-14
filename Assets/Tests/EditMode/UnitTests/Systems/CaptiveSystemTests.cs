@@ -457,7 +457,7 @@ namespace Rebellion.Tests.Systems
         }
 
         /// <summary>
-        /// Verifies process tick can escape false skips escape attempt.
+        /// Verifies an escaped officer selects an operational ship in a friendly fleet.
         /// </summary>
         [Test]
         public void ProcessTick_FriendlyFleetFirstShipUnavailable_MovesOfficerToOperationalShip()
@@ -490,6 +490,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, results.OfType<OfficerCaptureStateResult>().Count());
         }
 
+        /// <summary>
+        /// Verifies an officer without escape permission remains captured.
+        /// </summary>
         [Test]
         public void ProcessTick_CanEscapeFalse_SkipsEscapeAttempt()
         {

@@ -354,7 +354,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         /// <summary>
-        /// Verifies create render data popular support returns supported opposing faction color.
+        /// Verifies an owned regiment under construction produces a defense overlay.
         /// </summary>
         [Test]
         public void CreateRenderData_OwnedRegimentUnderConstruction_ReturnsDefenseTexture()
@@ -379,6 +379,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNotNull(data.Planets[0].DefenseTexture);
         }
 
+        /// <summary>
+        /// Verifies an owned planetary defense under construction produces a defense overlay.
+        /// </summary>
         [Test]
         public void CreateRenderData_OwnedDefenseUnderConstruction_ReturnsDefenseTexture()
         {
@@ -399,6 +402,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNotNull(data.Planets[0].DefenseTexture);
         }
 
+        /// <summary>
+        /// Verifies popular support uses the supported opposing faction's color.
+        /// </summary>
         [Test]
         public void CreateRenderData_PopularSupport_ReturnsSupportedOpposingFactionColor()
         {
