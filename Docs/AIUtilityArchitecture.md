@@ -51,6 +51,10 @@ Defense production and live capital-ship transfers evaluate their remaining stre
 `AIFleetReinforcementUtility`. Callers supply projected strength for production and ready strength
 for an immediate transfer; the shared utility owns how the resulting need maps to preference.
 
+Colonization continuation uses `AIColonizationTargetScorer` after a fleet has been assigned to a
+system. `ColonizationTargetUtility` owns the economic preference between eligible colonies, so the
+planner does not hide a second target policy in chained sorting.
+
 When established behavior requires a strict preference order, give considerations non-overlapping
 score bands in configuration. Lower bands may break ties within a higher band but cannot reverse
 it. This keeps the hierarchy explicit and tunable without hiding it in chained LINQ ordering.

@@ -342,8 +342,7 @@ namespace Rebellion.AI.Planners
                     context.Assessment.GetPlanetSystemId(planet) == systemId
                     && !HasColonizationFleetForTarget(context, planet, fleet)
                 )
-                .OrderByDescending(planet => planet.GetEnergyCapacity())
-                .ThenByDescending(planet => planet.GetRawResourceNodes())
+                .OrderByDescending(planet => AIColonizationTargetScorer.Score(context, planet))
                 .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
                 .FirstOrDefault();
             proposals.Add(
@@ -467,9 +466,7 @@ namespace Rebellion.AI.Planners
                     context.Assessment.GetPlanetSystemId(planet) == systemId
                     && !HasColonizationFleetForTarget(context, planet, fleet)
                 )
-                .OrderByDescending(planet => planet.GetEnergyCapacity())
-                .ThenByDescending(planet => planet.GetRawResourceNodes())
-                .ThenByDescending(context.Assessment.GetPlanetValue)
+                .OrderByDescending(planet => AIColonizationTargetScorer.Score(context, planet))
                 .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
                 .FirstOrDefault();
         }

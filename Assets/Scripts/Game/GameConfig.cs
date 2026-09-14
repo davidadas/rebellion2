@@ -349,6 +349,9 @@ namespace Rebellion.Game
             public AIColonizationUtilityConfig ColonizationUtility { get; set; } =
                 new AIColonizationUtilityConfig();
 
+            public AIColonizationTargetUtilityConfig ColonizationTargetUtility { get; set; } =
+                new AIColonizationTargetUtilityConfig();
+
             public int ColonizationFleetTargetCount { get; set; } = 2;
 
             public int ColonizationFleetMinimumRegimentCount { get; set; } = 2;
@@ -417,6 +420,20 @@ namespace Rebellion.Game
 
             private static AIConsiderationConfig Weighted(double weight) =>
                 new AIConsiderationConfig { Weight = weight };
+        }
+
+        /// <summary>
+        /// Utility considerations used to choose a colony within an assigned system.
+        /// </summary>
+        [PersistableObject]
+        public class AIColonizationTargetUtilityConfig
+        {
+            public AIConsiderationConfig Energy { get; set; } = Weighted(10000, 20);
+
+            public AIConsiderationConfig Resources { get; set; } = Weighted(100, 20);
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
         }
 
         /// <summary>

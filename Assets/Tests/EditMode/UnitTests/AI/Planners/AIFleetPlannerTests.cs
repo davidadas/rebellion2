@@ -1560,6 +1560,52 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithCompletedSurvey_UsesConfiguredColonyTargetUtility()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.ColonizationTargetUtility.Energy.Weight = 0;
+            game.Config.AI.FleetDeployment.ColonizationTargetUtility.Resources.Weight = 100;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "outer-rim");
+            system.SectorType = PlanetSectorType.OuterRim;
+            Planet resourceWorld = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "resource-world",
+                null,
+                energyCapacity: 1,
+                rawResourceNodes: 20
+            );
+            resourceWorld.IsColonized = false;
+            Planet energyWorld = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "energy-world",
+                null,
+                energyCapacity: 8,
+                rawResourceNodes: 0
+            );
+            energyWorld.IsColonized = false;
+            AITestSceneBuilder.RevealPlanet(game, empire, resourceWorld);
+            AITestSceneBuilder.RevealPlanet(game, empire, energyWorld);
+            Fleet fleet = AddBattleFleet(game, resourceWorld, empire.InstanceID, "fleet");
+            fleet.RoleType = FleetRoleType.Colonization;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Colonize,
+                Status = FleetOrderStatus.Readying,
+                TargetSystemId = system.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIColonizationCampaignProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIColonizationCampaignProposal>()
+                .Single();
+
+            Assert.AreEqual(resourceWorld.InstanceID, proposal.ColonyTarget.InstanceID);
+        }
+
+        [Test]
         public void Plan_WithUnloadedBattleFleetAndUncolonizedPlanet_DoesNotAddColonizationProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
