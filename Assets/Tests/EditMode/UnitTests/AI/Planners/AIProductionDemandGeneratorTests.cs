@@ -1547,7 +1547,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithCompleteInfrastructureStarfighterReserve_SuppressesDemand()
+        public void Generate_WithIdleShipyardAndCompleteReserve_AddsFallbackFighterDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -1582,9 +1582,94 @@ namespace Rebellion.Tests.AI.Planners
                     planet
                 );
             }
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
+            game.Config.AI.FleetDeployment.MinimumMobileCombatStrength = 0;
+            game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            Fleet fleet = EntityFactory.CreateFleet("battle-fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder { OrderType = FleetOrderType.Engage };
+            game.AttachNode(fleet, planet);
+            CapitalShip capitalShip = AITestSceneBuilder.CreateCapitalShip(
+                "capital-ship",
+                empire.InstanceID,
+                combatStrength: 1,
+                regimentCapacity: 0,
+                starfighterCapacity: 0
+            );
+            capitalShip.HasGravityWell = true;
+            game.AttachNode(capitalShip, fleet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            AIDemand demand = demands.Single(item =>
+                item.Kind == AIDemandKind.PlanetaryStarfighterReserve
+                && item.DestinationPlanet == planet
+            );
+
+            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(
+                game.Config.AI.Infrastructure.IdleShipyardFighterDemandPercent,
+                demand.Pressure
+            );
+
+            game.AttachNode(
+                AITestSceneBuilder.CreateStarfighter("fallback-fighter", empire.InstanceID),
+                planet
+            );
+            demands = new AIProductionDemandGenerator().Generate(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+            Assert.IsFalse(
+                demands.Any(item =>
+                    item.Kind == AIDemandKind.PlanetaryStarfighterReserve
+                    && item.DestinationPlanet == planet
+                )
+            );
+        }
+
+        [Test]
+        public void Generate_WithActiveShipQueueAndCompleteReserve_DoesNotAddFallbackDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.NonCapitalSummary.StarfighterRequirementInfrastructure = 0;
+            game.Config.AI.Infrastructure.IdleShipyardFighterReserveCount = 2;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "production-world",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            for (int index = 0; index < 12; index++)
+            {
+                game.AttachNode(
+                    AITestSceneBuilder.CreateStarfighter(
+                        $"planetary-fighter-{index}",
+                        empire.InstanceID
+                    ),
+                    planet
+                );
+            }
+            Starfighter queuedFighter = AITestSceneBuilder.CreateStarfighter(
+                "queued-fighter",
+                empire.InstanceID
+            );
+            queuedFighter.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(queuedFighter, planet);
+            planet.AddToManufacturingQueue(queuedFighter);
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
 
             Assert.IsFalse(
                 demands.Any(item =>
@@ -1964,7 +2049,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithSeparateAttackFleetNeeds_PrioritizesEachManufacturingLane()
+        public void Generate_WithMultipleAttackFleets_AddsShipDemandForEach()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
@@ -2048,7 +2133,7 @@ namespace Rebellion.Tests.AI.Planners
                 AITestSceneBuilder.CreateCapitalShip(
                     "remote-ship",
                     empire.InstanceID,
-                    combatStrength: 500,
+                    combatStrength: 400,
                     regimentCapacity: 2,
                     starfighterCapacity: 0
                 ),
@@ -2077,6 +2162,12 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(
                 reinforcementDemands.Any(demand =>
                     demand.Kind == AIDemandKind.FleetRegiment
+                    && demand.DestinationFleet == remoteFleet
+                )
+            );
+            Assert.IsTrue(
+                reinforcementDemands.Any(demand =>
+                    demand.Kind == AIDemandKind.FleetCapitalShip
                     && demand.DestinationFleet == remoteFleet
                 )
             );

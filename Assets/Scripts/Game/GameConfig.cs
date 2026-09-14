@@ -345,6 +345,8 @@ namespace Rebellion.Game
             public int AssaultRegimentLoadPercent { get; set; } = 100;
             public int GarrisonRegimentReservePercent { get; set; }
             public int PlanetaryStarfighterDemandPercent { get; set; } = 40;
+            public int IdleShipyardFighterReserveCount { get; set; } = 1;
+            public int IdleShipyardFighterDemandPercent { get; set; } = 1;
             public int PlanetaryWeaponTargetCount { get; set; } = 1;
             public int PlanetaryDefenseSurplusBatchSize { get; set; } = 1;
             public int PlanetaryShieldDemandPercent { get; set; } = 45;

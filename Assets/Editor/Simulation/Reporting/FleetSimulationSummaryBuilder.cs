@@ -475,7 +475,7 @@ public static partial class HeadlessSimulationRunner
 
             if (
                 planet.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue)
-                && queue.Any(item => item != null && !item.IsManufacturingComplete())
+                && queue.Any(item => item?.IsManufacturingComplete() == false)
             )
                 return;
 

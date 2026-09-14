@@ -50,8 +50,63 @@ namespace Rebellion.AI.Planners
                 developmentAllocation
             );
             AddProductionFacilityUpgradeDemands(context, demands, developmentAllocation);
+            AddIdleShipyardFighterDemands(context, demands);
 
             return demands;
+        }
+
+        /// <summary>
+        /// Adds local fighter work for shipyards left without strategic production demand.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="demands">The demand list to update.</param>
+        private void AddIdleShipyardFighterDemands(AITurnContext context, List<AIDemand> demands)
+        {
+            HashSet<string> planetsWithFighterDemand = demands
+                .Where(demand => demand.Kind == AIDemandKind.PlanetaryStarfighterReserve)
+                .Select(demand => demand.DestinationPlanet?.InstanceID)
+                .Where(planetId => !string.IsNullOrEmpty(planetId))
+                .ToHashSet(StringComparer.Ordinal);
+
+            foreach (Planet planet in context.Assessment.OwnedPlanets)
+            {
+                if (
+                    !IsOwnedUsablePlanet(planet)
+                    || planetsWithFighterDemand.Contains(planet.InstanceID)
+                    || context.Assessment.GetPlanetProductionFacilityCount(
+                        planet,
+                        ManufacturingType.Ship
+                    ) <= 0
+                    || planet
+                        .GetManufacturingQueue()
+                        .TryGetValue(ManufacturingType.Ship, out List<IManufacturable> queue)
+                        && queue.Any(item => item?.IsManufacturingComplete() == false)
+                )
+                    continue;
+
+                int reserveTarget =
+                    GetPlanetaryStarfighterRequirement(context, planet)
+                    + context.Game.Config.AI.Infrastructure.IdleShipyardFighterReserveCount;
+                if (GetOwnedStarfighterCount(context, planet) >= reserveTarget)
+                    continue;
+
+                demands.Add(
+                    new AIDemand(
+                        AIDemand.CreateId(
+                            context.Faction.InstanceID,
+                            AIDemandKind.PlanetaryStarfighterReserve,
+                            "idle-shipyard",
+                            planet.InstanceID
+                        ),
+                        AIDemandKind.PlanetaryStarfighterReserve,
+                        ManufacturingType.Ship,
+                        BuildingType.None,
+                        planet,
+                        1,
+                        context.Game.Config.AI.Infrastructure.IdleShipyardFighterDemandPercent
+                    )
+                );
+            }
         }
 
         /// <summary>
@@ -1127,7 +1182,7 @@ namespace Rebellion.AI.Planners
             AddFleetDemands(context, demands, defenseFleet);
 
             IReadOnlyList<Fleet> attackFleets = GetPriorityAttackFleets(context);
-            AddPriorityAttackShipDemands(context, demands, attackFleets);
+            AddAttackShipDemands(context, demands, attackFleets);
             AddPriorityAttackRegimentDemand(context, demands, attackFleets);
 
             foreach (Fleet colonizationFleet in GetPriorityColonizationFleets(context))
@@ -1153,12 +1208,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds ship demands for the highest-priority attack fleet that still needs ships.
+        /// Adds ship demands for attack fleets in reinforcement priority order.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
         /// <param name="fleets">Attack fleets in reinforcement priority order.</param>
-        private void AddPriorityAttackShipDemands(
+        private void AddAttackShipDemands(
             AITurnContext context,
             List<AIDemand> demands,
             IReadOnlyList<Fleet> fleets
@@ -1166,11 +1221,8 @@ namespace Rebellion.AI.Planners
         {
             foreach (Fleet fleet in fleets)
             {
-                int initialCount = demands.Count;
                 AddFleetCapitalShipDemand(context, demands, fleet);
                 AddFleetStarfighterDemand(context, demands, fleet);
-                if (demands.Count > initialCount)
-                    return;
             }
         }
 
