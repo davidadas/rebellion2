@@ -857,6 +857,7 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Returns the comparable production or defensive capability of a building.
         /// </summary>
+        /// <param name="config">AI selection configuration.</param>
         /// <param name="building">The building to evaluate.</param>
         /// <returns>The building capability used for technology selection.</returns>
         private static double ScoreBuildingTechnology(

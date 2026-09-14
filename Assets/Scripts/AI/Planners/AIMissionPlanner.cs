@@ -881,7 +881,6 @@ namespace Rebellion.AI.Planners
         /// Returns research disciplines an officer can advance at a planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="context">The current AI turn context.</param>
         /// <param name="officer">The officer to evaluate.</param>
         /// <param name="planet">The planet to evaluate.</param>
         /// <returns>Available, qualified research disciplines.</returns>
@@ -1083,6 +1082,7 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Returns officer target candidate priority.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="officer">The officer to evaluate.</param>
         /// <returns>The calculated value.</returns>
         private static double GetOfficerTargetCandidatePriority(

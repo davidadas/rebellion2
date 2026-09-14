@@ -1,6 +1,5 @@
 using System;
 using Rebellion.AI.Director;
-using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 
 namespace Rebellion.AI.Scoring

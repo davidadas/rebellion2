@@ -332,7 +332,7 @@ namespace Rebellion.AI.Scoring
         /// <summary>
         /// Returns the configured strategic-priority bonus for a mission type.
         /// </summary>
-        /// <param name="config">The applicable configuration.</param>
+        /// <param name="utility">The applicable utility configuration.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <returns>The mission-type priority bonus.</returns>
         private static double GetPriorityValue(
