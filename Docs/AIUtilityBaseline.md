@@ -65,3 +65,27 @@ from timing changes.
 
 After the migration is complete, validate the final model against seeds `1892256962`, `1767770646`,
 and `507859324` without tuning specifically for those results.
+
+## Final Validation
+
+The completed structural migration produced an exact normalized match for seed `12345`. The held
+seeds were then run once each, without tuning. Every run used Medium difficulty, 1000 ticks, the
+large galaxy, code revision `ee9c7fd6833305dd92f9a8a563901f99e60992b0`, and media revision
+`36b5998676672e1072a51326c4b3f14e83caf66c`.
+
+| Seed | Faction | Planets | Fleets | Capital ships | Starfighters | Regiments | Shipyards | Construction | Assaults |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 12345 | Alliance | 48 | 7 | 18 | 30 | 179 | 7 | 9 | 3/3 |
+| 12345 | Empire | 83 | 13 | 64 | 119 | 324 | 31 | 60 | 14/14 |
+| 1892256962 | Alliance | 90 | 14 | 168 | 262 | 415 | 71 | 76 | 10/10 |
+| 1892256962 | Empire | 79 | 12 | 62 | 581 | 229 | 38 | 43 | 11/11 |
+| 1767770646 | Alliance | 131 | 20 | 179 | 203 | 491 | 97 | 67 | 4/4 |
+| 1767770646 | Empire | 55 | 9 | 33 | 407 | 169 | 33 | 33 | 13/13 |
+| 507859324 | Alliance | 26 | 5 | 31 | 20 | 66 | 17 | 12 | 4/4 |
+| 507859324 | Empire | 125 | 19 | 127 | 908 | 469 | 81 | 83 | 30/30 |
+
+No run reached a victory condition. The final structural slice changed seed-12345 timing from
+146.023/238.770/320.054 ms median/p90/p99 to 150.322/247.357/321.168 ms. The 0.35% p99 increase is
+below the 10% regression limit, but the absolute p99 remains above the 300 ms target. Held-seed p99
+values were 609.004, 688.738, and 681.908 ms respectively; performance remains separate follow-up
+work rather than a correctness claim for this migration.
