@@ -1032,7 +1032,12 @@ namespace Rebellion.AI.Planners
         {
             int targetCount = Math.Max(currentCount + 1, desiredCount);
             int deficit = Math.Max(1, targetCount - currentCount);
-            double pressure = baseDemandPercent + deficit * 100.0 / targetCount;
+            double pressure =
+                baseDemandPercent
+                + AIUtility.Evaluate(
+                    deficit / (double)targetCount,
+                    context.Game.Config.AI.Infrastructure.DemandUtility.Deficit
+                );
             if (kind == AIDemandKind.TrainingFacility)
                 pressure += AIUtility.Evaluate(
                     1,
