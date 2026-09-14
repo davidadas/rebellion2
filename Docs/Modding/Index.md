@@ -84,4 +84,5 @@ overlay precedence.
 
 Saves require the active pack ID, version, scenario, and ordered mod IDs and versions to match.
 Increment a mod's version when publishing compatibility-breaking changes, then test both new games
-and existing saves. There is not yet an in-game mod manager.
+and existing saves. Use the Options menu's Mods page to select a content pack and enable or disable
+its compatible mods. Restart the game to apply those changes.

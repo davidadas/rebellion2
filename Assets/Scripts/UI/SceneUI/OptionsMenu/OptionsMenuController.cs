@@ -278,9 +278,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         string id = resolver.AvailableMods[index].ID;
         if (!disabledIDs.Add(id))
             disabledIDs.Remove(id);
-        settingsManager.Settings.Content.DisabledModIDs = resolver
-            .AvailableMods.Where(mod => disabledIDs.Contains(mod.ID))
-            .Select(mod => mod.ID)
+        settingsManager.Settings.Content.DisabledModIDs = disabledIDs
+            .OrderBy(disabledID => disabledID, StringComparer.Ordinal)
             .ToArray();
         settingsManager.Save();
         _markDirty();

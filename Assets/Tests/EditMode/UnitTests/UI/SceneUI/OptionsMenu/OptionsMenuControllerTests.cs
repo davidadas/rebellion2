@@ -29,6 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private int _dirtyCount;
         private bool _loadResult;
         private string _loadedFileName;
+        private string _testModDirectoryPath;
 
         [SetUp]
         public void SetUp()
@@ -69,6 +70,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             DestroyAudioManagers();
             if (Directory.Exists(_saveDirectoryPath))
                 Directory.Delete(_saveDirectoryPath, true);
+            if (Directory.Exists(_testModDirectoryPath))
+                Directory.Delete(_testModDirectoryPath, true);
             GameLaunchContext.Reset(TestContent.Pack);
         }
 
@@ -147,6 +150,48 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             tabs[(int)OptionsMenuTab.SaveLoad].onClick.Invoke();
             _controller.RenderWindows();
             Assert.IsTrue(GetField<GameObject>(view, "_saveLoadPage").activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies toggling a compatible mod preserves disabled selections for other packs.
+        /// </summary>
+        [Test]
+        public void ModsPage_ToggleMod_PreservesDisabledModsForOtherPacks()
+        {
+            const string compatibleModID = "compatible-mod";
+            const string otherPackModID = "other-pack-mod";
+            ContentPack contentPack = _bootstrap.GetContentPack();
+            _testModDirectoryPath = Path.Combine(
+                Directory.GetParent(contentPack.ContentRootPath).FullName,
+                "Mods",
+                nameof(ModsPage_ToggleMod_PreservesDisabledModsForOtherPacks)
+                    + "-"
+                    + Guid.NewGuid().ToString("N")
+            );
+            Directory.CreateDirectory(_testModDirectoryPath);
+            File.WriteAllText(
+                Path.Combine(_testModDirectoryPath, "mod.xml"),
+                $"<ContentModDefinition><ID>{compatibleModID}</ID><Version>1.0.0</Version>"
+                    + "<DisplayName>Compatible Mod</DisplayName>"
+                    + $"<BasePackID>{contentPack.Definition.ID}</BasePackID>"
+                    + "</ContentModDefinition>"
+            );
+            _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs = new[]
+            {
+                otherPackModID,
+            };
+            _controller.Dispose();
+            _controller = CreateController(GetPrefab());
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Mods);
+            OptionsToggleRowView row = view.GetComponentsInChildren<OptionsToggleRowView>(true)
+                .Single(candidate => candidate.name == "ModRow1");
+
+            row.GetComponentInChildren<Button>(true).onClick.Invoke();
+
+            CollectionAssert.AreEqual(
+                new[] { compatibleModID, otherPackModID },
+                _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs
+            );
         }
 
         [Test]
