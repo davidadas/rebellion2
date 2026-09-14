@@ -60,6 +60,31 @@ public sealed class StrategyWindowPlacementController
     }
 
     /// <summary>
+    /// Resolves an authored sector-window coordinate to its semantic slot.
+    /// </summary>
+    /// <param name="x">The saved source-space horizontal coordinate.</param>
+    /// <param name="slot">The matching sector-window slot.</param>
+    /// <returns>True when the coordinate matches an authored sector-window position.</returns>
+    public bool TryGetSectorWindowSlot(int x, out int slot)
+    {
+        for (
+            int candidate = SectorWindowPositions.Left;
+            candidate <= SectorWindowPositions.Right;
+            candidate++
+        )
+        {
+            if (GetSectorWindowPosition(candidate).x != x)
+                continue;
+
+            slot = candidate;
+            return true;
+        }
+
+        slot = -1;
+        return false;
+    }
+
+    /// <summary>
     /// Gets the authored utility-window position.
     /// </summary>
     /// <returns>The source-space utility-window position.</returns>

@@ -423,8 +423,9 @@ public sealed class StrategyController
     private bool RestoreSectorWindow(WindowState state)
     {
         return state != null
+            && windowPlacementController.TryGetSectorWindowSlot(state.GetX(), out int slot)
             && galaxyMapController.FindSector(state.GetTargetInstanceID()) is GalaxyMapSector sector
-            && planetSectorWindowController.TryOpenAtPosition(sector, state.GetX());
+            && planetSectorWindowController.TryOpenAtPosition(sector, slot);
     }
 
     /// <summary>
