@@ -338,6 +338,7 @@ namespace Rebellion.Systems
         /// <returns>A capture state result indicating the officer is free.</returns>
         private OfficerCaptureStateResult ReleaseOfficer(Officer officer, Planet planet)
         {
+            string captorInstanceID = officer.CaptorInstanceID;
             officer.IsCaptured = false;
             officer.CaptorInstanceID = null;
             officer.CanEscape = false;
@@ -352,6 +353,7 @@ namespace Rebellion.Systems
             {
                 TargetOfficer = officer,
                 IsCaptured = false,
+                CaptorInstanceID = captorInstanceID,
                 Context = planet,
                 Tick = _game.CurrentTick,
             };
