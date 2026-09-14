@@ -357,6 +357,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// Verifies create render data popular support returns supported opposing faction color.
         /// </summary>
         [Test]
+        public void CreateRenderData_OwnedRegimentUnderConstruction_ReturnsDefenseTexture()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
+            planet.AddTestChild(
+                new Regiment
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                }
+            );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsNotNull(data.Planets[0].DefenseTexture);
+        }
+
+        [Test]
+        public void CreateRenderData_OwnedDefenseUnderConstruction_ReturnsDefenseTexture()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
+            Building defense = CreateBuilding(BuildingType.Defense);
+            defense.OwnerInstanceID = _playerFactionId;
+            defense.ManufacturingStatus = ManufacturingStatus.Building;
+            planet.AddTestChild(defense);
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsNotNull(data.Planets[0].DefenseTexture);
+        }
+
+        [Test]
         public void CreateRenderData_PopularSupport_ReturnsSupportedOpposingFactionColor()
         {
             _game
