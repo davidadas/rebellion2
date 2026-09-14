@@ -428,7 +428,6 @@ namespace Rebellion.Game.Messages
                 MessageResultType.OfficerCaptured => AdvisorSubjectNotification.Captured,
                 MessageResultType.EnemyOfficerCaptured => AdvisorSubjectNotification.Captured,
                 MessageResultType.OfficerReleased => AdvisorSubjectNotification.Released,
-                MessageResultType.EnemyOfficerReleased => AdvisorSubjectNotification.Released,
                 MessageResultType.OfficerRecruited => AdvisorSubjectNotification.Report,
                 MessageResultType.OfficerInjured => AdvisorSubjectNotification.Report,
                 MessageResultType.OfficerRecovered => AdvisorSubjectNotification.Report,
@@ -436,7 +435,10 @@ namespace Rebellion.Game.Messages
                 MessageResultType.OfficerAssassinated => AdvisorSubjectNotification.Report,
                 _ => AdvisorSubjectNotification.None,
             };
-            return WithAdvisorSubject(message, notification, officer);
+            message = WithAdvisorSubject(message, notification, officer);
+            return resultType == MessageResultType.EnemyOfficerReleased
+                ? WithAdvisorNotification(message, AdvisorNotificationType.PrisonerEscaped)
+                : message;
         }
 
         /// <summary>
