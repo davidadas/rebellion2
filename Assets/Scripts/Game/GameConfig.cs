@@ -231,8 +231,6 @@ namespace Rebellion.Game
 
             public int HeadquartersDefenseCombatPercent { get; set; } = 35;
 
-            public int FleetDefenseScore { get; set; } = 1000;
-
             public int MinimumPlanetaryAssaultRegimentCount { get; set; } = 1;
 
             public int MinimumPlanetaryAssaultSuccessPercent { get; set; } = 55;
@@ -247,7 +245,8 @@ namespace Rebellion.Game
 
             public int ExposedSectorMinimumOwnedPresencePercent { get; set; } = 50;
 
-            public int DefenseSectorSupportRiskWeight { get; set; } = 30;
+            public AIDefenseUtilityConfig DefenseUtility { get; set; } =
+                new AIDefenseUtilityConfig();
 
             public AIColonizationUtilityConfig ColonizationUtility { get; set; } =
                 new AIColonizationUtilityConfig();
@@ -320,6 +319,23 @@ namespace Rebellion.Game
 
             private static AIConsiderationConfig Weighted(double weight) =>
                 new AIConsiderationConfig { Weight = weight };
+        }
+
+        /// <summary>
+        /// Utility considerations used to value fleet defense.
+        /// </summary>
+        [PersistableObject]
+        public class AIDefenseUtilityConfig
+        {
+            public AIConsiderationConfig Base { get; set; } = Weighted(1000);
+
+            public AIConsiderationConfig SectorRisk { get; set; } = Weighted(300, 10);
+
+            private static AIConsiderationConfig Weighted(double weight) =>
+                new AIConsiderationConfig { Weight = weight };
+
+            private static AIConsiderationConfig Weighted(double weight, double inputMaximum) =>
+                new AIConsiderationConfig { Weight = weight, InputMaximum = inputMaximum };
         }
 
         /// <summary>

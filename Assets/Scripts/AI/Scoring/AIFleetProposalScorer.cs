@@ -141,10 +141,17 @@ namespace Rebellion.AI.Scoring
         /// <returns>The defense score.</returns>
         private static double ScoreDefense(AITurnContext context, AIFleetDefenseProposal proposal)
         {
-            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
-            return config.FleetDefenseScore
-                + context.Assessment.GetDefensiveSupportRisk(proposal.TargetPlanet)
-                    * config.DefenseSectorSupportRiskWeight;
+            GameConfig.AIDefenseUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .FleetDeployment
+                .DefenseUtility;
+            return AIUtility.Evaluate(1, utility.Base)
+                + AIUtility.EvaluateRaw(
+                    context.Assessment.GetDefensiveSupportRisk(proposal.TargetPlanet),
+                    utility.SectorRisk
+                );
         }
 
         /// <summary>
@@ -185,7 +192,10 @@ namespace Rebellion.AI.Scoring
             Planet target = proposal.TargetPlanet;
             bool existingOrder = fleet?.Order?.OrderType == FleetOrderType.Engage;
             if (existingOrder)
-                return context.Game.Config.AI.FleetDeployment.FleetDefenseScore;
+                return AIUtility.Evaluate(
+                    1,
+                    context.Game.Config.AI.FleetDeployment.DefenseUtility.Base
+                );
 
             if (!CanScoreEngagement(context, fleet, target))
                 return 0;
@@ -452,7 +462,7 @@ namespace Rebellion.AI.Scoring
             {
                 return Math.Max(
                     0,
-                    config.FleetDefenseScore
+                    AIUtility.Evaluate(1, config.DefenseUtility.Base)
                         + AIUtility.Evaluate(readinessGain, utility.Readiness)
                         + AIUtility.Evaluate(travelEfficiency, utility.TravelEfficiency)
                         - AIUtility.Evaluate(

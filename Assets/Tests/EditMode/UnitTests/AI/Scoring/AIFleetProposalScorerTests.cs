@@ -773,7 +773,7 @@ namespace Rebellion.Tests.AI.Scoring
         public void Score_FleetDefenseProposal_ReturnsConfiguredScore()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.FleetDeployment.FleetDefenseScore = 700;
+            game.Config.AI.FleetDeployment.DefenseUtility.Base.Weight = 700;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
                 game,
@@ -800,7 +800,7 @@ namespace Rebellion.Tests.AI.Scoring
                 new AIFleetDefenseProposal(fleet, headquarters)
             );
 
-            Assert.AreEqual(game.Config.AI.FleetDeployment.FleetDefenseScore, score);
+            Assert.AreEqual(game.Config.AI.FleetDeployment.DefenseUtility.Base.Weight, score);
         }
 
         [Test]
@@ -808,7 +808,7 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
-            game.Config.AI.FleetDeployment.FleetDefenseScore = 700;
+            game.Config.AI.FleetDeployment.DefenseUtility.Base.Weight = 700;
             game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 0;
@@ -863,7 +863,7 @@ namespace Rebellion.Tests.AI.Scoring
 
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
-            Assert.AreEqual(game.Config.AI.FleetDeployment.FleetDefenseScore, score);
+            Assert.AreEqual(game.Config.AI.FleetDeployment.DefenseUtility.Base.Weight, score);
         }
 
         [Test]
