@@ -200,6 +200,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies strong and weak bucket percentages both contribute owned planets.
+        /// </summary>
         [Test]
         public void Seed_ProfileWithStrongAndWeakBuckets_OwnsSumOfBoth()
         {

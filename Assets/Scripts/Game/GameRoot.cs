@@ -173,7 +173,8 @@ namespace Rebellion.Game
         public DifficultyModifiers GetDifficultyModifier(Faction faction)
         {
             if (
-                faction?.IsAIControlled() == true
+                faction != null
+                && IsFactionAIControlled(faction)
                 && Summary != null
                 && !string.IsNullOrEmpty(Summary.PlayerFactionID)
                 && faction.InstanceID != Summary.PlayerFactionID

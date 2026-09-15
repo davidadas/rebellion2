@@ -90,7 +90,7 @@ namespace Rebellion.Tests.Game
         }
 
         /// <summary>
-        /// Verifies constructor with summary initializes correctly.
+        /// Verifies AI-controlled factions receive the selected difficulty modifier.
         /// </summary>
         [Test]
         public void GetDifficultyModifier_AIControlledFaction_ReturnsSelectedDifficultyModifier()
@@ -106,6 +106,9 @@ namespace Rebellion.Tests.Game
             Assert.AreSame(expected, actual);
         }
 
+        /// <summary>
+        /// Verifies player-controlled factions receive neutral difficulty modifiers.
+        /// </summary>
         [Test]
         public void GetDifficultyModifier_PlayerControlledFaction_ReturnsNeutralModifier()
         {
@@ -120,6 +123,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
         }
 
+        /// <summary>
+        /// Verifies an unconfigured difficulty returns neutral modifiers.
+        /// </summary>
         [Test]
         public void GetDifficultyModifier_MissingDifficulty_ReturnsNeutralModifier()
         {
@@ -129,6 +135,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
         }
 
+        /// <summary>
+        /// Verifies runtime difficulty configuration is not persisted with game state.
+        /// </summary>
         [Test]
         public void Serialize_RuntimeDifficultyModifiers_DoesNotPersistConfiguration()
         {
@@ -143,6 +152,9 @@ namespace Rebellion.Tests.Game
             StringAssert.DoesNotContain("MissionSuccessChancePoints", xml);
         }
 
+        /// <summary>
+        /// Verifies constructing a game with a summary initializes its runtime state.
+        /// </summary>
         [Test]
         public void Constructor_WithSummary_InitializesCorrectly()
         {

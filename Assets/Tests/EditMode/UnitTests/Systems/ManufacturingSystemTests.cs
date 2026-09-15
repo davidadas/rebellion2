@@ -2012,6 +2012,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(2, mine.ManufacturingProgress);
         }
 
+        /// <summary>
+        /// Verifies a full blockade halts production without reserving its next input.
+        /// </summary>
         [Test]
         public void ProcessTick_FullBlockade_HaltsProductionWithoutReservingInput()
         {
