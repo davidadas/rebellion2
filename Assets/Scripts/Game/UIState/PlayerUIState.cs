@@ -11,7 +11,7 @@ namespace Rebellion.Game.UIState
     [PersistableObject]
     public sealed class PlayerUIState
     {
-        public List<UIStateSection> Sections { get; set; } = new List<UIStateSection>();
+        public List<UIStateSection> UIStateSections { get; set; } = new List<UIStateSection>();
 
         /// <summary>
         /// Gets the state section with the supplied identifier, creating it when necessary.
@@ -26,12 +26,14 @@ namespace Rebellion.Game.UIState
                     nameof(sectionID)
                 );
 
-            UIStateSection section = Sections.FirstOrDefault(item => item.SectionID == sectionID);
+            UIStateSection section = UIStateSections.FirstOrDefault(item =>
+                item.SectionID == sectionID
+            );
             if (section != null)
                 return section;
 
             section = new UIStateSection { SectionID = sectionID };
-            Sections.Add(section);
+            UIStateSections.Add(section);
             return section;
         }
     }

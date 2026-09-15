@@ -956,7 +956,7 @@ namespace Rebellion.Tests.Managers
             _saveGameManager.SaveGameData(game, _saveFileName);
             string xml = File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName));
 
-            StringAssert.Contains("<Sections>", xml);
+            StringAssert.Contains("<UIStateSections>", xml);
             StringAssert.Contains("<SectionID>Strategy</SectionID>", xml);
             StringAssert.Contains("<Values>", xml);
             StringAssert.Contains("<Key>GalacticInformationFilter</Key>", xml);
@@ -1520,7 +1520,7 @@ namespace Rebellion.Tests.Managers
             Faction faction = new Faction { InstanceID = "FNALL1" };
             PlayerUIState uiState = new PlayerUIState
             {
-                Sections = new List<UIStateSection>
+                UIStateSections = new List<UIStateSection>
                 {
                     new UIStateSection
                     {
