@@ -165,6 +165,42 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         /// <summary>
+        /// Verifies that each saved authored coordinate resolves to its semantic sector slot.
+        /// </summary>
+        [Test]
+        public void TryGetSectorWindowSlot_AuthoredCoordinates_ReturnsMatchingSlots()
+        {
+            foreach (
+                int expectedSlot in new[]
+                {
+                    SectorWindowPositions.Left,
+                    SectorWindowPositions.Middle,
+                    SectorWindowPositions.Right,
+                }
+            )
+            {
+                int x = _controller.GetSectorWindowPosition(expectedSlot).x;
+
+                bool found = _controller.TryGetSectorWindowSlot(x, out int actualSlot);
+
+                Assert.IsTrue(found);
+                Assert.AreEqual(expectedSlot, actualSlot);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that an unauthored coordinate does not resolve to a sector slot.
+        /// </summary>
+        [Test]
+        public void TryGetSectorWindowSlot_UnknownCoordinate_ReturnsFalse()
+        {
+            bool found = _controller.TryGetSectorWindowSlot(int.MinValue, out int slot);
+
+            Assert.IsFalse(found);
+            Assert.AreEqual(-1, slot);
+        }
+
+        /// <summary>
         /// Verifies get utility window position configured theme returns authored position.
         /// </summary>
         [Test]
@@ -304,6 +340,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             return TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),

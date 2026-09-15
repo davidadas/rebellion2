@@ -34,6 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             game.Summary.PlayerFactionID = _ownerId;
+            game.SetFactionController(_ownerId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),

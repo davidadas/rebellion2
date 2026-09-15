@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.UIState;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
 {
@@ -15,7 +16,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
         private const string _playerFactionId = "FNALL1";
 
         private BookmarkController _controller;
-        private PlayerUIState _state;
+        private UIStateSection _state;
         private UIContext _uiContext;
 
         /// <summary>
@@ -28,13 +29,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
-            _state = new PlayerUIState();
-            _controller = new BookmarkController(_uiContext, _state.Bookmarks);
+            _state = new UIStateSection { SectionID = "Strategy" };
+            _controller = new BookmarkController(_uiContext, _state.BookmarkedItems);
         }
 
         /// <summary>
@@ -44,7 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
         public void Constructor_NullContext_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new BookmarkController(null, _state.Bookmarks)
+                new BookmarkController(null, _state.BookmarkedItems)
             );
         }
 
@@ -123,8 +125,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
                 data[0].IconTexture
             );
             Assert.That(data, Has.Exactly(1).Matches<BookmarkRenderData>(item => item.Active));
-            Assert.AreEqual("planet-1", _state.Bookmarks.Single().PlanetInstanceID);
-            Assert.AreEqual(PlanetBookmarkType.Fleet, _state.Bookmarks.Single().Type);
+            Assert.AreEqual("planet-1", _state.BookmarkedItems.Single().TargetInstanceID);
+            Assert.AreEqual("Fleet", _state.BookmarkedItems.Single().ItemTypeID);
+            Assert.AreEqual(10, _state.BookmarkedItems.Single().X);
+            Assert.AreEqual(20, _state.BookmarkedItems.Single().Y);
         }
 
         /// <summary>
@@ -177,7 +181,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreEqual(15, bookmark.X);
             Assert.AreEqual(25, bookmark.Y);
             Assert.IsFalse(_controller.BuildRenderData()[0].Active);
-            Assert.IsEmpty(_state.Bookmarks);
+            Assert.IsEmpty(_state.BookmarkedItems);
         }
 
         /// <summary>
@@ -267,13 +271,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
         [Test]
         public void ResetSession_ReplacementBookmarks_ProjectsReplacementState()
         {
-            List<PlanetBookmark> replacement = new List<PlanetBookmark>
+            List<BookmarkedItem> replacement = new List<BookmarkedItem>
             {
-                new PlanetBookmark
+                new BookmarkedItem
                 {
                     SlotIndex = 1,
-                    PlanetInstanceID = "planet-2",
-                    Type = PlanetBookmarkType.Mission,
+                    TargetInstanceID = "planet-2",
+                    ItemTypeID = "Mission",
+                    X = 45,
+                    Y = 55,
                 },
             };
             GalaxyMapPlanet planet = CreatePlanet("planet-2", "Corellia");
@@ -284,6 +290,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsFalse(_controller.BuildRenderData()[0].Active);
             Assert.IsTrue(_controller.BuildRenderData()[1].Active);
             Assert.AreEqual("Corellia", _controller.BuildRenderData()[1].Label);
+            Assert.IsTrue(_controller.TryTake(1, out BookmarkEntry bookmark));
+            Assert.AreEqual(45, bookmark.X);
+            Assert.AreEqual(55, bookmark.Y);
         }
 
         /// <summary>

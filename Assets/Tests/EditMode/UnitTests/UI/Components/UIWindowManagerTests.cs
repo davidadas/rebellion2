@@ -359,6 +359,86 @@ namespace Rebellion.Tests.UI.Components
         }
 
         /// <summary>
+        /// Verifies that registering a window announces a persistent window-state change.
+        /// </summary>
+        [Test]
+        public void Register_NewWindow_RaisesWindowsChanged()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            int changedCount = 0;
+            windowManager.WindowsChanged += () => changedCount++;
+
+            CreateWindow(windowManager, 1, modal: false, canFocus: true);
+
+            Assert.AreEqual(1, changedCount);
+        }
+
+        /// <summary>
+        /// Verifies that unregistering a window announces a persistent window-state change.
+        /// </summary>
+        [Test]
+        public void Unregister_RegisteredWindow_RaisesWindowsChanged()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            UIWindow window = CreateWindow(windowManager, 1, modal: false, canFocus: true);
+            int changedCount = 0;
+            windowManager.WindowsChanged += () => changedCount++;
+
+            windowManager.Unregister(window);
+
+            Assert.AreEqual(1, changedCount);
+        }
+
+        /// <summary>
+        /// Verifies that changing the focused window announces a stacking-order change.
+        /// </summary>
+        [Test]
+        public void Focus_BackgroundWindow_RaisesWindowsChanged()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            UIWindow firstWindow = CreateWindow(windowManager, 1, modal: false, canFocus: true);
+            CreateWindow(windowManager, 2, modal: false, canFocus: true);
+            int changedCount = 0;
+            windowManager.WindowsChanged += () => changedCount++;
+
+            windowManager.Focus(firstWindow);
+
+            Assert.AreEqual(1, changedCount);
+        }
+
+        /// <summary>
+        /// Verifies that completing a window move announces a geometry change.
+        /// </summary>
+        [Test]
+        public void NotifyMoved_RegisteredWindow_RaisesWindowsChanged()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            UIWindow window = CreateWindow(windowManager, 1, modal: false, canFocus: true);
+            int changedCount = 0;
+            windowManager.WindowsChanged += () => changedCount++;
+
+            window.NotifyMoved();
+
+            Assert.AreEqual(1, changedCount);
+        }
+
+        /// <summary>
+        /// Verifies that resizing a registered window announces a geometry change.
+        /// </summary>
+        [Test]
+        public void Resize_RegisteredWindow_RaisesWindowsChanged()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            UIWindow window = CreateWindow(windowManager, 1, modal: false, canFocus: true);
+            int changedCount = 0;
+            windowManager.WindowsChanged += () => changedCount++;
+
+            window.Resize(120, 90);
+
+            Assert.AreEqual(1, changedCount);
+        }
+
+        /// <summary>
         /// Creates window manager.
         /// </summary>
         /// <returns>The created window manager.</returns>

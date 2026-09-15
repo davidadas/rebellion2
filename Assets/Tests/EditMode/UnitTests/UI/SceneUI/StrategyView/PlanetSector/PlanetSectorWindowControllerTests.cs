@@ -217,6 +217,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// Verifies that moving an initialized sector window updates its session slot.
         /// </summary>
         [Test]
+        public void TryOpenAtPosition_AvailableAuthoredSlot_RestoresRequestedSlot()
+        {
+            bool opened = _controller.TryOpenAtPosition(_sector, SectorWindowPositions.Right);
+            PlanetSectorWindowView view = GetOpenView(out UIWindow window);
+
+            Assert.IsTrue(opened);
+            Assert.AreEqual(SectorWindowPositions.Right, _controller.GetSectorPosition(view));
+            Assert.AreEqual(
+                GetWindowPosition(SectorWindowPositions.Right),
+                new Vector2Int(window.X, window.Y)
+            );
+        }
+
+        /// <summary>
+        /// Verifies opening an occupied authored slot leaves its existing window unchanged.
+        /// </summary>
+        [Test]
+        public void TryOpenAtPosition_OccupiedAuthoredSlot_DoesNotReplaceWindow()
+        {
+            GalaxyMapSector secondSector = CreateSector("second", "Second Sector");
+            _controller.TryOpenAtPosition(_sector, SectorWindowPositions.Middle);
+
+            bool opened = _controller.TryOpenAtPosition(secondSector, SectorWindowPositions.Middle);
+
+            Assert.IsFalse(opened);
+            Assert.AreEqual(1, _windowManager.Windows.Count);
+            Assert.IsNotNull(_controller.FindWindow(_sector));
+            Assert.IsNull(_controller.FindWindow(secondSector));
+        }
+
+        /// <summary>
+        /// Verifies assigning an initialized sector window updates its session slot.
+        /// </summary>
+        [Test]
         public void SetSectorPosition_InitializedWindow_UpdatesSessionSlot()
         {
             PlanetSectorWindowView view = OpenWindow(out UIWindow _);
@@ -230,15 +264,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// Verifies swap initialized window moves to next slot and marks dirty.
         /// </summary>
         [Test]
-        public void Swap_InitializedWindow_MovesToNextSlotAndMarksDirty()
+        public void Swap_InitializedWindow_MovesToNextSlotAndNotifiesChange()
         {
             PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            bool moved = false;
+            window.Moved += _ => moved = true;
 
             _controller.Swap(window);
 
             Vector2Int position = GetWindowPosition(SectorWindowPositions.Middle);
             Assert.AreEqual(SectorWindowPositions.Middle, _controller.GetSectorPosition(view));
             Assert.AreEqual(position, new Vector2Int(window.X, window.Y));
+            Assert.IsTrue(moved);
             Assert.AreEqual(2, _dirtyCount);
         }
 
@@ -694,6 +731,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             return game;
         }
 

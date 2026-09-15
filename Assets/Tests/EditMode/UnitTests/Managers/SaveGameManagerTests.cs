@@ -8,6 +8,7 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Managers
@@ -74,7 +75,22 @@ namespace Rebellion.Tests.Managers
         }
 
         /// <summary>
-        /// Verifies save game data existing save atomically replaces without temporary files.
+        /// Verifies listeners can synchronize state immediately before serialization.
+        /// </summary>
+        [Test]
+        public void SaveGameData_SavingListenerMutatesGame_SerializesUpdatedState()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            _saveGameManager.Saving += () => game.CurrentTick = 42;
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loaded = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(42, loaded.CurrentTick);
+        }
+
+        /// <summary>
+        /// Verifies saving a game serializes its player records.
         /// </summary>
         [Test]
         public void SaveGameData_GameWithPlayers_SerializesPlayers()
@@ -109,6 +125,32 @@ namespace Rebellion.Tests.Managers
 
         /// <summary>
         /// Verifies that replacing a save is atomic and leaves no temporary files.
+        /// </summary>
+        [Test]
+        public void LoadGameData_SavedStrategyWindows_RestoresWindowState()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
+            game.GetFactionPlayer("FNALL1")
+                .UIState.GetOrCreateSection("Strategy")
+                .Windows.Add(new WindowState("Planet.Fleet", "PLANET1", 123, 45, 0, 0, 2));
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            WindowState state = loadedGame
+                .GetFactionPlayer("FNALL1")
+                .UIState.GetOrCreateSection("Strategy")
+                .Windows.Single();
+            Assert.AreEqual("Planet.Fleet", state.GetWindowTypeID());
+            Assert.AreEqual("PLANET1", state.GetTargetInstanceID());
+            Assert.AreEqual(123, state.GetX());
+            Assert.AreEqual(45, state.GetY());
+            Assert.AreEqual(2, state.GetZOrder());
+        }
+
+        /// <summary>
+        /// Verifies replacing an existing save leaves the updated save without temporary files.
         /// </summary>
         [Test]
         public void SaveGameData_ExistingSave_AtomicallyReplacesWithoutTemporaryFiles()
@@ -909,20 +951,24 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void SaveGameData_PlayerWithUIState_WritesUIState()
         {
-            GameRoot game = BuildGameWithUntrackedIdleBarItems();
+            GameRoot game = BuildGameWithIgnoredItems();
 
             _saveGameManager.SaveGameData(game, _saveFileName);
             string xml = File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName));
 
-            StringAssert.Contains("<UntrackedIdleBarItems>", xml);
-            StringAssert.Contains("<EntityInstanceID>OFFICER1</EntityInstanceID>", xml);
-            StringAssert.Contains("<ManufacturingType>None</ManufacturingType>", xml);
-            StringAssert.Contains("<EntityInstanceID>PLANET1</EntityInstanceID>", xml);
-            StringAssert.Contains("<ManufacturingType>Ship</ManufacturingType>", xml);
-            StringAssert.Contains("<ManufacturingType>Troop</ManufacturingType>", xml);
-            StringAssert.Contains("<Bookmarks>", xml);
-            StringAssert.Contains("<PlanetInstanceID>PLANET2</PlanetInstanceID>", xml);
-            StringAssert.Contains("<Type>Fleet</Type>", xml);
+            StringAssert.Contains("<Sections>", xml);
+            StringAssert.Contains("<SectionID>Strategy</SectionID>", xml);
+            StringAssert.Contains("<IgnoredItems>", xml);
+            StringAssert.Contains("<TargetInstanceID>OFFICER1</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Entity</ItemTypeID>", xml);
+            StringAssert.Contains("<TargetInstanceID>PLANET1</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Ship</ItemTypeID>", xml);
+            StringAssert.Contains("<ItemTypeID>Troop</ItemTypeID>", xml);
+            StringAssert.Contains("<BookmarkedItems>", xml);
+            StringAssert.Contains("<TargetInstanceID>PLANET2</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Fleet</ItemTypeID>", xml);
+            StringAssert.Contains("<X>45</X>", xml);
+            StringAssert.Contains("<Y>55</Y>", xml);
         }
 
         /// <summary>
@@ -931,8 +977,9 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void LoadGameData_SaveWithPlayerUIState_RestoresUIState()
         {
-            GameRoot game = BuildGameWithUntrackedIdleBarItems();
+            GameRoot game = BuildGameWithIgnoredItems();
             PlayerUIState uiState = game.GetPlayers().Single().UIState;
+            UIStateSection section = uiState.GetOrCreateSection("Strategy");
             _saveGameManager.SaveGameData(game, _saveFileName);
 
             PlayerUIState loadedUIState = _saveGameManager
@@ -940,21 +987,19 @@ namespace Rebellion.Tests.Managers
                 .GetPlayers()
                 .Single()
                 .UIState;
+            UIStateSection loadedSection = loadedUIState.GetOrCreateSection("Strategy");
 
+            Assert.AreEqual("Strategy", loadedSection.SectionID);
             CollectionAssert.AreEqual(
-                uiState.UntrackedIdleBarItems.Select(item =>
-                    (item.EntityInstanceID, item.ManufacturingType)
-                ),
-                loadedUIState.UntrackedIdleBarItems.Select(item =>
-                    (item.EntityInstanceID, item.ManufacturingType)
-                )
+                section.IgnoredItems.Select(item => (item.TargetInstanceID, item.ItemTypeID)),
+                loadedSection.IgnoredItems.Select(item => (item.TargetInstanceID, item.ItemTypeID))
             );
             CollectionAssert.AreEqual(
-                uiState.Bookmarks.Select(item =>
-                    (item.SlotIndex, item.PlanetInstanceID, item.Type)
+                section.BookmarkedItems.Select(item =>
+                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID, item.X, item.Y)
                 ),
-                loadedUIState.Bookmarks.Select(item =>
-                    (item.SlotIndex, item.PlanetInstanceID, item.Type)
+                loadedSection.BookmarkedItems.Select(item =>
+                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID, item.X, item.Y)
                 )
             );
         }
@@ -1466,36 +1511,37 @@ namespace Rebellion.Tests.Managers
         /// Creates a saveable game containing independently excluded idle-bar identities.
         /// </summary>
         /// <returns>The configured saveable game.</returns>
-        private static GameRoot BuildGameWithUntrackedIdleBarItems()
+        private static GameRoot BuildGameWithIgnoredItems()
         {
             Faction faction = new Faction { InstanceID = "FNALL1" };
             PlayerUIState uiState = new PlayerUIState
             {
-                Bookmarks = new List<PlanetBookmark>
+                Sections = new List<UIStateSection>
                 {
-                    new PlanetBookmark
+                    new UIStateSection
                     {
-                        SlotIndex = 2,
-                        PlanetInstanceID = "PLANET2",
-                        Type = PlanetBookmarkType.Fleet,
-                    },
-                },
-                UntrackedIdleBarItems = new List<IdleBarUntrackedItem>
-                {
-                    new IdleBarUntrackedItem
-                    {
-                        EntityInstanceID = "OFFICER1",
-                        ManufacturingType = ManufacturingType.None,
-                    },
-                    new IdleBarUntrackedItem
-                    {
-                        EntityInstanceID = "PLANET1",
-                        ManufacturingType = ManufacturingType.Ship,
-                    },
-                    new IdleBarUntrackedItem
-                    {
-                        EntityInstanceID = "PLANET1",
-                        ManufacturingType = ManufacturingType.Troop,
+                        SectionID = "Strategy",
+                        BookmarkedItems = new List<BookmarkedItem>
+                        {
+                            new BookmarkedItem
+                            {
+                                SlotIndex = 2,
+                                TargetInstanceID = "PLANET2",
+                                ItemTypeID = "Fleet",
+                                X = 45,
+                                Y = 55,
+                            },
+                        },
+                        IgnoredItems = new List<IgnoredItem>
+                        {
+                            new IgnoredItem
+                            {
+                                TargetInstanceID = "OFFICER1",
+                                ItemTypeID = "Entity",
+                            },
+                            new IgnoredItem { TargetInstanceID = "PLANET1", ItemTypeID = "Ship" },
+                            new IgnoredItem { TargetInstanceID = "PLANET1", ItemTypeID = "Troop" },
+                        },
                     },
                 },
             };

@@ -1,3 +1,4 @@
+using Rebellion.Game.UIState;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game

@@ -62,6 +62,7 @@ namespace Rebellion.Tests.Game
             _game = new GameRoot(_summary, config);
             _game.GetFactions().Add(_faction1);
             _game.GetFactions().Add(_faction2);
+            _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
         }
 
         /// <summary>
@@ -642,11 +643,12 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SetFactionController_NewFaction_AddsPlayer()
         {
-            _game.SetFactionController("FACTION1", "PLAYER1", PlayerControllerType.Human);
+            _game.SetFactionController("FACTION2", "PLAYER2", PlayerControllerType.Human);
 
-            Player player = _game.GetFactionPlayer("FACTION1");
-            Assert.AreEqual("PLAYER1", player.PlayerID);
+            Player player = _game.GetFactionPlayer("FACTION2");
+            Assert.AreEqual("PLAYER2", player.PlayerID);
             Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
+            Assert.AreEqual(2, _game.GetPlayers().Count);
         }
 
         /// <summary>
@@ -666,71 +668,28 @@ namespace Rebellion.Tests.Game
         /// Verifies that legacy games receive faction-controller player records.
         /// </summary>
         [Test]
-        public void EnsurePlayers_LegacyGame_CreatesFactionControllers()
+        public void GetPlayerFaction_NoHumanPlayer_DoesNotUseSummaryFaction()
         {
-            _game.EnsurePlayers();
-
-            Assert.AreEqual(_game.GetFactions().Count, _game.GetPlayers().Count);
-            Assert.AreEqual(
-                PlayerControllerType.Human,
-                _game.GetFactionPlayer(_game.Summary.PlayerFactionID).ControllerType
+            GameRoot game = new GameRoot(
+                new GameSummary { PlayerFactionID = _faction1.InstanceID },
+                TestContent.Data.GameConfig
             );
+            game.GetFactions().Add(_faction1);
+
+            Assert.Throws<InvalidOperationException>(() => game.GetPlayerFaction());
         }
 
         /// <summary>
         /// Verifies that player-faction lookup rejects a missing game summary.
         /// </summary>
         [Test]
-        public void GetPlayerFaction_ThrowsException_WhenSummaryIsNull()
+        public void GetPlayerFaction_HumanPlayerFactionMissing_ThrowsInvalidOperationException()
         {
-            // Create game without _summary.
-            GameRoot gameWithoutSummary = new GameRoot();
+            GameRoot game = new GameRoot();
+            game.GetFactions().Add(_faction1);
+            game.SetFactionController("NONEXISTENT", "PLAYER1", PlayerControllerType.Human);
 
-            // Attempt to get player faction.
-            Assert.Throws<InvalidOperationException>(
-                () => gameWithoutSummary.GetPlayerFaction(),
-                "Should throw exception when GameSummary is null"
-            );
-        }
-
-        /// <summary>
-        /// Verifies get player faction throws exception when player faction id is null.
-        /// </summary>
-        [Test]
-        public void GetPlayerFaction_ThrowsException_WhenPlayerFactionIDIsNull()
-        {
-            // Create game with summary but no player faction ID.
-            GameSummary summaryWithoutPlayer = new GameSummary();
-            GameConfig config = TestContent.Data.GameConfig;
-            GameRoot gameWithoutPlayerId = new GameRoot(summaryWithoutPlayer, config);
-
-            // Attempt to get player faction.
-            Assert.Throws<InvalidOperationException>(
-                () => gameWithoutPlayerId.GetPlayerFaction(),
-                "Should throw exception when PlayerFactionID is null or empty"
-            );
-        }
-
-        /// <summary>
-        /// Verifies get player faction throws exception when player faction not found.
-        /// </summary>
-        [Test]
-        public void GetPlayerFaction_ThrowsException_WhenPlayerFactionNotFound()
-        {
-            // Create game with invalid player faction ID.
-            GameSummary summaryWithInvalidPlayer = new GameSummary
-            {
-                PlayerFactionID = "NONEXISTENT",
-            };
-            GameConfig config = TestContent.Data.GameConfig;
-            GameRoot gameWithInvalidPlayer = new GameRoot(summaryWithInvalidPlayer, config);
-            gameWithInvalidPlayer.GetFactions().Add(_faction1);
-
-            // Attempt to get player faction.
-            Assert.Throws<InvalidOperationException>(
-                () => gameWithInvalidPlayer.GetPlayerFaction(),
-                "Should throw exception when player faction does not exist"
-            );
+            Assert.Throws<InvalidOperationException>(() => game.GetPlayerFaction());
         }
 
         /// <summary>

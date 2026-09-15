@@ -275,6 +275,7 @@ namespace Rebellion.Tests.UI.Runtime
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = playerFactionId });
             game.Summary.PlayerFactionID = playerFactionId;
+            game.SetFactionController(playerFactionId, "PLAYER1", PlayerControllerType.Human);
             return game;
         }
     }

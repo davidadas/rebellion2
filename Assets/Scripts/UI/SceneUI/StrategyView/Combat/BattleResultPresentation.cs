@@ -553,8 +553,7 @@ internal abstract class BattleResultPresentation
                 ? StrategyUISoundPaths.PlanetaryAssault
                 : null;
 
-        internal override string Title =>
-            FirstNonBlank(report.Title, GetDefaultTitle(report.CombatType, report.PlanetName));
+        internal override string Title => report.Title;
 
         internal override bool UsesPlanetaryLayout =>
             report.CombatType != CombatReportType.SpaceBattle;
@@ -719,22 +718,6 @@ internal abstract class BattleResultPresentation
         private static SpaceCombatSideOutcome GetOutcome(CombatReport report, CombatSide side)
         {
             return side == CombatSide.Attacker ? report.AttackerOutcome : report.DefenderOutcome;
-        }
-
-        /// <summary>
-        /// Builds a fallback title for older reports that do not store resolved text.
-        /// </summary>
-        /// <param name="type">The type.</param>
-        /// <param name="planetName">The planet name.</param>
-        /// <returns>The requested default title.</returns>
-        private static string GetDefaultTitle(CombatReportType type, string planetName)
-        {
-            return type switch
-            {
-                CombatReportType.Bombardment => $"Orbital bombardment of {planetName}",
-                CombatReportType.PlanetaryAssault => $"Assault on {planetName}",
-                _ => $"Battle at {planetName}",
-            };
         }
     }
 }

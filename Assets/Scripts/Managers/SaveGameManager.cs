@@ -45,6 +45,11 @@ public class SaveGameManager
     private static SaveGameManager _instance;
     private readonly string _saveDirectoryPath;
 
+    /// <summary>
+    /// Raised immediately before game state is serialized.
+    /// </summary>
+    public event Action Saving;
+
     // Initialize singleton.
     public static SaveGameManager Instance
     {
@@ -246,6 +251,7 @@ public class SaveGameManager
     /// <param name="displayName">The display name to store in save metadata.</param>
     public void SaveGameData(GameRoot game, string fileName, string displayName = null)
     {
+        Saving?.Invoke();
         string saveDirectory = GetSaveDirectoryPath();
 
         // Create save directory if it does not exist.
@@ -421,9 +427,7 @@ public class SaveGameManager
         GameSerializer serializer = CreateSaveDeserializer(typeof(GameRoot));
 
         using FileStream fileStream = new FileStream(saveFilePath, FileMode.Open);
-        GameRoot game = (GameRoot)serializer.Deserialize(fileStream);
-        game.EnsurePlayers();
-        return game;
+        return (GameRoot)serializer.Deserialize(fileStream);
     }
 
     /// <summary>

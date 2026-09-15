@@ -67,6 +67,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             game.GetFactions()
                 .Add(new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(game, themes, _catalog);
             _windowObject = new GameObject(
                 "EncyclopediaWindow",

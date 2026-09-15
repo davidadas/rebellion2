@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -23,7 +24,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         private IdleBarController _controller;
         private Faction _faction;
         private Officer _officer;
-        private PlayerUIState _uiState;
+        private UIStateSection _uiState;
         private ISceneNode _resolvedEntity;
         private GameObject _rootObject;
         private IdleBarView _view;
@@ -37,14 +38,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _rootObject.GetComponentInChildren<IdleBarView>(true);
             _faction = new Faction { InstanceID = "faction" };
-            _uiState = new PlayerUIState();
+            _uiState = new UIStateSection { SectionID = "Strategy" };
             _officer = new Officer { InstanceID = "officer", DisplayName = "Officer" };
             _resolvedEntity = _officer;
             _actions = new TestActions();
             _contextMenuController = new ContextMenuController();
             _controller = new IdleBarController(
                 () => _faction,
-                _uiState.UntrackedIdleBarItems,
+                _uiState.IgnoredItems,
                 _contextMenuController,
                 () => null,
                 () => true,
@@ -72,7 +73,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             IdleBarController controller = new IdleBarController(
                 () => null,
-                new List<IdleBarUntrackedItem>(),
+                new List<IgnoredItem>(),
                 new ContextMenuController(),
                 () => null,
                 () => false,
@@ -219,11 +220,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         /// Verifies reset session restores tracking.
         /// </summary>
         [Test]
-        public void ResetSession_PreservesUntrackedState()
+        public void ResetSession_PreservesIgnoredState()
         {
             _controller.ToggleIdleBarTracking(_officer);
 
-            _controller.ResetSession(_uiState.UntrackedIdleBarItems);
+            _controller.ResetSession(_uiState.IgnoredItems);
 
             Assert.IsFalse(_controller.IsIdleBarTracked(_officer));
         }
@@ -234,13 +235,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         [Test]
         public void ResetSession_ReplacementState_UsesReplacementExclusions()
         {
-            List<IdleBarUntrackedItem> replacement = new List<IdleBarUntrackedItem>
+            List<IgnoredItem> replacement = new List<IgnoredItem>
             {
-                new IdleBarUntrackedItem
-                {
-                    EntityInstanceID = _officer.InstanceID,
-                    ManufacturingType = ManufacturingType.None,
-                },
+                new IgnoredItem { TargetInstanceID = _officer.InstanceID, ItemTypeID = "Entity" },
             };
 
             _controller.ResetSession(replacement);
@@ -257,7 +254,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _controller.ToggleIdleBarTracking(_officer);
             IdleBarController recreated = new IdleBarController(
                 () => _faction,
-                _uiState.UntrackedIdleBarItems,
+                _uiState.IgnoredItems,
                 new ContextMenuController(),
                 () => null,
                 () => true,
@@ -280,18 +277,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _controller.ToggleIdleBarTracking(planet);
 
             CollectionAssert.AreEquivalent(
-                new[]
-                {
-                    ManufacturingType.Ship,
-                    ManufacturingType.Troop,
-                    ManufacturingType.Building,
-                },
-                _uiState.UntrackedIdleBarItems.ConvertAll(item => item.ManufacturingType)
+                new[] { "Ship", "Troop", "Building" },
+                _uiState.IgnoredItems.ConvertAll(item => item.ItemTypeID)
             );
             Assert.IsTrue(
-                _uiState.UntrackedIdleBarItems.All(item =>
-                    item.EntityInstanceID == planet.InstanceID
-                )
+                _uiState.IgnoredItems.All(item => item.TargetInstanceID == planet.InstanceID)
             );
         }
 
@@ -303,7 +293,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         {
             IdleBarController controller = new IdleBarController(
                 () => null,
-                new List<IdleBarUntrackedItem>(),
+                new List<IgnoredItem>(),
                 new ContextMenuController(),
                 () => null,
                 () => false,

@@ -1,11 +1,11 @@
-using Rebellion.Game;
+using Rebellion.Game.UIState;
 
 /// <summary>
 /// Stores one controller-owned bookmark and its current galaxy-map projection.
 /// </summary>
 public sealed class BookmarkEntry
 {
-    public PlanetBookmark State { get; }
+    public BookmarkedItem State { get; }
 
     public PlanetIcon Icon { get; }
 
@@ -24,13 +24,13 @@ public sealed class BookmarkEntry
     /// <param name="planet">The bookmarked galaxy-map planet.</param>
     public BookmarkEntry(PlanetIcon icon, int x, int y, GalaxyMapPlanet planet)
         : this(
-            new PlanetBookmark
+            new BookmarkedItem
             {
-                PlanetInstanceID = planet?.Planet?.InstanceID,
-                Type = ToBookmarkType(icon),
+                TargetInstanceID = planet?.Planet?.InstanceID,
+                ItemTypeID = icon.ToString(),
+                X = x,
+                Y = y,
             },
-            x,
-            y,
             planet
         ) { }
 
@@ -39,53 +39,28 @@ public sealed class BookmarkEntry
     /// </summary>
     /// <param name="state">The durable bookmark state.</param>
     /// <param name="planet">The current galaxy-map planet projection.</param>
-    public BookmarkEntry(PlanetBookmark state, GalaxyMapPlanet planet = null)
-        : this(state, 0, 0, planet) { }
-
-    /// <summary>
-    /// Creates a bookmark projection with its transient window placement.
-    /// </summary>
-    /// <param name="state">The durable bookmark state.</param>
-    /// <param name="x">The source-space horizontal window coordinate.</param>
-    /// <param name="y">The source-space vertical window coordinate.</param>
-    /// <param name="planet">The current galaxy-map planet projection.</param>
-    private BookmarkEntry(PlanetBookmark state, int x, int y, GalaxyMapPlanet planet)
+    public BookmarkEntry(BookmarkedItem state, GalaxyMapPlanet planet = null)
     {
         State = state;
-        Icon = ToPlanetIcon(state.Type);
-        X = x;
-        Y = y;
+        Icon = ToPlanetIcon(state.ItemTypeID);
+        X = state.X;
+        Y = state.Y;
         Planet = planet;
     }
 
     /// <summary>
-    /// Converts a strategy planet icon into its durable bookmark category.
+    /// Converts a durable item type into its strategy planet icon.
     /// </summary>
-    /// <param name="icon">The strategy planet icon.</param>
-    /// <returns>The matching durable bookmark category.</returns>
-    private static PlanetBookmarkType ToBookmarkType(PlanetIcon icon) =>
-        icon switch
-        {
-            PlanetIcon.Facility => PlanetBookmarkType.Facility,
-            PlanetIcon.Defense => PlanetBookmarkType.Defense,
-            PlanetIcon.Fleet => PlanetBookmarkType.Fleet,
-            PlanetIcon.Mission => PlanetBookmarkType.Mission,
-            _ => throw new System.ArgumentOutOfRangeException(nameof(icon)),
-        };
-
-    /// <summary>
-    /// Converts a durable bookmark category into its strategy planet icon.
-    /// </summary>
-    /// <param name="type">The durable bookmark category.</param>
+    /// <param name="itemTypeID">The durable item type identifier.</param>
     /// <returns>The matching strategy planet icon.</returns>
-    private static PlanetIcon ToPlanetIcon(PlanetBookmarkType type) =>
-        type switch
+    private static PlanetIcon ToPlanetIcon(string itemTypeID) =>
+        itemTypeID switch
         {
-            PlanetBookmarkType.Facility => PlanetIcon.Facility,
-            PlanetBookmarkType.Defense => PlanetIcon.Defense,
-            PlanetBookmarkType.Fleet => PlanetIcon.Fleet,
-            PlanetBookmarkType.Mission => PlanetIcon.Mission,
-            _ => throw new System.ArgumentOutOfRangeException(nameof(type)),
+            nameof(PlanetIcon.Facility) => PlanetIcon.Facility,
+            nameof(PlanetIcon.Defense) => PlanetIcon.Defense,
+            nameof(PlanetIcon.Fleet) => PlanetIcon.Fleet,
+            nameof(PlanetIcon.Mission) => PlanetIcon.Mission,
+            _ => throw new System.ArgumentOutOfRangeException(nameof(itemTypeID)),
         };
 
     /// <summary>

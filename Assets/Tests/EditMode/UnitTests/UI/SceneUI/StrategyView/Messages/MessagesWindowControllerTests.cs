@@ -330,6 +330,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
+            game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -397,6 +398,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
+            game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -454,6 +456,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
+            game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),

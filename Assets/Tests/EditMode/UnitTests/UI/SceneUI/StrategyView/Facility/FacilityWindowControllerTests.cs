@@ -399,6 +399,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             return game;
         }
 

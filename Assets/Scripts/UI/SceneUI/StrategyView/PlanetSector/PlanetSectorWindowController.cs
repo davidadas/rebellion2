@@ -271,6 +271,25 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
+    /// Restores a sector window in a specific authored slot without replacing another window.
+    /// </summary>
+    /// <param name="sector">The sector to restore.</param>
+    /// <param name="position">The authored sector position.</param>
+    /// <returns>True when the sector is already open or was restored.</returns>
+    public bool TryOpenAtPosition(GalaxyMapSector sector, int position)
+    {
+        if (sector == null || !_sectorWindowPositionOrder.Contains(position))
+            return false;
+        if (FindWindow(sector) != null)
+            return true;
+        if (FindWindow(position) != null)
+            return false;
+
+        OpenAt(sector, position);
+        return FindWindow(sector) != null;
+    }
+
+    /// <summary>
     /// Renders every registered planet-sector window.
     /// </summary>
     public void RenderWindows()
@@ -325,6 +344,7 @@ public sealed class PlanetSectorWindowController
         Vector2Int position = getWindowPosition(target);
         session.SelectSectorPosition(target);
         window.MoveTo(position.x, position.y);
+        window.NotifyMoved();
         markDirty();
     }
 

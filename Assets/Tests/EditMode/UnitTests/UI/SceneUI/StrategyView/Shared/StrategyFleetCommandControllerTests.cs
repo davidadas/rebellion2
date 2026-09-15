@@ -33,6 +33,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             _game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             _game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             _game.Summary.PlayerFactionID = _playerFactionId;
+            _game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector { InstanceID = "sector" };
             _game.AttachNode(planetSector, _game.Galaxy);
             _planet = new Planet

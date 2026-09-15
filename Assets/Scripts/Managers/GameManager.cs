@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -441,7 +442,6 @@ public sealed class GameManager
             throw new InvalidOperationException("Cannot manage a null game.");
 
         _game = game;
-        _game.EnsurePlayers();
         if (_game.Config == null)
             _game.SetConfig(_gameData.GameConfig);
         _game.RebuildSceneState();

@@ -198,6 +198,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             game.GetFactions().Add(player);
             game.GetFactions().Add(opponent);
             game.Summary.PlayerFactionID = player.InstanceID;
+            game.SetFactionController(player.InstanceID, "PLAYER1", PlayerControllerType.Human);
             GameManager manager = new GameManager(game, TestGameData.Create(config));
             SetField("activeGameManager", manager);
             SetField("themeLibrary", CreateDefaultOnlyThemeLibrary());
