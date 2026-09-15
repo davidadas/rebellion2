@@ -14,7 +14,7 @@ using Rebellion.Util.Extensions;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Processes escape attempts for captured officers each tick.
+    /// Processes scheduled escape attempts for captured officers.
     /// Escape probability is based on the officer's skills and the forces guarding
     /// the planet, fleet, or ship where the officer is held.
     /// </summary>
@@ -25,6 +25,7 @@ namespace Rebellion.Systems
         private readonly MovementSystem _movementSystem;
         private readonly FogOfWarSystem _fogOfWarSystem;
         private readonly ProbabilityTable _escapeTable;
+        private readonly GameConfig.MissionTickConfig _escapeAttempt;
         private readonly int _loyaltyShift;
 
         /// <summary>
@@ -47,6 +48,7 @@ namespace Rebellion.Systems
                 movementSystem ?? throw new ArgumentNullException(nameof(movementSystem));
             _fogOfWarSystem =
                 fogOfWarSystem ?? throw new ArgumentNullException(nameof(fogOfWarSystem));
+            _escapeAttempt = game.Config.Captive.EscapeAttempt;
             _escapeTable = new ProbabilityTable(game.Config.Captive.EscapeTable);
             _loyaltyShift = game.Config.Captive.EscapeLoyaltyShift;
         }
@@ -115,12 +117,22 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Processes one tick of escape attempts for all captured officers.
+        /// Processes escape attempts that are due on the current tick.
         /// </summary>
         /// <returns>Results for any officers that escaped.</returns>
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
+            if (_game.NextCaptiveEscapeAttemptTick <= 0)
+            {
+                ScheduleEscapeAttempt();
+                return results;
+            }
+
+            if (_game.CurrentTick < _game.NextCaptiveEscapeAttemptTick)
+                return results;
+
+            ScheduleEscapeAttempt();
 
             foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
             {
@@ -145,6 +157,18 @@ namespace Rebellion.Systems
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Schedules the next escape-attempt pulse from the configured base and spread.
+        /// </summary>
+        private void ScheduleEscapeAttempt()
+        {
+            int baseTicks = Math.Max(0, _escapeAttempt?.Base ?? 0);
+            int spreadTicks = Math.Max(0, _escapeAttempt?.Spread ?? 0);
+            _game.NextCaptiveEscapeAttemptTick = checked(
+                _game.CurrentTick + baseTicks + _provider.NextInt(0, spreadTicks + 1)
+            );
         }
 
         /// <summary>
