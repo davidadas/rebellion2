@@ -516,14 +516,8 @@ public sealed class FinderWindowRowBuilder
             return "Captured";
         if (personnel is Officer { InjuryPoints: > 0 })
             return "Injured";
-        if (
-            personnel is { IsEnabled: false }
-            && (
-                personnel is not BaseGameEntity entity
-                || string.IsNullOrWhiteSpace(entity.DisplayStatus)
-            )
-        )
-            return "On Mission";
+        if (personnel is { IsEnabled: false })
+            return string.Empty;
         if (personnel is IMovable movable && movable.GetTransitMovement() != null)
             return "Enroute";
         if (personnel is Officer officerOnMission && officerOnMission.IsOnMission())
