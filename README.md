@@ -69,3 +69,8 @@ pull request.
 This unofficial fan project is not affiliated with or endorsed by Disney, Lucasfilm, or the owners
 of *Star Wars*. Copyrighted game assets are not distributed in this repository and must not be
 redistributed by players, modders, or contributors.
+
+Original software authored for this project is available under the
+[PolyForm Noncommercial License 1.0.0](LICENSE.md). It may be used, modified, and redistributed for
+permitted noncommercial purposes. The license does not grant rights to third-party software,
+trademarks, names, artwork, audio, game data, or other materials.
