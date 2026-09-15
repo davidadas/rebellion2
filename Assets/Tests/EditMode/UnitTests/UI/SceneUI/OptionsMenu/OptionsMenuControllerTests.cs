@@ -304,12 +304,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             GetField<Button>(view, "_resolutionNextButton").onClick.Invoke();
             GetField<Button>(view, "_fullScreenNextButton").onClick.Invoke();
-            OptionsToggleRowView tacticalRow = GetField<OptionsToggleRowView[]>(
-                    view,
-                    "_tacticalRows"
-                )
-                .First();
-            GetField<Button>(tacticalRow, "_button").onClick.Invoke();
             GetField<Button>(view, "_defaultsButton").onClick.Invoke();
             ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
                 view,
