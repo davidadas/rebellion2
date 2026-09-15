@@ -201,6 +201,11 @@ internal sealed class BattleResultTableProjector
     /// <summary>
     /// Creates category rows from units captured in a durable combat report.
     /// </summary>
+    /// <param name="uiContext">The ui context.</param>
+    /// <param name="units">The units.</param>
+    /// <param name="category">The category.</param>
+    /// <param name="withdrawing">Whether withdrawing.</param>
+    /// <returns>The result of project report units.</returns>
     private static BattleResultTableRenderData ProjectReportUnits(
         UIContext uiContext,
         IEnumerable<CombatReportUnit> units,
@@ -270,6 +275,9 @@ internal sealed class BattleResultTableProjector
     /// <summary>
     /// Returns whether a saved report-unit category belongs to the selected result tab.
     /// </summary>
+    /// <param name="unitCategory">The unit category.</param>
+    /// <param name="category">The category.</param>
+    /// <returns>True when the value matches category; otherwise false.</returns>
     private static bool MatchesCategory(
         CombatReportUnitCategory unitCategory,
         BattleResultCategory category

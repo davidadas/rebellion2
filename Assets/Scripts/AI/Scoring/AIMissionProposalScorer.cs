@@ -339,6 +339,9 @@ namespace Rebellion.AI.Scoring
         /// <summary>
         /// Penalizes risking an officer on hostile work that unlocked special forces can perform.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The mission proposal being evaluated.</param>
+        /// <returns>True when the officer has an unlocked special-forces replacement.</returns>
         private static bool HasOfficerReplacementRisk(
             AITurnContext context,
             AIMissionProposal proposal

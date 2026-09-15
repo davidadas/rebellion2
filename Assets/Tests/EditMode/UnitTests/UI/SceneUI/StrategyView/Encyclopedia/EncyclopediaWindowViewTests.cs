@@ -20,6 +20,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
         private EncyclopediaWindowView _view;
         private GameObject _viewObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -33,6 +36,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -40,12 +46,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render index panel applies frame search tabs title and rows.
+        /// </summary>
         [Test]
         public void Render_IndexPanel_AppliesFrameSearchTabsTitleAndRows()
         {
@@ -86,6 +98,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(new Color32(128, 128, 128, 255), (Color32)FindRowText(rows[1]).color);
         }
 
+        /// <summary>
+        /// Verifies render upper button layout hides strip and uses upper slots.
+        /// </summary>
         [Test]
         public void Render_UpperButtonLayout_HidesStripAndUsesUpperSlots()
         {
@@ -105,6 +120,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsFalse(FindObject("LowerLayoutCloseButtonImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render command source rect applies configured bounds.
+        /// </summary>
         [Test]
         public void Render_CommandSourceRect_AppliesConfiguredBounds()
         {
@@ -139,6 +157,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             );
         }
 
+        /// <summary>
+        /// Verifies render too many commands throws missing reference exception.
+        /// </summary>
         [Test]
         public void Render_TooManyCommands_ThrowsMissingReferenceException()
         {
@@ -159,6 +180,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.Throws<MissingReferenceException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render too many tabs throws missing reference exception.
+        /// </summary>
         [Test]
         public void Render_TooManyTabs_ThrowsMissingReferenceException()
         {
@@ -187,6 +211,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.Throws<MissingReferenceException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render shorter index collection hides unused cached rows.
+        /// </summary>
         [Test]
         public void Render_ShorterIndexCollection_HidesUnusedCachedRows()
         {
@@ -220,6 +247,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual("Kessel", FindRowText(FindRows()[0]).text);
         }
 
+        /// <summary>
+        /// Verifies render detail panel applies card navigation title and structured text.
+        /// </summary>
         [Test]
         public void Render_DetailPanel_AppliesCardNavigationTitleAndStructuredText()
         {
@@ -266,6 +296,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             );
         }
 
+        /// <summary>
+        /// Verifies render shorter detail text hides unused cached text fields.
+        /// </summary>
         [Test]
         public void Render_ShorterDetailText_HidesUnusedCachedTextFields()
         {
@@ -304,6 +337,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual("Replacement", FindDetailLines().Single().text);
         }
 
+        /// <summary>
+        /// Verifies render switching to index hides cached detail text.
+        /// </summary>
         [Test]
         public void Render_SwitchingToIndex_HidesCachedDetailText()
         {
@@ -331,6 +367,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsTrue(FindObject("IndexPanel").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies search input null value raises normalized search request.
+        /// </summary>
         [Test]
         public void SearchInput_NullValue_RaisesNormalizedSearchRequest()
         {
@@ -342,6 +381,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(string.Empty, search);
         }
 
+        /// <summary>
+        /// Verifies tab button clicked raises focus and semantic tab requests.
+        /// </summary>
         [Test]
         public void TabButton_Clicked_RaisesFocusAndSemanticTabRequests()
         {
@@ -356,6 +398,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(EncyclopediaWindowTab.Missions, selectedTab);
         }
 
+        /// <summary>
+        /// Verifies index row gestures rendered row raise focus selection activation and context.
+        /// </summary>
         [Test]
         public void IndexRowGestures_RenderedRow_RaiseFocusSelectionActivationAndContext()
         {
@@ -402,6 +447,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreSame(secondary, contextEvent);
         }
 
+        /// <summary>
+        /// Verifies detail navigation buttons click raise focus and previous next requests.
+        /// </summary>
         [Test]
         public void DetailNavigationButtons_Click_RaiseFocusAndPreviousNextRequests()
         {
@@ -420,6 +468,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(1, nextCount);
         }
 
+        /// <summary>
+        /// Verifies dialog button press then click raises control before rendered semantic command.
+        /// </summary>
         [Test]
         public void DialogButton_PressThenClick_RaisesControlBeforeRenderedSemanticCommand()
         {
@@ -455,6 +506,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(EncyclopediaWindowCommand.ShowTopic, command);
         }
 
+        /// <summary>
+        /// Verifies child panels null data throw argument null exception.
+        /// </summary>
         [Test]
         public void ChildPanels_NullData_ThrowArgumentNullException()
         {
@@ -462,6 +516,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.Throws<ArgumentNullException>(() => _detailPanel.Render(null, 0));
         }
 
+        /// <summary>
+        /// Verifies child panel on destroy initialized panels unbind their own controls.
+        /// </summary>
         [Test]
         public void ChildPanelOnDestroy_InitializedPanels_UnbindTheirOwnControls()
         {
@@ -487,6 +544,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(0, nextCount);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds parent controls and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsParentControlsAndRaisesDestroyedEvent()
         {
@@ -528,6 +588,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(0, nextCount);
         }
 
+        /// <summary>
+        /// Creates render data.
+        /// </summary>
+        /// <param name="panel">Whether panel.</param>
+        /// <param name="frame">The frame.</param>
+        /// <param name="index">The index.</param>
+        /// <param name="detail">The detail.</param>
+        /// <returns>The created render data.</returns>
         private EncyclopediaWindowRenderData CreateRenderData(
             bool panel,
             EncyclopediaWindowFrameRenderData frame,
@@ -538,6 +606,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             return new EncyclopediaWindowRenderData(panel, frame, index, detail);
         }
 
+        /// <summary>
+        /// Creates frame.
+        /// </summary>
+        /// <param name="useUpperLayout">Whether use upper layout.</param>
+        /// <param name="buttons">The buttons.</param>
+        /// <returns>The created frame.</returns>
         private EncyclopediaWindowFrameRenderData CreateFrame(
             bool useUpperLayout,
             EncyclopediaDialogButtonRenderData[] buttons = null
@@ -556,6 +630,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             );
         }
 
+        /// <summary>
+        /// Creates dialog buttons.
+        /// </summary>
+        /// <returns>The created dialog buttons.</returns>
         private EncyclopediaDialogButtonRenderData[] CreateDialogButtons()
         {
             return new[]
@@ -566,6 +644,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             };
         }
 
+        /// <summary>
+        /// Creates dialog button.
+        /// </summary>
+        /// <param name="command">The command.</param>
+        /// <returns>The created dialog button.</returns>
         private EncyclopediaDialogButtonRenderData CreateDialogButton(
             EncyclopediaWindowCommand command
         )
@@ -573,6 +656,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             return new EncyclopediaDialogButtonRenderData(command, _texture, _texture, null);
         }
 
+        /// <summary>
+        /// Creates index.
+        /// </summary>
+        /// <param name="rows">The rows.</param>
+        /// <returns>The created index.</returns>
         private EncyclopediaWindowIndexRenderData CreateIndex(
             EncyclopediaWindowRowRenderData[] rows
         )
@@ -594,6 +682,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             );
         }
 
+        /// <summary>
+        /// Creates detail.
+        /// </summary>
+        /// <returns>The created detail.</returns>
         private EncyclopediaWindowDetailRenderData CreateDetail()
         {
             return new EncyclopediaWindowDetailRenderData(
@@ -605,6 +697,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             );
         }
 
+        /// <summary>
+        /// Creates row.
+        /// </summary>
+        /// <param name="entryTypeId">The entry type id.</param>
+        /// <param name="name">The name.</param>
+        /// <param name="selected">Whether selected.</param>
+        /// <returns>The created row.</returns>
         private static EncyclopediaWindowRowRenderData CreateRow(
             string entryTypeId,
             string name,
@@ -614,6 +713,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             return new EncyclopediaWindowRowRenderData(entryTypeId, name, selected);
         }
 
+        /// <summary>
+        /// Finds rows.
+        /// </summary>
+        /// <returns>The matching rows.</returns>
         private EncyclopediaWindowRowView[] FindRows()
         {
             return _viewObject
@@ -623,6 +726,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds detail lines.
+        /// </summary>
+        /// <returns>The matching detail lines.</returns>
         private TextMeshProUGUI[] FindDetailLines()
         {
             return _viewObject
@@ -637,6 +744,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {
@@ -645,6 +758,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds object.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching object.</returns>
         private GameObject FindObject(string objectName)
         {
             return _viewObject
@@ -653,11 +771,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds text.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching text.</returns>
         private TextMeshProUGUI FindText(string objectName)
         {
             return FindComponent<TextMeshProUGUI>(objectName);
         }
 
+        /// <summary>
+        /// Finds row text.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <returns>The matching row text.</returns>
         private static TextMeshProUGUI FindRowText(EncyclopediaWindowRowView row)
         {
             return row.GetComponentsInChildren<TextMeshProUGUI>(true)

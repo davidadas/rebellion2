@@ -33,6 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private UIWindow _window;
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -75,30 +78,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _projector = new FleetWindowProjector(() => _uiContext);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new FleetWindowProjector(null));
         }
 
+        /// <summary>
+        /// Verifies build null session throws argument null exception.
+        /// </summary>
         [Test]
         public void Build_NullSession_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _projector.Build(null, _window, true));
         }
 
+        /// <summary>
+        /// Verifies build null window throws argument null exception.
+        /// </summary>
         [Test]
         public void Build_NullWindow_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _projector.Build(_session, null, true));
         }
 
+        /// <summary>
+        /// Verifies build unavailable context throws invalid operation exception.
+        /// </summary>
         [Test]
         public void Build_UnavailableContext_ThrowsInvalidOperationException()
         {
@@ -109,6 +127,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies build composite fleet returns complete capital ship presentation.
+        /// </summary>
         [Test]
         public void Build_CompositeFleet_ReturnsCompleteCapitalShipPresentation()
         {
@@ -164,6 +185,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(card.CanDrag);
         }
 
+        /// <summary>
+        /// Verifies build moving fleet returns fleet and detail transit presentation.
+        /// </summary>
         [Test]
         public void Build_MovingFleet_ReturnsFleetAndDetailTransitPresentation()
         {
@@ -181,18 +205,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNotNull(data.TitleTexture);
         }
 
+        /// <summary>
+        /// Verifies that an independently moving capital ship does not mark its stationary fleet
+        /// as enroute.
+        /// </summary>
         [Test]
-        public void Build_FleetWithCapitalShipInTransit_ReturnsFleetTransitPresentation()
+        public void Build_StationaryFleetWithMovingCapitalShip_ReturnsStationaryFleetAndMovingShipPresentation()
         {
             _capitalShip.Movement = new MovementState { TransitTicks = 10 };
 
             FleetWindowRenderData data = _projector.Build(_session, _window, true);
 
-            Assert.IsNotNull(data.FleetRows[0].EnrouteOverlayTexture);
-            Assert.IsNotNull(data.BannerEnrouteOverlayTexture);
+            Assert.IsNull(data.FleetRows[0].EnrouteOverlayTexture);
+            Assert.IsNull(data.BannerEnrouteOverlayTexture);
             Assert.IsNotNull(data.DetailItems[0].EnrouteOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies that an arrived fleet remains stationary while an attached capital ship is
+        /// still moving.
+        /// </summary>
+        [Test]
+        public void Build_ArrivedFleetWithMovingCapitalShip_ReturnsStationaryFleetAndMovingShipPresentation()
+        {
+            _fleet.Movement = new MovementState { TransitTicks = 5, TicksElapsed = 5 };
+            _capitalShip.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 4 };
+            _fleet.Movement = null;
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.IsNull(data.FleetRows[0].EnrouteOverlayTexture);
+            Assert.IsNull(data.BannerEnrouteOverlayTexture);
+            Assert.IsNotNull(data.DetailItems[0].EnrouteOverlayTexture);
+        }
+
+        /// <summary>
+        /// Verifies build starfighter tab returns capacity losses and selection presentation.
+        /// </summary>
         [Test]
         public void Build_StarfighterTab_ReturnsCapacityLossesAndSelectionPresentation()
         {
@@ -213,6 +262,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(0, card.EntityFrameYOffset);
         }
 
+        /// <summary>
+        /// Verifies build starfighter under construction uses construction background.
+        /// </summary>
         [Test]
         public void Build_StarfighterUnderConstruction_UsesConstructionBackground()
         {
@@ -229,6 +281,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(card.DamagedOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies build regiment tab returns capacity and personnel background.
+        /// </summary>
         [Test]
         public void Build_RegimentTab_ReturnsCapacityAndPersonnelBackground()
         {
@@ -245,6 +300,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(data.DetailItems[0].EnrouteOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies build personnel tab returns officer and special forces presentation.
+        /// </summary>
         [Test]
         public void Build_PersonnelTab_ReturnsOfficerAndSpecialForcesPresentation()
         {
@@ -268,6 +326,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(specialForcesCard.SelectionTexture);
         }
 
+        /// <summary>
+        /// Verifies build rename targets returns current rename placement and text.
+        /// </summary>
         [Test]
         public void Build_RenameTargets_ReturnsCurrentRenamePlacementAndText()
         {
@@ -288,6 +349,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual("Capital Ship", shipRename.RenameText);
         }
 
+        /// <summary>
+        /// Verifies build empty planet returns empty fleet presentation.
+        /// </summary>
         [Test]
         public void Build_EmptyPlanet_ReturnsEmptyFleetPresentation()
         {
@@ -314,6 +378,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsEmpty(data.DetailItems);
         }
 
+        /// <summary>
+        /// Creates composite fleet.
+        /// </summary>
+        /// <returns>The created composite fleet.</returns>
         private GameFleet CreateCompositeFleet()
         {
             _capitalShip = CreateCapitalShip("ship", "Capital Ship", true);
@@ -396,6 +464,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             };
         }
 
+        /// <summary>
+        /// Creates capital ship.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="damaged">Whether damaged.</param>
+        /// <returns>The created capital ship.</returns>
         private static CapitalShip CreateCapitalShip(
             string instanceId,
             string displayName,
@@ -422,6 +497,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             };
         }
 
+        /// <summary>
+        /// Attaches fleet graph.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="fleet">The fleet.</param>
         private static void AttachFleetGraph(Planet planet, GameFleet fleet)
         {
             fleet.SetParent(planet);

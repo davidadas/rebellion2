@@ -28,6 +28,7 @@ public static class BootPrefabBuilder
     /// <summary>
     /// Authors the self-contained overlay used for one cutscene playback request.
     /// </summary>
+    /// <returns>The constructed cutscene prefab.</returns>
     private static GameObject BuildCutscenePrefab()
     {
         GameObject root = new GameObject(
@@ -96,6 +97,7 @@ public static class BootPrefabBuilder
     /// <summary>
     /// Authors the complete root used by the generated boot scene.
     /// </summary>
+    /// <param name="cutscenePrefab">The cutscene prefab.</param>
     private static void BuildBootPrefab(GameObject cutscenePrefab)
     {
         GameObject root = new GameObject("BootRoot");
@@ -138,6 +140,9 @@ public static class BootPrefabBuilder
     /// <summary>
     /// Assigns one private serialized object reference.
     /// </summary>
+    /// <param name="target">The target.</param>
+    /// <param name="propertyName">The property name.</param>
+    /// <param name="value">The value.</param>
     private static void AssignReference(
         UnityEngine.Object target,
         string propertyName,
@@ -158,6 +163,7 @@ public static class BootPrefabBuilder
     /// <summary>
     /// Makes a generated rectangle cover its parent canvas.
     /// </summary>
+    /// <param name="rect">The rect.</param>
     private static void FillParent(RectTransform rect)
     {
         rect.anchorMin = Vector2.zero;
@@ -170,6 +176,9 @@ public static class BootPrefabBuilder
     /// <summary>
     /// Saves one generated prefab and verifies the result.
     /// </summary>
+    /// <param name="root">The root.</param>
+    /// <param name="path">The path.</param>
+    /// <returns>The result of save prefab.</returns>
     private static GameObject SavePrefab(GameObject root, string path)
     {
         EnsureDirectory(path);
@@ -183,6 +192,7 @@ public static class BootPrefabBuilder
     /// <summary>
     /// Creates the destination directory for a generated asset when needed.
     /// </summary>
+    /// <param name="assetPath">The asset path.</param>
     private static void EnsureDirectory(string assetPath)
     {
         string directory = Path.GetDirectoryName(assetPath);

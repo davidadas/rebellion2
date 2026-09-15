@@ -138,7 +138,7 @@ namespace Rebellion.Systems
 
                 if (RollEscapeAttempt(officer, custodyContext))
                 {
-                    OfficerCaptureStateResult result = ReleaseOfficer(officer, planet);
+                    OfficerCaptureStateResult result = TryReleaseOfficer(officer, planet);
                     if (result != null)
                         results.Add(result);
                 }
@@ -334,46 +334,29 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Frees a captured officer: clears capture state, shifts loyalty,
-        /// and moves them to the nearest friendly planet.
+        /// Frees a captured officer when a friendly fleet or planet accepts their movement.
         /// </summary>
         /// <param name="officer">The officer to release.</param>
         /// <param name="planet">The planet the officer escaped from.</param>
-        /// <returns>A capture state result indicating the officer is free.</returns>
-        private OfficerCaptureStateResult ReleaseOfficer(Officer officer, Planet planet)
+        /// <returns>A release result when movement succeeds; otherwise null.</returns>
+        private OfficerCaptureStateResult TryReleaseOfficer(Officer officer, Planet planet)
         {
             string captorInstanceID = officer.CaptorInstanceID;
-            int previousLoyalty = officer.Loyalty;
             officer.IsCaptured = false;
             officer.CaptorInstanceID = null;
-            officer.CanEscape = false;
-            officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + _loyaltyShift));
 
             Faction faction = _game.GetFactionByOwnerInstanceID(officer.OwnerInstanceID);
-            bool escaped =
-                faction
-                    ?.GetOwnedColonizedPlanets()
-                    .Where(destination =>
-                        !destination.IsDestroyed && destination.CanAcceptChild(officer)
-                    )
-                    .OrderBy(destination => destination.GetRawDistanceTo(officer.GetPosition()))
-                    .ThenBy(destination => destination.InstanceID, StringComparer.Ordinal)
-                    .Any(destination =>
-                        _movementSystem.TryRequestMove(
-                            new ISceneNode[] { officer },
-                            destination,
-                            faction.InstanceID
-                        )
-                    ) == true;
-
-            if (!escaped)
+            ContainerNode destination = GetEscapeDestinations(faction, officer, planet)
+                .FirstOrDefault(candidate => _movementSystem.TryRequestMove(officer, candidate));
+            if (destination == null)
             {
                 officer.IsCaptured = true;
                 officer.CaptorInstanceID = captorInstanceID;
-                officer.CanEscape = true;
-                officer.Loyalty = previousLoyalty;
                 return null;
             }
+
+            officer.CanEscape = false;
+            officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + _loyaltyShift));
 
             return new OfficerCaptureStateResult
             {
@@ -383,6 +366,46 @@ namespace Rebellion.Systems
                 Context = planet,
                 Tick = _game.CurrentTick,
             };
+        }
+
+        /// <summary>
+        /// Returns friendly fleets and planets that could receive an escaping officer.
+        /// </summary>
+        /// <param name="faction">The escaping officer's faction.</param>
+        /// <param name="officer">The officer attempting to escape.</param>
+        /// <param name="origin">The planet where the officer is held.</param>
+        /// <returns>Candidate destinations ordered by distance, with local fleets preferred.</returns>
+        private IEnumerable<ContainerNode> GetEscapeDestinations(
+            Faction faction,
+            Officer officer,
+            Planet origin
+        )
+        {
+            if (faction == null || officer == null || origin == null)
+                return Enumerable.Empty<ContainerNode>();
+
+            IEnumerable<ContainerNode> fleets = _game
+                .GetSceneNodesByType<Fleet>()
+                .Where(fleet =>
+                    fleet.GetOwnerInstanceID() == faction.InstanceID
+                    && fleet.Movement == null
+                    && fleet.HasOperationalCapitalShips()
+                    && fleet.GetParentOfType<Planet>() != null
+                );
+            IEnumerable<ContainerNode> planets = faction
+                .GetOwnedColonizedPlanets()
+                .Where(candidate => !candidate.IsDestroyed)
+                .Cast<ContainerNode>();
+
+            return fleets
+                .Concat(planets)
+                .OrderBy(destination =>
+                    origin.GetRawDistanceTo(
+                        destination.GetParentOfType<Planet>() ?? destination as Planet
+                    )
+                )
+                .ThenBy(destination => destination is Fleet ? 0 : 1)
+                .ThenBy(destination => destination.InstanceID, StringComparer.Ordinal);
         }
 
         /// <summary>

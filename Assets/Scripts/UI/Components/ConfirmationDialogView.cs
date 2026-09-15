@@ -72,6 +72,7 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     /// <summary>
     /// Replaces editor previews with confirmation artwork loaded from installation content.
     /// </summary>
+    /// <param name="contentAssets">The content assets.</param>
     public void InitializeContent(IContentAssetSource contentAssets)
     {
         if (contentAssets == null)

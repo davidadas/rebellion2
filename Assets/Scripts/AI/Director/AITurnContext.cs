@@ -210,6 +210,10 @@ namespace Rebellion.AI.Director
             StringComparer.Ordinal
         );
 
+        /// <summary>
+        /// Creates the turn-scoped planet development allocation.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         public AIPlanetDevelopmentAllocation(AITurnContext context)
         {
             if (context?.Assessment == null)
@@ -252,6 +256,12 @@ namespace Rebellion.AI.Director
             return Math.Max(0, planet.GetAvailableEnergy() - reservedEnergy);
         }
 
+        /// <summary>
+        /// Gets cap.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <returns>The requested cap.</returns>
         public int GetCap(Planet planet, BuildingType buildingType)
         {
             return
@@ -265,6 +275,10 @@ namespace Rebellion.AI.Director
         /// <summary>
         /// Returns whether a planet is the designated primary site and has not reached its target.
         /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <param name="targetCount">The target count.</param>
+        /// <returns>True when the incomplete primary hub condition is met; otherwise false.</returns>
         public bool IsIncompletePrimaryHub(
             Planet planet,
             BuildingType buildingType,
@@ -277,11 +291,24 @@ namespace Rebellion.AI.Director
                     < GetPrimaryTarget(planet, buildingType, targetCount);
         }
 
+        /// <summary>
+        /// Checks whether the primary hub condition is met.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <returns>True when the primary hub condition is met; otherwise false.</returns>
         public bool IsPrimaryHub(Planet planet, BuildingType buildingType) =>
             planet != null
             && _primaryPlanetIdsByType.TryGetValue(buildingType, out HashSet<string> planetIds)
             && planetIds.Contains(planet.InstanceID);
 
+        /// <summary>
+        /// Gets primary target.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <param name="fallbackTarget">The fallback target.</param>
+        /// <returns>The requested primary target.</returns>
         public int GetPrimaryTarget(Planet planet, BuildingType buildingType, int fallbackTarget)
         {
             return
@@ -295,6 +322,10 @@ namespace Rebellion.AI.Director
                 : fallbackTarget;
         }
 
+        /// <summary>
+        /// Builds the development allocation for every owned system.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         private void BuildAllocations(AITurnContext context)
         {
             foreach (
@@ -327,6 +358,13 @@ namespace Rebellion.AI.Director
             }
         }
 
+        /// <summary>
+        /// Allocates primary and secondary planets for one facility type.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="sector">The planets in the system being allocated.</param>
+        /// <param name="buildingType">The facility type being allocated.</param>
+        /// <param name="assignedPrimaryPlanetIds">Primary sites already assigned to another facility type.</param>
         private void AllocateType(
             AITurnContext context,
             IReadOnlyCollection<Planet> sector,
@@ -463,6 +501,11 @@ namespace Rebellion.AI.Director
             return value;
         }
 
+        /// <summary>
+        /// Checks whether the usable condition is met.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <returns>True when the usable condition is met; otherwise false.</returns>
         private static bool IsUsable(Planet planet) =>
             planet?.IsColonized == true && !planet.IsDestroyed;
 

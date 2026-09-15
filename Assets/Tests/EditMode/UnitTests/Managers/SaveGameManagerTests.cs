@@ -8,6 +8,7 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Managers
@@ -21,6 +22,9 @@ namespace Rebellion.Tests.Managers
         private string _saveFileName;
         private SaveGameManager _saveGameManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -33,6 +37,9 @@ namespace Rebellion.Tests.Managers
             _saveGameManager = new SaveGameManager(_saveDirectoryPath);
         }
 
+        /// <summary>
+        /// Executes teardown.
+        /// </summary>
         [TearDown]
         public void Teardown()
         {
@@ -41,6 +48,9 @@ namespace Rebellion.Tests.Managers
                 Directory.Delete(_saveDirectoryPath, true);
         }
 
+        /// <summary>
+        /// Verifies save game data valid game state saves to file.
+        /// </summary>
         [Test]
         public void SaveGameData_ValidGameState_SavesToFile()
         {
@@ -64,6 +74,84 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(fileExists, "Save file was not created.");
         }
 
+        /// <summary>
+        /// Verifies listeners can synchronize state immediately before serialization.
+        /// </summary>
+        [Test]
+        public void SaveGameData_SavingListenerMutatesGame_SerializesUpdatedState()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            _saveGameManager.Saving += () => game.CurrentTick = 42;
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loaded = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(42, loaded.CurrentTick);
+        }
+
+        /// <summary>
+        /// Verifies saving a game serializes its player records.
+        /// </summary>
+        [Test]
+        public void SaveGameData_GameWithPlayers_SerializesPlayers()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            StringAssert.Contains(
+                "<Players>",
+                File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName))
+            );
+        }
+
+        /// <summary>
+        /// Verifies that loading saved player records restores them.
+        /// </summary>
+        [Test]
+        public void LoadGameData_SavedPlayers_RestoresPlayers()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Player player = loadedGame.GetFactionPlayer("FNALL1");
+            Assert.AreEqual("PLAYER1", player.PlayerID);
+            Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
+        }
+
+        /// <summary>
+        /// Verifies that replacing a save is atomic and leaves no temporary files.
+        /// </summary>
+        [Test]
+        public void LoadGameData_SavedStrategyWindows_RestoresWindowState()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary(), Galaxy = new GalaxyMap() };
+            game.SetFactionController("FNALL1", "PLAYER1", PlayerControllerType.Human);
+            game.GetFactionPlayer("FNALL1")
+                .UIState.GetOrCreateSection("Strategy")
+                .Windows.Add(new WindowState("Planet.Fleet", "PLANET1", 123, 45, 0, 0, 2));
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            WindowState state = loadedGame
+                .GetFactionPlayer("FNALL1")
+                .UIState.GetOrCreateSection("Strategy")
+                .Windows.Single();
+            Assert.AreEqual("Planet.Fleet", state.GetWindowTypeID());
+            Assert.AreEqual("PLANET1", state.GetTargetInstanceID());
+            Assert.AreEqual(123, state.GetX());
+            Assert.AreEqual(45, state.GetY());
+            Assert.AreEqual(2, state.GetZOrder());
+        }
+
+        /// <summary>
+        /// Verifies replacing an existing save leaves the updated save without temporary files.
+        /// </summary>
         [Test]
         public void SaveGameData_ExistingSave_AtomicallyReplacesWithoutTemporaryFiles()
         {
@@ -101,6 +189,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies save game data game with summary stores player faction in metadata.
+        /// </summary>
         [Test]
         public void SaveGameData_GameWithSummary_StoresPlayerFactionInMetadata()
         {
@@ -121,6 +212,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("FNEMP1", loadedGame.Metadata.PlayerFactionID);
         }
 
+        /// <summary>
+        /// Verifies save game data quick save file name stores quicksave display name.
+        /// </summary>
         [Test]
         public void SaveGameData_QuickSaveFileName_StoresQuicksaveDisplayName()
         {
@@ -142,6 +236,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("Quicksave", loadedGame.Metadata.SaveDisplayName);
         }
 
+        /// <summary>
+        /// Verifies save game data new save stamps current schema version.
+        /// </summary>
         [Test]
         public void SaveGameData_NewSave_StampsCurrentSchemaVersion()
         {
@@ -162,6 +259,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
         }
 
+        /// <summary>
+        /// Verifies save game data metadata with existing version overwrites with current schema version.
+        /// </summary>
         [Test]
         public void SaveGameData_MetadataWithExistingVersion_OverwritesWithCurrentSchemaVersion()
         {
@@ -187,6 +287,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
         }
 
+        /// <summary>
+        /// Verifies process autosave tick exceeds retention prunes oldest restore points.
+        /// </summary>
         [Test]
         public void ProcessAutosaveTick_ExceedsRetention_PrunesOldestRestorePoints()
         {
@@ -221,6 +324,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies process autosave tick only writes at configured tick cadence.
+        /// </summary>
         [Test]
         public void ProcessAutosaveTick_OnlyWritesAtConfiguredTickCadence()
         {
@@ -241,6 +347,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies save slot count default configuration returns six.
+        /// </summary>
         [Test]
         public void SaveSlotCount_DefaultConfiguration_ReturnsSix()
         {
@@ -249,6 +358,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(6, count);
         }
 
+        /// <summary>
+        /// Verifies is valid save slot boundary values validates bounds.
+        /// </summary>
         [Test]
         public void IsValidSaveSlot_BoundaryValues_ValidatesBounds()
         {
@@ -258,6 +370,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsFalse(_saveGameManager.IsValidSaveSlot(6));
         }
 
+        /// <summary>
+        /// Verifies get save slot file name valid slots returns canonical names.
+        /// </summary>
         [Test]
         public void GetSaveSlotFileName_ValidSlots_ReturnsCanonicalNames()
         {
@@ -265,6 +380,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("save_slot_6", _saveGameManager.GetSaveSlotFileName(5));
         }
 
+        /// <summary>
+        /// Verifies get save slot file name invalid slot throws argument out of range exception.
+        /// </summary>
         [Test]
         public void GetSaveSlotFileName_InvalidSlot_ThrowsArgumentOutOfRangeException()
         {
@@ -273,6 +391,9 @@ namespace Rebellion.Tests.Managers
             Assert.Throws<ArgumentOutOfRangeException>(getName);
         }
 
+        /// <summary>
+        /// Verifies get save slot display name valid slots returns canonical names.
+        /// </summary>
         [Test]
         public void GetSaveSlotDisplayName_ValidSlots_ReturnsCanonicalNames()
         {
@@ -280,6 +401,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("Save Slot 6", _saveGameManager.GetSaveSlotDisplayName(5));
         }
 
+        /// <summary>
+        /// Verifies get save slot display name invalid slot throws argument out of range exception.
+        /// </summary>
         [Test]
         public void GetSaveSlotDisplayName_InvalidSlot_ThrowsArgumentOutOfRangeException()
         {
@@ -288,6 +412,9 @@ namespace Rebellion.Tests.Managers
             Assert.Throws<ArgumentOutOfRangeException>(getName);
         }
 
+        /// <summary>
+        /// Verifies save slot game data custom display name stores display name.
+        /// </summary>
         [Test]
         public void SaveSlotGameData_CustomDisplayName_StoresDisplayName()
         {
@@ -305,6 +432,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("Coruscant Campaign", loadedGame.Metadata.SaveDisplayName);
         }
 
+        /// <summary>
+        /// Verifies save slot game data valid game writes metadata sidecar.
+        /// </summary>
         [Test]
         public void SaveSlotGameData_ValidGame_WritesMetadataSidecar()
         {
@@ -374,6 +504,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(File.Exists(metadataPath));
         }
 
+        /// <summary>
+        /// Verifies get save slot entries unrelated save ignores save.
+        /// </summary>
         [Test]
         public void GetSaveSlotEntries_UnrelatedSave_IgnoresSave()
         {
@@ -387,6 +520,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsEmpty(_saveGameManager.GetSaveSlotEntries());
         }
 
+        /// <summary>
+        /// Verifies get save slot entries corrupt sidecar reads main save.
+        /// </summary>
         [Test]
         public void GetSaveSlotEntries_CorruptSidecar_ReadsMainSave()
         {
@@ -406,6 +542,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("Recovered Slot", entry.Metadata.SaveDisplayName);
         }
 
+        /// <summary>
+        /// Verifies load game data valid saved file loads game.
+        /// </summary>
         [Test]
         public void LoadGameData_ValidSavedFile_LoadsGame()
         {
@@ -452,6 +591,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies load game data valid saved game reconstitutes scene graph.
+        /// </summary>
         [Test]
         public void LoadGameData_ValidSavedGame_ReconstitutesSceneGraph()
         {
@@ -510,6 +652,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(capitalShip.InstanceID, loadedOfficer.GetParent().InstanceID);
         }
 
+        /// <summary>
+        /// Verifies load game data save version mismatch loads without version gate.
+        /// </summary>
         [Test]
         public void LoadGameData_SaveVersionMismatch_LoadsWithoutVersionGate()
         {
@@ -539,6 +684,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(futureVersion, loadedGame.Metadata.SaveVersion);
         }
 
+        /// <summary>
+        /// Verifies load game data save version missing defaults version to zero.
+        /// </summary>
         [Test]
         public void LoadGameData_SaveVersionMissing_DefaultsVersionToZero()
         {
@@ -568,6 +716,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, loadedGame.Metadata.SaveVersion);
         }
 
+        /// <summary>
+        /// Verifies load game data unknown element skips element.
+        /// </summary>
         [Test]
         public void LoadGameData_UnknownElement_SkipsElement()
         {
@@ -590,6 +741,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(20, loadedGame.CurrentTick);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with faction and planet preserves game state.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithFactionAndPlanet_PreservesGameState()
         {
@@ -617,6 +771,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(TickSpeed.Fast, loadedGame.GameSpeed);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with event pool preserves event pool.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithEventPool_PreservesEventPool()
         {
@@ -652,6 +809,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(400, loadedGame.GetEventPool()[0].Schedule.RandomInterval.MaximumTicks);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with completed events preserves event states.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithCompletedEvents_PreservesEventStates()
         {
@@ -688,6 +848,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(loadedGame.EventRuntime.States["EVENT3"].IsComplete);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with event state preserves schedule and history.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithEventState_PreservesScheduleAndHistory()
         {
@@ -723,6 +886,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(400, state.LastActivationTick);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with event variables preserves story state.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithEventVariables_PreservesStoryState()
         {
@@ -751,6 +917,9 @@ namespace Rebellion.Tests.Managers
         // [Test]
         // public void SaveAndLoadGame_PreservesUnrecruitedOfficers() { ... }
 
+        /// <summary>
+        /// Verifies save and load game game with factions preserves factions.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithFactions_PreservesFactions()
         {
@@ -776,6 +945,68 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("Alliance", loadedGame.GetFactions()[0].DisplayName);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with metadata preserves metadata.
+        /// </summary>
+        [Test]
+        public void SaveGameData_PlayerWithUIState_WritesUIState()
+        {
+            GameRoot game = BuildGameWithIgnoredItems();
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            string xml = File.ReadAllText(_saveGameManager.GetSaveFilePath(_saveFileName));
+
+            StringAssert.Contains("<Sections>", xml);
+            StringAssert.Contains("<SectionID>Strategy</SectionID>", xml);
+            StringAssert.Contains("<IgnoredItems>", xml);
+            StringAssert.Contains("<TargetInstanceID>OFFICER1</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Entity</ItemTypeID>", xml);
+            StringAssert.Contains("<TargetInstanceID>PLANET1</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Ship</ItemTypeID>", xml);
+            StringAssert.Contains("<ItemTypeID>Troop</ItemTypeID>", xml);
+            StringAssert.Contains("<BookmarkedItems>", xml);
+            StringAssert.Contains("<TargetInstanceID>PLANET2</TargetInstanceID>", xml);
+            StringAssert.Contains("<ItemTypeID>Fleet</ItemTypeID>", xml);
+            StringAssert.Contains("<X>45</X>", xml);
+            StringAssert.Contains("<Y>55</Y>", xml);
+        }
+
+        /// <summary>
+        /// Verifies that loading a save restores persisted player UI state.
+        /// </summary>
+        [Test]
+        public void LoadGameData_SaveWithPlayerUIState_RestoresUIState()
+        {
+            GameRoot game = BuildGameWithIgnoredItems();
+            PlayerUIState uiState = game.GetPlayers().Single().UIState;
+            UIStateSection section = uiState.GetOrCreateSection("Strategy");
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            PlayerUIState loadedUIState = _saveGameManager
+                .LoadGameData(_saveFileName)
+                .GetPlayers()
+                .Single()
+                .UIState;
+            UIStateSection loadedSection = loadedUIState.GetOrCreateSection("Strategy");
+
+            Assert.AreEqual("Strategy", loadedSection.SectionID);
+            CollectionAssert.AreEqual(
+                section.IgnoredItems.Select(item => (item.TargetInstanceID, item.ItemTypeID)),
+                loadedSection.IgnoredItems.Select(item => (item.TargetInstanceID, item.ItemTypeID))
+            );
+            CollectionAssert.AreEqual(
+                section.BookmarkedItems.Select(item =>
+                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID, item.X, item.Y)
+                ),
+                loadedSection.BookmarkedItems.Select(item =>
+                    (item.SlotIndex, item.TargetInstanceID, item.ItemTypeID, item.X, item.Y)
+                )
+            );
+        }
+
+        /// <summary>
+        /// Verifies that saving and loading preserves game metadata.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithMetadata_PreservesMetadata()
         {
@@ -812,6 +1043,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(loadedGame.Metadata.OpeningBriefingCompleted);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with summary fields preserves all game summary fields.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithSummaryFields_PreservesAllGameSummaryFields()
         {
@@ -845,6 +1079,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(3, loadedGame.Summary.StartingResearchLevel);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with empty collections preserves empty collections.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithEmptyCollections_PreservesEmptyCollections()
         {
@@ -877,6 +1114,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, loadedGame.GetUnrecruitedOfficers().Count);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with multiple events preserves multiple events.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithMultipleEvents_PreservesMultipleEvents()
         {
@@ -908,6 +1148,9 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies save and load game game with large event set preserves large completed event set.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithLargeEventSet_PreservesLargeCompletedEventSet()
         {
@@ -944,6 +1187,9 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies save and load game game with all tick speeds preserves tick speed enum values.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithAllTickSpeeds_PreservesTickSpeedEnumValues()
         {
@@ -985,6 +1231,9 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies save and load game game with high tick count preserves high tick count.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithHighTickCount_PreservesHighTickCount()
         {
@@ -1010,6 +1259,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(999999, loadedGame.CurrentTick);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with fog snapshots preserves fog state.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithFogSnapshots_PreservesFogState()
         {
@@ -1095,6 +1347,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("SECTOR1", loadedAlliance.Fog.PlanetToSector["CORUSCANT"]);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with empty fog state preserves fog state.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithEmptyFogState_PreservesFogState()
         {
@@ -1123,6 +1378,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, loadedAlliance.Fog.PlanetToSector.Count);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with fog entity tracking preserves fog state.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithFogEntityTracking_PreservesFogState()
         {
@@ -1172,6 +1430,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("PLANET1", loadedAlliance.Fog.EntityLastSeenAt["REG1"]);
         }
 
+        /// <summary>
+        /// Verifies save and load game game with multiple fog snapshots preserves fog state.
+        /// </summary>
         [Test]
         public void SaveAndLoadGame_GameWithMultipleFogSnapshots_PreservesFogState()
         {
@@ -1244,6 +1505,55 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("SECTOR1", loadedAlliance.Fog.PlanetToSector["PLANET1"]);
             Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET2"]);
             Assert.AreEqual("SECTOR2", loadedAlliance.Fog.PlanetToSector["PLANET3"]);
+        }
+
+        /// <summary>
+        /// Creates a saveable game containing independently excluded idle-bar identities.
+        /// </summary>
+        /// <returns>The configured saveable game.</returns>
+        private static GameRoot BuildGameWithIgnoredItems()
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1" };
+            PlayerUIState uiState = new PlayerUIState
+            {
+                Sections = new List<UIStateSection>
+                {
+                    new UIStateSection
+                    {
+                        SectionID = "Strategy",
+                        BookmarkedItems = new List<BookmarkedItem>
+                        {
+                            new BookmarkedItem
+                            {
+                                SlotIndex = 2,
+                                TargetInstanceID = "PLANET2",
+                                ItemTypeID = "Fleet",
+                                X = 45,
+                                Y = 55,
+                            },
+                        },
+                        IgnoredItems = new List<IgnoredItem>
+                        {
+                            new IgnoredItem
+                            {
+                                TargetInstanceID = "OFFICER1",
+                                ItemTypeID = "Entity",
+                            },
+                            new IgnoredItem { TargetInstanceID = "PLANET1", ItemTypeID = "Ship" },
+                            new IgnoredItem { TargetInstanceID = "PLANET1", ItemTypeID = "Troop" },
+                        },
+                    },
+                },
+            };
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = faction.InstanceID },
+                Galaxy = new GalaxyMap(),
+            };
+            game.GetFactions().Add(faction);
+            game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
+            game.GetPlayers().Single().UIState = uiState;
+            return game;
         }
     }
 } // namespace Rebellion.Tests.Managers

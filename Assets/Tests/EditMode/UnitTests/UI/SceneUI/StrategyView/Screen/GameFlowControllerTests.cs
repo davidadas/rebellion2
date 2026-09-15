@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private GameObject _gameObject;
         private StrategyController _strategyController;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -27,12 +30,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             _controller = _gameObject.AddComponent<GameFlowController>();
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_gameObject);
         }
 
+        /// <summary>
+        /// Verifies awake missing serialized strategy controller throws missing reference exception.
+        /// </summary>
         [Test]
         public void Awake_MissingSerializedStrategyController_ThrowsMissingReferenceException()
         {
@@ -43,6 +52,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies awake composed strategy controller does not throw.
+        /// </summary>
         [Test]
         public void Awake_ComposedStrategyController_DoesNotThrow()
         {
@@ -51,6 +63,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.DoesNotThrow(() => UIComponentTestHelper.InvokeLifecycle(_controller, "Awake"));
         }
 
+        /// <summary>
+        /// Verifies reset composed game object assigns strategy controller reference.
+        /// </summary>
         [Test]
         public void Reset_ComposedGameObject_AssignsStrategyControllerReference()
         {
@@ -59,6 +74,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreSame(_strategyController, GetField<StrategyController>("strategyController"));
         }
 
+        /// <summary>
+        /// Verifies advance active tick with remaining step retains tick until following frame.
+        /// </summary>
         [Test]
         public void AdvanceActiveTick_WithRemainingStep_RetainsTickUntilFollowingFrame()
         {
@@ -74,6 +92,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsNull(GetField<IEnumerator>("activeTick"));
         }
 
+        /// <summary>
+        /// Verifies get campaign ending cutscene path player won returns configured victory movie.
+        /// </summary>
         [Test]
         public void GetCampaignEndingCutscenePath_PlayerWon_ReturnsConfiguredVictoryMovie()
         {
@@ -94,6 +115,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual("alliance-victory", path);
         }
 
+        /// <summary>
+        /// Verifies get campaign ending cutscene path player lost returns configured defeat movie.
+        /// </summary>
         [Test]
         public void GetCampaignEndingCutscenePath_PlayerLost_ReturnsConfiguredDefeatMovie()
         {
@@ -114,6 +138,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual("alliance-defeat", path);
         }
 
+        /// <summary>
+        /// Verifies get headquarters destroyed cutscene path headquarters lost returns defender movie.
+        /// </summary>
         [Test]
         public void GetHeadquartersDestroyedCutscenePath_HeadquartersLost_ReturnsDefenderMovie()
         {
@@ -138,6 +165,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual("defender-headquarters-destroyed", path);
         }
 
+        /// <summary>
+        /// Verifies get headquarters destroyed cutscene path missing defender theme returns null.
+        /// </summary>
         [Test]
         public void GetHeadquartersDestroyedCutscenePath_MissingDefenderTheme_ReturnsNull()
         {
@@ -154,6 +184,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsNull(path);
         }
 
+        /// <summary>
+        /// Verifies handle victory declared missing player theme still schedules campaign finish.
+        /// </summary>
         [Test]
         public void HandleVictoryDeclared_MissingPlayerTheme_StillSchedulesCampaignFinish()
         {
@@ -165,6 +198,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             game.GetFactions().Add(player);
             game.GetFactions().Add(opponent);
             game.Summary.PlayerFactionID = player.InstanceID;
+            game.SetFactionController(player.InstanceID, "PLAYER1", PlayerControllerType.Human);
             GameManager manager = new GameManager(game, TestGameData.Create(config));
             SetField("activeGameManager", manager);
             SetField("themeLibrary", CreateDefaultOnlyThemeLibrary());
@@ -183,10 +217,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsEmpty(GetField<Queue<string>>("cutsceneQueue"));
         }
 
+        /// <summary>
+        /// Verifies update no active game does not throw.
+        /// </summary>
         [Test]
         public void Update_NoActiveGame_DoesNotThrow()
         {
             Assert.DoesNotThrow(() => InvokePrivate("Update"));
+        }
+
+        /// <summary>
+        /// Verifies that disabling briefings overrides an otherwise valid opening request.
+        /// </summary>
+        [Test]
+        public void ShouldPlayOpeningBriefing_BriefingsDisabled_ReturnsFalse()
+        {
+            bool shouldPlay = GameFlowController.ShouldPlayOpeningBriefing(
+                requested: true,
+                completed: false,
+                disabled: true
+            );
+
+            Assert.IsFalse(shouldPlay);
+        }
+
+        /// <summary>
+        /// Verifies that an enabled, uncompleted opening briefing still plays when requested.
+        /// </summary>
+        [Test]
+        public void ShouldPlayOpeningBriefing_BriefingsEnabledAndUncompleted_ReturnsTrue()
+        {
+            bool shouldPlay = GameFlowController.ShouldPlayOpeningBriefing(
+                requested: true,
+                completed: false,
+                disabled: false
+            );
+
+            Assert.IsTrue(shouldPlay);
         }
 
         /// <summary>
@@ -214,6 +281,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies load game missing file name throws invalid operation exception.
+        /// </summary>
         [Test]
         public void LoadGame_MissingFileName_ThrowsInvalidOperationException()
         {
@@ -271,6 +341,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsTrue(task.IsCompletedSuccessfully);
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -279,6 +355,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                     .GetValue(_controller);
         }
 
+        /// <summary>
+        /// Sets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <param name="value">The value.</param>
         private void SetField(string fieldName, object value)
         {
             typeof(GameFlowController)
@@ -286,6 +367,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 .SetValue(_controller, value);
         }
 
+        /// <summary>
+        /// Executes invoke private.
+        /// </summary>
+        /// <param name="methodName">The method name.</param>
+        /// <param name="arguments">The arguments.</param>
+        /// <returns>The result of invoke private.</returns>
         private object InvokePrivate(string methodName, params object[] arguments)
         {
             return typeof(GameFlowController)
@@ -296,6 +383,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 .Invoke(_controller, arguments);
         }
 
+        /// <summary>
+        /// Creates default only theme library.
+        /// </summary>
+        /// <returns>The created default only theme library.</returns>
         private static FactionThemeLibrary CreateDefaultOnlyThemeLibrary()
         {
             return new FactionThemeLibrary(

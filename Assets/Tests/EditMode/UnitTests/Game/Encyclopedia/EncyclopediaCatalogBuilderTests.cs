@@ -10,6 +10,9 @@ namespace Rebellion.Tests.Game.Encyclopedia
     [TestFixture]
     public class EncyclopediaCatalogBuilderTests
     {
+        /// <summary>
+        /// Verifies build with entity encyclopedia data uses entity specific fields.
+        /// </summary>
         [Test]
         public void Build_WithEntityEncyclopediaData_UsesEntitySpecificFields()
         {
@@ -49,6 +52,9 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.AreEqual("Encyclopedia description.", entry.Description);
         }
 
+        /// <summary>
+        /// Verifies build with entity without encyclopedia data omits entry.
+        /// </summary>
         [Test]
         public void Build_WithEntityWithoutEncyclopediaData_OmitsEntry()
         {
@@ -70,6 +76,9 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.IsNull(entry);
         }
 
+        /// <summary>
+        /// Verifies build with authored entity duplicate keeps generated entity entry.
+        /// </summary>
         [Test]
         public void Build_WithAuthoredEntityDuplicate_KeepsGeneratedEntityEntry()
         {
@@ -100,6 +109,9 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.AreEqual(EncyclopediaEntryCategory.Concept, entry.Category);
         }
 
+        /// <summary>
+        /// Verifies build with concept overlay keeps authored entry.
+        /// </summary>
         [Test]
         public void Build_WithConceptOverlay_KeepsAuthoredEntry()
         {
@@ -130,6 +142,9 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.IsNull(catalog.FindEntry("FLEET", "FNEMP1"));
         }
 
+        /// <summary>
+        /// Verifies build with planet sector adds planet entries.
+        /// </summary>
         [Test]
         public void Build_WithPlanetSector_AddsPlanetEntries()
         {
@@ -165,6 +180,9 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.AreEqual("Planet encyclopedia description.", entry.Description);
         }
 
+        /// <summary>
+        /// Verifies build from active pack uses pack encyclopedia images.
+        /// </summary>
         [Test]
         public void Build_FromActivePack_UsesPackEncyclopediaImages()
         {
@@ -179,6 +197,9 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.IsEmpty(entriesWithWrongImagePath);
         }
 
+        /// <summary>
+        /// Verifies build with single producer faction sets entry owner.
+        /// </summary>
         [Test]
         public void Build_WithSingleProducerFaction_SetsEntryOwner()
         {
@@ -201,6 +222,9 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.AreEqual("FNALL1", entry.OwnerInstanceID);
         }
 
+        /// <summary>
+        /// Verifies build with null static entries ignores null entries.
+        /// </summary>
         [Test]
         public void Build_WithNullStaticEntries_IgnoresNullEntries()
         {
@@ -235,6 +259,18 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.IsNotNull(catalog.FindEntry("BUILDING1", null));
         }
 
+        /// <summary>
+        /// Builds catalog.
+        /// </summary>
+        /// <param name="authoredEntries">The authored entries.</param>
+        /// <param name="planetSectors">The planet sectors.</param>
+        /// <param name="buildings">The buildings.</param>
+        /// <param name="capitalShips">The capital ships.</param>
+        /// <param name="starfighters">The starfighters.</param>
+        /// <param name="regiments">The regiments.</param>
+        /// <param name="specialForces">The special forces.</param>
+        /// <param name="officers">The officers.</param>
+        /// <returns>The constructed catalog.</returns>
         private static EncyclopediaCatalog BuildCatalog(
             EncyclopediaEntries authoredEntries,
             IEnumerable<PlanetSector> planetSectors = null,

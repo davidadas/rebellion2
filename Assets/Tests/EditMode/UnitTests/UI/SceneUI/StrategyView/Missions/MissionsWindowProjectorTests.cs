@@ -31,6 +31,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private UIWindow _window;
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -40,6 +43,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             game.GetFactions()
                 .Add(new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -80,12 +84,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor missing provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_MissingProvider_ThrowsArgumentNullException()
         {
@@ -97,6 +107,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies build missing session or window throws argument null exception.
+        /// </summary>
         [Test]
         public void Build_MissingSessionOrWindow_ThrowsArgumentNullException()
         {
@@ -106,6 +119,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentNullException>(() => _projector.Build(session, null, true));
         }
 
+        /// <summary>
+        /// Verifies build unavailable context throws invalid operation exception.
+        /// </summary>
         [Test]
         public void Build_UnavailableContext_ThrowsInvalidOperationException()
         {
@@ -115,6 +131,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<InvalidOperationException>(() => projector.Build(session, _window, true));
         }
 
+        /// <summary>
+        /// Verifies build selected mission returns complete active presentation.
+        /// </summary>
         [Test]
         public void Build_SelectedMission_ReturnsCompleteActivePresentation()
         {
@@ -173,6 +192,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies build inactive window and decoy role returns inactive presentation.
+        /// </summary>
         [Test]
         public void Build_InactiveWindowAndDecoyRole_ReturnsInactivePresentation()
         {
@@ -199,6 +221,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies build participant carried by moving fleet uses transit presentation.
+        /// </summary>
         [Test]
         public void Build_ParticipantCarriedByMovingFleet_UsesTransitPresentation()
         {
@@ -218,6 +243,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies build no missions returns empty selection presentation.
+        /// </summary>
         [Test]
         public void Build_NoMissions_ReturnsEmptySelectionPresentation()
         {
@@ -234,6 +262,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(data.Participants);
         }
 
+        /// <summary>
+        /// Verifies build missing visible location falls back to planet presentation.
+        /// </summary>
         [Test]
         public void Build_MissingVisibleLocation_FallsBackToPlanetPresentation()
         {
@@ -246,6 +277,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(data.TargetTexture);
         }
 
+        /// <summary>
+        /// Verifies build recruitment mission uses planet as target.
+        /// </summary>
         [Test]
         public void Build_RecruitmentMission_UsesPlanetAsTarget()
         {
@@ -268,6 +302,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual("Corellia", data.TargetName);
         }
 
+        /// <summary>
+        /// Creates officer.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="inTransit">Whether in transit.</param>
+        /// <returns>The created officer.</returns>
         private Officer CreateOfficer(string instanceId, string displayName, bool inTransit)
         {
             return new Officer
@@ -287,6 +328,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             /// <returns>An empty test mission.</returns>
             protected override BaseSceneNode CreateNodeCopy() => new TestMission();
 
+            /// <summary>
+            /// Checks whether the repeat after completion condition is met.
+            /// </summary>
+            /// <param name="game">The game.</param>
+            /// <returns>True when the repeat after completion condition is met; otherwise false.</returns>
             public override bool ShouldRepeatAfterCompletion(GameRoot game)
             {
                 return false;

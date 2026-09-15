@@ -11,6 +11,9 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class FacilitySeederTests
     {
+        /// <summary>
+        /// Verifies seed core planet with energy places facilities.
+        /// </summary>
         [Test]
         public void Seed_CorePlanetWithEnergy_PlacesFacilities()
         {
@@ -30,6 +33,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies seed rim planet colonized places facilities.
+        /// </summary>
         [Test]
         public void Seed_RimPlanetColonized_PlacesFacilities()
         {
@@ -46,6 +52,9 @@ namespace Rebellion.Tests.Generation
             Assert.IsNotEmpty(deployed, "Colonized rim planet should receive facilities.");
         }
 
+        /// <summary>
+        /// Verifies seed rim planet uncolonized places no facilities.
+        /// </summary>
         [Test]
         public void Seed_RimPlanetUncolonized_PlacesNoFacilities()
         {
@@ -62,6 +71,9 @@ namespace Rebellion.Tests.Generation
             Assert.IsEmpty(deployed, "Uncolonized rim planet should be skipped by the seeder.");
         }
 
+        /// <summary>
+        /// Verifies seed core and rim planets use their respective tables.
+        /// </summary>
         [Test]
         public void Seed_CoreAndRimPlanets_UseTheirRespectiveTables()
         {
@@ -102,6 +114,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies seed empty facility roll leaves slot empty and continues.
+        /// </summary>
         [Test]
         public void Seed_EmptyFacilityRoll_LeavesSlotEmptyAndContinues()
         {
@@ -123,6 +138,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies seed core planet uses configured facility table roll range.
+        /// </summary>
         [Test]
         public void Seed_CorePlanet_UsesConfiguredFacilityTableRollRange()
         {
@@ -150,6 +168,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies seed planet with hq loadout places configured facilities after random facilities.
+        /// </summary>
         [Test]
         public void Seed_PlanetWithHQLoadout_PlacesConfiguredFacilitiesAfterRandomFacilities()
         {
@@ -184,6 +205,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies seed faction hq loadout resolves to assigned hq.
+        /// </summary>
         [Test]
         public void Seed_FactionHQLoadout_ResolvesToAssignedHQ()
         {
@@ -218,6 +242,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies seed hq loadout exceeds energy raises energy capacity.
+        /// </summary>
         [Test]
         public void Seed_HQLoadoutExceedsEnergy_RaisesEnergyCapacity()
         {
@@ -253,6 +280,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies seed hq loadout includes mine above raw nodes raises raw resource nodes.
+        /// </summary>
         [Test]
         public void Seed_HQLoadoutIncludesMineAboveRawNodes_RaisesRawResourceNodes()
         {
@@ -282,6 +312,15 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Executes seed facilities.
+        /// </summary>
+        /// <param name="sectors">The sectors.</param>
+        /// <param name="templates">The templates.</param>
+        /// <param name="config">The config.</param>
+        /// <param name="classification">The classification.</param>
+        /// <param name="rng">The rng.</param>
+        /// <returns>The result of seed facilities.</returns>
         private static List<Building> SeedFacilities(
             PlanetSector[] sectors,
             Building[] templates,
@@ -302,6 +341,10 @@ namespace Rebellion.Tests.Generation
             return ctx.DeployedBuildings;
         }
 
+        /// <summary>
+        /// Creates templates.
+        /// </summary>
+        /// <returns>The created templates.</returns>
         private Building[] CreateTemplates()
         {
             return new[]
@@ -321,6 +364,10 @@ namespace Rebellion.Tests.Generation
             };
         }
 
+        /// <summary>
+        /// Creates rules.
+        /// </summary>
+        /// <returns>The created rules.</returns>
         private GameGenerationConfig CreateRules()
         {
             return new GameGenerationConfig
@@ -358,6 +405,12 @@ namespace Rebellion.Tests.Generation
             };
         }
 
+        /// <summary>
+        /// Creates core.
+        /// </summary>
+        /// <param name="energy">The energy.</param>
+        /// <param name="rawNodes">The raw nodes.</param>
+        /// <returns>The created core.</returns>
         private PlanetSector CreateCore(int energy, int rawNodes)
         {
             PlanetSector sector = new PlanetSector
@@ -379,6 +432,13 @@ namespace Rebellion.Tests.Generation
             return sector;
         }
 
+        /// <summary>
+        /// Creates rim.
+        /// </summary>
+        /// <param name="energy">The energy.</param>
+        /// <param name="rawNodes">The raw nodes.</param>
+        /// <param name="colonized">Whether colonized.</param>
+        /// <returns>The created rim.</returns>
         private PlanetSector CreateRim(int energy, int rawNodes, bool colonized)
         {
             PlanetSector sector = new PlanetSector
@@ -407,12 +467,22 @@ namespace Rebellion.Tests.Generation
         {
             public List<(int min, int max)> IntCalls { get; } = new List<(int min, int max)>();
 
+            /// <summary>
+            /// Executes next int.
+            /// </summary>
+            /// <param name="min">The min.</param>
+            /// <param name="max">The max.</param>
+            /// <returns>The result of next int.</returns>
             public int NextInt(int min, int max)
             {
                 IntCalls.Add((min, max));
                 return min;
             }
 
+            /// <summary>
+            /// Executes next double.
+            /// </summary>
+            /// <returns>The result of next double.</returns>
             public double NextDouble() => 0.0;
         }
     }

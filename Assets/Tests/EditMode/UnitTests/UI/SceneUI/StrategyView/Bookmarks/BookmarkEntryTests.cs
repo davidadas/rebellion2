@@ -6,6 +6,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
     [TestFixture]
     public class BookmarkEntryTests
     {
+        /// <summary>
+        /// Verifies reconcile planet fresh projection replaces planet only.
+        /// </summary>
         [Test]
         public void ReconcilePlanet_FreshProjection_ReplacesPlanetOnly()
         {
@@ -21,6 +24,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreSame(replacement, entry.Planet);
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created planet.</returns>
         private static GalaxyMapPlanet CreatePlanet(string instanceId, string displayName)
         {
             Planet planet = new Planet { InstanceID = instanceId, DisplayName = displayName };

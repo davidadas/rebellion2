@@ -79,7 +79,7 @@ namespace Rebellion.Systems
             if (tickInterval <= 0 || _game.CurrentTick % tickInterval != 0)
                 yield break;
 
-            foreach (Faction faction in _game.GetFactions().Where(f => f.IsAIControlled()))
+            foreach (Faction faction in _game.GetFactions().Where(_game.IsFactionAIControlled))
             {
                 GalaxyMap factionView = _fogOfWar.BuildFactionView(faction);
                 foreach (

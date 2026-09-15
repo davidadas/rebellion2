@@ -778,6 +778,9 @@ internal sealed class StrategyStatusInfoBuilder
     /// <summary>
     /// Adds the attachment row only when the selected node has an active parent.
     /// </summary>
+    /// <param name="info">The info.</param>
+    /// <param name="target">The target.</param>
+    /// <param name="item">The item.</param>
     private static void AddAttachedRow(
         StrategyStatusInfo info,
         StrategyStatusTarget target,

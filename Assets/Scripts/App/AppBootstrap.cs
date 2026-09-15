@@ -112,18 +112,23 @@ public sealed class AppBootstrap : MonoBehaviour
         // Read the saved selection directly; the settings system loads after content.
         UserSettingsManager.TryReadContentSelection(
             out string selectedPackID,
-            out string selectedScenarioID
+            out string selectedScenarioID,
+            out string[] disabledModIDs
         );
-        _contentPack = ContentPackLoader.OpenActive(selectedPackID, selectedScenarioID);
+        _contentPack = ContentPackLoader.OpenActive(
+            selectedPackID,
+            selectedScenarioID,
+            disabledModIDs
+        );
         _mainMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
-            _contentPack.ContentRootPath,
+            _contentPack.FileResolver,
             _mainMenuPreloadID
         );
         _strategyApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
-            _contentPack.ContentRootPath,
+            _contentPack.FileResolver,
             _strategyPreloadID
         );
-        _contentAssets = new ContentAssets(_contentPack.ContentRootPath, _contentPack.PackRootPath);
+        _contentAssets = new ContentAssets(_contentPack.FileResolver);
         Texture2D cursorTexture =
             _contentAssets.GetCursor(_defaultCursorAddress)
             ?? throw new System.InvalidOperationException(
@@ -158,7 +163,6 @@ public sealed class AppBootstrap : MonoBehaviour
             _contentPack,
             getGameplaySettings: () => _userSettingsManager.Settings.Gameplay
         );
-
         if (inputController == null)
             inputController = CreateInputController();
 
@@ -179,6 +183,7 @@ public sealed class AppBootstrap : MonoBehaviour
     /// Loads required main-menu textures and audio. Decorative models are loaded by their scene
     /// bindings so a missing model cannot prevent scene navigation.
     /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     internal Task InitializeMainMenuSceneAsync()
     {
         return InitializeMainMenuContentAsync();
@@ -225,6 +230,7 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <summary>
     /// Returns the application-owned cache used by runtime model bindings.
     /// </summary>
+    /// <returns>The requested content model cache.</returns>
     internal ContentModelCache GetContentModelCache()
     {
         return _contentModelCache;
@@ -241,7 +247,7 @@ public sealed class AppBootstrap : MonoBehaviour
             _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_mainMenuPreloadID))
         );
 
-        if (Instance != this)
+        if (this == null || Instance != this)
             return;
 
         StartStrategyContentPreload();

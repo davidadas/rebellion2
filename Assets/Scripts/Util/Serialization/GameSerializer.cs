@@ -929,6 +929,18 @@ namespace Rebellion.Util.Serialization
                     string elementName = reader.Name;
                     memberLookup.TryGetValue(elementName, out MemberInfo member);
 
+                    if (inlineCollectionMember != null && member == inlineCollectionMember)
+                    {
+                        string message =
+                            $"Unknown element '{elementName}' encountered while deserializing {actualType.Name}.";
+                        if (!settings.IgnoreUnknownElements)
+                            throw new InvalidOperationException(message);
+
+                        settings.UnknownElementSkipped?.Invoke(actualType, elementName);
+                        reader.Skip();
+                        continue;
+                    }
+
                     if (member != null)
                     {
                         if (populatedAttributes.Contains(member))
@@ -1025,6 +1037,7 @@ namespace Rebellion.Util.Serialization
         /// <param name="reader">The XmlReader to use.</param>
         /// <param name="attributes">The dictionary of persistable attributes.</param>
         /// <param name="obj">The object to set attributes on.</param>
+        /// <returns>The read attributes.</returns>
         private static HashSet<MemberInfo> ReadAttributes(
             XmlReader reader,
             IDictionary<string, MemberInfo> attributes,

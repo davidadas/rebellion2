@@ -243,6 +243,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Creates an unbound listening action so modifier presses are not committed as the base key.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="slot">The slot.</param>
     private void StartRebind(InputAction action, BindingSlot slot)
     {
         _rebindApplied = false;
@@ -270,6 +272,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Applies a captured key to either the plain or modifier-composite alternative.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="slot">The slot.</param>
+    /// <param name="path">The path.</param>
     private void ApplyRebindPath(InputAction action, BindingSlot slot, string path)
     {
         string modifierPath = IsModifierAction(action.name) ? null : GetPressedModifierPath();
@@ -290,6 +295,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Finalizes a rebind and asks for confirmation when its active signature is duplicated.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="slot">The slot.</param>
+    /// <param name="completed">Whether completed.</param>
     private void FinishRebind(InputAction action, BindingSlot slot, bool completed)
     {
         _operation?.Dispose();
@@ -331,6 +339,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Finds another active top-level binding with the same key and modifier signature.
     /// </summary>
+    /// <param name="rebound">The rebound.</param>
+    /// <param name="reboundIndex">The rebound index.</param>
+    /// <returns>The matching conflict.</returns>
     private (InputAction action, int index) FindConflict(InputAction rebound, int reboundIndex)
     {
         string signature = GetBindingSignature(rebound, reboundIndex);
@@ -366,6 +377,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Captures every binding override on an action for cancellation and conflict rejection.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <returns>The result of capture overrides.</returns>
     private static string[] CaptureOverrides(InputAction action)
     {
         string[] result = new string[action.bindings.Count];
@@ -377,6 +390,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Restores a previously captured set of binding overrides.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="overrides">The overrides.</param>
     private static void RestoreOverrides(InputAction action, IReadOnlyList<string> overrides)
     {
         if (action == null || overrides == null)
@@ -395,6 +410,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Clears one active top-level binding and any composite parts it owns.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="index">The index.</param>
     private static void UnbindTopLevel(InputAction action, int index)
     {
         if (action == null || index < 0 || index >= action.bindings.Count)
@@ -414,6 +431,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Clears the composite alternative belonging to an authored slot.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="slot">The slot.</param>
     private static void ClearComposite(InputAction action, BindingSlot slot)
     {
         action.ApplyBindingOverride(slot.ModifierIndex, string.Empty);
@@ -521,6 +540,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Returns a normalized signature for a plain or modifier-composite binding.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="bindingIndex">The binding index.</param>
+    /// <returns>The requested binding signature.</returns>
     internal static string GetBindingSignature(InputAction action, int bindingIndex)
     {
         InputBinding binding = action.bindings[bindingIndex];
@@ -538,6 +560,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Returns the modifier and key paths from a Unity OneModifier composite.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="compositeIndex">The composite index.</param>
+    /// <returns>The requested composite paths.</returns>
     private static (string modifier, string key) GetCompositePaths(
         InputAction action,
         int compositeIndex
@@ -564,6 +589,7 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Returns the single held keyboard modifier path, or null when none or several are held.
     /// </summary>
+    /// <returns>The requested pressed modifier path.</returns>
     private static string GetPressedModifierPath()
     {
         Keyboard keyboard = Keyboard.current;
@@ -598,6 +624,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Gets the two named binding slots authored for an action.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <returns>The requested binding slots.</returns>
     private static (BindingSlot primary, BindingSlot secondary) GetBindingSlots(InputAction action)
     {
         return (GetBindingSlot(action, "Primary"), GetBindingSlot(action, "Secondary"));
@@ -606,6 +634,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Resolves one plain/composite binding pair by its authored slot name.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="name">The name.</param>
+    /// <returns>The requested binding slot.</returns>
     private static BindingSlot GetBindingSlot(InputAction action, string name)
     {
         int plain = -1;
@@ -641,6 +672,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Returns the active top-level alternative for a slot.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="slot">The slot.</param>
+    /// <returns>The requested active top level index.</returns>
     private static int GetActiveTopLevelIndex(InputAction action, BindingSlot slot)
     {
         return string.IsNullOrEmpty(action.bindings[slot.PlainIndex].effectivePath)
@@ -651,6 +685,9 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Formats the active alternative in one binding slot for the Options table.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <param name="slot">The slot.</param>
+    /// <returns>The formatted slot.</returns>
     private static string FormatSlot(InputAction action, BindingSlot slot)
     {
         InputBinding plain = action.bindings[slot.PlainIndex];
@@ -666,6 +703,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Converts one control path to its compact human-readable display form.
     /// </summary>
+    /// <param name="path">The path.</param>
+    /// <returns>The result of shorten path.</returns>
     private static string ShortenPath(string path)
     {
         return ShortenKey(
@@ -679,6 +718,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Checks whether an action map is exposed by the Options controls page.
     /// </summary>
+    /// <param name="map">The map.</param>
+    /// <returns>True when the bindable map condition is met; otherwise false.</returns>
     private static bool IsBindableMap(string map)
     {
         return map is "Global" or "Strategy";
@@ -687,6 +728,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Identifies system-reserved cancel and game-menu shortcuts.
     /// </summary>
+    /// <param name="action">The action.</param>
+    /// <returns>True when the reserved primary condition is met; otherwise false.</returns>
     private static bool HasReservedPrimary(InputAction action)
     {
         return action?.actionMap?.name == "Global"
@@ -696,6 +739,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Checks whether an action intentionally binds a modifier as its complete input.
     /// </summary>
+    /// <param name="actionName">The action name.</param>
+    /// <returns>True when the modifier action condition is met; otherwise false.</returns>
     private static bool IsModifierAction(string actionName)
     {
         return actionName is "MultiSelectModifier" or "RangeSelectModifier";
@@ -704,6 +749,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Shortens a human-readable key name for the compact binding columns.
     /// </summary>
+    /// <param name="display">The display.</param>
+    /// <returns>The result of shorten key.</returns>
     private static string ShortenKey(string display)
     {
         if (string.IsNullOrWhiteSpace(display))
@@ -714,6 +761,7 @@ internal sealed class OptionsBindingSession : IDisposable
             .Replace("LEFT ", "L ")
             .Replace("RIGHT ", "R ")
             .Replace("CONTROL", "CTRL")
+            .Replace("COMMAND", "CMD")
             .Replace("DELETE", "DEL")
             .Replace("INSERT", "INS")
             .Replace("BACKSPACE", "BKSP")
@@ -725,6 +773,8 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <summary>
     /// Inserts spaces at semantic boundaries in an authored action name.
     /// </summary>
+    /// <param name="name">The name.</param>
+    /// <returns>The result of humanize.</returns>
     private static string Humanize(string name)
     {
         if (string.IsNullOrEmpty(name))
@@ -778,6 +828,10 @@ internal sealed class OptionsBindingSession : IDisposable
         /// <summary>
         /// Creates an authored binding-slot index set.
         /// </summary>
+        /// <param name="plainIndex">The plain index.</param>
+        /// <param name="compositeIndex">The composite index.</param>
+        /// <param name="modifierIndex">The modifier index.</param>
+        /// <param name="bindingIndex">The binding index.</param>
         internal BindingSlot(
             int plainIndex,
             int compositeIndex,
@@ -804,6 +858,9 @@ internal sealed class OptionsBindingSession : IDisposable
         /// <summary>
         /// Creates a row binding target.
         /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="primary">The primary.</param>
+        /// <param name="secondary">The secondary.</param>
         internal BindingTarget(InputAction action, BindingSlot primary, BindingSlot secondary)
         {
             Action = action;

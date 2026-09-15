@@ -23,6 +23,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         private GameObject _windowObject;
         private UIWindow _window;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -39,6 +42,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             _presenter.Initialize(CreateContext());
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -48,6 +54,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies authored layout initialized presenter exposes positive widths.
+        /// </summary>
         [Test]
         public void AuthoredLayout_InitializedPresenter_ExposesPositiveWidths()
         {
@@ -63,6 +72,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.Greater(layout.FallbackMenuWidth, 0);
         }
 
+        /// <summary>
+        /// Verifies show commands filters null and renders nested presentation.
+        /// </summary>
         [Test]
         public void Show_Commands_FiltersNullAndRendersNestedPresentation()
         {
@@ -120,6 +132,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual(new RectInt(4, 7, 14, 14), checkIconRect);
         }
 
+        /// <summary>
+        /// Verifies show null menu resets current presentation.
+        /// </summary>
         [Test]
         public void Show_NullMenu_ResetsCurrentPresentation()
         {
@@ -142,6 +157,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsEmpty(FindRenderedPanels());
         }
 
+        /// <summary>
+        /// Verifies command selection enabled leaf forwards strategy command.
+        /// </summary>
         [Test]
         public void CommandSelection_EnabledLeaf_ForwardsStrategyCommand()
         {
@@ -165,6 +183,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreSame(command, selected);
         }
 
+        /// <summary>
+        /// Verifies dismiss boundary open menu forwards pointer event.
+        /// </summary>
         [Test]
         public void DismissBoundary_OpenMenu_ForwardsPointerEvent()
         {
@@ -188,6 +209,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreSame(pointer, received);
         }
 
+        /// <summary>
+        /// Verifies try cancel open then closed menu returns matching state.
+        /// </summary>
         [Test]
         public void TryCancel_OpenThenClosedMenu_ReturnsMatchingState()
         {
@@ -209,6 +233,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(_presenter.Open);
         }
 
+        /// <summary>
+        /// Verifies get menu width long command and null list returns required widths.
+        /// </summary>
         [Test]
         public void GetMenuWidth_LongCommandAndNullList_ReturnsRequiredWidths()
         {
@@ -229,11 +256,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.Greater(textWidth, emptyWidth);
         }
 
+        /// <summary>
+        /// Creates context.
+        /// </summary>
+        /// <returns>The created context.</returns>
         private UIContext CreateContext()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             return TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -241,6 +273,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             );
         }
 
+        /// <summary>
+        /// Finds rendered panels.
+        /// </summary>
+        /// <returns>The matching rendered panels.</returns>
         private ContextMenuPanelView[] FindRenderedPanels()
         {
             return _rootObject
@@ -254,6 +290,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds rendered rows.
+        /// </summary>
+        /// <param name="panel">The panel.</param>
+        /// <returns>The matching rendered rows.</returns>
         private static ContextMenuCommandView[] FindRenderedRows(ContextMenuPanelView panel)
         {
             return panel
@@ -267,6 +308,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds command text.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <returns>The matching command text.</returns>
         private static TextMeshProUGUI FindCommandText(ContextMenuCommandView row)
         {
             return row.GetComponentsInChildren<TextMeshProUGUI>(true)

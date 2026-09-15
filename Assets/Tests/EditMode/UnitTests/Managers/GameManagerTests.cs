@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
@@ -15,6 +16,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
@@ -23,6 +25,9 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public class GameManagerTests
     {
+        /// <summary>
+        /// Verifies set game speed configured intervals updates tick interval.
+        /// </summary>
         [Test]
         public void SetGameSpeed_ConfiguredIntervals_UpdatesTickInterval()
         {
@@ -50,6 +55,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(120.5f, GetTickInterval(manager));
         }
 
+        /// <summary>
+        /// Verifies constructor with factions rebuilds research catalogs.
+        /// </summary>
         [Test]
         public void Constructor_WithFactions_RebuildsResearchCatalogs()
         {
@@ -78,19 +86,18 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies reconcile loaded state contested player fleet restores pending combat.
+        /// </summary>
         [Test]
         public void ReconcileLoadedState_ContestedPlayerFleet_RestoresPendingCombat()
         {
             GameRoot game = new GameRoot(TestConfig.Create()) { CurrentTick = 40 };
-            Faction alliance = new Faction
-            {
-                InstanceID = "FNALL1",
-                DisplayName = "Alliance",
-                PlayerID = "player",
-            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "player", PlayerControllerType.Human);
             PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
             game.AttachNode(sector, game.GetGalaxyMap());
             Planet planet = CreatePlanet("PLANET", empire.InstanceID, 0);
@@ -131,16 +138,14 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(manager.IsTickSettled);
         }
 
+        /// <summary>
+        /// Verifies process faction automation manage naming assigns name immediately.
+        /// </summary>
         [Test]
         public void ProcessFactionAutomation_ManageNaming_AssignsNameImmediately()
         {
             GameRoot game = new GameRoot();
-            Faction faction = new Faction
-            {
-                InstanceID = "FACTION",
-                PlayerID = "PLAYER",
-                ManageNaming = true,
-            };
+            Faction faction = new Faction { InstanceID = "FACTION", ManageNaming = true };
             faction.ShipNamePools.Add(
                 new FactionNamePool
                 {
@@ -149,6 +154,7 @@ namespace Rebellion.Tests.Managers
                 }
             );
             game.GetFactions().Add(faction);
+            game.SetFactionController(faction.InstanceID, "PLAYER", PlayerControllerType.Human);
             GameManager manager = TestContent.CreateGameManager(game);
             CapitalShip ship = new CapitalShip
             {
@@ -167,6 +173,119 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(ship.HasAssignedName);
         }
 
+        /// <summary>
+        /// Verifies process tick event results does not add automatic messages.
+        /// </summary>
+        [Test]
+        public void ProcessTick_AdvisorOrderCompletes_RefillsReleasedLaneOnly()
+        {
+            const string factionId = "FACTION";
+            const string regimentTypeId = "GARRISON";
+            GameConfig config = TestConfig.Create();
+            config.AI.Garrison.SupportThreshold = 50;
+            config.AI.Garrison.GarrisonDivisor = 10;
+            config.AI.Garrison.UprisingMultiplier = 2;
+            GameRoot game = new GameRoot(config);
+            Faction faction = new Faction
+            {
+                InstanceID = factionId,
+                ManageGarrisons = true,
+                ManageProduction = false,
+            };
+            faction.Settings.ResourceProcessingPointsPerFacility = 50;
+            game.GetFactions().Add(faction);
+            game.SetFactionController(factionId, "PLAYER", PlayerControllerType.Human);
+
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet producer = CreatePlanet("PRODUCER", factionId, 0);
+            producer.EnergyCapacity = 10;
+            producer.NumRawResourceNodes = 2;
+            Planet destination = CreatePlanet("DESTINATION", factionId, 10);
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(producer, sector);
+            game.AttachNode(destination, sector);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "TRAINING",
+                    OwnerInstanceID = factionId,
+                    BuildingType = BuildingType.TrainingFacility,
+                    ProductionType = ManufacturingType.Troop,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                producer
+            );
+            for (int index = 0; index < 2; index++)
+            {
+                game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = $"MINE_{index}",
+                        OwnerInstanceID = factionId,
+                        BuildingType = BuildingType.Mine,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    producer
+                );
+                game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = $"REFINERY_{index}",
+                        OwnerInstanceID = factionId,
+                        BuildingType = BuildingType.Refinery,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    producer
+                );
+            }
+
+            GameManager manager = new GameManager(
+                game,
+                CreateAutomationGameData(config, factionId, regimentTypeId)
+            );
+            Regiment completingOrder = new Regiment
+            {
+                InstanceID = "COMPLETING_ORDER",
+                TypeID = regimentTypeId,
+                OwnerInstanceID = factionId,
+                ConstructionCost = 1,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            Assert.IsTrue(
+                manager.ManufacturingSystem.Enqueue(
+                    producer,
+                    completingOrder,
+                    destination,
+                    ignoreCost: true
+                )
+            );
+
+            manager.ProcessTick();
+
+            Assert.AreEqual(ManufacturingStatus.Delivering, completingOrder.ManufacturingStatus);
+            Assert.AreEqual(1, producer.GetManufacturingQueue()[ManufacturingType.Troop].Count);
+            Assert.AreEqual(
+                ManufacturingStatus.Building,
+                producer
+                    .GetManufacturingQueue()[ManufacturingType.Troop]
+                    .Single()
+                    .ManufacturingStatus
+            );
+            Assert.IsFalse(
+                producer
+                    .GetManufacturingQueue()
+                    .TryGetValue(
+                        ManufacturingType.Building,
+                        out List<IManufacturable> buildingOrders
+                    )
+                    && buildingOrders.Count > 0
+            );
+        }
+
+        /// <summary>
+        /// Verifies that event results do not generate automatic messages during tick processing.
+        /// </summary>
         [Test]
         public void ProcessTick_EventResults_DoesNotAddAutomaticMessages()
         {
@@ -199,6 +318,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsEmpty(faction.Messages[MessageType.Manufacturing]);
         }
 
+        /// <summary>
+        /// Verifies process tick fully recovered units delivers recovery messages.
+        /// </summary>
         [Test]
         public void ProcessTick_FullyRecoveredUnits_DeliversRecoveryMessages()
         {
@@ -224,6 +346,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies process tick injured officer at friendly planet heals.
+        /// </summary>
         [Test]
         public void ProcessTick_InjuredOfficerAtFriendlyPlanet_Heals()
         {
@@ -251,6 +376,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(1, officer.InjuryPoints);
         }
 
+        /// <summary>
+        /// Verifies process tick captured officer can escape.
+        /// </summary>
         [Test]
         public void ProcessTick_CapturedOfficerCanEscape()
         {
@@ -280,6 +408,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsFalse(captive.IsCaptured);
         }
 
+        /// <summary>
+        /// Verifies process tick event captures mission participant completes capture lifecycle.
+        /// </summary>
         [Test]
         public void ProcessTick_EventCapturesMissionParticipant_CompletesCaptureLifecycle()
         {
@@ -357,6 +488,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsNull(observed.Movement);
         }
 
+        /// <summary>
+        /// Verifies process tick victory condition met raises victory declared once.
+        /// </summary>
         [Test]
         public void ProcessTick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
         {
@@ -394,6 +528,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreSame(empire, declarations[0].Loser);
         }
 
+        /// <summary>
+        /// Verifies process tick planetary assault result raises resolved event.
+        /// </summary>
         [Test]
         public void ProcessTick_PlanetaryAssaultResult_RaisesResolvedEvent()
         {
@@ -419,6 +556,9 @@ namespace Rebellion.Tests.Managers
             Assert.That(observedResults, Has.Count.EqualTo(1));
         }
 
+        /// <summary>
+        /// Verifies process tick victory result raises resolved event.
+        /// </summary>
         [Test]
         public void ProcessTick_VictoryResult_RaisesResolvedEvent()
         {
@@ -444,6 +584,9 @@ namespace Rebellion.Tests.Managers
             Assert.That(observedResults, Has.Count.EqualTo(1));
         }
 
+        /// <summary>
+        /// Verifies process tick expired message removes message after tick advances.
+        /// </summary>
         [Test]
         public void ProcessTick_ExpiredMessage_RemovesMessageAfterTickAdvances()
         {
@@ -462,6 +605,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsEmpty(faction.Messages[MessageType.Conflict]);
         }
 
+        /// <summary>
+        /// Verifies process tick blockade starts reroutes inbound starfighter.
+        /// </summary>
         [Test]
         public void ProcessTick_BlockadeStarts_ReroutesInboundStarfighter()
         {
@@ -530,24 +676,27 @@ namespace Rebellion.Tests.Managers
             Assert.IsNotNull(starfighter.Movement);
         }
 
+        /// <summary>
+        /// Verifies process tick sabotage result removes destroyed object from actor snapshot.
+        /// </summary>
         [Test]
         public void ProcessTick_SabotageResult_RemovesDestroyedObjectFromActorSnapshot()
         {
             GameRoot game = new GameRoot(TestContent.Data.GameConfig);
-            Faction alliance = new Faction
-            {
-                InstanceID = "FNALL1",
-                DisplayName = "Alliance",
-                PlayerID = "alliance_player",
-            };
-            Faction empire = new Faction
-            {
-                InstanceID = "FNEMP1",
-                DisplayName = "Empire",
-                PlayerID = "empire_player",
-            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
+            game.SetFactionController(
+                alliance.InstanceID,
+                "alliance_player",
+                PlayerControllerType.Human
+            );
+            game.SetFactionController(
+                empire.InstanceID,
+                "empire_player",
+                PlayerControllerType.Human
+            );
 
             PlanetSector sector = new PlanetSector
             {
@@ -620,6 +769,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsFalse(viewedPlanet.GetChildren<Building>().Any(b => b.InstanceID == "MINE1"));
         }
 
+        /// <summary>
+        /// Verifies process tick fleet destroyed after arrival adds fleet arrival and battle messages.
+        /// </summary>
         [Test]
         public void ProcessTick_FleetDestroyedAfterArrival_AddsFleetArrivalAndBattleMessages()
         {
@@ -702,6 +854,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies process tick loaded converging multiple fleets resolves single combined combat.
+        /// </summary>
         [Test]
         public void ProcessTick_LoadedConvergingMultipleFleets_ResolvesSingleCombinedCombat()
         {
@@ -715,15 +870,15 @@ namespace Rebellion.Tests.Managers
             {
                 GameConfig config = TestConfig.Create();
                 GameRoot game = new GameRoot(config);
-                Faction alliance = new Faction
-                {
-                    InstanceID = "FNALL1",
-                    DisplayName = "Alliance",
-                    PlayerID = "player",
-                };
+                Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
                 Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
                 game.GetFactions().Add(alliance);
                 game.GetFactions().Add(empire);
+                game.SetFactionController(
+                    alliance.InstanceID,
+                    "player",
+                    PlayerControllerType.Human
+                );
 
                 PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
                 game.AttachNode(sector, game.GetGalaxyMap());
@@ -818,19 +973,18 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies process tick fleet arrives at planetary starfighters creates pending combat.
+        /// </summary>
         [Test]
         public void ProcessTick_FleetArrivesAtPlanetaryStarfighters_CreatesPendingCombat()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            Faction alliance = new Faction
-            {
-                InstanceID = "FNALL1",
-                DisplayName = "Alliance",
-                PlayerID = "player",
-            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "player", PlayerControllerType.Human);
 
             PlanetSector sector = new PlanetSector
             {
@@ -902,6 +1056,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreSame(destination, pending.Planet);
         }
 
+        /// <summary>
+        /// Verifies process tick fleet reaches waypoint starts next leg after combat detection.
+        /// </summary>
         [Test]
         public void ProcessTick_FleetReachesWaypoint_StartsNextLegAfterCombatDetection()
         {
@@ -942,19 +1099,18 @@ namespace Rebellion.Tests.Managers
             CollectionAssert.AreEqual(new[] { destination.InstanceID }, fleet.Waypoints);
         }
 
+        /// <summary>
+        /// Verifies process tick pending combat completes tick after resolution.
+        /// </summary>
         [Test]
         public void ProcessTick_PendingCombat_CompletesTickAfterResolution()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            Faction alliance = new Faction
-            {
-                InstanceID = "FNALL1",
-                DisplayName = "Alliance",
-                PlayerID = "player",
-            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "player", PlayerControllerType.Human);
 
             PlanetSector sector = new PlanetSector
             {
@@ -1007,6 +1163,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(manager.IsTickSettled);
         }
 
+        /// <summary>
+        /// Verifies process tick paused game does not advance tick.
+        /// </summary>
         [Test]
         public void ProcessTick_PausedGame_DoesNotAdvanceTick()
         {
@@ -1019,19 +1178,18 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, game.CurrentTick);
         }
 
+        /// <summary>
+        /// Verifies resolve combat unrelated fleet reached waypoint starts deferred next leg.
+        /// </summary>
         [Test]
         public void ResolveCombat_UnrelatedFleetReachedWaypoint_StartsDeferredNextLeg()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            Faction alliance = new Faction
-            {
-                InstanceID = "FNALL1",
-                DisplayName = "Alliance",
-                PlayerID = "player",
-            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
             game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "player", PlayerControllerType.Human);
             PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
             game.AttachNode(sector, game.GetGalaxyMap());
             Planet origin = CreatePlanet("ORIGIN", alliance.InstanceID, 0);
@@ -1090,6 +1248,9 @@ namespace Rebellion.Tests.Managers
             CollectionAssert.AreEqual(new[] { destination.InstanceID }, routeFleet.Waypoints);
         }
 
+        /// <summary>
+        /// Verifies advance time completed interval processes tick and raises tick completed.
+        /// </summary>
         [Test]
         public void AdvanceTime_CompletedInterval_ProcessesTickAndRaisesTickCompleted()
         {
@@ -1107,6 +1268,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(1, completedTicks);
         }
 
+        /// <summary>
+        /// Verifies advance time below completed interval does not process tick.
+        /// </summary>
         [Test]
         public void AdvanceTime_BelowCompletedInterval_DoesNotProcessTick()
         {
@@ -1123,6 +1287,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, completedTicks);
         }
 
+        /// <summary>
+        /// Verifies process tick incrementally disposed before completion allows next tick.
+        /// </summary>
         [Test]
         public void ProcessTickIncrementally_DisposedBeforeCompletion_AllowsNextTick()
         {
@@ -1138,6 +1305,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, game.CurrentTick);
         }
 
+        /// <summary>
+        /// Verifies movement command surface regiment creates garrison deficit starts uprising immediately.
+        /// </summary>
         [Test]
         public void MovementCommand_SurfaceRegimentCreatesGarrisonDeficit_StartsUprisingImmediately()
         {
@@ -1249,6 +1419,9 @@ namespace Rebellion.Tests.Managers
             Assert.IsNull(diplomat.Movement);
         }
 
+        /// <summary>
+        /// Verifies movement command last surface regiment neutralizes planet reports immediately.
+        /// </summary>
         [Test]
         public void MovementCommand_LastSurfaceRegimentNeutralizesPlanet_ReportsImmediately()
         {
@@ -1316,6 +1489,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies scrap command last surface regiment reconciles planet immediately.
+        /// </summary>
         [Test]
         public void ScrapCommand_LastSurfaceRegiment_ReconcilesPlanetImmediately()
         {
@@ -1359,6 +1535,16 @@ namespace Rebellion.Tests.Managers
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
+        /// <summary>
+        /// Creates combat fleet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="hullStrength">The hull strength.</param>
+        /// <param name="weaponPower">The weapon power.</param>
+        /// <returns>The created combat fleet.</returns>
         private static Fleet CreateCombatFleet(
             GameRoot game,
             string instanceId,
@@ -1402,6 +1588,13 @@ namespace Rebellion.Tests.Managers
             return fleet;
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="positionX">The position x.</param>
+        /// <returns>The created planet.</returns>
         private static Planet CreatePlanet(string instanceId, string ownerId, int positionX)
         {
             return new Planet
@@ -1415,6 +1608,10 @@ namespace Rebellion.Tests.Managers
             };
         }
 
+        /// <summary>
+        /// Creates recovery game.
+        /// </summary>
+        /// <returns>The created recovery game.</returns>
         private static (
             GameManager manager,
             Officer officer,
@@ -1428,13 +1625,9 @@ namespace Rebellion.Tests.Managers
             config.Recovery.FastReplacementAmount = 1;
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
             GameRoot game = new GameRoot(config);
-            Faction faction = new Faction
-            {
-                InstanceID = "FACTION",
-                DisplayName = "Faction",
-                PlayerID = "PLAYER",
-            };
+            Faction faction = new Faction { InstanceID = "FACTION", DisplayName = "Faction" };
             game.GetFactions().Add(faction);
+            game.SetFactionController(faction.InstanceID, "PLAYER", PlayerControllerType.Human);
             PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
             Planet planet = new Planet
             {
@@ -1496,6 +1689,12 @@ namespace Rebellion.Tests.Managers
             return (manager, officer, ship, fighter);
         }
 
+        /// <summary>
+        /// Creates message definition.
+        /// </summary>
+        /// <param name="resultType">The result type.</param>
+        /// <param name="messageType">The message type.</param>
+        /// <returns>The created message definition.</returns>
         private static MessageDefinition CreateMessageDefinition(
             MessageResultType resultType,
             MessageType messageType
@@ -1510,6 +1709,63 @@ namespace Rebellion.Tests.Managers
             };
         }
 
+        /// <summary>
+        /// Creates the minimal content catalog required for advisor-managed garrison production.
+        /// </summary>
+        /// <param name="config">The game configuration shared with the test game.</param>
+        /// <param name="factionId">The faction allowed to manufacture the garrison.</param>
+        /// <param name="regimentTypeId">The configured garrison regiment type.</param>
+        /// <returns>A catalog containing the requested garrison template.</returns>
+        private static GameDataCatalog CreateAutomationGameData(
+            GameConfig config,
+            string factionId,
+            string regimentTypeId
+        )
+        {
+            GameGenerationConfig generationConfig = new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>
+                    {
+                        new FactionSetup
+                        {
+                            FactionID = factionId,
+                            GarrisonTroopTypeID = regimentTypeId,
+                        },
+                    },
+                },
+            };
+            Regiment garrison = new Regiment
+            {
+                TypeID = regimentTypeId,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = new List<string> { factionId },
+            };
+            return new GameDataCatalog(
+                config,
+                generationConfig,
+                Array.Empty<Faction>(),
+                Array.Empty<PlanetSector>(),
+                Array.Empty<Building>(),
+                Array.Empty<CapitalShip>(),
+                Array.Empty<Starfighter>(),
+                new[] { garrison },
+                Array.Empty<SpecialForces>(),
+                Array.Empty<Officer>(),
+                Array.Empty<GameEvent>(),
+                Array.Empty<MessageDefinition>(),
+                new EncyclopediaEntries(),
+                new FactionThemes()
+            );
+        }
+
+        /// <summary>
+        /// Reads the manager's configured tick interval for verification.
+        /// </summary>
+        /// <param name="manager">The manager whose tick interval is inspected.</param>
+        /// <returns>The configured tick interval, or null when the backing field is unavailable.</returns>
         private static float? GetTickInterval(GameManager manager)
         {
             FieldInfo field = typeof(GameManager).GetField(
@@ -1524,11 +1780,19 @@ namespace Rebellion.Tests.Managers
         {
             private readonly GameResult _result;
 
+            /// <summary>
+            /// Initializes a new instance of the EmitResultAction class.
+            /// </summary>
+            /// <param name="result">The result.</param>
             internal EmitResultAction(GameResult result)
             {
                 _result = result;
             }
 
+            /// <summary>
+            /// Executes the requested operation.
+            /// </summary>
+            /// <param name="context">The context.</param>
             internal override void Execute(GameActionContext context)
             {
                 context.Record(_result);

@@ -12,14 +12,8 @@ public enum UserTacticalOption
 
     Pyro,
 
-    /// <summary>
-    /// Controls high-detail presentation.
-    /// </summary>
     HighDetail,
 
-    /// <summary>
-    /// Controls holocube presentation.
-    /// </summary>
     Holocube,
 }
 

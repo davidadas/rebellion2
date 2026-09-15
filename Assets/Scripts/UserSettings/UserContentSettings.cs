@@ -8,6 +8,7 @@ public sealed class UserContentSettings
 {
     public string ActivePackID = "";
     public string ActiveScenarioID = "";
+    public string[] DisabledModIDs = Array.Empty<string>();
 
     /// <summary>
     /// Ensures selection fields are non-null.
@@ -16,5 +17,6 @@ public sealed class UserContentSettings
     {
         ActivePackID ??= "";
         ActiveScenarioID ??= "";
+        DisabledModIDs ??= Array.Empty<string>();
     }
 }

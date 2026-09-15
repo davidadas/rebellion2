@@ -26,6 +26,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private GameObject _windowObject;
         private UIWindow _window;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -74,12 +77,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor with fleet and detail item selects both.
+        /// </summary>
         [Test]
         public void Constructor_WithFleetAndDetailItem_SelectsBoth()
         {
@@ -88,6 +97,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedDetailItems.ToArray());
         }
 
+        /// <summary>
+        /// Verifies constructor null planet throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullPlanet_ThrowsArgumentNullException()
         {
@@ -96,6 +108,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies constructor null window throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullWindow_ThrowsArgumentNullException()
         {
@@ -108,6 +123,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.Throws<System.ArgumentNullException>(() => new FleetWindowSession(planet, null));
         }
 
+        /// <summary>
+        /// Verifies constructor empty planet initializes empty selection.
+        /// </summary>
         [Test]
         public void Constructor_EmptyPlanet_InitializesEmptySelection()
         {
@@ -126,6 +144,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsEmpty(session.SelectedDetailItems);
         }
 
+        /// <summary>
+        /// Verifies clear item selection with available items restores required selections.
+        /// </summary>
         [Test]
         public void ClearItemSelection_WithAvailableItems_RestoresRequiredSelections()
         {
@@ -136,6 +157,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedDetailItems.ToArray());
         }
 
+        /// <summary>
+        /// Verifies rebind planet null projection throws argument exception.
+        /// </summary>
         [Test]
         public void RebindPlanet_NullProjection_ThrowsArgumentException()
         {
@@ -147,6 +171,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies rebind planet recreated nodes preserves selection by identity.
+        /// </summary>
         [Test]
         public void RebindPlanet_RecreatedNodes_PreservesSelectionByIdentity()
         {
@@ -176,6 +203,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(replacementShip, _session.DetailItems[0]);
         }
 
+        /// <summary>
+        /// Verifies reconcile selected fleet removed selects nearest remaining fleet.
+        /// </summary>
         [Test]
         public void Reconcile_SelectedFleetRemoved_SelectsNearestRemainingFleet()
         {
@@ -189,6 +219,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedFleetItems);
         }
 
+        /// <summary>
+        /// Verifies reconcile all fleets removed clears fleet and detail state.
+        /// </summary>
         [Test]
         public void Reconcile_AllFleetsRemoved_ClearsFleetAndDetailState()
         {
@@ -207,6 +240,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(_session.RenameTarget);
         }
 
+        /// <summary>
+        /// Verifies select target null or foreign target returns false without changing selection.
+        /// </summary>
         [Test]
         public void SelectTarget_NullOrForeignTarget_ReturnsFalseWithoutChangingSelection()
         {
@@ -221,6 +257,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(FleetWindowTab.CapitalShips, _session.ActiveTab);
         }
 
+        /// <summary>
+        /// Verifies select target contained starfighter selects fleet tab and item.
+        /// </summary>
         [Test]
         public void SelectTarget_ContainedStarfighter_SelectsFleetTabAndItem()
         {
@@ -234,6 +273,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedDetailItems);
         }
 
+        /// <summary>
+        /// Verifies try get fleet index returns only current rows.
+        /// </summary>
         [Test]
         public void TryGetFleet_Index_ReturnsOnlyCurrentRows()
         {
@@ -246,6 +288,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(absent);
         }
 
+        /// <summary>
+        /// Verifies try get detail item index returns only current cards.
+        /// </summary>
         [Test]
         public void TryGetDetailItem_Index_ReturnsOnlyCurrentCards()
         {
@@ -258,6 +303,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(absent);
         }
 
+        /// <summary>
+        /// Verifies capture context fleet selects fleet and returns context items.
+        /// </summary>
         [Test]
         public void CaptureContext_Fleet_SelectsFleetAndReturnsContextItems()
         {
@@ -272,6 +320,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(new ISceneNode[] { _secondFleet }, items);
         }
 
+        /// <summary>
+        /// Verifies capture context detail item selects item and returns context items.
+        /// </summary>
         [Test]
         public void CaptureContext_DetailItem_SelectsItemAndReturnsContextItems()
         {
@@ -285,6 +336,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(new ISceneNode[] { _capitalShip }, items);
         }
 
+        /// <summary>
+        /// Verifies capture context invalid targets return false.
+        /// </summary>
         [Test]
         public void CaptureContext_InvalidTargets_ReturnFalse()
         {
@@ -297,6 +351,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(-1, _session.ContextDetailItemIndex);
         }
 
+        /// <summary>
+        /// Verifies prepare drag selection selected fleet preserves selection for drag.
+        /// </summary>
         [Test]
         public void PrepareDragSelection_SelectedFleet_PreservesSelectionForDrag()
         {
@@ -306,6 +363,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedFleetItems);
         }
 
+        /// <summary>
+        /// Verifies prepare drag selection unselected fleet selects fleet and allows drag.
+        /// </summary>
         [Test]
         public void PrepareDragSelection_UnselectedFleet_SelectsFleetAndAllowsDrag()
         {
@@ -317,6 +377,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedDetailItems);
         }
 
+        /// <summary>
+        /// Verifies prepare drag selection unselected detail selects item and allows drag.
+        /// </summary>
         [Test]
         public void PrepareDragSelection_UnselectedDetail_SelectsItemAndAllowsDrag()
         {
@@ -335,6 +398,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies prepare drag selection selected and invalid details return expected state.
+        /// </summary>
         [Test]
         public void PrepareDragSelection_SelectedAndInvalidDetails_ReturnExpectedState()
         {
@@ -348,6 +414,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedDetailItems);
         }
 
+        /// <summary>
+        /// Verifies select item fleet changes displayed fleet and required selections.
+        /// </summary>
         [Test]
         public void SelectItem_Fleet_ChangesDisplayedFleetAndRequiredSelections()
         {
@@ -360,6 +429,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_secondCapitalShip, _session.DetailItems[0]);
         }
 
+        /// <summary>
+        /// Verifies select item invalid detail returns false without changing selection.
+        /// </summary>
         [Test]
         public void SelectItem_InvalidDetail_ReturnsFalseWithoutChangingSelection()
         {
@@ -369,6 +441,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedDetailItems);
         }
 
+        /// <summary>
+        /// Verifies select tab valid tab refreshes items and required selection.
+        /// </summary>
         [Test]
         public void SelectTab_ValidTab_RefreshesItemsAndRequiredSelection()
         {
@@ -388,6 +463,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(_session.RenameTarget);
         }
 
+        /// <summary>
+        /// Verifies select tab current or unsupported tab returns false.
+        /// </summary>
         [Test]
         public void SelectTab_CurrentOrUnsupportedTab_ReturnsFalse()
         {
@@ -396,6 +474,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(FleetWindowTab.CapitalShips, _session.ActiveTab);
         }
 
+        /// <summary>
+        /// Verifies begin rename fleet and capital ship tracks current visual target.
+        /// </summary>
         [Test]
         public void BeginRename_FleetAndCapitalShip_TracksCurrentVisualTarget()
         {
@@ -414,6 +495,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(0, _session.RenameDetailItemIndex);
         }
 
+        /// <summary>
+        /// Verifies begin rename unsupported or hidden target returns false.
+        /// </summary>
         [Test]
         public void BeginRename_UnsupportedOrHiddenTarget_ReturnsFalse()
         {
@@ -425,6 +509,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(_session.RenameTarget);
         }
 
+        /// <summary>
+        /// Verifies end rename active target clears rename state.
+        /// </summary>
         [Test]
         public void EndRename_ActiveTarget_ClearsRenameState()
         {
@@ -437,6 +524,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(-1, _session.RenameDetailItemIndex);
         }
 
+        /// <summary>
+        /// Verifies clear context active target preserves selection and clears context.
+        /// </summary>
         [Test]
         public void ClearContext_ActiveTarget_PreservesSelectionAndClearsContext()
         {
@@ -451,6 +541,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsEmpty(_session.GetContextItems());
         }
 
+        /// <summary>
+        /// Verifies has detail items tab returns selected fleet content availability.
+        /// </summary>
         [Test]
         public void HasDetailItems_Tab_ReturnsSelectedFleetContentAvailability()
         {
@@ -468,6 +561,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(_session.HasDetailItems(FleetWindowTab.Personnel));
         }
 
+        /// <summary>
+        /// Creates capital ship.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created capital ship.</returns>
         private static CapitalShip CreateCapitalShip(string instanceId, string displayName)
         {
             return new CapitalShip
@@ -478,6 +577,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             };
         }
 
+        /// <summary>
+        /// Creates fleet.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="ships">The ships.</param>
+        /// <returns>The created fleet.</returns>
         private static GameFleet CreateFleet(
             string instanceId,
             string displayName,
@@ -487,6 +593,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             return new GameFleet("owner", displayName, ships.ToList()) { InstanceID = instanceId };
         }
 
+        /// <summary>
+        /// Attaches fleet graph.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="fleet">The fleet.</param>
         private static void AttachFleetGraph(Planet planet, GameFleet fleet)
         {
             fleet.SetParent(planet);

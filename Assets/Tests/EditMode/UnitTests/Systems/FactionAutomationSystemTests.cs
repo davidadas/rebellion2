@@ -26,6 +26,9 @@ namespace Rebellion.Tests.Systems
         private Planet _destination;
         private FactionAutomationSystem _automation;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -60,6 +63,9 @@ namespace Rebellion.Tests.Systems
             _automation = new FactionAutomationSystem(_game, gameData, manufacturing);
         }
 
+        /// <summary>
+        /// Verifies process tick manage garrisons queues troop for unguarded planet.
+        /// </summary>
         [Test]
         public void ProcessTick_ManageGarrisons_QueuesTroopForUnguardedPlanet()
         {
@@ -78,6 +84,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(_garrisonTypeId, _destination.GetAllRegiments().Single().TypeID);
         }
 
+        /// <summary>
+        /// Verifies process tick manage garrisons prioritizes uprising.
+        /// </summary>
         [Test]
         public void ProcessTick_ManageGarrisons_PrioritizesUprising()
         {
@@ -94,6 +103,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(_destination.GetAllRegiments());
         }
 
+        /// <summary>
+        /// Verifies process tick manage garrisons fills available capacity across shortages.
+        /// </summary>
         [Test]
         public void ProcessTick_ManageGarrisons_FillsAvailableCapacityAcrossShortages()
         {
@@ -110,6 +122,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, secondDestination.GetAllRegiments().Count);
         }
 
+        /// <summary>
+        /// Verifies process tick manage garrisons with reserved training facility does not queue work.
+        /// </summary>
         [Test]
         public void ProcessTick_ManageGarrisonsWithReservedTrainingFacility_DoesNotQueueWork()
         {
@@ -121,6 +136,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(_destination.GetAllRegiments());
         }
 
+        /// <summary>
+        /// Verifies process tick manage production fills lane with one project.
+        /// </summary>
         [Test]
         public void ProcessTick_ManageProduction_FillsLaneWithOneProject()
         {
@@ -132,6 +150,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, CountResourceFacilities(BuildingType.Refinery));
         }
 
+        /// <summary>
+        /// Verifies process tick manage production uses closest available resource slot.
+        /// </summary>
         [Test]
         public void ProcessTick_ManageProduction_UsesClosestAvailableResourceSlot()
         {
@@ -147,6 +168,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, distant.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
 
+        /// <summary>
+        /// Verifies process tick manage production with reserved building lane does not queue work.
+        /// </summary>
         [Test]
         public void ProcessTick_ManageProductionWithReservedBuildingLane_DoesNotQueueWork()
         {
@@ -161,6 +185,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(refineryCount, CountResourceFacilities(BuildingType.Refinery));
         }
 
+        /// <summary>
+        /// Verifies process tick reserved destination remains available for automated delivery.
+        /// </summary>
         [Test]
         public void ProcessTick_ReservedDestination_RemainsAvailableForAutomatedDelivery()
         {
@@ -173,6 +200,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(2, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
 
+        /// <summary>
+        /// Verifies process tick manage production without mine capacity does not add refinery.
+        /// </summary>
         [Test]
         public void ProcessTick_ManageProductionWithoutMineCapacity_DoesNotAddRefinery()
         {
@@ -185,6 +215,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(refineryCount, CountResourceFacilities(BuildingType.Refinery));
         }
 
+        /// <summary>
+        /// Verifies process tick disabled automation does not queue work.
+        /// </summary>
         [Test]
         public void ProcessTick_DisabledAutomation_DoesNotQueueWork()
         {
@@ -197,6 +230,13 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="energy">The energy.</param>
+        /// <param name="resources">The resources.</param>
+        /// <returns>The created planet.</returns>
         private Planet CreatePlanet(string instanceId, int energy, int resources)
         {
             Planet planet = new Planet
@@ -211,6 +251,10 @@ namespace Rebellion.Tests.Systems
             return planet;
         }
 
+        /// <summary>
+        /// Creates game config.
+        /// </summary>
+        /// <returns>The created game config.</returns>
         private static GameConfig CreateGameConfig()
         {
             GameConfig config = new GameConfig();
@@ -220,6 +264,11 @@ namespace Rebellion.Tests.Systems
             return config;
         }
 
+        /// <summary>
+        /// Creates game data.
+        /// </summary>
+        /// <param name="config">The config.</param>
+        /// <returns>The created game data.</returns>
         private static GameDataCatalog CreateGameData(GameConfig config)
         {
             GameGenerationConfig generationConfig = new GameGenerationConfig
@@ -278,6 +327,12 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Adds production facility.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="type">The type.</param>
         private void AddProductionFacility(Planet planet, string instanceId, ManufacturingType type)
         {
             _game.AttachNode(
@@ -297,6 +352,11 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Adds resource pairs.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="count">The count.</param>
         private void AddResourcePairs(Planet planet, int count)
         {
             for (int index = 0; index < count; index++)
@@ -306,6 +366,11 @@ namespace Rebellion.Tests.Systems
             }
         }
 
+        /// <summary>
+        /// Adds completed regiment.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="instanceId">The instance id.</param>
         private void AddCompletedRegiment(Planet planet, string instanceId)
         {
             _game.AttachNode(
@@ -319,6 +384,12 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Adds resource facility.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="buildingType">The building type.</param>
         private void AddResourceFacility(
             Planet planet,
             string instanceId,
@@ -337,6 +408,11 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Executes count resource facilities.
+        /// </summary>
+        /// <param name="buildingType">The building type.</param>
+        /// <returns>The result of count resource facilities.</returns>
         private int CountResourceFacilities(BuildingType buildingType)
         {
             return new[] { _producer, _destination }.Sum(planet =>

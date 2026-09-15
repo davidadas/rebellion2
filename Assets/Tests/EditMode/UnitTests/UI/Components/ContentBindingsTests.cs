@@ -15,6 +15,9 @@ public sealed class ContentBindingsTests
 
     private readonly List<UnityEngine.Object> _createdObjects = new List<UnityEngine.Object>();
 
+    /// <summary>
+    /// Executes tear down.
+    /// </summary>
     [TearDown]
     public void TearDown()
     {
@@ -28,6 +31,9 @@ public sealed class ContentBindingsTests
         _createdObjects.Clear();
     }
 
+    /// <summary>
+    /// Verifies apply stripped raw image texture restores from content.
+    /// </summary>
     [Test]
     public void Apply_StrippedRawImageTexture_RestoresFromContent()
     {
@@ -44,6 +50,9 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(expectedTexture, rawImage.texture);
     }
 
+    /// <summary>
+    /// Verifies apply stripped image sprite restores from content.
+    /// </summary>
     [Test]
     public void Apply_StrippedImageSprite_RestoresFromContent()
     {
@@ -82,6 +91,9 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(expectedBorder, contentAssets.LastSpriteBorder);
     }
 
+    /// <summary>
+    /// Verifies apply stripped press visual restores released texture.
+    /// </summary>
     [Test]
     public void Apply_StrippedPressVisual_RestoresReleasedTexture()
     {
@@ -106,6 +118,9 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(releasedTexture, rawImage.texture);
     }
 
+    /// <summary>
+    /// Verifies apply stripped press visual restores pressed texture.
+    /// </summary>
     [Test]
     public void Apply_StrippedPressVisual_RestoresPressedTexture()
     {
@@ -132,6 +147,9 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(pressedTexture, rawImage.texture);
     }
 
+    /// <summary>
+    /// Verifies apply inactive descendant binding restores from content.
+    /// </summary>
     [Test]
     public void Apply_InactiveDescendantBinding_RestoresFromContent()
     {
@@ -151,6 +169,9 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(expectedTexture, rawImage.texture);
     }
 
+    /// <summary>
+    /// Verifies apply inactive initializable initializes from content.
+    /// </summary>
     [Test]
     public void Apply_InactiveInitializable_InitializesFromContent()
     {
@@ -165,6 +186,9 @@ public sealed class ContentBindingsTests
         Assert.AreSame(contentAssets, initializable.ContentAssets);
     }
 
+    /// <summary>
+    /// Verifies apply unresolvable address throws with address in message.
+    /// </summary>
     [Test]
     public void Apply_UnresolvableAddress_ThrowsWithAddressInMessage()
     {
@@ -178,6 +202,11 @@ public sealed class ContentBindingsTests
         StringAssert.Contains(_textureAddress, exception.Message);
     }
 
+    /// <summary>
+    /// Creates game object.
+    /// </summary>
+    /// <param name="name">The name.</param>
+    /// <returns>The created game object.</returns>
     private GameObject CreateGameObject(string name)
     {
         GameObject created = new GameObject(name);
@@ -185,12 +214,22 @@ public sealed class ContentBindingsTests
         return created;
     }
 
+    /// <summary>
+    /// Creates component.
+    /// </summary>
+    /// <param name="name">The name.</param>
+    /// <typeparam name="T">The t type.</typeparam>
+    /// <returns>The created component.</returns>
     private T CreateComponent<T>(string name)
         where T : Component
     {
         return CreateGameObject(name).AddComponent<T>();
     }
 
+    /// <summary>
+    /// Creates texture.
+    /// </summary>
+    /// <returns>The created texture.</returns>
     private Texture2D CreateTexture()
     {
         Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
@@ -198,6 +237,10 @@ public sealed class ContentBindingsTests
         return texture;
     }
 
+    /// <summary>
+    /// Creates sprite.
+    /// </summary>
+    /// <returns>The created sprite.</returns>
     private Sprite CreateSprite()
     {
         Texture2D texture = CreateTexture();
@@ -222,16 +265,31 @@ public sealed class ContentBindingsTests
 
         public Vector4 LastSpriteBorder { get; private set; }
 
+        /// <summary>
+        /// Adds texture.
+        /// </summary>
+        /// <param name="address">The address.</param>
+        /// <param name="texture">The texture.</param>
         public void AddTexture(string address, Texture2D texture)
         {
             _textures[address] = texture;
         }
 
+        /// <summary>
+        /// Adds sprite.
+        /// </summary>
+        /// <param name="address">The address.</param>
+        /// <param name="sprite">The sprite.</param>
         public void AddSprite(string address, Sprite sprite)
         {
             _sprites[address] = sprite;
         }
 
+        /// <summary>
+        /// Gets texture.
+        /// </summary>
+        /// <param name="address">The address.</param>
+        /// <returns>The requested texture.</returns>
         public Texture2D GetTexture(string address)
         {
             return _textures.TryGetValue(address, out Texture2D texture) ? texture : null;
@@ -264,6 +322,10 @@ public sealed class ContentBindingsTests
     {
         public IContentAssetSource ContentAssets { get; private set; }
 
+        /// <summary>
+        /// Initializes content.
+        /// </summary>
+        /// <param name="contentAssets">The content assets.</param>
         public void InitializeContent(IContentAssetSource contentAssets)
         {
             ContentAssets = contentAssets;

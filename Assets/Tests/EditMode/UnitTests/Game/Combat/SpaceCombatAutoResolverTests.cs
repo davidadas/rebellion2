@@ -15,6 +15,9 @@ namespace Rebellion.Tests.Game.Combat
     [TestFixture]
     public class SpaceCombatAutoResolverTests
     {
+        /// <summary>
+        /// Verifies resolve equivalent battles returns deterministic results.
+        /// </summary>
         [Test]
         public void Resolve_EquivalentBattles_ReturnsDeterministicResults()
         {
@@ -29,6 +32,9 @@ namespace Rebellion.Tests.Game.Combat
             );
         }
 
+        /// <summary>
+        /// Verifies resolve weapons across several arcs uses every ready arc.
+        /// </summary>
         [Test]
         public void Resolve_WeaponsAcrossSeveralArcs_UsesEveryReadyArc()
         {
@@ -56,6 +62,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.Less(second.IterationsCompleted, first.IterationsCompleted);
         }
 
+        /// <summary>
+        /// Verifies resolve capital ship laser cannon against capital ship uses configured multiplier.
+        /// </summary>
         [Test]
         public void Resolve_CapitalShipLaserCannonAgainstCapitalShip_UsesConfiguredMultiplier()
         {
@@ -80,6 +89,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(85, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve capital ship laser cannon against starfighters deals full damage.
+        /// </summary>
         [Test]
         public void Resolve_CapitalShipLaserCannonAgainstStarfighters_DealsFullDamage()
         {
@@ -104,6 +116,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(1, GetFighterOutcome(result, defender).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve capital ship laser cannon with mixed targets selects highest effective damage target.
+        /// </summary>
         [Test]
         public void Resolve_CapitalShipLaserCannonWithMixedTargets_SelectsHighestEffectiveDamageTarget()
         {
@@ -137,6 +152,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(6, GetFighterOutcome(result, defenderFighter).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve zero iteration stalemate uses configured capital target laser effectiveness.
+        /// </summary>
         [Test]
         public void Resolve_ZeroIterationStalemate_UsesConfiguredCapitalTargetLaserEffectiveness()
         {
@@ -165,6 +183,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
         }
 
+        /// <summary>
+        /// Verifies resolve heavy line ship against three laser escorts defeats escorts.
+        /// </summary>
         [Test]
         public void Resolve_HeavyLineShipAgainstThreeLaserEscorts_DefeatsEscorts()
         {
@@ -183,6 +204,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.Greater(GetShipOutcome(result, lineShip).HullAfter, 0);
         }
 
+        /// <summary>
+        /// Verifies resolve weapon outside its configured range does not damage target.
+        /// </summary>
         [Test]
         public void Resolve_WeaponOutsideItsConfiguredRange_DoesNotDamageTarget()
         {
@@ -205,6 +229,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve long range weapons inflict damage before short range weapons.
+        /// </summary>
         [Test]
         public void Resolve_LongRangeWeapons_InflictDamageBeforeShortRangeWeapons()
         {
@@ -231,6 +258,9 @@ namespace Rebellion.Tests.Game.Combat
             );
         }
 
+        /// <summary>
+        /// Verifies resolve fast squadron closes range does not move capital ship into range.
+        /// </summary>
         [Test]
         public void Resolve_FastSquadronClosesRange_DoesNotMoveCapitalShipIntoRange()
         {
@@ -260,6 +290,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve charged capital ship arcs consume shared recharge budget.
+        /// </summary>
         [Test]
         public void Resolve_ChargedCapitalShipArcs_ConsumeSharedRechargeBudget()
         {
@@ -282,6 +315,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(990, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve capital ship retains target between scans continues firing.
+        /// </summary>
         [Test]
         public void Resolve_CapitalShipRetainsTargetBetweenScans_ContinuesFiring()
         {
@@ -305,6 +341,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(1, GetFighterOutcome(result, defender).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve fighter targets capital ship with stronger available attack damages capital ship.
+        /// </summary>
         [Test]
         public void Resolve_FighterTargetsCapitalShipWithStrongerAvailableAttack_DamagesCapitalShip()
         {
@@ -335,6 +374,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(1, GetFighterOutcome(result, defenderFighter).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve fighter weapon charge must recharge before firing again.
+        /// </summary>
         [Test]
         public void Resolve_FighterWeaponCharge_MustRechargeBeforeFiringAgain()
         {
@@ -358,6 +400,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(90, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve ion damage without shields does not damage capital ship hull.
+        /// </summary>
         [Test]
         public void Resolve_IonDamageWithoutShields_DoesNotDamageCapitalShipHull()
         {
@@ -382,6 +427,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(1000, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve mixed damage against shielded ships preserves firing order.
+        /// </summary>
         [Test]
         public void Resolve_MixedDamageAgainstShieldedShips_PreservesFiringOrder()
         {
@@ -428,6 +476,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(0, GetShipOutcome(ionFirst, ionFirstTarget).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve conventional hull damage does not disable capital ship weapons.
+        /// </summary>
         [Test]
         public void Resolve_ConventionalHullDamage_DoesNotDisableCapitalShipWeapons()
         {
@@ -452,6 +503,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(0, GetFighterOutcome(result, attacker).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve ion overflow damage delays capital ship attack.
+        /// </summary>
         [Test]
         public void Resolve_IonOverflowDamage_DelaysCapitalShipAttack()
         {
@@ -479,6 +533,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(1000, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve separate weapon lanes target units at different ranges.
+        /// </summary>
         [Test]
         public void Resolve_SeparateWeaponLanes_TargetUnitsAtDifferentRanges()
         {
@@ -511,6 +568,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(1, GetFighterOutcome(result, defenderFighter).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve ion only capital ship against fighters does not damage fighters.
+        /// </summary>
         [Test]
         public void Resolve_IonOnlyCapitalShipAgainstFighters_DoesNotDamageFighters()
         {
@@ -533,6 +593,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
         }
 
+        /// <summary>
+        /// Verifies resolve mixed target types destroys weaker force.
+        /// </summary>
         [Test]
         public void Resolve_MixedTargetTypes_DestroysWeakerForce()
         {
@@ -564,6 +627,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(0, GetShipOutcome(result, defenderShip).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve full fighter squadrons with equal weapon strength deal equal damage.
+        /// </summary>
         [Test]
         public void Resolve_FullFighterSquadronsWithEqualWeaponStrength_DealEqualDamage()
         {
@@ -605,6 +671,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(99, GetShipOutcome(second, secondTarget).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve damaged fighter squadron deals proportional damage.
+        /// </summary>
         [Test]
         public void Resolve_DamagedFighterSquadron_DealsProportionalDamage()
         {
@@ -627,6 +696,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(94, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve damaged capital ship takes longer to defeat equivalent target.
+        /// </summary>
         [Test]
         public void Resolve_DamagedCapitalShip_TakesLongerToDefeatEquivalentTarget()
         {
@@ -650,6 +722,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.Less(first.IterationsCompleted, second.IterationsCompleted);
         }
 
+        /// <summary>
+        /// Verifies resolve positive fractional attack inflicts minimum damage.
+        /// </summary>
         [Test]
         public void Resolve_PositiveFractionalAttack_InflictsMinimumDamage()
         {
@@ -673,6 +748,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(99, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve shields remain protects capital ship hull.
+        /// </summary>
         [Test]
         public void Resolve_ShieldsRemain_ProtectsCapitalShipHull()
         {
@@ -690,6 +768,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve shield recharge without shield capacity does not protect hull.
+        /// </summary>
         [Test]
         public void Resolve_ShieldRechargeWithoutShieldCapacity_DoesNotProtectHull()
         {
@@ -707,6 +788,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.Less(GetShipOutcome(result, defender).HullAfter, 100);
         }
 
+        /// <summary>
+        /// Verifies resolve shields deplete beyond stagnation window continues combat.
+        /// </summary>
         [Test]
         public void Resolve_ShieldsDepleteBeyondStagnationWindow_ContinuesCombat()
         {
@@ -724,6 +808,11 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(0, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve force reaches one third strength completes according to withdrawal availability.
+        /// </summary>
+        /// <param name="canWithdraw">Whether can withdraw.</param>
+        /// <param name="expectsWithdrawal">Whether expects withdrawal.</param>
         [TestCase(true, true)]
         [TestCase(false, false)]
         public void Resolve_ForceReachesOneThirdStrength_CompletesAccordingToWithdrawalAvailability(
@@ -755,6 +844,9 @@ namespace Rebellion.Tests.Game.Combat
             );
         }
 
+        /// <summary>
+        /// Verifies resolve fighter force falls below one third strength withdraws force.
+        /// </summary>
         [Test]
         public void Resolve_FighterForceFallsBelowOneThirdStrength_WithdrawsForce()
         {
@@ -776,6 +868,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(4, GetFighterOutcome(result, defender).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve only eligible units can withdraw leaves other units in combat.
+        /// </summary>
         [Test]
         public void Resolve_OnlyEligibleUnitsCanWithdraw_LeavesOtherUnitsInCombat()
         {
@@ -815,6 +910,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(0, GetShipOutcome(result, trappedDefender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve withdrawal required without hyperdrive continues fighting.
+        /// </summary>
         [Test]
         public void Resolve_WithdrawalRequiredWithoutHyperdrive_ContinuesFighting()
         {
@@ -847,6 +945,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.Greater(GetShipOutcome(result, defender).HullAfter, 0);
         }
 
+        /// <summary>
+        /// Verifies resolve three capital ships withdraw with one without hyperdrive destroys stranded ship.
+        /// </summary>
         [Test]
         public void Resolve_ThreeCapitalShipsWithdrawWithOneWithoutHyperdrive_DestroysStrandedShip()
         {
@@ -895,6 +996,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
         }
 
+        /// <summary>
+        /// Verifies resolve fleet withdrawal interrupted by victory does not withdraw partial fleet.
+        /// </summary>
         [Test]
         public void Resolve_FleetWithdrawalInterruptedByVictory_DoesNotWithdrawPartialFleet()
         {
@@ -943,6 +1047,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.IsFalse(GetFighterOutcome(result, carriedFighter).Withdrew);
         }
 
+        /// <summary>
+        /// Verifies resolve force begins withdrawal remains vulnerable until it escapes.
+        /// </summary>
         [Test]
         public void Resolve_ForceBeginsWithdrawal_RemainsVulnerableUntilItEscapes()
         {
@@ -969,6 +1076,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(90, GetShipOutcome(result, defender).HullAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve carried non hyperdrive fighter withdraws preserves fighter.
+        /// </summary>
         [Test]
         public void Resolve_CarriedNonHyperdriveFighterWithdraws_PreservesFighter()
         {
@@ -1005,6 +1115,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(12, GetFighterOutcome(result, fighter).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve carrier destroyed without recovery capacity destroys non hyperdrive fighter.
+        /// </summary>
         [Test]
         public void Resolve_CarrierDestroyedWithoutRecoveryCapacity_DestroysNonHyperdriveFighter()
         {
@@ -1052,6 +1165,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(0, GetFighterOutcome(result, fighter).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve two carriers destroyed with non hyperdrive fighters destroys fighters after they fight.
+        /// </summary>
         [Test]
         public void Resolve_TwoCarriersDestroyedWithNonHyperdriveFighters_DestroysFightersAfterTheyFight()
         {
@@ -1116,6 +1232,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.Less(GetShipOutcome(result, attacker).HullAfter, 1000);
         }
 
+        /// <summary>
+        /// Verifies resolve recovery carrier bay occupied by in transit fighter destroys non hyperdrive fighter.
+        /// </summary>
         [Test]
         public void Resolve_RecoveryCarrierBayOccupiedByInTransitFighter_DestroysNonHyperdriveFighter()
         {
@@ -1184,6 +1303,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(0, GetFighterOutcome(result, strandedFighter).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve carrier destroyed with spare recovery capacity withdraws non hyperdrive fighter.
+        /// </summary>
         [Test]
         public void Resolve_CarrierDestroyedWithSpareRecoveryCapacity_WithdrawsNonHyperdriveFighter()
         {
@@ -1240,6 +1362,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(12, GetFighterOutcome(result, fighter).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies resolve hyperdrive fighter occupies recovery carrier withdraws both fighters.
+        /// </summary>
         [Test]
         public void Resolve_HyperdriveFighterOccupiesRecoveryCarrier_WithdrawsBothFighters()
         {
@@ -1316,6 +1441,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.IsTrue(GetFighterOutcome(result, nonHyperdriveFighter).Withdrew);
         }
 
+        /// <summary>
+        /// Verifies resolve unarmed forces without withdrawal destroys both forces.
+        /// </summary>
         [Test]
         public void Resolve_UnarmedForcesWithoutWithdrawal_DestroysBothForces()
         {
@@ -1331,6 +1459,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(1200, result.IterationsCompleted);
         }
 
+        /// <summary>
+        /// Verifies resolve damaged ships cannot recharge weapons or withdraw destroys both sides.
+        /// </summary>
         [Test]
         public void Resolve_DamagedShipsCannotRechargeWeaponsOrWithdraw_DestroysBothSides()
         {
@@ -1362,6 +1493,10 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(3, result.IterationsCompleted);
         }
 
+        /// <summary>
+        /// Resolves symmetric battle.
+        /// </summary>
+        /// <returns>The resolved symmetric battle.</returns>
         private static SpaceCombatAutoResult ResolveSymmetricBattle()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
@@ -1369,6 +1504,14 @@ namespace Rebellion.Tests.Game.Combat
             return Resolve(new[] { attacker }, new[] { defender });
         }
 
+        /// <summary>
+        /// Resolves the requested operation.
+        /// </summary>
+        /// <param name="attackerShips">The attacker ships.</param>
+        /// <param name="defenderShips">The defender ships.</param>
+        /// <param name="attackerCanWithdraw">Whether attacker can withdraw.</param>
+        /// <param name="defenderCanWithdraw">Whether defender can withdraw.</param>
+        /// <returns>The resolved value.</returns>
         private static SpaceCombatAutoResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
             IReadOnlyList<CapitalShip> defenderShips,
@@ -1386,6 +1529,16 @@ namespace Rebellion.Tests.Game.Combat
             );
         }
 
+        /// <summary>
+        /// Resolves the requested operation.
+        /// </summary>
+        /// <param name="attackerShips">The attacker ships.</param>
+        /// <param name="attackerFighters">The attacker fighters.</param>
+        /// <param name="defenderShips">The defender ships.</param>
+        /// <param name="defenderFighters">The defender fighters.</param>
+        /// <param name="attackerCanWithdraw">Whether attacker can withdraw.</param>
+        /// <param name="defenderCanWithdraw">Whether defender can withdraw.</param>
+        /// <returns>The resolved value.</returns>
         private static SpaceCombatAutoResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
             IReadOnlyList<Starfighter> attackerFighters,
@@ -1406,6 +1559,18 @@ namespace Rebellion.Tests.Game.Combat
             );
         }
 
+        /// <summary>
+        /// Resolves the requested operation.
+        /// </summary>
+        /// <param name="config">The config.</param>
+        /// <param name="attackerShips">The attacker ships.</param>
+        /// <param name="attackerFighters">The attacker fighters.</param>
+        /// <param name="defenderShips">The defender ships.</param>
+        /// <param name="defenderFighters">The defender fighters.</param>
+        /// <param name="attackerCanWithdraw">Whether attacker can withdraw.</param>
+        /// <param name="defenderCanWithdraw">Whether defender can withdraw.</param>
+        /// <param name="random">The random.</param>
+        /// <returns>The resolved value.</returns>
         private static SpaceCombatAutoResult Resolve(
             GameConfig.SpaceCombatConfig config,
             IReadOnlyList<CapitalShip> attackerShips,
@@ -1428,6 +1593,10 @@ namespace Rebellion.Tests.Game.Combat
                 );
         }
 
+        /// <summary>
+        /// Creates config.
+        /// </summary>
+        /// <returns>The created config.</returns>
         private static GameConfig.SpaceCombatConfig CreateConfig()
         {
             return new GameConfig.SpaceCombatConfig
@@ -1449,6 +1618,13 @@ namespace Rebellion.Tests.Game.Combat
             };
         }
 
+        /// <summary>
+        /// Creates withdrawal groups.
+        /// </summary>
+        /// <param name="canWithdraw">Whether can withdraw.</param>
+        /// <param name="ships">The ships.</param>
+        /// <param name="fighters">The fighters.</param>
+        /// <returns>The created withdrawal groups.</returns>
         private static IReadOnlyList<IReadOnlyCollection<ISceneNode>> CreateWithdrawalGroups(
             bool canWithdraw,
             IReadOnlyList<CapitalShip> ships,
@@ -1465,6 +1641,12 @@ namespace Rebellion.Tests.Game.Combat
                 .ToList();
         }
 
+        /// <summary>
+        /// Creates resolver.
+        /// </summary>
+        /// <param name="config">The config.</param>
+        /// <param name="random">The random.</param>
+        /// <returns>The created resolver.</returns>
         private static SpaceCombatAutoResolver CreateResolver(
             GameConfig.SpaceCombatConfig config = null,
             IRandomNumberProvider random = null
@@ -1476,6 +1658,14 @@ namespace Rebellion.Tests.Game.Combat
             );
         }
 
+        /// <summary>
+        /// Creates ship.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="hull">The hull.</param>
+        /// <param name="weaponStrength">The weapon strength.</param>
+        /// <param name="armEveryArc">Whether arm every arc.</param>
+        /// <returns>The created ship.</returns>
         private static CapitalShip CreateShip(
             string instanceId,
             int hull,
@@ -1500,6 +1690,11 @@ namespace Rebellion.Tests.Game.Combat
             return ship;
         }
 
+        /// <summary>
+        /// Creates laser escort.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <returns>The created laser escort.</returns>
         private static CapitalShip CreateLaserEscort(string instanceId)
         {
             CapitalShip ship = CreateShip(instanceId, hull: 500, weaponStrength: 0);
@@ -1512,6 +1707,11 @@ namespace Rebellion.Tests.Game.Combat
             return ship;
         }
 
+        /// <summary>
+        /// Creates heavy line ship.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <returns>The created heavy line ship.</returns>
         private static CapitalShip CreateHeavyLineShip(string instanceId)
         {
             CapitalShip ship = CreateShip(instanceId, hull: 2750, weaponStrength: 0);
@@ -1525,6 +1725,13 @@ namespace Rebellion.Tests.Game.Combat
             return ship;
         }
 
+        /// <summary>
+        /// Creates fighter.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="squadronSize">The squadron size.</param>
+        /// <param name="weaponStrength">The weapon strength.</param>
+        /// <returns>The created fighter.</returns>
         private static Starfighter CreateFighter(
             string instanceId,
             int squadronSize,
@@ -1544,11 +1751,23 @@ namespace Rebellion.Tests.Game.Combat
             };
         }
 
+        /// <summary>
+        /// Creates passive target.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="hull">The hull.</param>
+        /// <returns>The created passive target.</returns>
         private static CapitalShip CreatePassiveTarget(string instanceId, int hull)
         {
             return CreateShip(instanceId, hull, weaponStrength: 0);
         }
 
+        /// <summary>
+        /// Gets ship outcome.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <param name="ship">The ship.</param>
+        /// <returns>The requested ship outcome.</returns>
         private static SpaceCombatAutoShipOutcome GetShipOutcome(
             SpaceCombatAutoResult result,
             CapitalShip ship
@@ -1557,6 +1776,12 @@ namespace Rebellion.Tests.Game.Combat
             return result.Ships.Single(outcome => outcome.Ship == ship);
         }
 
+        /// <summary>
+        /// Gets fighter outcome.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <param name="fighter">The fighter.</param>
+        /// <returns>The requested fighter outcome.</returns>
         private static SpaceCombatAutoFighterOutcome GetFighterOutcome(
             SpaceCombatAutoResult result,
             Starfighter fighter
@@ -1567,11 +1792,21 @@ namespace Rebellion.Tests.Game.Combat
 
         private sealed class ArcDamageRNG : IRandomNumberProvider
         {
+            /// <summary>
+            /// Executes next double.
+            /// </summary>
+            /// <returns>The result of next double.</returns>
             public double NextDouble()
             {
                 return 0;
             }
 
+            /// <summary>
+            /// Executes next int.
+            /// </summary>
+            /// <param name="min">The min.</param>
+            /// <param name="max">The max.</param>
+            /// <returns>The result of next int.</returns>
             public int NextInt(int min, int max)
             {
                 return min == 1 && max == 11 ? 3 : min;
@@ -1580,11 +1815,21 @@ namespace Rebellion.Tests.Game.Combat
 
         private sealed class AttackDelayRNG : IRandomNumberProvider
         {
+            /// <summary>
+            /// Executes next double.
+            /// </summary>
+            /// <returns>The result of next double.</returns>
             public double NextDouble()
             {
                 return 0;
             }
 
+            /// <summary>
+            /// Executes next int.
+            /// </summary>
+            /// <param name="min">The min.</param>
+            /// <param name="max">The max.</param>
+            /// <returns>The result of next int.</returns>
             public int NextInt(int min, int max)
             {
                 return min == 1 && max == 11 ? 1 : min;

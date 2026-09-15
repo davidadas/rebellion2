@@ -25,6 +25,9 @@ namespace Rebellion.Tests.Systems
         private Faction _empire;
         private Planet _tatooine;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -55,6 +58,9 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(_tatooine, planetSector);
         }
 
+        /// <summary>
+        /// Verifies process tick force rank above threshold enters discovering state.
+        /// </summary>
         [Test]
         public void ProcessTick_ForceRankAboveThreshold_EntersDiscoveringState()
         {
@@ -71,6 +77,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(85, results[0].ForceRank);
         }
 
+        /// <summary>
+        /// Verifies process tick force rank exactly at threshold enters discovering state.
+        /// </summary>
         [Test]
         public void ProcessTick_ForceRankExactlyAtThreshold_EntersDiscoveringState()
         {
@@ -86,6 +95,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick force rank below threshold no discovery.
+        /// </summary>
         [Test]
         public void ProcessTick_ForceRankBelowThreshold_NoDiscovery()
         {
@@ -100,6 +112,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick captured officer no discovering state.
+        /// </summary>
         [Test]
         public void ProcessTick_CapturedOfficer_NoDiscoveringState()
         {
@@ -115,6 +130,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick already discovering no repeated event.
+        /// </summary>
         [Test]
         public void ProcessTick_AlreadyDiscovering_NoRepeatedEvent()
         {
@@ -130,6 +148,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick force rank drops below threshold clears discovering state.
+        /// </summary>
         [Test]
         public void ProcessTick_ForceRankDropsBelowThreshold_ClearsDiscoveringState()
         {
@@ -141,6 +162,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(luke.IsDiscoveringForceUser);
         }
 
+        /// <summary>
+        /// Verifies process tick non jedi officer clears discovering state.
+        /// </summary>
         [Test]
         public void ProcessTick_NonJediOfficer_ClearsDiscoveringState()
         {
@@ -165,6 +189,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results);
         }
 
+        /// <summary>
+        /// Verifies process tick non trainer jedi clears discovering state.
+        /// </summary>
         [Test]
         public void ProcessTick_NonTrainerJedi_ClearsDiscoveringState()
         {
@@ -180,6 +207,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results);
         }
 
+        /// <summary>
+        /// Verifies process tick force ineligible jedi clears discovering state.
+        /// </summary>
         [Test]
         public void ProcessTick_ForceIneligibleJedi_ClearsDiscoveringState()
         {
@@ -196,6 +226,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results);
         }
 
+        /// <summary>
+        /// Verifies process tick empty game no events.
+        /// </summary>
         [Test]
         public void ProcessTick_EmptyGame_NoEvents()
         {
@@ -207,6 +240,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick multiple officers all processed.
+        /// </summary>
         [Test]
         public void ProcessTick_MultipleOfficers_AllProcessed()
         {
@@ -223,6 +259,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(2, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick officer with training adjustment includes adjustment in rank.
+        /// </summary>
         [Test]
         public void ProcessTick_OfficerWithTrainingAdjustment_IncludesAdjustmentInRank()
         {
@@ -240,6 +279,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(85, results[0].ForceRank);
         }
 
+        /// <summary>
+        /// Verifies process tick discovering jedi with dormant candidate discovers dormant.
+        /// </summary>
         [Test]
         public void ProcessTick_DiscoveringJediWithDormantCandidate_DiscoversDormant()
         {
@@ -262,6 +304,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(luke, results[0].Discoverer);
         }
 
+        /// <summary>
+        /// Verifies process tick enemy dormant candidate does not discover.
+        /// </summary>
         [Test]
         public void ProcessTick_EnemyDormantCandidate_DoesNotDiscover()
         {
@@ -299,6 +344,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results);
         }
 
+        /// <summary>
+        /// Verifies process tick non positive discovery chance does not discover.
+        /// </summary>
         [Test]
         public void ProcessTick_NonPositiveDiscoveryChance_DoesNotDiscover()
         {
@@ -322,6 +370,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results);
         }
 
+        /// <summary>
+        /// Verifies process tick below threshold jedi no scan.
+        /// </summary>
         [Test]
         public void ProcessTick_BelowThresholdJedi_NoScan()
         {
@@ -342,6 +393,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick already eligible candidate skipped.
+        /// </summary>
         [Test]
         public void ProcessTick_AlreadyEligibleCandidate_Skipped()
         {
@@ -360,6 +414,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick captured candidate skipped.
+        /// </summary>
         [Test]
         public void ProcessTick_CapturedCandidate_Skipped()
         {
@@ -380,6 +437,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick on mission candidate skipped.
+        /// </summary>
         [Test]
         public void ProcessTick_OnMissionCandidate_Skipped()
         {
@@ -404,6 +464,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick high roll discovery fails.
+        /// </summary>
         [Test]
         public void ProcessTick_HighRoll_DiscoveryFails()
         {
@@ -424,6 +487,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick officer with template initializes force value.
+        /// </summary>
         [Test]
         public void ProcessTick_OfficerWithTemplate_InitializesForceValue()
         {
@@ -442,6 +508,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, leia.ForceValue);
         }
 
+        /// <summary>
+        /// Verifies process tick dormant officer with story growth preserves higher force value.
+        /// </summary>
         [Test]
         public void ProcessTick_DormantOfficerWithStoryGrowth_PreservesHigherForceValue()
         {
@@ -461,6 +530,9 @@ namespace Rebellion.Tests.Systems
             Assert.Zero(result.ExperienceGained);
         }
 
+        /// <summary>
+        /// Verifies apply force growth eligible officer grows force.
+        /// </summary>
         [Test]
         public void ApplyForceGrowth_EligibleOfficer_GrowsForce()
         {
@@ -485,6 +557,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(before + growth, result.CurrentForceRank);
         }
 
+        /// <summary>
+        /// Verifies apply force growth not force eligible no growth.
+        /// </summary>
         [Test]
         public void ApplyForceGrowth_NotForceEligible_NoGrowth()
         {
@@ -503,6 +578,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(before, officer.ForceValue);
         }
 
+        /// <summary>
+        /// Verifies handle results successful mission applies force growth.
+        /// </summary>
         [Test]
         public void HandleResults_SuccessfulMission_AppliesForceGrowth()
         {
@@ -532,6 +610,12 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, results.OfType<ForceExperienceResult>().Count());
         }
 
+        /// <summary>
+        /// Creates jedi trainer.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="forceValue">The force value.</param>
+        /// <returns>The created jedi trainer.</returns>
         private Officer CreateJediTrainer(string id, int forceValue)
         {
             Officer officer = CreateKnownJedi(id, forceValue);
@@ -539,6 +623,12 @@ namespace Rebellion.Tests.Systems
             return officer;
         }
 
+        /// <summary>
+        /// Creates known jedi.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="forceValue">The force value.</param>
+        /// <returns>The created known jedi.</returns>
         private Officer CreateKnownJedi(string id, int forceValue)
         {
             Officer officer = new Officer
@@ -555,6 +645,11 @@ namespace Rebellion.Tests.Systems
             return officer;
         }
 
+        /// <summary>
+        /// Creates dormant jedi.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <returns>The created dormant jedi.</returns>
         private Officer CreateDormantJedi(string id)
         {
             Officer officer = new Officer

@@ -32,10 +32,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies that authored modifier composites include their actual modifier and key paths.
+        /// Verifies that modifier composites include their platform modifier and authored key paths.
         /// </summary>
         [Test]
-        public void CompositeSignatures_UseAuthoredModifierAndBindingParts()
+        public void CompositeSignatures_UsePlatformModifierAndAuthoredBindingParts()
         {
             InputAction decrease = _inputManager.Asset.FindAction(
                 "Strategy/DecreaseGameSpeed",
@@ -55,7 +55,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 FindBinding(increase, "PrimaryChord")
             );
 
-            StringAssert.Contains("<Keyboard>/ctrl", decreaseSignature);
+            StringAssert.Contains(GetPlatformModifierPath(), decreaseSignature);
             StringAssert.Contains("<Keyboard>/minus", decreaseSignature);
             Assert.AreNotEqual(decreaseSignature, increaseSignature);
         }
@@ -75,7 +75,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             int reboundChord = FindBinding(rebound, "PrimaryChord");
             rebound.ApplyBindingOverride(
                 FindPart(rebound, reboundChord, "Modifier"),
-                "<Keyboard>/ctrl"
+                GetPlatformModifierPath()
             );
             rebound.ApplyBindingOverride(
                 FindPart(rebound, reboundChord, "Binding"),
@@ -346,8 +346,22 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Returns the default desktop shortcut modifier for the current test platform.
+        /// </summary>
+        /// <returns>The native keyboard modifier path.</returns>
+        private static string GetPlatformModifierPath()
+        {
+            return Application.platform == RuntimePlatform.OSXEditor
+                ? "<Keyboard>/leftMeta"
+                : "<Keyboard>/ctrl";
+        }
+
+        /// <summary>
         /// Finds a top-level authored binding by name.
         /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The matching binding.</returns>
         private static int FindBinding(InputAction action, string name)
         {
             for (int index = 0; index < action.bindings.Count; index++)
@@ -363,6 +377,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <summary>
         /// Finds a named part belonging to one authored composite.
         /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="compositeIndex">The composite index.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The matching part.</returns>
         private static int FindPart(InputAction action, int compositeIndex, string name)
         {
             for (int index = compositeIndex + 1; index < action.bindings.Count; index++)

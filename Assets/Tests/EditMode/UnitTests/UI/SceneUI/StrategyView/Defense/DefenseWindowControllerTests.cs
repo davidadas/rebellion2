@@ -33,6 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -66,6 +69,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -73,6 +79,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             UnityEngine.Object.DestroyImmediate(_texture);
         }
 
+        /// <summary>
+        /// Verifies constructor null ui context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullUIContextProvider_ThrowsArgumentNullException()
         {
@@ -88,6 +97,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Verifies initialize null window actions throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullWindowActions_ThrowsArgumentNullException()
         {
@@ -106,6 +118,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Verifies bind window before initialize throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -118,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
         }
 
+        /// <summary>
+        /// Verifies try initialize window null planet returns false.
+        /// </summary>
         [Test]
         public void TryInitializeWindow_NullPlanet_ReturnsFalse()
         {
@@ -132,6 +150,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Verifies open valid planet creates named window at resolved position.
+        /// </summary>
         [Test]
         public void Open_ValidPlanet_CreatesNamedWindowAtResolvedPosition()
         {
@@ -149,6 +170,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(_planet, _controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Verifies open existing planet reuses window without additional invalidation.
+        /// </summary>
         [Test]
         public void Open_ExistingPlanet_ReusesWindowWithoutAdditionalInvalidation()
         {
@@ -163,6 +187,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies select finder tab valid tab changes active tab.
+        /// </summary>
         [Test]
         public void SelectFinderTab_ValidTab_ChangesActiveTab()
         {
@@ -173,6 +200,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(DefenseWindowTab.Regiments, _controller.GetActiveTab(view));
         }
 
+        /// <summary>
+        /// Verifies select target matching item selects item and status target.
+        /// </summary>
         [Test]
         public void SelectTarget_MatchingItem_SelectsItemAndStatusTarget()
         {
@@ -187,6 +217,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(_officer, target.Item);
         }
 
+        /// <summary>
+        /// Verifies item press modified portrait selection renders selection before starting drag.
+        /// </summary>
         [Test]
         public void ItemPress_ModifiedPortraitSelection_RendersSelectionBeforeStartingDrag()
         {
@@ -241,6 +274,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(1, dragStartCount);
         }
 
+        /// <summary>
+        /// Verifies window drop active targeting selects represented planet.
+        /// </summary>
         [Test]
         public void WindowDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
@@ -260,6 +296,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(_planet.Planet, target.GetMoveDestination());
         }
 
+        /// <summary>
+        /// Verifies reconcile window fresh projection rebinds planet and selection by identity.
+        /// </summary>
         [Test]
         public void ReconcileWindow_FreshProjection_RebindsPlanetAndSelectionByIdentity()
         {
@@ -288,6 +327,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             CollectionAssert.AreEqual(new[] { 0 }, _controller.GetSelectedItems(view));
         }
 
+        /// <summary>
+        /// Verifies clear selection selected item removes selection and status target.
+        /// </summary>
         [Test]
         public void ClearSelection_SelectedItem_RemovesSelectionAndStatusTarget()
         {
@@ -300,6 +342,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNull(_controller.GetStatusTarget(window));
         }
 
+        /// <summary>
+        /// Verifies try create context menu no context item returns disabled information commands.
+        /// </summary>
         [Test]
         public void TryCreateContextMenu_NoContextItem_ReturnsDisabledInformationCommands()
         {
@@ -325,6 +370,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsFalse(((StrategyMenuCommand)request.Commands[1]).Enabled);
         }
 
+        /// <summary>
+        /// Verifies create context menu for item officer uses normal defense commands.
+        /// </summary>
         [Test]
         public void CreateContextMenuForItem_Officer_UsesNormalDefenseCommands()
         {
@@ -354,6 +402,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(_controller, request.Receiver);
         }
 
+        /// <summary>
+        /// Verifies context menu direct officer move confirm starts targeting without source window.
+        /// </summary>
         [Test]
         public void ContextMenu_DirectOfficerMoveConfirm_StartsTargetingWithoutSourceWindow()
         {
@@ -379,6 +430,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             CollectionAssert.AreEqual(new ISceneNode[] { _officer }, source.Items);
         }
 
+        /// <summary>
+        /// Verifies view destroyed initialized session releases planet association.
+        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
@@ -389,6 +443,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private DefenseWindowController CreateController()
         {
             return new DefenseWindowController(
@@ -402,14 +460,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             return game;
         }
 
+        /// <summary>
+        /// Creates ui context.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The created ui context.</returns>
         private UIContext CreateUIContext(GameRoot game)
         {
             FactionTheme playerTheme = new FactionTheme
@@ -434,6 +502,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The created planet.</returns>
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
             GalaxyPlanetSector sector = new GalaxyPlanetSector
@@ -453,6 +526,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             return new GalaxyMapPlanet(sector, planet, _playerFactionId);
         }
 
+        /// <summary>
+        /// Opens window.
+        /// </summary>
+        /// <param name="window">Receives the window.</param>
+        /// <returns>The result of open window.</returns>
         private DefenseWindowView OpenWindow(out UIWindow window)
         {
             window = _controller.Open(_planet, 20, 30, out bool _);
@@ -464,11 +542,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         {
             public object Target { get; private set; }
 
+            /// <summary>
+            /// Executes on target selected.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="target">The target.</param>
             public void OnTargetSelected(TargetingRequest request, object target)
             {
                 Target = target;
             }
 
+            /// <summary>
+            /// Executes on targeting cancelled.
+            /// </summary>
+            /// <param name="request">The request.</param>
             public void OnTargetingCancelled(TargetingRequest request) { }
         }
 
@@ -480,41 +567,95 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         {
             public bool IsIdleBarEnabled => true;
 
+            /// <summary>
+            /// Checks whether the idle bar tracked condition is met.
+            /// </summary>
+            /// <param name="entity">The entity.</param>
+            /// <returns>True when the idle bar tracked condition is met; otherwise false.</returns>
             public bool IsIdleBarTracked(ISceneNode entity) => true;
 
+            /// <summary>
+            /// Executes toggle idle bar tracking.
+            /// </summary>
+            /// <param name="entity">The entity.</param>
             public void ToggleIdleBarTracking(ISceneNode entity) { }
 
+            /// <summary>
+            /// Checks whether the retire condition is met.
+            /// </summary>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the retire condition is met; otherwise false.</returns>
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
 
+            /// <summary>
+            /// Executes targeted command.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <param name="target">The target.</param>
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
             ) { }
 
+            /// <summary>
+            /// Opens defense status window.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenDefenseStatusWindow(StrategyStatusTarget target) { }
 
+            /// <summary>
+            /// Opens defense info window.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenDefenseInfoWindow(StrategyStatusTarget target) { }
 
+            /// <summary>
+            /// Opens scrap confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenScrapConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Opens stop construction confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenStopConstructionConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Opens retire confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenRetireConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Opens mission create window.
+            /// </summary>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
             public void OpenMissionCreateWindow(
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Attempts execute move.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryExecuteMove(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
@@ -524,21 +665,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 return false;
             }
 
+            /// <summary>
+            /// Opens move confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
             public void OpenMoveConfirmWindow(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Attempts append fleet waypoint.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <param name="target">The target.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryAppendFleetWaypoint(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
             ) => false;
 
+            /// <summary>
+            /// Attempts commit fleet waypoint plan.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
+            /// <summary>
+            /// Attempts undo fleet waypoint plan.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
+            /// <summary>
+            /// Executes clear fleet waypoints.
+            /// </summary>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
         }
     }

@@ -19,6 +19,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
+        /// <summary>
+        /// Verifies build command menu player faction returns authored order and default checks.
+        /// </summary>
         [Test]
         public void BuildCommandMenu_PlayerFaction_ReturnsAuthoredOrderAndDefaultChecks()
         {
@@ -57,6 +60,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             );
         }
 
+        /// <summary>
+        /// Verifies build command menu without player faction disables all commands.
+        /// </summary>
         [Test]
         public void BuildCommandMenu_WithoutPlayerFaction_DisablesAllCommands()
         {
@@ -66,6 +72,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(commandMenu.All(command => !command.Enabled));
         }
 
+        /// <summary>
+        /// Verifies build notification menu saved category setting returns authored order and checks.
+        /// </summary>
         [Test]
         public void BuildNotificationMenu_SavedCategorySetting_ReturnsAuthoredOrderAndChecks()
         {
@@ -107,6 +116,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             );
         }
 
+        /// <summary>
+        /// Verifies build notification menu without player faction disables all commands.
+        /// </summary>
         [Test]
         public void BuildNotificationMenu_WithoutPlayerFaction_DisablesAllCommands()
         {
@@ -121,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             );
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected manage production enabled processes automation immediately.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ManageProductionEnabled_ProcessesAutomationImmediately()
         {
@@ -157,6 +172,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(faction, actions.ProcessedFaction);
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected manage naming enabled processes automation immediately.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ManageNamingEnabled_ProcessesAutomationImmediately()
         {
@@ -193,6 +211,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(faction, actions.ProcessedFaction);
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected management toggles play authored enable and disable responses.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ManagementToggles_PlayAuthoredEnableAndDisableResponses()
         {
@@ -263,6 +284,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected rapid management toggles stop previous response audio.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_RapidManagementToggles_StopPreviousResponseAudio()
         {
@@ -335,6 +359,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected management response holds animation for audio duration.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ManagementResponse_HoldsAnimationForAudioDuration()
         {
@@ -379,6 +406,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies handle playback started next queued response preserves previous response audio.
+        /// </summary>
         [Test]
         public void HandlePlaybackStarted_NextQueuedResponse_PreservesPreviousResponseAudio()
         {
@@ -460,6 +490,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies render same theme after idle frames load refreshes advisor images.
+        /// </summary>
         [Test]
         public void Render_SameThemeAfterIdleFramesLoad_RefreshesAdvisorImages()
         {
@@ -496,6 +529,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies process pending frames still loading retains notification until playback is ready.
+        /// </summary>
         [Test]
         public void ProcessPending_FramesStillLoading_RetainsNotificationUntilPlaybackIsReady()
         {
@@ -563,6 +599,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies process pending custom notification uses authored animation and audio paths.
+        /// </summary>
         [Test]
         public void ProcessPending_CustomNotification_UsesAuthoredAnimationAndAudioPaths()
         {
@@ -621,6 +660,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies play invalid order rejected authored response replaces playback.
+        /// </summary>
         [Test]
         public void PlayInvalidOrderRejected_AuthoredResponse_ReplacesPlayback()
         {
@@ -665,6 +707,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies replace animation valid playback invokes playback callbacks.
+        /// </summary>
         [Test]
         public void ReplaceAnimation_ValidPlayback_InvokesPlaybackCallbacks()
         {
@@ -707,6 +752,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies replace animation empty playback cancels active playback and completes replacement.
+        /// </summary>
         [Test]
         public void ReplaceAnimation_EmptyPlayback_CancelsActivePlaybackAndCompletesReplacement()
         {
@@ -748,6 +796,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Verifies cancel animation active playback does not invoke completion.
+        /// </summary>
         [Test]
         public void CancelAnimation_ActivePlayback_DoesNotInvokeCompletion()
         {
@@ -786,6 +837,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <param name="textures">The textures.</param>
+        /// <param name="selectRandomIndex">The select random index.</param>
+        /// <returns>The created controller.</returns>
         private static StrategyAdvisorController CreateController(
             IReadOnlyDictionary<string, Texture2D> textures,
             Func<int, int> selectRandomIndex = null
@@ -801,6 +858,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             return controller;
         }
 
+        /// <summary>
+        /// Executes destroy audio managers.
+        /// </summary>
         private static void DestroyAudioManagers()
         {
             foreach (
@@ -813,6 +873,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        /// <summary>
+        /// Creates theme.
+        /// </summary>
+        /// <returns>The created theme.</returns>
         private static StrategyAdvisorTheme CreateTheme()
         {
             return new StrategyAdvisorTheme
@@ -825,6 +889,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             };
         }
 
+        /// <summary>
+        /// Creates response.
+        /// </summary>
+        /// <param name="animation">The animation.</param>
+        /// <param name="audio">The audio.</param>
+        /// <returns>The created response.</returns>
         private static StrategyAdvisorAnimationTheme CreateResponse(string animation, string audio)
         {
             return new StrategyAdvisorAnimationTheme
@@ -835,6 +905,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             };
         }
 
+        /// <summary>
+        /// Selects command.
+        /// </summary>
+        /// <param name="controller">The controller.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="action">The action.</param>
         private static void SelectCommand(
             StrategyAdvisorController controller,
             Faction faction,
@@ -862,6 +938,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             controller.OnContextMenuCommandSelected(request, command);
         }
 
+        /// <summary>
+        /// Gets image.
+        /// </summary>
+        /// <param name="rootObject">The root object.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The requested image.</returns>
         private static RawImage GetImage(GameObject rootObject, string name)
         {
             return rootObject
@@ -873,43 +955,92 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         {
             public Faction ProcessedFaction { get; private set; }
 
+            /// <summary>
+            /// Executes begin advisor construction.
+            /// </summary>
+            /// <param name="manufacturingType">The manufacturing type.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void BeginAdvisorConstruction(
                 ManufacturingType manufacturingType,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Opens advisor command context menu.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenAdvisorCommandContextMenu(
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Opens advisor notification context menu.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenAdvisorNotificationContextMenu(
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Opens advisor report.
+            /// </summary>
+            /// <param name="mode">The mode.</param>
             public void OpenAdvisorReport(AdvisorReportMode mode) { }
 
+            /// <summary>
+            /// Opens messages tab.
+            /// </summary>
+            /// <param name="tab">The tab.</param>
             public void OpenMessagesTab(MessagesTab tab) { }
 
+            /// <summary>
+            /// Processes advisor automation.
+            /// </summary>
+            /// <param name="faction">The faction.</param>
             public void ProcessAdvisorAutomation(Faction faction)
             {
                 ProcessedFaction = faction;
             }
 
+            /// <summary>
+            /// Opens speed context menu.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenSpeedContextMenu(
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
             ) { }
 
+            /// <summary>
+            /// Executes release hud button.
+            /// </summary>
+            /// <param name="action">The action.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void ReleaseHudButton(StrategyHudAction action, int sourceX, int sourceY) { }
 
+            /// <summary>
+            /// Sets game speed.
+            /// </summary>
+            /// <param name="speed">The speed.</param>
             public void SetGameSpeed(TickSpeed speed) { }
 
+            /// <summary>
+            /// Executes request hud render.
+            /// </summary>
             public void RequestHudRender() { }
         }
     }

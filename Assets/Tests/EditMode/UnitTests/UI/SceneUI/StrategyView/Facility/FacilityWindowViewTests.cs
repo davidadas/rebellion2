@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private FacilityWindowView _view;
         private GameObject _viewObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -33,6 +36,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -41,12 +47,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render manufacturing mode applies lane presentation and progress.
+        /// </summary>
         [Test]
         public void Render_ManufacturingMode_AppliesLanePresentationAndProgress()
         {
@@ -120,6 +132,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual("No Troops", FindCardText(troopCard, "EmptyTextField").text);
         }
 
+        /// <summary>
+        /// Verifies render inventory mode applies grid selection and hides manufacturing cards.
+        /// </summary>
         [Test]
         public void Render_InventoryMode_AppliesGridSelectionAndHidesManufacturingCards()
         {
@@ -174,6 +189,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(FindCard("ShipyardsManufacturingLaneCard").gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render shorter inventory hides unused cached items.
+        /// </summary>
         [Test]
         public void Render_ShorterInventory_HidesUnusedCachedItems()
         {
@@ -201,6 +219,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(second.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render invalid tab count throws argument exception.
+        /// </summary>
         [Test]
         public void Render_InvalidTabCount_ThrowsArgumentException()
         {
@@ -222,6 +243,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render invalid tab order throws argument exception.
+        /// </summary>
         [Test]
         public void Render_InvalidTabOrder_ThrowsArgumentException()
         {
@@ -248,6 +272,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies on pointer click primary then secondary click raises only primary background event.
+        /// </summary>
         [Test]
         public void OnPointerClick_PrimaryThenSecondaryClick_RaisesOnlyPrimaryBackgroundEvent()
         {
@@ -275,6 +302,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreSame(leftClick, received);
         }
 
+        /// <summary>
+        /// Verifies authored tab button click raises semantic tab selection.
+        /// </summary>
         [Test]
         public void AuthoredTabButton_Click_RaisesSemanticTabSelection()
         {
@@ -287,6 +317,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(FacilityWindowTab.Mines, selected);
         }
 
+        /// <summary>
+        /// Verifies manufacturing card gestures authored card raise indexed events.
+        /// </summary>
         [Test]
         public void ManufacturingCardGestures_AuthoredCard_RaiseIndexedEvents()
         {
@@ -315,6 +348,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(2, releasedCount);
         }
 
+        /// <summary>
+        /// Verifies inventory item gestures rendered item raise indexed events.
+        /// </summary>
         [Test]
         public void InventoryItemGestures_RenderedItem_RaiseIndexedEvents()
         {
@@ -349,6 +385,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(0, doubleClickedIndex);
         }
 
+        /// <summary>
+        /// Verifies pointer target queries rendered controls return semantic indexes.
+        /// </summary>
         [Test]
         public void PointerTargetQueries_RenderedControls_ReturnSemanticIndexes()
         {
@@ -397,6 +436,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(-1, missingIndex);
         }
 
+        /// <summary>
+        /// Verifies child views null render data throw argument null exception.
+        /// </summary>
         [Test]
         public void ChildViews_NullRenderData_ThrowArgumentNullException()
         {
@@ -411,6 +453,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_RaisesDestroyedEvent()
         {
@@ -422,6 +467,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreSame(_view, destroyed);
         }
 
+        /// <summary>
+        /// Creates render data.
+        /// </summary>
+        /// <param name="activeTab">The active tab.</param>
+        /// <param name="cards">The cards.</param>
+        /// <param name="items">The items.</param>
+        /// <returns>The created render data.</returns>
         private FacilityWindowRenderData CreateRenderData(
             FacilityWindowTab activeTab,
             IReadOnlyList<ManufacturingLaneCardRenderData> cards,
@@ -444,6 +496,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Creates tabs.
+        /// </summary>
+        /// <param name="activeTab">The active tab.</param>
+        /// <returns>The created tabs.</returns>
         private static FacilityWindowTabRenderData[] CreateTabs(FacilityWindowTab activeTab)
         {
             return FacilityWindowRenderData
@@ -456,6 +513,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 .ToArray();
         }
 
+        /// <summary>
+        /// Creates raycast event.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <returns>The created raycast event.</returns>
         private static PointerEventData CreateRaycastEvent(GameObject target)
         {
             return new PointerEventData(null)
@@ -464,6 +526,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             };
         }
 
+        /// <summary>
+        /// Finds card.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching card.</returns>
         private ManufacturingLaneCardView FindCard(string objectName)
         {
             return _viewObject
@@ -471,6 +538,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 .Single(card => card.name == objectName);
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {
@@ -479,6 +552,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds inventory items.
+        /// </summary>
+        /// <returns>The matching inventory items.</returns>
         private FacilityInventoryItemView[] FindInventoryItems()
         {
             return _viewObject
@@ -491,6 +568,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds object.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching object.</returns>
         private GameObject FindObject(string objectName)
         {
             return _viewObject
@@ -499,6 +581,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds card object.
+        /// </summary>
+        /// <param name="card">The card.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching card object.</returns>
         private static GameObject FindCardObject(ManufacturingLaneCardView card, string objectName)
         {
             return card.GetComponentsInChildren<Transform>(true)
@@ -506,6 +594,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 .gameObject;
         }
 
+        /// <summary>
+        /// Finds card text.
+        /// </summary>
+        /// <param name="card">The card.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching card text.</returns>
         private static TextMeshProUGUI FindCardText(
             ManufacturingLaneCardView card,
             string objectName
@@ -515,6 +609,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 .Single(text => text.name == objectName);
         }
 
+        /// <summary>
+        /// Finds inventory object.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching inventory object.</returns>
         private static GameObject FindInventoryObject(
             FacilityInventoryItemView item,
             string objectName

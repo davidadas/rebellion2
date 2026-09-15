@@ -1400,6 +1400,9 @@ namespace Rebellion.Game
             /// <summary>
             /// Resolves a score through a named mission probability table.
             /// </summary>
+            /// <param name="key">The key.</param>
+            /// <param name="score">The score.</param>
+            /// <returns>The requested success probability.</returns>
             public int GetSuccessProbability(string key, int score)
             {
                 Dictionary<int, int> table = GetSuccessTable(key);

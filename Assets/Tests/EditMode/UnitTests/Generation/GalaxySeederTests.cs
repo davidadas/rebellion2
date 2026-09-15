@@ -15,6 +15,9 @@ namespace Rebellion.Tests.Generation
         private Faction[] _factions;
         private GameSummary _summary;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -31,6 +34,9 @@ namespace Rebellion.Tests.Generation
             };
         }
 
+        /// <summary>
+        /// Verifies seed strong bucket planet is assigned ownership.
+        /// </summary>
         [Test]
         public void Seed_StrongBucketPlanet_IsAssignedOwnership()
         {
@@ -63,6 +69,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies seed weak bucket planet is assigned ownership.
+        /// </summary>
         [Test]
         public void Seed_WeakBucketPlanet_IsAssignedOwnership()
         {
@@ -106,6 +115,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies seed neutral bucket planet remains unowned.
+        /// </summary>
         [Test]
         public void Seed_NeutralBucketPlanet_RemainsUnowned()
         {
@@ -144,6 +156,9 @@ namespace Rebellion.Tests.Generation
             }
         }
 
+        /// <summary>
+        /// Verifies seed profile with strong and weak buckets owns sum of both.
+        /// </summary>
         [Test]
         public void Seed_ProfileWithStrongAndWeakBuckets_OwnsSumOfBoth()
         {
@@ -178,6 +193,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies seed starting planet in bucket preserves original ownership.
+        /// </summary>
         [Test]
         public void Seed_StartingPlanetInBucket_PreservesOriginalOwnership()
         {
@@ -219,6 +237,14 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Creates rules.
+        /// </summary>
+        /// <param name="allianceStrongPct">The alliance strong pct.</param>
+        /// <param name="allianceWeakPct">The alliance weak pct.</param>
+        /// <param name="empireStrongPct">The empire strong pct.</param>
+        /// <param name="empireWeakPct">The empire weak pct.</param>
+        /// <returns>The created rules.</returns>
         private GameGenerationConfig CreateRules(
             int allianceStrongPct,
             int allianceWeakPct,
@@ -262,6 +288,15 @@ namespace Rebellion.Tests.Generation
             };
         }
 
+        /// <summary>
+        /// Executes classify.
+        /// </summary>
+        /// <param name="sectors">The sectors.</param>
+        /// <param name="factions">The factions.</param>
+        /// <param name="summary">The summary.</param>
+        /// <param name="config">The config.</param>
+        /// <param name="rng">The rng.</param>
+        /// <returns>The result of classify.</returns>
         private static GalaxyClassificationResult Classify(
             PlanetSector[] sectors,
             Faction[] factions,
@@ -282,6 +317,11 @@ namespace Rebellion.Tests.Generation
             return ctx.Classification;
         }
 
+        /// <summary>
+        /// Creates core galaxy.
+        /// </summary>
+        /// <param name="planetCount">The planet count.</param>
+        /// <returns>The created core galaxy.</returns>
         private PlanetSector[] CreateCoreGalaxy(int planetCount)
         {
             PlanetSector sector = new PlanetSector

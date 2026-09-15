@@ -12,6 +12,12 @@ namespace Rebellion.Tests.AI.Helpers
 {
     public static class AITestSceneBuilder
     {
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <param name="empire">Receives the empire.</param>
+        /// <param name="rebels">Receives the rebels.</param>
+        /// <returns>The created game.</returns>
         public static GameRoot CreateGame(out Faction empire, out Faction rebels)
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -24,6 +30,14 @@ namespace Rebellion.Tests.AI.Helpers
             return game;
         }
 
+        /// <summary>
+        /// Adds sector.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="positionX">The position x.</param>
+        /// <param name="positionY">The position y.</param>
+        /// <returns>The result of add sector.</returns>
         public static PlanetSector AddSector(
             GameRoot game,
             string instanceId,
@@ -41,6 +55,18 @@ namespace Rebellion.Tests.AI.Helpers
             return planetSector;
         }
 
+        /// <summary>
+        /// Adds planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planetSector">The planet sector.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="positionX">The position x.</param>
+        /// <param name="positionY">The position y.</param>
+        /// <param name="energyCapacity">The energy capacity.</param>
+        /// <param name="rawResourceNodes">The raw resource nodes.</param>
+        /// <returns>The result of add planet.</returns>
         public static Planet AddPlanet(
             GameRoot game,
             PlanetSector planetSector,
@@ -67,6 +93,16 @@ namespace Rebellion.Tests.AI.Helpers
             return planet;
         }
 
+        /// <summary>
+        /// Adds production facility.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <param name="productionType">The production type.</param>
+        /// <param name="processRate">The process rate.</param>
+        /// <returns>The result of add production facility.</returns>
         public static Building AddProductionFacility(
             GameRoot game,
             Planet planet,
@@ -84,6 +120,13 @@ namespace Rebellion.Tests.AI.Helpers
             return building;
         }
 
+        /// <summary>
+        /// Creates building template.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <param name="productionType">The production type.</param>
+        /// <returns>The created building template.</returns>
         public static Building CreateBuildingTemplate(
             string instanceId,
             BuildingType buildingType,
@@ -104,6 +147,15 @@ namespace Rebellion.Tests.AI.Helpers
             };
         }
 
+        /// <summary>
+        /// Creates capital ship.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="combatStrength">The combat strength.</param>
+        /// <param name="regimentCapacity">The regiment capacity.</param>
+        /// <param name="starfighterCapacity">The starfighter capacity.</param>
+        /// <returns>The created capital ship.</returns>
         public static CapitalShip CreateCapitalShip(
             string instanceId,
             string ownerInstanceId,
@@ -130,6 +182,14 @@ namespace Rebellion.Tests.AI.Helpers
             return ship;
         }
 
+        /// <summary>
+        /// Creates regiment.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="attackRating">The attack rating.</param>
+        /// <param name="defenseRating">The defense rating.</param>
+        /// <returns>The created regiment.</returns>
         public static Regiment CreateRegiment(
             string instanceId,
             string ownerInstanceId,
@@ -149,6 +209,17 @@ namespace Rebellion.Tests.AI.Helpers
             };
         }
 
+        /// <summary>
+        /// Creates starfighter.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="laserCannon">The laser cannon.</param>
+        /// <param name="ionCannon">The ion cannon.</param>
+        /// <param name="torpedoes">The torpedoes.</param>
+        /// <param name="maintenanceCost">The maintenance cost.</param>
+        /// <param name="constructionCost">The construction cost.</param>
+        /// <returns>The created starfighter.</returns>
         public static Starfighter CreateStarfighter(
             string instanceId,
             string ownerInstanceId,
@@ -178,6 +249,13 @@ namespace Rebellion.Tests.AI.Helpers
             };
         }
 
+        /// <summary>
+        /// Creates special forces.
+        /// </summary>
+        /// <param name="typeId">The type id.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="allowedMissionTypeIds">The allowed mission type ids.</param>
+        /// <returns>The created special forces.</returns>
         public static SpecialForces CreateSpecialForces(
             string typeId,
             string ownerInstanceId,
@@ -199,6 +277,19 @@ namespace Rebellion.Tests.AI.Helpers
             return specialForces;
         }
 
+        /// <summary>
+        /// Creates context.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="missions">The missions.</param>
+        /// <param name="movement">The movement.</param>
+        /// <param name="manufacturing">The manufacturing.</param>
+        /// <param name="bombardment">The bombardment.</param>
+        /// <param name="planetaryAssault">The planetary assault.</param>
+        /// <param name="random">The random.</param>
+        /// <param name="maintenance">The maintenance.</param>
+        /// <returns>The created context.</returns>
         public static AITurnContext CreateContext(
             GameRoot game,
             Faction faction,
@@ -245,6 +336,12 @@ namespace Rebellion.Tests.AI.Helpers
             );
         }
 
+        /// <summary>
+        /// Executes reveal planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planet">The planet.</param>
         public static void RevealPlanet(GameRoot game, Faction faction, Planet planet)
         {
             PlanetSector system = planet.GetParentOfType<PlanetSector>();

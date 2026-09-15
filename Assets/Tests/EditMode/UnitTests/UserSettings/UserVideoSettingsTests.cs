@@ -6,6 +6,10 @@ namespace Rebellion.Tests.UserSettings
     [TestFixture]
     public sealed class UserVideoSettingsTests
     {
+        /// <summary>
+        /// Verifies set enabled option disabled updates requested option.
+        /// </summary>
+        /// <param name="option">The option.</param>
         [TestCase(UserTacticalOption.Starfield)]
         [TestCase(UserTacticalOption.Planet)]
         [TestCase(UserTacticalOption.Pyro)]
@@ -20,6 +24,9 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsFalse(settings.IsEnabled(option));
         }
 
+        /// <summary>
+        /// Verifies normalize invalid display values restores native exclusive defaults.
+        /// </summary>
         [Test]
         public void Normalize_InvalidDisplayValues_RestoresNativeExclusiveDefaults()
         {
@@ -37,6 +44,9 @@ namespace Rebellion.Tests.UserSettings
             Assert.AreEqual((int)FullScreenMode.ExclusiveFullScreen, settings.FullScreenMode);
         }
 
+        /// <summary>
+        /// Verifies normalize valid display values preserves selection.
+        /// </summary>
         [Test]
         public void Normalize_ValidDisplayValues_PreservesSelection()
         {
@@ -98,6 +108,12 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsTrue(DisplayManager.IsSixteenByNine(selected.x, selected.y));
         }
 
+        /// <summary>
+        /// Verifies is sixteen by nine accepts only sixteen by nine modes.
+        /// </summary>
+        /// <param name="width">The width.</param>
+        /// <param name="height">The height.</param>
+        /// <param name="expected">Whether expected.</param>
         [TestCase(1920, 1080, true)]
         [TestCase(2560, 1440, true)]
         [TestCase(3840, 1600, false)]
@@ -115,6 +131,9 @@ namespace Rebellion.Tests.UserSettings
             Assert.AreEqual(expected, DisplayManager.IsSixteenByNine(width, height));
         }
 
+        /// <summary>
+        /// Verifies json utility explicit tactical options round trips state.
+        /// </summary>
         [Test]
         public void JsonUtility_ExplicitTacticalOptions_RoundTripsState()
         {

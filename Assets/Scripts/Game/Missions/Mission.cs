@@ -247,6 +247,8 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns whether a mission target remains attached to the playable scene graph.
         /// </summary>
+        /// <param name="target">The target.</param>
+        /// <returns>True when the operational target condition is met; otherwise false.</returns>
         internal static bool IsOperationalTarget(ISceneNode target)
         {
             if (target == null)
@@ -282,6 +284,9 @@ namespace Rebellion.Game.Missions
         /// Produces mission-specific state changes when the mission ends before objective resolution.
         /// The execution runtime remains responsible for participant teardown.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <returns>The resolved interruption.</returns>
         internal virtual List<GameResult> ResolveInterruption(
             GameRoot game,
             IRandomNumberProvider provider
@@ -337,6 +342,7 @@ namespace Rebellion.Game.Missions
         /// Gets the mission's primary participants.
         /// </summary>
         /// <returns>The primary participants.</returns>
+        /// <param name="includeDisabled">Whether include disabled.</param>
         public IReadOnlyList<IMissionParticipant> GetMainParticipants(
             bool includeDisabled = false
         ) =>
@@ -348,6 +354,7 @@ namespace Rebellion.Game.Missions
         /// Gets the mission's decoy participants.
         /// </summary>
         /// <returns>The decoy participants.</returns>
+        /// <param name="includeDisabled">Whether include disabled.</param>
         public IReadOnlyList<IMissionParticipant> GetDecoyParticipants(
             bool includeDisabled = false
         ) =>
@@ -1055,6 +1062,9 @@ namespace Rebellion.Game.Missions
         /// Resolves a mission that an assigned officer deliberately betrayed.
         /// Betrayal foils the objective without applying enemy-detection consequences.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <returns>The resolved betrayed mission.</returns>
         internal List<GameResult> ResolveBetrayedMission(
             GameRoot game,
             IRandomNumberProvider provider

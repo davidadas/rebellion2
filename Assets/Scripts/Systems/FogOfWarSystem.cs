@@ -337,6 +337,10 @@ namespace Rebellion.Systems
         /// <summary>
         /// Appends nodes whose instance IDs are not already represented in a projected collection.
         /// </summary>
+        /// <param name="existing">The existing.</param>
+        /// <param name="additions">The additions.</param>
+        /// <typeparam name="T">The scene-node type being merged.</typeparam>
+        /// <returns>The existing nodes followed by additions with previously unseen instance IDs.</returns>
         private static IEnumerable<T> MergeMissingByInstanceID<T>(
             IEnumerable<T> existing,
             IEnumerable<T> additions

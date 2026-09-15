@@ -11,6 +11,9 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class FogOfWarSeederTests
     {
+        /// <summary>
+        /// Verifies seed foreign core planet captures resource snapshot for non owner.
+        /// </summary>
         [Test]
         public void Seed_ForeignCorePlanet_CapturesResourceSnapshotForNonOwner()
         {
@@ -29,6 +32,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(empirePlanet.NumRawResourceNodes, snapshot.NumRawResourceNodes);
         }
 
+        /// <summary>
+        /// Verifies seed owned core planet no snapshot for owner.
+        /// </summary>
         [Test]
         public void Seed_OwnedCorePlanet_NoSnapshotForOwner()
         {
@@ -42,6 +48,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies seed rim planet without override no snapshot for other factions.
+        /// </summary>
         [Test]
         public void Seed_RimPlanetWithoutOverride_NoSnapshotForOtherFactions()
         {
@@ -76,6 +85,9 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Verifies seed visibility override captures snapshot for listed faction.
+        /// </summary>
         [Test]
         public void Seed_VisibilityOverride_CapturesSnapshotForListedFaction()
         {
@@ -137,6 +149,10 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Builds scene.
+        /// </summary>
+        /// <returns>The constructed scene.</returns>
         private static (
             GameRoot game,
             PlanetSector coreSector,
@@ -174,6 +190,12 @@ namespace Rebellion.Tests.Generation
             return (game, coreSector, empirePlanet, empire, alliance);
         }
 
+        /// <summary>
+        /// Executes wrap.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="config">The config.</param>
+        /// <returns>The result of wrap.</returns>
         private static GenerationContext Wrap(GameRoot game, GameGenerationConfig config = null)
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();

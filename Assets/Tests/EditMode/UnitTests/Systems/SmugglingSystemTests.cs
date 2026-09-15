@@ -19,6 +19,9 @@ namespace Rebellion.Tests.Sectors
         private Planet _planet;
         private SmugglingSystem _system;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -39,6 +42,9 @@ namespace Rebellion.Tests.Sectors
             _system = new SmugglingSystem(_game);
         }
 
+        /// <summary>
+        /// Verifies process tick low support starts configured smuggling loss percentage.
+        /// </summary>
         [Test]
         public void ProcessTick_LowSupport_StartsConfiguredSmugglingLossPercentage()
         {
@@ -53,6 +59,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("FACTION2", changed.Beneficiary.InstanceID);
         }
 
+        /// <summary>
+        /// Verifies process tick existing smuggling state does not repeat start notification.
+        /// </summary>
         [Test]
         public void ProcessTick_ExistingSmugglingState_DoesNotRepeatStartNotification()
         {
@@ -64,6 +73,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(results.OfType<SmugglingChangedResult>());
         }
 
+        /// <summary>
+        /// Verifies process tick garrison and fleet presence reduce smuggling percentage.
+        /// </summary>
         [Test]
         public void ProcessTick_GarrisonAndFleetPresence_ReduceSmugglingPercentage()
         {
@@ -86,6 +98,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(58, result.NewValue);
         }
 
+        /// <summary>
+        /// Verifies process tick planet destroying ship present fully suppresses smuggling.
+        /// </summary>
         [Test]
         public void ProcessTick_PlanetDestroyingShipPresent_FullySuppressesSmuggling()
         {
@@ -108,6 +123,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(results);
         }
 
+        /// <summary>
+        /// Verifies process tick control changed ends old smuggling and starts new relationship.
+        /// </summary>
         [Test]
         public void ProcessTick_ControlChanged_EndsOldSmugglingAndStartsNewRelationship()
         {
@@ -127,6 +145,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, changes[1].OldPercent);
         }
 
+        /// <summary>
+        /// Verifies process tick diversion changes within relationship only reports stat change.
+        /// </summary>
         [Test]
         public void ProcessTick_DiversionChangesWithinRelationship_OnlyReportsStatChange()
         {
@@ -142,6 +163,11 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(results.OfType<SmugglingChangedResult>());
         }
 
+        /// <summary>
+        /// Sets support.
+        /// </summary>
+        /// <param name="controllerSupport">The controller support.</param>
+        /// <param name="beneficiarySupport">The beneficiary support.</param>
         private void SetSupport(int controllerSupport, int beneficiarySupport)
         {
             _planet.PopularSupport = new Dictionary<string, int>
@@ -151,6 +177,12 @@ namespace Rebellion.Tests.Sectors
             };
         }
 
+        /// <summary>
+        /// Executes active.
+        /// </summary>
+        /// <param name="unit">The unit.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The result of active.</returns>
         private T Active<T>(T unit)
             where T : BaseSceneNode, IManufacturable
         {

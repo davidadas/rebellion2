@@ -426,6 +426,7 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
     /// <summary>
     /// Verifies every authored detail-panel reference before use.
     /// </summary>
+    /// <param name="verifyContent">Whether verify content.</param>
     private void VerifyReferences(bool verifyContent = true)
     {
         if (stripImage == null || (verifyContent && stripTexture == null))

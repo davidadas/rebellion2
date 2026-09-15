@@ -17,6 +17,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private Texture2D _texture;
         private GalacticInformationSubmenuView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -31,6 +34,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -38,6 +44,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render visible submenu applies bounds background frame and rows.
+        /// </summary>
         [Test]
         public void Render_VisibleSubmenu_AppliesBoundsBackgroundFrameAndRows()
         {
@@ -86,6 +95,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(Color.yellow, firstText.color);
         }
 
+        /// <summary>
+        /// Verifies render hidden filter hides authored row slot.
+        /// </summary>
         [Test]
         public void Render_HiddenFilter_HidesAuthoredRowSlot()
         {
@@ -118,6 +130,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, FindActiveFilterHitAreas().Length);
         }
 
+        /// <summary>
+        /// Verifies render null data hides submenu and rows.
+        /// </summary>
         [Test]
         public void Render_NullData_HidesSubmenuAndRows()
         {
@@ -145,6 +160,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsEmpty(FindActiveFilterHitAreas());
         }
 
+        /// <summary>
+        /// Verifies render shorter filter collection hides unused authored rows.
+        /// </summary>
         [Test]
         public void Render_ShorterFilterCollection_HidesUnusedAuthoredRows()
         {
@@ -191,6 +209,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual("Mines", FindActiveFilterTexts().Single().text);
         }
 
+        /// <summary>
+        /// Verifies filter hit area interact raises category index filter index and mode.
+        /// </summary>
         [Test]
         public void FilterHitArea_Interact_RaisesCategoryIndexFilterIndexAndMode()
         {
@@ -249,6 +270,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(GalacticInformationFilterMode.AvailableEnergy, selectedMode);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds filter hit areas.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsFilterHitAreas()
         {
@@ -294,6 +318,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, selectedCount);
         }
 
+        /// <summary>
+        /// Creates submenu.
+        /// </summary>
+        /// <param name="filters">The filters.</param>
+        /// <returns>The created submenu.</returns>
         private GalacticInformationSubmenuRenderData CreateSubmenu(
             GalacticInformationFilterRenderData[] filters
         )
@@ -311,6 +340,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Creates filter.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="visible">Whether visible.</param>
+        /// <param name="hitBounds">The hit bounds.</param>
+        /// <param name="label">The label.</param>
+        /// <param name="color">The color.</param>
+        /// <returns>The created filter.</returns>
         private GalacticInformationFilterRenderData CreateFilter(
             GalacticInformationFilterMode mode,
             bool visible,
@@ -329,6 +367,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Finds hit area.
+        /// </summary>
+        /// <param name="bounds">The bounds.</param>
+        /// <returns>The matching hit area.</returns>
         private UIRaycastArea FindHitArea(RectInt bounds)
         {
             return _view
@@ -336,18 +379,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 .Single(area => UILayout.GetSourceRect(area.transform as RectTransform) == bounds);
         }
 
+        /// <summary>
+        /// Finds filter icon.
+        /// </summary>
+        /// <param name="bounds">The bounds.</param>
+        /// <returns>The matching filter icon.</returns>
         private RawImage FindFilterIcon(RectInt bounds)
         {
             return FindActiveFilterIcons()
                 .Single(image => UILayout.GetSourceRect(image.rectTransform) == bounds);
         }
 
+        /// <summary>
+        /// Finds filter text.
+        /// </summary>
+        /// <param name="bounds">The bounds.</param>
+        /// <returns>The matching filter text.</returns>
         private TextMeshProUGUI FindFilterText(RectInt bounds)
         {
             return FindActiveFilterTexts()
                 .Single(text => UILayout.GetSourceRect(text.rectTransform) == bounds);
         }
 
+        /// <summary>
+        /// Finds active filter icons.
+        /// </summary>
+        /// <returns>The matching active filter icons.</returns>
         private RawImage[] FindActiveFilterIcons()
         {
             return _view
@@ -357,6 +414,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds active filter texts.
+        /// </summary>
+        /// <returns>The matching active filter texts.</returns>
         private TextMeshProUGUI[] FindActiveFilterTexts()
         {
             return _view
@@ -366,6 +427,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds active filter hit areas.
+        /// </summary>
+        /// <returns>The matching active filter hit areas.</returns>
         private UIRaycastArea[] FindActiveFilterHitAreas()
         {
             return _view
@@ -375,6 +440,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds child.
+        /// </summary>
+        /// <param name="parent">The parent.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching child.</returns>
         private static T FindChild<T>(Component parent, string objectName)
             where T : Component
         {
@@ -383,6 +455,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds transform.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching transform.</returns>
         private Transform FindTransform(string objectName)
         {
             return _rootObject

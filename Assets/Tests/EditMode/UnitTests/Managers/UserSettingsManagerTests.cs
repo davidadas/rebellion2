@@ -77,6 +77,9 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies save then load restores mission odds visibility from disk.
+        /// </summary>
         [Test]
         public void SaveThenLoad_RestoresMissionOddsVisibilityFromDisk()
         {
@@ -116,8 +119,53 @@ namespace Rebellion.Tests.Managers
         }
 
         /// <summary>
+        /// Verifies disabled mod identifiers persist through a settings save and load.
+        /// </summary>
+        [Test]
+        public void SaveThenLoad_RestoresDisabledModsFromDisk()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                $"rebellion2-settings-{Guid.NewGuid():N}"
+            );
+            string path = Path.Combine(directory, "user-settings.json");
+            try
+            {
+                DisplayManager display = CreateDisplayManager();
+                UserSettingsManager firstSettings = new UserSettingsManager(
+                    null,
+                    display,
+                    null,
+                    path
+                );
+                firstSettings.Load();
+                firstSettings.Settings.Content.DisabledModIDs = new[] { "dummy-mod" };
+                firstSettings.Save();
+
+                UserSettingsManager secondSettings = new UserSettingsManager(
+                    null,
+                    display,
+                    null,
+                    path
+                );
+                secondSettings.Load();
+
+                CollectionAssert.AreEqual(
+                    new[] { "dummy-mod" },
+                    secondSettings.Settings.Content.DisabledModIDs
+                );
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
+        /// <summary>
         /// Creates a deterministic display manager that does not mutate the test runner display.
         /// </summary>
+        /// <returns>The created display manager.</returns>
         private static DisplayManager CreateDisplayManager()
         {
             return new DisplayManager(
@@ -130,6 +178,9 @@ namespace Rebellion.Tests.Managers
         /// <summary>
         /// Finds a top-level authored binding by name.
         /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The matching binding.</returns>
         private static int FindBinding(UnityEngine.InputSystem.InputAction action, string name)
         {
             for (int index = 0; index < action.bindings.Count; index++)

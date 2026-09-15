@@ -507,6 +507,12 @@ public sealed class MainMenuView : MonoBehaviour
     /// <summary>
     /// Advances one command-button animation by elapsed unscaled time.
     /// </summary>
+    /// <param name="image">The image.</param>
+    /// <param name="frames">The frames.</param>
+    /// <param name="frameIntervalSeconds">The frame interval seconds.</param>
+    /// <param name="frameIndex">The frame index.</param>
+    /// <param name="elapsedSeconds">The elapsed seconds.</param>
+    /// <param name="deltaTime">The delta time.</param>
     private static void AdvanceAnimation(
         Image image,
         Sprite[] frames,

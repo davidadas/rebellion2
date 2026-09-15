@@ -8,6 +8,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
     [TestFixture]
     public class FinderWindowRowTests
     {
+        /// <summary>
+        /// Verifies constructor null optional values normalizes name and counts.
+        /// </summary>
         [Test]
         public void Constructor_NullOptionalValues_NormalizesNameAndCounts()
         {
@@ -24,6 +27,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsNull(row.OwnerFactionId);
         }
 
+        /// <summary>
+        /// Verifies constructor count source changes preserves count snapshot.
+        /// </summary>
         [Test]
         public void Constructor_CountSourceChanges_PreservesCountSnapshot()
         {
@@ -38,6 +44,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies identity node and planet uses node identity and owner.
+        /// </summary>
         [Test]
         public void Identity_NodeAndPlanet_UsesNodeIdentityAndOwner()
         {
@@ -64,6 +73,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual("unit-owner", row.OwnerFactionId);
         }
 
+        /// <summary>
+        /// Verifies identity planet only uses planet identity and owner.
+        /// </summary>
         [Test]
         public void Identity_PlanetOnly_UsesPlanetIdentityAndOwner()
         {

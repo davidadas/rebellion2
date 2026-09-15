@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -23,6 +25,7 @@ public interface IIdleBarActions
     /// </summary>
     /// <param name="target">The context-clicked strategy entity.</param>
     /// <param name="eventData">The source pointer event.</param>
+    /// <returns>The result of open idle bar context menu.</returns>
     ContextMenuRequest OpenIdleBarContextMenu(ISceneNode target, PointerEventData eventData);
 
     /// <summary>
@@ -93,11 +96,20 @@ public interface IIdleBarTrackingActions
 /// </summary>
 public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
 {
-    private readonly Func<Faction> getPlayerFaction;
+    private const string _entityItemTypeID = "Entity";
+    private static readonly string[] _planetItemTypeIDs =
+    {
+        nameof(ManufacturingType.Ship),
+        nameof(ManufacturingType.Troop),
+        nameof(ManufacturingType.Building),
+    };
+
+    private readonly Func<Faction> getFaction;
+    private List<IgnoredItem> ignoredItems;
     private readonly ContextMenuController contextMenuController;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<bool> getVisibility;
-    private readonly HashSet<string> ignoredEntityIds = new HashSet<string>(StringComparer.Ordinal);
+    private readonly Func<bool> getAlwaysOpen;
     private readonly IdleBarProjector projector;
     private readonly Func<string, ISceneNode> resolveEntity;
 
@@ -113,21 +125,25 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// <summary>
     /// Creates an idle-bar controller backed by current strategy state.
     /// </summary>
-    /// <param name="getPlayerFaction">Returns the current player faction.</param>
+    /// <param name="getFaction">Returns the faction represented by the idle bar.</param>
+    /// <param name="ignoredItems">The durable idle-bar exclusions to read and update.</param>
     /// <param name="contextMenuController">Owns the shared context-menu lifecycle.</param>
     /// <param name="getUIContext">Returns the current strategy UI context.</param>
     /// <param name="getVisibility">Returns whether the experimental feature is enabled.</param>
     /// <param name="resolveEntity">Resolves an entity by its stable instance identifier.</param>
+    /// <param name="getAlwaysOpen">Returns whether the idle bar remains expanded.</param>
     public IdleBarController(
-        Func<Faction> getPlayerFaction,
+        Func<Faction> getFaction,
+        List<IgnoredItem> ignoredItems,
         ContextMenuController contextMenuController,
         Func<UIContext> getUIContext,
         Func<bool> getVisibility,
-        Func<string, ISceneNode> resolveEntity
+        Func<string, ISceneNode> resolveEntity,
+        Func<bool> getAlwaysOpen = null
     )
     {
-        this.getPlayerFaction =
-            getPlayerFaction ?? throw new ArgumentNullException(nameof(getPlayerFaction));
+        this.getFaction = getFaction ?? throw new ArgumentNullException(nameof(getFaction));
+        this.ignoredItems = ignoredItems ?? throw new ArgumentNullException(nameof(ignoredItems));
         this.contextMenuController =
             contextMenuController ?? throw new ArgumentNullException(nameof(contextMenuController));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
@@ -135,6 +151,7 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
             getVisibility ?? throw new ArgumentNullException(nameof(getVisibility));
         this.resolveEntity =
             resolveEntity ?? throw new ArgumentNullException(nameof(resolveEntity));
+        this.getAlwaysOpen = getAlwaysOpen ?? (() => false);
         projector = new IdleBarProjector(getUIContext);
         contextMenuController.RequestClosed += HandleContextMenuClosed;
     }
@@ -171,6 +188,7 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
         view.EntryDragEnded += HandleEntryDragEnded;
         view.EntryDragMoved += HandleEntryDragMoved;
         view.EntryContextRequested += HandleEntryContextRequested;
+        view.EntryIgnoreRequested += HandleEntryIgnoreRequested;
         view.EntrySelected += HandleEntrySelected;
     }
 
@@ -189,16 +207,18 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
         }
 
         RectInt desktopBounds = GetDesktopBounds();
-        IdleBarRenderData projected = projector.Project(getPlayerFaction(), desktopBounds);
+        IdleBarRenderData projected = projector.Project(getFaction(), desktopBounds);
         List<IdleBarEntry> entries = projected
-            .Entries.Where(entry => !ignoredEntityIds.Contains(entry.Entity?.InstanceID))
+            .Entries.Where(entry => IsIdleBarTracked(entry.Entity))
             .ToList();
         if (
             !string.IsNullOrEmpty(highlightedEntityId)
             && entries.All(entry => entry.Entity?.InstanceID != highlightedEntityId)
         )
             ClearLocationHighlight();
-        requiredView.Render(new IdleBarRenderData(true, entries, projected.DesktopBounds));
+        requiredView.Render(
+            new IdleBarRenderData(true, entries, projected.DesktopBounds, getAlwaysOpen())
+        );
     }
 
     /// <summary>
@@ -221,13 +241,15 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     }
 
     /// <summary>
-    /// Clears per-game tracking choices after the active game changes.
+    /// Clears transient interaction state after the active game changes.
     /// </summary>
-    public void ResetSession()
+    /// <param name="nextIgnoredItems">The replacement persisted idle-bar exclusions.</param>
+    public void ResetSession(List<IgnoredItem> nextIgnoredItems)
     {
+        ignoredItems =
+            nextIgnoredItems ?? throw new ArgumentNullException(nameof(nextIgnoredItems));
         actions.CancelIdleBarItemDrag();
         ClearLocationHighlight();
-        ignoredEntityIds.Clear();
     }
 
     /// <summary>
@@ -248,8 +270,11 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     /// <inheritdoc />
     public bool IsIdleBarTracked(ISceneNode entity)
     {
-        return !string.IsNullOrEmpty(entity?.InstanceID)
-            && !ignoredEntityIds.Contains(entity.InstanceID);
+        if (string.IsNullOrEmpty(entity?.InstanceID))
+            return false;
+
+        return GetItemTypeIDs(entity)
+            .Any(type => !ContainsIgnoredItem(ignoredItems, entity.InstanceID, type));
     }
 
     /// <inheritdoc />
@@ -258,13 +283,67 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
         if (string.IsNullOrEmpty(entity?.InstanceID))
             return;
 
-        if (!ignoredEntityIds.Remove(entity.InstanceID))
+        string[] itemTypeIDs = GetItemTypeIDs(entity).ToArray();
+        bool untrack = itemTypeIDs.Any(type =>
+            !ContainsIgnoredItem(ignoredItems, entity.InstanceID, type)
+        );
+        foreach (string itemTypeID in itemTypeIDs)
         {
-            ignoredEntityIds.Add(entity.InstanceID);
-            if (highlightedEntityId == entity.InstanceID)
-                ClearLocationHighlight();
+            ignoredItems.RemoveAll(item => IsIgnoredItem(item, entity.InstanceID, itemTypeID));
+            if (untrack)
+            {
+                ignoredItems.Add(
+                    new IgnoredItem
+                    {
+                        TargetInstanceID = entity.InstanceID,
+                        ItemTypeID = itemTypeID,
+                    }
+                );
+            }
         }
+        if (untrack && highlightedEntityId == entity.InstanceID)
+            ClearLocationHighlight();
         actions.RequestIdleBarRender();
+    }
+
+    /// <summary>
+    /// Gets the independently persisted idle-bar identities represented by an entity.
+    /// </summary>
+    /// <param name="entity">The entity whose item identities are requested.</param>
+    /// <returns>The item identities represented by the entity.</returns>
+    private static IEnumerable<string> GetItemTypeIDs(ISceneNode entity)
+    {
+        return entity is Planet ? _planetItemTypeIDs : new[] { _entityItemTypeID };
+    }
+
+    /// <summary>
+    /// Reports whether a persisted exclusion matches one idle-bar identity.
+    /// </summary>
+    /// <param name="items">The persisted exclusions to search.</param>
+    /// <param name="entityInstanceId">The entity identifier to match.</param>
+    /// <param name="itemTypeID">The item identity to match.</param>
+    /// <returns>True when a matching exclusion exists.</returns>
+    private static bool ContainsIgnoredItem(
+        IEnumerable<IgnoredItem> items,
+        string entityInstanceId,
+        string itemTypeID
+    )
+    {
+        return items.Any(item => IsIgnoredItem(item, entityInstanceId, itemTypeID));
+    }
+
+    /// <summary>
+    /// Reports whether one exclusion matches the requested entity and manufacturing lane.
+    /// </summary>
+    /// <param name="item">The persisted exclusion to inspect.</param>
+    /// <param name="entityInstanceId">The entity identifier to match.</param>
+    /// <param name="itemTypeID">The item identity to match.</param>
+    /// <returns>True when the exclusion represents the requested identity.</returns>
+    private static bool IsIgnoredItem(IgnoredItem item, string entityInstanceId, string itemTypeID)
+    {
+        return item != null
+            && string.Equals(item.TargetInstanceID, entityInstanceId, StringComparison.Ordinal)
+            && string.Equals(item.ItemTypeID, itemTypeID, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -276,6 +355,17 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
         ISceneNode target = string.IsNullOrEmpty(instanceId) ? null : resolveEntity(instanceId);
         if (target != null)
             actions.OpenIdleBarTarget(target);
+    }
+
+    /// <summary>
+    /// Ignores the requested idle-bar entity and refreshes the shelf.
+    /// </summary>
+    /// <param name="instanceId">The ignored entity identifier.</param>
+    private void HandleEntryIgnoreRequested(string instanceId)
+    {
+        ISceneNode target = string.IsNullOrEmpty(instanceId) ? null : resolveEntity(instanceId);
+        if (target != null)
+            ToggleIdleBarTracking(target);
     }
 
     /// <summary>
@@ -403,6 +493,7 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
         view.EntryDragEnded -= HandleEntryDragEnded;
         view.EntryDragMoved -= HandleEntryDragMoved;
         view.EntryContextRequested -= HandleEntryContextRequested;
+        view.EntryIgnoreRequested -= HandleEntryIgnoreRequested;
         view.EntrySelected -= HandleEntrySelected;
         view.SetContextMenuOpen(false);
         actions?.CancelIdleBarItemDrag();

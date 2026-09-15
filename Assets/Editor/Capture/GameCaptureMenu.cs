@@ -30,6 +30,7 @@ public static class GameCaptureMenu
     /// <summary>
     /// Enables screenshot capture only while the Game view is rendering frames.
     /// </summary>
+    /// <returns>True when the capture game screenshot condition is met; otherwise false.</returns>
     [MenuItem(_screenshotMenuPath, true)]
     private static bool CanCaptureGameScreenshot()
     {
@@ -48,6 +49,7 @@ public static class GameCaptureMenu
     /// <summary>
     /// Enables recording only while the Game view is rendering and no recording is active.
     /// </summary>
+    /// <returns>True when the start game recording condition is met; otherwise false.</returns>
     [MenuItem(_startRecordingMenuPath, true)]
     private static bool CanStartGameRecording()
     {
@@ -59,6 +61,7 @@ public static class GameCaptureMenu
     /// <summary>
     /// Resolves the local screenshot directory beside the Assets directory.
     /// </summary>
+    /// <returns>The requested screenshot directory.</returns>
     private static string GetScreenshotDirectory()
     {
         return Path.GetFullPath(Path.Combine(Application.dataPath, "..", _screenshotDirectoryName));

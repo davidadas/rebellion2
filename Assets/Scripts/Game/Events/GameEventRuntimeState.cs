@@ -15,6 +15,11 @@ namespace Rebellion.Game.Events
         public Dictionary<string, int> Variables { get; set; } =
             new Dictionary<string, int>(StringComparer.Ordinal);
 
+        /// <summary>
+        /// Gets state.
+        /// </summary>
+        /// <param name="eventInstanceID">The event instance id.</param>
+        /// <returns>The requested state.</returns>
         public GameEventState GetState(string eventInstanceID)
         {
             if (string.IsNullOrWhiteSpace(eventInstanceID))
@@ -30,6 +35,11 @@ namespace Rebellion.Game.Events
             return state;
         }
 
+        /// <summary>
+        /// Gets variable.
+        /// </summary>
+        /// <param name="key">The key.</param>
+        /// <returns>The requested variable.</returns>
         public int GetVariable(string key)
         {
             if (string.IsNullOrWhiteSpace(key))
@@ -37,6 +47,11 @@ namespace Rebellion.Game.Events
             return Variables.TryGetValue(key, out int value) ? value : 0;
         }
 
+        /// <summary>
+        /// Sets variable.
+        /// </summary>
+        /// <param name="key">The key.</param>
+        /// <param name="value">The value.</param>
         public void SetVariable(string key, int value)
         {
             if (string.IsNullOrWhiteSpace(key))

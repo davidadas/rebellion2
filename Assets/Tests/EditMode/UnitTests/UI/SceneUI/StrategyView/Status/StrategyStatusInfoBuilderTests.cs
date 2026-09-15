@@ -27,6 +27,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         private GalaxyMapSector _sector;
         private StrategyStatusInfoBuilder _builder;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -34,6 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             _game.GetFactions().Add(new Faction { InstanceID = _opponentId });
             _game.Summary.PlayerFactionID = _ownerId;
+            _game.SetFactionController(_ownerId, "PLAYER1", PlayerControllerType.Human);
 
             _planetSector = new GalaxyPlanetSector
             {
@@ -57,6 +61,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             _builder = CreateBuilder(_game, _sector);
         }
 
+        /// <summary>
+        /// Verifies constructor null sectors throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullSectors_ThrowsArgumentNullException()
         {
@@ -65,6 +72,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
         }
 
+        /// <summary>
+        /// Verifies constructor null node resolver throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullNodeResolver_ThrowsArgumentNullException()
         {
@@ -79,6 +89,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
         }
 
+        /// <summary>
+        /// Verifies build null target returns null.
+        /// </summary>
         [Test]
         public void Build_NullTarget_ReturnsNull()
         {
@@ -87,6 +100,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.IsNull(info);
         }
 
+        /// <summary>
+        /// Verifies build unsupported item without planet returns null.
+        /// </summary>
         [Test]
         public void Build_UnsupportedItemWithoutPlanet_ReturnsNull()
         {
@@ -97,6 +113,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.IsNull(info);
         }
 
+        /// <summary>
+        /// Verifies build planet returns planet status.
+        /// </summary>
         [Test]
         public void Build_Planet_ReturnsPlanetStatus()
         {
@@ -119,6 +138,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
         }
 
+        /// <summary>
+        /// Verifies build planet target without item returns planet status.
+        /// </summary>
         [Test]
         public void Build_PlanetTargetWithoutItem_ReturnsPlanetStatus()
         {
@@ -129,6 +151,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             CollectionAssert.AreEqual(new[] { _planet }, info.ImageItems);
         }
 
+        /// <summary>
+        /// Verifies build neutral planet returns neutral status.
+        /// </summary>
         [Test]
         public void Build_NeutralPlanet_ReturnsNeutralStatus()
         {
@@ -154,6 +179,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("0", info.Rows.Single(row => row.Left == "Popular Support:").Right);
         }
 
+        /// <summary>
+        /// Verifies build manufacturing lane without facility returns no facilities status.
+        /// </summary>
         [Test]
         public void Build_ManufacturingLaneWithoutFacility_ReturnsNoFacilitiesStatus()
         {
@@ -171,6 +199,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
         }
 
+        /// <summary>
+        /// Verifies build idle troop manufacturing lane returns idle training status.
+        /// </summary>
         [Test]
         public void Build_IdleTroopManufacturingLane_ReturnsIdleTrainingStatus()
         {
@@ -198,6 +229,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.IsFalse(info.Rows.Any(row => row.Left == "Items to Build:"));
         }
 
+        /// <summary>
+        /// Verifies build queued building manufacturing lane returns queue completion status.
+        /// </summary>
         [Test]
         public void Build_QueuedBuildingManufacturingLane_ReturnsQueueCompletionStatus()
         {
@@ -238,6 +272,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
         }
 
+        /// <summary>
+        /// Verifies build queued troop manufacturing lane returns training status.
+        /// </summary>
         [Test]
         public void Build_QueuedTroopManufacturingLane_ReturnsTrainingStatus()
         {
@@ -269,6 +306,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
         }
 
+        /// <summary>
+        /// Verifies build manufacturing building returns manufacturing facility status.
+        /// </summary>
         [Test]
         public void Build_ManufacturingBuilding_ReturnsManufacturingFacilityStatus()
         {
@@ -305,6 +345,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
         }
 
+        /// <summary>
+        /// Verifies build defense building returns defense facility status.
+        /// </summary>
         [Test]
         public void Build_DefenseBuilding_ReturnsDefenseFacilityStatus()
         {
@@ -337,6 +380,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.IsFalse(info.Rows.Any(row => row.Left == "Standard Processing Rate:"));
         }
 
+        /// <summary>
+        /// Verifies build starfighter returns calculated squadron ratings.
+        /// </summary>
         [Test]
         public void Build_Starfighter_ReturnsCalculatedSquadronRatings()
         {
@@ -375,6 +421,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             CollectionAssert.AreEqual(new[] { starfighter }, info.ImageItems);
         }
 
+        /// <summary>
+        /// Verifies build starfighter with negative squadron values clamps ratios to zero.
+        /// </summary>
         [Test]
         public void Build_StarfighterWithNegativeSquadronValues_ClampsRatiosToZero()
         {
@@ -399,6 +448,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("0:0", info.Rows.Single(row => row.Left == "Torpedoes:").Right);
         }
 
+        /// <summary>
+        /// Verifies build regiment returns trooper status.
+        /// </summary>
         [Test]
         public void Build_Regiment_ReturnsTrooperStatus()
         {
@@ -431,6 +483,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("6", info.Rows.Single(row => row.Left == "Detection Value:").Right);
         }
 
+        /// <summary>
+        /// Verifies build special forces returns mission ratings.
+        /// </summary>
         [Test]
         public void Build_SpecialForces_ReturnsMissionRatings()
         {
@@ -460,6 +515,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("44", info.Rows.Single(row => row.Left == "Leadership Rating:").Right);
         }
 
+        /// <summary>
+        /// Verifies build officer returns command force research and rank status.
+        /// </summary>
         [Test]
         public void Build_Officer_ReturnsCommandForceResearchAndRankStatus()
         {
@@ -501,6 +559,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("Yes", info.Rows.Single(row => row.Left == "Commander:").Right);
         }
 
+        /// <summary>
+        /// Verifies build officer without parent omits attached location.
+        /// </summary>
         [Test]
         public void Build_OfficerWithoutParent_OmitsAttachedLocation()
         {
@@ -518,6 +579,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.IsFalse(info.Rows.Any(row => row.Left == "Attached:"));
         }
 
+        /// <summary>
+        /// Verifies build officer with display status shows display status.
+        /// </summary>
         [Test]
         public void Build_OfficerWithDisplayStatus_ShowsDisplayStatus()
         {
@@ -536,6 +600,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("Training", info.Rows.Single(row => row.Left == "Status:").Right);
         }
 
+        /// <summary>
+        /// Verifies build captured officer returns captured status with primary image only.
+        /// </summary>
         [Test]
         public void Build_CapturedOfficer_ReturnsCapturedStatusWithPrimaryImageOnly()
         {
@@ -555,6 +622,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             CollectionAssert.AreEqual(new[] { officer }, info.ImageItems);
         }
 
+        /// <summary>
+        /// Verifies build moving officer with transit image returns only primary image.
+        /// </summary>
         [Test]
         public void Build_MovingOfficerWithTransitImage_ReturnsOnlyPrimaryImage()
         {
@@ -577,6 +647,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             CollectionAssert.AreEqual(new[] { officer }, info.ImageItems);
         }
 
+        /// <summary>
+        /// Verifies build moving officer without transit image returns only primary image.
+        /// </summary>
         [Test]
         public void Build_MovingOfficerWithoutTransitImage_ReturnsOnlyPrimaryImage()
         {
@@ -593,6 +666,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             CollectionAssert.AreEqual(new[] { officer }, info.ImageItems);
         }
 
+        /// <summary>
+        /// Verifies build fleet returns movement damage command and capacity status.
+        /// </summary>
         [Test]
         public void Build_Fleet_ReturnsMovementDamageCommandAndCapacityStatus()
         {
@@ -689,6 +765,81 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("Yes", info.Rows.Single(row => row.Left == "Hyperdrive Rating:").Right);
         }
 
+        /// <summary>
+        /// Verifies that an independently moving capital ship does not give its stationary fleet
+        /// an enroute status or fleet arrival day.
+        /// </summary>
+        [Test]
+        public void Build_StationaryFleetWithMovingCapitalShip_ReturnsAwaitingOrdersWithoutFleetArrivalDay()
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "stationary-fleet",
+                DisplayName = "Stationary Fleet",
+                OwnerInstanceID = _ownerId,
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "incoming-ship",
+                    DisplayName = "Incoming Ship",
+                    OwnerInstanceID = _ownerId,
+                    Movement = new MovementState { TransitTicks = 12, TicksElapsed = 5 },
+                },
+                fleet
+            );
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, fleet));
+
+            Assert.AreEqual(
+                "Awaiting Orders",
+                info.Rows.Single(row => row.Left == "Status:").Right
+            );
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "ETA Destination:"));
+            CollectionAssert.DoesNotContain(info.Images, StatusWindowImage.FleetBannerEnroute);
+        }
+
+        /// <summary>
+        /// Verifies that a fleet stops presenting transit after its own arrival even when an
+        /// attached capital ship remains in transit.
+        /// </summary>
+        [Test]
+        public void Build_ArrivedFleetWithMovingCapitalShip_ReturnsAwaitingOrdersWithoutFleetArrivalDay()
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "arrived-fleet",
+                DisplayName = "Arrived Fleet",
+                OwnerInstanceID = _ownerId,
+                Movement = new MovementState { TransitTicks = 5, TicksElapsed = 5 },
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "following-ship",
+                    DisplayName = "Following Ship",
+                    OwnerInstanceID = _ownerId,
+                    Movement = new MovementState { TransitTicks = 10, TicksElapsed = 4 },
+                },
+                fleet
+            );
+            fleet.Movement = null;
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, fleet));
+
+            Assert.AreEqual(
+                "Awaiting Orders",
+                info.Rows.Single(row => row.Left == "Status:").Right
+            );
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "ETA Destination:"));
+            CollectionAssert.DoesNotContain(info.Images, StatusWindowImage.FleetBannerEnroute);
+        }
+
+        /// <summary>
+        /// Verifies build capital ship returns complete ship status.
+        /// </summary>
         [Test]
         public void Build_CapitalShip_ReturnsCompleteShipStatus()
         {
@@ -775,6 +926,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             CollectionAssert.AreEqual(new[] { ship }, info.ImageItems);
         }
 
+        /// <summary>
+        /// Verifies build capital ship under construction returns original completion day label.
+        /// </summary>
         [Test]
         public void Build_CapitalShipUnderConstruction_ReturnsOriginalCompletionDayLabel()
         {
@@ -821,6 +975,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
         }
 
+        /// <summary>
+        /// Verifies build capital ship carried by moving fleet returns transit status and arrival day.
+        /// </summary>
         [Test]
         public void Build_CapitalShipCarriedByMovingFleet_ReturnsTransitStatusAndArrivalDay()
         {
@@ -853,6 +1010,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             CollectionAssert.AreEqual(new[] { ship }, info.ImageItems);
         }
 
+        /// <summary>
+        /// Verifies build mission with explicit target returns target and team counts.
+        /// </summary>
         [Test]
         public void Build_MissionWithExplicitTarget_ReturnsTargetAndTeamCounts()
         {
@@ -900,6 +1060,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
         }
 
+        /// <summary>
+        /// Verifies build mission without explicit target returns location.
+        /// </summary>
         [Test]
         public void Build_MissionWithoutExplicitTarget_ReturnsLocation()
         {
@@ -917,6 +1080,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("0", info.Rows.Single(row => row.Left == "Decoys:").Right);
         }
 
+        /// <summary>
+        /// Verifies build recruitment mission returns planet as target.
+        /// </summary>
         [Test]
         public void Build_RecruitmentMission_ReturnsPlanetAsTarget()
         {
@@ -942,11 +1108,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("Corellia", info.Rows.Single(row => row.Left == "Target:").Right);
         }
 
+        /// <summary>
+        /// Attaches building.
+        /// </summary>
+        /// <param name="building">The building.</param>
         private void AttachBuilding(Building building)
         {
             _game.AttachNode(building, _planet);
         }
 
+        /// <summary>
+        /// Creates builder.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="sector">The sector.</param>
+        /// <returns>The created builder.</returns>
         private static StrategyStatusInfoBuilder CreateBuilder(
             GameRoot game,
             GalaxyMapSector sector

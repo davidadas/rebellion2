@@ -16,6 +16,9 @@ namespace Rebellion.Tests.Sectors
     [TestFixture]
     public class DuelSystemTests
     {
+        /// <summary>
+        /// Verifies handle results failed avoidance captures encountered officer.
+        /// </summary>
         [Test]
         public void HandleResults_FailedAvoidance_CapturesEncounteredOfficer()
         {
@@ -42,6 +45,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(results.OfType<DuelResult>().Single().EncounteredOfficerCaptured);
         }
 
+        /// <summary>
+        /// Verifies handle results injuries reward the other officers combat.
+        /// </summary>
         [Test]
         public void HandleResults_Injuries_RewardTheOtherOfficersCombat()
         {
@@ -63,6 +69,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(2, results.OfType<OfficerInjuredResult>().Count());
         }
 
+        /// <summary>
+        /// Verifies handle results officers on different planets rejects duel.
+        /// </summary>
         [Test]
         public void HandleResults_OfficersOnDifferentPlanets_RejectsDuel()
         {
@@ -84,6 +93,10 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(results);
         }
 
+        /// <summary>
+        /// Builds encounter.
+        /// </summary>
+        /// <returns>The constructed encounter.</returns>
         private static (GameRoot game, Officer encountered, Officer opposing) BuildEncounter()
         {
             GameConfig config = new GameConfig();
@@ -120,6 +133,13 @@ namespace Rebellion.Tests.Sectors
             return (game, encountered, opposing);
         }
 
+        /// <summary>
+        /// Executes request.
+        /// </summary>
+        /// <param name="encountered">The encountered.</param>
+        /// <param name="opposing">The opposing.</param>
+        /// <param name="sourceEventInstanceId">The source event instance id.</param>
+        /// <returns>The result of request.</returns>
         private static DuelRequest Request(
             Officer encountered,
             Officer opposing,

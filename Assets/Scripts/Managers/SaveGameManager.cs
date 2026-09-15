@@ -45,6 +45,11 @@ public class SaveGameManager
     private static SaveGameManager _instance;
     private readonly string _saveDirectoryPath;
 
+    /// <summary>
+    /// Raised immediately before game state is serialized.
+    /// </summary>
+    public event Action Saving;
+
     // Initialize singleton.
     public static SaveGameManager Instance
     {
@@ -246,6 +251,7 @@ public class SaveGameManager
     /// <param name="displayName">The display name to store in save metadata.</param>
     public void SaveGameData(GameRoot game, string fileName, string displayName = null)
     {
+        Saving?.Invoke();
         string saveDirectory = GetSaveDirectoryPath();
 
         // Create save directory if it does not exist.
@@ -263,6 +269,8 @@ public class SaveGameManager
         game.Metadata.PackID = game.Summary?.PackID;
         game.Metadata.PackVersion = game.Summary?.PackVersion;
         game.Metadata.ScenarioID = game.Summary?.ScenarioID;
+        game.Metadata.ModIDs = game.Summary?.ModIDs ?? Array.Empty<string>();
+        game.Metadata.ModVersions = game.Summary?.ModVersions ?? Array.Empty<string>();
         string normalizedDisplayName = NormalizeDisplayName(displayName);
         if (normalizedDisplayName.Length > 0)
             game.Metadata.SaveDisplayName = normalizedDisplayName;
@@ -280,6 +288,9 @@ public class SaveGameManager
     /// Serializes a save beside its destination and atomically publishes it only after the full
     /// payload has reached durable storage.
     /// </summary>
+    /// <param name="saveFilePath">The save file path.</param>
+    /// <param name="serializer">The serializer.</param>
+    /// <param name="game">The game.</param>
     private static void WriteSave(string saveFilePath, GameSerializer serializer, GameRoot game)
     {
         string temporaryPath = saveFilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";

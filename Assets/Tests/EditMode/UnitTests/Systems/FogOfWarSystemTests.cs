@@ -27,6 +27,9 @@ namespace Rebellion.Tests.Sectors
         private Planet _tatooine;
         private Planet _hoth;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -86,6 +89,9 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(_hoth, _outerRim);
         }
 
+        /// <summary>
+        /// Verifies build faction view unexplored planet empty snapshot.
+        /// </summary>
         [Test]
         public void BuildFactionView_UnexploredPlanet_EmptySnapshot()
         {
@@ -111,6 +117,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, viewTatooine.GetChildren<Regiment>().Count);
         }
 
+        /// <summary>
+        /// Verifies build faction view unexplored owned planet hides status.
+        /// </summary>
         [Test]
         public void BuildFactionView_UnexploredOwnedPlanet_HidesStatus()
         {
@@ -149,6 +158,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view own fleet in transit to unexplored planet shows fleet without live planet data.
+        /// </summary>
         [Test]
         public void BuildFactionView_OwnFleetInTransitToUnexploredPlanet_ShowsFleetWithoutLivePlanetData()
         {
@@ -185,6 +197,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view unexplored outer rim and core both hidden without snapshot.
+        /// </summary>
         [Test]
         public void BuildFactionView_UnexploredOuterRimAndCore_BothHiddenWithoutSnapshot()
         {
@@ -201,6 +216,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, viewCoruscant.GetChildren<Officer>().Count);
         }
 
+        /// <summary>
+        /// Verifies build faction view snapshot planet returns visited view planet.
+        /// </summary>
         [Test]
         public void BuildFactionView_SnapshotPlanet_ReturnsVisitedViewPlanet()
         {
@@ -216,6 +234,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(viewCoruscant.IsUnexploredView);
         }
 
+        /// <summary>
+        /// Verifies build faction view visible planet uses live data.
+        /// </summary>
         [Test]
         public void BuildFactionView_VisiblePlanet_UsesLiveData()
         {
@@ -233,6 +254,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("LEIA", viewHoth.GetChildren<Officer>()[0].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies build faction view live planet modifying view does not affect game.
+        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_ModifyingViewDoesNotAffectGame()
         {
@@ -251,6 +275,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, _hoth.GetChildren<Officer>().Count);
         }
 
+        /// <summary>
+        /// Verifies build faction view live planet buildings preserved.
+        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_BuildingsPreserved()
         {
@@ -269,6 +296,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(2, viewHoth.GetChildren<Building>().Count);
         }
 
+        /// <summary>
+        /// Verifies build faction view not visible with snapshot uses snapshot data.
+        /// </summary>
         [Test]
         public void BuildFactionView_NotVisibleWithSnapshot_UsesSnapshotData()
         {
@@ -288,6 +318,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("VADER", viewCoruscant.GetChildren<Officer>()[0].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies build faction view snapshot modifying view does not affect snapshot.
+        /// </summary>
         [Test]
         public void BuildFactionView_Snapshot_ModifyingViewDoesNotAffectSnapshot()
         {
@@ -311,6 +344,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, snapshot.Officers.Count);
         }
 
+        /// <summary>
+        /// Verifies build faction view snapshot buildings visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_SnapshotBuildings_Visible()
         {
@@ -329,6 +365,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, viewCoruscant.GetChildren<Building>().Count);
         }
 
+        /// <summary>
+        /// Verifies build faction view unowned core planet uses current popular support.
+        /// </summary>
         [Test]
         public void BuildFactionView_UnownedCorePlanet_UsesCurrentPopularSupport()
         {
@@ -350,6 +389,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(8, viewCoruscant.EnergyCapacity);
         }
 
+        /// <summary>
+        /// Verifies build faction view unowned core planet uses current uprising state.
+        /// </summary>
         [Test]
         public void BuildFactionView_UnownedCorePlanet_UsesCurrentUprisingState()
         {
@@ -367,6 +409,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(viewCoruscant.IsInUprising);
         }
 
+        /// <summary>
+        /// Verifies build faction view snapshot preserves observed resources.
+        /// </summary>
         [Test]
         public void BuildFactionView_Snapshot_PreservesObservedResources()
         {
@@ -384,6 +429,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(5, viewCoruscant.NumRawResourceNodes);
         }
 
+        /// <summary>
+        /// Verifies build faction view fleet leaves uses snapshot.
+        /// </summary>
         [Test]
         public void BuildFactionView_FleetLeaves_UsesSnapshot()
         {
@@ -410,6 +458,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(5, viewCoruscant.NumRawResourceNodes);
         }
 
+        /// <summary>
+        /// Verifies build faction view fleet moves fleet not duplicated.
+        /// </summary>
         [Test]
         public void BuildFactionView_FleetMoves_FleetNotDuplicated()
         {
@@ -454,6 +505,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view own fleet in transit destination uses snapshot.
+        /// </summary>
         [Test]
         public void BuildFactionView_OwnFleetInTransit_DestinationUsesSnapshot()
         {
@@ -487,6 +541,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view own fleet arrived destination uses live.
+        /// </summary>
         [Test]
         public void BuildFactionView_OwnFleetArrived_DestinationUsesLive()
         {
@@ -525,6 +582,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view live planet stale snapshot friendly fleet not shown.
+        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_StaleSnapshotFriendlyFleet_NotShown()
         {
@@ -568,6 +628,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view vader moves without observation stale intel persists.
+        /// </summary>
         [Test]
         public void BuildFactionView_VaderMovesWithoutObservation_StaleIntelPersists()
         {
@@ -597,6 +660,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, viewTatooine.GetChildren<Officer>().Count);
         }
 
+        /// <summary>
+        /// Verifies build faction view planet with no entities handled correctly.
+        /// </summary>
         [Test]
         public void BuildFactionView_PlanetWithNoEntities_HandledCorrectly()
         {
@@ -613,6 +679,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, viewTatooine.GetChildren<Fleet>().Count);
         }
 
+        /// <summary>
+        /// Verifies build faction view sector with multiple planets mixed visibility handled correctly.
+        /// </summary>
         [Test]
         public void BuildFactionView_SectorWithMultiplePlanets_MixedVisibilityHandledCorrectly()
         {
@@ -637,6 +706,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, viewTatooine.GetChildren<Officer>().Count);
         }
 
+        /// <summary>
+        /// Verifies build faction view no snapshots anywhere all planets empty snapshots.
+        /// </summary>
         [Test]
         public void BuildFactionView_NoSnapshotsAnywhere_AllPlanetsEmptySnapshots()
         {
@@ -650,6 +722,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, viewHoth.GetChildren<Officer>().Count);
         }
 
+        /// <summary>
+        /// Verifies build faction view planets with shared entities no duplicate entities across planets.
+        /// </summary>
         [Test]
         public void BuildFactionView_PlanetsWithSharedEntities_NoDuplicateEntitiesAcrossPlanets()
         {
@@ -674,6 +749,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, vaderCount);
         }
 
+        /// <summary>
+        /// Verifies build faction view entities on multiple planets preserves instance i ds.
+        /// </summary>
         [Test]
         public void BuildFactionView_EntitiesOnMultiplePlanets_PreservesInstanceIDs()
         {
@@ -718,6 +796,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view captured friendly officer on visible planet returns officer.
+        /// </summary>
         [Test]
         public void BuildFactionView_CapturedFriendlyOfficerOnVisiblePlanet_ReturnsOfficer()
         {
@@ -743,6 +824,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view captured friendly officer on snapshot planet does not reveal officer.
+        /// </summary>
         [Test]
         public void BuildFactionView_CapturedFriendlyOfficerOnSnapshotPlanet_DoesNotRevealOfficer()
         {
@@ -764,6 +848,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(viewCoruscant.GetChildren<Officer>().Any(o => o.InstanceID == "LEIA"));
         }
 
+        /// <summary>
+        /// Verifies build faction view captured friendly officer on unexplored planet does not reveal officer.
+        /// </summary>
         [Test]
         public void BuildFactionView_CapturedFriendlyOfficerOnUnexploredPlanet_DoesNotRevealOfficer()
         {
@@ -781,6 +868,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(viewCoruscant.GetChildren<Officer>().Any(o => o.InstanceID == "LEIA"));
         }
 
+        /// <summary>
+        /// Verifies build faction view own planet manufacturing queue visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_OwnPlanet_ManufacturingQueueVisible()
         {
@@ -798,6 +888,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view fleet at enemy planet manufacturing remains hidden.
+        /// </summary>
         [Test]
         public void BuildFactionView_FleetAtEnemyPlanet_ManufacturingRemainsHidden()
         {
@@ -820,6 +913,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(viewCoruscant.ManufacturingQueue);
         }
 
+        /// <summary>
+        /// Verifies build faction view own planet enemy missions not visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_OwnPlanet_EnemyMissionsNotVisible()
         {
@@ -842,6 +938,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view own planet own missions visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_OwnPlanet_OwnMissionsVisible()
         {
@@ -873,6 +972,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(vader.InstanceID, viewParticipant.InstanceID);
         }
 
+        /// <summary>
+        /// Verifies build faction view live planet espionage mission intelligence remains visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_EspionageMissionIntelligenceRemainsVisible()
         {
@@ -908,6 +1010,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view fleet at enemy planet enemy missions still hidden.
+        /// </summary>
         [Test]
         public void BuildFactionView_FleetAtEnemyPlanet_EnemyMissionsStillHidden()
         {
@@ -934,6 +1039,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view fleet at enemy planet enemy officer visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_FleetAtEnemyPlanet_EnemyOfficerVisible()
         {
@@ -962,6 +1070,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("PALPATINE", viewCoruscant.GetChildren<Officer>()[0].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies build faction view snapshot planet entity added after snapshot not visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_SnapshotPlanet_EntityAddedAfterSnapshot_NotVisible()
         {
@@ -986,6 +1097,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view snapshot planet building queued after snapshot not visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_SnapshotPlanet_BuildingQueuedAfterSnapshot_NotVisible()
         {
@@ -1028,6 +1142,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view snapshot queued building on full live planet skips ghost building.
+        /// </summary>
         [Test]
         public void BuildFactionView_SnapshotQueuedBuildingOnFullLivePlanet_SkipsGhostBuilding()
         {
@@ -1075,6 +1192,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view live planet stale own snapshot units not visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_StaleOwnSnapshotUnits_NotVisible()
         {
@@ -1101,6 +1221,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view live planet removes absent enemy units from snapshot.
+        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_RemovesAbsentEnemyUnitsFromSnapshot()
         {
@@ -1185,6 +1308,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(_alliance.Fog.EntityLastSeenAt);
         }
 
+        /// <summary>
+        /// Verifies build faction view planet captured from enemy uses only live units.
+        /// </summary>
         [Test]
         public void BuildFactionView_PlanetCapturedFromEnemy_UsesOnlyLiveUnits()
         {
@@ -1234,6 +1360,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view own mission on enemy planet visible without snapshot or fleet.
+        /// </summary>
         [Test]
         public void BuildFactionView_OwnMission_OnEnemyPlanet_VisibleWithoutSnapshotOrFleet()
         {
@@ -1258,6 +1387,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("M1", viewCoruscant.GetChildren<Mission>()[0].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies build faction view own mission on neutral planet visible without snapshot or fleet.
+        /// </summary>
         [Test]
         public void BuildFactionView_OwnMission_OnNeutralPlanet_VisibleWithoutSnapshotOrFleet()
         {
@@ -1281,6 +1413,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("M1", viewTatooine.GetChildren<Mission>()[0].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies build faction view own fleet at enemy planet planet live without snapshot.
+        /// </summary>
         [Test]
         public void BuildFactionView_OwnFleet_AtEnemyPlanet_PlanetLiveWithoutSnapshot()
         {
@@ -1308,6 +1443,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("FLEET1", viewCoruscant.GetChildren<Fleet>()[0].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies build faction view blockaded own planet shows only present completed enemy ships.
+        /// </summary>
         [Test]
         public void BuildFactionView_BlockadedOwnPlanet_ShowsOnlyPresentCompletedEnemyShips()
         {
@@ -1375,6 +1513,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view blockaded own planet enemy fleet in transit not visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_BlockadedOwnPlanet_EnemyFleetInTransit_NotVisible()
         {
@@ -1400,6 +1541,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view live enemy planet enemy units in transit not visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_LiveEnemyPlanet_EnemyUnitsInTransit_NotVisible()
         {
@@ -1447,6 +1591,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(viewCoruscant.GetChildren<Building>());
         }
 
+        /// <summary>
+        /// Verifies build faction view live enemy fleet in transit manifest not visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_LiveEnemyFleet_InTransitManifestNotVisible()
         {
@@ -1507,6 +1654,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(viewFleet.GetChildren<CapitalShip>()[0].GetChildren<Starfighter>());
         }
 
+        /// <summary>
+        /// Verifies build faction view own fleet in transit is visible.
+        /// </summary>
         [Test]
         public void BuildFactionView_OwnFleetInTransit_IsVisible()
         {
@@ -1534,6 +1684,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("FLEET1", viewHoth.GetChildren<Fleet>()[0].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies build faction view live planet orbing enemy fleet not duplicated from snapshot.
+        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_OrbingEnemyFleet_NotDuplicatedFromSnapshot()
         {
@@ -1568,6 +1721,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view live planet espionage snapshot enemy mission is surfaced.
+        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_EspionageSnapshotEnemyMission_IsSurfaced()
         {
@@ -1595,6 +1751,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies build faction view outer rim snapshot preserves observed popular support.
+        /// </summary>
         [Test]
         public void BuildFactionView_OuterRimSnapshot_PreservesObservedPopularSupport()
         {
@@ -1614,6 +1773,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(40, viewTatooine.PopularSupport["FNALL1"]);
         }
 
+        /// <summary>
+        /// Verifies build faction view outer rim snapshot preserves observed uprising state.
+        /// </summary>
         [Test]
         public void BuildFactionView_OuterRimSnapshot_PreservesObservedUprisingState()
         {
@@ -1632,6 +1794,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(viewTatooine.IsInUprising);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot planet with all entities creates accurate snapshot.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_PlanetWithAllEntities_CreatesAccurateSnapshot()
         {
@@ -1670,6 +1835,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(5, snapshot.NumRawResourceNodes);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot deep copy modifying game does not affect snapshot.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_DeepCopy_ModifyingGameDoesNotAffectSnapshot()
         {
@@ -1689,6 +1857,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(50, snapshot.Officers[0].GetBaseRating(OfficerRating.Diplomacy));
         }
 
+        /// <summary>
+        /// Verifies capture snapshot single entity copies entity with same instance id.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_SingleEntity_CopiesEntityWithSameInstanceID()
         {
@@ -1704,6 +1875,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreNotSame(vader, snapshot.Officers[0]);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot unvisited planet marks planet visited.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_UnvisitedPlanet_MarksPlanetVisited()
         {
@@ -1714,6 +1888,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(_coruscant.WasVisitedBy(_alliance.InstanceID));
         }
 
+        /// <summary>
+        /// Verifies capture snapshot entity moves removed from old planet snapshot.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_EntityMoves_RemovedFromOldPlanetSnapshot()
         {
@@ -1739,6 +1916,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("VADER", tatooineSnapshot.Officers[0].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot multiple entities move invalidation independent per entity.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_MultipleEntitiesMove_InvalidationIndependentPerEntity()
         {
@@ -1765,6 +1945,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, coruscantSnapshot.Fleets.Count);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot entity seen twice same planet does not duplicate.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_EntitySeenTwiceSamePlanet_DoesNotDuplicate()
         {
@@ -1780,6 +1963,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, snapshot.Officers.Count);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot entity moves back to original planet handled correctly.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_EntityMovesBackToOriginalPlanet_HandledCorrectly()
         {
@@ -1806,6 +1992,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, tatooineSnapshot.Officers.Count);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot vader rediscovered removes from old planet.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_VaderRediscovered_RemovesFromOldPlanet()
         {
@@ -1835,6 +2024,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, viewTatooine.GetChildren<Officer>().Count);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot empty planet creates planet snapshot.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_EmptyPlanet_CreatesPlanetSnapshot()
         {
@@ -1846,6 +2038,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNotNull(snapshot);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot nested entity observed elsewhere removes old fleet manifest entry.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_NestedEntityObservedElsewhere_RemovesOldFleetManifestEntry()
         {
@@ -1883,6 +2078,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies capture snapshot entity on planet updates last seen index.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_EntityOnPlanet_UpdatesLastSeenIndex()
         {
@@ -1900,6 +2098,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("TATOOINE", _alliance.Fog.EntityLastSeenAt["VADER"]);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot planet in planet sector maps planet to sector.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_PlanetInPlanetSector_MapsPlanetToSector()
         {
@@ -1912,6 +2113,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("OUTERRIM", _alliance.Fog.PlanetToSector["TATOOINE"]);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot planet visible snapshot not overwritten without explicit call.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_PlanetVisible_SnapshotNotOverwrittenWithoutExplicitCall()
         {
@@ -1944,6 +2148,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, snapshot.Officers.Count, "Snapshot should not include new entities");
         }
 
+        /// <summary>
+        /// Verifies capture snapshot invalidation removes only target entity.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_Invalidation_RemovesOnlyTargetEntity()
         {
@@ -1996,6 +2203,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies capture snapshot captured friendly officer includes detached officer.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_CapturedFriendlyOfficer_IncludesDetachedOfficer()
         {
@@ -2014,6 +2224,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(_empire.InstanceID, observed.CaptorInstanceID);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot ordinary observation manufacturing remains hidden.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_OrdinaryObservation_ManufacturingRemainsHidden()
         {
@@ -2029,6 +2242,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies capture snapshot participant seen elsewhere preserves recorded mission identity.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_ParticipantSeenElsewherePreservesRecordedMissionIdentity()
         {
@@ -2064,6 +2280,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("Darth Vader", recordedParticipant.DisplayName);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot after espionage preserves incoming enemy fleet.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_PreservesIncomingEnemyFleet()
         {
@@ -2087,6 +2306,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNotNull(viewFleet.Movement);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot after espionage preserves mission intelligence.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_PreservesMissionIntelligence()
         {
@@ -2104,6 +2326,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(empireMission.InstanceID, snapshot.Missions[0].InstanceID);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot after espionage preserves stale manufacturing intel.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_PreservesStaleManufacturingIntel()
         {
@@ -2129,6 +2354,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(25, queue[0].ManufacturingProgress);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot after espionage removes absent manufacturing intel.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_RemovesAbsentManufacturingIntel()
         {
@@ -2153,6 +2381,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies capture snapshot after espionage removes absent cargo from preserved ship.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_RemovesAbsentCargoFromPreservedShip()
         {
@@ -2185,6 +2416,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(preservedShip.GetChildren<Regiment>());
         }
 
+        /// <summary>
+        /// Verifies capture snapshot after espionage preserves fleet containing only manufacturing ship.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_PreservesFleetContainingOnlyManufacturingShip()
         {
@@ -2223,6 +2457,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies capture snapshot after espionage removes absent fleet containing only manufacturing ship.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_RemovesAbsentFleetContainingOnlyManufacturingShip()
         {
@@ -2251,6 +2488,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(knownShip.InstanceID));
         }
 
+        /// <summary>
+        /// Verifies capture snapshot enemy units in transit not recorded.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_EnemyUnitsInTransit_NotRecorded()
         {
@@ -2282,6 +2522,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(snapshot.Fleets);
         }
 
+        /// <summary>
+        /// Verifies capture snapshot empty fleet excluded from snapshot.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_EmptyFleet_ExcludedFromSnapshot()
         {
@@ -2307,6 +2550,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies capture snapshot fleet with ships included in snapshot.
+        /// </summary>
         [Test]
         public void CaptureSnapshot_FleetWithShips_IncludedInSnapshot()
         {
@@ -2338,6 +2584,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies process results sabotaged object removes object from actor snapshot.
+        /// </summary>
         [Test]
         public void ProcessResults_SabotagedObject_RemovesObjectFromActorSnapshot()
         {
@@ -2368,6 +2617,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(snapshot.Buildings.Any(b => b.InstanceID == "MINE1"));
         }
 
+        /// <summary>
+        /// Verifies is planet visible owned planet returns true.
+        /// </summary>
         [Test]
         public void IsPlanetVisible_OwnedPlanet_ReturnsTrue()
         {
@@ -2376,6 +2628,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(visible);
         }
 
+        /// <summary>
+        /// Verifies is planet visible fleet present returns true.
+        /// </summary>
         [Test]
         public void IsPlanetVisible_FleetPresent_ReturnsTrue()
         {
@@ -2388,6 +2643,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(visible);
         }
 
+        /// <summary>
+        /// Verifies is planet visible own fleet without ships returns false.
+        /// </summary>
         [Test]
         public void IsPlanetVisible_OwnFleetWithoutShips_ReturnsFalse()
         {
@@ -2399,6 +2657,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(visible);
         }
 
+        /// <summary>
+        /// Verifies is planet visible no ownership no fleet returns false.
+        /// </summary>
         [Test]
         public void IsPlanetVisible_NoOwnershipNoFleet_ReturnsFalse()
         {
@@ -2407,6 +2668,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(visible);
         }
 
+        /// <summary>
+        /// Verifies is planet visible captured friendly officer present returns false.
+        /// </summary>
         [Test]
         public void IsPlanetVisible_CapturedFriendlyOfficerPresent_ReturnsFalse()
         {
@@ -2420,6 +2684,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(visible);
         }
 
+        /// <summary>
+        /// Verifies is planet visible multiple fleets different factions only own faction counts.
+        /// </summary>
         [Test]
         public void IsPlanetVisible_MultipleFleetsDifferentFactions_OnlyOwnFactionCounts()
         {
@@ -2434,6 +2701,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(empireVisible);
         }
 
+        /// <summary>
+        /// Verifies is planet visible own fleet in transit does not grant visibility.
+        /// </summary>
         [Test]
         public void IsPlanetVisible_OwnFleetInTransit_DoesNotGrantVisibility()
         {
@@ -2450,6 +2720,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies is planet visible own capital ship in transit does not grant visibility.
+        /// </summary>
         [Test]
         public void IsPlanetVisible_OwnCapitalShipInTransit_DoesNotGrantVisibility()
         {
@@ -2467,6 +2740,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(_fogSystem.IsPlanetVisible(_coruscant, _alliance));
         }
 
+        /// <summary>
+        /// Verifies handle results selected observation reveals only selected object.
+        /// </summary>
         [Test]
         public void HandleResults_SelectedObservation_RevealsOnlySelectedObject()
         {
@@ -2501,6 +2777,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreNotEqual(PlanetIntelligenceCategory.All, snapshot.RevealedCategories);
         }
 
+        /// <summary>
+        /// Verifies handle results selected capital ship reveals partial fleet without siblings or cargo.
+        /// </summary>
         [Test]
         public void HandleResults_SelectedCapitalShip_RevealsPartialFleetWithoutSiblingsOrCargo()
         {
@@ -2532,6 +2811,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(knownShip.GetChildren<Officer>());
         }
 
+        /// <summary>
+        /// Verifies handle results selected nested officer reveals ancestry without siblings.
+        /// </summary>
         [Test]
         public void HandleResults_SelectedNestedOfficer_RevealsAncestryWithoutSiblings()
         {
@@ -2567,6 +2849,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies handle results selected manufacturing order reveals only selected order.
+        /// </summary>
         [Test]
         public void HandleResults_SelectedManufacturingOrder_RevealsOnlySelectedOrder()
         {
@@ -2593,6 +2878,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies record intelligence snapshot capital ships does not leak ship cargo.
+        /// </summary>
         [Test]
         public void RecordIntelligenceSnapshot_CapitalShips_DoesNotLeakShipCargo()
         {
@@ -2652,6 +2940,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies record intelligence snapshot enemy fleet does not retain waypoints.
+        /// </summary>
         [Test]
         public void RecordIntelligenceSnapshot_EnemyFleet_DoesNotRetainWaypoints()
         {
@@ -2675,6 +2966,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(knownFleet.Waypoints);
         }
 
+        /// <summary>
+        /// Verifies record espionage snapshot enemy manufacturing reveals manufacturing.
+        /// </summary>
         [Test]
         public void RecordEspionageSnapshot_EnemyManufacturing_RevealsManufacturing()
         {
@@ -2700,6 +2994,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies record espionage snapshot enemy missions reveals missions.
+        /// </summary>
         [Test]
         public void RecordEspionageSnapshot_EnemyMissions_RevealsMissions()
         {
@@ -2722,6 +3019,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies record espionage snapshot mission completion preserves participant intelligence.
+        /// </summary>
         [Test]
         public void RecordEspionageSnapshot_MissionCompletionPreservesParticipantIntelligence()
         {
@@ -2767,6 +3067,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("Grand Moff Tarkin", recordedDecoy.DisplayName);
         }
 
+        /// <summary>
+        /// Verifies record espionage snapshot disabled mission participant preserves participant.
+        /// </summary>
         [Test]
         public void RecordEspionageSnapshot_DisabledMissionParticipant_PreservesParticipant()
         {
@@ -2791,6 +3094,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(recordedParticipant.IsEnabled);
         }
 
+        /// <summary>
+        /// Verifies record espionage snapshot incoming enemy fleet reveals fleet.
+        /// </summary>
         [Test]
         public void RecordEspionageSnapshot_IncomingEnemyFleet_RevealsFleet()
         {
@@ -2816,6 +3122,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNotNull(viewCoruscant.GetChildren<Fleet>()[0].Movement);
         }
 
+        /// <summary>
+        /// Verifies planet snapshot mission participant intelligence survives serialization round trip.
+        /// </summary>
         [Test]
         public void PlanetSnapshot_MissionParticipantIntelligenceSurvivesSerializationRoundTrip()
         {
@@ -2845,9 +3154,23 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("officers/vader", restoredParticipant.DisplayImagePath);
         }
 
+        /// <summary>
+        /// Creates officer.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="faction">The faction.</param>
+        /// <returns>The created officer.</returns>
         private Officer CreateOfficer(string id, Faction faction) =>
             EntityFactory.CreateOfficer(id, faction.InstanceID);
 
+        /// <summary>
+        /// Adds queued building.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="id">The id.</param>
+        /// <param name="progress">The progress.</param>
+        /// <returns>The result of add queued building.</returns>
         private Building AddQueuedBuilding(Planet planet, Faction faction, string id, int progress)
         {
             Building building = CreateBuilding(id, faction, ManufacturingStatus.Building);
@@ -2860,15 +3183,31 @@ namespace Rebellion.Tests.Sectors
             return building;
         }
 
+        /// <summary>
+        /// Executes make tatooine imperial.
+        /// </summary>
         private void MakeTatooineImperial()
         {
             _tatooine.OwnerInstanceID = _empire.InstanceID;
             _tatooine.IsColonized = true;
         }
 
+        /// <summary>
+        /// Creates fleet.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="faction">The faction.</param>
+        /// <returns>The created fleet.</returns>
         private Fleet CreateFleet(string id, Faction faction) =>
             EntityFactory.CreateFleet(id, faction.InstanceID);
 
+        /// <summary>
+        /// Adds capital ship.
+        /// </summary>
+        /// <param name="fleet">The fleet.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="id">The id.</param>
+        /// <returns>The result of add capital ship.</returns>
         private CapitalShip AddCapitalShip(Fleet fleet, Faction faction, string id)
         {
             CapitalShip ship = new CapitalShip
@@ -2881,6 +3220,12 @@ namespace Rebellion.Tests.Sectors
             return ship;
         }
 
+        /// <summary>
+        /// Creates regiment.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="faction">The faction.</param>
+        /// <returns>The created regiment.</returns>
         private Regiment CreateRegiment(string id, Faction faction)
         {
             Regiment regiment = EntityFactory.CreateRegiment(id, faction.InstanceID);
@@ -2888,6 +3233,13 @@ namespace Rebellion.Tests.Sectors
             return regiment;
         }
 
+        /// <summary>
+        /// Creates building.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="status">The status.</param>
+        /// <returns>The created building.</returns>
         private Building CreateBuilding(
             string id,
             Faction faction,
@@ -2899,6 +3251,12 @@ namespace Rebellion.Tests.Sectors
             return building;
         }
 
+        /// <summary>
+        /// Creates starfighter.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="faction">The faction.</param>
+        /// <returns>The created starfighter.</returns>
         private Starfighter CreateStarfighter(string id, Faction faction)
         {
             Starfighter starfighter = EntityFactory.CreateStarfighter(id, faction.InstanceID);
@@ -2906,6 +3264,13 @@ namespace Rebellion.Tests.Sectors
             return starfighter;
         }
 
+        /// <summary>
+        /// Creates mission.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="owner">The owner.</param>
+        /// <param name="target">The target.</param>
+        /// <returns>The created mission.</returns>
         private StubMission CreateMission(string id, Faction owner, Planet target) =>
             EntityFactory.CreateMission(id, owner.InstanceID, target.InstanceID);
     }

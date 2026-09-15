@@ -15,10 +15,12 @@ namespace Rebellion.Generation
     /// </summary>
     public sealed class GameBuilder
     {
+        private const string _localPlayerID = "PLAYER1";
+        private const string _aiPlayerIDPrefix = "AI_";
+
         private readonly GameSummary _summary;
         private readonly GameDataCatalog _gameData;
         private readonly IRandomNumberProvider _randomProvider;
-        private const string _defaultPlayerId = "PLAYER1";
 
         /// <summary>
         /// Creates a builder that will generate a game matching the given summary.
@@ -71,7 +73,6 @@ namespace Rebellion.Generation
 
             SetStartingFactionIDs(ctx);
             RunSeeders(ctx);
-            AssignPlayerControl(ctx);
             AssembleGame(ctx);
             new FogOfWarSeeder().Seed(ctx);
 
@@ -149,19 +150,6 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Assigns the player ID to the selected faction and clears it from AI factions.
-        /// </summary>
-        /// <param name="ctx">The generation context.</param>
-        private static void AssignPlayerControl(GenerationContext ctx)
-        {
-            foreach (Faction faction in ctx.Factions)
-            {
-                faction.PlayerID =
-                    faction.InstanceID == ctx.Summary.PlayerFactionID ? _defaultPlayerId : null;
-            }
-        }
-
-        /// <summary>
         /// Constructs the <see cref="GameRoot"/> from the seeded context state, installs
         /// runtime configuration, and stores the result on the context.
         /// </summary>
@@ -174,10 +162,28 @@ namespace Rebellion.Generation
             GameRoot game = new GameRoot { Summary = ctx.Summary, Random = ctx.Rng };
             game.GetEventPool().AddRange(ctx.Events);
             game.GetFactions().AddRange(ctx.Factions);
+            AddPlayers(game);
             game.GetUnrecruitedOfficers().AddRange(ctx.UnrecruitedOfficers);
             game.Galaxy = galaxy;
             game.SetConfig(ctx.GameConfig);
             ctx.Game = game;
+        }
+
+        /// <summary>
+        /// Creates the participants controlling each generated faction.
+        /// </summary>
+        /// <param name="game">The generated game receiving its participants.</param>
+        private static void AddPlayers(GameRoot game)
+        {
+            foreach (Faction faction in game.GetFactions())
+            {
+                bool isHuman = faction.InstanceID == game.Summary.PlayerFactionID;
+                game.SetFactionController(
+                    faction.InstanceID,
+                    isHuman ? _localPlayerID : $"{_aiPlayerIDPrefix}{faction.InstanceID}",
+                    isHuman ? PlayerControllerType.Human : PlayerControllerType.AI
+                );
+            }
         }
     }
 }

@@ -39,6 +39,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -76,12 +79,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _controller.Initialize(_actions);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null game provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullGameProvider_ThrowsArgumentNullException()
         {
@@ -100,12 +109,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies initialize null actions throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _controller.Initialize(null));
         }
 
+        /// <summary>
+        /// Verifies bind window before initialize throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -118,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
         }
 
+        /// <summary>
+        /// Verifies open invalid participant selection destroys rejected window.
+        /// </summary>
         [Test]
         public void Open_InvalidParticipantSelection_DestroysRejectedWindow()
         {
@@ -127,6 +145,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(0, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open valid selection creates named modal window at authored position.
+        /// </summary>
         [Test]
         public void Open_ValidSelection_CreatesNamedModalWindowAtAuthoredPosition()
         {
@@ -156,6 +177,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies info button initialized session routes semantic action.
+        /// </summary>
         [Test]
         public void InfoButton_InitializedSession_RoutesSemanticAction()
         {
@@ -167,6 +191,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(window, _windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Verifies dropdown button initialized session changes local state and invalidates.
+        /// </summary>
         [Test]
         public void DropdownButton_InitializedSession_ChangesLocalStateAndInvalidates()
         {
@@ -178,6 +205,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(window, _windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Verifies mission odds checkbox initialized session changes visibility and invalidates.
+        /// </summary>
         [Test]
         public void MissionOddsCheckbox_InitializedSession_ChangesVisibilityAndInvalidates()
         {
@@ -196,6 +226,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(window, _windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Verifies mission odds checkbox persisted hidden state initializes hidden.
+        /// </summary>
         [Test]
         public void MissionOddsCheckbox_PersistedHiddenState_InitializesHidden()
         {
@@ -210,6 +243,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(0, _showMissionOddsSaveCount);
         }
 
+        /// <summary>
+        /// Verifies cancel button initialized session closes owning window.
+        /// </summary>
         [Test]
         public void CancelButton_InitializedSession_ClosesOwningWindow()
         {
@@ -221,6 +257,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(_windowManager.Windows);
         }
 
+        /// <summary>
+        /// Verifies view destroyed initialized session rejects further rendering.
+        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_RejectsFurtherRendering()
         {
@@ -231,6 +270,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<InvalidOperationException>(() => _controller.RenderWindow(view, window));
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private MissionCreateWindowController CreateController()
         {
             return new MissionCreateWindowController(
@@ -252,12 +295,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <param name="origin">Receives the origin.</param>
+        /// <param name="targetPlanet">Receives the target planet.</param>
+        /// <returns>The created game.</returns>
         private GameRoot CreateGame(out Planet origin, out GalaxyMapPlanet targetPlanet)
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.GetFactions().Add(new Faction { InstanceID = _opponentFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
@@ -284,12 +334,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             return game;
         }
 
+        /// <summary>
+        /// Executes close window.
+        /// </summary>
+        /// <param name="window">The window.</param>
         private void CloseWindow(UIWindow window)
         {
             _closedWindow = window;
             _windowManager.DestroyWindow(window);
         }
 
+        /// <summary>
+        /// Opens window.
+        /// </summary>
+        /// <param name="window">Receives the window.</param>
+        /// <returns>The result of open window.</returns>
         private MissionCreateWindowView OpenWindow(out UIWindow window)
         {
             _controller.Open(_target, new ISceneNode[] { _specialForces });
@@ -299,6 +358,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             return view;
         }
 
+        /// <summary>
+        /// Finds button.
+        /// </summary>
+        /// <param name="view">The view.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching button.</returns>
         private static Button FindButton(MissionCreateWindowView view, string objectName)
         {
             return view.GetComponentsInChildren<Button>(true)
@@ -309,8 +374,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             public int InfoCount { get; private set; }
 
+            /// <summary>
+            /// Refreshes after mission creation.
+            /// </summary>
             public void RefreshAfterMissionCreation() { }
 
+            /// <summary>
+            /// Opens mission create info.
+            /// </summary>
             public void OpenMissionCreateInfo()
             {
                 InfoCount++;

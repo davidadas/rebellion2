@@ -8,6 +8,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
     [TestFixture]
     public class StrategyHudViewDataTests
     {
+        /// <summary>
+        /// Verifies render data null text and messages normalizes empty state.
+        /// </summary>
         [Test]
         public void RenderData_NullTextAndMessages_NormalizesEmptyState()
         {
@@ -28,6 +31,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsFalse(data.HasUnreadMessageType(MessageType.Fleet));
         }
 
+        /// <summary>
+        /// Verifies render data unread message types copies and deduplicates source.
+        /// </summary>
         [Test]
         public void RenderData_UnreadMessageTypes_CopiesAndDeduplicatesSource()
         {

@@ -11,19 +11,13 @@ namespace Rebellion.Game.FogOfWar
     {
         // Snapshots.
 
-        /// <summary>
-        /// Planet-sector snapshots keyed by sector instance ID.
-        /// </summary>
+        // Planet-sector snapshots keyed by sector instance ID.
         public Dictionary<string, PlanetSectorSnapshot> Snapshots;
 
-        /// <summary>
-        /// Last observed planet for each visible entity instance ID.
-        /// </summary>
+        // Last observed planet for each visible entity instance ID.
         public Dictionary<string, string> EntityLastSeenAt;
 
-        /// <summary>
-        /// Sector instance ID for each observed planet instance ID.
-        /// </summary>
+        // Sector instance ID for each observed planet instance ID.
         public Dictionary<string, string> PlanetToSector;
 
         /// <summary>

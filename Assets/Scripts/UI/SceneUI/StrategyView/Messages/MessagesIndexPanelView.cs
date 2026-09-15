@@ -446,6 +446,7 @@ public sealed class MessagesIndexPanelView : MonoBehaviour, IContentInitializabl
     /// <summary>
     /// Verifies every authored index-panel reference before use.
     /// </summary>
+    /// <param name="verifyContent">Whether verify content.</param>
     private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null || (verifyContent && backgroundTexture == null))

@@ -51,6 +51,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Resolves whether an eligible mission participant betrays the mission.
         /// </summary>
+        /// <param name="mission">The mission.</param>
+        /// <param name="results">Receives the results.</param>
+        /// <returns>True when the officer betrays the mission; otherwise false.</returns>
         public bool TryResolveMissionBetrayal(Mission mission, out List<GameResult> results)
         {
             if (mission == null)
@@ -71,12 +74,17 @@ namespace Rebellion.Systems
         /// <summary>
         /// Returns the first eligible participant whose loyalty roll causes them to betray the mission.
         /// </summary>
+        /// <param name="mission">The mission.</param>
+        /// <returns>The matching betraying officer.</returns>
         private Officer FindBetrayingOfficer(Mission mission) =>
             mission.GetAllParticipants().OfType<Officer>().FirstOrDefault(BetraysMission);
 
         /// <summary>
         /// Rolls an eligible companion's Force rank to determine who discovers the betrayal.
         /// </summary>
+        /// <param name="mission">The mission.</param>
+        /// <param name="defector">The defector.</param>
+        /// <returns>The matching officer who discovers betrayal.</returns>
         private Officer FindOfficerWhoDiscoversBetrayal(Mission mission, Officer defector) =>
             mission
                 .GetAllParticipants()
@@ -88,6 +96,8 @@ namespace Rebellion.Systems
         /// Determines whether an eligible officer betrays a mission using inverse loyalty as
         /// the percentage chance.
         /// </summary>
+        /// <param name="officer">The officer.</param>
+        /// <returns>True when the officer betrays the mission; otherwise false.</returns>
         private bool BetraysMission(Officer officer)
         {
             if (
@@ -108,12 +118,18 @@ namespace Rebellion.Systems
         /// <summary>
         /// Returns whether an active Force-ranked officer can discover another participant's betrayal.
         /// </summary>
+        /// <param name="officer">The officer.</param>
+        /// <returns>True when the discover mission betrayal condition is met; otherwise false.</returns>
         private static bool CanDiscoverMissionBetrayal(Officer officer) =>
             officer is { IsCaptured: false, IsKilled: false } && officer.ForceRank > 0;
 
         /// <summary>
         /// Marks a discovered betrayer as a known traitor and records who exposed them and where.
         /// </summary>
+        /// <param name="mission">The mission.</param>
+        /// <param name="defector">The defector.</param>
+        /// <param name="discoverer">The discoverer.</param>
+        /// <param name="results">The results.</param>
         private void RevealTraitor(
             Mission mission,
             Officer defector,

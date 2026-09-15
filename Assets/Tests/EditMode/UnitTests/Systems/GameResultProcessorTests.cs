@@ -10,6 +10,9 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class GameResultProcessorTests
     {
+        /// <summary>
+        /// Verifies process matching results invokes only matching handlers in registration order.
+        /// </summary>
         [Test]
         public void Process_MatchingResults_InvokesOnlyMatchingHandlersInRegistrationOrder()
         {
@@ -45,6 +48,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, unrelatedCalls);
         }
 
+        /// <summary>
+        /// Verifies process reaction results processes breadth first waves in registration order.
+        /// </summary>
         [Test]
         public void Process_ReactionResults_ProcessesBreadthFirstWavesInRegistrationOrder()
         {
@@ -107,6 +113,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process observers receive matching results after all reaction waves.
+        /// </summary>
         [Test]
         public void Process_Observers_ReceiveMatchingResultsAfterAllReactionWaves()
         {
@@ -145,11 +154,20 @@ namespace Rebellion.Tests.Systems
         {
             private readonly Func<IReadOnlyList<T>, List<GameResult>> _handle;
 
+            /// <summary>
+            /// Initializes a new instance of the RecordingHandler class.
+            /// </summary>
+            /// <param name="handle">The handle.</param>
             internal RecordingHandler(Func<IReadOnlyList<T>, List<GameResult>> handle)
             {
                 _handle = handle;
             }
 
+            /// <summary>
+            /// Handles results.
+            /// </summary>
+            /// <param name="results">The results.</param>
+            /// <returns>The result of handle results.</returns>
             public List<GameResult> HandleResults(IReadOnlyList<T> results)
             {
                 return _handle(results);

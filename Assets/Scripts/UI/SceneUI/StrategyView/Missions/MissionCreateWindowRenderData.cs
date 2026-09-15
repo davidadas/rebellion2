@@ -38,6 +38,8 @@ public sealed class MissionOddsRenderData
     /// <summary>
     /// Rounds and bounds one percentage for compact mission-icon presentation.
     /// </summary>
+    /// <param name="probability">The probability.</param>
+    /// <returns>The result of round probability.</returns>
     private static int RoundProbability(double probability) =>
         (int)Math.Round(Math.Clamp(probability, 0, 100), MidpointRounding.AwayFromZero);
 }

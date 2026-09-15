@@ -84,6 +84,9 @@ namespace Rebellion.Game
         [PersistableMember(Name = "Factions")]
         private List<Faction> _factions = new List<Faction>();
 
+        [PersistableMember(Name = "Players")]
+        private List<Player> _players = new List<Player>();
+
         [PersistableMember(Name = "UnrecruitedOfficers")]
         private List<Officer> _unrecruitedOfficers = new List<Officer>();
 
@@ -170,7 +173,8 @@ namespace Rebellion.Game
         public DifficultyModifiers GetDifficultyModifier(Faction faction)
         {
             if (
-                faction?.IsAIControlled() == true
+                faction != null
+                && IsFactionAIControlled(faction)
                 && Summary != null
                 && Config?.DifficultyModifiers != null
                 && Config.DifficultyModifiers.TryGetValue(
@@ -230,35 +234,84 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns the faction controlled by the local player, resolved from
-        /// <see cref="GameSummary.PlayerFactionID"/>.
+        /// Returns the participants in this game.
+        /// </summary>
+        /// <returns>The game participants.</returns>
+        public List<Player> GetPlayers()
+        {
+            return _players;
+        }
+
+        /// <summary>
+        /// Returns the participant controlling the selected faction.
+        /// </summary>
+        /// <param name="factionInstanceID">The controlled faction identifier.</param>
+        /// <returns>The controlling participant, or null when none is assigned.</returns>
+        public Player GetFactionPlayer(string factionInstanceID)
+        {
+            return _players.FirstOrDefault(player => player.FactionID == factionInstanceID);
+        }
+
+        /// <summary>
+        /// Assigns a controller to a faction in this game.
+        /// </summary>
+        /// <param name="factionInstanceID">The faction being controlled.</param>
+        /// <param name="playerID">The participant identifier.</param>
+        /// <param name="controllerType">The kind of controller assigned to the participant.</param>
+        public void SetFactionController(
+            string factionInstanceID,
+            string playerID,
+            PlayerControllerType controllerType
+        )
+        {
+            Player player = _players.FirstOrDefault(candidate =>
+                candidate.FactionID == factionInstanceID
+            );
+            if (player == null)
+            {
+                player = new Player { FactionID = factionInstanceID };
+                _players.Add(player);
+            }
+
+            player.PlayerID = playerID;
+            player.ControllerType = controllerType;
+        }
+
+        /// <summary>
+        /// Returns whether a faction has no human participant controlling it.
+        /// </summary>
+        /// <param name="faction">The faction to inspect.</param>
+        /// <returns>True when the faction is AI controlled.</returns>
+        public bool IsFactionAIControlled(Faction faction)
+        {
+            if (faction == null)
+                throw new ArgumentNullException(nameof(faction));
+
+            return GetFactionPlayer(faction.InstanceID)?.ControllerType
+                != PlayerControllerType.Human;
+        }
+
+        /// <summary>
+        /// Returns the faction controlled by the local human player.
         /// </summary>
         /// <returns>The player's <see cref="Faction"/>.</returns>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when no summary has been set or the summary has no player faction ID.
+        /// Thrown when no human participant is configured or its faction does not exist.
         /// </exception>
         public Faction GetPlayerFaction()
         {
-            if (Summary == null)
-            {
-                throw new InvalidOperationException(
-                    "GameSummary is null. Cannot determine player faction."
-                );
-            }
+            string factionInstanceID = _players
+                .FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
+                ?.FactionID;
+            if (string.IsNullOrEmpty(factionInstanceID))
+                throw new InvalidOperationException("No human player faction is configured.");
 
-            if (string.IsNullOrEmpty(Summary.PlayerFactionID))
-            {
-                throw new InvalidOperationException("PlayerFactionID was not set in GameSummary.");
-            }
-
-            Faction faction = _factions.FirstOrDefault(f =>
-                f.InstanceID == Summary.PlayerFactionID
-            );
+            Faction faction = _factions.FirstOrDefault(f => f.InstanceID == factionInstanceID);
 
             if (faction == null)
             {
                 throw new InvalidOperationException(
-                    $"Player faction with InstanceID '{Summary.PlayerFactionID}' does not exist in this game."
+                    $"Player faction with InstanceID '{factionInstanceID}' does not exist in this game."
                 );
             }
 
@@ -490,6 +543,9 @@ namespace Rebellion.Game
         /// Retrieves all nodes of a specified type T, stopping further traversal of a branch when
         /// type T is found. An optional predicate filters which matching nodes are included.
         /// </summary>
+        /// <param name="predicate">The predicate.</param>
+        /// <typeparam name="T">The scene-node type that stops traversal and is returned.</typeparam>
+        /// <returns>The requested scene nodes by type.</returns>
         public List<T> GetSceneNodesByType<T>(Func<T, bool> predicate = null)
             where T : class
         {
@@ -651,6 +707,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Initializes and returns the supplied galaxy scene root.
         /// </summary>
+        /// <param name="galaxy">The galaxy.</param>
+        /// <returns>The result of initialize galaxy.</returns>
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
             InitializeSceneRoot(galaxy);
@@ -660,6 +718,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Rebuilds parent links and runtime indexes beneath one scene root.
         /// </summary>
+        /// <param name="root">The root.</param>
         private void InitializeSceneRoot(ISceneNode root)
         {
             ((BaseSceneNode)root).TraverseIncludingDisabled(

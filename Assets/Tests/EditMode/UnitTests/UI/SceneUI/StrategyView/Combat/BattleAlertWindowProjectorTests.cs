@@ -20,6 +20,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private const string _playerFactionId = "FNALL1";
         private const string _opponentFactionId = "FNEMP1";
 
+        /// <summary>
+        /// Verifies project without encounter returns hidden presentation at requested position.
+        /// </summary>
         [Test]
         public void Project_WithoutEncounter_ReturnsHiddenPresentationAtRequestedPosition()
         {
@@ -46,6 +49,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNull(data.Result);
         }
 
+        /// <summary>
+        /// Verifies project pending summary returns battle summary and available player commands.
+        /// </summary>
         [Test]
         public void Project_PendingSummary_ReturnsBattleSummaryAndAvailablePlayerCommands()
         {
@@ -94,6 +100,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotNull(data.FrameTexture);
         }
 
+        /// <summary>
+        /// Verifies project pending second forces returns fleet hierarchy without planet duplicates.
+        /// </summary>
         [Test]
         public void Project_PendingSecondForces_ReturnsFleetHierarchyWithoutPlanetDuplicates()
         {
@@ -134,6 +143,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsTrue(data.ViewButtons[2].Interactable);
         }
 
+        /// <summary>
+        /// Verifies project pending forces when second faction attacks icons still match faction order.
+        /// </summary>
         [Test]
         public void Project_PendingForces_WhenSecondFactionAttacks_IconsStillMatchFactionOrder()
         {
@@ -191,6 +203,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
+        /// <summary>
+        /// Verifies project pending second forces excludes unfinished and in transit units.
+        /// </summary>
         [Test]
         public void Project_PendingSecondForces_ExcludesUnfinishedAndInTransitUnits()
         {
@@ -242,6 +257,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
+        /// <summary>
+        /// Verifies project pending second forces includes active planet starfighters.
+        /// </summary>
         [Test]
         public void Project_PendingSecondForces_IncludesActivePlanetStarfighters()
         {
@@ -299,6 +317,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(assets.Pending.Rows.Any(row => row.Text == "Planetary Fighter"));
         }
 
+        /// <summary>
+        /// Verifies project pending system assets excludes fleets and includes planet units.
+        /// </summary>
         [Test]
         public void Project_PendingSystemAssets_ExcludesFleetsAndIncludesPlanetUnits()
         {
@@ -340,6 +361,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(data.Pending.Rows.Any(row => row.Text.Contains("Fleet")));
         }
 
+        /// <summary>
+        /// Verifies project pending empty panel returns contextual empty state.
+        /// </summary>
         [Test]
         public void Project_PendingEmptyPanel_ReturnsContextualEmptyState()
         {
@@ -382,6 +406,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No system assets found.", assets.Pending.Rows[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project result summary player fleet destroyed reports destruction.
+        /// </summary>
         [Test]
         public void Project_ResultSummary_PlayerFleetDestroyed_ReportsDestruction()
         {
@@ -433,6 +460,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotNull(data.FrameTexture);
         }
 
+        /// <summary>
+        /// Verifies project result summary player fleet withdrawn reports withdrawal.
+        /// </summary>
         [Test]
         public void Project_ResultSummary_PlayerFleetWithdrawn_ReportsWithdrawal()
         {
@@ -470,6 +500,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotNull(data.BackgroundTexture);
         }
 
+        /// <summary>
+        /// Verifies project result summary draw reports no victor.
+        /// </summary>
         [Test]
         public void Project_ResultSummary_DrawReportsNoVictor()
         {
@@ -507,6 +540,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             StringAssert.Contains("no victor", data.Result.Summary);
         }
 
+        /// <summary>
+        /// Verifies project bombardment result returns source summary and six category layouts.
+        /// </summary>
         [Test]
         public void Project_BombardmentResult_ReturnsSourceSummaryAndSixCategoryLayouts()
         {
@@ -577,6 +613,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsTrue(details.Result.UsesPlanetaryCategoryLayout);
         }
 
+        /// <summary>
+        /// Verifies project failed planetary assault returns source summary and assault artwork.
+        /// </summary>
         [Test]
         public void Project_FailedPlanetaryAssault_ReturnsSourceSummaryAndAssaultArtwork()
         {
@@ -619,6 +658,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotNull(data.BackgroundTexture);
         }
 
+        /// <summary>
+        /// Verifies project result personnel returns personnel columns categories and table.
+        /// </summary>
         [Test]
         public void Project_ResultPersonnel_ReturnsPersonnelColumnsCategoriesAndTable()
         {
@@ -667,6 +709,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No Casualties", data.Result.ResultTable.Destroyed[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project result forces when second faction attacks icons still match faction order.
+        /// </summary>
         [Test]
         public void Project_ResultForces_WhenSecondFactionAttacks_IconsStillMatchFactionOrder()
         {
@@ -728,6 +773,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("Opponent Ship", empire.Result.ResultTable.Operational[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project result direct returns navigation prompt and buttons without table.
+        /// </summary>
         [Test]
         public void Project_ResultDirect_ReturnsNavigationPromptAndButtonsWithoutTable()
         {
@@ -768,6 +816,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsEmpty(data.Result.ResultCategories);
         }
 
+        /// <summary>
+        /// Verifies get bombardment summary image path combat snapshots select loss artwork.
+        /// </summary>
         [Test]
         public void GetBombardmentSummaryImagePath_CombatSnapshots_SelectLossArtwork()
         {
@@ -807,6 +858,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("no-loss", noLossPath);
         }
 
+        /// <summary>
+        /// Creates scene.
+        /// </summary>
+        /// <param name="includeFleets">Whether include fleets.</param>
+        /// <returns>The created scene.</returns>
         private static (
             GameRoot Game,
             UIContext Context,
@@ -821,6 +877,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             game.GetFactions()
                 .Add(new Faction { InstanceID = _opponentFactionId, DisplayName = "Imperial" });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector { InstanceID = "sector" };
             game.AttachNode(planetSector, game.GetGalaxyMap());
             Planet planet = new Planet
@@ -861,6 +918,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             return (game, context, planet, playerFleet, opponentFleet);
         }
 
+        /// <summary>
+        /// Creates fleet.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="shipName">The ship name.</param>
+        /// <returns>The created fleet.</returns>
         private static GameFleet CreateFleet(
             string instanceId,
             string ownerId,
@@ -875,6 +940,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        /// <summary>
+        /// Creates capital ship.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created capital ship.</returns>
         private static CapitalShip CreateCapitalShip(
             string instanceId,
             string ownerId,
@@ -896,6 +968,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        /// <summary>
+        /// Creates building.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created building.</returns>
         private static Building CreateBuilding(
             string instanceId,
             string ownerId,
@@ -916,6 +995,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        /// <summary>
+        /// Creates officer.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created officer.</returns>
         private static Officer CreateOfficer(string instanceId, string ownerId, string displayName)
         {
             Officer definition = TestContent.Data.Officers.First(item =>
@@ -932,6 +1018,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        /// <summary>
+        /// Creates starfighter.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created starfighter.</returns>
         private static Starfighter CreateStarfighter(
             string instanceId,
             string ownerId,
@@ -955,6 +1048,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        /// <summary>
+        /// Creates result.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="playerFleet">The player fleet.</param>
+        /// <param name="opponentFleet">The opponent fleet.</param>
+        /// <param name="winner">The winner.</param>
+        /// <param name="playerOutcome">The player outcome.</param>
+        /// <param name="opponentOutcome">The opponent outcome.</param>
+        /// <returns>The created result.</returns>
         private static SpaceCombatResult CreateResult(
             Planet planet,
             GameFleet playerFleet,

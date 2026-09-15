@@ -106,6 +106,13 @@ namespace Rebellion.AI.Proposals
             _surplus.Clear();
         }
 
+        /// <summary>
+        /// Gets surplus.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <returns>The requested surplus.</returns>
         private static List<Building> GetSurplus(
             AITurnContext context,
             Planet planet,
@@ -131,6 +138,11 @@ namespace Rebellion.AI.Proposals
                 .ToList();
         }
 
+        /// <summary>
+        /// Checks whether the valid condition is met.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the valid condition is met; otherwise false.</returns>
         private bool IsValid(AITurnContext context)
         {
             return context?.Game != null

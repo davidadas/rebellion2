@@ -55,6 +55,12 @@ namespace Rebellion.Game.Messages
             Body = text;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the Message class.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="body">The body.</param>
         protected Message(MessageType type, string title, string body)
         {
             Type = type;

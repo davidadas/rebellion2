@@ -408,6 +408,8 @@ public sealed class StrategyWindowCommandController
     /// <summary>
     /// Returns whether the requested destination is a live capital ship still being built.
     /// </summary>
+    /// <param name="target">The target.</param>
+    /// <returns>True when the destination is an unfinished capital ship; otherwise false.</returns>
     private bool TargetsCapitalShipUnderConstruction(StrategyMissionTarget target)
     {
         if (target?.GetMoveDestination() is not CapitalShip destination)
@@ -421,6 +423,9 @@ public sealed class StrategyWindowCommandController
     /// <summary>
     /// Returns whether at least one selected live unit would change its immediate container.
     /// </summary>
+    /// <param name="items">The items.</param>
+    /// <param name="destination">The destination.</param>
+    /// <returns>True when at least one selected unit would change containers; otherwise false.</returns>
     private bool ChangesDestination(IReadOnlyList<ISceneNode> items, ContainerNode destination)
     {
         if (items == null || items.Count == 0 || destination == null)
@@ -437,6 +442,8 @@ public sealed class StrategyWindowCommandController
     /// <summary>
     /// Returns whether the selected live units include one already traveling through hyperspace.
     /// </summary>
+    /// <param name="items">The items.</param>
+    /// <returns>True when at least one selected unit is in hyperspace; otherwise false.</returns>
     private bool ContainsInTransitUnit(IReadOnlyList<ISceneNode> items)
     {
         GameRoot game = getGame();

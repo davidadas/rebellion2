@@ -19,6 +19,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         private GameObject _prefabRoot;
         private MainMenuView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -30,6 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             UIComponentTestHelper.InvokeLifecycle(_view, "OnEnable");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -37,6 +43,11 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             PrefabUtility.UnloadPrefabContents(_prefabRoot);
         }
 
+        /// <summary>
+        /// Verifies render victory condition known condition applies matching sprite and text.
+        /// </summary>
+        /// <param name="condition">The condition.</param>
+        /// <param name="expectedText">The expected text.</param>
         [TestCase(GameVictoryCondition.Conquest, "Standard Game")]
         [TestCase(GameVictoryCondition.Headquarters, "Headquarters Victory")]
         public void RenderVictoryCondition_KnownCondition_AppliesMatchingSpriteAndText(
@@ -65,6 +76,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
         }
 
+        /// <summary>
+        /// Verifies verify references authored prefab does not throw.
+        /// </summary>
         [Test]
         public void VerifyReferences_AuthoredPrefab_DoesNotThrow()
         {
@@ -119,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(Vector3.one * 3f, dialogSurface.localScale);
         }
 
+        /// <summary>
+        /// Verifies authored prefab cockpit backdrop and controls share full canvas.
+        /// </summary>
         [Test]
         public void AuthoredPrefab_CockpitBackdropAndControlsShareFullCanvas()
         {
@@ -172,6 +189,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsFalse(overlay.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render difficulty value selects mapped toggle without request.
+        /// </summary>
         [Test]
         public void RenderDifficulty_Value_SelectsMappedToggleWithoutRequest()
         {
@@ -194,6 +214,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(0, requestCount);
         }
 
+        /// <summary>
+        /// Verifies render galaxy size value selects mapped toggle without request.
+        /// </summary>
         [Test]
         public void RenderGalaxySize_Value_SelectsMappedToggleWithoutRequest()
         {
@@ -216,6 +239,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(0, requestCount);
         }
 
+        /// <summary>
+        /// Verifies command buttons click raise matching semantic requests.
+        /// </summary>
         [Test]
         public void CommandButtons_Click_RaiseMatchingSemanticRequests()
         {
@@ -248,6 +274,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(1, victoryCount);
         }
 
+        /// <summary>
+        /// Verifies galaxy size toggle selected raises mapped galaxy size.
+        /// </summary>
         [Test]
         public void GalaxySizeToggle_Selected_RaisesMappedGalaxySize()
         {
@@ -264,6 +293,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(expected, selected);
         }
 
+        /// <summary>
+        /// Verifies difficulty toggle selected raises mapped difficulty.
+        /// </summary>
         [Test]
         public void DifficultyToggle_Selected_RaisesMappedDifficulty()
         {
@@ -280,6 +312,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(expected, selected);
         }
 
+        /// <summary>
+        /// Verifies faction launch buttons click raise configured faction i ds.
+        /// </summary>
         [Test]
         public void FactionLaunchButtons_Click_RaiseConfiguredFactionIDs()
         {
@@ -308,6 +343,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
         }
 
+        /// <summary>
+        /// Verifies audio cue configured pointer event raises configured resource path.
+        /// </summary>
         [Test]
         public void AudioCue_ConfiguredPointerEvent_RaisesConfiguredResourcePath()
         {
@@ -342,6 +380,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsFalse(hasLoadBinding);
         }
 
+        /// <summary>
+        /// Verifies exit lever pointer press shows and restores pressed visual.
+        /// </summary>
         [Test]
         public void ExitLever_PointerPress_ShowsAndRestoresPressedVisual()
         {
@@ -359,6 +400,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsTrue(defaultImage.enabled);
         }
 
+        /// <summary>
+        /// Verifies exit lever pointer down raises exit audio cue.
+        /// </summary>
         [Test]
         public void ExitLever_PointerDown_RaisesExitAudioCue()
         {
@@ -373,6 +417,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual("Application/MainMenu/Audio/faction-select", requestedPath);
         }
 
+        /// <summary>
+        /// Verifies exit lever pointer up does not raise audio cue.
+        /// </summary>
         [Test]
         public void ExitLever_PointerUp_DoesNotRaiseAudioCue()
         {
@@ -387,6 +434,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(0, cueCount);
         }
 
+        /// <summary>
+        /// Verifies get audio cue paths authored bindings returns distinct configured paths.
+        /// </summary>
         [Test]
         public void GetAudioCuePaths_AuthoredBindings_ReturnsDistinctConfiguredPaths()
         {
@@ -401,6 +451,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
         }
 
+        /// <summary>
+        /// Verifies on enable already bound does not duplicate listeners.
+        /// </summary>
         [Test]
         public void OnEnable_AlreadyBound_DoesNotDuplicateListeners()
         {
@@ -413,6 +466,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(1, loadCount);
         }
 
+        /// <summary>
+        /// Verifies on disable bound view unbinds controls.
+        /// </summary>
         [Test]
         public void OnDisable_BoundView_UnbindsControls()
         {
@@ -438,11 +494,22 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(0, cueCount);
         }
 
+        /// <summary>
+        /// Gets bindings.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <returns>The requested bindings.</returns>
         private Array GetBindings(string fieldName)
         {
             return GetField<Array>(fieldName);
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -451,17 +518,34 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     .GetValue(_view);
         }
 
+        /// <summary>
+        /// Gets binding value.
+        /// </summary>
+        /// <param name="binding">The binding.</param>
+        /// <param name="propertyName">The property name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested binding value.</returns>
         private static T GetBindingValue<T>(object binding, string propertyName)
         {
             return (T)binding.GetType().GetProperty(propertyName).GetValue(binding);
         }
 
+        /// <summary>
+        /// Sets all toggles.
+        /// </summary>
+        /// <param name="bindings">The bindings.</param>
+        /// <param name="value">Whether value.</param>
         private static void SetAllToggles(Array bindings, bool value)
         {
             foreach (object binding in bindings)
                 GetBindingValue<Toggle>(binding, "Toggle").SetIsOnWithoutNotify(value);
         }
 
+        /// <summary>
+        /// Executes invoke trigger.
+        /// </summary>
+        /// <param name="trigger">The trigger.</param>
+        /// <param name="eventType">The event type.</param>
         private static void InvokeTrigger(EventTrigger trigger, EventTriggerType eventType)
         {
             foreach (EventTrigger.Entry entry in trigger.triggers)

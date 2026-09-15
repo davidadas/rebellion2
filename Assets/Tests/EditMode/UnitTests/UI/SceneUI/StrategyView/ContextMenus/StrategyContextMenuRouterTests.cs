@@ -21,6 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         private RecordingProvider _provider;
         private StrategyContextMenuRouter _router;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -33,6 +36,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             _router = CreateRouter(_provider);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -40,6 +46,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null dependency or provider throws.
+        /// </summary>
         [Test]
         public void Constructor_NullDependencyOrProvider_Throws()
         {
@@ -80,6 +89,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             );
         }
 
+        /// <summary>
+        /// Verifies open context menu known window uses first handling provider.
+        /// </summary>
         [Test]
         public void OpenContextMenu_KnownWindow_UsesFirstHandlingProvider()
         {
@@ -108,6 +120,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsTrue(_router.IsOpen);
         }
 
+        /// <summary>
+        /// Verifies open context menu pointer window resolves registered window.
+        /// </summary>
         [Test]
         public void OpenContextMenu_PointerWindow_ResolvesRegisteredWindow()
         {
@@ -130,6 +145,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual(43, _provider.LastContext.Y);
         }
 
+        /// <summary>
+        /// Verifies open context menu no provider handles shows disabled fallback commands.
+        /// </summary>
         [Test]
         public void OpenContextMenu_NoProviderHandles_ShowsDisabledFallbackCommands()
         {
@@ -144,6 +162,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual("Status", FindCommandText(rows[1]).text);
         }
 
+        /// <summary>
+        /// Verifies open context menu null window cancels request and resets presenter.
+        /// </summary>
         [Test]
         public void OpenContextMenu_NullWindow_CancelsRequestAndResetsPresenter()
         {
@@ -200,6 +221,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(_presenter.Open);
         }
 
+        /// <summary>
+        /// Verifies open runtime context menu strategy commands opens request and presentation.
+        /// </summary>
         [Test]
         public void OpenRuntimeContextMenu_StrategyCommands_OpensRequestAndPresentation()
         {
@@ -218,6 +242,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsTrue(_router.IsOpen);
         }
 
+        /// <summary>
+        /// Verifies open runtime context menu null or foreign command throws.
+        /// </summary>
         [Test]
         public void OpenRuntimeContextMenu_NullOrForeignCommand_Throws()
         {
@@ -237,6 +264,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(_presenter.Open);
         }
 
+        /// <summary>
+        /// Verifies select runtime context menu included command notifies and closes both layers.
+        /// </summary>
         [Test]
         public void SelectRuntimeContextMenu_IncludedCommand_NotifiesAndClosesBothLayers()
         {
@@ -258,6 +288,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(_presenter.Open);
         }
 
+        /// <summary>
+        /// Verifies select runtime context menu invalid command cancels and closes both layers.
+        /// </summary>
         [Test]
         public void SelectRuntimeContextMenu_InvalidCommand_CancelsAndClosesBothLayers()
         {
@@ -278,6 +311,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(_presenter.Open);
         }
 
+        /// <summary>
+        /// Verifies try cancel open then closed menu returns matching state.
+        /// </summary>
         [Test]
         public void TryCancel_OpenThenClosedMenu_ReturnsMatchingState()
         {
@@ -298,6 +334,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(_router.IsOpen);
         }
 
+        /// <summary>
+        /// Creates router.
+        /// </summary>
+        /// <param name="providers">The providers.</param>
+        /// <returns>The created router.</returns>
         private StrategyContextMenuRouter CreateRouter(
             params IStrategyContextMenuProvider[] providers
         )
@@ -310,6 +351,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             );
         }
 
+        /// <summary>
+        /// Creates registered window.
+        /// </summary>
+        /// <returns>The created registered window.</returns>
         private UIWindow CreateRegisteredWindow()
         {
             GameObject windowObject = new GameObject(
@@ -325,6 +370,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             return window;
         }
 
+        /// <summary>
+        /// Finds rendered rows.
+        /// </summary>
+        /// <returns>The matching rendered rows.</returns>
         private ContextMenuCommandView[] FindRenderedRows()
         {
             ContextMenuPanelView panel = _rootObject
@@ -345,12 +394,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds command text.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <returns>The matching command text.</returns>
         private static TextMeshProUGUI FindCommandText(ContextMenuCommandView row)
         {
             return row.GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == "CommandTextField");
         }
 
+        /// <summary>
+        /// Creates command.
+        /// </summary>
+        /// <param name="text">The text.</param>
+        /// <returns>The created command.</returns>
         private static StrategyMenuCommand CreateCommand(string text)
         {
             return new StrategyMenuCommand(StrategyMenuAction.Status, text, true);
@@ -364,6 +423,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             public ContextMenuRequest Request { get; set; }
             public int Width { get; set; }
 
+            /// <summary>
+            /// Attempts create context menu.
+            /// </summary>
+            /// <param name="context">The context.</param>
+            /// <param name="request">Receives the request.</param>
+            /// <param name="width">Receives the width.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryCreateContextMenu(
                 StrategyContextMenuProviderContext context,
                 out ContextMenuRequest request,
@@ -385,6 +451,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             public ContextMenuRequest LastRequest { get; private set; }
             public int SelectedCount { get; private set; }
 
+            /// <summary>
+            /// Executes on context menu command selected.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="command">The command.</param>
             public void OnContextMenuCommandSelected(
                 ContextMenuRequest request,
                 IContextMenuCommand command
@@ -395,6 +466,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 LastCommand = command;
             }
 
+            /// <summary>
+            /// Executes on context menu cancelled.
+            /// </summary>
+            /// <param name="request">The request.</param>
             public void OnContextMenuCancelled(ContextMenuRequest request)
             {
                 CancelledCount++;

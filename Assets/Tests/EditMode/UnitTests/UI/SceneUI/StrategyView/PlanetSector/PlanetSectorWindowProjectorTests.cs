@@ -25,6 +25,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private PlanetSectorWindowProjector _projector;
         private UIContext _uiContext;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -36,6 +39,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 .GetFactions()
                 .Add(new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" });
             _game.Summary.PlayerFactionID = _playerFactionId;
+            _game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 _game,
                 TestContent.CreateThemeLibrary(),
@@ -51,12 +55,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _projector = new PlanetSectorWindowProjector(() => _uiContext);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new PlanetSectorWindowProjector(null));
         }
 
+        /// <summary>
+        /// Verifies project waypoint routes player and opposing routes returns visible player route.
+        /// </summary>
         [Test]
         public void ProjectWaypointRoutes_PlayerAndOpposingRoutes_ReturnsVisiblePlayerRoute()
         {
@@ -104,6 +114,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(2, waypoints[1].PlanetIndex);
         }
 
+        /// <summary>
+        /// Verifies project waypoint routes unselected route returns route only when all routes enabled.
+        /// </summary>
         [Test]
         public void ProjectWaypointRoutes_UnselectedRoute_ReturnsRouteOnlyWhenAllRoutesEnabled()
         {
@@ -142,6 +155,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1, allWaypoints.Count);
         }
 
+        /// <summary>
+        /// Verifies project waypoint routes uncommitted plan returns visible preview.
+        /// </summary>
         [Test]
         public void ProjectWaypointRoutes_UncommittedPlan_ReturnsVisiblePreview()
         {
@@ -183,6 +199,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(fleet.Movement);
         }
 
+        /// <summary>
+        /// Verifies create render data unavailable context throws invalid operation exception.
+        /// </summary>
         [Test]
         public void CreateRenderData_UnavailableContext_ThrowsInvalidOperationException()
         {
@@ -193,6 +212,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies create render data null sector returns empty presentation.
+        /// </summary>
         [Test]
         public void CreateRenderData_NullSector_ReturnsEmptyPresentation()
         {
@@ -208,6 +230,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsEmpty(data.Planets);
         }
 
+        /// <summary>
+        /// Verifies create render data composite planet returns complete presentation.
+        /// </summary>
         [Test]
         public void CreateRenderData_CompositePlanet_ReturnsCompletePresentation()
         {
@@ -329,6 +354,58 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies an owned regiment under construction produces a defense overlay.
+        /// </summary>
+        [Test]
+        public void CreateRenderData_OwnedRegimentUnderConstruction_ReturnsDefenseTexture()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
+            planet.AddTestChild(
+                new Regiment
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                }
+            );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsNotNull(data.Planets[0].DefenseTexture);
+        }
+
+        /// <summary>
+        /// Verifies an owned planetary defense under construction produces a defense overlay.
+        /// </summary>
+        [Test]
+        public void CreateRenderData_OwnedDefenseUnderConstruction_ReturnsDefenseTexture()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
+            Building defense = CreateBuilding(BuildingType.Defense);
+            defense.OwnerInstanceID = _playerFactionId;
+            defense.ManufacturingStatus = ManufacturingStatus.Building;
+            planet.AddTestChild(defense);
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsNotNull(data.Planets[0].DefenseTexture);
+        }
+
+        /// <summary>
+        /// Verifies popular support uses the supported opposing faction's color.
+        /// </summary>
         [Test]
         public void CreateRenderData_PopularSupport_ReturnsSupportedOpposingFactionColor()
         {
@@ -356,6 +433,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies create render data unselected planet returns no interaction state.
+        /// </summary>
         [Test]
         public void CreateRenderData_UnselectedPlanet_ReturnsNoInteractionState()
         {
@@ -376,6 +456,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(PlanetIcon.None, data.Planets[0].HoveredIcon);
         }
 
+        /// <summary>
+        /// Verifies create render data stationed officer returns defense overlay.
+        /// </summary>
         [Test]
         public void CreateRenderData_StationedOfficer_ReturnsDefenseOverlay()
         {
@@ -399,6 +482,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNotNull(data.Planets[0].DefensePressedTexture);
         }
 
+        /// <summary>
+        /// Verifies create render data uprising planet returns uprising and mission overlays.
+        /// </summary>
         [Test]
         public void CreateRenderData_UprisingPlanet_ReturnsUprisingAndMissionOverlays()
         {
@@ -437,6 +523,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies create render data neutral planet returns neutral facility and defense textures.
+        /// </summary>
         [Test]
         public void CreateRenderData_NeutralPlanet_ReturnsNeutralFacilityAndDefenseTextures()
         {
@@ -487,6 +576,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(presentation.MissionPressedTexture);
         }
 
+        /// <summary>
+        /// Verifies create render data unexplored planet returns hidden details.
+        /// </summary>
         [Test]
         public void CreateRenderData_UnexploredPlanet_ReturnsHiddenDetails()
         {
@@ -523,6 +615,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(presentation.SupportBar.Visible);
         }
 
+        /// <summary>
+        /// Verifies create render data empty capacities returns continuous empty bars.
+        /// </summary>
         [Test]
         public void CreateRenderData_EmptyCapacities_ReturnsContinuousEmptyBars()
         {
@@ -551,6 +646,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(presentation.SupportBar.Visible);
         }
 
+        /// <summary>
+        /// Verifies create render data destroyed planet returns destroyed planet texture.
+        /// </summary>
         [Test]
         public void CreateRenderData_DestroyedPlanet_ReturnsDestroyedPlanetTexture()
         {
@@ -580,6 +678,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies create render data null planet returns sector relative placeholder.
+        /// </summary>
         [Test]
         public void CreateRenderData_NullPlanet_ReturnsSectorRelativePlaceholder()
         {
@@ -606,6 +707,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(data.Planets[0].MissionTexture);
         }
 
+        /// <summary>
+        /// Creates building.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <returns>The created building.</returns>
         private static Building CreateBuilding(BuildingType type)
         {
             return new Building
@@ -615,6 +721,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             };
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="positionX">The position x.</param>
+        /// <param name="positionY">The position y.</param>
+        /// <returns>The created planet.</returns>
         private static Planet CreatePlanet(
             string instanceId,
             string ownerInstanceId,
@@ -632,6 +746,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             };
         }
 
+        /// <summary>
+        /// Creates sector.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The created sector.</returns>
         private GalaxyMapSector CreateSector(GalaxyMapPlanet planet)
         {
             return new GalaxyMapSector(_planetSector, new[] { planet });
@@ -644,11 +763,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             protected override Rebellion.SceneGraph.BaseSceneNode CreateNodeCopy() =>
                 new TestMission(null);
 
+            /// <summary>
+            /// Initializes a new instance of the TestMission class.
+            /// </summary>
+            /// <param name="ownerInstanceId">The owner instance id.</param>
             public TestMission(string ownerInstanceId)
             {
                 OwnerInstanceID = ownerInstanceId;
             }
 
+            /// <summary>
+            /// Checks whether the repeat after completion condition is met.
+            /// </summary>
+            /// <param name="game">The game.</param>
+            /// <returns>True when the repeat after completion condition is met; otherwise false.</returns>
             public override bool ShouldRepeatAfterCompletion(GameRoot game)
             {
                 return false;

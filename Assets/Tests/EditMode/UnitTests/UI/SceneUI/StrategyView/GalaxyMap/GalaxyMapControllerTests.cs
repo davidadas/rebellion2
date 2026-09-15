@@ -25,6 +25,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private GameObject _rootObject;
         private GalaxyMapView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -32,6 +35,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -48,18 +52,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _sector = CreateSector();
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new GalaxyMapController(null));
         }
 
+        /// <summary>
+        /// Verifies bind view before initialization throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindView_BeforeInitialization_ThrowsInvalidOperationException()
         {
@@ -68,6 +81,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.Throws<InvalidOperationException>(() => controller.BindView(_view));
         }
 
+        /// <summary>
+        /// Verifies render before view binding throws invalid operation exception.
+        /// </summary>
         [Test]
         public void Render_BeforeViewBinding_ThrowsInvalidOperationException()
         {
@@ -83,6 +99,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies render visible sector routes hover and open requests.
+        /// </summary>
         [Test]
         public void Render_VisibleSector_RoutesHoverAndOpenRequests()
         {
@@ -107,6 +126,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(240, _actions.OpenedY);
         }
 
+        /// <summary>
+        /// Verifies render empty snapshot clears mission target lookup.
+        /// </summary>
         [Test]
         public void Render_EmptySnapshot_ClearsMissionTargetLookup()
         {
@@ -128,6 +150,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(target);
         }
 
+        /// <summary>
+        /// Verifies try get mission target rendered planet marker returns domain target.
+        /// </summary>
         [Test]
         public void TryGetMissionTarget_RenderedPlanetMarker_ReturnsDomainTarget()
         {
@@ -150,6 +175,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreSame(_sector.Planets[0].Planet, target.Item);
         }
 
+        /// <summary>
+        /// Verifies find planet current snapshot returns projected planet.
+        /// </summary>
         [Test]
         public void FindPlanet_CurrentSnapshot_ReturnsProjectedPlanet()
         {
@@ -165,6 +193,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(_controller.FindPlanet("missing"));
         }
 
+        /// <summary>
+        /// Verifies find sector current snapshot returns projected sector by instance id.
+        /// </summary>
         [Test]
         public void FindSector_CurrentSnapshot_ReturnsProjectedSectorByInstanceID()
         {
@@ -184,6 +215,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreNotSame(liveSector, sector.PlanetSector);
         }
 
+        /// <summary>
+        /// Verifies find sector sector outside current snapshot returns null.
+        /// </summary>
         [Test]
         public void FindSector_SectorOutsideCurrentSnapshot_ReturnsNull()
         {
@@ -198,12 +232,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(sector);
         }
 
+        /// <summary>
+        /// Verifies clear hover no hovered sector returns false.
+        /// </summary>
         [Test]
         public void ClearHover_NoHoveredSector_ReturnsFalse()
         {
             Assert.IsFalse(_controller.ClearHover());
         }
 
+        /// <summary>
+        /// Verifies set spotlight planet changed and cleared requests render.
+        /// </summary>
         [Test]
         public void SetSpotlightPlanet_ChangedAndCleared_RequestsRender()
         {
@@ -214,12 +254,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(2, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies get sector source position null sector returns zero.
+        /// </summary>
         [Test]
         public void GetSectorSourcePosition_NullSector_ReturnsZero()
         {
             Assert.AreEqual(Vector2Int.zero, _controller.GetSectorSourcePosition(null));
         }
 
+        /// <summary>
+        /// Creates sector.
+        /// </summary>
+        /// <returns>The created sector.</returns>
         private static GalaxyMapSector CreateSector()
         {
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector
@@ -243,6 +290,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Creates map pointer event.
+        /// </summary>
+        /// <param name="localPosition">The local position.</param>
+        /// <returns>The created map pointer event.</returns>
         private PointerEventData CreateMapPointerEvent(Vector2 localPosition)
         {
             RectTransform rect = _view.transform as RectTransform;
@@ -255,6 +307,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
+        /// <summary>
+        /// Creates cluster pointer event.
+        /// </summary>
+        /// <param name="cluster">The cluster.</param>
+        /// <param name="sourcePosition">The source position.</param>
+        /// <returns>The created cluster pointer event.</returns>
         private static PointerEventData CreateClusterPointerEvent(
             PlanetSectorClusterView cluster,
             Vector2 sourcePosition
@@ -275,6 +333,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
+        /// <summary>
+        /// Finds rendered cluster.
+        /// </summary>
+        /// <returns>The matching rendered cluster.</returns>
         private PlanetSectorClusterView FindRenderedCluster()
         {
             return _view
@@ -289,6 +351,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             public int OpenedY { get; private set; } = -1;
             public int RenderRequestCount { get; private set; }
 
+            /// <summary>
+            /// Opens planet sector window.
+            /// </summary>
+            /// <param name="planetSector">The planet sector.</param>
+            /// <param name="sourceX">The source x.</param>
+            /// <param name="sourceY">The source y.</param>
             public void OpenPlanetSectorWindow(
                 GalaxyPlanetSector planetSector,
                 int sourceX,
@@ -300,6 +368,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 OpenedY = sourceY;
             }
 
+            /// <summary>
+            /// Executes request galaxy map render.
+            /// </summary>
             public void RequestGalaxyMapRender()
             {
                 RenderRequestCount++;

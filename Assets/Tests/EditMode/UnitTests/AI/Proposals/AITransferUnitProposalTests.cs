@@ -13,6 +13,9 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AITransferUnitProposalTests
     {
+        /// <summary>
+        /// Verifies execute with same planet capital ship transfer reparents unit to target fleet.
+        /// </summary>
         [Test]
         public void Execute_WithSamePlanetCapitalShipTransfer_ReparentsUnitToTargetFleet()
         {
@@ -58,6 +61,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNull(ship.Movement);
         }
 
+        /// <summary>
+        /// Verifies execute with headquarters defense transfer reparents unit to defense fleet.
+        /// </summary>
         [Test]
         public void Execute_WithHeadquartersDefenseTransfer_ReparentsUnitToDefenseFleet()
         {
@@ -105,6 +111,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNull(ship.Movement);
         }
 
+        /// <summary>
+        /// Verifies get claim keys with source and target fleet returns transfer claims.
+        /// </summary>
         [Test]
         public void GetClaimKeys_WithSourceAndTargetFleet_ReturnsTransferClaims()
         {
@@ -137,6 +146,9 @@ namespace Rebellion.Tests.AI.Proposals
             );
         }
 
+        /// <summary>
+        /// Verifies execute with planet regiment transfer loads regiment into target fleet.
+        /// </summary>
         [Test]
         public void Execute_WithPlanetRegimentTransfer_LoadsRegimentIntoTargetFleet()
         {

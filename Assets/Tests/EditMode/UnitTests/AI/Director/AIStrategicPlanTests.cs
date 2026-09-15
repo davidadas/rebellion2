@@ -10,6 +10,9 @@ namespace Rebellion.Tests.AI.Director
     [TestFixture]
     public class AIStrategicPlanTests
     {
+        /// <summary>
+        /// Verifies fleet count change redistributes independent mobile strength target.
+        /// </summary>
         [Test]
         public void FleetCountChange_RedistributesIndependentMobileStrengthTarget()
         {

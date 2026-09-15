@@ -11,6 +11,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
     {
         private GameObject _windowObject;
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -18,6 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                 Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor source items change preserves snapshot.
+        /// </summary>
         [Test]
         public void Constructor_SourceItemsChange_PreservesSnapshot()
         {
@@ -38,6 +44,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(officer, source.Items[0]);
         }
 
+        /// <summary>
+        /// Verifies constructor null items normalizes to empty list.
+        /// </summary>
         [Test]
         public void Constructor_NullItems_NormalizesToEmptyList()
         {
@@ -53,6 +62,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsEmpty(source.Items);
         }
 
+        /// <summary>
+        /// Verifies get prompt action returns expected prompt.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="expectedPrompt">The expected prompt.</param>
         [TestCase(StrategyMenuAction.CreateMission, "Select mission target")]
         [TestCase(StrategyMenuAction.Destination, "Select destination")]
         [TestCase(StrategyMenuAction.Move, "Select move destination")]
@@ -72,6 +86,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(expectedPrompt, prompt);
         }
 
+        /// <summary>
+        /// Verifies try append waypoint valid identifiers preserves selection order.
+        /// </summary>
         [Test]
         public void TryAppendWaypoint_ValidIdentifiers_PreservesSelectionOrder()
         {
@@ -91,6 +108,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             CollectionAssert.AreEqual(new[] { "first", "second" }, source.WaypointPlanetIds);
         }
 
+        /// <summary>
+        /// Verifies try remove last waypoint multiple waypoints removes newest waypoint.
+        /// </summary>
         [Test]
         public void TryRemoveLastWaypoint_MultipleWaypoints_RemovesNewestWaypoint()
         {
@@ -110,6 +130,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             CollectionAssert.AreEqual(new[] { "first" }, source.WaypointPlanetIds);
         }
 
+        /// <summary>
+        /// Creates window.
+        /// </summary>
+        /// <returns>The created window.</returns>
         private UIWindow CreateWindow()
         {
             _windowObject = new GameObject(

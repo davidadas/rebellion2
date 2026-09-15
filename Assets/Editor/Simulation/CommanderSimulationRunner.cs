@@ -46,7 +46,14 @@ public static partial class HeadlessSimulationRunner
                 throw new InvalidOperationException($"Unknown commander faction '{factionId}'.");
 
             foreach (Faction faction in game.GetFactions())
-                faction.PlayerID = faction == commander ? _commanderPlayerId : null;
+            {
+                Player player = game.GetFactionPlayer(faction.InstanceID);
+                game.SetFactionController(
+                    faction.InstanceID,
+                    faction == commander ? _commanderPlayerId : player?.PlayerID,
+                    faction == commander ? PlayerControllerType.Human : PlayerControllerType.AI
+                );
+            }
             game.Summary.PlayerFactionID = commander.InstanceID;
 
             GameManager manager = new GameManager(game, contentPack.GameData);

@@ -75,6 +75,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Moves support toward the side already favored while a fleet blockades the planet.
         /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="config">The config.</param>
         private void UpdateBlockadeSupport(Planet planet, GameConfig.SupportShiftConfig config)
         {
             if (!planet.IsBlockaded())
@@ -122,6 +124,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Returns the faction operating the fleet that currently blockades a planet.
         /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The requested blockading faction.</returns>
         private Faction GetBlockadingFaction(Planet planet)
         {
             Fleet blockadingFleet = planet
@@ -137,6 +141,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Finds the faction with strictly more popular support than every other faction.
         /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="supportLeader">Receives the support leader.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
         private bool TryGetFavoredFaction(Planet planet, out Faction supportLeader)
         {
             List<Faction> factions = _game.GetFactions();
@@ -161,6 +168,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Returns the blockade shift interval for the planet's current support alignment.
         /// </summary>
+        /// <param name="config">The config.</param>
+        /// <param name="blockadeSupportsFavoredFaction">Whether blockade supports favored faction.</param>
+        /// <returns>The requested blockade support interval.</returns>
         private static int GetBlockadeSupportInterval(
             GameConfig.SupportShiftConfig config,
             bool blockadeSupportsFavoredFaction
@@ -174,6 +184,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Clears a planet's blockade support-shift schedule.
         /// </summary>
+        /// <param name="planet">The planet.</param>
         private static void ResetBlockadeSupportTimer(Planet planet)
         {
             planet.NextBlockadeSupportShiftTick = 0;
@@ -183,6 +194,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Schedules the planet's next blockade support shift.
         /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="interval">The interval.</param>
         private void ScheduleBlockadeSupport(Planet planet, int interval)
         {
             planet.NextBlockadeSupportShiftTick = _game.CurrentTick + interval;
@@ -213,6 +226,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Applies event-requested ownership changes through the authoritative rules.
         /// </summary>
+        /// <param name="requests">The requests.</param>
+        /// <returns>The result of handle requests.</returns>
         List<GameResult> IGameRequestHandler<OwnershipChangeRequest>.HandleRequests(
             IReadOnlyList<OwnershipChangeRequest> requests
         )

@@ -1,3 +1,4 @@
+using System.Linq;
 using Rebellion.Input;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -14,7 +15,7 @@ public sealed class InputManager : MonoBehaviour
     /// </summary>
     public PlayerInputActions Actions
     {
-        get { return _actions ??= new PlayerInputActions(); }
+        get { return _actions ??= CreateActions(); }
     }
 
     /// <summary>
@@ -92,9 +93,58 @@ public sealed class InputManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Applies the platform-specific default for shortcuts authored with the Control modifier.
+    /// </summary>
+    /// <param name="asset">The input action asset to update.</param>
+    /// <param name="useCommandKey">Whether Command replaces Control.</param>
+    internal static void SetShortcutModifier(InputActionAsset asset, bool useCommandKey)
+    {
+        foreach (InputActionMap actionMap in asset.actionMaps)
+        {
+            foreach (InputAction action in actionMap.actions)
+            {
+                bool hasControlDefault = action.bindings.Any(binding =>
+                    binding.path == "<Keyboard>/ctrl"
+                );
+                if (!hasControlDefault)
+                    continue;
+
+                for (int index = 0; index < action.bindings.Count; index++)
+                {
+                    string path = action.bindings[index].path;
+                    if (path == "<Keyboard>/ctrl")
+                    {
+                        if (useCommandKey)
+                            action.ChangeBinding(index).WithPath("<Keyboard>/leftMeta");
+                    }
+                    else if (path == "<Keyboard>/leftMeta")
+                    {
+                        action.ChangeBinding(index).WithPath(string.Empty);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Creates the generated actions and selects the native desktop shortcut modifier.
+    /// </summary>
+    /// <returns>The configured player input actions.</returns>
+    private static PlayerInputActions CreateActions()
+    {
+        PlayerInputActions actions = new PlayerInputActions();
+        bool useCommandKey =
+            Application.platform == RuntimePlatform.OSXEditor
+            || Application.platform == RuntimePlatform.OSXPlayer;
+        SetShortcutModifier(actions.asset, useCommandKey);
+        return actions;
+    }
+
+    /// <summary>
     /// Prevents persisted rebinding data from replacing the fixed Escape and Shift+Escape
     /// navigation shortcuts.
     /// </summary>
+    /// <param name="asset">The asset.</param>
     private static void RemoveReservedShortcutOverrides(InputActionAsset asset)
     {
         RemovePrimaryShortcutOverride(asset.FindAction("Global/CancelOrSettings", true));
@@ -105,6 +155,7 @@ public sealed class InputManager : MonoBehaviour
     /// Removes overrides from one action's authored primary binding, including every part of
     /// its optional composite chord.
     /// </summary>
+    /// <param name="action">The action.</param>
     private static void RemovePrimaryShortcutOverride(InputAction action)
     {
         bool insidePrimaryChord = false;

@@ -25,6 +25,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private GalaxyMapProjector _projector;
         private UIContext _uiContext;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -36,6 +39,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 .GetFactions()
                 .Add(new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" });
             _game.Summary.PlayerFactionID = _playerFactionId;
+            _game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 _game,
                 TestContent.CreateThemeLibrary(),
@@ -44,12 +48,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _projector = new GalaxyMapProjector(() => _uiContext);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new GalaxyMapProjector(null));
         }
 
+        /// <summary>
+        /// Verifies project waypoint routes player and opposing routes returns only player route.
+        /// </summary>
         [Test]
         public void ProjectWaypointRoutes_PlayerAndOpposingRoutes_ReturnsOnlyPlayerRoute()
         {
@@ -82,6 +92,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(new Vector2Int(48, 58), routes[0].Waypoints[0].Position);
         }
 
+        /// <summary>
+        /// Verifies project waypoint routes unselected route returns route only when all routes enabled.
+        /// </summary>
         [Test]
         public void ProjectWaypointRoutes_UnselectedRoute_ReturnsRouteOnlyWhenAllRoutesEnabled()
         {
@@ -108,6 +121,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(fleet.InstanceID, allRoutes[0].FleetInstanceId);
         }
 
+        /// <summary>
+        /// Verifies project waypoint routes uncommitted plan returns preview without mutating fleet.
+        /// </summary>
         [Test]
         public void ProjectWaypointRoutes_UncommittedPlan_ReturnsPreviewWithoutMutatingFleet()
         {
@@ -140,6 +156,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(fleet.Movement);
         }
 
+        /// <summary>
+        /// Verifies project waypoint routes capital ship plan returns source fleet preview.
+        /// </summary>
         [Test]
         public void ProjectWaypointRoutes_CapitalShipPlan_ReturnsSourceFleetPreview()
         {
@@ -180,6 +199,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsEmpty(fleet.Waypoints);
         }
 
+        /// <summary>
+        /// Verifies project unavailable context throws invalid operation exception.
+        /// </summary>
         [Test]
         public void Project_UnavailableContext_ThrowsInvalidOperationException()
         {
@@ -195,6 +217,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies project no sectors returns configured background without clusters.
+        /// </summary>
         [Test]
         public void Project_NoSectors_ReturnsConfiguredBackgroundWithoutClusters()
         {
@@ -225,6 +250,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsEmpty(data.Clusters);
         }
 
+        /// <summary>
+        /// Verifies project display off returns faction marker offsets and headquarters overlay.
+        /// </summary>
         [Test]
         public void Project_DisplayOff_ReturnsFactionMarkerOffsetsAndHeadquartersOverlay()
         {
@@ -263,6 +291,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies project corellian planets returns corrected selonia and duros offsets.
+        /// </summary>
         [Test]
         public void Project_CorellianPlanets_ReturnsCorrectedSeloniaAndDurosOffsets()
         {
@@ -301,6 +332,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(31, durosStar.SourceX);
         }
 
+        /// <summary>
+        /// Verifies project unexplored headquarters returns unknown marker without overlay.
+        /// </summary>
         [Test]
         public void Project_UnexploredHeadquarters_ReturnsUnknownMarkerWithoutOverlay()
         {
@@ -327,6 +361,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(data.Clusters[0].ShowLabel);
         }
 
+        /// <summary>
+        /// Verifies project highest filter value returns extra large marker and active label.
+        /// </summary>
         [Test]
         public void Project_HighestFilterValue_ReturnsExtraLargeMarkerAndActiveLabel()
         {
@@ -371,6 +408,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies project spotlight planet overrides then restores active filter markers.
+        /// </summary>
         [Test]
         public void Project_SpotlightPlanet_OverridesThenRestoresActiveFilterMarkers()
         {
@@ -423,6 +463,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies project opponent loyalty briefing highlights only opponent and uses cue label.
+        /// </summary>
         [Test]
         public void Project_OpponentLoyaltyBriefing_HighlightsOnlyOpponentAndUsesCueLabel()
         {
@@ -462,6 +505,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies project unexplored systems briefing uses blue highlight for unexplored planets.
+        /// </summary>
         [Test]
         public void Project_UnexploredSystemsBriefing_UsesBlueHighlightForUnexploredPlanets()
         {
@@ -499,6 +545,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies project dimmed briefing dims only galaxy background.
+        /// </summary>
         [Test]
         public void Project_DimmedBriefing_DimsOnlyGalaxyBackground()
         {
@@ -528,6 +577,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNotNull(data.Clusters[0].Stars[0].StarTexture);
         }
 
+        /// <summary>
+        /// Verifies project target briefing reveals target system and overrides label.
+        /// </summary>
         [Test]
         public void Project_TargetBriefing_RevealsTargetSystemAndOverridesLabel()
         {
@@ -561,6 +613,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies project unsupported briefing mode throws argument out of range exception.
+        /// </summary>
         [Test]
         public void Project_UnsupportedBriefingMode_ThrowsArgumentOutOfRangeException()
         {
@@ -587,6 +642,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies project mixed faction fleets returns mixed marker.
+        /// </summary>
         [Test]
         public void Project_MixedFactionFleets_ReturnsMixedMarker()
         {
@@ -610,6 +668,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies project null entries skips invalid sectors and planets.
+        /// </summary>
         [Test]
         public void Project_NullEntries_SkipsInvalidSectorsAndPlanets()
         {
@@ -641,6 +702,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual("planet", data.Clusters[0].Stars[0].PlanetInstanceId);
         }
 
+        /// <summary>
+        /// Verifies get sector source position null sector returns zero.
+        /// </summary>
         [Test]
         public void GetSectorSourcePosition_NullSector_ReturnsZero()
         {
@@ -649,6 +713,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(Vector2Int.zero, position);
         }
 
+        /// <summary>
+        /// Verifies get sector source position sector returns background adjusted position.
+        /// </summary>
         [Test]
         public void GetSectorSourcePosition_Sector_ReturnsBackgroundAdjustedPosition()
         {
@@ -663,6 +730,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(backgroundPosition.Y + 34, position.y);
         }
 
+        /// <summary>
+        /// Verifies get sector source position unavailable context throws invalid operation exception.
+        /// </summary>
         [Test]
         public void GetSectorSourcePosition_UnavailableContext_ThrowsInvalidOperationException()
         {
@@ -673,6 +743,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies get planet icon path configured marker returns requested size.
+        /// </summary>
+        /// <param name="markerIndex">The marker index.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(0, "small")]
         [TestCase(1, "medium")]
         [TestCase(2, "large")]
@@ -696,6 +771,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(expected, path);
         }
 
+        /// <summary>
+        /// Verifies get planet icon path missing larger markers returns nearest configured size.
+        /// </summary>
         [Test]
         public void GetPlanetIconPath_MissingLargerMarkers_ReturnsNearestConfiguredSize()
         {
@@ -711,6 +789,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(GalaxyMapProjector.GetPlanetIconPath(null, 0));
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="positionX">The position x.</param>
+        /// <param name="positionY">The position y.</param>
+        /// <returns>The created planet.</returns>
         private static Planet CreatePlanet(
             string instanceId,
             string ownerInstanceId,
@@ -727,6 +813,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
+        /// <summary>
+        /// Creates sector.
+        /// </summary>
+        /// <param name="sector">The sector.</param>
+        /// <param name="planets">The planets.</param>
+        /// <returns>The created sector.</returns>
         private static GalaxyMapSector CreateSector(
             GalaxyPlanetSector sector,
             params Planet[] planets
@@ -740,6 +832,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Creates sector.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="positionX">The position x.</param>
+        /// <param name="positionY">The position y.</param>
+        /// <returns>The created sector.</returns>
         private static GalaxyPlanetSector CreateSector(
             string instanceId,
             string displayName,

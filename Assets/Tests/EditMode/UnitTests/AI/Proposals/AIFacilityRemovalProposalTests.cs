@@ -15,6 +15,9 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public sealed class AIFacilityRemovalProposalTests
     {
+        /// <summary>
+        /// Verifies plan with one facility planet per sector removes facility from second planet.
+        /// </summary>
         [Test]
         public void Plan_WithOneFacilityPlanetPerSector_RemovesFacilityFromSecondPlanet()
         {
@@ -63,6 +66,89 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreSame(second, proposal.Planet);
         }
 
+        /// <summary>
+        /// Verifies execute with equal facility rates removes unfinished facility.
+        /// </summary>
+        [Test]
+        public void Execute_WithEqualFacilityRates_RemovesUnfinishedFacility()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "primary",
+                empire.InstanceID,
+                energyCapacity: 100
+            );
+            AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "secondary",
+                empire.InstanceID,
+                energyCapacity: 50
+            );
+            Planet surplusPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "surplus",
+                empire.InstanceID,
+                energyCapacity: 4
+            );
+            for (int index = 0; index < 3; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    surplusPlanet,
+                    $"complete-{index}",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship
+                );
+            }
+
+            Building unfinished = AITestSceneBuilder.CreateBuildingTemplate(
+                "unfinished",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            unfinished.OwnerInstanceID = empire.InstanceID;
+            StubRNG random = new StubRNG();
+            MaintenanceSystem maintenance = new MaintenanceSystem(
+                game,
+                random,
+                new FleetSystem(game)
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: random,
+                maintenance: maintenance
+            );
+            Assert.IsTrue(
+                context.Manufacturing.Enqueue(
+                    surplusPlanet,
+                    unfinished,
+                    surplusPlanet,
+                    ignoreCost: true
+                )
+            );
+            AIProposal proposal = new AIFacilityRemovalPlanner().Plan(context).Single();
+
+            Assert.IsTrue(proposal.CanExecute(context));
+            proposal.Execute(context);
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(unfinished.InstanceID));
+            Assert.AreEqual(
+                3,
+                surplusPlanet
+                    .GetChildren<Building>()
+                    .Count(building => building.ManufacturingStatus == ManufacturingStatus.Complete)
+            );
+        }
+
+        /// <summary>
+        /// Verifies plan and execute with facility outside allocation scraps facility.
+        /// </summary>
         [Test]
         public void PlanAndExecute_WithFacilityOutsideAllocation_ScrapsFacility()
         {

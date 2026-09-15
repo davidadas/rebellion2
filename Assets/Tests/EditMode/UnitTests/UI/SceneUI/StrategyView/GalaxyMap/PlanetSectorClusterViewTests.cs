@@ -20,6 +20,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private PlanetSectorClusterView _view;
         private GameObject _viewObject;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -31,6 +34,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -40,12 +46,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render complete cluster applies bounds label stars and headquarters.
+        /// </summary>
         [Test]
         public void Render_CompleteCluster_AppliesBoundsLabelStarsAndHeadquarters()
         {
@@ -110,6 +122,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies render shorter cluster reuses and hides pooled images.
+        /// </summary>
         [Test]
         public void Render_ShorterCluster_ReusesAndHidesPooledImages()
         {
@@ -159,6 +174,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies render null stars and hidden label hides cached presentation.
+        /// </summary>
         [Test]
         public void Render_NullStarsAndHiddenLabel_HidesCachedPresentation()
         {
@@ -191,6 +209,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies try get planet instance id overlapping markers returns topmost rendered planet.
+        /// </summary>
         [Test]
         public void TryGetPlanetInstanceID_OverlappingMarkers_ReturnsTopmostRenderedPlanet()
         {
@@ -214,6 +235,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual("planet-2", planetInstanceId);
         }
 
+        /// <summary>
+        /// Verifies try get planet instance id invalid inputs returns false and null identity.
+        /// </summary>
         [Test]
         public void TryGetPlanetInstanceID_InvalidInputs_ReturnsFalseAndNullIdentity()
         {
@@ -243,6 +267,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(inactiveIdentity);
         }
 
+        /// <summary>
+        /// Verifies get rendered star source rect invalid index returns default bounds.
+        /// </summary>
         [Test]
         public void GetRenderedStarSourceRect_InvalidIndex_ReturnsDefaultBounds()
         {
@@ -255,6 +282,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(default(RectInt), missingBounds);
         }
 
+        /// <summary>
+        /// Verifies pointer events rendered cluster emit hover exit and double click requests.
+        /// </summary>
         [Test]
         public void PointerEvents_RenderedCluster_EmitHoverExitAndDoubleClickRequests()
         {
@@ -284,6 +314,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreSame(eventData, openedEvent);
         }
 
+        /// <summary>
+        /// Verifies pointer events unrendered or single click do not emit open or hover requests.
+        /// </summary>
         [Test]
         public void PointerEvents_UnrenderedOrSingleClick_DoNotEmitOpenOrHoverRequests()
         {
@@ -306,6 +339,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, openCount);
         }
 
+        /// <summary>
+        /// Creates cluster.
+        /// </summary>
+        /// <param name="sectorInstanceId">The sector instance id.</param>
+        /// <param name="label">The label.</param>
+        /// <param name="showLabel">Whether show label.</param>
+        /// <param name="stars">The stars.</param>
+        /// <returns>The created cluster.</returns>
         private GalaxyMapClusterRenderData CreateCluster(
             string sectorInstanceId,
             string label,
@@ -323,6 +364,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Creates pointer event.
+        /// </summary>
+        /// <param name="sourcePosition">The source position.</param>
+        /// <returns>The created pointer event.</returns>
         private PointerEventData CreatePointerEvent(Vector2 sourcePosition)
         {
             RectTransform rect = _view.transform as RectTransform;
@@ -340,6 +386,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
+        /// <summary>
+        /// Finds generated images.
+        /// </summary>
+        /// <param name="prefix">The prefix.</param>
+        /// <returns>The matching generated images.</returns>
         private RawImage[] FindGeneratedImages(string prefix)
         {
             return _viewObject
@@ -350,6 +401,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 .ToArray();
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName)
             where T : Component
         {

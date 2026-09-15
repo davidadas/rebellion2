@@ -37,6 +37,8 @@ namespace Rebellion.Game.Advisor
         /// <summary>
         /// Returns the semantic notification represented by a non-subject preset.
         /// </summary>
+        /// <param name="preset">The preset.</param>
+        /// <returns>The result of to notification type.</returns>
         public static AdvisorNotificationType ToNotificationType(
             this AdvisorNotificationPreset preset
         ) =>

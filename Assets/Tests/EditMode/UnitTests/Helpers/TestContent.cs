@@ -13,11 +13,22 @@ internal static class TestContent
 
     internal static GameDataCatalog Data => Pack.GameData;
 
+    /// <summary>
+    /// Creates theme library.
+    /// </summary>
+    /// <returns>The created theme library.</returns>
     internal static FactionThemeLibrary CreateThemeLibrary()
     {
         return new FactionThemeLibrary(Data.FactionThemes);
     }
 
+    /// <summary>
+    /// Creates ui context.
+    /// </summary>
+    /// <param name="game">The game.</param>
+    /// <param name="themeLibrary">The theme library.</param>
+    /// <param name="encyclopediaCatalog">The encyclopedia catalog.</param>
+    /// <returns>The created ui context.</returns>
     internal static UIContext CreateUIContext(
         GameRoot game,
         FactionThemeLibrary themeLibrary,
@@ -27,6 +38,11 @@ internal static class TestContent
         return new UIContext(game, themeLibrary, encyclopediaCatalog, Assets.GetTexture);
     }
 
+    /// <summary>
+    /// Creates game manager.
+    /// </summary>
+    /// <param name="game">The game.</param>
+    /// <returns>The created game manager.</returns>
     internal static GameManager CreateGameManager(GameRoot game)
     {
         return new GameManager(game, Data);

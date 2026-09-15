@@ -108,6 +108,8 @@ public static class SceneBuilder
     /// <summary>
     /// Finds an already open scene by project-relative path.
     /// </summary>
+    /// <param name="scenePath">The scene path.</param>
+    /// <returns>The matching open scene.</returns>
     private static Scene FindOpenScene(string scenePath)
     {
         for (int index = 0; index < SceneManager.sceneCount; index++)
@@ -122,6 +124,9 @@ public static class SceneBuilder
     /// <summary>
     /// Finds a named root object in a scene.
     /// </summary>
+    /// <param name="scene">The scene.</param>
+    /// <param name="instanceName">The instance name.</param>
+    /// <returns>The matching root.</returns>
     private static GameObject FindRoot(Scene scene, string instanceName)
     {
         foreach (GameObject root in scene.GetRootGameObjects())
@@ -135,6 +140,9 @@ public static class SceneBuilder
     /// <summary>
     /// Finds an existing scene-root instance of a generated prefab even when it was renamed.
     /// </summary>
+    /// <param name="scene">The scene.</param>
+    /// <param name="prefab">The prefab.</param>
+    /// <returns>The matching prefab root.</returns>
     private static GameObject FindPrefabRoot(Scene scene, GameObject prefab)
     {
         foreach (GameObject root in scene.GetRootGameObjects())
@@ -148,6 +156,7 @@ public static class SceneBuilder
     /// <summary>
     /// Removes residual placement state from a scene-root prefab instance.
     /// </summary>
+    /// <param name="transform">The transform.</param>
     private static void ResetRootTransform(Transform transform)
     {
         transform.SetParent(null, false);

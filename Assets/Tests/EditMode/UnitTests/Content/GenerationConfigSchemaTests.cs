@@ -9,6 +9,9 @@ namespace Rebellion.Tests.Content
     [TestFixture]
     public sealed class GenerationConfigSchemaTests
     {
+        /// <summary>
+        /// Verifies validate valid starting officer accepts document.
+        /// </summary>
         [Test]
         public void Validate_ValidStartingOfficer_AcceptsDocument()
         {
@@ -25,6 +28,9 @@ namespace Rebellion.Tests.Content
             Assert.DoesNotThrow(() => ValidateGenerationConfigXml(CreateGenerationXml(officer)));
         }
 
+        /// <summary>
+        /// Verifies validate starting officer without instance id rejects document.
+        /// </summary>
         [Test]
         public void Validate_StartingOfficerWithoutInstanceID_RejectsDocument()
         {
@@ -39,6 +45,9 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        /// <summary>
+        /// Verifies validate starting officer with blank instance id rejects document.
+        /// </summary>
         [Test]
         public void Validate_StartingOfficerWithBlankInstanceID_RejectsDocument()
         {
@@ -53,6 +62,9 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        /// <summary>
+        /// Verifies validate starting officer with two destinations rejects document.
+        /// </summary>
         [Test]
         public void Validate_StartingOfficerWithTwoDestinations_RejectsDocument()
         {
@@ -69,6 +81,9 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        /// <summary>
+        /// Verifies validate duplicate starting officer rejects document.
+        /// </summary>
         [Test]
         public void Validate_DuplicateStartingOfficer_RejectsDocument()
         {
@@ -86,11 +101,20 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        /// <summary>
+        /// Validates generation config xml.
+        /// </summary>
+        /// <param name="xml">The xml.</param>
         private static void ValidateGenerationConfigXml(string xml)
         {
             ValidateXml(xml, "generation-config.xsd");
         }
 
+        /// <summary>
+        /// Validates xml.
+        /// </summary>
+        /// <param name="xml">The xml.</param>
+        /// <param name="schemaFileName">The schema file name.</param>
         private static void ValidateXml(string xml, string schemaFileName)
         {
             string schemaPath = Path.Combine(
@@ -110,6 +134,11 @@ namespace Rebellion.Tests.Content
             while (reader.Read()) { }
         }
 
+        /// <summary>
+        /// Creates generation xml.
+        /// </summary>
+        /// <param name="startingOfficerRules">The starting officer rules.</param>
+        /// <returns>The created generation xml.</returns>
         private static string CreateGenerationXml(string startingOfficerRules)
         {
             return $@"

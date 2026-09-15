@@ -7,6 +7,9 @@ namespace Rebellion.Tests.Content
     [TestFixture]
     public sealed class GameDataCatalogTests
     {
+        /// <summary>
+        /// Verifies validate building upgrades valid upgrade path does not throw.
+        /// </summary>
         [Test]
         public void ValidateBuildingUpgrades_ValidUpgradePath_DoesNotThrow()
         {
@@ -18,6 +21,9 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        /// <summary>
+        /// Verifies validate building upgrades missing upgrade throws invalid data exception.
+        /// </summary>
         [Test]
         public void ValidateBuildingUpgrades_MissingUpgrade_ThrowsInvalidDataException()
         {
@@ -30,6 +36,9 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("references missing upgrade 'missing'", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies validate building upgrades duplicate upgrade throws invalid data exception.
+        /// </summary>
         [Test]
         public void ValidateBuildingUpgrades_DuplicateUpgrade_ThrowsInvalidDataException()
         {
@@ -43,6 +52,9 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("contains duplicate upgrade 'advanced'", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies validate building upgrades self upgrade throws invalid data exception.
+        /// </summary>
         [Test]
         public void ValidateBuildingUpgrades_SelfUpgrade_ThrowsInvalidDataException()
         {
@@ -55,6 +67,9 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("cannot upgrade to itself", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies validate building upgrades indirect cycle throws invalid data exception.
+        /// </summary>
         [Test]
         public void ValidateBuildingUpgrades_IndirectCycle_ThrowsInvalidDataException()
         {
@@ -68,6 +83,9 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("contain a cycle", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies validate building upgrades diamond upgrade path does not throw.
+        /// </summary>
         [Test]
         public void ValidateBuildingUpgrades_DiamondUpgradePath_DoesNotThrow()
         {
@@ -81,6 +99,12 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        /// <summary>
+        /// Creates building.
+        /// </summary>
+        /// <param name="typeID">The type id.</param>
+        /// <param name="upgrades">The upgrades.</param>
+        /// <returns>The created building.</returns>
         private static Building CreateBuilding(string typeID, params string[] upgrades)
         {
             Building building = new Building { TypeID = typeID };

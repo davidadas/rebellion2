@@ -289,6 +289,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Returns maintenance reserved by the active lane when the requested template would replace it.
         /// </summary>
+        /// <param name="producer">The producer.</param>
+        /// <param name="template">The template.</param>
+        /// <returns>The requested maintenance refund.</returns>
         private static int GetMaintenanceRefund(Planet producer, IManufacturable template)
         {
             if (
@@ -312,6 +315,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Cancels the active project in a production lane when a different unit type is ordered.
         /// </summary>
+        /// <param name="producer">The producer.</param>
+        /// <param name="template">The template.</param>
         private void CancelConflictingProject(Planet producer, IManufacturable template)
         {
             ManufacturingType type = template.GetManufacturingType();
@@ -1093,6 +1098,8 @@ namespace Rebellion.Systems
         /// Returns whether an unfinished building or troop has a directly assigned planet that
         /// is not controlled by its producer. Fleet and capital-ship destinations are excluded.
         /// </summary>
+        /// <param name="item">The item.</param>
+        /// <returns>True when the invalid planet destination condition is met; otherwise false.</returns>
         private static bool HasInvalidPlanetDestination(IManufacturable item)
         {
             if (

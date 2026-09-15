@@ -17,6 +17,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private Texture2D _texture;
         private GalacticInformationDisplayView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -42,6 +45,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -49,12 +55,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render visible display applies selector categories submenu and display off row.
+        /// </summary>
         [Test]
         public void Render_VisibleDisplay_AppliesSelectorCategoriesSubmenuAndDisplayOffRow()
         {
@@ -90,6 +102,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(Color.cyan, FindText("DisplayOffText").color);
         }
 
+        /// <summary>
+        /// Verifies render missing category icon hides icon but retains arrow slot.
+        /// </summary>
         [Test]
         public void Render_MissingCategoryIcon_HidesIconButRetainsArrowSlot()
         {
@@ -112,6 +127,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(FindComponent<RawImage>("LoyaltyCategoryArrowImage").enabled);
         }
 
+        /// <summary>
+        /// Verifies render invisible category and display off hides authored rows.
+        /// </summary>
         [Test]
         public void Render_InvisibleCategoryAndDisplayOff_HidesAuthoredRows()
         {
@@ -135,6 +153,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(FindTransform("DisplayOffText").gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render hidden display hides display and every submenu.
+        /// </summary>
         [Test]
         public void Render_HiddenDisplay_HidesDisplayAndEverySubmenu()
         {
@@ -153,6 +174,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             }
         }
 
+        /// <summary>
+        /// Verifies selector hit areas interact raise category display off and dismiss requests.
+        /// </summary>
         [Test]
         public void SelectorHitAreas_Interact_RaiseCategoryDisplayOffAndDismissRequests()
         {
@@ -191,6 +215,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, dismissCount);
         }
 
+        /// <summary>
+        /// Verifies submenu filter hit area interact forwards filter events.
+        /// </summary>
         [Test]
         public void SubmenuFilterHitArea_Interact_ForwardsFilterEvents()
         {
@@ -234,6 +261,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(GalacticInformationFilterMode.PopularSupport, selectedMode);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds input and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsInputAndRaisesDestroyedEvent()
         {
@@ -274,6 +304,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, dismissCount);
         }
 
+        /// <summary>
+        /// Creates display.
+        /// </summary>
+        /// <param name="visible">Whether visible.</param>
+        /// <param name="displayOffVisible">Whether display off visible.</param>
+        /// <returns>The created display.</returns>
         private GalacticInformationDisplayRenderData CreateDisplay(
             bool visible,
             bool displayOffVisible
@@ -286,6 +322,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Creates display.
+        /// </summary>
+        /// <param name="visible">Whether visible.</param>
+        /// <param name="displayOffVisible">Whether display off visible.</param>
+        /// <param name="categories">The categories.</param>
+        /// <returns>The created display.</returns>
         private GalacticInformationDisplayRenderData CreateDisplay(
             bool visible,
             bool displayOffVisible,
@@ -311,6 +354,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Creates category.
+        /// </summary>
+        /// <param name="visible">Whether visible.</param>
+        /// <param name="iconTexture">The icon texture.</param>
+        /// <param name="arrowTexture">The arrow texture.</param>
+        /// <param name="submenuVisible">Whether submenu visible.</param>
+        /// <returns>The created category.</returns>
         private GalacticInformationCategoryRenderData CreateCategory(
             bool visible,
             Texture2D iconTexture,
@@ -350,6 +401,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Creates frame.
+        /// </summary>
+        /// <param name="width">The width.</param>
+        /// <param name="height">The height.</param>
+        /// <returns>The created frame.</returns>
         private GalacticInformationFrameRenderData CreateFrame(int width, int height)
         {
             return new GalacticInformationFrameRenderData(
@@ -359,6 +416,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <param name="root">The root.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
         private T FindComponent<T>(string objectName, Transform root = null)
             where T : Component
         {
@@ -367,6 +431,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 .Single(component => component.name == objectName);
         }
 
+        /// <summary>
+        /// Finds direct child component.
+        /// </summary>
+        /// <param name="root">The root.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching direct child component.</returns>
         private static T FindDirectChildComponent<T>(Transform root, string objectName)
             where T : Component
         {
@@ -376,11 +447,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 );
         }
 
+        /// <summary>
+        /// Finds text.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching text.</returns>
         private TextMeshProUGUI FindText(string objectName)
         {
             return FindComponent<TextMeshProUGUI>(objectName);
         }
 
+        /// <summary>
+        /// Finds transform.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching transform.</returns>
         private Transform FindTransform(string objectName)
         {
             return _view

@@ -17,6 +17,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         private const string _strategyViewPrefabPath =
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
+        /// <summary>
+        /// Verifies get detail audio paths message and officer paths returns both paths.
+        /// </summary>
         [Test]
         public void GetDetailAudioPaths_MessageAndOfficerPaths_ReturnsBothPaths()
         {
@@ -34,6 +37,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Verifies get detail audio paths missing message returns empty collection.
+        /// </summary>
         [Test]
         public void GetDetailAudioPaths_MissingMessage_ReturnsEmptyCollection()
         {
@@ -42,6 +48,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(paths);
         }
 
+        /// <summary>
+        /// Verifies get detail audio paths empty paths returns empty collection.
+        /// </summary>
         [Test]
         public void GetDetailAudioPaths_EmptyPaths_ReturnsEmptyCollection()
         {
@@ -52,6 +61,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(paths);
         }
 
+        /// <summary>
+        /// Verifies play message detail audio new message stops previous audio and starts current audio.
+        /// </summary>
         [Test]
         public void PlayMessageDetailAudio_NewMessage_StopsPreviousAudioAndStartsCurrentAudio()
         {
@@ -121,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             }
         }
 
+        /// <summary>
+        /// Verifies toggle message notification all messages tab toggles global setting.
+        /// </summary>
         [Test]
         public void ToggleMessageNotification_AllMessagesTab_TogglesGlobalSetting()
         {
@@ -138,6 +153,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Verifies toggle message notification category tab toggles only category setting.
+        /// </summary>
         [Test]
         public void ToggleMessageNotification_CategoryTab_TogglesOnlyCategorySetting()
         {
@@ -154,6 +172,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Verifies remove selected messages selected i ds removes matching messages across buckets.
+        /// </summary>
         [Test]
         public void RemoveSelectedMessages_SelectedIDs_RemovesMatchingMessagesAcrossBuckets()
         {
@@ -180,6 +201,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             CollectionAssert.AreEqual(new[] { retained }, faction.Messages[MessageType.Mission]);
         }
 
+        /// <summary>
+        /// Verifies remove selected messages missing input or match returns false.
+        /// </summary>
         [Test]
         public void RemoveSelectedMessages_MissingInputOrMatch_ReturnsFalse()
         {
@@ -205,6 +229,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(1, faction.Messages[MessageType.Fleet].Count);
         }
 
+        /// <summary>
+        /// Verifies mark message read message sets read state.
+        /// </summary>
         [Test]
         public void MarkMessageRead_Message_SetsReadState()
         {
@@ -216,6 +243,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsTrue(message.Read);
         }
 
+        /// <summary>
+        /// Verifies has navigation target any navigation identifier returns true.
+        /// </summary>
         [Test]
         public void HasNavigationTarget_AnyNavigationIdentifier_ReturnsTrue()
         {
@@ -233,6 +263,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(MessagesWindowController.HasNavigationTarget(null));
         }
 
+        /// <summary>
+        /// Verifies get rows null faction returns empty list.
+        /// </summary>
         [Test]
         public void GetRows_NullFaction_ReturnsEmptyList()
         {
@@ -241,6 +274,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(rows);
         }
 
+        /// <summary>
+        /// Verifies get rows all messages returns messages across buckets in storage order.
+        /// </summary>
         [Test]
         public void GetRows_AllMessages_ReturnsMessagesAcrossBucketsInStorageOrder()
         {
@@ -255,6 +291,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             CollectionAssert.AreEqual(new[] { fleet, mission }, rows);
         }
 
+        /// <summary>
+        /// Verifies get rows category tab returns stored category or empty list.
+        /// </summary>
         [Test]
         public void GetRows_CategoryTab_ReturnsStoredCategoryOrEmptyList()
         {
@@ -277,6 +316,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(unsupportedRows);
         }
 
+        /// <summary>
+        /// Verifies open advice tab opens message index on agent advice.
+        /// </summary>
         [Test]
         public void Open_AdviceTab_OpensMessageIndexOnAgentAdvice()
         {
@@ -288,6 +330,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
+            game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -325,6 +368,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             }
         }
 
+        /// <summary>
+        /// Verifies notification operations null faction return disabled without throwing.
+        /// </summary>
         [Test]
         public void NotificationOperations_NullFaction_ReturnDisabledWithoutThrowing()
         {
@@ -334,6 +380,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             MessagesWindowController.ToggleMessageNotification(null, MessagesTab.All);
         }
 
+        /// <summary>
+        /// Verifies open detail combat report opens battle result instead of generic detail.
+        /// </summary>
         [Test]
         public void OpenDetail_CombatReport_OpensBattleResultInsteadOfGenericDetail()
         {
@@ -349,6 +398,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
+            game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -386,6 +436,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             }
         }
 
+        /// <summary>
+        /// Verifies tab click from message detail loads requested tab rows.
+        /// </summary>
         [Test]
         public void TabClick_FromMessageDetail_LoadsRequestedTabRows()
         {
@@ -403,6 +456,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
+            game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -449,6 +503,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             }
         }
 
+        /// <summary>
+        /// Executes destroy audio managers.
+        /// </summary>
         private static void DestroyAudioManagers()
         {
             foreach (AudioManager manager in UnityEngine.Object.FindObjectsByType<AudioManager>())
@@ -461,11 +518,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         {
             public CombatReport OpenedCombatReport { get; private set; }
 
+            /// <summary>
+            /// Opens combat report.
+            /// </summary>
+            /// <param name="report">The report.</param>
             public void OpenCombatReport(CombatReport report)
             {
                 OpenedCombatReport = report;
             }
 
+            /// <summary>
+            /// Opens message target.
+            /// </summary>
+            /// <param name="targetInstanceId">The target instance id.</param>
+            /// <param name="secondaryTargetInstanceId">The secondary target instance id.</param>
+            /// <param name="locationInstanceId">The location instance id.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool OpenMessageTarget(
                 string targetInstanceId,
                 string secondaryTargetInstanceId,

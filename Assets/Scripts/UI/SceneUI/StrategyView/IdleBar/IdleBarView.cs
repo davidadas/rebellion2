@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -10,11 +12,14 @@ using UnityEngine.UI;
 public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     private const int _collapsedEntryLimit = 5;
-    private const int _collapsedColumnCount = 5;
     private const int _columnGap = 1;
     private const int _expandedColumnCount = 7;
     private const int _expandedRowLimit = 3;
     private const int _horizontalPadding = 4;
+    private const int _hoverLabelHeight = 14;
+    private const int _hoverLabelGap = 1;
+    private const int _hoverLabelHorizontalPadding = 3;
+    private const int _maximumHoverLabelWidth = 120;
     private const int _outerPadding = 5;
     private const int _rowGap = 1;
     private const int _scrollbarGap = 1;
@@ -32,11 +37,18 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     [SerializeField]
     private IdleBarSlotView slotTemplate;
 
+    [SerializeField]
+    private RectTransform hoverLabelRoot;
+
+    [SerializeField]
+    private TextMeshProUGUI hoverLabelText;
+
     private readonly List<IdleBarSlotView> slots = new List<IdleBarSlotView>();
 
     private IdleBarRenderData currentData;
     private bool contextMenuOpen;
     private bool hoverExitPending;
+    private string hoveredEntryId;
     private bool initialized;
     private IdleBarSlotView overflowSlot;
     private bool pointerOverShelf;
@@ -45,6 +57,11 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     /// Raised when the player selects an idle-bar entry.
     /// </summary>
     internal event Action<string> EntrySelected;
+
+    /// <summary>
+    /// Raised when the player ignores an idle-bar entry.
+    /// </summary>
+    internal event Action<string> EntryIgnoreRequested;
 
     /// <summary>
     /// Raised when the player requests an entry's normal context menu.
@@ -162,12 +179,12 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
             entriesScrollArea.Dragged -= HandleEntryDragMoved;
             entriesScrollArea.DragEnded -= HandleEntryDragEnded;
         }
-
         foreach (IdleBarSlotView slot in slots)
         {
             if (slot != null)
             {
                 slot.Selected -= HandleSlotSelected;
+                slot.IgnoreRequested -= HandleSlotIgnoreRequested;
                 slot.ContextRequested -= HandleSlotContextRequested;
                 slot.Hovered -= HandleSlotHovered;
                 slot.HoverCleared -= HandleSlotHoverCleared;
@@ -187,7 +204,16 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
         if (initialized)
             return;
 
-        if (shelfHitArea == null || entriesScrollArea == null || slotTemplate == null)
+        if (hoverLabelRoot == null || hoverLabelText == null)
+            CreateHoverLabel();
+
+        if (
+            shelfHitArea == null
+            || entriesScrollArea == null
+            || slotTemplate == null
+            || hoverLabelRoot == null
+            || hoverLabelText == null
+        )
             throw new MissingReferenceException("IdleBarView has incomplete authored references.");
 
         slotTemplate.gameObject.SetActive(false);
@@ -201,13 +227,46 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     }
 
     /// <summary>
+    /// Creates the hover label when an older generated Strategy prefab is loaded.
+    /// </summary>
+    private void CreateHoverLabel()
+    {
+        GameObject labelObject = new GameObject(
+            "HoverLabel",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        labelObject.transform.SetParent(transform, false);
+        Image background = labelObject.GetComponent<Image>();
+        background.color = new Color(0.03f, 0.03f, 0.04f, 0.95f);
+        background.raycastTarget = false;
+        hoverLabelRoot = background.rectTransform;
+
+        GameObject textObject = new GameObject(
+            "Text",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI)
+        );
+        textObject.transform.SetParent(labelObject.transform, false);
+        hoverLabelText = textObject.GetComponent<TextMeshProUGUI>();
+        hoverLabelText.color = Color.white;
+        hoverLabelText.fontSize = 8;
+        hoverLabelText.alignment = TextAlignmentOptions.Center;
+        hoverLabelText.raycastTarget = false;
+        FillParent(hoverLabelText.rectTransform);
+        labelObject.SetActive(false);
+    }
+
+    /// <summary>
     /// Renders either the compact summary or the expanded scrollable grid.
     /// </summary>
     /// <param name="resetScroll">Whether the scroll area should return to its first row.</param>
     private void RenderShelf(bool resetScroll)
     {
         bool expanded =
-            (pointerOverShelf || contextMenuOpen)
+            (pointerOverShelf || contextMenuOpen || currentData.AlwaysOpen)
             && currentData.Entries.Count > _collapsedEntryLimit;
         int visibleEntryCount = expanded
             ? currentData.Entries.Count
@@ -222,7 +281,10 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
             : 1;
         int viewportRowCount = expanded ? Math.Min(rowCount, _expandedRowLimit) : 1;
         bool scrollable = expanded && rowCount > _expandedRowLimit;
-        int columnCount = expanded ? _expandedColumnCount : _collapsedColumnCount;
+        bool showOverflow = !expanded && currentData.Entries.Count > _collapsedEntryLimit;
+        int columnCount = expanded
+            ? Math.Min(currentData.Entries.Count, _expandedColumnCount)
+            : visibleEntryCount + (showOverflow ? 1 : 0);
         int gridWidth = columnCount * _slotSize + (columnCount - 1) * _columnGap;
         int viewportHeight = viewportRowCount * _slotSize + (viewportRowCount - 1) * _rowGap;
         int shelfWidth =
@@ -249,7 +311,6 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
             new Vector2(scrollbarX, _verticalPadding),
             new Vector2(_scrollbarWidth, viewportHeight)
         );
-
         EnsureSlotCount(visibleEntryCount);
         for (int index = 0; index < slots.Count; index++)
         {
@@ -265,7 +326,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
                     currentData.Entries.Count - row * _expandedColumnCount
                 )
                 : visibleEntryCount;
-            int firstColumn = expanded && row > 0 ? 0 : columnCount - entriesInRow;
+            int firstColumn = expanded && row == 0 ? columnCount - entriesInRow : 0;
             int column = expanded ? index % _expandedColumnCount : index;
             slots[index]
                 .Render(
@@ -276,7 +337,6 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
                 );
         }
 
-        bool showOverflow = !expanded && currentData.Entries.Count > _collapsedEntryLimit;
         overflowSlot.gameObject.SetActive(showOverflow);
         if (showOverflow)
         {
@@ -291,6 +351,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
 
         int contentHeight = rowCount * _slotSize + Math.Max(0, rowCount - 1) * _rowGap;
         entriesScrollArea.SetContentHeight(contentHeight, _slotSize + _rowGap, resetScroll);
+        UpdateHoverLabel();
     }
 
     /// <summary>
@@ -304,6 +365,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
             IdleBarSlotView slot = Instantiate(slotTemplate, entriesScrollArea.ContentRoot);
             slot.gameObject.name = $"AvailabilitySlot{slots.Count + 1}";
             slot.Selected += HandleSlotSelected;
+            slot.IgnoreRequested += HandleSlotIgnoreRequested;
             slot.ContextRequested += HandleSlotContextRequested;
             slot.Hovered += HandleSlotHovered;
             slot.HoverCleared += HandleSlotHoverCleared;
@@ -341,6 +403,9 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
             entriesScrollArea.gameObject.SetActive(false);
         if (overflowSlot != null)
             overflowSlot.gameObject.SetActive(false);
+        hoveredEntryId = null;
+        if (hoverLabelRoot != null)
+            hoverLabelRoot.gameObject.SetActive(false);
         foreach (IdleBarSlotView slot in slots)
             slot.gameObject.SetActive(false);
     }
@@ -377,6 +442,15 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     }
 
     /// <summary>
+    /// Forwards one slot's ignore request through the desktop view boundary.
+    /// </summary>
+    /// <param name="instanceId">The ignored entity identifier.</param>
+    private void HandleSlotIgnoreRequested(string instanceId)
+    {
+        EntryIgnoreRequested?.Invoke(instanceId);
+    }
+
+    /// <summary>
     /// Forwards one slot's context-menu request through the desktop view boundary.
     /// </summary>
     /// <param name="instanceId">The context-clicked entity identifier.</param>
@@ -392,6 +466,8 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     /// <param name="instanceId">The hovered entity identifier.</param>
     private void HandleSlotHovered(string instanceId)
     {
+        hoveredEntryId = instanceId;
+        UpdateHoverLabel();
         EntryHovered?.Invoke(instanceId);
     }
 
@@ -401,7 +477,45 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     /// <param name="instanceId">The entity identifier whose hover ended.</param>
     private void HandleSlotHoverCleared(string instanceId)
     {
+        if (hoveredEntryId == instanceId)
+        {
+            hoveredEntryId = null;
+            hoverLabelRoot.gameObject.SetActive(false);
+        }
         EntryHoverCleared?.Invoke(instanceId);
+    }
+
+    /// <summary>
+    /// Positions the hovered entry name beneath the current shelf.
+    /// </summary>
+    private void UpdateHoverLabel()
+    {
+        IdleBarEntry entry = currentData?.Entries.FirstOrDefault(candidate =>
+            candidate.Entity?.InstanceID == hoveredEntryId
+        );
+        if (
+            entry == null
+            || string.IsNullOrEmpty(entry.Name)
+            || !shelfHitArea.gameObject.activeSelf
+        )
+        {
+            hoverLabelRoot.gameObject.SetActive(false);
+            return;
+        }
+
+        hoverLabelText.text = entry.Name;
+        int width = Mathf.CeilToInt(
+            Mathf.Min(
+                _maximumHoverLabelWidth,
+                hoverLabelText.preferredWidth + 2 * _hoverLabelHorizontalPadding
+            )
+        );
+        RectTransform shelf = shelfHitArea.rectTransform;
+        int x = Mathf.RoundToInt(shelf.anchoredPosition.x + (shelf.sizeDelta.x - width) / 2f);
+        int y = Mathf.RoundToInt(-shelf.anchoredPosition.y + shelf.sizeDelta.y + _hoverLabelGap);
+        SetSourceRect(hoverLabelRoot, x, y, width, _hoverLabelHeight);
+        hoverLabelRoot.gameObject.SetActive(true);
+        hoverLabelRoot.SetAsLastSibling();
     }
 
     /// <summary>
@@ -452,5 +566,18 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
         rect.pivot = new Vector2(0f, 1f);
         rect.anchoredPosition = new Vector2(x, -y);
         rect.sizeDelta = new Vector2(width, height);
+    }
+
+    /// <summary>
+    /// Stretches a rectangle across its parent.
+    /// </summary>
+    /// <param name="rect">The rectangle to stretch.</param>
+    private static void FillParent(RectTransform rect)
+    {
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = Vector2.zero;
     }
 }

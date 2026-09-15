@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
@@ -636,20 +637,15 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
-    /// Returns the current player faction identifier with the saved-game fallback.
+    /// Returns the faction controlled by the human participant.
     /// </summary>
     /// <returns>The current player faction identifier.</returns>
     private string GetPlayerFactionID()
     {
-        UIContext uiContext = getUIContext();
-        string playerFactionId = uiContext?.Game?.Summary?.PlayerFactionID;
-        if (!string.IsNullOrEmpty(playerFactionId))
-            return playerFactionId;
-
-        return uiContext
-            ?.Game?.GetFactions()
-            ?.FirstOrDefault(faction => !string.IsNullOrEmpty(faction.PlayerID))
-            ?.InstanceID;
+        return getUIContext()
+            ?.Game?.GetPlayers()
+            ?.FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
+            ?.FactionID;
     }
 
     /// <summary>

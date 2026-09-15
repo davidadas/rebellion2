@@ -29,6 +29,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -40,6 +43,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -57,12 +61,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             _controller.Initialize(new TestActions());
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
@@ -81,6 +91,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
         }
 
+        /// <summary>
+        /// Verifies bind window before initialization throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialization_ThrowsInvalidOperationException()
         {
@@ -93,6 +106,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
         }
 
+        /// <summary>
+        /// Verifies try initialize window invalid inputs return false.
+        /// </summary>
         [Test]
         public void TryInitializeWindow_InvalidInputs_ReturnFalse()
         {
@@ -106,6 +122,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.IsFalse(_controller.TryInitializeWindow(view, null, false));
         }
 
+        /// <summary>
+        /// Verifies open valid target creates named bound window and marks dirty.
+        /// </summary>
         [Test]
         public void Open_ValidTarget_CreatesNamedBoundWindowAndMarksDirty()
         {
@@ -122,6 +141,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(0, _closeCount);
         }
 
+        /// <summary>
+        /// Verifies open null target returns false without creating window.
+        /// </summary>
         [Test]
         public void Open_NullTarget_ReturnsFalseWithoutCreatingWindow()
         {
@@ -132,6 +154,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(0, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open replacement target closes existing status window.
+        /// </summary>
         [Test]
         public void Open_ReplacementTarget_ClosesExistingStatusWindow()
         {
@@ -164,6 +189,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(1, _closeCount);
         }
 
+        /// <summary>
+        /// Verifies reconcile windows missing visible target closes status window.
+        /// </summary>
         [Test]
         public void ReconcileWindows_MissingVisibleTarget_ClosesStatusWindow()
         {
@@ -178,6 +206,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(1, _closeCount);
         }
 
+        /// <summary>
+        /// Verifies status control pointer down plays shared control sound before click.
+        /// </summary>
         [Test]
         public void StatusControl_PointerDown_PlaysSharedControlSoundBeforeClick()
         {
@@ -200,6 +231,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(0, _closeCount);
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private StatusWindowController CreateController()
         {
             return new StatusWindowController(
@@ -223,6 +258,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 
         private sealed class TestActions : IStatusWindowActions
         {
+            /// <summary>
+            /// Opens status info.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public void OpenStatusInfo(StrategyStatusTarget target) { }
         }
     }

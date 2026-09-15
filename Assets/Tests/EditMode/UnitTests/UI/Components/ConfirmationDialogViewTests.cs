@@ -167,6 +167,9 @@ namespace Rebellion.Tests.UI.Components
         /// <summary>
         /// Reads a private authored reference from the dialog under test.
         /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)

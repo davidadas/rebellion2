@@ -23,14 +23,8 @@ public enum MessagesTab
 
     Conflict = 7,
 
-    /// <summary>
-    /// Displays chat messages.
-    /// </summary>
     Chat = 8,
 
-    /// <summary>
-    /// Displays advice messages.
-    /// </summary>
     Advice = 9,
 }
 

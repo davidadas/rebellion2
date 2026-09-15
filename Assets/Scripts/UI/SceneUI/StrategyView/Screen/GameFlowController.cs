@@ -147,6 +147,7 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Builds a new game and starts its configured faction introduction.
     /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private async Task StartNewGameAsync()
     {
         GameSummary summary = GameLaunchContext.Summary;
@@ -163,7 +164,10 @@ public sealed class GameFlowController : MonoBehaviour
         GameStartupTrace.Log("Game generation started.");
         game = builder.Build();
         GameStartupTrace.Log("Game generation complete.");
-        bool playBriefing = GameLaunchContext.PlayIntroCutscene;
+        bool briefingsDisabled = AppBootstrap
+            .Instance.GetUserSettingsManager()
+            .Settings.Gameplay.DisableBriefings;
+        bool playBriefing = GameLaunchContext.PlayIntroCutscene && !briefingsDisabled;
         Task intro = PlayFactionIntroAsync(game.GetPlayerFaction());
         GameManager gameManager = StartGameSession(loadedGame: false);
         InitializeStrategy(gameManager);
@@ -196,6 +200,7 @@ public sealed class GameFlowController : MonoBehaviour
     /// Plays the configured faction introduction before entering gameplay.
     /// </summary>
     /// <param name="faction">The player faction.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     private Task PlayFactionIntroAsync(Faction faction)
     {
         if (faction == null)
@@ -294,7 +299,14 @@ public sealed class GameFlowController : MonoBehaviour
         strategyController.ActivatePresentation();
         GameRoot activeGame = gameManager.GetGame();
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();
-        bool playBriefing = requestBriefing && !metadata.OpeningBriefingCompleted;
+        bool briefingsDisabled = AppBootstrap
+            .Instance.GetUserSettingsManager()
+            .Settings.Gameplay.DisableBriefings;
+        bool playBriefing = ShouldPlayOpeningBriefing(
+            requestBriefing,
+            metadata.OpeningBriefingCompleted,
+            briefingsDisabled
+        );
         GameLaunchContext.PlayIntroCutscene = false;
         if (playBriefing)
         {
@@ -309,6 +321,18 @@ public sealed class GameFlowController : MonoBehaviour
         GameStartupTrace.Complete(
             playBriefing ? "Opening briefing started." : "Strategy gameplay ready."
         );
+    }
+
+    /// <summary>
+    /// Determines whether the requested opening briefing should play.
+    /// </summary>
+    /// <param name="requested">Whether launch state requested the briefing.</param>
+    /// <param name="completed">Whether the briefing has already completed for this game.</param>
+    /// <param name="disabled">Whether the user disabled briefings.</param>
+    /// <returns>True when the opening briefing should play.</returns>
+    internal static bool ShouldPlayOpeningBriefing(bool requested, bool completed, bool disabled)
+    {
+        return requested && !completed && !disabled;
     }
 
     /// <summary>
@@ -345,6 +369,9 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Selects the headquarters movie from the faction that lost the headquarters.
     /// </summary>
+    /// <param name="themes">The themes.</param>
+    /// <param name="result">The result.</param>
+    /// <returns>The requested headquarters destroyed cutscene path.</returns>
     internal static string GetHeadquartersDestroyedCutscenePath(
         FactionThemeLibrary themes,
         HeadquartersLostResult result
@@ -389,6 +416,10 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Selects the configured victory or defeat movie from the player's perspective.
     /// </summary>
+    /// <param name="theme">The theme.</param>
+    /// <param name="playerFaction">The player faction.</param>
+    /// <param name="result">The result.</param>
+    /// <returns>The requested campaign ending cutscene path.</returns>
     internal static string GetCampaignEndingCutscenePath(
         FactionTheme theme,
         Faction playerFaction,

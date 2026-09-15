@@ -34,6 +34,9 @@ public sealed class IdleBarSlotView
     private RawImage portraitImage;
 
     [SerializeField]
+    private Button ignoreButton;
+
+    [SerializeField]
     private TextMeshProUGUI overflowTextField;
 
     private string instanceId;
@@ -45,6 +48,11 @@ public sealed class IdleBarSlotView
     /// Raised when the player selects this entry.
     /// </summary>
     internal event Action<string> Selected;
+
+    /// <summary>
+    /// Raised when the player ignores this entry.
+    /// </summary>
+    internal event Action<string> IgnoreRequested;
 
     /// <summary>
     /// Raised when the player requests this entry's normal context menu.
@@ -118,6 +126,7 @@ public sealed class IdleBarSlotView
         overflowTextField.text = $"+{hiddenCount}";
         overflowTextField.gameObject.SetActive(true);
         button.interactable = false;
+        SetHovered(hovered);
     }
 
     /// <summary>
@@ -231,12 +240,16 @@ public sealed class IdleBarSlotView
         if (initialized)
             return;
 
+        if (ignoreButton == null)
+            ignoreButton = CreateIgnoreButton();
+
         if (
             button == null
             || frameImage == null
             || portraitMask == null
             || portraitBackground == null
             || portraitImage == null
+            || ignoreButton == null
             || overflowTextField == null
         )
         {
@@ -246,7 +259,48 @@ public sealed class IdleBarSlotView
         }
 
         button.onClick.AddListener(HandleSelected);
+        ignoreButton.onClick.AddListener(HandleIgnored);
         initialized = true;
+    }
+
+    /// <summary>
+    /// Creates the hover control when an older generated Strategy prefab is loaded.
+    /// </summary>
+    /// <returns>The newly created ignore button.</returns>
+    private Button CreateIgnoreButton()
+    {
+        GameObject ignoreObject = new GameObject(
+            "IgnoreButton",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Button)
+        );
+        ignoreObject.transform.SetParent(transform, false);
+        Image hitArea = ignoreObject.GetComponent<Image>();
+        hitArea.color = Color.clear;
+        Button createdButton = ignoreObject.GetComponent<Button>();
+        createdButton.targetGraphic = hitArea;
+        createdButton.transition = Selectable.Transition.None;
+        SetSourceRect(hitArea.rectTransform, 18, 0, 10, 10);
+
+        GameObject textObject = new GameObject(
+            "IgnoreText",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI)
+        );
+        textObject.transform.SetParent(ignoreObject.transform, false);
+        TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+        text.text = "×";
+        text.color = new Color(0.9f, 0.12f, 0.12f, 1f);
+        text.fontSize = 12;
+        text.fontStyle = FontStyles.Bold;
+        text.alignment = TextAlignmentOptions.Center;
+        text.raycastTarget = false;
+        FillParent(text.rectTransform);
+        ignoreObject.SetActive(false);
+        return createdButton;
     }
 
     /// <summary>
@@ -256,6 +310,8 @@ public sealed class IdleBarSlotView
     {
         if (initialized && button != null)
             button.onClick.RemoveListener(HandleSelected);
+        if (initialized && ignoreButton != null)
+            ignoreButton.onClick.RemoveListener(HandleIgnored);
     }
 
     /// <summary>
@@ -281,6 +337,15 @@ public sealed class IdleBarSlotView
     }
 
     /// <summary>
+    /// Raises an ignore request for the stable identity represented by this slot.
+    /// </summary>
+    private void HandleIgnored()
+    {
+        if (!string.IsNullOrEmpty(instanceId))
+            IgnoreRequested?.Invoke(instanceId);
+    }
+
+    /// <summary>
     /// Applies the compact normal or emphasized hover geometry.
     /// </summary>
     /// <param name="hovered">Whether the pointer is over the slot.</param>
@@ -294,6 +359,7 @@ public sealed class IdleBarSlotView
         portraitImage.rectTransform.localScale = hovered
             ? Vector3.one * _hoveredPortraitScale
             : Vector3.one;
+        ignoreButton.gameObject.SetActive(hovered && !string.IsNullOrEmpty(instanceId));
     }
 
     /// <summary>
@@ -331,5 +397,18 @@ public sealed class IdleBarSlotView
         rect.pivot = new Vector2(0f, 1f);
         rect.anchoredPosition = new Vector2(x, -y);
         rect.sizeDelta = new Vector2(width, height);
+    }
+
+    /// <summary>
+    /// Stretches a rectangle across its parent.
+    /// </summary>
+    /// <param name="rect">The rectangle to stretch.</param>
+    private static void FillParent(RectTransform rect)
+    {
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = Vector2.zero;
     }
 }

@@ -27,6 +27,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -36,6 +39,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -49,12 +53,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             _controller = CreateController();
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
@@ -73,6 +83,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies open closed mode creates named bound window at configured position.
+        /// </summary>
         [Test]
         public void Open_ClosedMode_CreatesNamedBoundWindowAtConfiguredPosition()
         {
@@ -122,6 +135,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(2, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies bind window different mode for bound view throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindWindow_DifferentModeForBoundView_ThrowsInvalidOperationException()
         {
@@ -134,6 +150,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies search input bound window updates controller session and marks dirty.
+        /// </summary>
         [Test]
         public void SearchInput_BoundWindow_UpdatesControllerSessionAndMarksDirty()
         {
@@ -150,6 +169,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(2, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies dialog control pointer down plays shared control sound before click.
+        /// </summary>
         [Test]
         public void DialogControl_PointerDown_PlaysSharedControlSoundBeforeClick()
         {
@@ -170,6 +192,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(1, _windowManager.Windows.Count);
         }
 
+        /// <summary>
+        /// Verifies reconcile windows unavailable sectors throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ReconcileWindows_UnavailableSectors_ThrowsInvalidOperationException()
         {
@@ -179,6 +204,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.Throws<InvalidOperationException>(() => _controller.ReconcileWindows());
         }
 
+        /// <summary>
+        /// Verifies get mode unbound view throws invalid operation exception.
+        /// </summary>
         [Test]
         public void GetMode_UnboundView_ThrowsInvalidOperationException()
         {
@@ -190,6 +218,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.Throws<InvalidOperationException>(() => _controller.GetMode(view));
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private FinderWindowController CreateController()
         {
             return new FinderWindowController(

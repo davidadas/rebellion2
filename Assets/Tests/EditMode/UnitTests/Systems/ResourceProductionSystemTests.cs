@@ -20,6 +20,9 @@ namespace Rebellion.Tests.Systems
         private Planet _planet;
         private int _nextBuildingId;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -44,6 +47,9 @@ namespace Rebellion.Tests.Systems
             _system = new ResourceProductionSystem(_game);
         }
 
+        /// <summary>
+        /// Verifies process tick mine startup cycle produces after startup duration.
+        /// </summary>
         [Test]
         public void ProcessTick_MineStartupCycle_ProducesAfterStartupDuration()
         {
@@ -61,6 +67,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(mine.ResourceStartupCyclePending);
         }
 
+        /// <summary>
+        /// Verifies process tick smuggling roll redirects completed resource to beneficiary.
+        /// </summary>
         [Test]
         public void ProcessTick_MineOutputModifier_AdjustsProductionCycleDuration()
         {
@@ -119,6 +128,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, beneficiary.RawMaterialStockpile);
         }
 
+        /// <summary>
+        /// Verifies process tick smuggling roll redirects completed refined resource to beneficiary.
+        /// </summary>
         [Test]
         public void ProcessTick_SmugglingRoll_RedirectsCompletedRefinedResourceToBeneficiary()
         {
@@ -139,6 +151,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, beneficiary.RefinedMaterialStockpile);
         }
 
+        /// <summary>
+        /// Verifies process tick refineries waiting for raw material are serviced in request order.
+        /// </summary>
         [Test]
         public void ProcessTick_RefineriesWaitingForRawMaterial_AreServicedInRequestOrder()
         {
@@ -162,6 +177,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick pending production facility receives available refined material.
+        /// </summary>
         [Test]
         public void ProcessTick_PendingProductionFacility_ReceivesAvailableRefinedMaterial()
         {
@@ -190,6 +208,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies process tick pending production facility without queue does not consume material.
+        /// </summary>
         [Test]
         public void ProcessTick_PendingProductionFacilityWithoutQueue_DoesNotConsumeMaterial()
         {
@@ -209,6 +230,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies process tick suspended refinery with pending request reserves available raw material.
+        /// </summary>
         [Test]
         public void ProcessTick_SuspendedRefineryWithPendingRequest_ReservesAvailableRawMaterial()
         {
@@ -225,6 +249,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(_faction.PendingRawMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies process tick suspended production facility with pending request reserves available refined material.
+        /// </summary>
         [Test]
         public void ProcessTick_SuspendedProductionFacilityWithPendingRequest_ReservesAvailableRefinedMaterial()
         {
@@ -255,6 +282,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies process tick completed mine cycle services suspended refinery in same tick.
+        /// </summary>
         [Test]
         public void ProcessTick_CompletedMineCycle_ServicesSuspendedRefineryInSameTick()
         {
@@ -281,6 +311,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, refinery.ProductionCycleProgress);
         }
 
+        /// <summary>
+        /// Verifies process tick completed refinery cycle services production facility in same tick.
+        /// </summary>
         [Test]
         public void ProcessTick_CompletedRefineryCycle_ServicesProductionFacilityInSameTick()
         {
@@ -314,6 +347,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
         }
 
+        /// <summary>
+        /// Verifies process tick lower popular support extends resource cycle.
+        /// </summary>
         [Test]
         public void ProcessTick_LowerPopularSupport_ExtendsResourceCycle()
         {
@@ -331,6 +367,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, _faction.RawMaterialStockpile);
         }
 
+        /// <summary>
+        /// Verifies process tick maintenance allocation extends resource cycle.
+        /// </summary>
         [Test]
         public void ProcessTick_MaintenanceAllocation_ExtendsResourceCycle()
         {
@@ -358,6 +397,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, _faction.RawMaterialStockpile);
         }
 
+        /// <summary>
+        /// Verifies process tick maintenance allocation across multiple mines reaches demand.
+        /// </summary>
         [Test]
         public void ProcessTick_MaintenanceAllocationAcrossMultipleMines_ReachesDemand()
         {
@@ -380,6 +422,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(20, secondMine.ResourceMaintenanceAllocation);
         }
 
+        /// <summary>
+        /// Verifies process tick mine and refinery on different planets share maintenance demand.
+        /// </summary>
         [Test]
         public void ProcessTick_MineAndRefineryOnDifferentPlanets_ShareMaintenanceDemand()
         {
@@ -409,6 +454,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(20, refinery.ResourceMaintenanceAllocation);
         }
 
+        /// <summary>
+        /// Verifies process tick blockaded planet with kdy does not advance resource cycle.
+        /// </summary>
         [Test]
         public void ProcessTick_BlockadedPlanetWithKdy_DoesNotAdvanceResourceCycle()
         {
@@ -439,6 +487,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
         }
 
+        /// <summary>
+        /// Verifies process tick planet in uprising does not advance resource cycle.
+        /// </summary>
         [Test]
         public void ProcessTick_PlanetInUprising_DoesNotAdvanceResourceCycle()
         {
@@ -453,6 +504,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
         }
 
+        /// <summary>
+        /// Verifies process tick suspended resource facility preserves allocation and resumes cycle.
+        /// </summary>
         [Test]
         public void ProcessTick_SuspendedResourceFacility_PreservesAllocationAndResumesCycle()
         {
@@ -485,6 +539,11 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, mine.ProductionCycleProgress);
         }
 
+        /// <summary>
+        /// Creates owned planet.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <returns>The created owned planet.</returns>
         private Planet CreateOwnedPlanet(string instanceId)
         {
             return new Planet
@@ -498,6 +557,14 @@ namespace Rebellion.Tests.Systems
             };
         }
 
+        /// <summary>
+        /// Adds complete building.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="type">The type.</param>
+        /// <param name="processRate">The process rate.</param>
+        /// <param name="productionType">The production type.</param>
+        /// <returns>The result of add complete building.</returns>
         private Building AddCompleteBuilding(
             Planet planet,
             BuildingType type,
@@ -518,6 +585,10 @@ namespace Rebellion.Tests.Systems
             return building;
         }
 
+        /// <summary>
+        /// Processes ticks.
+        /// </summary>
+        /// <param name="count">The count.</param>
         private void ProcessTicks(int count)
         {
             for (int tick = 0; tick < count; tick++)

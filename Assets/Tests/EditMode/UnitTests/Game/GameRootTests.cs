@@ -24,6 +24,9 @@ namespace Rebellion.Tests.Game
         private Planet _planet;
         private Fleet _fleet;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -59,8 +62,12 @@ namespace Rebellion.Tests.Game
             _game = new GameRoot(_summary, config);
             _game.GetFactions().Add(_faction1);
             _game.GetFactions().Add(_faction2);
+            _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
         }
 
+        /// <summary>
+        /// Verifies get config config not set throws exception.
+        /// </summary>
         [Test]
         public void GetConfig_ConfigNotSet_ThrowsException()
         {
@@ -69,6 +76,9 @@ namespace Rebellion.Tests.Game
             Assert.Throws<InvalidOperationException>(() => game.GetConfig());
         }
 
+        /// <summary>
+        /// Verifies constructor config provided sets config.
+        /// </summary>
         [Test]
         public void Constructor_ConfigProvided_SetsConfig()
         {
@@ -79,6 +89,9 @@ namespace Rebellion.Tests.Game
             Assert.AreSame(config, game.Config);
         }
 
+        /// <summary>
+        /// Verifies constructor with summary initializes correctly.
+        /// </summary>
         [Test]
         public void GetDifficultyModifier_AIControlledFaction_ReturnsSelectedDifficultyModifier()
         {
@@ -96,7 +109,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetDifficultyModifier_PlayerControlledFaction_ReturnsNeutralModifier()
         {
-            _faction1.PlayerID = "PLAYER1";
+            _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
             _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
             {
                 MissionSuccessChancePoints = 15,
@@ -160,6 +173,9 @@ namespace Rebellion.Tests.Game
             Assert.IsEmpty(_game.EventRuntime.States, "Event states should be empty initially");
         }
 
+        /// <summary>
+        /// Verifies set config valid config sets config.
+        /// </summary>
         [Test]
         public void SetConfig_ValidConfig_SetsConfig()
         {
@@ -171,6 +187,9 @@ namespace Rebellion.Tests.Game
             Assert.AreSame(config, game.GetConfig());
         }
 
+        /// <summary>
+        /// Verifies get factions game with multiple factions returns all factions.
+        /// </summary>
         [Test]
         public void GetFactions_GameWithMultipleFactions_ReturnsAllFactions()
         {
@@ -181,6 +200,9 @@ namespace Rebellion.Tests.Game
             Assert.Contains(_faction2, factions, "Should contain faction2");
         }
 
+        /// <summary>
+        /// Verifies get faction by owner instance id registered faction returns correct faction.
+        /// </summary>
         [Test]
         public void GetFactionByOwnerInstanceID_RegisteredFaction_ReturnsCorrectFaction()
         {
@@ -189,6 +211,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(_faction1, retrievedFaction, "Should return the correct faction");
         }
 
+        /// <summary>
+        /// Verifies get faction by owner instance id throws exception when faction not found.
+        /// </summary>
         [Test]
         public void GetFactionByOwnerInstanceID_ThrowsException_WhenFactionNotFound()
         {
@@ -199,6 +224,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies get galaxy map initialized game returns galaxy map.
+        /// </summary>
         [Test]
         public void GetGalaxyMap_InitializedGame_ReturnsGalaxyMap()
         {
@@ -211,6 +239,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies attach node resource buildings updates faction material supplies.
+        /// </summary>
         [Test]
         public void AttachNode_ResourceBuildings_UpdatesFactionMaterialSupplies()
         {
@@ -229,6 +260,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(50, _faction1.MaintenanceCapacity);
         }
 
+        /// <summary>
+        /// Verifies attach node in progress unit updates faction maintenance headroom.
+        /// </summary>
         [Test]
         public void AttachNode_InProgressUnit_UpdatesFactionMaintenanceHeadroom()
         {
@@ -252,6 +286,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(38, _faction1.MaintenanceHeadroom);
         }
 
+        /// <summary>
+        /// Verifies attach node valid node adds to scene graph.
+        /// </summary>
         [Test]
         public void AttachNode_ValidNode_AddsToSceneGraph()
         {
@@ -281,6 +318,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies attach node throws exception when node already has parent.
+        /// </summary>
         [Test]
         public void AttachNode_ThrowsException_WhenNodeAlreadyHasParent()
         {
@@ -294,6 +334,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies detach node attached node removes from scene graph.
+        /// </summary>
         [Test]
         public void DetachNode_AttachedNode_RemovesFromSceneGraph()
         {
@@ -320,6 +363,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies detach node throws exception when node has no parent.
+        /// </summary>
         [Test]
         public void DetachNode_ThrowsException_WhenNodeHasNoParent()
         {
@@ -330,6 +376,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies add scene node by instance id valid node adds to registry.
+        /// </summary>
         [Test]
         public void AddSceneNodeByInstanceID_ValidNode_AddsToRegistry()
         {
@@ -341,6 +390,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies add scene node by instance id throws exception when duplicate node added.
+        /// </summary>
         [Test]
         public void AddSceneNodeByInstanceID_ThrowsException_WhenDuplicateNodeAdded()
         {
@@ -354,6 +406,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies remove scene node by instance id registered node removes from registry.
+        /// </summary>
         [Test]
         public void RemoveSceneNodeByInstanceID_RegisteredNode_RemovesFromRegistry()
         {
@@ -368,6 +423,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies get scene node by instance id registered node returns node.
+        /// </summary>
         [Test]
         public void GetSceneNodeByInstanceID_RegisteredNode_ReturnsNode()
         {
@@ -379,6 +437,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(_planet, retrievedNode, "Should return the correct node");
         }
 
+        /// <summary>
+        /// Verifies get scene node by instance id returns null when node not found.
+        /// </summary>
         [Test]
         public void GetSceneNodeByInstanceID_ReturnsNull_WhenNodeNotFound()
         {
@@ -387,6 +448,9 @@ namespace Rebellion.Tests.Game
             Assert.IsNull(retrievedNode, "Should return null for non-existent node");
         }
 
+        /// <summary>
+        /// Verifies get scene nodes by instance i ds multiple registered nodes returns nodes.
+        /// </summary>
         [Test]
         public void GetSceneNodesByInstanceIDs_MultipleRegisteredNodes_ReturnsNodes()
         {
@@ -405,6 +469,9 @@ namespace Rebellion.Tests.Game
             Assert.Contains(_fleet, retrievedNodes, "Should contain fleet");
         }
 
+        /// <summary>
+        /// Verifies get scene nodes by owner instance id nodes with matching owner returns nodes.
+        /// </summary>
         [Test]
         public void GetSceneNodesByOwnerInstanceID_NodesWithMatchingOwner_ReturnsNodes()
         {
@@ -425,6 +492,9 @@ namespace Rebellion.Tests.Game
             Assert.Contains(_fleet, retrievedNodes, "Should contain fleet");
         }
 
+        /// <summary>
+        /// Verifies get scene nodes by type game with mixed nodes returns nodes of type.
+        /// </summary>
         [Test]
         public void GetSceneNodesByType_GameWithMixedNodes_ReturnsNodesOfType()
         {
@@ -445,6 +515,9 @@ namespace Rebellion.Tests.Game
             Assert.Contains(_fleet, retrievedFleets, "Should contain the specific fleet");
         }
 
+        /// <summary>
+        /// Verifies get scene nodes by type inactive officer excludes officer from active galaxy.
+        /// </summary>
         [Test]
         public void GetSceneNodesByType_InactiveOfficer_ExcludesOfficerFromActiveGalaxy()
         {
@@ -461,6 +534,9 @@ namespace Rebellion.Tests.Game
             CollectionAssert.DoesNotContain(activeOfficers, officer);
         }
 
+        /// <summary>
+        /// Verifies register owned unit valid unit adds unit to faction.
+        /// </summary>
         [Test]
         public void RegisterOwnedUnit_ValidUnit_AddsUnitToFaction()
         {
@@ -477,6 +553,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies deregister owned unit registered unit removes unit from faction.
+        /// </summary>
         [Test]
         public void DeregisterOwnedUnit_RegisteredUnit_RemovesUnitFromFaction()
         {
@@ -494,6 +573,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies get event pool initialized game returns event pool.
+        /// </summary>
         [Test]
         public void GetEventPool_InitializedGame_ReturnsEventPool()
         {
@@ -510,6 +592,9 @@ namespace Rebellion.Tests.Game
             Assert.Contains(event2, eventPool, "Should contain event2");
         }
 
+        /// <summary>
+        /// Verifies remove event event in pool removes event from pool.
+        /// </summary>
         [Test]
         public void RemoveEvent_EventInPool_RemovesEventFromPool()
         {
@@ -525,6 +610,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies get event by instance id event in pool returns matching event.
+        /// </summary>
         [Test]
         public void GetEventByInstanceID_EventInPool_ReturnsMatchingEvent()
         {
@@ -537,6 +625,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(event1, retrievedEvent, "Should return the correct event");
         }
 
+        /// <summary>
+        /// Verifies galaxy setter initializes galaxy correctly.
+        /// </summary>
         [Test]
         public void Galaxy_Setter_InitializesGalaxyCorrectly()
         {
@@ -596,6 +687,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies get player faction multi factional game returns player faction.
+        /// </summary>
         [Test]
         public void GetPlayerFaction_MultiFactionalGame_ReturnsPlayerFaction()
         {
@@ -609,53 +703,64 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies get player faction throws exception when summary is null.
+        /// </summary>
         [Test]
-        public void GetPlayerFaction_ThrowsException_WhenSummaryIsNull()
+        public void SetFactionController_NewFaction_AddsPlayer()
         {
-            // Create game without _summary.
-            GameRoot gameWithoutSummary = new GameRoot();
+            _game.SetFactionController("FACTION2", "PLAYER2", PlayerControllerType.Human);
 
-            // Attempt to get player faction.
-            Assert.Throws<InvalidOperationException>(
-                () => gameWithoutSummary.GetPlayerFaction(),
-                "Should throw exception when GameSummary is null"
-            );
+            Player player = _game.GetFactionPlayer("FACTION2");
+            Assert.AreEqual("PLAYER2", player.PlayerID);
+            Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
+            Assert.AreEqual(2, _game.GetPlayers().Count);
         }
 
+        /// <summary>
+        /// Verifies that changing a faction controller updates its assigned player.
+        /// </summary>
         [Test]
-        public void GetPlayerFaction_ThrowsException_WhenPlayerFactionIDIsNull()
+        public void SetFactionController_ExistingFaction_UpdatesPlayer()
         {
-            // Create game with summary but no player faction ID.
-            GameSummary summaryWithoutPlayer = new GameSummary();
-            GameConfig config = TestContent.Data.GameConfig;
-            GameRoot gameWithoutPlayerId = new GameRoot(summaryWithoutPlayer, config);
+            _game.SetFactionController("FACTION1", "AI_FACTION1", PlayerControllerType.AI);
+            _game.SetFactionController("FACTION1", "PLAYER1", PlayerControllerType.Human);
 
-            // Attempt to get player faction.
-            Assert.Throws<InvalidOperationException>(
-                () => gameWithoutPlayerId.GetPlayerFaction(),
-                "Should throw exception when PlayerFactionID is null or empty"
-            );
+            Assert.AreEqual(1, _game.GetPlayers().Count);
+            Assert.AreEqual("PLAYER1", _game.GetFactionPlayer("FACTION1").PlayerID);
         }
 
+        /// <summary>
+        /// Verifies that legacy games receive faction-controller player records.
+        /// </summary>
         [Test]
-        public void GetPlayerFaction_ThrowsException_WhenPlayerFactionNotFound()
+        public void GetPlayerFaction_NoHumanPlayer_DoesNotUseSummaryFaction()
         {
-            // Create game with invalid player faction ID.
-            GameSummary summaryWithInvalidPlayer = new GameSummary
-            {
-                PlayerFactionID = "NONEXISTENT",
-            };
-            GameConfig config = TestContent.Data.GameConfig;
-            GameRoot gameWithInvalidPlayer = new GameRoot(summaryWithInvalidPlayer, config);
-            gameWithInvalidPlayer.GetFactions().Add(_faction1);
-
-            // Attempt to get player faction.
-            Assert.Throws<InvalidOperationException>(
-                () => gameWithInvalidPlayer.GetPlayerFaction(),
-                "Should throw exception when player faction does not exist"
+            GameRoot game = new GameRoot(
+                new GameSummary { PlayerFactionID = _faction1.InstanceID },
+                TestContent.Data.GameConfig
             );
+            game.GetFactions().Add(_faction1);
+
+            Assert.Throws<InvalidOperationException>(() => game.GetPlayerFaction());
         }
 
+        /// <summary>
+        /// Verifies that player-faction lookup rejects a missing game summary.
+        /// </summary>
+        [Test]
+        public void GetPlayerFaction_HumanPlayerFactionMissing_ThrowsInvalidOperationException()
+        {
+            GameRoot game = new GameRoot();
+            game.GetFactions().Add(_faction1);
+            game.SetFactionController("NONEXISTENT", "PLAYER1", PlayerControllerType.Human);
+
+            Assert.Throws<InvalidOperationException>(() => game.GetPlayerFaction());
+        }
+
+        /// <summary>
+        /// Verifies set game speed valid speed updates game speed.
+        /// </summary>
         [Test]
         public void SetGameSpeed_ValidSpeed_UpdatesGameSpeed()
         {
@@ -681,6 +786,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies get game speed default game returns default speed.
+        /// </summary>
         [Test]
         public void GetGameSpeed_DefaultGame_ReturnsDefaultSpeed()
         {
@@ -694,6 +802,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(TickSpeed.Medium, speed, "GetGameSpeed should return Medium");
         }
 
+        /// <summary>
+        /// Verifies get game speed initial state returns default speed.
+        /// </summary>
         [Test]
         public void GetGameSpeed_InitialState_ReturnsDefaultSpeed()
         {
@@ -701,6 +812,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(TickSpeed.Slow, speed, "Default game speed should be Slow");
         }
 
+        /// <summary>
+        /// Verifies get unrecruited officers game with unrecruited officers returns officers.
+        /// </summary>
         [Test]
         public void GetUnrecruitedOfficers_GameWithUnrecruitedOfficers_ReturnsOfficers()
         {
@@ -738,6 +852,9 @@ namespace Rebellion.Tests.Game
             Assert.Contains(officer3, faction2Officers, "Should contain officer3");
         }
 
+        /// <summary>
+        /// Verifies get unrecruited officers returns empty list when no officers available.
+        /// </summary>
         [Test]
         public void GetUnrecruitedOfficers_ReturnsEmptyList_WhenNoOfficersAvailable()
         {
@@ -746,6 +863,9 @@ namespace Rebellion.Tests.Game
             Assert.IsEmpty(officers, "Should return empty list when no officers are available");
         }
 
+        /// <summary>
+        /// Verifies remove unrecruited officer officer in list removes officer.
+        /// </summary>
         [Test]
         public void RemoveUnrecruitedOfficer_OfficerInList_RemovesOfficer()
         {
@@ -774,6 +894,9 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Verifies remove unrecruited officer officer not in list leaves list unchanged.
+        /// </summary>
         [Test]
         public void RemoveUnrecruitedOfficer_OfficerNotInList_LeavesListUnchanged()
         {
@@ -791,6 +914,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(countBefore, _game.GetUnrecruitedOfficers().Count);
         }
 
+        /// <summary>
+        /// Verifies random not previously set lazy constructs from summary seed.
+        /// </summary>
         [Test]
         public void Random_NotPreviouslySet_LazyConstructsFromSummarySeed()
         {
@@ -802,6 +928,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(expected, firstRoll);
         }
 
+        /// <summary>
+        /// Verifies random index after random calls reads live call count.
+        /// </summary>
         [Test]
         public void RandomIndex_AfterRandomCalls_ReadsLiveCallCount()
         {
@@ -814,6 +943,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(3, game.RandomIndex);
         }
 
+        /// <summary>
+        /// Verifies random index set after random constructed rebuilds to match position.
+        /// </summary>
         [Test]
         public void RandomIndex_SetAfterRandomConstructed_RebuildsToMatchPosition()
         {
@@ -829,6 +961,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(expected, game.Random.NextInt(0, int.MaxValue));
         }
 
+        /// <summary>
+        /// Verifies is enabled false disables officer without detaching it.
+        /// </summary>
         [Test]
         public void IsEnabled_False_DisablesOfficerWithoutDetachingIt()
         {
@@ -850,6 +985,9 @@ namespace Rebellion.Tests.Game
             CollectionAssert.DoesNotContain(_faction1.GetOwnedUnitsByType<Officer>(), officer);
         }
 
+        /// <summary>
+        /// Verifies is enabled true enables officer at existing parent.
+        /// </summary>
         [Test]
         public void IsEnabled_True_EnablesOfficerAtExistingParent()
         {
@@ -869,6 +1007,9 @@ namespace Rebellion.Tests.Game
             CollectionAssert.Contains(_planet.GetChildren<Officer>(), officer);
         }
 
+        /// <summary>
+        /// Verifies change ownership officer in void preserves retention and changes owner.
+        /// </summary>
         [Test]
         public void ChangeOwnership_OfficerInVoid_PreservesRetentionAndChangesOwner()
         {
@@ -888,6 +1029,9 @@ namespace Rebellion.Tests.Game
             Assert.IsFalse(officer.IsActive());
         }
 
+        /// <summary>
+        /// Verifies delete node registered officer removes officer from game state.
+        /// </summary>
         [Test]
         public void DeleteNode_RegisteredOfficer_RemovesOfficerFromGameState()
         {
@@ -905,6 +1049,9 @@ namespace Rebellion.Tests.Game
             Assert.IsFalse(_faction1.GetOwnedUnitsByType<Officer>().Contains(officer));
         }
 
+        /// <summary>
+        /// Verifies rebuild scene state serialized disabled fleet restores disabled hierarchy.
+        /// </summary>
         [Test]
         public void RebuildSceneState_SerializedDisabledFleet_RestoresDisabledHierarchy()
         {
@@ -949,6 +1096,14 @@ namespace Rebellion.Tests.Game
             );
         }
 
+        /// <summary>
+        /// Creates building.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <param name="maintenanceCost">The maintenance cost.</param>
+        /// <param name="manufacturingStatus">The manufacturing status.</param>
+        /// <returns>The created building.</returns>
         private static Building CreateBuilding(
             string instanceId,
             BuildingType buildingType,

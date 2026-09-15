@@ -6,12 +6,18 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
     [TestFixture]
     public class TargetingControllerTests
     {
+        /// <summary>
+        /// Verifies request null receiver throws argument null exception.
+        /// </summary>
         [Test]
         public void Request_NullReceiver_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new TargetingRequest("Prompt", null, null));
         }
 
+        /// <summary>
+        /// Verifies request null prompt stores normalized state.
+        /// </summary>
         [Test]
         public void Request_NullPrompt_StoresNormalizedState()
         {
@@ -25,6 +31,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreSame(receiver, request.Receiver);
         }
 
+        /// <summary>
+        /// Verifies begin null request throws argument null exception.
+        /// </summary>
         [Test]
         public void Begin_NullRequest_ThrowsArgumentNullException()
         {
@@ -33,6 +42,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.Throws<ArgumentNullException>(() => controller.Begin(null));
         }
 
+        /// <summary>
+        /// Verifies begin existing request cancels existing and activates replacement.
+        /// </summary>
         [Test]
         public void Begin_ExistingRequest_CancelsExistingAndActivatesReplacement()
         {
@@ -52,6 +64,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreSame(second, controller.ActiveRequest);
         }
 
+        /// <summary>
+        /// Verifies begin with cursor shows and moves cursor while active.
+        /// </summary>
         [Test]
         public void Begin_WithCursor_ShowsAndMovesCursorWhileActive()
         {
@@ -74,6 +89,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(78, cursor.MoveY);
         }
 
+        /// <summary>
+        /// Verifies begin without cursor visibility ignores move requests.
+        /// </summary>
         [Test]
         public void Begin_WithoutCursorVisibility_IgnoresMoveRequests()
         {
@@ -86,6 +104,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(0, cursor.MoveCount);
         }
 
+        /// <summary>
+        /// Verifies try select target no active request or target returns false.
+        /// </summary>
         [Test]
         public void TrySelectTarget_NoActiveRequestOrTarget_ReturnsFalse()
         {
@@ -104,6 +125,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(0, receiver.SelectedCount);
         }
 
+        /// <summary>
+        /// Verifies try select target active request completes and hides cursor.
+        /// </summary>
         [Test]
         public void TrySelectTarget_ActiveRequest_CompletesAndHidesCursor()
         {
@@ -125,6 +149,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreSame(target, receiver.LastTarget);
         }
 
+        /// <summary>
+        /// Verifies try select target repeating request remains active and accepts subsequent targets.
+        /// </summary>
         [Test]
         public void TrySelectTarget_RepeatingRequest_RemainsActiveAndAcceptsSubsequentTargets()
         {
@@ -153,6 +180,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreSame(secondTarget, receiver.LastTarget);
         }
 
+        /// <summary>
+        /// Verifies cancel active request cancels and hides cursor.
+        /// </summary>
         [Test]
         public void Cancel_ActiveRequest_CancelsAndHidesCursor()
         {
@@ -171,6 +201,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreSame(request, receiver.LastRequest);
         }
 
+        /// <summary>
+        /// Verifies try cancel inactive then active returns matching result.
+        /// </summary>
         [Test]
         public void TryCancel_InactiveThenActive_ReturnsMatchingResult()
         {
@@ -184,6 +217,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.IsTrue(activeResult);
         }
 
+        /// <summary>
+        /// Verifies try submit receiver accepts clears request and hides cursor.
+        /// </summary>
         [Test]
         public void TrySubmit_ReceiverAccepts_ClearsRequestAndHidesCursor()
         {
@@ -205,6 +241,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(1, cursor.HideCount);
         }
 
+        /// <summary>
+        /// Verifies try cancel undo receiver keeps request active does not cancel request.
+        /// </summary>
         [Test]
         public void TryCancel_UndoReceiverKeepsRequestActive_DoesNotCancelRequest()
         {
@@ -224,6 +263,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(0, receiver.CanceledCount);
         }
 
+        /// <summary>
+        /// Verifies try cancel undo receiver rejects cancels request.
+        /// </summary>
         [Test]
         public void TryCancel_UndoReceiverRejects_CancelsRequest()
         {
@@ -243,6 +285,10 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
         {
             public object Target { get; }
 
+            /// <summary>
+            /// Initializes a new instance of the StubTargetable class.
+            /// </summary>
+            /// <param name="target">The target.</param>
             public StubTargetable(object target)
             {
                 Target = target;
@@ -259,6 +305,11 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             public int MoveY { get; private set; }
             public int ShowCount { get; private set; }
 
+            /// <summary>
+            /// Shows the requested operation.
+            /// </summary>
+            /// <param name="x">The x.</param>
+            /// <param name="y">The y.</param>
             public void Show(int x, int y)
             {
                 ShowCount++;
@@ -266,6 +317,11 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
                 LastY = y;
             }
 
+            /// <summary>
+            /// Executes move to.
+            /// </summary>
+            /// <param name="x">The x.</param>
+            /// <param name="y">The y.</param>
             public void MoveTo(int x, int y)
             {
                 MoveCount++;
@@ -273,6 +329,9 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
                 MoveY = y;
             }
 
+            /// <summary>
+            /// Hides the requested operation.
+            /// </summary>
             public void Hide()
             {
                 HideCount++;
@@ -286,6 +345,11 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             public object LastTarget { get; private set; }
             public int SelectedCount { get; private set; }
 
+            /// <summary>
+            /// Executes on target selected.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="target">The target.</param>
             public void OnTargetSelected(TargetingRequest request, object target)
             {
                 SelectedCount++;
@@ -293,6 +357,10 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
                 LastTarget = target;
             }
 
+            /// <summary>
+            /// Executes on targeting cancelled.
+            /// </summary>
+            /// <param name="request">The request.</param>
             public void OnTargetingCancelled(TargetingRequest request)
             {
                 CanceledCount++;
@@ -312,14 +380,28 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             public int SubmissionCount { get; private set; }
             public int UndoCount { get; private set; }
 
+            /// <summary>
+            /// Executes on target selected.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="target">The target.</param>
             public void OnTargetSelected(TargetingRequest request, object target) { }
 
+            /// <summary>
+            /// Executes on targeting cancelled.
+            /// </summary>
+            /// <param name="request">The request.</param>
             public void OnTargetingCancelled(TargetingRequest request)
             {
                 CanceledCount++;
                 LastRequest = request;
             }
 
+            /// <summary>
+            /// Attempts submit targeting.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TrySubmitTargeting(TargetingRequest request)
             {
                 SubmissionCount++;
@@ -327,6 +409,11 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
                 return AcceptSubmission;
             }
 
+            /// <summary>
+            /// Attempts undo targeting.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryUndoTargeting(TargetingRequest request)
             {
                 UndoCount++;

@@ -89,6 +89,9 @@ namespace Rebellion.Game.Missions
             if (planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
                 return null;
 
+            if (!HasResearchRemaining(ctx.Game, ctx.OwnerInstanceId, discipline))
+                return null;
+
             if (!HasResearchFacility(planet, discipline))
                 return null;
 
@@ -169,6 +172,24 @@ namespace Rebellion.Game.Missions
                     .Count > 0,
                 _ => false,
             };
+        }
+
+        /// <summary>
+        /// Returns whether a faction has another advance available in a research discipline.
+        /// </summary>
+        /// <param name="game">The game containing the faction research state.</param>
+        /// <param name="ownerInstanceID">The faction performing the research.</param>
+        /// <param name="discipline">The research discipline to inspect.</param>
+        /// <returns>False when the faction's initialized catalog has no remaining advance.</returns>
+        private static bool HasResearchRemaining(
+            GameRoot game,
+            string ownerInstanceID,
+            ResearchDiscipline discipline
+        )
+        {
+            Faction faction = game?.GetFactionByOwnerInstanceID(ownerInstanceID);
+            return faction?.ResearchCatalog.ContainsKey(discipline) != true
+                || !faction.IsResearchExhausted(discipline);
         }
 
         /// <summary>
@@ -385,11 +406,7 @@ namespace Rebellion.Game.Missions
             if (GetMissionInvalidationReason(game).HasValue)
                 return false;
 
-            Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
-            if (faction?.ResearchCatalog.ContainsKey(Discipline) != true)
-                return true;
-
-            return !faction.IsResearchExhausted(Discipline);
+            return HasResearchRemaining(game, OwnerInstanceID, Discipline);
         }
     }
 }

@@ -1055,6 +1055,31 @@ public static class StrategyViewPrefabBuilder
         FillParent(portrait.rectTransform);
         portrait.raycastTarget = false;
 
+        GameObject ignoreObject = new GameObject(
+            "IgnoreButton",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Button)
+        );
+        ignoreObject.transform.SetParent(slotObject.transform, false);
+        Image ignoreHitArea = ignoreObject.GetComponent<Image>();
+        ignoreHitArea.color = Color.clear;
+        Button ignoreButton = ignoreObject.GetComponent<Button>();
+        ignoreButton.targetGraphic = ignoreHitArea;
+        ignoreButton.transition = Selectable.Transition.None;
+        SetSourceRect(ignoreHitArea.rectTransform, 18, 0, 10, 10);
+
+        TextMeshProUGUI ignoreText = CreateTextLabel("IgnoreText", ignoreObject.transform);
+        ignoreText.text = "×";
+        ignoreText.color = new Color(0.9f, 0.12f, 0.12f, 1f);
+        ignoreText.fontSize = 12;
+        ignoreText.fontStyle = FontStyles.Bold;
+        ignoreText.alignment = TextAlignmentOptions.Center;
+        ignoreText.raycastTarget = false;
+        FillParent(ignoreText.rectTransform);
+        ignoreObject.SetActive(false);
+
         TextMeshProUGUI overflowText = CreateTextLabel("OverflowTextField", slotObject.transform);
         overflowText.text = string.Empty;
         overflowText.color = Color.white;
@@ -1070,10 +1095,29 @@ public static class StrategyViewPrefabBuilder
         AssignReference(slotView, "portraitMask", maskImage.rectTransform);
         AssignReference(slotView, "portraitBackground", background);
         AssignReference(slotView, "portraitImage", portrait);
+        AssignReference(slotView, "ignoreButton", ignoreButton);
         AssignReference(slotView, "overflowTextField", overflowText);
+
+        RawImage hoverLabelBackground = CreatePanelImage(
+            "HoverLabel",
+            layer,
+            new Color(0.03f, 0.03f, 0.04f, 0.95f)
+        );
+        hoverLabelBackground.raycastTarget = false;
+        SetSourceRect(hoverLabelBackground.rectTransform, 0, 0, 1, 1);
+        TextMeshProUGUI hoverLabelText = CreateTextLabel("Text", hoverLabelBackground.transform);
+        hoverLabelText.color = Color.white;
+        hoverLabelText.fontSize = 8;
+        hoverLabelText.alignment = TextAlignmentOptions.Center;
+        hoverLabelText.raycastTarget = false;
+        FillParent(hoverLabelText.rectTransform);
+        hoverLabelBackground.gameObject.SetActive(false);
+
         AssignReference(view, "shelfHitArea", shelfHitArea);
         AssignReference(view, "entriesScrollArea", entriesScrollArea);
         AssignReference(view, "slotTemplate", slotView);
+        AssignReference(view, "hoverLabelRoot", hoverLabelBackground.rectTransform);
+        AssignReference(view, "hoverLabelText", hoverLabelText);
         slotObject.SetActive(false);
         layerObject.SetActive(false);
         return view;
@@ -1082,6 +1126,7 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Authors the persistent services, camera, and event system required by the Strategy scene.
     /// </summary>
+    /// <param name="sceneRoot">The scene root.</param>
     private static void BuildSceneInfrastructure(GameObject sceneRoot)
     {
         GameObject services = new GameObject("Services");

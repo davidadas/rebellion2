@@ -21,6 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         private UIWindow _window;
         private UIContext _uiContext;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -30,6 +33,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             game.GetFactions()
                 .Add(new Faction { InstanceID = _opponentFactionId, DisplayName = "Empire" });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -41,12 +45,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             _window.SetActiveWindow(true);
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies create render data null context throws argument null exception.
+        /// </summary>
         [Test]
         public void CreateRenderData_NullContext_ThrowsArgumentNullException()
         {
@@ -63,6 +73,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies create render data null window throws argument null exception.
+        /// </summary>
         [Test]
         public void CreateRenderData_NullWindow_ThrowsArgumentNullException()
         {
@@ -79,6 +92,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies create render data null session throws argument null exception.
+        /// </summary>
         [Test]
         public void CreateRenderData_NullSession_ThrowsArgumentNullException()
         {
@@ -93,6 +109,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies create render data system faction tab returns complete themed presentation.
+        /// </summary>
         [Test]
         public void CreateRenderData_SystemFactionTab_ReturnsCompleteThemedPresentation()
         {
@@ -151,6 +170,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             CollectionAssert.AreEqual(new[] { "1", string.Empty, "3" }, data.Rows[0].Counts);
         }
 
+        /// <summary>
+        /// Verifies create render data ship panel returns active panel commands and four button layout.
+        /// </summary>
         [Test]
         public void CreateRenderData_ShipPanel_ReturnsActivePanelCommandsAndFourButtonLayout()
         {
@@ -199,6 +221,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies create render data opponent troop tab uses opponent troop background.
+        /// </summary>
         [Test]
         public void CreateRenderData_OpponentTroopTab_UsesOpponentTroopBackground()
         {
@@ -224,6 +249,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies create render data opponent special forces tab uses opponent special forces background.
+        /// </summary>
         [Test]
         public void CreateRenderData_OpponentSpecialForcesTab_UsesOpponentSpecialForcesBackground()
         {
@@ -250,6 +278,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies create render data upper button layout omits button strip.
+        /// </summary>
         [Test]
         public void CreateRenderData_UpperButtonLayout_OmitsButtonStrip()
         {
@@ -279,6 +310,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies create render data system tab returns expected tab text.
+        /// </summary>
+        /// <param name="activeTab">The active tab.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(1, "Rebel Systems")]
         [TestCase(2, "Imperial Systems")]
         [TestCase(3, "Neutral Systems")]
@@ -304,6 +340,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(expected, data.ActiveTabText);
         }
 
+        /// <summary>
+        /// Verifies create render data faction tab returns configured faction text.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="panel">Whether panel.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(FinderMode.Fleets, false, "Alliance Fleets")]
         [TestCase(FinderMode.Fleets, true, "Alliance Ships")]
         [TestCase(FinderMode.Troops, false, "Alliance Troops")]
@@ -334,6 +376,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(expected, data.ActiveTabText);
         }
 
+        /// <summary>
+        /// Verifies create render data missing tabs returns empty tab presentation and title.
+        /// </summary>
         [Test]
         public void CreateRenderData_MissingTabs_ReturnsEmptyTabPresentationAndTitle()
         {
@@ -351,6 +396,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsEmpty(data.Tabs);
         }
 
+        /// <summary>
+        /// Verifies filter rows null rows returns empty list.
+        /// </summary>
         [Test]
         public void FilterRows_NullRows_ReturnsEmptyList()
         {
@@ -359,6 +407,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsEmpty(rows);
         }
 
+        /// <summary>
+        /// Verifies filter rows blank search returns independent source order.
+        /// </summary>
         [Test]
         public void FilterRows_BlankSearch_ReturnsIndependentSourceOrder()
         {
@@ -372,6 +423,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             CollectionAssert.AreEqual(new[] { first, second }, rows);
         }
 
+        /// <summary>
+        /// Verifies filter rows search text returns case insensitive matches in source order.
+        /// </summary>
         [Test]
         public void FilterRows_SearchText_ReturnsCaseInsensitiveMatchesInSourceOrder()
         {
@@ -391,6 +445,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies create rows rows and selection returns normalized immutable presentation.
+        /// </summary>
         [Test]
         public void CreateRows_RowsAndSelection_ReturnsNormalizedImmutablePresentation()
         {
@@ -421,6 +478,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies get window title mode and panel returns expected title.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="panel">Whether panel.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(FinderMode.Systems, false, "Planetary System Finder")]
         [TestCase(FinderMode.Systems, true, "Planetary System Finder")]
         [TestCase(FinderMode.Fleets, false, "Fleet Finder")]
@@ -440,6 +503,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(expected, title);
         }
 
+        /// <summary>
+        /// Verifies get window label mode and panel returns expected label.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="panel">Whether panel.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(FinderMode.Systems, false, "System Name")]
         [TestCase(FinderMode.Systems, true, "System Name")]
         [TestCase(FinderMode.Fleets, false, "Fleet Name")]
@@ -459,6 +528,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(expected, label);
         }
 
+        /// <summary>
+        /// Creates tabs.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <returns>The created tabs.</returns>
         private List<FinderWindowTab> CreateTabs(FinderMode mode)
         {
             return FinderWindowTabCatalog.Create(
@@ -468,6 +542,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Creates row.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="name">The name.</param>
+        /// <param name="counts">The counts.</param>
+        /// <returns>The created row.</returns>
         private static FinderWindowRow CreateRow(
             string instanceId,
             string name,

@@ -42,6 +42,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -76,12 +79,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null fleet command controller throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullFleetCommandController_ThrowsArgumentNullException()
         {
@@ -98,6 +107,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies initialize null window actions throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullWindowActions_ThrowsArgumentNullException()
         {
@@ -116,6 +128,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies try initialize window before initialize throws invalid operation exception.
+        /// </summary>
         [Test]
         public void TryInitializeWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -131,6 +146,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies try initialize window null planet returns false.
+        /// </summary>
         [Test]
         public void TryInitializeWindow_NullPlanet_ReturnsFalse()
         {
@@ -146,6 +164,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Verifies open valid planet creates named window at resolved position.
+        /// </summary>
         [Test]
         public void Open_ValidPlanet_CreatesNamedWindowAtResolvedPosition()
         {
@@ -161,6 +182,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(0, _controller.GetSelectedFleetIndex(view));
         }
 
+        /// <summary>
+        /// Verifies open existing planet reuses window without additional invalidation.
+        /// </summary>
         [Test]
         public void Open_ExistingPlanet_ReusesWindowWithoutAdditionalInvalidation()
         {
@@ -175,6 +199,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies select target contained officer selects fleet and personnel tab.
+        /// </summary>
         [Test]
         public void SelectTarget_ContainedOfficer_SelectsFleetAndPersonnelTab()
         {
@@ -187,6 +214,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(0, _controller.GetSelectedFleetIndex(view));
         }
 
+        /// <summary>
+        /// Verifies clear selection populated fleet preserves required fleet selection.
+        /// </summary>
         [Test]
         public void ClearSelection_PopulatedFleet_PreservesRequiredFleetSelection()
         {
@@ -199,6 +229,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(FleetWindowTab.Personnel, _controller.GetActiveTab(view));
         }
 
+        /// <summary>
+        /// Verifies window drop active targeting selects current fleet.
+        /// </summary>
         [Test]
         public void WindowDrop_ActiveTargeting_SelectsCurrentFleet()
         {
@@ -218,6 +251,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_fleet, target.GetMoveDestination());
         }
 
+        /// <summary>
+        /// Verifies window drop without selected fleet selects represented planet.
+        /// </summary>
         [Test]
         public void WindowDrop_WithoutSelectedFleet_SelectsRepresentedPlanet()
         {
@@ -238,6 +274,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_planet.Planet, target.GetMoveDestination());
         }
 
+        /// <summary>
+        /// Verifies render window after all fleets removed clears selected fleet details.
+        /// </summary>
         [Test]
         public void RenderWindow_AfterAllFleetsRemoved_ClearsSelectedFleetDetails()
         {
@@ -252,6 +291,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(-1, _controller.GetSelectedFleetIndex(view));
         }
 
+        /// <summary>
+        /// Verifies fleet list drop active targeting selects represented planet.
+        /// </summary>
         [Test]
         public void FleetListDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
@@ -274,6 +316,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_planet.Planet, target.GetMoveDestination());
         }
 
+        /// <summary>
+        /// Verifies fleet row press unselected fleet label starts drag on first gesture.
+        /// </summary>
         [Test]
         public void FleetRowPress_UnselectedFleetLabel_StartsDragOnFirstGesture()
         {
@@ -327,6 +372,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies fleet row release unselected fleet renders selection without invalidating screen.
+        /// </summary>
         [Test]
         public void FleetRowRelease_UnselectedFleet_RendersSelectionWithoutInvalidatingScreen()
         {
@@ -361,6 +409,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(1, _selectionRouteRenderCount);
         }
 
+        /// <summary>
+        /// Verifies reconcile window fresh projection rebinds planet and target by identity.
+        /// </summary>
         [Test]
         public void ReconcileWindow_FreshProjection_RebindsPlanetAndTargetByIdentity()
         {
@@ -391,6 +442,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(_controller.SelectTarget(view, freshOfficer));
         }
 
+        /// <summary>
+        /// Verifies try create context menu no context item returns disabled information commands.
+        /// </summary>
         [Test]
         public void TryCreateContextMenu_NoContextItem_ReturnsDisabledInformationCommands()
         {
@@ -417,6 +471,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected bombardment leaf executes and routes battle result.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_BombardmentLeaf_ExecutesAndRoutesBattleResult()
         {
@@ -467,6 +524,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(1, _actions.RefreshCount);
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected capital ship rename marks name as assigned.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_CapitalShipRename_MarksNameAsAssigned()
         {
@@ -513,6 +573,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(ship.HasAssignedName);
         }
 
+        /// <summary>
+        /// Verifies view destroyed initialized session releases planet association.
+        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
@@ -523,6 +586,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
         private FleetWindowController CreateController()
         {
             return new FleetWindowController(
@@ -537,6 +604,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Creates fleet command controller.
+        /// </summary>
+        /// <returns>The created fleet command controller.</returns>
         private StrategyFleetCommandController CreateFleetCommandController()
         {
             return new StrategyFleetCommandController(
@@ -547,15 +618,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             return game;
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The created planet.</returns>
         private GalaxyMapPlanet CreatePlanet(GameRoot game)
         {
             GalaxyPlanetSector planetSector = new GalaxyPlanetSector
@@ -575,6 +656,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             return new GalaxyMapPlanet(planetSector, planet, _playerFactionId);
         }
 
+        /// <summary>
+        /// Creates fleet.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="officer">Receives the officer.</param>
+        /// <returns>The created fleet.</returns>
         private GameFleet CreateFleet(string instanceId, string displayName, out Officer officer)
         {
             CapitalShip ship = new CapitalShip
@@ -599,6 +687,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             };
         }
 
+        /// <summary>
+        /// Attaches fleet graph.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="fleet">The fleet.</param>
         private static void AttachFleetGraph(Planet planet, GameFleet fleet)
         {
             fleet.SetParent(planet);
@@ -610,6 +703,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             }
         }
 
+        /// <summary>
+        /// Opens window.
+        /// </summary>
+        /// <param name="window">Receives the window.</param>
+        /// <returns>The result of open window.</returns>
         private FleetWindowView OpenWindow(out UIWindow window)
         {
             window = _controller.Open(_planet, 20, 30, out bool _);
@@ -617,6 +715,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             return view;
         }
 
+        /// <summary>
+        /// Creates fleet pointer event.
+        /// </summary>
+        /// <param name="view">The view.</param>
+        /// <returns>The created fleet pointer event.</returns>
         private static PointerEventData CreateFleetPointerEvent(FleetWindowView view)
         {
             FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
@@ -639,11 +742,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             public object Target { get; private set; }
 
+            /// <summary>
+            /// Executes on target selected.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="target">The target.</param>
             public void OnTargetSelected(TargetingRequest request, object target)
             {
                 Target = target;
             }
 
+            /// <summary>
+            /// Executes on targeting cancelled.
+            /// </summary>
+            /// <param name="request">The request.</param>
             public void OnTargetingCancelled(TargetingRequest request) { }
         }
 
@@ -659,54 +771,116 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
             public bool IsIdleBarEnabled => true;
 
+            /// <summary>
+            /// Checks whether the idle bar tracked condition is met.
+            /// </summary>
+            /// <param name="entity">The entity.</param>
+            /// <returns>True when the idle bar tracked condition is met; otherwise false.</returns>
             public bool IsIdleBarTracked(ISceneNode entity) => true;
 
+            /// <summary>
+            /// Executes toggle idle bar tracking.
+            /// </summary>
+            /// <param name="entity">The entity.</param>
             public void ToggleIdleBarTracking(ISceneNode entity) { }
 
+            /// <summary>
+            /// Checks whether the retire condition is met.
+            /// </summary>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the retire condition is met; otherwise false.</returns>
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
 
+            /// <summary>
+            /// Executes targeted command.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <param name="target">The target.</param>
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
             ) { }
 
+            /// <summary>
+            /// Opens fleet battle result.
+            /// </summary>
+            /// <param name="result">The result.</param>
             public void OpenFleetBattleResult(GameResult result)
             {
                 LastBattleResult = result;
             }
 
+            /// <summary>
+            /// Opens fleet encyclopedia window.
+            /// </summary>
+            /// <param name="items">The items.</param>
             public void OpenFleetEncyclopediaWindow(IReadOnlyList<ISceneNode> items) { }
 
+            /// <summary>
+            /// Opens fleet status window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenFleetStatusWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Opens scrap confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenScrapConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Opens stop construction confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenStopConstructionConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Opens retire confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The items.</param>
             public void OpenRetireConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Refreshes fleet state.
+            /// </summary>
             public void RefreshFleetState()
             {
                 RefreshCount++;
             }
 
+            /// <summary>
+            /// Opens mission create window.
+            /// </summary>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
             public void OpenMissionCreateWindow(
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Attempts execute move.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryExecuteMove(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
@@ -716,21 +890,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 return false;
             }
 
+            /// <summary>
+            /// Opens move confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The target.</param>
+            /// <param name="items">The items.</param>
             public void OpenMoveConfirmWindow(
                 UIWindow sourceWindow,
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
+            /// <summary>
+            /// Attempts append fleet waypoint.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <param name="target">The target.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryAppendFleetWaypoint(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
             ) => false;
 
+            /// <summary>
+            /// Attempts commit fleet waypoint plan.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryCommitFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
+            /// <summary>
+            /// Attempts undo fleet waypoint plan.
+            /// </summary>
+            /// <param name="source">The source.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool TryUndoFleetWaypointPlan(StrategyWindowTargetingSource source) => false;
 
+            /// <summary>
+            /// Executes clear fleet waypoints.
+            /// </summary>
+            /// <param name="items">The items.</param>
+            /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
         }
     }

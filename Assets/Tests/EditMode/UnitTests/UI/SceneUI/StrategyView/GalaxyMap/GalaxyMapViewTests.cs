@@ -20,6 +20,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         private Texture2D _starTexture;
         private GalaxyMapView _view;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -32,6 +35,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Canvas.ForceUpdateCanvases();
         }
 
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
@@ -41,12 +47,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render complete map applies background filter label and clusters.
+        /// </summary>
         [Test]
         public void Render_CompleteMap_AppliesBackgroundFilterLabelAndClusters()
         {
@@ -92,6 +104,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual("sector-2", clusters[1].name);
         }
 
+        /// <summary>
+        /// Verifies render changed cluster set reuses existing and hides missing clusters.
+        /// </summary>
         [Test]
         public void Render_ChangedClusterSet_ReusesExistingAndHidesMissingClusters()
         {
@@ -126,6 +141,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsTrue(FindCluster("sector-3").gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render null clusters and empty filter hides pooled clusters and label.
+        /// </summary>
         [Test]
         public void Render_NullClustersAndEmptyFilter_HidesPooledClustersAndLabel()
         {
@@ -152,6 +170,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(cluster.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies try get planet instance id pointer over rendered marker returns planet identity.
+        /// </summary>
         [Test]
         public void TryGetPlanetInstanceID_PointerOverRenderedMarker_ReturnsPlanetIdentity()
         {
@@ -170,6 +191,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual("planet-1", planetInstanceId);
         }
 
+        /// <summary>
+        /// Verifies try get planet instance id null or outside pointer returns false.
+        /// </summary>
         [Test]
         public void TryGetPlanetInstanceID_NullOrOutsidePointer_ReturnsFalse()
         {
@@ -190,6 +214,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(outsideIdentity);
         }
 
+        /// <summary>
+        /// Verifies try get source position inside outside and null pointers return expected results.
+        /// </summary>
         [Test]
         public void TryGetSourcePosition_InsideOutsideAndNullPointers_ReturnExpectedResults()
         {
@@ -219,6 +246,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, nullY);
         }
 
+        /// <summary>
+        /// Verifies cluster pointer events rendered cluster forward semantic map requests.
+        /// </summary>
         [Test]
         public void ClusterPointerEvents_RenderedCluster_ForwardSemanticMapRequests()
         {
@@ -257,6 +287,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(240, openedY);
         }
 
+        /// <summary>
+        /// Verifies on destroy rendered clusters unbinds children clears state and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_RenderedClusters_UnbindsChildrenClearsStateAndRaisesDestroyedEvent()
         {
@@ -293,6 +326,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(planetInstanceId);
         }
 
+        /// <summary>
+        /// Creates map.
+        /// </summary>
+        /// <param name="clusters">The clusters.</param>
+        /// <param name="activeFilter">The active filter.</param>
+        /// <returns>The created map.</returns>
         private GalaxyMapRenderData CreateMap(
             GalaxyMapClusterRenderData[] clusters,
             string activeFilter
@@ -312,6 +351,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Creates cluster.
+        /// </summary>
+        /// <param name="sectorInstanceId">The sector instance id.</param>
+        /// <param name="label">The label.</param>
+        /// <param name="sourceX">The source x.</param>
+        /// <param name="sourceY">The source y.</param>
+        /// <param name="planetInstanceId">The planet instance id.</param>
+        /// <returns>The created cluster.</returns>
         private GalaxyMapClusterRenderData CreateCluster(
             string sectorInstanceId,
             string label,
@@ -339,6 +387,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Creates map pointer event.
+        /// </summary>
+        /// <param name="localPosition">The local position.</param>
+        /// <returns>The created map pointer event.</returns>
         private PointerEventData CreateMapPointerEvent(Vector2 localPosition)
         {
             RectTransform rect = _view.transform as RectTransform;
@@ -351,6 +404,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
+        /// <summary>
+        /// Creates cluster pointer event.
+        /// </summary>
+        /// <param name="cluster">The cluster.</param>
+        /// <param name="sourcePosition">The source position.</param>
+        /// <returns>The created cluster pointer event.</returns>
         private static PointerEventData CreateClusterPointerEvent(
             PlanetSectorClusterView cluster,
             Vector2 sourcePosition
@@ -371,11 +430,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
+        /// <summary>
+        /// Finds cluster.
+        /// </summary>
+        /// <param name="sectorInstanceId">The sector instance id.</param>
+        /// <returns>The matching cluster.</returns>
         private PlanetSectorClusterView FindCluster(string sectorInstanceId)
         {
             return FindClusters().Single(cluster => cluster.name == sectorInstanceId);
         }
 
+        /// <summary>
+        /// Finds clusters.
+        /// </summary>
+        /// <returns>The matching clusters.</returns>
         private PlanetSectorClusterView[] FindClusters()
         {
             return _view
@@ -384,6 +452,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 .ToArray();
         }
 
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)

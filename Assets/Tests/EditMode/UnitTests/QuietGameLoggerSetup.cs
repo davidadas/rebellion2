@@ -6,6 +6,9 @@ public sealed class QuietGameLoggerSetup
 {
     private GameLogger.LogLevel _originalMinimumLevel;
 
+    /// <summary>
+    /// Executes suppress routine game logging.
+    /// </summary>
     [OneTimeSetUp]
     public void SuppressRoutineGameLogging()
     {
@@ -13,6 +16,9 @@ public sealed class QuietGameLoggerSetup
         GameLogger.SetMinimumLevel(GameLogger.LogLevel.Error);
     }
 
+    /// <summary>
+    /// Restores game logging.
+    /// </summary>
     [OneTimeTearDown]
     public void RestoreGameLogging()
     {

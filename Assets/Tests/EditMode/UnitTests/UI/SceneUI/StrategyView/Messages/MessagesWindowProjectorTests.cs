@@ -19,6 +19,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         private MessagesWindowTheme _theme;
         private UIContext _uiContext;
 
+        /// <summary>
+        /// Sets up.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -26,6 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
             game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             _uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -35,6 +39,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             _imagePath = _uiContext.GetPlayerFactionTheme().GalaxyBackground.ImagePath;
         }
 
+        /// <summary>
+        /// Verifies get header message with title returns title.
+        /// </summary>
         [Test]
         public void GetHeader_MessageWithTitle_ReturnsTitle()
         {
@@ -49,6 +56,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual("Diplomacy Mission Report", header);
         }
 
+        /// <summary>
+        /// Verifies get header message without title returns first body line.
+        /// </summary>
         [Test]
         public void GetHeader_MessageWithoutTitle_ReturnsFirstBodyLine()
         {
@@ -63,6 +73,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual("First body line", header);
         }
 
+        /// <summary>
+        /// Verifies get header missing message or text returns empty header.
+        /// </summary>
         [Test]
         public void GetHeader_MissingMessageOrText_ReturnsEmptyHeader()
         {
@@ -73,6 +86,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Verifies create index rows stored messages returns newest first without mutating read state.
+        /// </summary>
         [Test]
         public void CreateIndexRows_StoredMessages_ReturnsNewestFirstWithoutMutatingReadState()
         {
@@ -105,6 +121,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(second.Read);
         }
 
+        /// <summary>
+        /// Verifies create index rows null messages returns empty rows.
+        /// </summary>
         [Test]
         public void CreateIndexRows_NullMessages_ReturnsEmptyRows()
         {
@@ -116,6 +135,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(rows);
         }
 
+        /// <summary>
+        /// Verifies create index rows null message returns normalized unread row.
+        /// </summary>
         [Test]
         public void CreateIndexRows_NullMessage_ReturnsNormalizedUnreadRow()
         {
@@ -132,6 +154,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(rows[0].Unread);
         }
 
+        /// <summary>
+        /// Verifies project index panel returns complete themed presentation.
+        /// </summary>
         [Test]
         public void Project_IndexPanel_ReturnsCompleteThemedPresentation()
         {
@@ -222,6 +247,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Verifies project faction specific command layouts returns every authored button rectangle.
+        /// </summary>
         [Test]
         public void Project_FactionSpecificCommandLayouts_ReturnsEveryAuthoredButtonRectangle()
         {
@@ -262,6 +290,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(new RectInt(426, 266, 44, 41), data.CommandBar.ChatButton.SourceBounds);
         }
 
+        /// <summary>
+        /// Verifies project detail panel returns selected message and navigation commands.
+        /// </summary>
         [Test]
         public void Project_DetailPanel_ReturnsSelectedMessageAndNavigationCommands()
         {
@@ -309,6 +340,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(data.DetailPanel.NextDisabled);
         }
 
+        /// <summary>
+        /// Verifies project advice without explicit image returns configured advice image.
+        /// </summary>
         [Test]
         public void Project_AdviceWithoutExplicitImage_ReturnsConfiguredAdviceImage()
         {
@@ -335,6 +369,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsTrue(data.DetailPanel.NextDisabled);
         }
 
+        /// <summary>
+        /// Verifies project explicit background image key returns configured detail image.
+        /// </summary>
         [Test]
         public void Project_ExplicitBackgroundImageKey_ReturnsConfiguredDetailImage()
         {
@@ -361,6 +398,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
+        /// <summary>
+        /// Verifies project missing selected message returns index panel.
+        /// </summary>
         [Test]
         public void Project_MissingSelectedMessage_ReturnsIndexPanel()
         {
@@ -384,6 +424,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsNull(data.DetailPanel);
         }
 
+        /// <summary>
+        /// Verifies project chat index returns pressed disabled chat command.
+        /// </summary>
         [Test]
         public void Project_ChatIndex_ReturnsPressedDisabledChatCommand()
         {
@@ -405,6 +448,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(data.CommandBar.ChatButton.Enabled);
         }
 
+        /// <summary>
+        /// Verifies project null context returns presentation without textures.
+        /// </summary>
         [Test]
         public void Project_NullContext_ReturnsPresentationWithoutTextures()
         {
@@ -426,11 +472,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(data.IndexPanel.Rows);
         }
 
+        /// <summary>
+        /// Creates message.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="title">The title.</param>
+        /// <param name="type">The type.</param>
+        /// <returns>The created message.</returns>
         private static Message CreateMessage(string instanceId, string title, MessageType type)
         {
             return new StatusMessage(type, title) { InstanceID = instanceId };
         }
 
+        /// <summary>
+        /// Creates source layout.
+        /// </summary>
+        /// <param name="x">The x.</param>
+        /// <param name="y">The y.</param>
+        /// <param name="width">The width.</param>
+        /// <param name="height">The height.</param>
+        /// <returns>The created source layout.</returns>
         private static SourceRectLayout CreateSourceLayout(int x, int y, int width, int height)
         {
             return new SourceRectLayout

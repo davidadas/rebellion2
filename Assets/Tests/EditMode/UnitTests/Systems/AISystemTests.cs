@@ -15,6 +15,9 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class AISystemTests
     {
+        /// <summary>
+        /// Verifies process tick before configured interval does not process faction.
+        /// </summary>
         [Test]
         public void ProcessTick_BeforeConfiguredInterval_DoesNotProcessFaction()
         {
@@ -26,6 +29,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(fleet.Order);
         }
 
+        /// <summary>
+        /// Verifies process tick at configured interval processes faction.
+        /// </summary>
         [Test]
         public void ProcessTick_AtConfiguredInterval_ProcessesFaction()
         {
@@ -38,6 +44,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
         }
 
+        /// <summary>
+        /// Verifies process tick incrementally at configured interval yields between work units.
+        /// </summary>
         [Test]
         public void ProcessTickIncrementally_AtConfiguredInterval_YieldsBetweenWorkUnits()
         {
@@ -52,10 +61,22 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
         }
 
+        /// <summary>
+        /// Builds scene.
+        /// </summary>
+        /// <returns>The constructed scene.</returns>
         private static (GameRoot Game, Fleet Fleet, AISystem System) BuildScene()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            rebels.PlayerID = "player";
+            game.GetPlayers()
+                .Add(
+                    new Player
+                    {
+                        PlayerID = "player",
+                        FactionID = rebels.InstanceID,
+                        ControllerType = PlayerControllerType.Human,
+                    }
+                );
             game.Config.AI.TickInterval = 7;
             game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 0;
             PlanetSector planetSystem = AITestSceneBuilder.AddSector(game, "system");

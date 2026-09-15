@@ -15,6 +15,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
     {
         private const int _destinationEnergyCapacity = 2;
 
+        /// <summary>
+        /// Verifies try start construction build count exceeds facility count uses destination capacity.
+        /// </summary>
         [Test]
         public void TryStartConstruction_BuildCountExceedsFacilityCount_UsesDestinationCapacity()
         {
@@ -75,6 +78,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
         }
 
+        /// <summary>
+        /// Verifies get build selection shipyard tab excludes locked technologies.
+        /// </summary>
         [Test]
         public void GetBuildSelection_ShipyardTab_ExcludesLockedTechnologies()
         {
@@ -127,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsTrue(selection.All(template => template.GetResearchOrder() <= unlockedOrder));
         }
 
+        /// <summary>
+        /// Verifies get build selection construction tab includes all applicable buildings.
+        /// </summary>
         [Test]
         public void GetBuildSelection_ConstructionTab_IncludesAllApplicableBuildings()
         {
@@ -191,6 +200,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
         }
 
+        /// <summary>
+        /// Verifies get build estimates stationary template returns completion without deployment.
+        /// </summary>
         [Test]
         public void GetBuildEstimates_StationaryTemplate_ReturnsCompletionWithoutDeployment()
         {
@@ -234,6 +246,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsNull(estimate.DeploymentTicks);
         }
 
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="energyCapacity">The energy capacity.</param>
+        /// <returns>The created planet.</returns>
         private static Planet CreatePlanet(string instanceId, string ownerId, int energyCapacity)
         {
             return new Planet
@@ -246,6 +265,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             };
         }
 
+        /// <summary>
+        /// Creates construction facility.
+        /// </summary>
+        /// <param name="ownerId">The owner id.</param>
+        /// <returns>The created construction facility.</returns>
         private static Building CreateConstructionFacility(string ownerId)
         {
             return new Building

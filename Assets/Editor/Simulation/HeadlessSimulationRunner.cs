@@ -112,7 +112,14 @@ public static partial class HeadlessSimulationRunner
             GameRoot game = CreateGameBuilder(summary, contentPack.GameData, options.Seed)
                 .BuildGame();
             foreach (Faction faction in game.GetFactions())
-                faction.PlayerID = null;
+            {
+                Player player = game.GetFactionPlayer(faction.InstanceID);
+                game.SetFactionController(
+                    faction.InstanceID,
+                    player.PlayerID,
+                    PlayerControllerType.AI
+                );
+            }
 
             GameManager manager = new GameManager(game, contentPack.GameData);
             ManufacturingIdleTracker idleTracker = new ManufacturingIdleTracker();
@@ -266,8 +273,16 @@ public static partial class HeadlessSimulationRunner
         game.Summary.PlayerFactionID = playerFaction.InstanceID;
         foreach (Faction faction in game.GetFactions())
         {
-            faction.PlayerID =
-                faction.InstanceID == playerFaction.InstanceID ? _savedSimulationPlayerId : null;
+            Player player = game.GetFactionPlayer(faction.InstanceID);
+            game.SetFactionController(
+                faction.InstanceID,
+                faction.InstanceID == playerFaction.InstanceID
+                    ? _savedSimulationPlayerId
+                    : player.PlayerID,
+                faction.InstanceID == playerFaction.InstanceID
+                    ? PlayerControllerType.Human
+                    : PlayerControllerType.AI
+            );
         }
 
         SaveGameManager saveManager = SaveGameManager.Instance;

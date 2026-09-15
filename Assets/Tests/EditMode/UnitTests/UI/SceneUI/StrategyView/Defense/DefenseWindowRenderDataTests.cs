@@ -8,6 +8,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
     [TestFixture]
     public class DefenseWindowRenderDataTests
     {
+        /// <summary>
+        /// Verifies ordered tabs default catalog returns authored tab order.
+        /// </summary>
         [Test]
         public void OrderedTabs_DefaultCatalog_ReturnsAuthoredTabOrder()
         {
@@ -25,6 +28,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(5, DefenseWindowRenderData.TabCount);
         }
 
+        /// <summary>
+        /// Verifies constructor mutable collections copies and normalizes inputs.
+        /// </summary>
         [Test]
         public void Constructor_MutableCollections_CopiesAndNormalizesInputs()
         {
@@ -60,6 +66,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(1, data.Items.Count);
         }
 
+        /// <summary>
+        /// Verifies constructor null tabs throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullTabs_ThrowsArgumentNullException()
         {
@@ -78,6 +87,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Verifies constructor null items throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullItems_ThrowsArgumentNullException()
         {
@@ -96,6 +108,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Creates card.
+        /// </summary>
+        /// <returns>The created card.</returns>
         private static StrategyUnitCardRenderData CreateCard()
         {
             return new StrategyUnitCardRenderData(

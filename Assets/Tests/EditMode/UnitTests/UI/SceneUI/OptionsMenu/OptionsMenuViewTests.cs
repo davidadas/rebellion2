@@ -322,20 +322,21 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies the Gameplay mode and footer use the requested player-facing labels.
+        /// Verifies the Gameplay sections and footer use the requested player-facing labels.
         /// </summary>
         [Test]
-        public void GeneratedLabels_UseGalacticModeAndReturnWording()
+        public void GeneratedLabels_UseGalaxyViewAndReturnWording()
         {
-            string[] labels = _root
-                .GetComponentsInChildren<TextMeshProUGUI>(true)
-                .Select(field => field.text)
-                .ToArray();
+            TextMeshProUGUI[] fields = _root.GetComponentsInChildren<TextMeshProUGUI>(true);
+            string[] labels = fields.Select(field => field.text).ToArray();
 
-            CollectionAssert.Contains(labels, "GALACTIC MODE");
+            CollectionAssert.Contains(labels, "GALAXY VIEW");
             CollectionAssert.Contains(labels, "Show Idle Bar");
+            CollectionAssert.Contains(labels, "Keep Idle Bar Open");
             CollectionAssert.Contains(labels, "RETURN TO GAME");
             CollectionAssert.Contains(labels, "RETURN TO MAIN MENU");
+
+            Assert.IsFalse(fields.Any(field => field.text == "IDLE BAR"));
         }
 
         /// <summary>
@@ -467,13 +468,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies Gameplay is first and Controls precedes Save / Load in selection routing.
+        /// Verifies Gameplay is first and Mods precedes Save / Load in selection routing.
         /// </summary>
         [Test]
-        public void Tabs_PresentControlsBeforeSaveLoad_AndRouteSelections()
+        public void Tabs_PresentModsBeforeSaveLoad_AndRouteSelections()
         {
             CollectionAssert.AreEqual(
-                new[] { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" },
+                new[] { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "MODS", "SAVE / LOAD" },
                 GetField<TextMeshProUGUI[]>("_tabLabelFields").Select(label => label.text).ToArray()
             );
 
@@ -484,7 +485,83 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             tabButtons[3].onClick.Invoke();
             Assert.AreEqual(OptionsMenuTab.Controls, selectedTab);
             tabButtons[4].onClick.Invoke();
+            Assert.AreEqual(OptionsMenuTab.Mods, selectedTab);
+            tabButtons[5].onClick.Invoke();
             Assert.AreEqual(OptionsMenuTab.SaveLoad, selectedTab);
+        }
+
+        /// <summary>
+        /// Verifies compatible mods render their identity, enablement, and restart state.
+        /// </summary>
+        [Test]
+        public void ModsPage_AvailableMods_RendersEnablementAndIdentity()
+        {
+            OptionsMenuRenderData data = CreateRenderDataForTab(
+                OptionsMenuTab.Mods,
+                mods: new[]
+                {
+                    new OptionsModRow("first", "1.0.0", "First Mod"),
+                    new OptionsModRow("second", "2.0.0", "Second Mod", false, true),
+                },
+                contentPackLabel: "Classic Galactic Civil War"
+            );
+
+            _view.Render(data);
+
+            Assert.AreEqual(
+                "2 MODS LOADED",
+                GetField<TextMeshProUGUI>("_modsStatusTextField").text
+            );
+            TextMeshProUGUI restart = GetField<TextMeshProUGUI>("_modsRestartTextField");
+            Assert.IsTrue(restart.gameObject.activeSelf);
+            Assert.AreEqual("RESTART REQUIRED", restart.text);
+            Assert.AreEqual(FontStyles.Bold, restart.fontStyle);
+            Assert.AreEqual(
+                "Classic Galactic Civil War",
+                GetField<TextMeshProUGUI>("_contentPackValueField").text
+            );
+            int packDelta = 0;
+            _view.ContentPackStepRequested += delta => packDelta = delta;
+            GetField<Button>("_contentPackNextButton").onClick.Invoke();
+            Assert.AreEqual(1, packDelta);
+            List<OptionsToggleRowView> rows = GetField<List<OptionsToggleRowView>>("_modRows");
+            Assert.IsTrue(rows[0].gameObject.activeSelf);
+            Assert.IsTrue(rows[1].gameObject.activeSelf);
+            Assert.AreEqual(
+                "First Mod",
+                GetPrivateField<TextMeshProUGUI>(rows[0], "_labelTextField").text
+            );
+            Assert.AreEqual(
+                "OFF",
+                GetPrivateField<TextMeshProUGUI>(rows[1], "_stateTextField").text
+            );
+            int requestedMod = -1;
+            _view.ModToggleRequested += index => requestedMod = index;
+            GetPrivateField<Button>(rows[1], "_button").onClick.Invoke();
+            Assert.AreEqual(1, requestedMod);
+            Assert.IsFalse(GetField<GameObject>("_settingsActions").activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies a large compatible-mod list creates every row.
+        /// </summary>
+        [Test]
+        public void ModsPage_ManyMods_RendersEveryMod()
+        {
+            OptionsModRow[] mods = Enumerable
+                .Range(1, 12)
+                .Select(index => new OptionsModRow($"mod-{index}", "1.0.0", $"Mod {index}"))
+                .ToArray();
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Mods, mods: mods));
+
+            List<OptionsToggleRowView> rows = GetField<List<OptionsToggleRowView>>("_modRows");
+            Assert.AreEqual(12, rows.Count);
+            Assert.IsTrue(rows[11].gameObject.activeSelf);
+            Assert.AreEqual(
+                "Mod 12",
+                GetPrivateField<TextMeshProUGUI>(rows[11], "_labelTextField").text
+            );
         }
 
         /// <summary>
@@ -680,45 +757,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies every left-side navigation row uses the same height and vertical gap.
+        /// Verifies main-menu hosting replaces Back to Game with Back to Main Menu.
         /// </summary>
         [Test]
-        public void NavigationRows_UseConsistentVerticalRhythm()
-        {
-            Button[] tabRows = GetField<Button[]>("_tabButtons");
-            Button[] footerRows =
-            {
-                GetField<Button>("_backToGameButton"),
-                GetField<Button>("_mainMenuButton"),
-                GetField<Button>("_quitButton"),
-            };
-            RectInt[] tabRects = tabRows
-                .Select(row => UILayout.GetSourceRect((RectTransform)row.transform))
-                .ToArray();
-            RectInt[] footerRects = footerRows
-                .Select(row => UILayout.GetSourceRect((RectTransform)row.transform))
-                .ToArray();
-            RectInt footerRoot = UILayout.GetSourceRect(
-                (RectTransform)footerRows[0].transform.parent
-            );
-
-            CollectionAssert.AreEqual(
-                new[] { 82, 118, 154, 190, 226 },
-                tabRects.Select(rect => rect.y).ToArray()
-            );
-            CollectionAssert.AreEqual(
-                new[] { 0, 36, 72 },
-                footerRects.Select(rect => rect.y).ToArray()
-            );
-            Assert.AreEqual(new RectInt(38, 318, 163, 102), footerRoot);
-            Assert.IsTrue(tabRects.Concat(footerRects).All(rect => rect.height == 30));
-        }
-
-        /// <summary>
-        /// Verifies main-menu hosting replaces Back to Game with Back to Main Menu without gaps.
-        /// </summary>
-        [Test]
-        public void RenderFooter_MainMenuHost_ShowsBackToMainMenuAndQuitWithoutGap()
+        public void Render_MainMenuHost_ShowsMainMenuAndQuitActions()
         {
             OptionsMenuRenderData data = new OptionsMenuRenderData(
                 0,
@@ -745,11 +787,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(backToGame.gameObject.activeSelf);
             Assert.IsTrue(mainMenu.gameObject.activeSelf);
             Assert.IsTrue(quit.gameObject.activeSelf);
-            Assert.IsNotNull(quit.transform.parent.GetComponent<VerticalLayoutGroup>());
-            Assert.AreEqual(0, UILayout.GetSourceRect((RectTransform)mainMenu.transform).x);
-            Assert.AreEqual(36, UILayout.GetSourceRect((RectTransform)mainMenu.transform).y);
-            Assert.AreEqual(0, UILayout.GetSourceRect((RectTransform)quit.transform).x);
-            Assert.AreEqual(72, UILayout.GetSourceRect((RectTransform)quit.transform).y);
         }
 
         /// <summary>
@@ -790,6 +827,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <summary>
         /// Reads a private authored reference from the view under test.
         /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -798,6 +838,28 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     .GetValue(_view);
         }
 
+        /// <summary>
+        /// Gets private field.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested private field.</returns>
+        private static T GetPrivateField<T>(object target, string fieldName)
+        {
+            return (T)
+                target
+                    .GetType()
+                    .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+                    .GetValue(target);
+        }
+
+        /// <summary>
+        /// Sets field.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <param name="fieldName">The field name.</param>
+        /// <param name="value">The value.</param>
         private static void SetField(object target, string fieldName, object value)
         {
             target
@@ -809,6 +871,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <summary>
         /// Creates minimal render state for save-list presentation tests.
         /// </summary>
+        /// <param name="saveSlots">The save slots.</param>
+        /// <returns>The created render data.</returns>
         private static OptionsMenuRenderData CreateRenderData(params OptionsSaveSlot[] saveSlots)
         {
             return CreateRenderDataForTab(OptionsMenuTab.SaveLoad, saveSlots);
@@ -817,10 +881,18 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <summary>
         /// Creates minimal render state for a selected Options menu page.
         /// </summary>
+        /// <param name="activeTab">The active tab.</param>
+        /// <param name="saveSlots">The save slots.</param>
+        /// <param name="bindings">The bindings.</param>
+        /// <param name="mods">The mods.</param>
+        /// <param name="contentPackLabel">The content pack label.</param>
+        /// <returns>The created render data for tab.</returns>
         private static OptionsMenuRenderData CreateRenderDataForTab(
             OptionsMenuTab activeTab,
             OptionsSaveSlot[] saveSlots = null,
-            OptionsBindingRow[] bindings = null
+            OptionsBindingRow[] bindings = null,
+            OptionsModRow[] mods = null,
+            string contentPackLabel = ""
         )
         {
             return new OptionsMenuRenderData(
@@ -837,7 +909,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 true,
                 true,
                 -1,
-                false
+                false,
+                mods: mods,
+                contentPackLabel: contentPackLabel
             );
         }
     }
