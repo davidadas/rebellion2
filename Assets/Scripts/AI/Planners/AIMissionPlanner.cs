@@ -1040,35 +1040,29 @@ namespace Rebellion.AI.Planners
         private double GetDiplomacyCandidatePriority(AITurnContext context, Planet planet)
         {
             int support = context.Assessment.GetFactionPopularSupport(planet);
-            double strategicValue = context.Assessment.GetDiplomacyTargetStrategicValue(planet);
-            double coreWorldValue = AIUtility.Evaluate(
-                IsCoreWorld(planet) ? 1 : 0,
-                context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.CoreWorld
-            );
-            GameConfig.AIConsiderationConfig supportUtility = context
+            GameConfig.AIDiplomacyUtilityConfig utility = context
                 .Game
                 .Config
                 .AI
                 .MissionPlanning
                 .Utility
-                .Diplomacy
-                .SupportDeficit;
+                .Diplomacy;
+            AIUtilityScore score = context.Assessment.GetDiplomacyTargetStrategicUtility(planet);
+            score.Add(IsCoreWorld(planet) ? 1 : 0, utility.CoreWorld);
 
             if (context.Assessment.IsOwnedPlanet(planet))
             {
                 int supportRisk = context.Assessment.GetDefensiveSupportRisk(planet);
-                return AIUtility.EvaluateRaw(100 - support, supportUtility)
-                    + strategicValue
-                    + coreWorldValue
-                    + AIUtility.EvaluateRaw(
-                        supportRisk,
-                        context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.SectorSupportRisk
-                    );
+                score.AddRaw(100 - support, utility.SupportDeficit);
+                score.AddRaw(supportRisk, utility.SectorSupportRisk);
+                return score.Value;
             }
 
-            return context.Assessment.IsNeutralPlanet(planet)
-                ? AIUtility.EvaluateRaw(support, supportUtility) + strategicValue + coreWorldValue
-                : 0;
+            if (!context.Assessment.IsNeutralPlanet(planet))
+                return 0;
+
+            score.AddRaw(support, utility.SupportDeficit);
+            return score.Value;
         }
 
         /// <summary>
@@ -1097,34 +1091,24 @@ namespace Rebellion.AI.Planners
                 .MissionPlanning
                 .Utility
                 .OfficerTarget;
-            return AIUtility.EvaluateRaw(
-                    officer.GetEffectiveRating(OfficerRating.Combat),
-                    utility.Combat
-                )
-                + AIUtility.EvaluateRaw(
-                    officer.GetEffectiveRating(OfficerRating.Espionage),
-                    utility.Espionage
-                )
-                + AIUtility.EvaluateRaw(
-                    officer.GetEffectiveRating(OfficerRating.Diplomacy),
-                    utility.Diplomacy
-                )
-                + AIUtility.EvaluateRaw(
-                    officer.GetEffectiveRating(OfficerRating.Leadership),
-                    utility.Leadership
-                )
-                + AIUtility.EvaluateRaw(
-                    officer.GetBaseRating(ResearchDiscipline.ShipDesign),
-                    utility.ShipResearch
-                )
-                + AIUtility.EvaluateRaw(
-                    officer.GetBaseRating(ResearchDiscipline.FacilityDesign),
-                    utility.FacilityResearch
-                )
-                + AIUtility.EvaluateRaw(
-                    officer.GetBaseRating(ResearchDiscipline.TroopTraining),
-                    utility.TroopResearch
-                );
+            AIUtilityScore score = new AIUtilityScore();
+            score.AddRaw(officer.GetEffectiveRating(OfficerRating.Combat), utility.Combat);
+            score.AddRaw(officer.GetEffectiveRating(OfficerRating.Espionage), utility.Espionage);
+            score.AddRaw(officer.GetEffectiveRating(OfficerRating.Diplomacy), utility.Diplomacy);
+            score.AddRaw(officer.GetEffectiveRating(OfficerRating.Leadership), utility.Leadership);
+            score.AddRaw(
+                officer.GetBaseRating(ResearchDiscipline.ShipDesign),
+                utility.ShipResearch
+            );
+            score.AddRaw(
+                officer.GetBaseRating(ResearchDiscipline.FacilityDesign),
+                utility.FacilityResearch
+            );
+            score.AddRaw(
+                officer.GetBaseRating(ResearchDiscipline.TroopTraining),
+                utility.TroopResearch
+            );
+            return score.Value;
         }
     }
 }

@@ -26,8 +26,10 @@ namespace Rebellion.AI.Scoring
                 .AI
                 .FleetDeployment
                 .ColonizationTargetUtility;
-            return AIUtility.EvaluateRaw(planet.GetEnergyCapacity(), utility.Energy)
-                + AIUtility.EvaluateRaw(planet.GetRawResourceNodes(), utility.Resources);
+            AIUtilityScore score = new AIUtilityScore();
+            score.AddRaw(planet.GetEnergyCapacity(), utility.Energy);
+            score.AddRaw(planet.GetRawResourceNodes(), utility.Resources);
+            return score.Value;
         }
     }
 }

@@ -50,39 +50,38 @@ namespace Rebellion.AI.Scoring
             AIManufactureProposal proposal
         )
         {
-            double score = proposal?.Demand?.Pressure ?? 0;
+            double demandPressure = proposal?.Demand?.Pressure ?? 0;
             int maintenanceCost = proposal?.GetUnitMaintenanceCost() ?? 0;
             if (context?.Game == null || context.Faction == null || proposal == null)
-                return score;
+                return AIUtility.Fulfillment(
+                    demandPressure,
+                    new GameConfig.AISelectionConfig().DemandUtility.InputMaximum
+                );
 
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
             GameConfig.AIProductionUtilityConfig utility = config.ProductionUtility;
-            score -= AIUtility.EvaluateRaw(GetTravelCost(context, proposal), utility.TravelCost);
-
-            if (maintenanceCost <= 0)
-                return score;
+            AIUtilityScore score = new AIUtilityScore();
+            score.AddRaw(demandPressure, config.DemandUtility);
+            score.AddCostRaw(GetTravelCost(context, proposal), utility.TravelCost);
 
             int projectedHeadroom =
                 context.Assessment.ProjectedMaintenanceHeadroom - maintenanceCost;
-            if (projectedHeadroom < config.MaintenanceHeadroomHardFloor)
+            if (maintenanceCost > 0 && projectedHeadroom < config.MaintenanceHeadroomHardFloor)
                 return 0;
 
             int headroomDeficit =
                 config.MinimumMaintenanceHeadroomAfterProduction - projectedHeadroom;
 
-            if (headroomDeficit > 0)
-                score -= AIUtility.Evaluate(
-                    AIUtility.Fulfillment(
-                        headroomDeficit,
-                        config.MinimumMaintenanceHeadroomAfterProduction
-                    ),
-                    utility.HeadroomRisk
-                );
+            score.AddCost(
+                AIUtility.Fulfillment(
+                    System.Math.Max(0, headroomDeficit),
+                    config.MinimumMaintenanceHeadroomAfterProduction
+                ),
+                utility.HeadroomRisk
+            );
+            score.AddCost(projectedHeadroom < 0 ? 1 : 0, utility.Shortfall);
 
-            if (projectedHeadroom < 0)
-                score -= AIUtility.Evaluate(1, utility.Shortfall);
-
-            return score;
+            return score.Value;
         }
 
         /// <summary>

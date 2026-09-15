@@ -4,7 +4,8 @@ Strategic decisions follow one data flow:
 
 1. `AITurnContext` and `AIAssessment` capture reusable facts once per faction turn.
 2. Planners enumerate feasible proposals without discarding a stronger candidate by traversal order.
-3. Scorers normalize proposal considerations and evaluate configured response curves.
+3. Scorers normalize proposal considerations and combine them as a weighted average from zero
+   through one.
 4. Selection orders proposals by priority and utility, then enforces shared claims and resource
    reservations.
 5. Proposals revalidate game rules before execution.
@@ -59,16 +60,19 @@ system. `ColonizationTargetUtility` owns the economic preference between eligibl
 planner does not hide a second target policy in chained sorting.
 
 Sector production hubs are assigned once per turn-scoped development allocation through
-`AIInfrastructureAllocationScorer`. `AllocationUtility` expresses hub capacity, existing
-investment, role separation, feasible capacity, and strategic value in non-overlapping score bands.
+`AIInfrastructureAllocationScorer`. Shipyards that can support the configured primary hub are
+ranked first; lower-capacity planets are an explicit fallback. Within either eligible group,
+`AllocationUtility` balances existing investment, role separation, feasible capacity, and
+strategic value.
 
 Production capacity is routed among attack, colonization, and unassigned battle fleets through
 `AIFleetProductionAllocationScorer`. `FleetAllocationUtility` owns the ordering considerations;
 the demand generator only enumerates fleets that are eligible to receive reinforcement.
 
-When established behavior requires a strict preference order, give considerations non-overlapping
-score bands in configuration. Lower bands may break ties within a higher band but cannot reverse
-it. This keeps the hierarchy explicit and tunable without hiding it in chained LINQ ordering.
+Strict requirements and fallbacks are not represented by oversized weights. Put legality in
+eligibility checks, urgent work in `AIProposalPriority`, and ordered fallback groups at the shared
+allocation boundary. Weights express tradeoffs only; one consideration must not masquerade as a
+hard rule by using a score magnitude that other considerations cannot overcome.
 
 ## Configuration
 
@@ -76,10 +80,22 @@ Policy targets and limits remain explicit typed values. Preferences use `AIConsi
 
 - `InputMaximum` converts a raw domain value to the normalized interval.
 - `Curve` controls the response shape.
-- `Weight` controls the consideration's contribution relative to other considerations.
+- `Weight` is a relative importance from zero through one.
 
-Default linear curves preserve established behavior during migration. Behavioral tuning begins only
-after the structural migration passes the deterministic baseline and held-seed validation.
+`AIUtilityScore` evaluates every active consideration and returns their weighted average. Costs
+contribute the inverse of their response curve, so all final proposal and candidate scores share
+the zero-to-one domain. Scale all weights in one fixed decision vector by a common denominator when
+preserving an established model; normalizing each feature against a different denominator changes
+its preference ratio. Production demand pressure remains a named zero-to-100 domain and uses the
+pressure evaluation methods explicitly. Its combined upper bound is 600, which is normalized before
+pressure enters proposal scoring.
+
+Mandatory proposals own lifecycle cleanup that must occur regardless of utility, such as clearing
+a completed fleet order. Mandatory priority is not a preference tier and must not be used to force
+one otherwise optional candidate over another.
+
+Default linear curves provide predictable interpolation. Tune deliberate behavior changes against
+the designated deterministic seed first, then validate held seeds after tuning is complete.
 
 `AIUtilityDecisionAudit.md` records every remaining ordering category and whether it belongs to
 strategic utility, sequential allocation, feasibility, deterministic indexing, or execution.

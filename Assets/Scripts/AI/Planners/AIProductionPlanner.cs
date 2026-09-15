@@ -1230,26 +1230,23 @@ namespace Rebellion.AI.Planners
             GameConfig.AIStarfighterSelectionUtilityConfig utility = config
                 .TechnologyUtility
                 .Starfighter;
-            double score =
-                AIUtility.EvaluateRaw(starfighter.LaserCannon, utility.Laser)
-                + AIUtility.EvaluateRaw(starfighter.IonCannon, utility.Ion)
-                + AIUtility.EvaluateRaw(starfighter.Torpedoes, utility.Torpedo);
-
-            score += AIUtility.Evaluate(
+            AIUtilityScore score = new AIUtilityScore();
+            score.AddRaw(starfighter.LaserCannon, utility.Laser);
+            score.AddRaw(starfighter.IonCannon, utility.Ion);
+            score.AddRaw(starfighter.Torpedoes, utility.Torpedo);
+            score.Add(
                 starfighter.IonCannon > 0 && !FleetHasIonStarfighter(fleet) ? 1 : 0,
                 utility.MissingIon
             );
-            score += AIUtility.Evaluate(
+            score.Add(
                 starfighter.Torpedoes > 0 && !FleetHasTorpedoStarfighter(fleet) ? 1 : 0,
                 utility.MissingTorpedo
             );
-
-            score -= AIUtility.EvaluateRaw(
+            score.AddCostRaw(
                 CountFleetUnitsByType<Starfighter>(fleet, starfighter.GetTypeID()),
                 config.TechnologyUtility.DuplicateCost
             );
-
-            return score;
+            return score.Value;
         }
 
         /// <summary>
@@ -1266,15 +1263,17 @@ namespace Rebellion.AI.Planners
         )
         {
             GameConfig.AIRegimentSelectionUtilityConfig utility = config.TechnologyUtility.Regiment;
-            return AIUtility.EvaluateRaw(regiment.AttackRating, utility.Attack)
-                + AIUtility.EvaluateRaw(regiment.DefenseRating, utility.Defense)
-                + AIUtility.EvaluateRaw(regiment.BombardmentDefense, utility.BombardmentDefense)
-                + AIUtility.Evaluate(1, utility.Base)
-                - AIUtility.EvaluateRaw(regiment.MaintenanceCost, utility.MaintenanceCost)
-                - AIUtility.EvaluateRaw(
-                    CountFleetUnitsByType<Regiment>(fleet, regiment.GetTypeID()),
-                    config.TechnologyUtility.DuplicateCost
-                );
+            AIUtilityScore score = new AIUtilityScore();
+            score.AddRaw(regiment.AttackRating, utility.Attack);
+            score.AddRaw(regiment.DefenseRating, utility.Defense);
+            score.AddRaw(regiment.BombardmentDefense, utility.BombardmentDefense);
+            score.Add(1, utility.Base);
+            score.AddCostRaw(regiment.MaintenanceCost, utility.MaintenanceCost);
+            score.AddCostRaw(
+                CountFleetUnitsByType<Regiment>(fleet, regiment.GetTypeID()),
+                config.TechnologyUtility.DuplicateCost
+            );
+            return score.Value;
         }
 
         /// <summary>

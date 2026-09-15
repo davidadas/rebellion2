@@ -1402,7 +1402,7 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             GameConfig.AIInfrastructureConfig config = game.Config.AI.Infrastructure;
             config.DemandUtility.DefenseValue.Weight = 0;
-            config.DemandUtility.ShieldSupport.Weight = 50;
+            config.DemandUtility.ShieldSupport.Weight = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1424,8 +1424,8 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.AreEqual(
                 config.PlanetaryShieldDemandPercent
-                    + config.DemandUtility.DefenseDeficit.Weight
-                    + 40,
+                    + config.DemandUtility.DefenseDeficit.Weight * 100
+                    + 80,
                 pressure
             );
             Assert.Greater(pressure, config.EconomySevereDemandPercent);
@@ -1438,7 +1438,7 @@ namespace Rebellion.Tests.AI.Planners
             GameConfig.AIInfrastructureConfig config = game.Config.AI.Infrastructure;
             config.DemandUtility.DefenseDeficit.Weight = 0;
             config.DemandUtility.DefenseValue.Weight = 0;
-            config.DemandUtility.ShieldSupport.Weight = 50;
+            config.DemandUtility.ShieldSupport.Weight = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1463,7 +1463,7 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.AreEqual(
                 config.PlanetaryShieldDemandPercent
-                    + config.DemandUtility.DefenseHeadquarters.Weight,
+                    + config.DemandUtility.DefenseHeadquarters.Weight * 100,
                 pressure
             );
         }
@@ -1804,6 +1804,7 @@ namespace Rebellion.Tests.AI.Planners
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             fleet.RoleType = FleetRoleType.Battle;
             fleet.Order = new FleetOrder
@@ -1839,6 +1840,7 @@ namespace Rebellion.Tests.AI.Planners
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             fleet.RoleType = FleetRoleType.Battle;
             fleet.Order = new FleetOrder

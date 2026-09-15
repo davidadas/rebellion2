@@ -15,8 +15,6 @@ namespace Rebellion.AI.Scoring
     /// </summary>
     public sealed class AIMissionProposalScorer : IAIProposalScorer
     {
-        private const double _maximumSuccessProbability = 100;
-
         /// <summary>
         /// Returns whether this scorer can score the proposal.
         /// </summary>
@@ -63,19 +61,18 @@ namespace Rebellion.AI.Scoring
                 .AI
                 .MissionPlanning
                 .Utility;
-            double score = GetMissionScore(context, missionProposal, successProbability);
-            score += GetPriorityValue(utility.Priority, missionProposal);
-            score -= AIUtility.EvaluateRaw(foilProbability, utility.Objective.FoilRisk);
-            score -= AIUtility.EvaluateRaw(
-                GetTravelCost(context, missionProposal),
-                utility.Objective.TravelCost
-            );
-            score -= AIUtility.Evaluate(
+            AIUtilityScore score = GetMissionScore(context, missionProposal, successProbability);
+            AddMissionPriorityUtility(ref score, utility.Priority, missionProposal);
+            score.AddCostRaw(foilProbability, utility.Objective.FoilRisk);
+            score.AddCostRaw(GetTravelCost(context, missionProposal), utility.Objective.TravelCost);
+            score.AddCost(
                 HasOfficerReplacementRisk(context, missionProposal) ? 1 : 0,
                 utility.Objective.OfficerRisk
             );
 
-            return score >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? score : 0;
+            return score.Value >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore
+                ? score.Value
+                : 0;
         }
 
         /// <summary>
@@ -112,19 +109,7 @@ namespace Rebellion.AI.Scoring
             if (context?.Game?.Config == null || proposal == null)
                 return 0;
 
-            GameConfig.AIMissionUtilityConfig utility = context
-                .Game
-                .Config
-                .AI
-                .MissionPlanning
-                .Utility;
-            double score = GetMissionScore(context, proposal, _maximumSuccessProbability);
-            score += GetPriorityValue(utility.Priority, proposal);
-            score -= AIUtility.EvaluateRaw(
-                GetTravelCost(context, proposal),
-                utility.Objective.TravelCost
-            );
-            return score;
+            return 1;
         }
 
         /// <summary>
@@ -134,7 +119,7 @@ namespace Rebellion.AI.Scoring
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <param name="successProbability">The calculated success probability.</param>
         /// <returns>The objective score before general bonuses and penalties.</returns>
-        private double GetMissionScore(
+        private AIUtilityScore GetMissionScore(
             AITurnContext context,
             AIMissionProposal proposal,
             double successProbability
@@ -147,48 +132,35 @@ namespace Rebellion.AI.Scoring
                 .MissionPlanning
                 .Utility
                 .Objective;
-            double successValue = AIUtility.EvaluateRaw(successProbability, utility.Success);
-            return proposal.MissionTypeID switch
-            {
-                MissionTypeIDs.Diplomacy => ScoreDiplomacy(context, proposal, successValue),
-                MissionTypeIDs.Sabotage => ScoreSabotage(context, proposal, successValue),
-                MissionTypeIDs.Espionage => successValue
-                    + AIUtility.EvaluateRaw(GetIntelAge(context, proposal), utility.IntelAge),
-                MissionTypeIDs.JediTraining => successValue
-                    + AIUtility.EvaluateRaw(GetJediTrainingValue(proposal), utility.TrainingValue),
-                _ => successValue,
-            };
+            AIUtilityScore score = new AIUtilityScore();
+            score.AddRaw(successProbability, utility.Success);
+            bool isDiplomacy = proposal.MissionTypeID == MissionTypeIDs.Diplomacy;
+            bool isSabotage = proposal.MissionTypeID == MissionTypeIDs.Sabotage;
+            AddDiplomacyUtility(ref score, context, proposal, isDiplomacy);
+            AddSabotageTargetUtility(
+                ref score,
+                context,
+                isSabotage ? proposal.TargetPlanet : null,
+                isSabotage ? proposal.SelectedTarget as IManufacturable : null
+            );
+            score.AddRaw(
+                proposal.MissionTypeID == MissionTypeIDs.Espionage
+                    ? GetIntelAge(context, proposal)
+                    : 0,
+                utility.IntelAge
+            );
+            score.AddRaw(
+                proposal.MissionTypeID == MissionTypeIDs.JediTraining
+                    ? GetJediTrainingValue(proposal)
+                    : 0,
+                utility.TrainingValue
+            );
+
+            return score;
         }
 
-        /// <summary>
-        /// Scores sabotage success and the strategic value of its selected target.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal to evaluate.</param>
-        /// <param name="successValue">The calculated success utility.</param>
-        /// <returns>The sabotage objective score.</returns>
-        private double ScoreSabotage(
-            AITurnContext context,
-            AIMissionProposal proposal,
-            double successValue
-        )
-        {
-            return successValue
-                + GetSabotageTargetValue(
-                    context,
-                    proposal.TargetPlanet,
-                    proposal.SelectedTarget as IManufacturable
-                );
-        }
-
-        /// <summary>
-        /// Calculates the configured scoring bonus for a sabotage target.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The target planet.</param>
-        /// <param name="target">The target unit or facility.</param>
-        /// <returns>The target's scoring bonus.</returns>
-        internal static double GetSabotageTargetValue(
+        private static void AddSabotageTargetUtility(
+            ref AIUtilityScore score,
             AITurnContext context,
             Planet planet,
             IManufacturable target
@@ -201,48 +173,51 @@ namespace Rebellion.AI.Scoring
                 ?.MissionPlanning
                 ?.Utility
                 ?.Sabotage;
-            if (utility == null || planet == null || target == null)
-                return 0;
+            if (utility == null)
+                return;
 
-            bool isAttackTarget = context.Assessment.IsAttackPreparationTarget(planet);
-            if (target is Building building)
-            {
-                double value = AIUtility.Evaluate(1, utility.Infrastructure);
-                if (IsPlanetaryDefenseBuilding(building))
-                    value += AIUtility.Evaluate(1, utility.Defense);
+            bool isAttackTarget =
+                planet != null
+                && target != null
+                && context.Assessment.IsAttackPreparationTarget(planet);
+            Building building = target as Building;
+            bool isPlanetaryDefense = IsPlanetaryDefenseBuilding(building);
+            bool isGarrisonRegiment = target is Regiment && IsGarrisonedAtPlanet(planet, target);
+            bool isGarrisonStarfighter =
+                target is Starfighter && IsGarrisonedAtPlanet(planet, target);
+            score.Add(building != null ? 1 : 0, utility.Infrastructure);
+            score.Add(isPlanetaryDefense ? 1 : 0, utility.Defense);
+            score.Add(building?.IsShieldGenerator() == true ? 1 : 0, utility.Shield);
+            score.Add(isAttackTarget ? 1 : 0, utility.AttackTarget);
+            score.Add(isAttackTarget && isPlanetaryDefense ? 1 : 0, utility.AttackDefense);
+            score.Add(
+                isGarrisonRegiment && HasOppositionSupportMajority(context, planet) ? 1 : 0,
+                utility.FavoredSupportRegiment
+            );
+            score.Add(isGarrisonRegiment ? 1 : 0, utility.GarrisonRegiment);
+            score.Add(isGarrisonStarfighter ? 1 : 0, utility.GarrisonStarfighter);
+            score.Add(
+                building == null && !isGarrisonRegiment && !isGarrisonStarfighter ? 1 : 0,
+                utility.OtherUnit
+            );
+        }
 
-                if (building.IsShieldGenerator())
-                    value += AIUtility.Evaluate(1, utility.Shield);
-
-                if (isAttackTarget && IsPlanetaryDefenseBuilding(building))
-                {
-                    value +=
-                        AIUtility.Evaluate(1, utility.AttackTarget)
-                        + AIUtility.Evaluate(1, utility.AttackDefense);
-                }
-
-                return value;
-            }
-
-            double unitValue = target switch
-            {
-                Regiment when IsGarrisonedAtPlanet(planet, target) => AIUtility.Evaluate(
-                    1,
-                    utility.GarrisonRegiment
-                )
-                    + AIUtility.Evaluate(
-                        HasOppositionSupportMajority(context, planet) ? 1 : 0,
-                        utility.FavoredSupportRegiment
-                    ),
-                Starfighter when IsGarrisonedAtPlanet(planet, target) => AIUtility.Evaluate(
-                    1,
-                    utility.GarrisonStarfighter
-                ),
-                _ => AIUtility.Evaluate(1, utility.OtherUnit),
-            };
-            return isAttackTarget
-                ? unitValue + AIUtility.Evaluate(1, utility.AttackTarget)
-                : unitValue;
+        /// <summary>
+        /// Calculates the normalized utility of a sabotage target.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The target planet.</param>
+        /// <param name="target">The target unit or facility.</param>
+        /// <returns>The target utility from zero through one.</returns>
+        internal static double GetSabotageTargetValue(
+            AITurnContext context,
+            Planet planet,
+            IManufacturable target
+        )
+        {
+            AIUtilityScore score = new AIUtilityScore();
+            AddSabotageTargetUtility(ref score, context, planet, target);
+            return score.Value;
         }
 
         /// <summary>
@@ -285,16 +260,18 @@ namespace Rebellion.AI.Scoring
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
-        /// <param name="successValue">The calculated success utility.</param>
-        /// <returns>The diplomacy objective score.</returns>
-        private double ScoreDiplomacy(
+        /// <param name="score">The score receiving diplomacy considerations.</param>
+        /// <param name="enabled">Whether the proposal is a diplomacy mission.</param>
+        private static void AddDiplomacyUtility(
+            ref AIUtilityScore score,
             AITurnContext context,
             AIMissionProposal proposal,
-            double successValue
+            bool enabled
         )
         {
-            int opposingSupport =
-                proposal.TargetPlanet?.GetOpposingPopularSupport(context.Faction.InstanceID) ?? 0;
+            int opposingSupport = enabled
+                ? proposal.TargetPlanet?.GetOpposingPopularSupport(context.Faction.InstanceID) ?? 0
+                : 0;
             GameConfig.AIDiplomacyUtilityConfig utility = context
                 .Game
                 .Config
@@ -303,11 +280,11 @@ namespace Rebellion.AI.Scoring
                 .Utility
                 .Diplomacy;
             bool isCoreWorld =
-                proposal.TargetPlanet?.GetParentOfType<PlanetSector>()?.SectorType
-                == PlanetSectorType.Core;
-            return successValue
-                + AIUtility.Evaluate(isCoreWorld ? 1 : 0, utility.CoreWorld)
-                + AIUtility.EvaluateRaw(opposingSupport, utility.SupportDeficit);
+                enabled
+                && proposal.TargetPlanet?.GetParentOfType<PlanetSector>()?.SectorType
+                    == PlanetSectorType.Core;
+            score.Add(isCoreWorld ? 1 : 0, utility.CoreWorld);
+            score.AddRaw(opposingSupport, utility.SupportDeficit);
         }
 
         /// <summary>
@@ -332,27 +309,31 @@ namespace Rebellion.AI.Scoring
         /// <summary>
         /// Returns the configured strategic-priority bonus for a mission type.
         /// </summary>
+        /// <param name="score">The score receiving mission-priority considerations.</param>
         /// <param name="utility">The applicable utility configuration.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <returns>The mission-type priority bonus.</returns>
-        private static double GetPriorityValue(
+        private static void AddMissionPriorityUtility(
+            ref AIUtilityScore score,
             GameConfig.AIMissionPriorityUtilityConfig utility,
             AIMissionProposal proposal
         )
         {
-            GameConfig.AIConsiderationConfig consideration = proposal.MissionTypeID switch
-            {
-                MissionTypeIDs.Reconnaissance => utility.Reconnaissance,
-                MissionTypeIDs.Recruitment => utility.Recruitment,
-                MissionTypeIDs.Rescue => utility.Rescue,
-                MissionTypeIDs.SubdueUprising => utility.SubdueUprising,
-                MissionTypeIDs.Research => utility.Research,
-                MissionTypeIDs.JediTraining => utility.JediTraining,
-                MissionTypeIDs.Espionage => utility.Espionage,
-                MissionTypeIDs.Diplomacy => utility.Diplomacy,
-                _ => null,
-            };
-            return AIUtility.Evaluate(1, consideration);
+            string missionTypeId = proposal.MissionTypeID;
+            score.Add(
+                missionTypeId == MissionTypeIDs.Reconnaissance ? 1 : 0,
+                utility.Reconnaissance
+            );
+            score.Add(missionTypeId == MissionTypeIDs.Recruitment ? 1 : 0, utility.Recruitment);
+            score.Add(missionTypeId == MissionTypeIDs.Rescue ? 1 : 0, utility.Rescue);
+            score.Add(
+                missionTypeId == MissionTypeIDs.SubdueUprising ? 1 : 0,
+                utility.SubdueUprising
+            );
+            score.Add(missionTypeId == MissionTypeIDs.Research ? 1 : 0, utility.Research);
+            score.Add(missionTypeId == MissionTypeIDs.JediTraining ? 1 : 0, utility.JediTraining);
+            score.Add(missionTypeId == MissionTypeIDs.Espionage ? 1 : 0, utility.Espionage);
+            score.Add(missionTypeId == MissionTypeIDs.Diplomacy ? 1 : 0, utility.Diplomacy);
         }
 
         /// <summary>

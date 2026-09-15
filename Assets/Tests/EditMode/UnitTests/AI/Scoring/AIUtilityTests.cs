@@ -25,7 +25,7 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
             {
-                Weight = 40,
+                Weight = 0.4,
                 Curve = new GameConfig.AIResponseCurveConfig
                 {
                     Shape = GameConfig.AIResponseCurveShape.Power,
@@ -33,7 +33,7 @@ namespace Rebellion.Tests.AI.Scoring
                 },
             };
 
-            Assert.That(AIUtility.Evaluate(0.5, consideration), Is.EqualTo(10).Within(0.000001));
+            Assert.That(AIUtility.Evaluate(0.5, consideration), Is.EqualTo(0.1).Within(0.000001));
         }
 
         [Test]
@@ -41,23 +41,26 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
             {
-                Weight = 300,
+                Weight = 0.3,
                 InputMaximum = 10,
             };
 
-            Assert.That(AIUtility.EvaluateRaw(3, consideration), Is.EqualTo(90).Within(0.000001));
+            Assert.That(AIUtility.EvaluateRaw(3, consideration), Is.EqualTo(0.09).Within(0.000001));
         }
 
         [Test]
-        public void LinearRawConsiderationPreservesExactUnitScale()
+        public void RawPressureUsesPercentagePointDomain()
         {
             GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
             {
-                Weight = 300,
+                Weight = 1,
                 InputMaximum = 300,
             };
 
-            Assert.That(AIUtility.EvaluateRaw(137, consideration), Is.EqualTo(137));
+            Assert.That(
+                AIUtility.EvaluateRawPressure(150, consideration),
+                Is.EqualTo(50).Within(0.000001)
+            );
         }
 
         [Test]
@@ -65,26 +68,45 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
             {
-                Weight = 20,
+                Weight = 1,
             };
 
-            Assert.That(AIUtility.EvaluateDiscrete(1.0 / 3, consideration), Is.EqualTo(6));
+            Assert.That(AIUtility.EvaluateDiscretePressure(1.0 / 3, consideration), Is.EqualTo(33));
         }
 
-        [TestCase(0, -50)]
+        [TestCase(0, -0.5)]
         [TestCase(0.5, 0)]
-        [TestCase(1, 50)]
+        [TestCase(1, 0.5)]
         public void CenteredConsiderationSpansBothSidesOfNeutral(double input, double expected)
         {
             GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
             {
-                Weight = 100,
+                Weight = 1,
             };
 
             Assert.That(
                 AIUtility.EvaluateCentered(input, consideration),
                 Is.EqualTo(expected).Within(0.000001)
             );
+        }
+
+        [Test]
+        public void UtilityScoreReturnsWeightedAverage()
+        {
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(1, new GameConfig.AIConsiderationConfig { Weight = 1 });
+            score.Add(0, new GameConfig.AIConsiderationConfig { Weight = 0.5 });
+
+            Assert.That(score.Value, Is.EqualTo(2.0 / 3).Within(0.000001));
+        }
+
+        [Test]
+        public void UtilityScoreInvertsCosts()
+        {
+            AIUtilityScore score = new AIUtilityScore();
+            score.AddCost(0.25, new GameConfig.AIConsiderationConfig { Weight = 1 });
+
+            Assert.That(score.Value, Is.EqualTo(0.75).Within(0.000001));
         }
 
         [Test]

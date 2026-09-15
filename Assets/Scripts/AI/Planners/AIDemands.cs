@@ -316,7 +316,7 @@ namespace Rebellion.AI.Planners
             int baseDemandPercent
         )
         {
-            double deficitValue = AIUtility.EvaluateDiscrete(
+            double deficitValue = AIUtility.EvaluateDiscretePressure(
                 deficit / (double)Math.Max(1, targetCount),
                 context.Game.Config.AI.Infrastructure.DemandUtility.Deficit
             );

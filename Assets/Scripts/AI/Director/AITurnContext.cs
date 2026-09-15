@@ -338,22 +338,29 @@ namespace Rebellion.AI.Director
             Dictionary<string, int> caps = GetOrAdd(_capsByType, buildingType);
             HashSet<string> primaryPlanetIds = GetOrAdd(_primaryPlanetIdsByType, buildingType);
             Dictionary<string, int> primaryTargets = GetOrAdd(_primaryTargetsByType, buildingType);
-            List<Planet> ranked = sector
-                .Select(planet => new
-                {
-                    Planet = planet,
-                    FeasibleCount = GetFeasibleFacilityCount(planet, buildingType),
-                })
-                .OrderByDescending(item =>
-                    AIInfrastructureAllocationScorer.Score(
-                        context,
-                        item.Planet,
-                        buildingType,
-                        item.FeasibleCount,
-                        assignedPrimaryPlanetIds
-                    )
+            List<InfrastructureCandidate> candidates = sector
+                .Select(planet => new InfrastructureCandidate(
+                    planet,
+                    GetFeasibleFacilityCount(planet, buildingType)
+                ))
+                .ToList();
+            int primaryTarget =
+                buildingType == BuildingType.Shipyard ? config.ShipyardSectorHubTargetCount : 0;
+            IEnumerable<InfrastructureCandidate> preferred =
+                primaryTarget > 0
+                    ? candidates.Where(item => item.FeasibleCount >= primaryTarget)
+                    : candidates;
+            IEnumerable<InfrastructureCandidate> fallback =
+                primaryTarget > 0
+                    ? candidates.Where(item => item.FeasibleCount < primaryTarget)
+                    : Enumerable.Empty<InfrastructureCandidate>();
+            List<Planet> ranked = RankCandidates(
+                    context,
+                    buildingType,
+                    assignedPrimaryPlanetIds,
+                    preferred
                 )
-                .ThenBy(item => item.Planet.InstanceID, StringComparer.Ordinal)
+                .Concat(RankCandidates(context, buildingType, assignedPrimaryPlanetIds, fallback))
                 .Take(config.FacilityPlanetsPerSector)
                 .Select(item => item.Planet)
                 .ToList();
@@ -398,6 +405,26 @@ namespace Rebellion.AI.Director
                 + GetAvailableEnergy(planet, buildingType);
         }
 
+        private static IOrderedEnumerable<InfrastructureCandidate> RankCandidates(
+            AITurnContext context,
+            BuildingType buildingType,
+            ISet<string> assignedPrimaryPlanetIds,
+            IEnumerable<InfrastructureCandidate> candidates
+        )
+        {
+            return candidates
+                .OrderByDescending(candidate =>
+                    AIInfrastructureAllocationScorer.Score(
+                        context,
+                        candidate.Planet,
+                        buildingType,
+                        candidate.FeasibleCount,
+                        assignedPrimaryPlanetIds
+                    )
+                )
+                .ThenBy(candidate => candidate.Planet.InstanceID, StringComparer.Ordinal);
+        }
+
         private void ReserveEnergy(Planet planet, BuildingType buildingType, int energy)
         {
             if (energy <= 0)
@@ -431,5 +458,17 @@ namespace Rebellion.AI.Director
 
         private static bool IsUsable(Planet planet) =>
             planet?.IsColonized == true && !planet.IsDestroyed;
+
+        private sealed class InfrastructureCandidate
+        {
+            public int FeasibleCount { get; }
+            public Planet Planet { get; }
+
+            public InfrastructureCandidate(Planet planet, int feasibleCount)
+            {
+                Planet = planet;
+                FeasibleCount = feasibleCount;
+            }
+        }
     }
 }

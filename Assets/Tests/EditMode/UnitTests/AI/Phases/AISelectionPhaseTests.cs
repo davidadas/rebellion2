@@ -73,6 +73,26 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        public void Select_WithZeroScoreFleetOrderCleanup_SelectsProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            FleetOrder order = new FleetOrder { OrderType = FleetOrderType.Colonize };
+            fleet.Order = order;
+            game.AttachNode(fleet, planet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIClearFleetOrderProposal proposal = new AIClearFleetOrderProposal(fleet, order);
+            proposal.SetScore(0);
+            context.AddProposal(proposal);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
+        }
+
+        [Test]
         public void Select_WithUnscoredProposal_DoesNotSelectProposal()
         {
             AITurnContext context = CreateEmptyContext();
@@ -161,7 +181,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithFacilityExpansionBeyondSharedBudget_SelectsOneProposal()
+        public void Select_WithFacilityExpansionBeyondLegacyBudget_SelectsBothProposals()
         {
             AITurnContext context = CreateFacilityExpansionContext(
                 allocationPercent: 10,
@@ -173,7 +193,7 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            Assert.AreEqual(1, selected.Count);
+            CollectionAssert.AreEquivalent(new[] { first, second }, selected);
         }
 
         [Test]

@@ -40,7 +40,7 @@ namespace Rebellion.Tests.AI.Planners
                 { -1000, 19 },
             };
             game.Config.AI.MissionPlanning.MinimumUprisingMissionSuccessPercent = 20;
-            game.Config.AI.MissionPlanning.Utility.Priority.SubdueUprising.Weight = 120;
+            game.Config.AI.MissionPlanning.Utility.Priority.SubdueUprising.Weight = 1;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { participant },

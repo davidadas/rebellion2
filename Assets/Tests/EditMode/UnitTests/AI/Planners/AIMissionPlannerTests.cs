@@ -97,7 +97,9 @@ namespace Rebellion.Tests.AI.Planners
                 .ToList();
 
             Assert.IsTrue(proposals.Count > 0);
-            Assert.IsTrue(proposals.All(proposal => proposal.TargetPlanet == coreTarget));
+            Assert.IsTrue(
+                proposals.All(proposal => proposal.TargetPlanet.InstanceID == coreTarget.InstanceID)
+            );
         }
 
         [Test]

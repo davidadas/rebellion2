@@ -201,45 +201,45 @@ namespace Rebellion.AI.Scoring
                 demandPlanet == null || greatestDistance <= 0
                     ? 1
                     : 1 - demandPlanet.GetRawDistanceTo(planet) / greatestDistance;
-            double score = AIUtility.Evaluate(
-                systemFacilityCount == 0 ? 1 : 0,
-                utility.SystemCoverage
-            );
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(systemFacilityCount == 0 ? 1 : 0, utility.SystemCoverage);
             GameConfig.AIConsiderationConfig hub =
                 manufacturingType == ManufacturingType.Building
                     ? utility.ConstructionHub
                     : utility.ExistingHub;
-            score += AIUtility.Evaluate(
+            score.Add(
                 AIUtility.Fulfillment(
                     _context.Assessment.GetPlanetProductionRate(planet, manufacturingType),
                     highestProductionRate
                 ),
                 hub
             );
-            if (
-                buildingType == BuildingType.TrainingFacility
-                && _context.Assessment.GetPlanetProductionFacilityCount(
-                    planet,
-                    ManufacturingType.Troop
-                ) == 1
-            )
-                score += AIUtility.Evaluate(1, utility.SecondTrainingFacility);
-            score += AIUtility.Evaluate(
+            if (buildingType == BuildingType.TrainingFacility)
+                score.Add(
+                    _context.Assessment.GetPlanetProductionFacilityCount(
+                        planet,
+                        ManufacturingType.Troop
+                    ) == 1
+                        ? 1
+                        : 0,
+                    utility.SecondTrainingFacility
+                );
+            score.Add(
                 AIUtility.Fulfillment(availableEnergy, highestAvailableEnergy),
                 utility.AvailableEnergy
             );
-            score += AIUtility.Evaluate(
+            score.Add(
                 AIUtility.Fulfillment(
                     _context.Assessment.GetPlanetValue(planet),
                     highestPlanetValue
                 ),
                 utility.PlanetValue
             );
-            score += AIUtility.Evaluate(systemControl, utility.SystemSecurity);
-            score += AIUtility.Evaluate(proximity, utility.DemandProximity);
+            score.Add(systemControl, utility.SystemSecurity);
+            score.Add(proximity, utility.DemandProximity);
 
             if (manufacturingType != ManufacturingType.Building)
-                score -= AIUtility.Evaluate(
+                score.AddCost(
                     AIUtility.Fulfillment(
                         GetUnminedResourceCount(planet),
                         highestUnminedResourceCount
@@ -247,7 +247,7 @@ namespace Rebellion.AI.Scoring
                     utility.ResourceOpportunityCost
                 );
 
-            return score;
+            return score.Value;
         }
 
         /// <summary>

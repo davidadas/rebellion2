@@ -46,7 +46,7 @@ namespace Rebellion.AI.Scoring
             return proposal switch
             {
                 AIFleetAttackProposal { Status: FleetOrderStatus.Returning } returnProposal =>
-                    ScoreReturn(context, returnProposal),
+                    ScoreReturn(),
                 AIFleetAttackProposal attackProposal => ScoreAttack(
                     context,
                     attackProposal.Fleet,
@@ -67,9 +67,9 @@ namespace Rebellion.AI.Scoring
                     context,
                     campaignProposal
                 ),
-                AIClearFleetOrderProposal => double.PositiveInfinity,
+                AIClearFleetOrderProposal => 0,
                 AIFleetDefenseProposal defenseProposal => ScoreDefense(context, defenseProposal),
-                AIFleetRoleProposal => double.PositiveInfinity,
+                AIFleetRoleProposal => 0,
                 AITransferUnitProposal transferProposal => ScoreUnitTransfer(
                     context,
                     transferProposal
@@ -95,11 +95,12 @@ namespace Rebellion.AI.Scoring
                 .AI
                 .FleetDeployment
                 .ColonizationUtility;
-            double score =
-                AIUtility.Evaluate(1, utility.Base) + AIUtility.Evaluate(1, utility.Ready);
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(1, utility.Base);
+            score.Add(1, utility.Ready);
             if (proposal.EntryPlanet != null)
             {
-                score += AIUtility.Evaluate(
+                score.Add(
                     ScoreColonizationTravelEfficiency(
                         context.Assessment,
                         proposal.Fleet,
@@ -109,28 +110,21 @@ namespace Rebellion.AI.Scoring
                 );
             }
 
-            score += AIUtility.Evaluate(
+            score.Add(
                 proposal.Fleet?.Order?.OrderType == FleetOrderType.Colonize ? 1 : 0,
                 utility.ExistingOrder
             );
 
-            return Math.Max(0, score);
+            return score.Value;
         }
 
         /// <summary>
-        /// Gives evacuation absolute precedence while an attack fleet is in hostile territory.
+        /// Scores an evacuation proposal after mandatory ordering has established its precedence.
         /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The return proposal to score.</param>
-        /// <returns>A mandatory-order score in hostile territory; otherwise the fallback score.</returns>
-        private static double ScoreReturn(AITurnContext context, AIFleetAttackProposal proposal)
+        /// <returns>Full utility in hostile territory; otherwise the fallback utility.</returns>
+        private static double ScoreReturn()
         {
-            Planet currentPlanet = context.Assessment.GetFleetPlanet(proposal.Fleet);
-            return
-                currentPlanet != null
-                && currentPlanet.GetOwnerInstanceID() != context.Faction.InstanceID
-                ? double.PositiveInfinity
-                : 1;
+            return 1;
         }
 
         /// <summary>
@@ -147,11 +141,13 @@ namespace Rebellion.AI.Scoring
                 .AI
                 .FleetDeployment
                 .DefenseUtility;
-            return AIUtility.Evaluate(1, utility.Base)
-                + AIUtility.EvaluateRaw(
-                    context.Assessment.GetDefensiveSupportRisk(proposal.TargetPlanet),
-                    utility.SectorRisk
-                );
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(1, utility.Base);
+            score.AddRaw(
+                context.Assessment.GetDefensiveSupportRisk(proposal.TargetPlanet),
+                utility.SectorRisk
+            );
+            return score.Value;
         }
 
         /// <summary>
@@ -168,18 +164,17 @@ namespace Rebellion.AI.Scoring
                 .AI
                 .FleetDeployment
                 .DefenseAllocationUtility;
-            return AIUtility.EvaluateRaw(
-                    context.Assessment.GetDefensiveSupportRisk(targetPlanet),
-                    utility.SectorRisk
-                )
-                + AIUtility.EvaluateRaw(
-                    context.Assessment.GetPlanetValue(targetPlanet),
-                    utility.StrategicValue
-                )
-                + AIUtility.EvaluateRaw(
-                    context.Assessment.GetRequiredDefenseStrength(targetPlanet),
-                    utility.DefenseNeed
-                );
+            AIUtilityScore score = new AIUtilityScore();
+            score.AddRaw(
+                context.Assessment.GetDefensiveSupportRisk(targetPlanet),
+                utility.SectorRisk
+            );
+            score.AddRaw(context.Assessment.GetPlanetValue(targetPlanet), utility.StrategicValue);
+            score.AddRaw(
+                context.Assessment.GetRequiredDefenseStrength(targetPlanet),
+                utility.DefenseNeed
+            );
+            return score.Value;
         }
 
         /// <summary>
@@ -201,14 +196,16 @@ namespace Rebellion.AI.Scoring
                 .AI
                 .FleetDeployment
                 .DefenseAllocationUtility;
-            return AIUtility.Evaluate(
-                    ScoreDefenseTravelEfficiency(context, fleet, targetPlanet),
-                    utility.TravelEfficiency
-                )
-                + AIUtility.Evaluate(
-                    ScoreDefenseForceEfficiency(context, fleet, targetPlanet),
-                    utility.ForceEfficiency
-                );
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(
+                ScoreDefenseTravelEfficiency(context, fleet, targetPlanet),
+                utility.TravelEfficiency
+            );
+            score.Add(
+                ScoreDefenseForceEfficiency(context, fleet, targetPlanet),
+                utility.ForceEfficiency
+            );
+            return score.Value;
         }
 
         /// <summary>
@@ -297,19 +294,18 @@ namespace Rebellion.AI.Scoring
 
             GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
             GameConfig.AIAttackUtilityConfig utility = config.AttackUtility;
-            double score =
-                AIUtility.Evaluate(1, utility.OrbitalAdvantage)
-                + AIUtility.Evaluate(
-                    ScoreStrategicTargetValue(context.Assessment, target),
-                    utility.StrategicValue
-                )
-                + AIUtility.Evaluate(
-                    ScoreTravelEfficiency(context.Assessment, fleet, target),
-                    utility.TravelEfficiency
-                )
-                - AIUtility.Evaluate(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
-
-            return Math.Max(0, score);
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(1, utility.OrbitalAdvantage);
+            score.Add(
+                ScoreStrategicTargetValue(context.Assessment, target),
+                utility.StrategicValue
+            );
+            score.Add(
+                ScoreTravelEfficiency(context.Assessment, fleet, target),
+                utility.TravelEfficiency
+            );
+            score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
+            return score.Value;
         }
 
         /// <summary>
@@ -339,52 +335,46 @@ namespace Rebellion.AI.Scoring
                 targetPlanet,
                 config
             );
-            double score =
-                AIUtility.Evaluate(
-                    ScoreStrategicTargetValue(assessment, targetPlanet),
-                    utility.StrategicValue
-                )
-                + AIUtility.EvaluateRaw(
-                    assessment.GetOffensiveSupportLeverage(targetPlanet),
-                    utility.SectorSupport
-                )
-                + AIUtility.Evaluate(
-                    assessment.GetOwnedSystemPresenceRatio(
-                        assessment.GetPlanetSystemId(targetPlanet)
-                    ),
-                    utility.SystemPresence
-                )
-                + AIUtility.Evaluate(readiness.Score, utility.Readiness)
-                + AIUtility.Evaluate(readiness.IsReady ? 1 : 0, utility.Ready)
-                + AIUtility.Evaluate(
-                    ScoreCaptureViability(context, fleet, targetPlanet),
-                    utility.CaptureViability
-                )
-                + AIUtility.Evaluate(
-                    ScoreTravelEfficiency(assessment, fleet, targetPlanet),
-                    utility.TravelEfficiency
-                )
-                - AIUtility.Evaluate(
-                    ScoreExpectedLossRisk(context, fleet, targetPlanet),
-                    utility.ExpectedLossRisk
-                )
-                - AIUtility.Evaluate(ScoreOpportunityCost(context, fleet), utility.OpportunityCost)
-                - AIUtility.Evaluate(ScoreIntelAgeRisk(context, targetPlanet), utility.IntelAgeRisk)
-                + AIUtility.Evaluate(targetPlanet.IsHeadquarters ? 1 : 0, utility.Headquarters)
-                + AIUtility.Evaluate(
-                    assessment.CanWinOrbitalCombat(fleet, targetPlanet) ? 1 : 0,
-                    utility.OrbitalAdvantage
-                )
-                + AIUtility.Evaluate(
-                    IsExposedSectorBombardmentTarget(context, targetPlanet)
-                    && assessment.CanBombardMilitaryTargets(fleet, targetPlanet)
-                        ? 1
-                        : 0,
-                    utility.ExposedBombardment
-                );
-
-            score = Math.Max(0, score);
-            return score + AIUtility.Evaluate(existingOrder ? 1 : 0, utility.ExistingOrder);
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(ScoreStrategicTargetValue(assessment, targetPlanet), utility.StrategicValue);
+            score.AddRaw(
+                assessment.GetOffensiveSupportLeverage(targetPlanet),
+                utility.SectorSupport
+            );
+            score.Add(
+                assessment.GetOwnedSystemPresenceRatio(assessment.GetPlanetSystemId(targetPlanet)),
+                utility.SystemPresence
+            );
+            score.Add(readiness.Score, utility.Readiness);
+            score.Add(readiness.IsReady ? 1 : 0, utility.Ready);
+            score.Add(
+                ScoreCaptureViability(context, fleet, targetPlanet),
+                utility.CaptureViability
+            );
+            score.Add(
+                ScoreTravelEfficiency(assessment, fleet, targetPlanet),
+                utility.TravelEfficiency
+            );
+            score.AddCost(
+                ScoreExpectedLossRisk(context, fleet, targetPlanet),
+                utility.ExpectedLossRisk
+            );
+            score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
+            score.AddCost(ScoreIntelAgeRisk(context, targetPlanet), utility.IntelAgeRisk);
+            score.Add(targetPlanet.IsHeadquarters ? 1 : 0, utility.Headquarters);
+            score.Add(
+                assessment.CanWinOrbitalCombat(fleet, targetPlanet) ? 1 : 0,
+                utility.OrbitalAdvantage
+            );
+            score.Add(
+                IsExposedSectorBombardmentTarget(context, targetPlanet)
+                && assessment.CanBombardMilitaryTargets(fleet, targetPlanet)
+                    ? 1
+                    : 0,
+                utility.ExposedBombardment
+            );
+            score.Add(existingOrder ? 1 : 0, utility.ExistingOrder);
+            return score.Value;
         }
 
         /// <summary>
@@ -416,37 +406,7 @@ namespace Rebellion.AI.Scoring
             if (context?.Game == null || targetPlanet == null)
                 return 0;
 
-            AIAssessment assessment = context.Assessment;
-            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
-            GameConfig.AIAttackUtilityConfig utility = config.AttackUtility;
-            double score =
-                AIUtility.Evaluate(
-                    ScoreStrategicTargetValue(assessment, targetPlanet),
-                    utility.StrategicValue
-                )
-                + AIUtility.EvaluateRaw(
-                    assessment.GetOffensiveSupportLeverage(targetPlanet),
-                    utility.SectorSupport
-                )
-                + AIUtility.Evaluate(
-                    assessment.GetOwnedSystemPresenceRatio(
-                        assessment.GetPlanetSystemId(targetPlanet)
-                    ),
-                    utility.SystemPresence
-                )
-                + MaximumContribution(utility.Readiness)
-                + MaximumContribution(utility.Ready)
-                + MaximumContribution(utility.CaptureViability)
-                + MaximumContribution(utility.TravelEfficiency)
-                + MaximumContribution(utility.OrbitalAdvantage);
-
-            if (IsExposedSectorBombardmentTarget(context, targetPlanet))
-                score += MaximumContribution(utility.ExposedBombardment);
-
-            if (targetPlanet.IsHeadquarters)
-                score += MaximumContribution(utility.Headquarters);
-
-            return Math.Max(0, score);
+            return 1;
         }
 
         /// <summary>
@@ -496,27 +456,23 @@ namespace Rebellion.AI.Scoring
                 .AI
                 .FleetDeployment
                 .ColonizationUtility;
-            double score =
-                AIUtility.Evaluate(1, utility.Base)
-                + AIUtility.Evaluate(
-                    GetFulfillmentRatio(
-                        assessment.GetPlanetValue(targetPlanet),
-                        assessment.GetHighestKnownUncolonizedPlanetValue()
-                    ),
-                    utility.StrategicValue
-                )
-                + AIUtility.Evaluate(
-                    ScoreColonizationTravelEfficiency(assessment, fleet, targetPlanet),
-                    utility.TravelEfficiency
-                )
-                - AIUtility.Evaluate(ScoreOpportunityCost(context, fleet), utility.OpportunityCost)
-                + AIUtility.Evaluate(
-                    assessment.GetReadyFleetRegimentCount(fleet) > 0 ? 1 : 0,
-                    utility.Ready
-                )
-                + AIUtility.Evaluate(existingOrder ? 1 : 0, utility.ExistingOrder);
-
-            return Math.Max(0, score);
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(1, utility.Base);
+            score.Add(
+                GetFulfillmentRatio(
+                    assessment.GetPlanetValue(targetPlanet),
+                    assessment.GetHighestKnownUncolonizedPlanetValue()
+                ),
+                utility.StrategicValue
+            );
+            score.Add(
+                ScoreColonizationTravelEfficiency(assessment, fleet, targetPlanet),
+                utility.TravelEfficiency
+            );
+            score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
+            score.Add(assessment.GetReadyFleetRegimentCount(fleet) > 0 ? 1 : 0, utility.Ready);
+            score.Add(existingOrder ? 1 : 0, utility.ExistingOrder);
+            return score.Value;
         }
 
         /// <summary>
@@ -555,31 +511,26 @@ namespace Rebellion.AI.Scoring
             );
             if (proposal.TargetFleet.Order?.OrderType == FleetOrderType.Defend)
             {
-                return Math.Max(
-                    0,
-                    AIUtility.Evaluate(1, config.DefenseUtility.Base)
-                        + AIUtility.Evaluate(readinessGain, utility.Readiness)
-                        + AIUtility.Evaluate(travelEfficiency, utility.TravelEfficiency)
-                        - AIUtility.Evaluate(
-                            ScoreOpportunityCost(context, sourceFleet),
-                            utility.OpportunityCost
-                        )
-                );
-            }
-
-            double score =
-                AIUtility.Evaluate(readinessGain, utility.Readiness)
-                + AIUtility.Evaluate(
-                    ScoreStrategicTargetValue(assessment, proposal.TargetPlanet),
-                    utility.StrategicValue
-                )
-                + AIUtility.Evaluate(travelEfficiency, utility.TravelEfficiency)
-                - AIUtility.Evaluate(
+                AIUtilityScore defenseScore = new AIUtilityScore();
+                defenseScore.Add(1, config.DefenseUtility.Base);
+                defenseScore.Add(readinessGain, utility.Readiness);
+                defenseScore.Add(travelEfficiency, utility.TravelEfficiency);
+                defenseScore.AddCost(
                     ScoreOpportunityCost(context, sourceFleet),
                     utility.OpportunityCost
                 );
+                return defenseScore.Value;
+            }
 
-            return Math.Max(0, score);
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(readinessGain, utility.Readiness);
+            score.Add(
+                ScoreStrategicTargetValue(assessment, proposal.TargetPlanet),
+                utility.StrategicValue
+            );
+            score.Add(travelEfficiency, utility.TravelEfficiency);
+            score.AddCost(ScoreOpportunityCost(context, sourceFleet), utility.OpportunityCost);
+            return score.Value;
         }
 
         /// <summary>
@@ -632,15 +583,14 @@ namespace Rebellion.AI.Scoring
                 proposal.SourceContainer as Planet,
                 receivingPlanet
             );
-            return Math.Max(
-                0,
-                AIUtility.Evaluate(readinessGain, utility.Readiness)
-                    + AIUtility.Evaluate(
-                        ScoreStrategicTargetValue(assessment, proposal.TargetPlanet),
-                        utility.StrategicValue
-                    )
-                    + AIUtility.Evaluate(travelEfficiency, utility.TravelEfficiency)
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(readinessGain, utility.Readiness);
+            score.Add(
+                ScoreStrategicTargetValue(assessment, proposal.TargetPlanet),
+                utility.StrategicValue
             );
+            score.Add(travelEfficiency, utility.TravelEfficiency);
+            return score.Value;
         }
 
         /// <summary>
@@ -1158,16 +1108,6 @@ namespace Rebellion.AI.Scoring
         private double GetFulfillmentRatio(double value, double target)
         {
             return AIUtility.Fulfillment(value, target);
-        }
-
-        /// <summary>
-        /// Returns the greatest nonnegative contribution available from a consideration.
-        /// </summary>
-        /// <param name="consideration">The consideration to inspect.</param>
-        /// <returns>The consideration's maximum contribution.</returns>
-        private static double MaximumContribution(GameConfig.AIConsiderationConfig consideration)
-        {
-            return Math.Max(0, consideration?.Weight ?? 0);
         }
 
         /// <summary>

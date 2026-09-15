@@ -79,7 +79,7 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(empire.InstanceID, target.GetOwnerInstanceID());
             Assert.AreEqual(100, target.GetPopularSupport(empire.InstanceID));
             Assert.AreSame(target, regiment.GetParent());
-            Assert.IsNull(fleet.Order);
+            Assert.AreEqual(FleetOrderType.Colonize, fleet.Order.OrderType);
         }
 
         [Test]
@@ -108,7 +108,7 @@ namespace Rebellion.Tests.AI.Proposals
             proposal.Execute(context);
 
             Assert.AreEqual(FleetRoleType.Colonization, fleet.RoleType);
-            Assert.IsNull(fleet.Order);
+            Assert.AreEqual(FleetOrderType.Colonize, fleet.Order.OrderType);
         }
 
         [Test]

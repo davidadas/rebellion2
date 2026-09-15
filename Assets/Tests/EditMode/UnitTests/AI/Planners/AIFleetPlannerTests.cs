@@ -240,7 +240,7 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.AttackUtility.StrategicValue.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.SectorSupport.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.SystemPresence.Weight = 100;
+            game.Config.AI.FleetDeployment.AttackUtility.SystemPresence.Weight = 1;
             game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.CaptureViability.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
@@ -337,6 +337,10 @@ namespace Rebellion.Tests.AI.Planners
             AITestSceneBuilder.RevealPlanet(game, empire, ordinaryEnemy);
             AITestSceneBuilder.RevealPlanet(game, empire, headquarters);
             Fleet fleet = AddBattleFleet(game, staging, empire.InstanceID, "fleet");
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("assault-regiment", empire.InstanceID),
+                fleet.GetChildren<CapitalShip>().First()
+            );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIFleetAttackProposal> proposals = new AIFleetPlanner()
@@ -354,7 +358,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithFortifiedEnemyHeadquarters_PrioritizesViableSystem()
+        public void Plan_WithFortifiedEnemyHeadquarters_CanPrepareForHeadquartersAttack()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
@@ -406,7 +410,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsNotEmpty(proposals);
             Assert.IsTrue(
                 proposals.All(proposal =>
-                    proposal.TargetPlanet.InstanceID == viableEnemy.InstanceID
+                    proposal.TargetPlanet.InstanceID == headquarters.InstanceID
                 )
             );
         }
@@ -1564,7 +1568,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.ColonizationTargetUtility.Energy.Weight = 0;
-            game.Config.AI.FleetDeployment.ColonizationTargetUtility.Resources.Weight = 100;
+            game.Config.AI.FleetDeployment.ColonizationTargetUtility.Resources.Weight = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "outer-rim");
             system.SectorType = PlanetSectorType.OuterRim;
             Planet resourceWorld = AITestSceneBuilder.AddPlanet(

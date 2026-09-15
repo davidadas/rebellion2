@@ -87,6 +87,15 @@ namespace Rebellion.Tests.AI.Planners
                 BuildingType.ConstructionFacility,
                 ManufacturingType.Building
             );
+            AITestSceneBuilder.AddPlanet(
+                game,
+                planetSector,
+                "resource-expansion-world",
+                empire.InstanceID,
+                energyCapacity: 20,
+                rawResourceNodes: 4
+            );
+            empire.PendingRawMaterialFacilityIDs.Add("construction-yard");
             Building mine = AITestSceneBuilder.CreateBuildingTemplate(
                 "mine-template",
                 BuildingType.Mine
@@ -116,8 +125,10 @@ namespace Rebellion.Tests.AI.Planners
                 system,
                 "construction-world",
                 empire.InstanceID,
+                energyCapacity: 20,
                 rawResourceNodes: 2
             );
+            planet.SetPopularSupport(empire.InstanceID, 100);
             AITestSceneBuilder.AddProductionFacility(
                 game,
                 planet,
@@ -388,7 +399,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithConstructionFacilityExactlyAtMaintenanceAllocation_AddsProposal()
+        public void Plan_WithConstructionFacilityDemand_IgnoresLegacyMaintenanceAllocation()
         {
             (GameRoot game, Faction empire, Building _) = CreateConstructionFacilityBatchScene(
                 constructionFacilityCount: 2,
@@ -401,11 +412,11 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIManufactureProposal>()
                 .Single(item => item.Demand.Kind == AIDemandKind.ConstructionFacility);
 
-            Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
+            Assert.AreEqual(2, proposal.Demand.QuantityNeeded);
         }
 
         [Test]
-        public void Plan_WithConstructionFacilityOneOverMaintenanceAllocation_DoesNotAddProposal()
+        public void Plan_WithConstructionFacilityAboveLegacyAllocation_AddsProposal()
         {
             (GameRoot game, Faction empire, Building _) = CreateConstructionFacilityBatchScene(
                 constructionFacilityCount: 2,
@@ -415,7 +426,7 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIProposal> proposals = new AIProductionPlanner().Plan(context);
 
-            Assert.IsFalse(
+            Assert.IsTrue(
                 proposals
                     .OfType<AIManufactureProposal>()
                     .Any(item => item.Demand.Kind == AIDemandKind.ConstructionFacility)
@@ -1723,7 +1734,7 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
             game.Config.AI.Selection.PreferredStarfighterTypeCountPerFleet = 10;
-            game.Config.AI.Selection.TechnologyUtility.DuplicateCost.Weight = 10000;
+            game.Config.AI.Selection.TechnologyUtility.DuplicateCost.Weight = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1788,7 +1799,7 @@ namespace Rebellion.Tests.AI.Planners
                     item.Demand.Kind == AIDemandKind.FleetStarfighter && item.Destination == fleet
                 );
 
-            Assert.AreSame(alternateTemplate, proposal.Product.GetReference());
+            Assert.AreEqual(alternateTemplate.TypeID, proposal.Product.GetReference().GetTypeID());
         }
 
         [Test]
@@ -2084,6 +2095,7 @@ namespace Rebellion.Tests.AI.Planners
                 energyCapacity: energyCapacity,
                 rawResourceNodes: 2
             );
+            planet.SetPopularSupport(empire.InstanceID, 100);
             for (int index = 0; index < constructionFacilityCount; index++)
             {
                 AITestSceneBuilder.AddProductionFacility(
@@ -2122,6 +2134,7 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
             game.Config.AI.Infrastructure.ConstructionFacilityTargetClearTicks = 1;
+            game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 100;
             game.Config.AI.Infrastructure.ProductionFacilityMaintenanceAllocationPercent = 4;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "construction-system");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -2132,6 +2145,7 @@ namespace Rebellion.Tests.AI.Planners
                 energyCapacity: 40,
                 rawResourceNodes: 4
             );
+            planet.SetPopularSupport(empire.InstanceID, 100);
             for (int index = 0; index < constructionFacilityCount; index++)
             {
                 AITestSceneBuilder.AddProductionFacility(
@@ -2369,8 +2383,10 @@ namespace Rebellion.Tests.AI.Planners
                 system,
                 "construction-world",
                 empire.InstanceID,
+                energyCapacity: 20,
                 rawResourceNodes: 2
             );
+            planet.SetPopularSupport(empire.InstanceID, 100);
             AITestSceneBuilder.AddProductionFacility(
                 game,
                 planet,

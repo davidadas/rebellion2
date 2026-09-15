@@ -44,7 +44,8 @@ namespace Rebellion.Tests.AI.Scoring
 
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
-            Assert.AreEqual(double.PositiveInfinity, score);
+            Assert.AreEqual(1, score);
+            Assert.AreEqual(AIProposalPriority.Mandatory, proposal.Priority);
         }
 
         [Test]
@@ -58,7 +59,7 @@ namespace Rebellion.Tests.AI.Scoring
             game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.ExpectedLossRisk.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.Headquarters.Weight = 50;
+            game.Config.AI.FleetDeployment.AttackUtility.Headquarters.Weight = 1;
             PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet owned = AITestSceneBuilder.AddPlanet(
                 game,
@@ -119,7 +120,7 @@ namespace Rebellion.Tests.AI.Scoring
             game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.ExpectedLossRisk.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.OrbitalAdvantage.Weight = 250;
+            game.Config.AI.FleetDeployment.AttackUtility.OrbitalAdvantage.Weight = 1;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 125;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
@@ -142,10 +143,8 @@ namespace Rebellion.Tests.AI.Scoring
 
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
-            Assert.AreEqual(
-                game.Config.AI.FleetDeployment.AttackUtility.OrbitalAdvantage.Weight,
-                score
-            );
+            Assert.Greater(score, 0);
+            Assert.LessOrEqual(score, 1);
         }
 
         [Test]
@@ -162,7 +161,7 @@ namespace Rebellion.Tests.AI.Scoring
             config.AttackUtility.ExpectedLossRisk.Weight = 0;
             config.AttackUtility.OpportunityCost.Weight = 0;
             config.AttackUtility.OrbitalAdvantage.Weight = 0;
-            config.AttackUtility.ExposedBombardment.Weight = 500;
+            config.AttackUtility.ExposedBombardment.Weight = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
@@ -192,7 +191,8 @@ namespace Rebellion.Tests.AI.Scoring
                 )
             );
 
-            Assert.AreEqual(config.AttackUtility.ExposedBombardment.Weight, score);
+            Assert.Greater(score, 0);
+            Assert.LessOrEqual(score, 1);
             Assert.GreaterOrEqual(scorer.GetNewAttackScoreUpperBound(context, target), score);
         }
 
@@ -230,7 +230,7 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;
-            config.AttackUtility.StrategicValue.Weight = 100;
+            config.AttackUtility.StrategicValue.Weight = 1;
             config.AttackUtility.SectorSupport.Weight = 0;
             config.AttackUtility.SystemPresence.Weight = 0;
             config.AttackUtility.Readiness.Weight = 0;
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.AI.Scoring
             config.AttackUtility.TravelEfficiency.Weight = 0;
             config.AttackUtility.ExpectedLossRisk.Weight = 0;
             config.AttackUtility.OpportunityCost.Weight = 0;
-            config.AttackUtility.IntelAgeRisk.Weight = 4;
+            config.AttackUtility.IntelAgeRisk.Weight = 1;
             config.AttackUtility.OrbitalAdvantage.Weight = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
@@ -286,7 +286,7 @@ namespace Rebellion.Tests.AI.Scoring
                 )
             );
 
-            Assert.AreEqual(2, freshScore - olderScore);
+            Assert.Greater(freshScore, olderScore);
         }
 
         [Test]
@@ -298,8 +298,8 @@ namespace Rebellion.Tests.AI.Scoring
             game.Config.AI.FleetDeployment.AttackUtility.CaptureViability.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.ExpectedLossRisk.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 100;
-            game.Config.AI.FleetDeployment.AttackUtility.ExistingOrder.Weight = 25;
+            game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 1;
+            game.Config.AI.FleetDeployment.AttackUtility.ExistingOrder.Weight = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
@@ -323,23 +323,21 @@ namespace Rebellion.Tests.AI.Scoring
 
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
-            Assert.AreEqual(
-                game.Config.AI.FleetDeployment.AttackUtility.ExistingOrder.Weight,
-                score
-            );
+            Assert.Greater(score, 0);
+            Assert.LessOrEqual(score, 1);
         }
 
         [Test]
         public void Score_AttackProposalWithSplitLocalDefense_AppliesOpportunityCost()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            game.Config.AI.FleetDeployment.AttackUtility.StrategicValue.Weight = 100;
+            game.Config.AI.FleetDeployment.AttackUtility.StrategicValue.Weight = 1;
             game.Config.AI.FleetDeployment.AttackUtility.SystemPresence.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.CaptureViability.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.ExpectedLossRisk.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 100;
+            game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 1;
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
@@ -363,7 +361,8 @@ namespace Rebellion.Tests.AI.Scoring
 
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
-            Assert.AreEqual(60, score);
+            Assert.Greater(score, 0);
+            Assert.Less(score, 1);
         }
 
         [Test]
@@ -371,7 +370,7 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.AttackUtility.StrategicValue.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 100;
+            game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 1;
             game.Config.AI.FleetDeployment.AttackUtility.CaptureViability.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.ExpectedLossRisk.Weight = 0;
@@ -432,7 +431,7 @@ namespace Rebellion.Tests.AI.Scoring
             config.AttackUtility.StrategicValue.Weight = 0;
             config.AttackUtility.SectorSupport.Weight = 0;
             config.AttackUtility.SystemPresence.Weight = 0;
-            config.AttackUtility.Readiness.Weight = 100;
+            config.AttackUtility.Readiness.Weight = 1;
             config.AttackUtility.Ready.Weight = 0;
             config.AttackUtility.CaptureViability.Weight = 0;
             config.AttackUtility.TravelEfficiency.Weight = 0;
@@ -471,7 +470,7 @@ namespace Rebellion.Tests.AI.Scoring
             config.AttackUtility.StrategicValue.Weight = 0;
             config.AttackUtility.SectorSupport.Weight = 0;
             config.AttackUtility.SystemPresence.Weight = 0;
-            config.AttackUtility.Readiness.Weight = 100;
+            config.AttackUtility.Readiness.Weight = 1;
             config.AttackReadinessFloorWeight = 0;
             config.AttackUtility.CaptureViability.Weight = 0;
             config.AttackUtility.TravelEfficiency.Weight = 0;
@@ -496,10 +495,10 @@ namespace Rebellion.Tests.AI.Scoring
 
             config.AttackUtility.Ready.Weight = 0;
             double unbonusedScore = scorer.Score(context, proposal);
-            config.AttackUtility.Ready.Weight = 300;
+            config.AttackUtility.Ready.Weight = 1;
             double bonusedScore = scorer.Score(context, proposal);
 
-            Assert.AreEqual(300, bonusedScore - unbonusedScore);
+            Assert.Greater(bonusedScore, unbonusedScore);
         }
 
         [Test]
@@ -507,7 +506,7 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.AttackUtility.StrategicValue.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 100;
+            game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 1;
             game.Config.AI.FleetDeployment.AttackUtility.CaptureViability.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.ExpectedLossRisk.Weight = 0;
@@ -587,7 +586,7 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.AttackUtility.StrategicValue.Weight = 0;
-            game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 100;
+            game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 1;
             game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 0;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
@@ -699,10 +698,10 @@ namespace Rebellion.Tests.AI.Scoring
         public void Score_ColonizationProposalWithLoadedRegiment_AddsReadinessBonus()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.FleetDeployment.ColonizationUtility.Base.Weight = 10;
+            game.Config.AI.FleetDeployment.ColonizationUtility.Base.Weight = 1;
             game.Config.AI.FleetDeployment.ColonizationUtility.StrategicValue.Weight = 0;
             game.Config.AI.FleetDeployment.ColonizationUtility.TravelEfficiency.Weight = 0;
-            game.Config.AI.FleetDeployment.ColonizationUtility.Ready.Weight = 30;
+            game.Config.AI.FleetDeployment.ColonizationUtility.Ready.Weight = 1;
             game.Config.AI.FleetDeployment.ColonizationUtility.OpportunityCost.Weight = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
@@ -727,20 +726,19 @@ namespace Rebellion.Tests.AI.Scoring
             game.AttachNode(AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID), ship);
             double loadedScore = scorer.Score(context, proposal);
 
-            Assert.AreEqual(10, unloadedScore);
-            Assert.AreEqual(40, loadedScore);
+            Assert.Greater(loadedScore, unloadedScore);
         }
 
         [Test]
         public void Score_ExistingColonizationOrderOnColonizationFleet_AddsContinuationBonus()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.FleetDeployment.ColonizationUtility.Base.Weight = 10;
+            game.Config.AI.FleetDeployment.ColonizationUtility.Base.Weight = 1;
             game.Config.AI.FleetDeployment.ColonizationUtility.StrategicValue.Weight = 0;
             game.Config.AI.FleetDeployment.ColonizationUtility.TravelEfficiency.Weight = 0;
             game.Config.AI.FleetDeployment.ColonizationUtility.Ready.Weight = 0;
             game.Config.AI.FleetDeployment.ColonizationUtility.OpportunityCost.Weight = 0;
-            game.Config.AI.FleetDeployment.ColonizationUtility.ExistingOrder.Weight = 20;
+            game.Config.AI.FleetDeployment.ColonizationUtility.ExistingOrder.Weight = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
@@ -766,14 +764,14 @@ namespace Rebellion.Tests.AI.Scoring
 
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
-            Assert.AreEqual(30, score);
+            Assert.AreEqual(1, score);
         }
 
         [Test]
         public void Score_FleetDefenseProposal_ReturnsConfiguredScore()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.FleetDeployment.DefenseUtility.Base.Weight = 700;
+            game.Config.AI.FleetDeployment.DefenseUtility.Base.Weight = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
                 game,
@@ -800,7 +798,8 @@ namespace Rebellion.Tests.AI.Scoring
                 new AIFleetDefenseProposal(fleet, headquarters)
             );
 
-            Assert.AreEqual(game.Config.AI.FleetDeployment.DefenseUtility.Base.Weight, score);
+            Assert.Greater(score, 0);
+            Assert.LessOrEqual(score, 1);
         }
 
         [Test]
@@ -808,7 +807,7 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
-            game.Config.AI.FleetDeployment.DefenseUtility.Base.Weight = 700;
+            game.Config.AI.FleetDeployment.DefenseUtility.Base.Weight = 1;
             game.Config.AI.FleetDeployment.AttackUtility.Readiness.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.TravelEfficiency.Weight = 0;
             game.Config.AI.FleetDeployment.AttackUtility.OpportunityCost.Weight = 0;

@@ -13,6 +13,8 @@ namespace Rebellion.AI.Proposals
 
         public Fleet Fleet { get; }
 
+        internal override AIProposalPriority Priority => AIProposalPriority.Mandatory;
+
         /// <summary>
         /// Creates a proposal for the supplied fleet and current order.
         /// </summary>

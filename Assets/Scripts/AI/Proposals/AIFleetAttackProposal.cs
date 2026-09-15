@@ -12,6 +12,11 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIFleetAttackProposal : AIProposal
     {
+        internal override AIProposalPriority Priority =>
+            Status == FleetOrderStatus.Returning
+                ? AIProposalPriority.Mandatory
+                : AIProposalPriority.Optional;
+
         public Fleet Fleet { get; }
 
         public FleetOrderType OrderType { get; }

@@ -140,12 +140,12 @@ namespace Rebellion.Tests.AI.Director
                 rawResourceNodes: 5
             );
             game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 1;
-            game.Config.AI.MissionPlanning.Utility.Diplomacy.ResourceNode.Weight = 60;
+            game.Config.AI.MissionPlanning.Utility.Diplomacy.ResourceNode.Weight = 1;
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
             double value = assessment.GetDiplomacyTargetStrategicValue(target);
 
-            Assert.AreEqual(20, value);
+            Assert.AreEqual(2.0 / 9, value, 0.000001);
         }
 
         [Test]

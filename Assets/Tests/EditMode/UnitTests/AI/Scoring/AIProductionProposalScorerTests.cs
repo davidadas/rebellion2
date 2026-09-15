@@ -16,10 +16,48 @@ namespace Rebellion.Tests.AI.Scoring
     public class AIProductionProposalScorerTests
     {
         [Test]
+        public void Score_WithDifferentDemandPressure_PreservesPressureDifference()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.DemandUtility.Weight = 1;
+            game.Config.AI.Selection.DemandUtility.InputMaximum = 600;
+            game.Config.AI.Selection.ProductionUtility.TravelCost.Weight = 0;
+            game.Config.AI.Selection.ProductionUtility.HeadroomRisk.Weight = 0;
+            game.Config.AI.Selection.ProductionUtility.Shortfall.Weight = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "producer",
+                empire.InstanceID
+            );
+            Building buildingTemplate = AITestSceneBuilder.CreateBuildingTemplate(
+                "construction-yard",
+                BuildingType.ConstructionFacility
+            );
+            buildingTemplate.OwnerInstanceID = empire.InstanceID;
+            Technology building = new Technology(buildingTemplate);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIProductionProposalScorer scorer = new AIProductionProposalScorer();
+
+            double lowScore = scorer.Score(
+                context,
+                CreateBuildingProposal(producer, building, 100)
+            );
+            double highScore = scorer.Score(
+                context,
+                CreateBuildingProposal(producer, building, 500)
+            );
+
+            Assert.That(lowScore, Is.EqualTo(1.0 / 6).Within(0.0001));
+            Assert.That(highScore, Is.EqualTo(5.0 / 6).Within(0.0001));
+        }
+
+        [Test]
         public void Score_WithFleetReinforcement_DeductsTravelPenalty()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.ProductionUtility.TravelCost.Weight = 100;
+            game.Config.AI.Selection.ProductionUtility.TravelCost.Weight = 1;
             game.Config.AI.Selection.ProductionUtility.TravelCost.InputMaximum = 100;
             PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet nearProducer = AITestSceneBuilder.AddPlanet(
@@ -74,6 +112,27 @@ namespace Rebellion.Tests.AI.Scoring
 
             Assert.Greater(nearScore, farScore);
             Assert.Greater(farScore, 0);
+        }
+
+        private static AIManufactureProposal CreateBuildingProposal(
+            Planet producer,
+            Technology building,
+            double pressure
+        )
+        {
+            return new AIManufactureProposal(
+                new AIDemand(
+                    $"building-{pressure}",
+                    AIDemandKind.ConstructionFacility,
+                    ManufacturingType.Building,
+                    BuildingType.ConstructionFacility,
+                    producer,
+                    1,
+                    pressure
+                ),
+                producer,
+                building
+            );
         }
     }
 }

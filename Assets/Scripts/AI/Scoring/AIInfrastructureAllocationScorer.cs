@@ -28,29 +28,24 @@ namespace Rebellion.AI.Scoring
             ISet<string> assignedHubIds
         )
         {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            GameConfig.AIInfrastructureAllocationUtilityConfig utility = config.AllocationUtility;
-            double score = AIUtility.Evaluate(
-                buildingType != BuildingType.Shipyard
-                || feasibleCount >= config.ShipyardSectorHubTargetCount
-                    ? 1
-                    : 0,
-                utility.HubCapacity
-            );
-            score += AIUtility.EvaluateRaw(
+            GameConfig.AIInfrastructureAllocationUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .Infrastructure
+                .AllocationUtility;
+            AIUtilityScore score = new AIUtilityScore();
+            score.AddRaw(
                 planet.GetTotalBuildingTypeCount(buildingType),
                 utility.ExistingFacilities
             );
-            score += AIUtility.Evaluate(
+            score.Add(
                 assignedHubIds?.Contains(planet.InstanceID) == true ? 0 : 1,
                 utility.UnassignedHub
             );
-            score += AIUtility.EvaluateRaw(feasibleCount, utility.FeasibleCapacity);
-            score += AIUtility.EvaluateRaw(
-                context.Assessment.GetPlanetValue(planet),
-                utility.StrategicValue
-            );
-            return score;
+            score.AddRaw(feasibleCount, utility.FeasibleCapacity);
+            score.AddRaw(context.Assessment.GetPlanetValue(planet), utility.StrategicValue);
+            return score.Value;
         }
     }
 }

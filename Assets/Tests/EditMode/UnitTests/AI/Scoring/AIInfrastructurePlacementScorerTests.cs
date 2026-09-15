@@ -38,7 +38,7 @@ namespace Rebellion.Tests.AI.Scoring
                 ManufacturingType.Ship
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            context.Game.Config.AI.Infrastructure.PlacementUtility.SystemCoverage.Weight = 1000;
+            context.Game.Config.AI.Infrastructure.PlacementUtility.SystemCoverage.Weight = 1;
 
             Planet selected = new AIInfrastructurePlacementScorer(context).SelectDestination(
                 new[] { existingHub, uncoveredPlanet },

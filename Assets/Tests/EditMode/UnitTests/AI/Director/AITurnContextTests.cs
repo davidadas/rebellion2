@@ -201,11 +201,10 @@ namespace Rebellion.Tests.AI.Director
                 .AI
                 .Infrastructure
                 .AllocationUtility;
-            utility.HubCapacity.Weight = 0;
             utility.ExistingFacilities.Weight = 0;
             utility.UnassignedHub.Weight = 0;
             utility.FeasibleCapacity.Weight = 0;
-            utility.StrategicValue.Weight = 100;
+            utility.StrategicValue.Weight = 1;
             game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 1;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet lowValue = AITestSceneBuilder.AddPlanet(

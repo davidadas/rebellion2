@@ -88,6 +88,50 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
+        /// Converts a normalized utility contribution to percentage-point demand pressure.
+        /// </summary>
+        /// <param name="input">The normalized consideration input.</param>
+        /// <param name="consideration">The response curve and relative pressure weight.</param>
+        /// <returns>A demand-pressure contribution from zero through 100.</returns>
+        public static double EvaluatePressure(
+            double input,
+            GameConfig.AIConsiderationConfig consideration
+        ) => Evaluate(input, consideration) * 100;
+
+        /// <summary>
+        /// Normalizes a raw value and converts its utility to percentage-point demand pressure.
+        /// </summary>
+        /// <param name="value">The raw consideration value.</param>
+        /// <param name="consideration">The input range, curve, and relative pressure weight.</param>
+        /// <returns>A demand-pressure contribution from zero through 100.</returns>
+        public static double EvaluateRawPressure(
+            double value,
+            GameConfig.AIConsiderationConfig consideration
+        ) => EvaluateRaw(value, consideration) * 100;
+
+        /// <summary>
+        /// Converts centered utility to signed percentage-point demand pressure.
+        /// </summary>
+        /// <param name="input">The normalized consideration input.</param>
+        /// <param name="consideration">The response curve and relative pressure range.</param>
+        /// <returns>Demand pressure from negative 50 through positive 50.</returns>
+        public static double EvaluateCenteredPressure(
+            double input,
+            GameConfig.AIConsiderationConfig consideration
+        ) => EvaluateCentered(input, consideration) * 100;
+
+        /// <summary>
+        /// Converts utility to a whole percentage-point demand-pressure contribution.
+        /// </summary>
+        /// <param name="input">The normalized consideration input.</param>
+        /// <param name="consideration">The response curve and relative pressure weight.</param>
+        /// <returns>A whole demand-pressure contribution from zero through 100.</returns>
+        public static double EvaluateDiscretePressure(
+            double input,
+            GameConfig.AIConsiderationConfig consideration
+        ) => Math.Truncate(EvaluatePressure(input, consideration));
+
+        /// <summary>
         /// Evaluates a normalized input through a response curve.
         /// </summary>
         /// <param name="input">The normalized curve input.</param>

@@ -27,18 +27,19 @@ namespace Rebellion.AI.Scoring
         {
             GameConfig.AIFleetProductionAllocationUtilityConfig utility = GetUtility(context);
             AIAssessment assessment = context.Assessment;
-            return AIUtility.Evaluate(target != null ? 1 : 0, utility.AttackTarget)
-                + AIUtility.Evaluate(readiness, utility.AttackReadiness)
-                + AIUtility.EvaluateRaw(
-                    assessment.CountCurrentAttackRequirementsMet(fleet, target),
-                    utility.AttackRequirements
-                )
-                + AIUtility.Evaluate(
-                    assessment.GetOwnedSystemPresenceRatio(assessment.GetPlanetSystemId(target)),
-                    utility.SystemPresence
-                )
-                + AIUtility.Evaluate(target?.IsHeadquarters == true ? 1 : 0, utility.Headquarters)
-                + AIUtility.EvaluateRaw(assessment.GetPlanetValue(target), utility.TargetValue);
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(readiness, utility.AttackReadiness);
+            score.AddRaw(
+                assessment.CountCurrentAttackRequirementsMet(fleet, target),
+                utility.AttackRequirements
+            );
+            score.Add(
+                assessment.GetOwnedSystemPresenceRatio(assessment.GetPlanetSystemId(target)),
+                utility.SystemPresence
+            );
+            score.Add(target.IsHeadquarters ? 1 : 0, utility.Headquarters);
+            score.AddRaw(assessment.GetPlanetValue(target), utility.TargetValue);
+            return score.Value;
         }
 
         /// <summary>
@@ -50,8 +51,10 @@ namespace Rebellion.AI.Scoring
         public static double ScoreColonization(AITurnContext context, Fleet fleet)
         {
             GameConfig.AIFleetProductionAllocationUtilityConfig utility = GetUtility(context);
-            return AIUtility.EvaluateRaw(fleet.GetCurrentRegimentCount(), utility.ColonyRegiments)
-                + AIUtility.EvaluateRaw(fleet.GetRegimentCapacity(), utility.ColonyCapacity);
+            AIUtilityScore score = new AIUtilityScore();
+            score.AddRaw(fleet.GetCurrentRegimentCount(), utility.ColonyRegiments);
+            score.AddRaw(fleet.GetRegimentCapacity(), utility.ColonyCapacity);
+            return score.Value;
         }
 
         /// <summary>
@@ -65,14 +68,13 @@ namespace Rebellion.AI.Scoring
             GameConfig.AIFleetProductionAllocationUtilityConfig utility = GetUtility(context);
             double combat = context.Assessment.GetProjectedFleetCombatValue(fleet);
             double capacity = fleet.GetRegimentCapacity();
-            return AIUtility.Evaluate(
-                    1 - AIUtility.Fulfillment(combat, int.MaxValue),
-                    utility.AssemblyWeakness
-                )
-                + AIUtility.Evaluate(
-                    1 - AIUtility.Fulfillment(capacity, int.MaxValue),
-                    utility.AssemblyCapacityNeed
-                );
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(1 - AIUtility.Fulfillment(combat, int.MaxValue), utility.AssemblyWeakness);
+            score.Add(
+                1 - AIUtility.Fulfillment(capacity, int.MaxValue),
+                utility.AssemblyCapacityNeed
+            );
+            return score.Value;
         }
 
         private static GameConfig.AIFleetProductionAllocationUtilityConfig GetUtility(

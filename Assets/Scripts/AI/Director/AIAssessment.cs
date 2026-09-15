@@ -472,8 +472,18 @@ namespace Rebellion.AI.Director
         /// <returns>The diplomacy target's strategic value.</returns>
         public double GetDiplomacyTargetStrategicValue(Planet planet)
         {
+            return GetDiplomacyTargetStrategicUtility(planet).Value;
+        }
+
+        /// <summary>
+        /// Returns the weighted considerations describing a diplomacy target's strategic value.
+        /// </summary>
+        /// <param name="planet">The prospective diplomacy target.</param>
+        /// <returns>The accumulated diplomacy utility.</returns>
+        internal AIUtilityScore GetDiplomacyTargetStrategicUtility(Planet planet)
+        {
             if (planet == null || _context?.Game?.Config?.AI?.MissionPlanning == null)
-                return 0;
+                return new AIUtilityScore();
 
             GameConfig.AIDiplomacyUtilityConfig utility = _context
                 .Game
@@ -482,19 +492,19 @@ namespace Rebellion.AI.Director
                 .MissionPlanning
                 .Utility
                 .Diplomacy;
-            double value =
-                AIUtility.EvaluateRaw(
-                    planet.GetProductionFacilityCount(ManufacturingType.Building),
-                    utility.ConstructionFacility
-                )
-                + AIUtility.EvaluateRaw(
-                    planet.GetProductionFacilityCount(ManufacturingType.Ship),
-                    utility.Shipyard
-                )
-                + AIUtility.EvaluateRaw(
-                    planet.GetProductionFacilityCount(ManufacturingType.Troop),
-                    utility.TrainingFacility
-                );
+            AIUtilityScore score = new AIUtilityScore();
+            score.AddRaw(
+                planet.GetProductionFacilityCount(ManufacturingType.Building),
+                utility.ConstructionFacility
+            );
+            score.AddRaw(
+                planet.GetProductionFacilityCount(ManufacturingType.Ship),
+                utility.Shipyard
+            );
+            score.AddRaw(
+                planet.GetProductionFacilityCount(ManufacturingType.Troop),
+                utility.TrainingFacility
+            );
 
             int maintenanceReserve = _context
                 .Game
@@ -503,9 +513,9 @@ namespace Rebellion.AI.Director
                 .Selection
                 .MinimumMaintenanceHeadroomAfterProduction;
             if (ProjectedMaintenanceHeadroom < maintenanceReserve)
-                value += AIUtility.EvaluateRaw(planet.GetRawResourceNodes(), utility.ResourceNode);
+                score.AddRaw(planet.GetRawResourceNodes(), utility.ResourceNode);
 
-            return value;
+            return score;
         }
 
         /// <summary>
