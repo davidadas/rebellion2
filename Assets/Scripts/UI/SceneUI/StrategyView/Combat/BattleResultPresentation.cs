@@ -719,21 +719,5 @@ internal abstract class BattleResultPresentation
         {
             return side == CombatSide.Attacker ? report.AttackerOutcome : report.DefenderOutcome;
         }
-
-        /// <summary>
-        /// Builds a fallback title for older reports that do not store resolved text.
-        /// </summary>
-        /// <param name="type">The type.</param>
-        /// <param name="planetName">The planet name.</param>
-        /// <returns>The requested default title.</returns>
-        private static string GetDefaultTitle(CombatReportType type, string planetName)
-        {
-            return type switch
-            {
-                CombatReportType.Bombardment => $"Orbital bombardment of {planetName}",
-                CombatReportType.PlanetaryAssault => $"Assault on {planetName}",
-                _ => $"Battle at {planetName}",
-            };
-        }
     }
 }
