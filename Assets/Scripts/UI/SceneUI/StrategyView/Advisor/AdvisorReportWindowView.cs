@@ -250,6 +250,7 @@ public sealed class AdvisorReportWindowView : MonoBehaviour, IContentInitializab
     /// <summary>
     /// Verifies the complete authored hierarchy and row templates.
     /// </summary>
+    /// <param name="verifyContent">Whether verify content.</param>
     private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)

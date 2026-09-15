@@ -1,0 +1,208 @@
+using System.Collections.Generic;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Galaxy;
+using Rebellion.Generation;
+
+namespace Rebellion.Tests.Generation
+{
+    [TestFixture]
+    public class FogOfWarSeederTests
+    {
+        /// <summary>
+        /// Verifies seed foreign core planet captures resource snapshot for non owner.
+        /// </summary>
+        [Test]
+        public void Seed_ForeignCorePlanet_CapturesResourceSnapshotForNonOwner()
+        {
+            var (game, coreSector, empirePlanet, _, alliance) = BuildScene();
+
+            new FogOfWarSeeder().Seed(Wrap(game));
+
+            Assert.IsTrue(
+                alliance.Fog.Snapshots.ContainsKey(coreSector.InstanceID),
+                "Alliance should have a snapshot of the Empire-owned core sector."
+            );
+            PlanetSnapshot snapshot = alliance.Fog.Snapshots[coreSector.InstanceID].Planets[
+                empirePlanet.InstanceID
+            ];
+            Assert.AreEqual(empirePlanet.EnergyCapacity, snapshot.EnergyCapacity);
+            Assert.AreEqual(empirePlanet.NumRawResourceNodes, snapshot.NumRawResourceNodes);
+        }
+
+        /// <summary>
+        /// Verifies seed owned core planet no snapshot for owner.
+        /// </summary>
+        [Test]
+        public void Seed_OwnedCorePlanet_NoSnapshotForOwner()
+        {
+            var (game, coreSector, _, empire, _) = BuildScene();
+
+            new FogOfWarSeeder().Seed(Wrap(game));
+
+            Assert.IsFalse(
+                empire.Fog.Snapshots.ContainsKey(coreSector.InstanceID),
+                "Owner should not have a snapshot of their own planet from the seeder."
+            );
+        }
+
+        /// <summary>
+        /// Verifies seed rim planet without override no snapshot for other factions.
+        /// </summary>
+        [Test]
+        public void Seed_RimPlanetWithoutOverride_NoSnapshotForOtherFactions()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary() };
+            game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
+            Faction empire = new Faction { InstanceID = "FNEMP1" };
+            Faction alliance = new Faction { InstanceID = "FNALL1" };
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
+
+            PlanetSector rim = new PlanetSector
+            {
+                InstanceID = "rim_sector",
+                SectorType = PlanetSectorType.OuterRim,
+            };
+            rim.AddChild(
+                new Planet
+                {
+                    InstanceID = "HOTH",
+                    OwnerInstanceID = "FNALL1",
+                    IsColonized = true,
+                }
+            );
+            game.Galaxy = new GalaxyMap();
+            game.Galaxy.AddChild(rim);
+
+            new FogOfWarSeeder().Seed(Wrap(game));
+
+            Assert.IsFalse(
+                empire.Fog.Snapshots.ContainsKey(rim.InstanceID),
+                "Foreign rim planets without an explicit override should remain hidden."
+            );
+        }
+
+        /// <summary>
+        /// Verifies seed visibility override captures snapshot for listed faction.
+        /// </summary>
+        [Test]
+        public void Seed_VisibilityOverride_CapturesSnapshotForListedFaction()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary() };
+            game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
+            Faction empire = new Faction { InstanceID = "FNEMP1" };
+            Faction alliance = new Faction { InstanceID = "FNALL1" };
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
+
+            PlanetSector rim = new PlanetSector
+            {
+                InstanceID = "rim_sector",
+                SectorType = PlanetSectorType.OuterRim,
+            };
+            rim.AddChild(
+                new Planet
+                {
+                    InstanceID = "YAVIN",
+                    TypeID = "PLSUM06",
+                    OwnerInstanceID = "FNALL1",
+                    IsColonized = true,
+                }
+            );
+            game.Galaxy = new GalaxyMap();
+            game.Galaxy.AddChild(rim);
+
+            GameGenerationConfig config = new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>
+                    {
+                        new FactionSetup
+                        {
+                            FactionID = "FNALL1",
+                            StartingPlanets = new List<StartingPlanet>
+                            {
+                                new StartingPlanet
+                                {
+                                    PlanetTypeID = "PLSUM06",
+                                    VisibleToFactionIDs = new List<string> { "FNEMP1" },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            new FogOfWarSeeder().Seed(Wrap(game, config));
+
+            Assert.IsTrue(
+                empire.Fog.Snapshots.ContainsKey(rim.InstanceID),
+                "Empire should see Yavin because the override grants visibility."
+            );
+            Assert.IsTrue(
+                rim.GetChildren<Planet>()[0].WasVisitedBy("FNEMP1"),
+                "Visibility overrides should mark the planet as known for the listed faction."
+            );
+        }
+
+        /// <summary>
+        /// Builds scene.
+        /// </summary>
+        /// <returns>The constructed scene.</returns>
+        private static (
+            GameRoot game,
+            PlanetSector coreSector,
+            Planet empirePlanet,
+            Faction empire,
+            Faction alliance
+        ) BuildScene()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary() };
+            game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
+
+            Faction empire = new Faction { InstanceID = "FNEMP1" };
+            Faction alliance = new Faction { InstanceID = "FNALL1" };
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
+
+            PlanetSector coreSector = new PlanetSector
+            {
+                InstanceID = "core_sector",
+                SectorType = PlanetSectorType.Core,
+            };
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "CORUSCANT",
+                TypeID = "PLSEW05",
+                OwnerInstanceID = "FNEMP1",
+                IsColonized = true,
+                EnergyCapacity = 9,
+                NumRawResourceNodes = 6,
+            };
+            coreSector.AddChild(empirePlanet);
+            game.Galaxy = new GalaxyMap();
+            game.Galaxy.AddChild(coreSector);
+
+            return (game, coreSector, empirePlanet, empire, alliance);
+        }
+
+        /// <summary>
+        /// Executes wrap.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="config">The config.</param>
+        /// <returns>The result of wrap.</returns>
+        private static GenerationContext Wrap(GameRoot game, GameGenerationConfig config = null)
+        {
+            GenerationContext ctx = GenerationContextFactory.CreateDefault();
+            ctx.Game = game;
+            if (config != null)
+                ctx.Config = config;
+            return ctx;
+        }
+    }
+}

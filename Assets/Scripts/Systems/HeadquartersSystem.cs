@@ -20,6 +20,11 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
         private readonly MovementSystem _movement;
 
+        /// <summary>
+        /// Initializes a new instance of the HeadquartersSystem class.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="movement">The movement.</param>
         public HeadquartersSystem(GameRoot game, MovementSystem movement)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -181,6 +186,7 @@ namespace Rebellion.Systems
         /// The faction's headquarters location remains configured so recapture can restore it.
         /// </summary>
         /// <param name="result">The planetary ownership change to apply.</param>
+        /// <returns>The result of update fixed headquarters marker.</returns>
         private HeadquartersCapturedResult UpdateFixedHeadquartersMarker(
             PlanetOwnershipChangedResult result
         )

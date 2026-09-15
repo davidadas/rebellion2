@@ -369,6 +369,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
                 new StrategyHudButtonViewData(
                     theme.Action,
                     ToRequiredRect(theme.HitArea),
+                    ResolveTexture(theme.UpImagePath),
                     ResolveTexture(theme.PressedImagePath),
                     ToRequiredRect(theme.PressedImageLayout ?? theme.HitArea)
                 )

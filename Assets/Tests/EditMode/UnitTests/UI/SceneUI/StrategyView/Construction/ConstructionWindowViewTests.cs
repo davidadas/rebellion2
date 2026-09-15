@@ -1,0 +1,503 @@
+using System;
+using System.Linq;
+using NUnit.Framework;
+using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
+{
+    [TestFixture]
+    public class ConstructionWindowViewTests
+    {
+        private const string _prefabPath =
+            "Assets/Prefabs/UI/StrategyView/ConstructionWindow.prefab";
+
+        private Texture2D _texture;
+        private ConstructionWindowView _view;
+        private GameObject _viewObject;
+
+        /// <summary>
+        /// Sets up.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            _viewObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            _view = _viewObject.GetComponent<ConstructionWindowView>();
+            _texture = new Texture2D(90, 45);
+        }
+
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            UnityEngine.Object.DestroyImmediate(_texture);
+            UnityEngine.Object.DestroyImmediate(_viewObject);
+        }
+
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
+        [Test]
+        public void Render_NullData_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => _view.Render(null));
+        }
+
+        /// <summary>
+        /// Verifies render selected item and open dropdown applies complete presentation.
+        /// </summary>
+        [Test]
+        public void Render_SelectedItemAndOpenDropdown_AppliesCompletePresentation()
+        {
+            ConstructionWindowRenderData data = CreateRenderData(
+                new[]
+                {
+                    new StrategyDropdownItemRenderData(_texture, "First", Color.gray),
+                    new StrategyDropdownItemRenderData(_texture, "Second", Color.white),
+                },
+                true,
+                true
+            );
+
+            _view.Render(data);
+
+            RectInt windowRect = UILayout.GetSourceRect(_view.transform as RectTransform);
+            Assert.AreEqual(17, windowRect.x);
+            Assert.AreEqual(29, windowRect.y);
+            Assert.AreSame(_texture, FindComponent<RawImage>("SelectedItemImage").texture);
+            Assert.AreEqual(
+                "Selected",
+                FindComponent<TextMeshProUGUI>("SelectedNameTextField").text
+            );
+            Assert.AreEqual("4", FindComponent<TMP_InputField>("BuildCountInputField").text);
+            Assert.AreEqual(
+                "120",
+                FindComponent<TextMeshProUGUI>("ConstructionCostTextField").text
+            );
+            Assert.AreEqual("16", FindComponent<TextMeshProUGUI>("MaintenanceCostTextField").text);
+            Assert.AreEqual(
+                "9 Days",
+                FindComponent<TextMeshProUGUI>("CompletionValueTextField").text
+            );
+            Assert.AreEqual(
+                "12 Days",
+                FindComponent<TextMeshProUGUI>("DeploymentValueTextField").text
+            );
+            Assert.IsTrue(FindObject("Dropdown").activeSelf);
+            Assert.IsTrue(FindComponent<Button>("OkButtonImage").interactable);
+            StrategyDropdownItemView[] rows = _viewObject
+                .GetComponentsInChildren<StrategyDropdownItemView>(true)
+                .Where(row =>
+                    row.name.StartsWith("DropdownItemRow", StringComparison.Ordinal)
+                    && row.name != "DropdownItemRowTemplate"
+                )
+                .OrderBy(row => row.Index)
+                .ToArray();
+            Assert.AreEqual(2, rows.Length);
+            Assert.AreEqual("First", FindRowText(rows[0]).text);
+            Assert.AreEqual("Second", FindRowText(rows[1]).text);
+            Assert.IsTrue(rows[0].gameObject.activeSelf);
+            Assert.IsTrue(rows[1].gameObject.activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies render selection artwork and dropdown use original source geometry.
+        /// </summary>
+        [Test]
+        public void Render_SelectionArtworkAndDropdown_UseOriginalSourceGeometry()
+        {
+            _view.Render(
+                CreateRenderData(
+                    new[] { new StrategyDropdownItemRenderData(_texture, "First", Color.white) },
+                    true,
+                    true
+                )
+            );
+
+            RawImage selectedImage = FindComponent<RawImage>("SelectedItemImage");
+            RectTransform dropdown = FindObject("Dropdown").transform as RectTransform;
+            ScrollAreaView scrollArea = _viewObject.GetComponentInChildren<ScrollAreaView>(true);
+            StrategyDropdownItemView row = _viewObject
+                .GetComponentsInChildren<StrategyDropdownItemView>(true)
+                .Single(item => item.name == "DropdownItemRow0");
+            RawImage rowImage = row.GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "ItemImage");
+
+            Assert.AreEqual(
+                new RectInt(42, 28, 122, 50),
+                UILayout.GetSourceRect(selectedImage.rectTransform)
+            );
+            Assert.AreEqual(new RectInt(6, 85, 195, 130), UILayout.GetSourceRect(dropdown));
+            Assert.AreEqual(
+                new RectInt(2, 2, 191, 126),
+                UILayout.GetSourceRect(scrollArea.transform as RectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(0, 0, 195, 63),
+                UILayout.GetSourceRect(row.transform as RectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(36, 6, 122, 50),
+                UILayout.GetSourceRect(rowImage.rectTransform)
+            );
+        }
+
+        /// <summary>
+        /// Verifies render empty selection after open dropdown hides selection and cached rows.
+        /// </summary>
+        [Test]
+        public void Render_EmptySelectionAfterOpenDropdown_HidesSelectionAndCachedRows()
+        {
+            _view.Render(
+                CreateRenderData(
+                    new[] { new StrategyDropdownItemRenderData(_texture, "First", Color.white) },
+                    true,
+                    true
+                )
+            );
+            StrategyDropdownItemView row = _viewObject
+                .GetComponentsInChildren<StrategyDropdownItemView>(true)
+                .Single(item => item.name == "DropdownItemRow0");
+
+            _view.Render(
+                CreateRenderData(Array.Empty<StrategyDropdownItemRenderData>(), false, false)
+            );
+
+            Assert.IsFalse(FindObject("SelectedItemImage").activeSelf);
+            Assert.IsFalse(FindObject("SelectedNameTextField").activeSelf);
+            Assert.IsFalse(FindObject("BuildCountInputField").activeSelf);
+            Assert.IsFalse(FindObject("Dropdown").activeSelf);
+            Assert.IsFalse(row.gameObject.activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies render unavailable selection disables start and shows unavailable estimates.
+        /// </summary>
+        [Test]
+        public void Render_UnavailableSelection_DisablesStartAndShowsUnavailableEstimates()
+        {
+            ConstructionWindowRenderData data = new ConstructionWindowRenderData(
+                0,
+                0,
+                null,
+                _texture,
+                "Selected",
+                1,
+                "1",
+                "1",
+                "N/A",
+                "N/A",
+                false,
+                false,
+                new[] { new StrategyDropdownItemRenderData(_texture, "Selected", Color.white) }
+            );
+
+            _view.Render(data);
+
+            Assert.IsFalse(FindComponent<Button>("OkButtonImage").interactable);
+            Assert.AreEqual("N/A", FindComponent<TextMeshProUGUI>("CompletionValueTextField").text);
+            Assert.AreEqual("N/A", FindComponent<TextMeshProUGUI>("DeploymentValueTextField").text);
+        }
+
+        /// <summary>
+        /// Verifies render unchanged open dropdown preserves scroll position.
+        /// </summary>
+        [Test]
+        public void Render_UnchangedOpenDropdown_PreservesScrollPosition()
+        {
+            StrategyDropdownItemRenderData[] items = CreateDropdownItems(20, "Item");
+            ScrollAreaView scrollArea = _viewObject
+                .GetComponentsInChildren<ScrollAreaView>(true)
+                .Single();
+            _view.Render(CreateRenderData(items, true, true));
+            scrollArea.RelayScroll(
+                new PointerEventData(null) { scrollDelta = new Vector2(0f, -1f) }
+            );
+            float scrolledOffset = scrollArea.ContentRoot.anchoredPosition.y;
+
+            _view.Render(CreateRenderData(items, true, true));
+
+            Assert.Greater(scrolledOffset, 0f);
+            Assert.AreEqual(scrolledOffset, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
+        }
+
+        /// <summary>
+        /// Verifies render changed open dropdown resets scroll position.
+        /// </summary>
+        [Test]
+        public void Render_ChangedOpenDropdown_ResetsScrollPosition()
+        {
+            ScrollAreaView scrollArea = _viewObject
+                .GetComponentsInChildren<ScrollAreaView>(true)
+                .Single();
+            _view.Render(CreateRenderData(CreateDropdownItems(20, "Item"), true, true));
+            scrollArea.RelayScroll(
+                new PointerEventData(null) { scrollDelta = new Vector2(0f, -1f) }
+            );
+
+            _view.Render(CreateRenderData(CreateDropdownItems(20, "Changed"), true, true));
+
+            Assert.AreEqual(0f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
+        }
+
+        /// <summary>
+        /// Verifies build count input text rect is inset within field.
+        /// </summary>
+        [Test]
+        public void BuildCountInput_TextRectIsInsetWithinField()
+        {
+            TMP_InputField input = FindComponent<TMP_InputField>("BuildCountInputField");
+
+            Assert.AreEqual(-196f, ((RectTransform)input.transform).anchoredPosition.y);
+            Assert.AreEqual(17f, ((RectTransform)input.transform).sizeDelta.y);
+            Assert.AreNotSame(input.transform, input.textViewport);
+            Assert.AreEqual(-1f, input.textViewport.anchoredPosition.y);
+            Assert.AreEqual(15f, input.textViewport.sizeDelta.y);
+            Assert.AreEqual(TextAlignmentOptions.Left, input.textComponent.alignment);
+            Assert.AreEqual(0f, input.textComponent.rectTransform.anchoredPosition.y);
+            Assert.AreEqual(15f, input.textComponent.rectTransform.sizeDelta.y);
+        }
+
+        /// <summary>
+        /// Verifies request methods subscribed handlers emit semantic requests.
+        /// </summary>
+        [Test]
+        public void RequestMethods_SubscribedHandlers_EmitSemanticRequests()
+        {
+            int cancelCount = 0;
+            string buildCount = null;
+            int decrementCount = 0;
+            int incrementCount = 0;
+            int infoCount = 0;
+            int startCount = 0;
+            int toggleCount = 0;
+            _view.CancelRequested += _ => cancelCount++;
+            _view.BuildCountSubmitted += (_, value) => buildCount = value;
+            _view.DecrementRequested += _ => decrementCount++;
+            _view.IncrementRequested += _ => incrementCount++;
+            _view.InfoRequested += _ => infoCount++;
+            _view.StartRequested += _ => startCount++;
+            _view.ToggleDropdownRequested += _ => toggleCount++;
+
+            _view.RequestCancel();
+            _view.RequestBuildCount("12");
+            _view.RequestDecrement();
+            _view.RequestIncrement();
+            _view.RequestInfo();
+            _view.RequestStart();
+            _view.RequestToggleDropdown();
+
+            Assert.AreEqual(1, cancelCount);
+            Assert.AreEqual("12", buildCount);
+            Assert.AreEqual(1, decrementCount);
+            Assert.AreEqual(1, incrementCount);
+            Assert.AreEqual(1, infoCount);
+            Assert.AreEqual(1, startCount);
+            Assert.AreEqual(1, toggleCount);
+        }
+
+        /// <summary>
+        /// Verifies on pointer click open dropdown and left button requests dismissal.
+        /// </summary>
+        [Test]
+        public void OnPointerClick_OpenDropdownAndLeftButton_RequestsDismissal()
+        {
+            int dismissCount = 0;
+            _view.DismissDropdownRequested += _ => dismissCount++;
+            _view.Render(
+                CreateRenderData(
+                    new[] { new StrategyDropdownItemRenderData(_texture, "First", Color.white) },
+                    true,
+                    true
+                )
+            );
+            PointerEventData rightClick = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+            };
+            PointerEventData leftClick = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            _view.OnPointerClick(rightClick);
+            _view.OnPointerClick(leftClick);
+
+            Assert.AreEqual(1, dismissCount);
+        }
+
+        /// <summary>
+        /// Verifies on pointer click scrollbar press with open dropdown does not request dismissal.
+        /// </summary>
+        [Test]
+        public void OnPointerClick_ScrollbarPressWithOpenDropdown_DoesNotRequestDismissal()
+        {
+            int dismissCount = 0;
+            _view.DismissDropdownRequested += _ => dismissCount++;
+            _view.Render(
+                CreateRenderData(
+                    new[] { new StrategyDropdownItemRenderData(_texture, "First", Color.white) },
+                    true,
+                    true
+                )
+            );
+            Scrollbar scrollbar = _viewObject.GetComponentInChildren<Scrollbar>(true);
+            PointerEventData scrollbarRelease = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerPress = scrollbar.gameObject,
+            };
+
+            _view.OnPointerClick(scrollbarRelease);
+
+            Assert.AreEqual(0, dismissCount);
+        }
+
+        /// <summary>
+        /// Verifies get dropdown scroll content height item count scales authored row height.
+        /// </summary>
+        [Test]
+        public void GetDropdownScrollContentHeight_ItemCount_ScalesAuthoredRowHeight()
+        {
+            int oneRowHeight = _view.GetDropdownScrollContentHeight(1);
+
+            int threeRowHeight = _view.GetDropdownScrollContentHeight(3);
+
+            Assert.Greater(oneRowHeight, 0);
+            Assert.AreEqual(oneRowHeight * 3, threeRowHeight);
+        }
+
+        /// <summary>
+        /// Verifies awake then on destroy authored controls binds then unbinds and raises destroyed.
+        /// </summary>
+        [Test]
+        public void AwakeThenOnDestroy_AuthoredControls_BindsThenUnbindsAndRaisesDestroyed()
+        {
+            string buildCount = null;
+            int incrementCount = 0;
+            int itemSelectedCount = 0;
+            ConstructionWindowView destroyedView = null;
+            _view.BuildCountSubmitted += (_, value) => buildCount = value;
+            _view.IncrementRequested += _ => incrementCount++;
+            _view.ItemSelected += (_, _) => itemSelectedCount++;
+            _view.Destroyed += view => destroyedView = view;
+            TMP_InputField buildCountInput = FindComponent<TMP_InputField>("BuildCountInputField");
+            Button incrementButton = FindComponent<Button>("IncrementButtonImage");
+
+            UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
+            _view.Render(
+                CreateRenderData(
+                    new[] { new StrategyDropdownItemRenderData(_texture, "Item", Color.white) },
+                    true,
+                    true
+                )
+            );
+            StrategyDropdownItemView row = _viewObject
+                .GetComponentsInChildren<StrategyDropdownItemView>(true)
+                .Single(item => item.name == "DropdownItemRow0");
+            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+            buildCountInput.onEndEdit.Invoke("12");
+            incrementButton.onClick.Invoke();
+            UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
+            buildCountInput.onEndEdit.Invoke("17");
+            incrementButton.onClick.Invoke();
+            row.GetComponentInChildren<Button>(true).onClick.Invoke();
+
+            Assert.AreEqual("12", buildCount);
+            Assert.AreEqual(1, incrementCount);
+            Assert.AreEqual(0, itemSelectedCount);
+            Assert.AreSame(_view, destroyedView);
+        }
+
+        /// <summary>
+        /// Creates render data.
+        /// </summary>
+        /// <param name="items">The items.</param>
+        /// <param name="dropdownOpen">Whether dropdown open.</param>
+        /// <param name="canStart">Whether can start.</param>
+        /// <returns>The created render data.</returns>
+        private ConstructionWindowRenderData CreateRenderData(
+            StrategyDropdownItemRenderData[] items,
+            bool dropdownOpen,
+            bool canStart
+        )
+        {
+            return new ConstructionWindowRenderData(
+                17,
+                29,
+                _texture,
+                _texture,
+                "Selected",
+                4,
+                "120",
+                "16",
+                "9 Days",
+                "12 Days",
+                dropdownOpen,
+                canStart,
+                items
+            );
+        }
+
+        /// <summary>
+        /// Creates dropdown items.
+        /// </summary>
+        /// <param name="count">The count.</param>
+        /// <param name="prefix">The prefix.</param>
+        /// <returns>The created dropdown items.</returns>
+        private StrategyDropdownItemRenderData[] CreateDropdownItems(int count, string prefix)
+        {
+            return Enumerable
+                .Range(0, count)
+                .Select(index => new StrategyDropdownItemRenderData(
+                    _texture,
+                    $"{prefix} {index}",
+                    Color.white
+                ))
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
+        private T FindComponent<T>(string objectName)
+            where T : Component
+        {
+            return _viewObject
+                .GetComponentsInChildren<T>(true)
+                .Single(component => component.name == objectName);
+        }
+
+        /// <summary>
+        /// Finds object.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching object.</returns>
+        private GameObject FindObject(string objectName)
+        {
+            return _viewObject
+                .GetComponentsInChildren<Transform>(true)
+                .Single(item => item.name == objectName)
+                .gameObject;
+        }
+
+        /// <summary>
+        /// Finds row text.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <returns>The matching row text.</returns>
+        private static TextMeshProUGUI FindRowText(StrategyDropdownItemView row)
+        {
+            return row.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "ItemTextField");
+        }
+    }
+}

@@ -26,6 +26,8 @@ internal sealed class OptionsSettingsSession
         new Dictionary<UserTacticalOption, bool>();
     private readonly Dictionary<UserGameplayOption, bool> _snapshotGameplay =
         new Dictionary<UserGameplayOption, bool>();
+    private readonly Dictionary<UserInterfaceOption, bool> _snapshotUserInterface =
+        new Dictionary<UserInterfaceOption, bool>();
 
     private float[] _snapshotVolumes = Array.Empty<float>();
     private int _snapshotResolutionWidth;
@@ -42,6 +44,8 @@ internal sealed class OptionsSettingsSession
 
     internal UserGameplaySettings Gameplay => _userSettings.Settings.Gameplay;
 
+    internal UserInterfaceSettings UserInterface => _userSettings.Settings.UserInterface;
+
     internal UserAudioSettings Audio => _userSettings.Settings.Audio;
 
     internal string ResolutionLabel => $"{Video.ResolutionWidth} x {Video.ResolutionHeight}";
@@ -51,6 +55,10 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Creates a pending settings session over the runtime service owners.
     /// </summary>
+    /// <param name="userSettings">The user settings.</param>
+    /// <param name="displayManager">The display manager.</param>
+    /// <param name="audioManager">The audio manager.</param>
+    /// <param name="inputManager">The input manager.</param>
     internal OptionsSettingsSession(
         UserSettingsManager userSettings,
         DisplayManager displayManager,
@@ -101,6 +109,8 @@ internal sealed class OptionsSettingsSession
             Video.SetEnabled(entry.Key, entry.Value);
         foreach (KeyValuePair<UserGameplayOption, bool> entry in _snapshotGameplay)
             Gameplay.SetEnabled(entry.Key, entry.Value);
+        foreach (KeyValuePair<UserInterfaceOption, bool> entry in _snapshotUserInterface)
+            UserInterface.SetEnabled(entry.Key, entry.Value);
         Gameplay.SetAutosaveIntervalTicks(_snapshotAutosaveIntervalTicks);
         Gameplay.SetAutosavesToKeep(_snapshotAutosavesToKeep);
 
@@ -114,12 +124,14 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Restores defaults for one Options tab and applies its live effects.
     /// </summary>
+    /// <param name="tab">The tab.</param>
     internal void RestoreDefaults(OptionsMenuTab tab)
     {
         switch (tab)
         {
             case OptionsMenuTab.Gameplay:
                 Gameplay.RestoreDefaults();
+                UserInterface.RestoreDefaults();
                 break;
             case OptionsMenuTab.Graphics:
                 Video.ResolutionWidth = 0;
@@ -143,11 +155,24 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Copies the staged gameplay toggles for presentation.
     /// </summary>
+    /// <returns>The requested gameplay states.</returns>
     internal Dictionary<UserGameplayOption, bool> GetGameplayStates()
     {
         Dictionary<UserGameplayOption, bool> states = new Dictionary<UserGameplayOption, bool>();
         foreach (UserGameplayOption option in Enum.GetValues(typeof(UserGameplayOption)))
             states[option] = Gameplay.IsEnabled(option);
+        return states;
+    }
+
+    /// <summary>
+    /// Copies the staged user-interface toggles for presentation.
+    /// </summary>
+    /// <returns>The staged toggle state keyed by user-interface option.</returns>
+    internal Dictionary<UserInterfaceOption, bool> GetUserInterfaceStates()
+    {
+        Dictionary<UserInterfaceOption, bool> states = new Dictionary<UserInterfaceOption, bool>();
+        foreach (UserInterfaceOption option in Enum.GetValues(typeof(UserInterfaceOption)))
+            states[option] = UserInterface.IsEnabled(option);
         return states;
     }
 
@@ -166,6 +191,7 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Returns the five displayed audio-channel volumes in menu order.
     /// </summary>
+    /// <returns>The requested volumes.</returns>
     internal float[] GetVolumes()
     {
         return new[]
@@ -181,6 +207,7 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Toggles a tactical display option and marks the session dirty.
     /// </summary>
+    /// <param name="option">The option.</param>
     internal void ToggleTactical(UserTacticalOption option)
     {
         Video.SetEnabled(option, !Video.IsEnabled(option));
@@ -190,9 +217,20 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Toggles a gameplay option and marks the session dirty.
     /// </summary>
+    /// <param name="option">The option.</param>
     internal void ToggleGameplay(UserGameplayOption option)
     {
         Gameplay.SetEnabled(option, !Gameplay.IsEnabled(option));
+        RefreshDirtyState();
+    }
+
+    /// <summary>
+    /// Toggles a user-interface option and marks the session dirty.
+    /// </summary>
+    /// <param name="option">The user-interface option to toggle.</param>
+    internal void ToggleUserInterface(UserInterfaceOption option)
+    {
+        UserInterface.SetEnabled(option, !UserInterface.IsEnabled(option));
         RefreshDirtyState();
     }
 
@@ -219,6 +257,7 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Stages an adjacent supported resolution.
     /// </summary>
+    /// <param name="delta">The delta.</param>
     internal void StepResolution(int delta)
     {
         if (_resolutions.Count == 0)
@@ -236,6 +275,7 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Stages an adjacent fullscreen mode.
     /// </summary>
+    /// <param name="delta">The delta.</param>
     internal void StepFullScreen(int delta)
     {
         int current = Array.IndexOf(_fullScreenModes, Video.FullScreenMode);
@@ -251,6 +291,8 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Stores and immediately applies a normalized audio-channel volume.
     /// </summary>
+    /// <param name="channel">The channel.</param>
+    /// <param name="value">The value.</param>
     internal void SetVolume(int channel, float value)
     {
         if (!SetVolumeValue(channel, value))
@@ -292,6 +334,9 @@ internal sealed class OptionsSettingsSession
         _snapshotGameplay.Clear();
         foreach (UserGameplayOption option in Enum.GetValues(typeof(UserGameplayOption)))
             _snapshotGameplay[option] = Gameplay.IsEnabled(option);
+        _snapshotUserInterface.Clear();
+        foreach (UserInterfaceOption option in Enum.GetValues(typeof(UserInterfaceOption)))
+            _snapshotUserInterface[option] = UserInterface.IsEnabled(option);
     }
 
     /// <summary>
@@ -349,6 +394,18 @@ internal sealed class OptionsSettingsSession
             }
         }
 
+        foreach (UserInterfaceOption option in Enum.GetValues(typeof(UserInterfaceOption)))
+        {
+            if (
+                !_snapshotUserInterface.TryGetValue(option, out bool enabled)
+                || UserInterface.IsEnabled(option) != enabled
+            )
+            {
+                IsDirty = true;
+                return;
+            }
+        }
+
         if (
             Gameplay.AutosaveIntervalTicks != _snapshotAutosaveIntervalTicks
             || Gameplay.AutosavesToKeep != _snapshotAutosavesToKeep
@@ -377,6 +434,7 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Resolves the persisted selection against currently supported display modes.
     /// </summary>
+    /// <returns>The resolved resolution.</returns>
     private Vector2Int ResolveResolution()
     {
         return _displayManager.ResolveResolution(Video.ResolutionWidth, Video.ResolutionHeight);
@@ -397,6 +455,8 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Applies one menu-indexed audio-channel volume.
     /// </summary>
+    /// <param name="channel">The channel.</param>
+    /// <param name="value">The value.</param>
     private void ApplyVolume(int channel, float value)
     {
         switch (channel)
@@ -422,6 +482,9 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Stores one menu-indexed audio-channel volume when the index is valid.
     /// </summary>
+    /// <param name="channel">The channel.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>True when the channel index is valid and the volume is stored; otherwise false.</returns>
     private bool SetVolumeValue(int channel, float value)
     {
         value = Mathf.Clamp01(value);
@@ -450,6 +513,8 @@ internal sealed class OptionsSettingsSession
     /// <summary>
     /// Formats a serialized fullscreen mode for display in the Options menu.
     /// </summary>
+    /// <param name="mode">The mode.</param>
+    /// <returns>The requested full screen label.</returns>
     private static string GetFullScreenLabel(int mode)
     {
         return (FullScreenMode)mode switch

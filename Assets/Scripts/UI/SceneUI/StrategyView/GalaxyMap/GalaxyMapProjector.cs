@@ -37,6 +37,7 @@ public sealed class GalaxyMapProjector
     /// <param name="briefing">The transient briefing presentation, or null.</param>
     /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
     /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
+    /// <param name="spotlightPlanetInstanceId">The transiently emphasized planet, or null.</param>
     /// <returns>The complete immutable map presentation.</returns>
     public GalaxyMapRenderData Project(
         IReadOnlyList<GalaxyMapSector> sectors,
@@ -45,7 +46,8 @@ public sealed class GalaxyMapProjector
         string hoveredSectorInstanceId,
         StrategyBriefingMapPresentation briefing = null,
         StrategyWindowTargetingSource waypointPlan = null,
-        IReadOnlyCollection<string> selectedFleetInstanceIds = null
+        IReadOnlyCollection<string> selectedFleetInstanceIds = null,
+        string spotlightPlanetInstanceId = null
     )
     {
         UIContext context = GetRequiredContext();
@@ -58,7 +60,8 @@ public sealed class GalaxyMapProjector
             filter,
             hoveredSectorInstanceId,
             context,
-            briefing
+            briefing,
+            spotlightPlanetInstanceId
         );
 
         Texture2D backgroundTexture = context.GetTexture(playerTheme?.GalaxyBackground?.ImagePath);
@@ -246,6 +249,7 @@ public sealed class GalaxyMapProjector
     /// <param name="hoveredSectorInstanceId">The planet-sector identifier whose label is revealed.</param>
     /// <param name="context">The current strategy UI context.</param>
     /// <param name="briefing">The transient briefing presentation, or null.</param>
+    /// <param name="spotlightPlanetInstanceId">The transiently emphasized planet, or null.</param>
     /// <returns>The projected cluster presentations.</returns>
     private static List<GalaxyMapClusterRenderData> ProjectClusters(
         IReadOnlyList<GalaxyMapSector> sectors,
@@ -253,7 +257,8 @@ public sealed class GalaxyMapProjector
         GalacticInformationFilterTheme filter,
         string hoveredSectorInstanceId,
         UIContext context,
-        StrategyBriefingMapPresentation briefing
+        StrategyBriefingMapPresentation briefing,
+        string spotlightPlanetInstanceId
     )
     {
         List<GalaxyMapClusterRenderData> clusters = new List<GalaxyMapClusterRenderData>();
@@ -277,7 +282,15 @@ public sealed class GalaxyMapProjector
                         hoveredSectorInstanceId,
                         StringComparison.Ordinal
                     ),
-                    ProjectStars(sector, playerFactionId, filter, context, sectorPosition, briefing)
+                    ProjectStars(
+                        sector,
+                        playerFactionId,
+                        filter,
+                        context,
+                        sectorPosition,
+                        briefing,
+                        spotlightPlanetInstanceId
+                    )
                 )
             );
         }
@@ -294,6 +307,7 @@ public sealed class GalaxyMapProjector
     /// <param name="context">The current strategy UI context.</param>
     /// <param name="sectorPosition">The sector's source-space map position.</param>
     /// <param name="briefing">The transient briefing presentation, or null.</param>
+    /// <param name="spotlightPlanetInstanceId">The transiently emphasized planet, or null.</param>
     /// <returns>The projected marker presentations.</returns>
     private static List<GalaxyMapStarRenderData> ProjectStars(
         GalaxyMapSector sector,
@@ -301,7 +315,8 @@ public sealed class GalaxyMapProjector
         GalacticInformationFilterTheme filter,
         UIContext context,
         System.Drawing.Point sectorPosition,
-        StrategyBriefingMapPresentation briefing
+        StrategyBriefingMapPresentation briefing,
+        string spotlightPlanetInstanceId
     )
     {
         List<GalaxyMapStarRenderData> stars = new List<GalaxyMapStarRenderData>();
@@ -325,6 +340,17 @@ public sealed class GalaxyMapProjector
                     playerFactionId,
                     filter
                 );
+            if (
+                briefing == null
+                && string.Equals(
+                    planet.Planet.InstanceID,
+                    spotlightPlanetInstanceId,
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                marker = new GalacticInformationMarker(3, marker.FactionInstanceId, marker.Mixed);
+            }
             System.Drawing.Point planetPosition = planet.Planet.GetPosition();
             stars.Add(
                 new GalaxyMapStarRenderData(
@@ -359,18 +385,7 @@ public sealed class GalaxyMapProjector
     )
     {
         if (briefing.Mode == StrategyBriefingMapMode.Spotlight)
-        {
-            bool highlighted = string.Equals(
-                planet.InstanceID,
-                briefing.TargetPlanetInstanceID,
-                StringComparison.Ordinal
-            );
-            return new GalacticInformationMarker(
-                highlighted ? 3 : 0,
-                highlighted ? planet.OwnerInstanceID : null,
-                false
-            );
-        }
+            return EvaluateSpotlightMarker(planet, briefing.TargetPlanetInstanceID);
 
         if (briefing.Mode == StrategyBriefingMapMode.PopularSupport)
         {
@@ -466,6 +481,29 @@ public sealed class GalaxyMapProjector
             nameof(briefing),
             briefing.Mode,
             "Unsupported briefing map mode."
+        );
+    }
+
+    /// <summary>
+    /// Uses the brightest marker for one planet and the smallest neutral marker elsewhere.
+    /// </summary>
+    /// <param name="planet">The visible planet being projected.</param>
+    /// <param name="targetPlanetInstanceId">The emphasized planet identifier.</param>
+    /// <returns>The spotlight marker presentation.</returns>
+    private static GalacticInformationMarker EvaluateSpotlightMarker(
+        Planet planet,
+        string targetPlanetInstanceId
+    )
+    {
+        bool highlighted = string.Equals(
+            planet.InstanceID,
+            targetPlanetInstanceId,
+            StringComparison.Ordinal
+        );
+        return new GalacticInformationMarker(
+            highlighted ? 3 : 0,
+            highlighted ? planet.OwnerInstanceID : null,
+            false
         );
     }
 

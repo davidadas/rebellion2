@@ -39,7 +39,7 @@ namespace Rebellion.Systems
         {
             if (faction == null)
                 throw new ArgumentNullException(nameof(faction));
-            if (!faction.IsAIControlled() && !faction.ManageNaming)
+            if (!_game.IsFactionAIControlled(faction) && !faction.ManageNaming)
                 return 0;
 
             int namedShipCount = 0;

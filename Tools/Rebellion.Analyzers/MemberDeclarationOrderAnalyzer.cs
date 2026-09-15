@@ -23,6 +23,10 @@ namespace Rebellion.Analyzers
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
             ImmutableArray.Create(_rule);
 
+        /// <summary>
+        /// Registers declaration-order analysis for supported type declarations.
+        /// </summary>
+        /// <param name="context">The analyzer initialization context.</param>
         public override void Initialize(AnalysisContext context)
         {
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
@@ -37,6 +41,10 @@ namespace Rebellion.Analyzers
             );
         }
 
+        /// <summary>
+        /// Validates the declaration order within one type.
+        /// </summary>
+        /// <param name="context">The syntax-node analysis context.</param>
         private static void AnalyzeType(SyntaxNodeAnalysisContext context)
         {
             TypeDeclarationSyntax type = (TypeDeclarationSyntax)context.Node;

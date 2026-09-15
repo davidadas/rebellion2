@@ -36,7 +36,11 @@ namespace Rebellion.AI.Phases
             float minimumSelectableScore = GetMinimumSelectableScore(context);
             foreach (AIProposal proposal in GetSortedProposals(context.Proposals))
             {
-                if (!proposal.HasScore || proposal.Score <= minimumSelectableScore)
+                if (
+                    !proposal.HasScore
+                    || proposal.Priority == AIProposalPriority.Optional
+                        && proposal.Score <= minimumSelectableScore
+                )
                     continue;
 
                 if (!selectionPolicy.TrySelect(context, proposal))
@@ -68,7 +72,8 @@ namespace Rebellion.AI.Phases
         {
             return proposals
                 .Where(proposal => proposal != null)
-                .OrderByDescending(proposal => proposal.Score)
+                .OrderByDescending(proposal => proposal.Priority)
+                .ThenByDescending(proposal => proposal.Score)
                 .ThenBy(proposal => proposal.GetType().Name, StringComparer.Ordinal)
                 .ThenBy(proposal => proposal.GetSortKey(), StringComparer.Ordinal);
         }

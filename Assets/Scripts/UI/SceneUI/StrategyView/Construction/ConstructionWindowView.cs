@@ -690,6 +690,7 @@ public sealed class ConstructionWindowView
     /// <summary>
     /// Verifies every authored reference required by the construction presentation.
     /// </summary>
+    /// <param name="verifyContent">Whether verify content.</param>
     private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)

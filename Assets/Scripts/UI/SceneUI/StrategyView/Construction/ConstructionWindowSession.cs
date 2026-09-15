@@ -199,7 +199,7 @@ internal sealed class ConstructionWindowSession
     {
         if (
             SourceWindow != sourceWindow
-            || ConstructionOrderController.GetManufacturingType(ManufacturingTab)
+            || FacilityManufacturingLaneCatalog.GetManufacturingType(ManufacturingTab)
                 != manufacturingType
         )
             return false;

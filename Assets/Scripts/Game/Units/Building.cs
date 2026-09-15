@@ -79,9 +79,11 @@ namespace Rebellion.Game.Units
         public Building() { }
 
         /// <summary>Creates an empty building copy.</summary>
+        /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new Building();
 
         /// <summary>Copies building state into an empty destination.</summary>
+        /// <param name="destination">The destination.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
             base.CopyStateTo(destination);

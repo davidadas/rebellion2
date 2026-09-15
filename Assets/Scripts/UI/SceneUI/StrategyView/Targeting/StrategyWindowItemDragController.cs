@@ -53,6 +53,13 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
 
     public bool SourceDragActive => dragController.IsDragging;
 
+    public bool HasDirectInteraction =>
+        dragController.CandidateRequest?.Source is ISceneNode
+        || dragController.ActiveRequest?.Source is ISceneNode
+        || targetingController.ActiveRequest?.Receiver == this
+            && targetingController.ActiveRequest.Source
+                is StrategyWindowTargetingSource { Window: null };
+
     /// <summary>
     /// Creates the strategy-window item-drag controller.
     /// </summary>
@@ -107,6 +114,27 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
     }
 
     /// <summary>
+    /// Captures one directly supplied scene node as a possible item drag.
+    /// </summary>
+    /// <param name="item">The direct drag source.</param>
+    /// <param name="preview">The optional direct drag preview.</param>
+    /// <param name="x">The horizontal source-space coordinate.</param>
+    /// <param name="y">The vertical source-space coordinate.</param>
+    public void StartCandidate(ISceneNode item, DragPreview preview, int x, int y)
+    {
+        if (item == null)
+            return;
+
+        candidateHotspotX = x;
+        candidateHotspotY = y;
+        ClearCapturedCandidate();
+        candidateItems.Add(item);
+        candidatePreview = preview;
+        candidateHasPreview = preview?.HasDrawableImages == true;
+        dragController.StartCandidate(new DragRequest(item), x, y);
+    }
+
+    /// <summary>
     /// Promotes a threshold-crossing candidate into a source drag or targeting request.
     /// </summary>
     /// <param name="x">The current horizontal source-space coordinate.</param>
@@ -117,11 +145,14 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
         if (!dragController.HasCandidateDragStarted(x, y))
             return StrategyWindowItemDragStartResult.None;
 
-        if (dragController.CandidateRequest?.Source is not UIWindow window)
+        object candidateSource = dragController.CandidateRequest?.Source;
+        if (candidateSource is not UIWindow && candidateSource is not ISceneNode)
         {
             ClearCandidate();
             return StrategyWindowItemDragStartResult.CandidateCleared;
         }
+
+        UIWindow window = candidateSource as UIWindow;
 
         if (candidateHasPreview)
         {
@@ -241,6 +272,29 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
         candidateHotspotX = 0;
         candidateHotspotY = 0;
         ClearCapturedCandidate();
+    }
+
+    /// <summary>
+    /// Cancels drag or targeting state whose source was supplied without a strategy window.
+    /// </summary>
+    /// <returns>True when direct-source interaction state was canceled.</returns>
+    public bool TryCancelDirectInteraction()
+    {
+        bool hasDirectDrag =
+            dragController.CandidateRequest?.Source is ISceneNode
+            || dragController.ActiveRequest?.Source is ISceneNode;
+        bool hasDirectTargeting =
+            targetingController.ActiveRequest?.Receiver == this
+            && targetingController.ActiveRequest.Source
+                is StrategyWindowTargetingSource { Window: null };
+        if (!hasDirectDrag && !hasDirectTargeting)
+            return false;
+
+        if (hasDirectDrag)
+            Clear();
+        if (hasDirectTargeting)
+            targetingController.Cancel();
+        return true;
     }
 
     /// <summary>

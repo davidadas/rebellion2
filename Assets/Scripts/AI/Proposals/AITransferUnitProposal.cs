@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.AI.Director;
+using Rebellion.AI.Planners.Demand;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -73,6 +74,13 @@ namespace Rebellion.AI.Proposals
                     if (Unit is CapitalShip)
                         claimKeys.Add(
                             AIClaimKeys.FleetCapitalReinforcement(targetFleet.InstanceID)
+                        );
+                    else if (Unit is Regiment)
+                        claimKeys.Add(
+                            AIClaimKeys.FleetReinforcement(
+                                AIDemandKind.FleetRegiment,
+                                targetFleet.InstanceID
+                            )
                         );
                 }
             }
@@ -193,6 +201,9 @@ namespace Rebellion.AI.Proposals
         private bool CanMoveToTargetFleet(AITurnContext context)
         {
             if (TargetFleet.Movement != null || TargetFleet.IsInCombat)
+                return false;
+
+            if (Unit is Regiment && TargetFleet.FindShipForRegiment() == null)
                 return false;
 
             FleetOrder order = TargetFleet.Order;

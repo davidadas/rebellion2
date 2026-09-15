@@ -1,0 +1,502 @@
+using System;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Units;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
+{
+    [TestFixture]
+    public class MissionsWindowControllerTests
+    {
+        private const string _playerFactionId = "FNALL1";
+        private const string _strategyViewPrefabPath =
+            "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+
+        private TestActions _actions;
+        private MissionsWindowController _controller;
+        private Officer _decoy;
+        private int _dirtyCount;
+        private Officer _firstAgent;
+        private TestMission _firstMission;
+        private GalaxyMapPlanet _planet;
+        private GameObject _rootObject;
+        private TestMission _secondMission;
+        private TargetingController _targetingController;
+        private UIContext _uiContext;
+        private StrategyWindowLayerView _windowLayer;
+        private UIWindowManager _windowManager;
+
+        /// <summary>
+        /// Sets up.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            _dirtyCount = 0;
+            GameRoot game = CreateGame();
+            _uiContext = TestContent.CreateUIContext(
+                game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+            _planet = CreatePlanet(game);
+            _firstMission = CreateMission("first-mission", "First Mission", out Officer _);
+            _firstAgent = (Officer)_firstMission.GetMainParticipants().Single();
+            _secondMission = CreateMission("second-mission", "Second Mission", out _decoy);
+            _planet.Planet.AddChild(_firstMission);
+            _planet.Planet.AddChild(_secondMission);
+            _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
+            _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
+            _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
+            _targetingController = new TargetingController();
+            _controller = CreateController();
+            _actions = new TestActions();
+            _controller.Initialize(_actions);
+        }
+
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            UnityEngine.Object.DestroyImmediate(_rootObject);
+        }
+
+        /// <summary>
+        /// Verifies constructor null targeting controller throws argument null exception.
+        /// </summary>
+        [Test]
+        public void Constructor_NullTargetingController_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                new MissionsWindowController(
+                    () => _uiContext,
+                    _ => null,
+                    null,
+                    _windowLayer,
+                    _windowManager,
+                    (_, _) => Vector2Int.zero,
+                    () => { }
+                )
+            );
+        }
+
+        /// <summary>
+        /// Verifies initialize null actions throws argument null exception.
+        /// </summary>
+        [Test]
+        public void Initialize_NullActions_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => _controller.Initialize(null));
+        }
+
+        /// <summary>
+        /// Verifies bind window before initialize throws invalid operation exception.
+        /// </summary>
+        [Test]
+        public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
+        {
+            MissionsWindowController controller = CreateController();
+            MissionsWindowView view = UnityEngine.Object.Instantiate(
+                _windowLayer.MissionsWindowPrefab,
+                _rootObject.transform
+            );
+
+            Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
+        }
+
+        /// <summary>
+        /// Verifies try initialize window null planet returns false.
+        /// </summary>
+        [Test]
+        public void TryInitializeWindow_NullPlanet_ReturnsFalse()
+        {
+            MissionsWindowView view = UnityEngine.Object.Instantiate(
+                _windowLayer.MissionsWindowPrefab,
+                _rootObject.transform
+            );
+
+            bool initialized = _controller.TryInitializeWindow(view, null);
+
+            Assert.IsFalse(initialized);
+            Assert.IsNull(_controller.GetPlanet(view));
+        }
+
+        /// <summary>
+        /// Verifies open valid planet creates named window with default mission selection.
+        /// </summary>
+        [Test]
+        public void Open_ValidPlanet_CreatesNamedWindowWithDefaultMissionSelection()
+        {
+            UIWindow window = _controller.Open(_planet, 20, 30, out bool created);
+
+            Assert.IsTrue(created);
+            Assert.AreEqual(
+                $"MissionsWindow-{_planet.Planet.GetDisplayName()}",
+                window.Content.name
+            );
+            Assert.AreEqual(new Vector2Int(37, 49), new Vector2Int(window.X, window.Y));
+            Assert.IsFalse(window.Modal);
+            Assert.AreEqual(1, _dirtyCount);
+            Assert.IsTrue(_windowManager.TryGetWindowView(window, out MissionsWindowView view));
+            Assert.AreSame(_planet, _controller.GetPlanet(view));
+            Assert.AreEqual(0, _controller.GetSelectedMissionIndex(view));
+            Assert.AreEqual(MissionParticipantRole.Agent, _controller.GetActiveRole(view));
+        }
+
+        /// <summary>
+        /// Verifies open existing planet reuses window without additional invalidation.
+        /// </summary>
+        [Test]
+        public void Open_ExistingPlanet_ReusesWindowWithoutAdditionalInvalidation()
+        {
+            UIWindow firstWindow = _controller.Open(_planet, 20, 30, out bool firstCreated);
+
+            UIWindow secondWindow = _controller.Open(_planet, 40, 50, out bool secondCreated);
+
+            Assert.IsTrue(firstCreated);
+            Assert.IsFalse(secondCreated);
+            Assert.AreSame(firstWindow, secondWindow);
+            Assert.AreEqual(1, _windowManager.Windows.Count);
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        /// <summary>
+        /// Verifies surface clicked active targeting selects planet node.
+        /// </summary>
+        [Test]
+        public void SurfaceClicked_ActiveTargeting_SelectsPlanetNode()
+        {
+            MissionsWindowView view = OpenWindow(out UIWindow _);
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Select target", null, receiver));
+
+            view.OnPointerClick(
+                new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+            );
+
+            StrategyMissionTarget target = receiver.Target as StrategyMissionTarget;
+            Assert.IsNotNull(target);
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(_planet.Planet, target.Item);
+        }
+
+        /// <summary>
+        /// Verifies participant released active targeting selects participant node.
+        /// </summary>
+        [Test]
+        public void ParticipantReleased_ActiveTargeting_SelectsParticipantNode()
+        {
+            MissionsWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window, true);
+            MissionParticipantRowView participant =
+                view.GetComponentsInChildren<MissionParticipantRowView>(true)
+                    .Single(row => row.gameObject.activeSelf);
+            UIComponentTestHelper.InvokeLifecycle(participant, "Awake");
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Select target", null, receiver));
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            UIPointerGestureRelay relay = participant.GetComponent<UIPointerGestureRelay>();
+            relay.OnPointerDown(eventData);
+            relay.OnPointerClick(eventData);
+
+            StrategyMissionTarget target = receiver.Target as StrategyMissionTarget;
+            Assert.IsNotNull(target);
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(_firstAgent, target.Item);
+        }
+
+        /// <summary>
+        /// Verifies select target decoy participant selects mission and decoy role.
+        /// </summary>
+        [Test]
+        public void SelectTarget_DecoyParticipant_SelectsMissionAndDecoyRole()
+        {
+            MissionsWindowView view = OpenWindow(out UIWindow _);
+
+            bool selected = _controller.SelectTarget(view, _decoy);
+
+            Assert.IsTrue(selected);
+            Assert.AreEqual(1, _controller.GetSelectedMissionIndex(view));
+            Assert.AreEqual(MissionParticipantRole.Decoy, _controller.GetActiveRole(view));
+            Assert.AreEqual(2, _dirtyCount);
+            Assert.AreSame(_secondMission, _controller.GetStatusTarget(view).Item);
+        }
+
+        /// <summary>
+        /// Verifies reconcile window fresh projection preserves mission selection by identity.
+        /// </summary>
+        [Test]
+        public void ReconcileWindow_FreshProjection_PreservesMissionSelectionByIdentity()
+        {
+            MissionsWindowView view = OpenWindow(out UIWindow _);
+            _controller.SelectTarget(view, _secondMission);
+            TestMission freshSecond = CreateMission(
+                _secondMission.InstanceID,
+                "Fresh Second",
+                out Officer _
+            );
+            TestMission freshFirst = CreateMission(
+                _firstMission.InstanceID,
+                "Fresh First",
+                out Officer _
+            );
+            Planet freshPlanetNode = new Planet
+            {
+                InstanceID = _planet.Planet.InstanceID,
+                DisplayName = "Fresh Planet",
+            };
+            freshPlanetNode.AddChildren(new[] { freshSecond, freshFirst });
+            GalaxyMapPlanet freshPlanet = new GalaxyMapPlanet(
+                new GalaxyPlanetSector { InstanceID = "fresh-sector" },
+                freshPlanetNode,
+                _playerFactionId
+            );
+
+            _controller.ReconcileWindow(view, freshPlanet);
+
+            Assert.AreSame(freshPlanet, _controller.GetPlanet(view));
+            Assert.AreEqual(0, _controller.GetSelectedMissionIndex(view));
+            Assert.AreSame(freshSecond, _controller.GetStatusTarget(view).Item);
+        }
+
+        /// <summary>
+        /// Verifies try create context menu selected mission returns authored commands and width.
+        /// </summary>
+        [Test]
+        public void TryCreateContextMenu_SelectedMission_ReturnsAuthoredCommandsAndWidth()
+        {
+            OpenWindow(out UIWindow window);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 4, 5, 177, 7),
+                null,
+                10,
+                20
+            );
+
+            bool created = _controller.TryCreateContextMenu(
+                context,
+                out ContextMenuRequest request,
+                out int width
+            );
+
+            Assert.IsTrue(created);
+            Assert.AreEqual(177, width);
+            Assert.AreEqual(3, request.Commands.Count);
+            Assert.IsTrue(
+                request.Commands.Cast<StrategyMenuCommand>().Take(2).All(command => command.Enabled)
+            );
+        }
+
+        /// <summary>
+        /// Verifies on context menu command selected abort routes selected mission identity.
+        /// </summary>
+        [Test]
+        public void OnContextMenuCommandSelected_Abort_RoutesSelectedMissionIdentity()
+        {
+            OpenWindow(out UIWindow window);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 4, 5, 177, 7),
+                null,
+                10,
+                20
+            );
+            _controller.TryCreateContextMenu(context, out ContextMenuRequest request, out int _);
+            StrategyMenuCommand abortCommand = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(command => command.Action == StrategyMenuAction.Abort);
+
+            _controller.OnContextMenuCommandSelected(request, abortCommand);
+
+            Assert.AreEqual(_firstMission.InstanceID, _actions.AbortedMissionInstanceId);
+        }
+
+        /// <summary>
+        /// Verifies view destroyed initialized session releases planet association.
+        /// </summary>
+        [Test]
+        public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
+        {
+            MissionsWindowView view = OpenWindow(out UIWindow _);
+
+            UIComponentTestHelper.InvokeLifecycle(view, "OnDestroy");
+
+            Assert.IsNull(_controller.GetPlanet(view));
+        }
+
+        /// <summary>
+        /// Creates controller.
+        /// </summary>
+        /// <returns>The created controller.</returns>
+        private MissionsWindowController CreateController()
+        {
+            return new MissionsWindowController(
+                () => _uiContext,
+                _ => null,
+                _targetingController,
+                _windowLayer,
+                _windowManager,
+                (x, y) => new Vector2Int(x + 17, y + 19),
+                () => _dirtyCount++
+            );
+        }
+
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
+        private GameRoot CreateGame()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
+            game.Summary.PlayerFactionID = _playerFactionId;
+            game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
+            return game;
+        }
+
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>The created planet.</returns>
+        private GalaxyMapPlanet CreatePlanet(GameRoot game)
+        {
+            GalaxyPlanetSector sector = new GalaxyPlanetSector
+            {
+                InstanceID = "sector",
+                DisplayName = "Core Sector",
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                DisplayName = "Corellia",
+                OwnerInstanceID = _playerFactionId,
+                IsColonized = true,
+            };
+            game.AttachNode(planet, sector);
+            return new GalaxyMapPlanet(sector, planet, _playerFactionId);
+        }
+
+        /// <summary>
+        /// Creates mission.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="decoy">Receives the decoy.</param>
+        /// <returns>The created mission.</returns>
+        private static TestMission CreateMission(
+            string instanceId,
+            string displayName,
+            out Officer decoy
+        )
+        {
+            TestMission mission = new TestMission
+            {
+                InstanceID = instanceId,
+                ConfigKey = MissionTypeIDs.Diplomacy,
+                DisplayName = displayName,
+            };
+            mission.AddChild(new Officer { InstanceID = $"{instanceId}-agent" });
+            decoy = new Officer { InstanceID = $"{instanceId}-decoy" };
+            mission.AddDecoyParticipant(decoy);
+            return mission;
+        }
+
+        /// <summary>
+        /// Opens window.
+        /// </summary>
+        /// <param name="window">Receives the window.</param>
+        /// <returns>The result of open window.</returns>
+        private MissionsWindowView OpenWindow(out UIWindow window)
+        {
+            window = _controller.Open(_planet, 20, 30, out bool _);
+            _windowManager.TryGetWindowView(window, out MissionsWindowView view);
+            return view;
+        }
+
+        private sealed class TestActions : IMissionsWindowActions
+        {
+            public string AbortedMissionInstanceId { get; private set; }
+
+            /// <summary>
+            /// Opens abort mission confirm window.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="missionInstanceId">The mission instance id.</param>
+            public void OpenAbortMissionConfirmWindow(
+                UIWindow sourceWindow,
+                string missionInstanceId
+            )
+            {
+                AbortedMissionInstanceId = missionInstanceId;
+            }
+
+            /// <summary>
+            /// Opens missions status.
+            /// </summary>
+            /// <param name="target">The target.</param>
+            public void OpenMissionsStatus(StrategyStatusTarget target) { }
+
+            /// <summary>
+            /// Opens missions info.
+            /// </summary>
+            /// <param name="target">The target.</param>
+            public void OpenMissionsInfo(StrategyStatusTarget target) { }
+        }
+
+        private sealed class RecordingTargetingReceiver : ITargetingReceiver
+        {
+            public object Target { get; private set; }
+
+            /// <summary>
+            /// Executes on target selected.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            /// <param name="target">The target.</param>
+            public void OnTargetSelected(TargetingRequest request, object target)
+            {
+                Target = target;
+            }
+
+            /// <summary>
+            /// Executes on targeting cancelled.
+            /// </summary>
+            /// <param name="request">The request.</param>
+            public void OnTargetingCancelled(TargetingRequest request) { }
+        }
+
+        private sealed class TestMission : Mission
+        {
+            /// <summary>Creates an empty test mission copy.</summary>
+            /// <returns>An empty test mission.</returns>
+            protected override Rebellion.SceneGraph.BaseSceneNode CreateNodeCopy() =>
+                new TestMission();
+
+            /// <summary>
+            /// Checks whether the repeat after completion condition is met.
+            /// </summary>
+            /// <param name="game">The game.</param>
+            /// <returns>True when the repeat after completion condition is met; otherwise false.</returns>
+            public override bool ShouldRepeatAfterCompletion(GameRoot game)
+            {
+                return false;
+            }
+        }
+    }
+}

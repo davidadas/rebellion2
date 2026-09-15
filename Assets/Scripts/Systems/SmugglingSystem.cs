@@ -45,6 +45,10 @@ namespace Rebellion.Systems
             InitializeStates();
         }
 
+        /// <summary>
+        /// Ensures config is valid.
+        /// </summary>
+        /// <param name="config">The config.</param>
         private static void EnsureConfigIsValid(GameConfig.SmugglingConfig config)
         {
             if (config == null)
@@ -179,6 +183,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Calculates the current smuggling relationship for a planet, or null when no output is diverted.
         /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The calculated smuggling state.</returns>
         private PlanetSmugglingState CalculateSmugglingState(Planet planet)
         {
             Faction controller = FindFaction(planet.OwnerInstanceID);
@@ -197,6 +203,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Returns whether two states describe smuggling between the same controlling and beneficiary factions.
         /// </summary>
+        /// <param name="left">The left.</param>
+        /// <param name="right">The right.</param>
+        /// <returns>True when the same relationship condition is met; otherwise false.</returns>
         private static bool IsSameRelationship(
             PlanetSmugglingState left,
             PlanetSmugglingState right
@@ -210,6 +219,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Records the beginning of resource diversion for a controller and beneficiary.
         /// </summary>
+        /// <param name="results">The results.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="state">The state.</param>
         private void RecordSmugglingStarted(
             List<GameResult> results,
             Planet planet,
@@ -233,6 +245,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Records the end of resource diversion for a controller and beneficiary.
         /// </summary>
+        /// <param name="results">The results.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="state">The state.</param>
         private void RecordSmugglingEnded(
             List<GameResult> results,
             Planet planet,
@@ -256,6 +271,11 @@ namespace Rebellion.Systems
         /// <summary>
         /// Records a numeric diversion change without implying that the smuggling relationship changed.
         /// </summary>
+        /// <param name="results">The results.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="state">The state.</param>
+        /// <param name="oldPercent">The old percent.</param>
+        /// <param name="newPercent">The new percent.</param>
         private void RecordDiversionChanged(
             ICollection<GameResult> results,
             Planet planet,
@@ -329,6 +349,10 @@ namespace Rebellion.Systems
         /// Returns completed, stationary starfighters owned by the controller that are stationed
         /// directly on the planet or carried by a stationary local fleet.
         /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="fleets">The fleets.</param>
+        /// <param name="controllerInstanceID">The controller instance id.</param>
+        /// <returns>The requested stationed starfighters.</returns>
         private static IEnumerable<Starfighter> GetStationedStarfighters(
             Planet planet,
             IEnumerable<Fleet> fleets,
@@ -347,6 +371,10 @@ namespace Rebellion.Systems
         /// Returns completed, stationary regiments owned by the controller that are stationed
         /// directly on the planet or carried by a stationary local fleet.
         /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="fleets">The fleets.</param>
+        /// <param name="controllerInstanceID">The controller instance id.</param>
+        /// <returns>The requested stationed regiments.</returns>
         private static IEnumerable<Regiment> GetStationedRegiments(
             Planet planet,
             IEnumerable<Fleet> fleets,

@@ -35,19 +35,14 @@ namespace Rebellion.AI.Planners.Demand
     /// </summary>
     public enum AICapitalShipProductionRole
     {
-        /// <summary>No specialized role is required.</summary>
         None,
 
-        /// <summary>The ship contributes general fleet combat power.</summary>
         General,
 
-        /// <summary>The ship transports regiments for planetary assaults.</summary>
         TroopTransport,
 
-        /// <summary>The ship can bombard planetary defenses.</summary>
         Bombardment,
 
-        /// <summary>The ship prevents hostile fleets from retreating.</summary>
         Interdiction,
     }
 
@@ -81,9 +76,8 @@ namespace Rebellion.AI.Planners.Demand
             Kind
                 is AIDemandKind.Mine
                     or AIDemandKind.Refinery
-                    or AIDemandKind.TrainingFacility
-                    or AIDemandKind.FleetRegiment
-                    or AIDemandKind.GarrisonRegimentReserve;
+                    or AIDemandKind.ColonizationFleetSeedCapitalShip
+            || DestinationFleet?.RoleType == FleetRoleType.Colonization;
 
         public bool UsesDefensiveReserve =>
             Kind

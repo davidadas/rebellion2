@@ -1,0 +1,595 @@
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Units;
+using Rebellion.Generation;
+using Rebellion.Util.Common;
+
+namespace Rebellion.Tests.Generation
+{
+    [TestFixture]
+    public class OfficerSeederTests
+    {
+        private GameGenerationConfig _rules;
+        private GameSummary _summary;
+
+        /// <summary>
+        /// Sets up.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            _rules = new GameGenerationConfig
+            {
+                Officers = new OfficerSection
+                {
+                    NumStartingOfficers = new PlanetSizeProfile
+                    {
+                        Small = 2,
+                        Medium = 3,
+                        Large = 5,
+                    },
+                },
+            };
+            _summary = new GameSummary { GalaxySize = GameSize.Small };
+        }
+
+        /// <summary>
+        /// Verifies seed with recruitable officer includes in deployed.
+        /// </summary>
+        [Test]
+        public void Seed_WithRecruitableOfficer_IncludesInDeployed()
+        {
+            Officer officer = MakeOfficer("O1", "FNALL1", isRecruitable: true);
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { officer },
+                new[] { sector },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.Contains(officer, results.Deployed);
+        }
+
+        /// <summary>
+        /// Verifies seed with non recruitable officer excludes from deployed.
+        /// </summary>
+        [Test]
+        public void Seed_WithNonRecruitableOfficer_ExcludesFromDeployed()
+        {
+            Officer officer = MakeOfficer("O1", "FNALL1", isMain: false, isRecruitable: false);
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { officer },
+                new[] { sector },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.IsFalse(results.Deployed.Contains(officer));
+        }
+
+        /// <summary>
+        /// Verifies seed with guaranteed officers exceeding limit deploys all guaranteed.
+        /// </summary>
+        [Test]
+        public void Seed_WithGuaranteedOfficersExceedingLimit_DeploysAllGuaranteed()
+        {
+            Officer m1 = MakeOfficer("M1", "FNALL1", isMain: true);
+            Officer m2 = MakeOfficer("M2", "FNALL1", isMain: true);
+            Officer m3 = MakeOfficer("M3", "FNALL1", isMain: true);
+            _rules.Officers.StartingOfficers.AddRange(
+                new[]
+                {
+                    new StartingOfficerRule { OfficerInstanceID = m1.InstanceID },
+                    new StartingOfficerRule { OfficerInstanceID = m2.InstanceID },
+                    new StartingOfficerRule { OfficerInstanceID = m3.InstanceID },
+                }
+            );
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { m1, m2, m3 },
+                new[] { sector },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(3, results.Deployed.Length);
+        }
+
+        /// <summary>
+        /// Verifies seed with more recruitable than limit deploys only allowed.
+        /// </summary>
+        [Test]
+        public void Seed_WithMoreRecruitableThanLimit_DeploysOnlyAllowed()
+        {
+            Officer officer1 = MakeOfficer("O1", "FNALL1");
+            Officer officer2 = MakeOfficer("O2", "FNALL1");
+            Officer officer3 = MakeOfficer("O3", "FNALL1");
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { officer1, officer2, officer3 },
+                new[] { sector },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(2, results.Deployed.Length);
+        }
+
+        /// <summary>
+        /// Verifies seed starting officer count is total rather than additional recruitable count.
+        /// </summary>
+        [Test]
+        public void Seed_StartingOfficerCount_IsTotalRatherThanAdditionalRecruitableCount()
+        {
+            Officer main = MakeOfficer("M1", "FNALL1", isMain: true);
+            Officer recruitable1 = MakeOfficer("O1", "FNALL1");
+            Officer recruitable2 = MakeOfficer("O2", "FNALL1");
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule { OfficerInstanceID = main.InstanceID }
+            );
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { main, recruitable1, recruitable2 },
+                new[] { sector },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(2, results.Deployed.Length);
+            Assert.Contains(main, results.Deployed);
+        }
+
+        /// <summary>
+        /// Verifies seed guaranteed starter is included without becoming main character.
+        /// </summary>
+        [Test]
+        public void Seed_GuaranteedStarter_IsIncludedWithoutBecomingMainCharacter()
+        {
+            _rules.Officers.NumStartingOfficers.Small = 1;
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule { OfficerInstanceID = "STARTER" }
+            );
+            Officer starter = MakeOfficer("STARTER", "FNALL1");
+            Officer recruitable = MakeOfficer("RANDOM", "FNALL1");
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { starter, recruitable },
+                new[] { sector },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(1, results.Deployed.Length);
+            Assert.Contains(starter, results.Deployed);
+            Assert.IsFalse(starter.IsMain);
+        }
+
+        /// <summary>
+        /// Verifies seed starting officer rule for different galaxy size does not guarantee officer.
+        /// </summary>
+        [Test]
+        public void Seed_StartingOfficerRuleForDifferentGalaxySize_DoesNotGuaranteeOfficer()
+        {
+            _rules.Officers.NumStartingOfficers.Small = 0;
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule
+                {
+                    OfficerInstanceID = "LARGE_STARTER",
+                    GalaxySizes = new List<GameSize> { GameSize.Large },
+                }
+            );
+            Officer officer = MakeOfficer("LARGE_STARTER", "FNALL1");
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { officer },
+                new[] { sector },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.IsEmpty(results.Deployed);
+        }
+
+        /// <summary>
+        /// Verifies seed officer with ambiguous allowed factions is excluded.
+        /// </summary>
+        [Test]
+        public void Seed_OfficerWithAmbiguousAllowedFactions_IsExcluded()
+        {
+            Officer ambiguous = new Officer
+            {
+                InstanceID = "O1",
+                OwnerInstanceID = null,
+                RecruitingFactionInstanceIDs = new List<string> { "FNALL1", "FNEMP1" },
+                IsRecruitable = true,
+            };
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { ambiguous },
+                new[] { sector },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.IsEmpty(results.Deployed);
+        }
+
+        /// <summary>
+        /// Verifies seed unrecruited officers are complement of deployed.
+        /// </summary>
+        [Test]
+        public void Seed_UnrecruitedOfficers_AreComplementOfDeployed()
+        {
+            Officer officer1 = MakeOfficer("O1", "FNALL1");
+            Officer officer2 = MakeOfficer("O2", "FNALL1");
+            Officer officer3 = MakeOfficer("O3", "FNALL1");
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { officer1, officer2, officer3 },
+                new[] { sector },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(1, results.Unrecruited.Length);
+            Assert.IsEmpty(results.Deployed.Intersect(results.Unrecruited));
+        }
+
+        /// <summary>
+        /// Verifies seed with multiple factions selects officers per faction independently.
+        /// </summary>
+        [Test]
+        public void Seed_WithMultipleFactions_SelectsOfficersPerFactionIndependently()
+        {
+            Officer allianceOfficer1 = MakeOfficer("A1", "FNALL1");
+            Officer allianceOfficer2 = MakeOfficer("A2", "FNALL1");
+            Officer empireOfficer1 = MakeOfficer("E1", "FNEMP1");
+            Officer empireOfficer2 = MakeOfficer("E2", "FNEMP1");
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            sector.AddChild(
+                new Planet
+                {
+                    InstanceID = "p1",
+                    OwnerInstanceID = "FNALL1",
+                    IsColonized = true,
+                }
+            );
+            sector.AddChild(
+                new Planet
+                {
+                    InstanceID = "p2",
+                    OwnerInstanceID = "FNEMP1",
+                    IsColonized = true,
+                }
+            );
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { allianceOfficer1, allianceOfficer2, empireOfficer1, empireOfficer2 },
+                new[] { sector },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(4, results.Deployed.Length);
+        }
+
+        /// <summary>
+        /// Verifies seed with zero variance skills match base.
+        /// </summary>
+        [Test]
+        public void Seed_WithZeroVariance_SkillsMatchBase()
+        {
+            Officer officer = MakeOfficer("O1", "FNALL1");
+            officer.Ratings[OfficerRating.Diplomacy] = 10;
+            officer.DiplomacyVariance = 0;
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
+
+            Assert.AreEqual(10, officer.Ratings[OfficerRating.Diplomacy]);
+        }
+
+        /// <summary>
+        /// Verifies seed with variance skills at least base.
+        /// </summary>
+        [Test]
+        public void Seed_WithVariance_SkillsAtLeastBase()
+        {
+            Officer officer = MakeOfficer("O1", "FNALL1");
+            officer.Ratings[OfficerRating.Espionage] = 5;
+            officer.EspionageVariance = 10;
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
+
+            Assert.GreaterOrEqual(officer.Ratings[OfficerRating.Espionage], 5);
+        }
+
+        /// <summary>
+        /// Verifies seed with maximum variance includes configured extent.
+        /// </summary>
+        [Test]
+        public void Seed_WithMaximumVariance_IncludesConfiguredExtent()
+        {
+            Officer officer = MakeOfficer("O1", "FNALL1");
+            officer.Ratings[OfficerRating.Espionage] = 5;
+            officer.EspionageVariance = 10;
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new MaximumRNG());
+
+            Assert.AreEqual(15, officer.Ratings[OfficerRating.Espionage]);
+        }
+
+        /// <summary>
+        /// Verifies seed unrecruited officer rolls ratings.
+        /// </summary>
+        [Test]
+        public void Seed_UnrecruitedOfficer_RollsRatings()
+        {
+            _rules.Officers.NumStartingOfficers.Small = 0;
+            Officer officer = MakeOfficer("O1", "FNALL1");
+            officer.Ratings[OfficerRating.Espionage] = 5;
+            officer.EspionageVariance = 10;
+            PlanetSector sector = MakeSector(("p1", "FNALL1"));
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { officer },
+                new[] { sector },
+                _rules,
+                _summary,
+                new MaximumRNG()
+            );
+
+            Assert.Contains(officer, results.Unrecruited);
+            Assert.AreEqual(15, officer.Ratings[OfficerRating.Espionage]);
+        }
+
+        /// <summary>
+        /// Verifies seed with owned planet officer added to planet.
+        /// </summary>
+        [Test]
+        public void Seed_WithOwnedPlanet_OfficerAddedToPlanet()
+        {
+            Officer officer = MakeOfficer("O1", "FNALL1");
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            sector.AddChild(planet);
+
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
+
+            Assert.Contains(officer, planet.GetChildren<Officer>().ToList());
+        }
+
+        /// <summary>
+        /// Verifies seed with starting officer destination id officer added to designated planet.
+        /// </summary>
+        [Test]
+        public void Seed_WithStartingOfficerDestinationID_OfficerAddedToDesignatedPlanet()
+        {
+            Planet other = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
+            Planet target = new Planet
+            {
+                InstanceID = "target",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            sector.AddChild(other);
+            sector.AddChild(target);
+
+            Officer officer = MakeOfficer("O1", "FNALL1");
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule
+                {
+                    OfficerInstanceID = officer.InstanceID,
+                    DestinationInstanceID = "target",
+                }
+            );
+
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
+
+            Assert.Contains(officer, target.GetChildren<Officer>().ToList());
+            Assert.IsEmpty(other.GetChildren<Officer>());
+        }
+
+        /// <summary>
+        /// Verifies seed with starting officer destination type deploys pinned officer outside limit.
+        /// </summary>
+        [Test]
+        public void Seed_WithStartingOfficerDestinationType_DeploysPinnedOfficerOutsideLimit()
+        {
+            _rules.Officers.NumStartingOfficers.Small = 0;
+
+            Planet yavin = new Planet
+            {
+                InstanceID = "YAVIN",
+                TypeID = "PLSUM06",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
+            Planet other = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            sector.AddChild(other);
+            sector.AddChild(yavin);
+
+            Officer pinned = MakeOfficer("CHEWBACCA", null);
+            pinned.RecruitingFactionInstanceIDs = new List<string> { "FNALL1" };
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule
+                {
+                    OfficerInstanceID = pinned.InstanceID,
+                    DestinationTypeID = "PLSUM06",
+                }
+            );
+            Officer recruitable = MakeOfficer("O1", "FNALL1");
+
+            (Officer[] Deployed, Officer[] Unrecruited) results = Deploy(
+                new[] { recruitable, pinned },
+                new[] { sector },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.Contains(pinned, results.Deployed);
+            Assert.Contains(recruitable, results.Unrecruited);
+            Assert.Contains(pinned, yavin.GetChildren<Officer>().ToList());
+            Assert.IsEmpty(other.GetChildren<Officer>());
+        }
+
+        /// <summary>
+        /// Verifies seed with faction hq destination officer added to faction headquarters.
+        /// </summary>
+        [Test]
+        public void Seed_WithFactionHqDestination_OfficerAddedToFactionHeadquarters()
+        {
+            Planet other = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
+            Planet headquarters = new Planet
+            {
+                InstanceID = "hq",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+                IsHeadquarters = true,
+            };
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            sector.AddChild(other);
+            sector.AddChild(headquarters);
+
+            Officer officer = MakeOfficer("MON_MOTHMA", "FNALL1");
+            _rules.Officers.StartingOfficers.Add(
+                new StartingOfficerRule
+                {
+                    OfficerInstanceID = officer.InstanceID,
+                    DestinationTypeID = GameGenerationConfig.FactionHqSentinel,
+                }
+            );
+
+            Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
+
+            Assert.Contains(officer, headquarters.GetChildren<Officer>().ToList());
+            Assert.IsEmpty(other.GetChildren<Officer>());
+        }
+
+        /// <summary>
+        /// Executes deploy.
+        /// </summary>
+        /// <param name="officers">The officers.</param>
+        /// <param name="sectors">The sectors.</param>
+        /// <param name="config">The config.</param>
+        /// <param name="summary">The summary.</param>
+        /// <param name="rng">The rng.</param>
+        /// <returns>The result of deploy.</returns>
+        private static (Officer[] Deployed, Officer[] Unrecruited) Deploy(
+            Officer[] officers,
+            PlanetSector[] sectors,
+            GameGenerationConfig config,
+            GameSummary summary,
+            IRandomNumberProvider rng
+        )
+        {
+            GenerationContext ctx = new GenerationContext
+            {
+                Officers = officers,
+                Sectors = sectors,
+                Config = config,
+                Summary = summary,
+                Rng = rng,
+            };
+            new OfficerSeeder().Seed(ctx);
+            return (ctx.DeployedOfficers, ctx.UnrecruitedOfficers);
+        }
+
+        /// <summary>
+        /// Executes make officer.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="factionId">The faction id.</param>
+        /// <param name="isMain">Whether is main.</param>
+        /// <param name="isRecruitable">Whether is recruitable.</param>
+        /// <returns>The result of make officer.</returns>
+        private Officer MakeOfficer(
+            string id,
+            string factionId,
+            bool isMain = false,
+            bool isRecruitable = true
+        )
+        {
+            return new Officer
+            {
+                InstanceID = id,
+                DisplayName = id,
+                OwnerInstanceID = factionId,
+                IsMain = isMain,
+                IsRecruitable = isRecruitable,
+            };
+        }
+
+        /// <summary>
+        /// Executes make sector.
+        /// </summary>
+        /// <param name="planets">The planets.</param>
+        /// <returns>The result of make sector.</returns>
+        private PlanetSector MakeSector(params (string planetId, string ownerId)[] planets)
+        {
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            foreach ((string planetId, string ownerId) in planets)
+            {
+                sector.AddChild(
+                    new Planet
+                    {
+                        InstanceID = planetId,
+                        OwnerInstanceID = ownerId,
+                        IsColonized = true,
+                    }
+                );
+            }
+            return sector;
+        }
+    }
+}

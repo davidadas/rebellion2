@@ -50,6 +50,11 @@ dotnet_diagnostic.RCS1077.severity = error    # optimize LINQ method call
 dotnet_diagnostic.RCS1146.severity = error    # use conditional access
 dotnet_diagnostic.RCS1213.severity = error    # remove unused member declaration
 dotnet_diagnostic.REB0001.severity = error    # fields and properties must precede constructors and methods
+dotnet_diagnostic.REB0002.severity = error    # methods and constructors must have XML summaries
+dotnet_diagnostic.REB0003.severity = error    # method parameters must have XML documentation
+dotnet_diagnostic.REB0004.severity = error    # method type parameters must have XML documentation
+dotnet_diagnostic.REB0005.severity = error    # value-returning methods must document their return value
+dotnet_diagnostic.REB0006.severity = error    # fields and enum members must not have XML documentation
 
 [Assets/Scripts/Managers/AudioManager.cs]
 dotnet_diagnostic.RCS1163.severity = none

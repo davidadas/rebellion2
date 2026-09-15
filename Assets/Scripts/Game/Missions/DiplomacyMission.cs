@@ -149,7 +149,7 @@ namespace Rebellion.Game.Missions
             GameConfig.SupportShiftConfig config = game.Config.SupportShift;
             int supportShift = GetFactionSupportShift(planet, config, provider);
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
-            supportShift = PlanetaryControlSystem.ApplyCoreWeakSupportPenalty(
+            supportShift = PlanetaryControlSystem.ApplyCoreSupportResistance(
                 planet,
                 faction,
                 supportShift,

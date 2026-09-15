@@ -53,6 +53,11 @@ public sealed class UIWindow : MonoBehaviour, IPointerDownHandler
     /// </summary>
     public event Action<UIWindow> Moved;
 
+    /// <summary>
+    /// Raised after the window's source-space size changes.
+    /// </summary>
+    public event Action<UIWindow> Resized;
+
     public int Id { get; private set; }
 
     public bool Modal { get; private set; }
@@ -174,7 +179,13 @@ public sealed class UIWindow : MonoBehaviour, IPointerDownHandler
     /// <param name="height">The non-negative source-space height.</param>
     public void Resize(int width, int height)
     {
-        GetRectTransform().sizeDelta = new Vector2(Mathf.Max(0, width), Mathf.Max(0, height));
+        Vector2 size = new Vector2(Mathf.Max(0, width), Mathf.Max(0, height));
+        RectTransform rect = GetRectTransform();
+        if (rect.sizeDelta == size)
+            return;
+
+        rect.sizeDelta = size;
+        Resized?.Invoke(this);
     }
 
     /// <summary>

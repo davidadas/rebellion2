@@ -157,7 +157,22 @@ namespace Rebellion.Systems
                     out Planet destination
                 )
             )
-                return false;
+            {
+                nextType =
+                    nextType == BuildingType.Mine ? BuildingType.Refinery : BuildingType.Mine;
+                if (
+                    !HasActiveBuildingProject(ownedPlanets, nextType)
+                    || !TryFindResourceFacilityOrder(
+                        ownedPlanets,
+                        nextType,
+                        out producer,
+                        out destination
+                    )
+                )
+                {
+                    return false;
+                }
+            }
 
             Building template = GetAvailableBuilding(faction, nextType);
             return template != null
@@ -287,6 +302,7 @@ namespace Rebellion.Systems
                 .Where(planet =>
                     !planet.IsManufacturingReserved(ManufacturingType.Building)
                     && planet.GetAvailableManufacturingCapacity(ManufacturingType.Building) > 0
+                    && IsCompatibleBuildingProject(planet, buildingType)
                 )
                 .ToList();
             IEnumerable<Planet> destinations = planets.Where(planet =>
@@ -313,6 +329,49 @@ namespace Rebellion.Systems
             producer = order?.Producer;
             destination = order?.Destination;
             return producer != null && destination != null;
+        }
+
+        /// <summary>
+        /// Returns whether any available construction lane is already committed to a building type.
+        /// </summary>
+        /// <param name="planets">The faction's candidate producer planets.</param>
+        /// <param name="buildingType">The building project to locate.</param>
+        /// <returns>True when an active lane can accept another copy without replacement.</returns>
+        private static bool HasActiveBuildingProject(
+            IEnumerable<Planet> planets,
+            BuildingType buildingType
+        )
+        {
+            return planets.Any(planet =>
+                planet.GetAvailableManufacturingCapacity(ManufacturingType.Building) > 0
+                && planet
+                    .GetManufacturingQueue()
+                    .TryGetValue(ManufacturingType.Building, out List<IManufacturable> queue)
+                && queue?.OfType<Building>().Any(building => building.BuildingType == buildingType)
+                    == true
+            );
+        }
+
+        /// <summary>
+        /// Returns whether a construction lane is idle or already producing the requested project.
+        /// </summary>
+        /// <param name="producer">The planet containing the construction lane.</param>
+        /// <param name="buildingType">The requested building project.</param>
+        /// <returns>True when adding the project would not replace active automated work.</returns>
+        private static bool IsCompatibleBuildingProject(Planet producer, BuildingType buildingType)
+        {
+            if (
+                !producer
+                    .GetManufacturingQueue()
+                    .TryGetValue(ManufacturingType.Building, out List<IManufacturable> queue)
+                || queue == null
+                || queue.Count == 0
+            )
+            {
+                return true;
+            }
+
+            return queue.OfType<Building>().All(building => building.BuildingType == buildingType);
         }
 
         /// <summary>

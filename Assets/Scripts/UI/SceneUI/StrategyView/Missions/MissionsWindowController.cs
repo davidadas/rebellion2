@@ -182,6 +182,7 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
         view.MissionPressed += HandleMissionPressed;
         view.MissionReleased += HandleMissionReleased;
         view.ParticipantPressed += HandleParticipantPressed;
+        view.ParticipantReleased += HandleParticipantReleased;
         view.SurfaceClicked += HandleSurfaceClicked;
         view.TabRequested += HandleTabRequested;
     }
@@ -587,6 +588,22 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
     }
 
     /// <summary>
+    /// Routes a participant release into the active strategy targeting request.
+    /// </summary>
+    /// <param name="view">The source Missions view.</param>
+    /// <param name="index">The released participant index.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleParticipantReleased(
+        MissionsWindowView view,
+        int index,
+        PointerEventData eventData
+    )
+    {
+        if (eventData?.button == PointerEventData.InputButton.Left)
+            TrySelectParticipantTarget(view, index);
+    }
+
+    /// <summary>
     /// Routes a Missions surface click into planet-level targeting.
     /// </summary>
     /// <param name="view">The source Missions view.</param>
@@ -630,6 +647,7 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
         view.MissionPressed -= HandleMissionPressed;
         view.MissionReleased -= HandleMissionReleased;
         view.ParticipantPressed -= HandleParticipantPressed;
+        view.ParticipantReleased -= HandleParticipantReleased;
         view.SurfaceClicked -= HandleSurfaceClicked;
         view.TabRequested -= HandleTabRequested;
         boundViews.Remove(view);
@@ -652,7 +670,36 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
 
         ISceneNode item =
             missionIndex < 0 ? session.Planet.Planet : session.GetMission(missionIndex);
-        return targetingController.TrySelectTarget(new StrategyMissionTarget(session.Planet, item));
+        return TrySelectTarget(session, item);
+    }
+
+    /// <summary>
+    /// Routes a visible mission participant into the active targeting request.
+    /// </summary>
+    /// <param name="view">The source Missions view.</param>
+    /// <param name="participantIndex">The participant's active-role index.</param>
+    /// <returns>True when the active targeting request accepted the participant.</returns>
+    private bool TrySelectParticipantTarget(MissionsWindowView view, int participantIndex)
+    {
+        if (
+            !targetingController.IsTargeting
+            || !sessions.TryGetValue(view, out MissionsWindowSession session)
+        )
+            return false;
+
+        return TrySelectTarget(session, session.GetParticipant(participantIndex));
+    }
+
+    /// <summary>
+    /// Submits one scene node through a resolved Missions session.
+    /// </summary>
+    /// <param name="session">The source Missions session.</param>
+    /// <param name="item">The selected mission target.</param>
+    /// <returns>True when the active targeting request accepted the target.</returns>
+    private bool TrySelectTarget(MissionsWindowSession session, ISceneNode item)
+    {
+        return item != null
+            && targetingController.TrySelectTarget(new StrategyMissionTarget(session.Planet, item));
     }
 
     /// <summary>
@@ -789,6 +836,18 @@ internal sealed class MissionsWindowSession
     public Mission GetMission(int index)
     {
         return index >= 0 && index < Missions.Count ? Missions[index] : null;
+    }
+
+    /// <summary>
+    /// Gets one participant from the selected mission's active role.
+    /// </summary>
+    /// <param name="index">The requested visual index.</param>
+    /// <returns>The participant scene node, or null.</returns>
+    public ISceneNode GetParticipant(int index)
+    {
+        return index >= 0 && index < ActiveParticipants.Count
+            ? ActiveParticipants[index] as ISceneNode
+            : null;
     }
 
     /// <summary>

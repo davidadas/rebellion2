@@ -6,6 +6,16 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Game.Units
 {
     /// <summary>
+    /// Describes how the AI intends to use an available special-forces unit this turn.
+    /// </summary>
+    public enum SpecialForcesIntent
+    {
+        PrimaryAgent,
+        Decoy,
+        Reserve,
+    }
+
+    /// <summary>
     /// Represents a special forces unit that can be used in missions.
     /// </summary>
     public class SpecialForces : LeafNode, IMissionParticipant, IManufacturable, IMovable
@@ -59,9 +69,11 @@ namespace Rebellion.Game.Units
         public SpecialForces() { }
 
         /// <summary>Creates an empty special-forces copy.</summary>
+        /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new SpecialForces();
 
         /// <summary>Copies special-forces state into an empty destination.</summary>
+        /// <param name="destination">The destination.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
             base.CopyStateTo(destination);

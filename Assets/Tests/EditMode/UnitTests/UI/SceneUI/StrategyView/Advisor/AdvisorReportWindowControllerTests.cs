@@ -1,0 +1,173 @@
+using System;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Factions;
+using UnityEngine;
+
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
+{
+    [TestFixture]
+    public class AdvisorReportWindowControllerTests
+    {
+        private const string _playerFactionId = "FNALL1";
+        private const string _strategyViewPrefabPath =
+            "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+
+        private AdvisorReportWindowController _controller;
+        private int _dirtyCount;
+        private GameObject _rootObject;
+        private StrategyWindowLayerView _windowLayer;
+        private UIWindowManager _windowManager;
+
+        /// <summary>
+        /// Sets up.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            _dirtyCount = 0;
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
+            game.Summary.PlayerFactionID = _playerFactionId;
+            UIContext uiContext = TestContent.CreateUIContext(
+                game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+            _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
+            _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
+            _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
+            _windowManager.WindowCloseRequested += _windowManager.DestroyWindow;
+            _controller = new AdvisorReportWindowController(
+                () => uiContext,
+                _windowLayer,
+                _windowManager,
+                () => new Vector2Int(102, 58),
+                _windowManager.DestroyWindow,
+                () => _dirtyCount++
+            );
+        }
+
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            UnityEngine.Object.DestroyImmediate(_rootObject);
+        }
+
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
+        [Test]
+        public void Constructor_NullContextProvider_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                new AdvisorReportWindowController(
+                    null,
+                    _windowLayer,
+                    _windowManager,
+                    () => Vector2Int.zero,
+                    _ => { },
+                    () => { }
+                )
+            );
+        }
+
+        /// <summary>
+        /// Verifies open closed report creates named bound window at configured position.
+        /// </summary>
+        [Test]
+        public void Open_ClosedReport_CreatesNamedBoundWindowAtConfiguredPosition()
+        {
+            _controller.Open(AdvisorReportMode.GalaxyOverview);
+
+            Assert.AreEqual(1, _windowManager.Windows.Count);
+            UIWindow window = _windowManager.Windows.Single();
+            Assert.AreEqual("AdvisorReportWindow-GalaxyOverview", window.Content.name);
+            Assert.AreEqual(new Vector2Int(102, 58), new Vector2Int(window.X, window.Y));
+            Assert.IsTrue(
+                _windowManager.TryGetWindowView(window, out AdvisorReportWindowView reportView)
+            );
+            Assert.AreEqual(AdvisorReportMode.GalaxyOverview, _controller.GetMode(reportView));
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        /// <summary>
+        /// Verifies that requesting another advisor report replaces the exclusive window.
+        /// </summary>
+        [Test]
+        public void Open_DifferentReport_ReplacesExistingWindow()
+        {
+            _controller.Open(AdvisorReportMode.GalaxyOverview);
+            UIWindow firstWindow = _windowManager.Windows.Single();
+
+            _controller.Open(AdvisorReportMode.Objectives);
+
+            Assert.AreEqual(1, _windowManager.Windows.Count);
+            UIWindow secondWindow = _windowManager.Windows.Single();
+            Assert.AreNotSame(firstWindow, secondWindow);
+            _windowManager.TryGetWindowView(secondWindow, out AdvisorReportWindowView reportView);
+            Assert.AreEqual(AdvisorReportMode.Objectives, _controller.GetMode(reportView));
+            Assert.AreEqual(2, _dirtyCount);
+        }
+
+        /// <summary>
+        /// Verifies that repeating one report command toggles its exclusive window closed.
+        /// </summary>
+        [Test]
+        public void Open_SameReport_TogglesExistingWindowClosed()
+        {
+            _controller.Open(AdvisorReportMode.GalaxyOverview);
+
+            _controller.Open(AdvisorReportMode.GalaxyOverview);
+
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.IsNull(_windowManager.ActiveWindow);
+        }
+
+        /// <summary>
+        /// Verifies get mode unbound view throws invalid operation exception.
+        /// </summary>
+        [Test]
+        public void GetMode_UnboundView_ThrowsInvalidOperationException()
+        {
+            AdvisorReportWindowView view = UnityEngine.Object.Instantiate(
+                _windowLayer.AdvisorReportWindowPrefab,
+                _rootObject.transform
+            );
+
+            Assert.Throws<InvalidOperationException>(() => _controller.GetMode(view));
+        }
+
+        /// <summary>
+        /// Verifies get title known mode returns displayed title.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="expected">The expected.</param>
+        [TestCase(AdvisorReportMode.GalaxyOverview, "Galaxy Overview")]
+        [TestCase(AdvisorReportMode.Objectives, "Objectives")]
+        public void GetTitle_KnownMode_ReturnsDisplayedTitle(
+            AdvisorReportMode mode,
+            string expected
+        )
+        {
+            Assert.AreEqual(expected, AdvisorReportWindowController.GetTitle(mode));
+        }
+
+        /// <summary>
+        /// Verifies get title unknown mode throws argument out of range exception.
+        /// </summary>
+        [Test]
+        public void GetTitle_UnknownMode_ThrowsArgumentOutOfRangeException()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                AdvisorReportWindowController.GetTitle((AdvisorReportMode)int.MaxValue)
+            );
+        }
+    }
+}

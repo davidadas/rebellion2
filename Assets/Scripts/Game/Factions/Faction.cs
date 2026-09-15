@@ -52,7 +52,6 @@ namespace Rebellion.Game.Factions
             set => _settings = value ?? new FactionSettings();
         }
         public string HQInstanceID { get; set; }
-        public string PlayerID { get; set; }
 
         // Messages and Notifications.
         public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
@@ -130,7 +129,9 @@ namespace Rebellion.Game.Factions
         /// </summary>
         public Faction() { }
 
-        /// <summary>Returns maintenance headroom after adding a manufacturable item.</summary>
+        /// <summary>
+        /// Returns maintenance headroom after adding a manufacturable item.
+        /// </summary>
         /// <param name="item">The prospective item.</param>
         /// <returns>The projected maintenance headroom.</returns>
         public int GetProjectedMaintenanceHeadroom(IManufacturable item)
@@ -156,13 +157,15 @@ namespace Rebellion.Game.Factions
         /// Reserves one refined material for a facility or queues its request in arrival order.
         /// </summary>
         /// <param name="facility">The facility requesting refined material.</param>
+        /// <param name="minimumStockpile">The stockpile amount that must remain unspent.</param>
         /// <returns>True when the material is reserved immediately.</returns>
-        public bool RequestRefinedMaterial(Building facility)
+        public bool RequestRefinedMaterial(Building facility, int minimumStockpile = 0)
         {
             return RequestMaterial(
                 facility,
                 ref _refinedMaterialStockpile,
-                PendingRefinedMaterialFacilityIDs
+                PendingRefinedMaterialFacilityIDs,
+                minimumStockpile
             );
         }
 
@@ -172,11 +175,13 @@ namespace Rebellion.Game.Factions
         /// <param name="facility">The facility requesting material.</param>
         /// <param name="stockpile">The stockpile that supplies the request.</param>
         /// <param name="pendingFacilityIDs">The pending request queue for the material.</param>
+        /// <param name="minimumStockpile">The stockpile amount that must remain unspent.</param>
         /// <returns>True when the facility already has or immediately receives its material.</returns>
         private static bool RequestMaterial(
             Building facility,
             ref int stockpile,
-            List<string> pendingFacilityIDs
+            List<string> pendingFacilityIDs,
+            int minimumStockpile = 0
         )
         {
             if (facility == null || string.IsNullOrEmpty(facility.InstanceID))
@@ -185,7 +190,7 @@ namespace Rebellion.Game.Factions
             if (facility.ProductionInputReserved)
                 return true;
 
-            if (stockpile > 0)
+            if (stockpile > Math.Max(0, minimumStockpile))
             {
                 stockpile--;
                 facility.ProductionInputReserved = true;
@@ -204,12 +209,6 @@ namespace Rebellion.Game.Factions
         /// </summary>
         /// <returns>The HQ instance ID.</returns>
         public string GetHQInstanceID() => HQInstanceID;
-
-        /// <summary>
-        /// Checks if the faction is controlled by AI.
-        /// </summary>
-        /// <returns>True if the faction is AI controlled, false otherwise.</returns>
-        public bool IsAIControlled() => string.IsNullOrEmpty(PlayerID);
 
         /// <summary>
         /// Takes the next available ship name from a pool or one of its configured fallbacks.
@@ -592,6 +591,7 @@ namespace Rebellion.Game.Factions
         /// <summary>
         /// Returns all owned entities that implement IManufacturable.
         /// </summary>
+        /// <returns>The requested all owned manufacturables.</returns>
         public List<IManufacturable> GetAllOwnedManufacturables()
         {
             return _ownedEntities
@@ -732,6 +732,9 @@ namespace Rebellion.Game.Factions
         /// Returns a detached fleet — caller must attach to scene graph via game.AttachNode().
         /// Capital ships must be detached (no parent) before passing in.
         /// </summary>
+        /// <param name="capitalShips">The capital ships.</param>
+        /// <param name="roleType">The role type.</param>
+        /// <returns>The created fleet.</returns>
         public Fleet CreateFleet(
             CapitalShip[] capitalShips = null,
             FleetRoleType roleType = FleetRoleType.None
@@ -788,7 +791,7 @@ namespace Rebellion.Game.Factions
         /// </summary>
         /// <param name="participant">The participant to inspect.</param>
         /// <returns>True if the participant can currently receive mission orders.</returns>
-        private bool IsAvailableMissionParticipant(IMissionParticipant participant)
+        public bool IsAvailableMissionParticipant(IMissionParticipant participant)
         {
             if (participant == null || participant.OwnerInstanceID != InstanceID)
                 return false;
@@ -920,6 +923,8 @@ namespace Rebellion.Game.Factions
         /// <summary>
         /// Maps a manufacturable template to its faction research queue.
         /// </summary>
+        /// <param name="template">The template.</param>
+        /// <returns>The requested research queue type.</returns>
         private static ManufacturingType GetResearchQueueType(IManufacturable template)
         {
             return template switch

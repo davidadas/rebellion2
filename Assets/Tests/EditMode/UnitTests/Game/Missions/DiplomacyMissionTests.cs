@@ -1,0 +1,559 @@
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
+
+namespace Rebellion.Tests.Game.Missions
+{
+    [TestFixture]
+    public class DiplomacyMissionTests
+    {
+        /// <summary>
+        /// Verifies resolve objective support below threshold no ownership change.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_SupportBelowThreshold_NoOwnershipChange()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
+            Mission mission = CreateAndAttachMission(game, planet);
+
+            List<GameResult> results = ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
+
+            Assert.IsFalse(
+                results.OfType<PlanetOwnershipChangedResult>().Any(),
+                "Should not emit ownership change when support <= 60"
+            );
+            Assert.AreEqual("empire", planet.OwnerInstanceID, "Owner should be unchanged");
+        }
+
+        /// <summary>
+        /// Verifies resolve objective support crosses threshold no ownership change emitted.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_SupportCrossesThreshold_NoOwnershipChangeEmitted()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 60, planetOwner: null);
+            Mission mission = CreateAndAttachMission(game, planet);
+
+            List<GameResult> results = ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
+
+            Assert.IsFalse(
+                results.OfType<PlanetOwnershipChangedResult>().Any(),
+                "Mission should not emit ownership change; PlanetaryControlSystem handles transfers"
+            );
+            Assert.AreEqual(
+                61,
+                planet.GetPopularSupport("empire"),
+                "Support should still increment"
+            );
+        }
+
+        /// <summary>
+        /// Verifies resolve objective planet already owned no ownership change emitted.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_PlanetAlreadyOwned_NoOwnershipChangeEmitted()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 61, planetOwner: "empire");
+            Mission mission = CreateAndAttachMission(game, planet);
+
+            List<GameResult> results = ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
+
+            Assert.IsFalse(
+                results.OfType<PlanetOwnershipChangedResult>().Any(),
+                "Should not emit ownership change when planet is already owned by mission faction"
+            );
+        }
+
+        /// <summary>
+        /// Verifies resolve objective planet already owned increments support without changing owner.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_PlanetAlreadyOwned_IncrementsSupportWithoutChangingOwner()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 61, planetOwner: "empire");
+            Mission mission = CreateAndAttachMission(game, planet);
+
+            ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
+
+            Assert.AreEqual(
+                62,
+                planet.GetPopularSupport("empire"),
+                "Support should still increment"
+            );
+            Assert.AreEqual("empire", planet.OwnerInstanceID, "Owner should remain empire");
+        }
+
+        /// <summary>
+        /// Verifies resolve objective success probability does not affect support gain.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_SuccessProbability_DoesNotAffectSupportGain()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.SetBaseRating(OfficerRating.Diplomacy, 100);
+            game.AttachNode(officer, planet);
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { 0, 70 },
+            };
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 1;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
+
+            ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
+
+            Assert.AreEqual(51, planet.GetPopularSupport("empire"));
+        }
+
+        /// <summary>
+        /// Verifies resolve objective owned planet uses diplomacy support config.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_OwnedPlanet_UsesDiplomacySupportConfig()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Mission mission = CreateAndAttachMission(game, planet);
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 5;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 10;
+
+            ExecuteDiplomacySuccess(mission, game, new SequenceRNG(new[] { 7 }));
+
+            Assert.AreEqual(62, planet.GetPopularSupport("empire"));
+        }
+
+        /// <summary>
+        /// Verifies resolve objective neutral planet uses neutral diplomacy support config.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_NeutralPlanet_UsesNeutralDiplomacySupportConfig()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
+            Mission mission = CreateAndAttachMission(game, planet);
+            game.Config.SupportShift.DiplomacyNeutralPlanetSupportBase = 2;
+            game.Config.SupportShift.DiplomacyNeutralPlanetSupportRange = 4;
+
+            ExecuteDiplomacySuccess(mission, game, new SequenceRNG(new[] { 4 }));
+
+            Assert.AreEqual(56, planet.GetPopularSupport("empire"));
+        }
+
+        /// <summary>
+        /// Verifies resolve objective core sector weak support applies configured divisor.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_CoreSectorWeakSupport_AppliesConfiguredDivisor()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            planet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
+            game.GetFactionByOwnerInstanceID("empire").Settings.SupportResistance =
+                SupportChange.Increase;
+            Mission mission = CreateAndAttachMission(game, planet);
+            game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 6;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
+
+            ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
+
+            Assert.AreEqual(53, planet.GetPopularSupport("empire"));
+        }
+
+        /// <summary>
+        /// Verifies resolve objective success probability uses diplomacy rating minus opposing support.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_SuccessProbability_UsesDiplomacyRatingMinusOpposingSupport()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 80, planetOwner: "empire");
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.SetBaseRating(OfficerRating.Diplomacy, 40);
+            game.AttachNode(officer, planet);
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { 19, 0 },
+                { 20, 100 },
+                { 21, 0 },
+            };
+            mission.Initiate(0);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.99));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
+        }
+
+        /// <summary>
+        /// Verifies resolve objective support already at max returns success.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_SupportAlreadyAtMax_ReturnsSuccess()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, planet);
+
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            mission.Initiate(0);
+
+            planet.SetFullPopularSupport("empire");
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                completed.Outcome,
+                "Mission succeeds even when support is already at max; ShouldRepeatAfterCompletion tears it down after"
+            );
+        }
+
+        /// <summary>
+        /// Verifies get abort reason when uprising starts returns failure.
+        /// </summary>
+        [Test]
+        public void GetAbortReason_WhenUprisingStarts_ReturnsFailure()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
+            Mission mission = CreateAndAttachMission(game, planet);
+            planet.BeginUprising();
+
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
+                "Diplomacy mission should be canceled when target planet enters uprising"
+            );
+        }
+
+        /// <summary>
+        /// Verifies get abort reason when planet taken by third faction returns failure.
+        /// </summary>
+        [Test]
+        public void GetAbortReason_WhenPlanetTakenByThirdFaction_ReturnsFailure()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
+            Mission mission = CreateAndAttachMission(game, planet);
+
+            planet.OwnerInstanceID = "rebels";
+
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
+                "Diplomacy mission should be canceled when target planet is taken by another faction"
+            );
+        }
+
+        /// <summary>
+        /// Verifies get abort reason when planet taken by mission faction returns null.
+        /// </summary>
+        [Test]
+        public void GetAbortReason_WhenPlanetTakenByMissionFaction_ReturnsNull()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 70, planetOwner: null);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+
+            planet.OwnerInstanceID = "empire";
+
+            Assert.IsNull(
+                mission.GetAbortReason(game),
+                "Diplomacy mission should not abort when target planet joins the mission faction"
+            );
+        }
+
+        /// <summary>
+        /// Verifies should repeat after completion when planet taken by mission faction below max support returns true.
+        /// </summary>
+        [Test]
+        public void ShouldRepeatAfterCompletion_WhenPlanetTakenByMissionFactionBelowMaxSupport_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 70, planetOwner: null);
+            Mission mission = CreateAndAttachMission(game, planet);
+
+            planet.OwnerInstanceID = "empire";
+
+            Assert.IsTrue(
+                mission.ShouldRepeatAfterCompletion(game),
+                "Diplomacy mission should repeat below 100 support after target joins the mission faction"
+            );
+        }
+
+        /// <summary>
+        /// Verifies should repeat after completion support reached max returns false.
+        /// </summary>
+        [Test]
+        public void ShouldRepeatAfterCompletion_SupportReachedMax_ReturnsFalse()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
+            Mission mission = CreateAndAttachMission(game, planet);
+            planet.SetFullPopularSupport("empire");
+
+            Assert.IsFalse(
+                mission.ShouldRepeatAfterCompletion(game),
+                "Mission should cancel when support is at 100"
+            );
+        }
+
+        /// <summary>
+        /// Verifies should repeat after completion support below max returns true.
+        /// </summary>
+        [Test]
+        public void ShouldRepeatAfterCompletion_SupportBelowMax_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
+            Mission mission = CreateAndAttachMission(game, planet);
+
+            Assert.IsTrue(
+                mission.ShouldRepeatAfterCompletion(game),
+                "Mission should repeat when support is below 100"
+            );
+        }
+
+        /// <summary>
+        /// Verifies try create uncolonized planet returns null.
+        /// </summary>
+        [Test]
+        public void TryCreate_UncolonizedPlanet_ReturnsNull()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
+            planet.IsColonized = false;
+
+            Assert.IsNull(
+                CreateDiplomacyMission(
+                    "empire",
+                    planet,
+                    new List<IMissionParticipant>(),
+                    new List<IMissionParticipant>()
+                )
+            );
+        }
+
+        /// <summary>
+        /// Verifies try create planet support at max returns null.
+        /// </summary>
+        [Test]
+        public void TryCreate_PlanetSupportAtMax_ReturnsNull()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 100);
+
+            Assert.IsNull(
+                CreateDiplomacyMission(
+                    "empire",
+                    planet,
+                    new List<IMissionParticipant>(),
+                    new List<IMissionParticipant>()
+                )
+            );
+        }
+
+        /// <summary>
+        /// Verifies try create enemy owned planet returns null.
+        /// </summary>
+        [Test]
+        public void TryCreate_EnemyOwnedPlanet_ReturnsNull()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "rebels");
+
+            Assert.IsNull(
+                CreateDiplomacyMission(
+                    "empire",
+                    planet,
+                    new List<IMissionParticipant>(),
+                    new List<IMissionParticipant>()
+                )
+            );
+        }
+
+        /// <summary>
+        /// Verifies try create planet in uprising returns null.
+        /// </summary>
+        [Test]
+        public void TryCreate_PlanetInUprising_ReturnsNull()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
+            planet.BeginUprising();
+
+            Assert.IsNull(
+                CreateDiplomacyMission(
+                    "empire",
+                    planet,
+                    new List<IMissionParticipant>(),
+                    new List<IMissionParticipant>()
+                )
+            );
+        }
+
+        /// <summary>
+        /// Verifies serialize round trip preserves data.
+        /// </summary>
+        [Test]
+        public void Serialize_RoundTrip_PreservesData()
+        {
+            Mission mission = new DiplomacyMission
+            {
+                InstanceID = "MISSION1",
+                OwnerInstanceID = "FACTION1",
+                ConfigKey = "Diplomacy",
+                DisplayName = "Diplomacy",
+                LocationInstanceID = "PLANET1",
+                ParticipantRating = OfficerRating.Diplomacy,
+                HasInitiated = true,
+                MaxProgress = 12,
+                CurrentProgress = 3,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
+
+            Assert.AreEqual("MISSION1", deserialized.InstanceID);
+            Assert.AreEqual("FACTION1", deserialized.OwnerInstanceID);
+            Assert.AreEqual("Diplomacy", deserialized.ConfigKey);
+            Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
+            Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
+            Assert.IsTrue(deserialized.HasInitiated);
+            Assert.AreEqual(12, deserialized.MaxProgress);
+            Assert.AreEqual(3, deserialized.CurrentProgress);
+        }
+
+        /// <summary>
+        /// Creates diplomacy mission.
+        /// </summary>
+        /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="target">The target.</param>
+        /// <param name="mainParticipants">The main participants.</param>
+        /// <param name="decoyParticipants">The decoy participants.</param>
+        /// <returns>The created diplomacy mission.</returns>
+        private static Mission CreateDiplomacyMission(
+            string ownerInstanceId,
+            ISceneNode target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants
+        )
+        {
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Diplomacy,
+                null,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants
+            );
+        }
+
+        /// <summary>
+        /// Builds game.
+        /// </summary>
+        /// <param name="planet">Receives the planet.</param>
+        /// <param name="empireSupport">The empire support.</param>
+        /// <param name="planetOwner">The planet owner.</param>
+        /// <returns>The constructed game.</returns>
+        private GameRoot BuildGame(
+            out Planet planet,
+            int empireSupport,
+            string planetOwner = "empire"
+        )
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector planetSector = new PlanetSector
+            {
+                InstanceID = "sector1",
+                SectorType = PlanetSectorType.OuterRim,
+            };
+            game.AttachNode(planetSector, game.Galaxy);
+
+            planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = planetOwner,
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int> { { "empire", empireSupport } },
+                VisitingFactionIDs = new List<string> { "empire" },
+            };
+            game.AttachNode(planet, planetSector);
+            return game;
+        }
+
+        /// <summary>
+        /// Creates and attach mission.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The created and attach mission.</returns>
+        private Mission CreateAndAttachMission(GameRoot game, Planet planet)
+        {
+            Officer officer = EntityFactory.CreateOfficer("diplomat", "empire");
+            officer.SetBaseRating(OfficerRating.Diplomacy, 100);
+
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            return mission;
+        }
+
+        /// <summary>
+        /// Executes diplomacy success.
+        /// </summary>
+        /// <param name="mission">The mission.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="rng">The rng.</param>
+        /// <returns>The result of execute diplomacy success.</returns>
+        private static List<GameResult> ExecuteDiplomacySuccess(
+            Mission mission,
+            GameRoot game,
+            IRandomNumberProvider rng
+        )
+        {
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { -10000, 100 },
+            };
+            mission.Initiate(0);
+            return mission.ResolveObjective(game, rng);
+        }
+    }
+}

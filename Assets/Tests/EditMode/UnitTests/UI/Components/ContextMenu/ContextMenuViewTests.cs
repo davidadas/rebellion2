@@ -1,0 +1,483 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+namespace Rebellion.Tests.UI.Components.ContextMenu
+{
+    [TestFixture]
+    public class ContextMenuViewTests
+    {
+        private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+
+        private Texture2D _activeTexture;
+        private Texture2D _texture;
+        private ContextMenuView _view;
+        private GameObject _viewObject;
+
+        /// <summary>
+        /// Sets up.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            _view = UIComponentTestHelper.InstantiatePrefabComponent<ContextMenuView>(_prefabPath);
+            _viewObject = _view.gameObject;
+            _texture = new Texture2D(45, 45);
+            _activeTexture = new Texture2D(45, 45);
+        }
+
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            UnityEngine.Object.DestroyImmediate(_activeTexture);
+            UnityEngine.Object.DestroyImmediate(_texture);
+            UnityEngine.Object.DestroyImmediate(_viewObject);
+        }
+
+        /// <summary>
+        /// Verifies command item null command throws argument null exception.
+        /// </summary>
+        [Test]
+        public void CommandItem_NullCommand_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new ContextMenuCommandItem(null));
+        }
+
+        /// <summary>
+        /// Verifies command item icons and submenu stores immutable presentation.
+        /// </summary>
+        [Test]
+        public void CommandItem_IconsAndSubmenu_StoresImmutablePresentation()
+        {
+            TestCommand command = new TestCommand("Parent", true);
+            List<ContextMenuCommandItem> children = new List<ContextMenuCommandItem>
+            {
+                new ContextMenuCommandItem(new TestCommand("Child", true)),
+            };
+            ContextMenuCommandItem item = new ContextMenuCommandItem(
+                command,
+                _texture,
+                _activeTexture,
+                false,
+                true,
+                children
+            );
+            children.Clear();
+
+            Assert.AreSame(command, item.Command);
+            Assert.AreEqual("Parent", item.Text);
+            Assert.IsTrue(item.Enabled);
+            Assert.IsTrue(item.UsesIconColumn);
+            Assert.IsTrue(item.CenterNativeIcon);
+            Assert.IsTrue(item.HasSubmenu);
+            Assert.AreEqual(1, item.SubmenuCommands.Count);
+            Assert.AreSame(_texture, item.GetIconTexture());
+            item.Active = true;
+            Assert.AreSame(_activeTexture, item.GetIconTexture());
+        }
+
+        /// <summary>
+        /// Verifies metrics dimensions calculate panel width and height.
+        /// </summary>
+        [Test]
+        public void Metrics_Dimensions_CalculatePanelWidthAndHeight()
+        {
+            ContextMenuMetrics metrics = new ContextMenuMetrics(20, 30, 2);
+
+            Assert.AreEqual(100, metrics.GetPanelWidth(100, false));
+            Assert.AreEqual(130, metrics.GetPanelWidth(100, true));
+            Assert.AreEqual(64, metrics.GetPanelHeight(3));
+            Assert.AreEqual(20, metrics.RowHeight);
+            Assert.AreEqual(30, metrics.IconPanelWidth);
+            Assert.AreEqual(2, metrics.BorderSize);
+        }
+
+        /// <summary>
+        /// Verifies open at and render current commands renders authored panel and rows.
+        /// </summary>
+        [Test]
+        public void OpenAtAndRenderCurrent_Commands_RendersAuthoredPanelAndRows()
+        {
+            object owner = new object();
+            ContextMenuCommandItem[] items =
+            {
+                new ContextMenuCommandItem(new TestCommand("Enabled", true)),
+                new ContextMenuCommandItem(new TestCommand("Disabled", false)),
+            };
+
+            _view.OpenAt(owner, 20, 30, 100, items);
+            _view.RenderCurrent();
+
+            Assert.IsTrue(_view.Open);
+            Assert.AreSame(owner, _view.Owner);
+            ContextMenuPanelView panel = FindRenderedPanels().Single();
+            Assert.IsTrue(panel.gameObject.activeSelf);
+            ContextMenuCommandView[] rows = FindRenderedRows(panel);
+            Assert.AreEqual(2, rows.Length);
+            Assert.AreEqual("Enabled", FindCommandText(rows[0]).text);
+            Assert.AreEqual("Disabled", FindCommandText(rows[1]).text);
+            Assert.IsTrue(FindDismissHitArea().gameObject.activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies open at surface edges keeps panel within authored surface.
+        /// </summary>
+        [Test]
+        public void OpenAt_SurfaceEdges_KeepsPanelWithinAuthoredSurface()
+        {
+            RectTransform surface = _view.transform as RectTransform;
+            Vector2 size = surface.sizeDelta;
+            ContextMenuCommandItem[] items =
+            {
+                new ContextMenuCommandItem(new TestCommand("Command", true)),
+            };
+
+            _view.OpenAt(null, Mathf.RoundToInt(size.x), Mathf.RoundToInt(size.y), 100, items);
+            _view.RenderCurrent();
+
+            RectInt panelRect = UILayout.GetSourceRect(
+                FindRenderedPanels().Single().transform as RectTransform
+            );
+            Assert.GreaterOrEqual(panelRect.x, 0);
+            Assert.GreaterOrEqual(panelRect.y, 0);
+            Assert.LessOrEqual(panelRect.xMax, Mathf.RoundToInt(size.x));
+            Assert.LessOrEqual(panelRect.yMax, Mathf.RoundToInt(size.y));
+        }
+
+        /// <summary>
+        /// Verifies get menu width icon column and long text expands authored width.
+        /// </summary>
+        [Test]
+        public void GetMenuWidth_IconColumnAndLongText_ExpandsAuthoredWidth()
+        {
+            ContextMenuCommandItem[] plain =
+            {
+                new ContextMenuCommandItem(new TestCommand("A", true)),
+            };
+            ContextMenuCommandItem[] icon =
+            {
+                new ContextMenuCommandItem(
+                    new TestCommand("A very long command label", true),
+                    _texture
+                ),
+            };
+
+            int plainWidth = _view.GetMenuWidth(60, plain);
+            int iconWidth = _view.GetMenuWidth(60, icon);
+
+            Assert.GreaterOrEqual(plainWidth, 60);
+            Assert.Greater(iconWidth, plainWidth);
+        }
+
+        /// <summary>
+        /// Verifies create visuals active color uses authored and provided colors.
+        /// </summary>
+        [Test]
+        public void CreateVisuals_ActiveColor_UsesAuthoredAndProvidedColors()
+        {
+            Color32 activeColor = new Color32(1, 2, 3, 4);
+
+            ContextMenuView.ContextMenuVisuals visuals = _view.CreateVisuals(activeColor);
+            ContextMenuView.ContextMenuVisuals fallback = _view.CreateVisuals(null);
+
+            Assert.AreEqual(activeColor, visuals.ActiveColor);
+            Assert.AreEqual(visuals.EnabledColor, fallback.ActiveColor);
+            Assert.AreEqual(new Color32(255, 255, 255, 255), visuals.EnabledColor);
+            Assert.AreEqual(new Color32(128, 128, 128, 255), visuals.DisabledColor);
+        }
+
+        /// <summary>
+        /// Verifies leaf command pointer lifecycle enabled command selects and clears active state.
+        /// </summary>
+        [Test]
+        public void LeafCommandPointerLifecycle_EnabledCommand_SelectsAndClearsActiveState()
+        {
+            TestCommand command = new TestCommand("Command", true);
+            ContextMenuCommandItem item = new ContextMenuCommandItem(command);
+            IContextMenuCommand selected = null;
+            _view.CommandSelected += value => selected = value;
+            _view.OpenAt(null, 10, 10, 100, new[] { item });
+            _view.RenderCurrent();
+            ContextMenuCommandView row = FindRenderedRows(FindRenderedPanels().Single()).Single();
+            PointerEventData leftClick = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            row.OnPointerEnter(leftClick);
+            row.OnPointerClick(leftClick);
+            row.OnPointerExit(leftClick);
+
+            Assert.AreSame(command, selected);
+            Assert.IsFalse(item.Active);
+        }
+
+        /// <summary>
+        /// Verifies leaf command pointer click disabled or secondary click does not select.
+        /// </summary>
+        [Test]
+        public void LeafCommandPointerClick_DisabledOrSecondaryClick_DoesNotSelect()
+        {
+            ContextMenuCommandItem item = new ContextMenuCommandItem(
+                new TestCommand("Disabled", false)
+            );
+            int selectedCount = 0;
+            _view.CommandSelected += _ => selectedCount++;
+            _view.OpenAt(null, 10, 10, 100, new[] { item });
+            _view.RenderCurrent();
+            ContextMenuCommandView row = FindRenderedRows(FindRenderedPanels().Single()).Single();
+            PointerEventData rightClick = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+            };
+            PointerEventData leftClick = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            row.OnPointerEnter(leftClick);
+            row.OnPointerDown(rightClick);
+            row.OnPointerClick(rightClick);
+            row.OnPointerClick(leftClick);
+
+            Assert.AreEqual(0, selectedCount);
+            Assert.IsFalse(item.Active);
+        }
+
+        /// <summary>
+        /// Verifies parent command pointer enter submenu renders child panel and selects child.
+        /// </summary>
+        [Test]
+        public void ParentCommandPointerEnter_Submenu_RendersChildPanelAndSelectsChild()
+        {
+            TestCommand childCommand = new TestCommand("Child", true);
+            ContextMenuCommandItem child = new ContextMenuCommandItem(childCommand);
+            ContextMenuCommandItem parent = new ContextMenuCommandItem(
+                new TestCommand("Parent", true),
+                submenuCommands: new[] { child }
+            );
+            IContextMenuCommand selected = null;
+            _view.CommandSelected += value => selected = value;
+            _view.OpenAt(null, 10, 10, 100, new[] { parent });
+            _view.RenderCurrent();
+            ContextMenuCommandView parentRow = FindRenderedRows(FindRenderedPanels().Single())
+                .Single();
+            PointerEventData pointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            parentRow.OnPointerEnter(pointer);
+            ContextMenuPanelView[] panels = FindRenderedPanels();
+            ContextMenuCommandView childRow = FindRenderedRows(panels[1]).Single();
+            childRow.OnPointerClick(pointer);
+            parentRow.OnPointerExit(pointer);
+
+            Assert.AreEqual(2, panels.Length);
+            Assert.IsTrue(parent.Active);
+            Assert.AreSame(childCommand, selected);
+        }
+
+        /// <summary>
+        /// Verifies parent command pointer enter with left side available opens submenu to the left.
+        /// </summary>
+        [Test]
+        public void ParentCommandPointerEnter_WithLeftSideAvailable_OpensSubmenuToTheLeft()
+        {
+            ContextMenuCommandItem parent = new ContextMenuCommandItem(
+                new TestCommand("Parent", true),
+                submenuCommands: new[]
+                {
+                    new ContextMenuCommandItem(new TestCommand("Child", true)),
+                }
+            );
+            _view.OpenAt(null, 300, 10, 100, new[] { parent });
+            _view.RenderCurrent();
+            ContextMenuPanelView rootPanel = FindRenderedPanels().Single();
+
+            FindRenderedRows(rootPanel).Single().OnPointerEnter(new PointerEventData(null));
+
+            ContextMenuPanelView[] panels = FindRenderedPanels();
+            RectInt parentRect = UILayout.GetSourceRect(panels[0].transform as RectTransform);
+            RectInt submenuRect = UILayout.GetSourceRect(panels[1].transform as RectTransform);
+            Assert.Less(submenuRect.x, parentRect.x);
+            Assert.Greater(submenuRect.xMax, parentRect.x);
+        }
+
+        /// <summary>
+        /// Verifies render current shorter replacement menu hides unused rows and panels.
+        /// </summary>
+        [Test]
+        public void RenderCurrent_ShorterReplacementMenu_HidesUnusedRowsAndPanels()
+        {
+            ContextMenuCommandItem parent = new ContextMenuCommandItem(
+                new TestCommand("Parent", true),
+                submenuCommands: new[]
+                {
+                    new ContextMenuCommandItem(new TestCommand("Child", true)),
+                }
+            );
+            _view.OpenAt(
+                null,
+                10,
+                10,
+                100,
+                new[] { parent, new ContextMenuCommandItem(new TestCommand("Second", true)) }
+            );
+            _view.RenderCurrent();
+            FindRenderedRows(FindRenderedPanels().Single())[0]
+                .OnPointerEnter(new PointerEventData(null));
+            ContextMenuPanelView[] originalPanels = FindRenderedPanels();
+            ContextMenuCommandView originalSecondRow = FindRenderedRows(originalPanels[0])[1];
+            ContextMenuPanelView originalSubmenu = originalPanels[1];
+
+            _view.OpenAt(
+                null,
+                10,
+                10,
+                100,
+                new[] { new ContextMenuCommandItem(new TestCommand("Replacement", true)) }
+            );
+            _view.RenderCurrent();
+
+            Assert.IsFalse(originalSecondRow.gameObject.activeSelf);
+            Assert.IsFalse(originalSubmenu.gameObject.activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies dismiss boundary open and closed menu raises only while open.
+        /// </summary>
+        [Test]
+        public void DismissBoundary_OpenAndClosedMenu_RaisesOnlyWhileOpen()
+        {
+            PointerEventData eventData = new PointerEventData(null);
+            PointerEventData received = null;
+            _view.DismissRequested += value => received = value;
+            ContextMenuDismissBoundary boundary =
+                _viewObject.GetComponentInChildren<ContextMenuDismissBoundary>(true);
+            _view.OpenAt(
+                null,
+                0,
+                0,
+                100,
+                new[] { new ContextMenuCommandItem(new TestCommand("Command", true)) }
+            );
+
+            boundary.OnPointerDown(eventData);
+            _view.Reset();
+            boundary.OnPointerDown(new PointerEventData(null));
+
+            Assert.AreSame(eventData, received);
+        }
+
+        /// <summary>
+        /// Verifies try cancel open then closed menu resets and reports state transition.
+        /// </summary>
+        [Test]
+        public void TryCancel_OpenThenClosedMenu_ResetsAndReportsStateTransition()
+        {
+            _view.OpenAt(
+                new object(),
+                0,
+                0,
+                100,
+                new[] { new ContextMenuCommandItem(new TestCommand("Command", true)) }
+            );
+            _view.RenderCurrent();
+
+            bool firstCancelled = _view.TryCancel();
+            bool secondCancelled = _view.TryCancel();
+            _view.RenderCurrent();
+
+            Assert.IsTrue(firstCancelled);
+            Assert.IsFalse(secondCancelled);
+            Assert.IsFalse(_view.Open);
+            Assert.IsNull(_view.Owner);
+            Assert.IsFalse(FindDismissHitArea().gameObject.activeSelf);
+            Assert.IsEmpty(FindRenderedPanels());
+        }
+
+        /// <summary>
+        /// Finds dismiss hit area.
+        /// </summary>
+        /// <returns>The matching dismiss hit area.</returns>
+        private RawImage FindDismissHitArea()
+        {
+            return _viewObject
+                .GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "DismissHitAreaImage");
+        }
+
+        /// <summary>
+        /// Finds rendered panels.
+        /// </summary>
+        /// <returns>The matching rendered panels.</returns>
+        private ContextMenuPanelView[] FindRenderedPanels()
+        {
+            return _viewObject
+                .GetComponentsInChildren<ContextMenuPanelView>(true)
+                .Where(panel =>
+                    panel.name.StartsWith("Panel", StringComparison.Ordinal)
+                    && panel.name != "PanelTemplate"
+                    && panel.gameObject.activeSelf
+                )
+                .OrderBy(panel => panel.name)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Finds rendered rows.
+        /// </summary>
+        /// <param name="panel">The panel.</param>
+        /// <returns>The matching rendered rows.</returns>
+        private static ContextMenuCommandView[] FindRenderedRows(ContextMenuPanelView panel)
+        {
+            return panel
+                .GetComponentsInChildren<ContextMenuCommandView>(true)
+                .Where(row =>
+                    row.name.StartsWith("Command", StringComparison.Ordinal)
+                    && row.name != "CommandTemplate"
+                    && row.gameObject.activeSelf
+                )
+                .OrderBy(row => row.name)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Finds command text.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <returns>The matching command text.</returns>
+        private static TextMeshProUGUI FindCommandText(ContextMenuCommandView row)
+        {
+            return row.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "CommandTextField");
+        }
+
+        private sealed class TestCommand : IContextMenuCommand
+        {
+            public string Text { get; }
+
+            public bool Enabled { get; }
+
+            /// <summary>
+            /// Initializes a new instance of the TestCommand class.
+            /// </summary>
+            /// <param name="text">The text.</param>
+            /// <param name="enabled">Whether enabled.</param>
+            public TestCommand(string text, bool enabled)
+            {
+                Text = text;
+                Enabled = enabled;
+            }
+        }
+    }
+}

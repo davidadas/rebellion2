@@ -26,7 +26,7 @@ public sealed class StrategyWindowPlacementController
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));
         this.windowManager =
             windowManager ?? throw new ArgumentNullException(nameof(windowManager));
-        ApplyMovementBounds();
+        RefreshMovementBounds();
     }
 
     /// <summary>
@@ -57,6 +57,31 @@ public sealed class StrategyWindowPlacementController
                 "Unknown sector-window position."
             ),
         };
+    }
+
+    /// <summary>
+    /// Resolves an authored sector-window coordinate to its semantic slot.
+    /// </summary>
+    /// <param name="x">The saved source-space horizontal coordinate.</param>
+    /// <param name="slot">The matching sector-window slot.</param>
+    /// <returns>True when the coordinate matches an authored sector-window position.</returns>
+    public bool TryGetSectorWindowSlot(int x, out int slot)
+    {
+        for (
+            int candidate = SectorWindowPositions.Left;
+            candidate <= SectorWindowPositions.Right;
+            candidate++
+        )
+        {
+            if (GetSectorWindowPosition(candidate).x != x)
+                continue;
+
+            slot = candidate;
+            return true;
+        }
+
+        slot = -1;
+        return false;
     }
 
     /// <summary>
@@ -219,7 +244,7 @@ public sealed class StrategyWindowPlacementController
     /// <summary>
     /// Applies the active faction's movement bounds to the authoritative window registry.
     /// </summary>
-    private void ApplyMovementBounds()
+    public void RefreshMovementBounds()
     {
         windowManager.SetMovementBounds(GetWindowBounds());
     }

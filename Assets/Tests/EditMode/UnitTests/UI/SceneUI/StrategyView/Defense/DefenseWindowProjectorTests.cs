@@ -1,0 +1,370 @@
+using System;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
+using Rebellion.Game.Units;
+using UnityEngine;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
+{
+    [TestFixture]
+    public class DefenseWindowProjectorTests
+    {
+        private const string _ownerId = "FNALL1";
+
+        private GameObject _windowObject;
+        private UIWindow _window;
+        private Planet _planet;
+        private GalaxyMapPlanet _mapPlanet;
+        private DefenseWindowSession _session;
+        private UIContext _uiContext;
+        private DefenseWindowProjector _projector;
+
+        /// <summary>
+        /// Sets up.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = _ownerId });
+            game.Summary.PlayerFactionID = _ownerId;
+            game.SetFactionController(_ownerId, "PLAYER1", PlayerControllerType.Human);
+            _uiContext = TestContent.CreateUIContext(
+                game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+            _windowObject = new GameObject(
+                "DefenseWindow",
+                typeof(RectTransform),
+                typeof(UIWindow)
+            );
+            _window = _windowObject.GetComponent<UIWindow>();
+            _window.Configure(1, 18, 29, 100, 100, false, true, false);
+            _planet = new Planet
+            {
+                InstanceID = "planet",
+                DisplayName = "Corellia",
+                OwnerInstanceID = _ownerId,
+            };
+            _mapPlanet = new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty);
+            _session = new DefenseWindowSession(_mapPlanet, _window);
+            _projector = new DefenseWindowProjector(() => _uiContext);
+        }
+
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            UnityEngine.Object.DestroyImmediate(_windowObject);
+        }
+
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
+        [Test]
+        public void Constructor_NullContextProvider_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new DefenseWindowProjector(null));
+        }
+
+        /// <summary>
+        /// Verifies build null session throws argument null exception.
+        /// </summary>
+        [Test]
+        public void Build_NullSession_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => _projector.Build(null, _window, true));
+        }
+
+        /// <summary>
+        /// Verifies build null window throws argument null exception.
+        /// </summary>
+        [Test]
+        public void Build_NullWindow_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => _projector.Build(_session, null, true));
+        }
+
+        /// <summary>
+        /// Verifies build unavailable context throws invalid operation exception.
+        /// </summary>
+        [Test]
+        public void Build_UnavailableContext_ThrowsInvalidOperationException()
+        {
+            DefenseWindowProjector projector = new DefenseWindowProjector(() => null);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                projector.Build(_session, _window, true)
+            );
+        }
+
+        /// <summary>
+        /// Verifies build selected captured officer returns personnel card presentation.
+        /// </summary>
+        [Test]
+        public void Build_SelectedCapturedOfficer_ReturnsPersonnelCardPresentation()
+        {
+            Officer definition = TestContent.Data.Officers.First(officer =>
+                officer.RecruitingFactionInstanceIDs?.Contains(_ownerId) == true
+                && !string.IsNullOrEmpty(officer.CapturedOverlayImagePath)
+            );
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                DisplayName = "Captured Officer",
+                OwnerInstanceID = _ownerId,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                CapturedOverlayImagePath = definition.CapturedOverlayImagePath,
+                IsCaptured = true,
+            };
+            _planet.AddTestChild(officer);
+            _session.Reconcile();
+            _session.SelectItem(0);
+
+            DefenseWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.AreEqual(18, data.X);
+            Assert.AreEqual(29, data.Y);
+            Assert.AreEqual("Corellia", data.Caption);
+            Assert.AreEqual(DefenseWindowTab.Personnel, data.ActiveTab);
+            Assert.AreEqual("Personnel", data.TabTitle);
+            Assert.AreEqual(string.Empty, data.GarrisonRequirementText);
+            Assert.IsNotNull(data.TitleTexture);
+            Assert.AreEqual(DefenseWindowRenderData.TabCount, data.Tabs.Count);
+            Assert.IsNotNull(data.Tabs[0].Texture);
+            Assert.IsNotNull(data.Tabs[0].PressedTexture);
+            Assert.IsNotNull(data.Tabs[1].Texture);
+            Assert.IsNull(data.Tabs[1].PressedTexture);
+            Assert.AreEqual(1, data.Items.Count);
+            StrategyUnitCardRenderData card = data.Items[0];
+            Assert.AreEqual("Captured Officer", card.Name);
+            Assert.AreEqual(
+                (Color32)_uiContext.GetTheme(_ownerId).GetPrimaryColor(),
+                card.NameColor
+            );
+            Assert.IsTrue(card.ShowName);
+            Assert.IsFalse(card.UseAlternateNameLayout);
+            Assert.IsNotNull(card.BackgroundTexture);
+            Assert.IsNotNull(card.EntityTexture);
+            Assert.IsNotNull(card.CapturedOverlayTexture);
+            Assert.IsNotNull(card.SelectionTexture);
+            Assert.IsNull(card.EnrouteOverlayTexture);
+            Assert.IsNull(card.DamagedOverlayTexture);
+            Assert.IsTrue(card.CanDrag);
+        }
+
+        /// <summary>
+        /// Verifies build player owned regiment tab returns garrison requirement.
+        /// </summary>
+        [Test]
+        public void Build_PlayerOwnedRegimentTab_ReturnsGarrisonRequirement()
+        {
+            _planet.SetPopularSupport(_ownerId, 35);
+            _session.SelectTab(DefenseWindowTab.Regiments);
+
+            DefenseWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.AreEqual("Trooper Regiments", data.TabTitle);
+            Assert.AreEqual("Garrison Requirement: 3", data.GarrisonRequirementText);
+        }
+
+        /// <summary>
+        /// Verifies build non player owned regiment tab clears garrison requirement.
+        /// </summary>
+        [Test]
+        public void Build_NonPlayerOwnedRegimentTab_ClearsGarrisonRequirement()
+        {
+            const string opposingOwnerId = "FNEMP1";
+            _uiContext.Game.GetFactions().Add(new Faction { InstanceID = opposingOwnerId });
+            _planet.OwnerInstanceID = opposingOwnerId;
+            _session.SelectTab(DefenseWindowTab.Regiments);
+
+            DefenseWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.AreEqual(string.Empty, data.GarrisonRequirementText);
+        }
+
+        /// <summary>
+        /// Verifies build moving officer without transit artwork uses themed enroute background.
+        /// </summary>
+        [Test]
+        public void Build_MovingOfficerWithoutTransitArtwork_UsesThemedEnrouteBackground()
+        {
+            Officer definition = TestContent.Data.Officers.First(officer =>
+                officer.RecruitingFactionInstanceIDs?.Contains(_ownerId) == true
+            );
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                DisplayName = "Traveling Officer",
+                OwnerInstanceID = _ownerId,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                Movement = new MovementState(),
+            };
+            _planet.AddTestChild(officer);
+            _session.Reconcile();
+
+            DefenseWindowRenderData data = _projector.Build(_session, _window, false);
+
+            StrategyUnitCardRenderData card = data.Items[0];
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetTheme(_ownerId).StrategyWindows.Defense.EnrouteBackgroundImagePath
+                ),
+                card.BackgroundTexture
+            );
+            Assert.IsNull(card.EnrouteOverlayTexture);
+            Assert.IsFalse(card.CanDrag);
+            Assert.IsNotNull(data.TitleTexture);
+        }
+
+        /// <summary>
+        /// Verifies build starfighter under construction returns construction background.
+        /// </summary>
+        [Test]
+        public void Build_StarfighterUnderConstruction_ReturnsConstructionBackground()
+        {
+            Starfighter starfighter = CreateStarfighter("fighter", "Fighter Squadron");
+            starfighter.ManufacturingStatus = ManufacturingStatus.Building;
+            starfighter.Movement = new MovementState();
+            starfighter.CurrentSquadronSize = 4;
+            starfighter.MaxSquadronSize = 12;
+            _planet.AddTestChild(starfighter);
+            _session.Reconcile();
+            _session.SelectTab(DefenseWindowTab.Starfighters);
+
+            DefenseWindowRenderData data = _projector.Build(_session, _window, true);
+
+            StrategyUnitCardRenderData card = data.Items[0];
+            Assert.IsNull(card.EnrouteOverlayTexture);
+            Assert.IsNull(card.DamagedOverlayTexture);
+            Assert.IsNotNull(card.BackgroundTexture);
+            Assert.IsNotNull(card.EntityTexture);
+            Assert.IsFalse(card.CanDrag);
+        }
+
+        /// <summary>
+        /// Verifies build moving damaged starfighter returns enroute and damage overlays.
+        /// </summary>
+        [Test]
+        public void Build_MovingDamagedStarfighter_ReturnsEnrouteAndDamageOverlays()
+        {
+            Starfighter definition = TestContent.Data.Starfighters.First(fighter =>
+                fighter.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
+                && !string.IsNullOrEmpty(fighter.InTransitSmallImagePath)
+                && !string.IsNullOrEmpty(fighter.DamagedSmallImagePath)
+            );
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                DisplayName = "Damaged Squadron",
+                OwnerInstanceID = _ownerId,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                InTransitSmallImagePath = definition.InTransitSmallImagePath,
+                DamagedSmallImagePath = definition.DamagedSmallImagePath,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState(),
+                CurrentSquadronSize = 6,
+                MaxSquadronSize = 12,
+            };
+            _planet.AddTestChild(starfighter);
+            _session.Reconcile();
+            _session.SelectTab(DefenseWindowTab.Starfighters);
+
+            DefenseWindowRenderData data = _projector.Build(_session, _window, true);
+
+            StrategyUnitCardRenderData card = data.Items[0];
+            Assert.IsNotNull(card.EnrouteOverlayTexture);
+            Assert.IsNotNull(card.DamagedOverlayTexture);
+            Assert.IsNotNull(card.BackgroundTexture);
+            Assert.IsFalse(card.CanDrag);
+        }
+
+        /// <summary>
+        /// Verifies build shield under construction returns defense building card.
+        /// </summary>
+        [Test]
+        public void Build_ShieldUnderConstruction_ReturnsDefenseBuildingCard()
+        {
+            Building definition = TestContent.Data.Buildings.First(building =>
+                building.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
+                && building.IsPlanetaryShieldGenerator()
+            );
+            Building shield = new Building
+            {
+                InstanceID = "shield",
+                DisplayName = "Shield Generator",
+                OwnerInstanceID = _ownerId,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                BuildingType = BuildingType.Defense,
+                ShieldStrength = 1,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _planet.AddTestChild(shield);
+            _session.Reconcile();
+            _session.SelectTab(DefenseWindowTab.Shields);
+
+            DefenseWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.AreEqual("Planetary Shields", data.TabTitle);
+            Assert.AreEqual(1, data.Items.Count);
+            Assert.IsNotNull(data.Items[0].EntityTexture);
+            Assert.IsNotNull(data.Items[0].BackgroundTexture);
+            Assert.IsFalse(data.Items[0].CanDrag);
+        }
+
+        /// <summary>
+        /// Verifies get tab title tab returns expected title.
+        /// </summary>
+        /// <param name="tab">The tab.</param>
+        /// <param name="expected">The expected.</param>
+        [TestCase(DefenseWindowTab.Personnel, "Personnel")]
+        [TestCase(DefenseWindowTab.Regiments, "Trooper Regiments")]
+        [TestCase(DefenseWindowTab.Starfighters, "Fighter Squadrons")]
+        [TestCase(DefenseWindowTab.Shields, "Planetary Shields")]
+        [TestCase(DefenseWindowTab.Batteries, "Planetary Batteries")]
+        [TestCase((DefenseWindowTab)99, "")]
+        public void GetTabTitle_Tab_ReturnsExpectedTitle(DefenseWindowTab tab, string expected)
+        {
+            string title = DefenseWindowProjector.GetTabTitle(tab);
+
+            Assert.AreEqual(expected, title);
+        }
+
+        /// <summary>
+        /// Creates starfighter.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created starfighter.</returns>
+        private static Starfighter CreateStarfighter(string instanceId, string displayName)
+        {
+            Starfighter definition = TestContent.Data.Starfighters.First(fighter =>
+                fighter.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
+            );
+            return new Starfighter
+            {
+                InstanceID = instanceId,
+                DisplayName = displayName,
+                OwnerInstanceID = _ownerId,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                InTransitSmallImagePath = definition.InTransitSmallImagePath,
+                DamagedSmallImagePath = definition.DamagedSmallImagePath,
+            };
+        }
+    }
+}

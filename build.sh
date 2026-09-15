@@ -139,7 +139,7 @@ do_lint() {
         echo "=== GameAssembly ==="
         dotnet build GameAssembly.csproj -verbosity:normal "${extra_args[@]}"
         echo ""
-        for test_project in GameTests.csproj EditorTests.csproj; do
+        for test_project in UnitTests.csproj; do
             if [ ! -f "$test_project" ]; then
                 continue
             fi
@@ -183,13 +183,13 @@ do_lint() {
         --severity-level error
     echo ""
 
-    echo "=== Member Order ==="
+    echo "=== Repository Analyzers ==="
     dotnet restore "$MEMBER_ORDER_LINT_PROJECT"
     run_roslynator analyze "$MEMBER_ORDER_LINT_PROJECT" \
         --analyzer-assemblies "$MEMBER_ORDER_ANALYZER" \
         --ignore-analyzer-references \
         --ignore-compiler-diagnostics \
-        --supported-diagnostics REB0001 \
+        --supported-diagnostics REB0001 REB0002 REB0003 REB0004 REB0005 REB0006 \
         --severity-level error
     echo ""
     echo "Lint complete."

@@ -1,0 +1,86 @@
+using System;
+using NUnit.Framework;
+using Rebellion.Game.Units;
+
+namespace Rebellion.Tests.Game.Units
+{
+    /// <summary>
+    /// Verifies creation of independent runtime units from registered definitions.
+    /// </summary>
+    [TestFixture]
+    public sealed class UnitFactoryTests
+    {
+        /// <summary>
+        /// Verifies create known type creates initialized independent instance.
+        /// </summary>
+        [Test]
+        public void Create_KnownType_CreatesInitializedIndependentInstance()
+        {
+            Starfighter template = new Starfighter
+            {
+                InstanceID = "template-instance",
+                TypeID = "X_WING",
+                OwnerInstanceID = "template-owner",
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ManufacturingProgress = 50,
+            };
+            UnitFactory factory = CreateFactory(template);
+
+            Starfighter unit = factory.Create<Starfighter>("X_WING", "FNALL1");
+
+            Assert.AreNotSame(template, unit);
+            Assert.IsNotEmpty(unit.InstanceID);
+            Assert.AreNotEqual(template.InstanceID, unit.InstanceID);
+            Assert.AreEqual("X_WING", unit.TypeID);
+            Assert.AreEqual("FNALL1", unit.OwnerInstanceID);
+            Assert.AreEqual(ManufacturingStatus.Complete, unit.ManufacturingStatus);
+            Assert.AreEqual(0, unit.ManufacturingProgress);
+            Assert.IsNull(unit.Movement);
+            Assert.IsNull(unit.GetParent());
+        }
+
+        /// <summary>
+        /// Verifies create unknown type throws invalid operation exception.
+        /// </summary>
+        [Test]
+        public void Create_UnknownType_ThrowsInvalidOperationException()
+        {
+            UnitFactory factory = CreateFactory();
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                factory.Create<Starfighter>("UNKNOWN", "FNALL1")
+            );
+
+            StringAssert.Contains("Unknown unit TypeID 'UNKNOWN'", exception.Message);
+        }
+
+        /// <summary>
+        /// Verifies create wrong category throws invalid operation exception.
+        /// </summary>
+        [Test]
+        public void Create_WrongCategory_ThrowsInvalidOperationException()
+        {
+            UnitFactory factory = CreateFactory(new Starfighter { TypeID = "X_WING" });
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                factory.Create<Regiment>("X_WING", "FNALL1")
+            );
+
+            StringAssert.Contains("Unit TypeID 'X_WING' is not a Regiment", exception.Message);
+        }
+
+        /// <summary>
+        /// Creates a unit factory containing only the supplied starfighter definitions.
+        /// </summary>
+        /// <param name="starfighters">The starfighters.</param>
+        /// <returns>The created factory.</returns>
+        private static UnitFactory CreateFactory(params Starfighter[] starfighters) =>
+            new UnitFactory(
+                Array.Empty<Building>(),
+                Array.Empty<CapitalShip>(),
+                starfighters,
+                Array.Empty<Regiment>(),
+                Array.Empty<SpecialForces>()
+            );
+    }
+}

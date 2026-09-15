@@ -74,6 +74,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     private int _renameRow = -1;
     private bool _suppressRenameCommit;
     private bool _pendingRenameFocus;
+    private bool _canSaveGame;
+    private bool _existingSaveSelected;
 
     /// <summary>
     /// Raised when the Save command is requested.
@@ -134,6 +136,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         AlignRenameInput();
         _saveButton.onClick.AddListener(HandleSaveRequested);
         _loadButton.onClick.AddListener(HandleLoadRequested);
+        _renameField.onValueChanged.AddListener(HandleRenameValueChanged);
         _renameField.onEndEdit.AddListener(HandleRenameEndEdit);
         _renameField.onSubmit.AddListener(HandleRenameSubmitted);
     }
@@ -153,6 +156,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     {
         _saveButton.onClick.RemoveListener(HandleSaveRequested);
         _loadButton.onClick.RemoveListener(HandleLoadRequested);
+        _renameField.onValueChanged.RemoveListener(HandleRenameValueChanged);
         _renameField.onEndEdit.RemoveListener(HandleRenameEndEdit);
         _renameField.onSubmit.RemoveListener(HandleRenameSubmitted);
     }
@@ -169,7 +173,9 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             selected >= 0
             && selected < data.SaveSlots.Count
             && !data.SaveSlots[selected].IsCreateNew;
-        bool canSave = data.CanSave && existingSelected;
+        _canSaveGame = data.CanSave;
+        _existingSaveSelected = existingSelected;
+        bool canSave = CanSaveCurrentEntry();
         bool canLoad = existingSelected;
         _saveButton.interactable = canSave;
         _loadButton.interactable = canLoad;
@@ -296,6 +302,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _suppressRenameCommit = true;
         _pendingRenameFocus = false;
         _renameField.gameObject.SetActive(false);
+        RenderSaveButton();
         RenameEditingChanged?.Invoke(false);
     }
 
@@ -327,6 +334,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Gets or creates the visual row for a save-list index.
     /// </summary>
+    /// <param name="index">The index.</param>
+    /// <returns>The requested row.</returns>
     private Image GetRow(int index)
     {
         while (_rowImages.Count <= index)
@@ -348,6 +357,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Gets or creates the faction icon for a save-list index.
     /// </summary>
+    /// <param name="index">The index.</param>
+    /// <returns>The requested icon.</returns>
     private RawImage GetIcon(int index)
     {
         while (_iconImages.Count <= index)
@@ -366,6 +377,11 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Gets or creates a text field from an authored row template.
     /// </summary>
+    /// <param name="fields">The fields.</param>
+    /// <param name="template">The template.</param>
+    /// <param name="prefix">The prefix.</param>
+    /// <param name="index">The index.</param>
+    /// <returns>The requested field.</returns>
     private TextMeshProUGUI GetField(
         List<TextMeshProUGUI> fields,
         TextMeshProUGUI template,
@@ -392,6 +408,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Gets or creates the delete button for a save-list index.
     /// </summary>
+    /// <param name="index">The index.</param>
+    /// <returns>The requested delete.</returns>
     private Button GetDelete(int index)
     {
         while (_deleteButtons.Count <= index)
@@ -416,6 +434,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Selects a clicked slot and starts renaming on a qualifying double-click.
     /// </summary>
+    /// <param name="button">The button.</param>
+    /// <param name="index">The index.</param>
     private void HandleSlotClick(Button button, int index)
     {
         if (index < 0 || index >= _slots.Count)
@@ -442,6 +462,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Positions and opens the rename field for a save-list index.
     /// </summary>
+    /// <param name="index">The index.</param>
     private void BeginRename(int index)
     {
         if (index < 0 || index >= _slots.Count)
@@ -465,6 +486,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _renameField.SetTextWithoutNotify(
             _slots[index].IsCreateNew ? string.Empty : _slots[index].Name
         );
+        RenderSaveButton();
         SetRowNameVisible(index, false);
         _pendingRenameFocus = true;
         RenameEditingChanged?.Invoke(true);
@@ -473,16 +495,29 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Completes editing without treating focus loss as an explicit submission.
     /// </summary>
+    /// <param name="value">The value.</param>
     private void HandleRenameEndEdit(string value) => CompleteRename(value, false);
 
     /// <summary>
     /// Completes editing as an explicit keyboard submission.
     /// </summary>
+    /// <param name="value">The value.</param>
     private void HandleRenameSubmitted(string value) => CompleteRename(value, true);
+
+    /// <summary>
+    /// Refreshes the Save command as the active save name becomes valid or invalid.
+    /// </summary>
+    /// <param name="value">The current save-name text.</param>
+    private void HandleRenameValueChanged(string value)
+    {
+        RenderSaveButton();
+    }
 
     /// <summary>
     /// Closes the rename field and forwards a committed name to the controller.
     /// </summary>
+    /// <param name="value">The value.</param>
+    /// <param name="submitted">Whether submitted.</param>
     private void CompleteRename(string value, bool submitted)
     {
         if (_renameRow < 0)
@@ -497,6 +532,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _pendingRenameFocus = false;
         RenameEditingChanged?.Invoke(false);
         _renameField.gameObject.SetActive(false);
+        RenderSaveButton();
         if (_suppressRenameCommit)
         {
             _suppressRenameCommit = false;
@@ -523,7 +559,44 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void HandleSaveRequested()
     {
+        if (IsCreatingNamedSave())
+        {
+            CompleteRename(_renameField.text, true);
+            return;
+        }
+
         SaveRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Returns whether the Save command can act on the current selection or new-save editor.
+    /// </summary>
+    /// <returns>True when the current save operation is valid.</returns>
+    private bool CanSaveCurrentEntry()
+    {
+        return _canSaveGame && (_existingSaveSelected || IsCreatingNamedSave());
+    }
+
+    /// <summary>
+    /// Returns whether a valid name is being entered for the Create New Save row.
+    /// </summary>
+    /// <returns>True when a valid new-save name is being entered.</returns>
+    private bool IsCreatingNamedSave()
+    {
+        return _renameRow >= 0
+            && _renameRow < _slots.Count
+            && _slots[_renameRow].IsCreateNew
+            && !string.IsNullOrWhiteSpace(_renameField.text);
+    }
+
+    /// <summary>
+    /// Applies the current Save command availability to its control and disabled artwork.
+    /// </summary>
+    private void RenderSaveButton()
+    {
+        bool canSave = CanSaveCurrentEntry();
+        _saveButton.interactable = canSave;
+        SetButtonDisabledVisual(_saveButton, _saveDisabledImage, canSave);
     }
 
     /// <summary>
@@ -537,6 +610,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Stretches rename text within the input field while retaining horizontal padding.
     /// </summary>
+    /// <param name="rect">The rect.</param>
     private static void StretchRenameText(RectTransform rect)
     {
         rect.anchorMin = Vector2.zero;
@@ -549,6 +623,9 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Switches a button between its enabled control and disabled artwork.
     /// </summary>
+    /// <param name="button">The button.</param>
+    /// <param name="disabledImage">The disabled image.</param>
+    /// <param name="enabled">Whether enabled.</param>
     private static void SetButtonDisabledVisual(Button button, RawImage disabledImage, bool enabled)
     {
         if (disabledImage != null)
@@ -560,6 +637,9 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Fits a texture within a source rectangle without changing its aspect ratio.
     /// </summary>
+    /// <param name="texture">The texture.</param>
+    /// <param name="box">The box.</param>
+    /// <returns>The result of fit preserving aspect.</returns>
     private static RectInt FitPreservingAspect(Texture texture, RectInt box)
     {
         if (texture == null || texture.width <= 0 || texture.height <= 0)
@@ -585,6 +665,9 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Hides pooled row components after the last currently rendered item.
     /// </summary>
+    /// <param name="items">The items.</param>
+    /// <param name="firstHiddenIndex">The first hidden index.</param>
+    /// <typeparam name="T">The pooled Unity component type to hide.</typeparam>
     private static void HideFrom<T>(List<T> items, int firstHiddenIndex)
         where T : Component
     {

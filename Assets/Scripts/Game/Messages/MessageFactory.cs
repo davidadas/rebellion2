@@ -150,6 +150,8 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Creates deliveries explicitly authored by event actions.
         /// </summary>
+        /// <param name="requests">The requests.</param>
+        /// <returns>The created authored messages.</returns>
         public List<MessageDeliveryRequest> CreateAuthoredMessages(
             IEnumerable<MessageDeliveryRequest> requests
         ) => requests.Select(CreateAuthoredRequest).Where(request => request != null).ToList();
@@ -265,13 +267,13 @@ namespace Rebellion.Game.Messages
             MissionCompletionReason completionReason = GetMissionCompletionReason(result);
             string missionName = GetMissionName(result);
             Officer jediTrainer = (result.Mission as JediTrainingMission)?.Trainer;
+            OfficerVoiceLineType voiceLineType = GetMissionVoiceLineType(result);
+            Officer reporter = jediTrainer ?? GetMissionReporter(result, voiceLineType);
             string participantName =
-                jediTrainer?.GetDisplayName() ?? GetMissionParticipantName(result);
+                reporter?.GetDisplayName() ?? GetMissionParticipantName(result);
             string officerName = GetMissionOfficerName(result, game, killedResults);
             string targetName = GetMissionObjectTargetName(result, game, sabotageResults);
             string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
-            OfficerVoiceLineType voiceLineType = GetMissionVoiceLineType(result);
-            Officer reporter = jediTrainer ?? GetMissionParticipantOfficer(result, voiceLineType);
             MessageDefinition definition = GetMissionDefinition(
                 MessageResultType.MissionReport,
                 outcome,
@@ -300,9 +302,9 @@ namespace Rebellion.Game.Messages
                         { "assassination_result", assassinationResult },
                         { "details", missionDetails },
                     },
-                    overlayImagePath: jediTrainer == null
+                    overlayImagePath: reporter == null
                         ? GetMissionParticipantOverlayImagePath(result)
-                        : GetMessageImagePath(jediTrainer),
+                        : GetMessageImagePath(reporter),
                     officerVoicePath: reporter?.GetVoicePath(voiceLineType, game?.Random)
                 ),
                 target,
@@ -321,6 +323,9 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Builds a configured mission-detail list for sectors revealed beyond the primary target.
         /// </summary>
+        /// <param name="definition">The definition.</param>
+        /// <param name="sectors">The sectors.</param>
+        /// <returns>The constructed mission detail list.</returns>
         private static string BuildMissionDetailList(
             MessageDefinition definition,
             IEnumerable<PlanetSector> sectors
@@ -430,7 +435,10 @@ namespace Rebellion.Game.Messages
                 MessageResultType.OfficerAssassinated => AdvisorSubjectNotification.Report,
                 _ => AdvisorSubjectNotification.None,
             };
-            return WithAdvisorSubject(message, notification, officer);
+            message = WithAdvisorSubject(message, notification, officer);
+            return resultType == MessageResultType.EnemyOfficerReleased
+                ? WithAdvisorNotification(message, AdvisorNotificationType.PrisonerEscaped)
+                : message;
         }
 
         /// <summary>
@@ -693,7 +701,6 @@ namespace Rebellion.Game.Messages
                 .Select(result => GetMissionRelatedOfficerInstanceID(result.Mission))
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
-
             foreach (OfficerRecruitedResult result in recruitedResults)
             {
                 if (
@@ -738,10 +745,10 @@ namespace Rebellion.Game.Messages
                     )
                 );
 
-                if (!result.IsCaptured)
-                    continue;
-
-                Faction captorFaction = GetFaction(game, officer?.CaptorInstanceID);
+                Faction captorFaction = GetFaction(
+                    game,
+                    result.IsCaptured ? officer?.CaptorInstanceID : result.CaptorInstanceID
+                );
                 if (captorFaction?.InstanceID == ownerFaction?.InstanceID)
                     continue;
 
@@ -749,7 +756,9 @@ namespace Rebellion.Game.Messages
                     deliveries,
                     captorFaction,
                     CreateOfficerMessage(
-                        MessageResultType.EnemyOfficerCaptured,
+                        result.IsCaptured
+                            ? MessageResultType.EnemyOfficerCaptured
+                            : MessageResultType.EnemyOfficerReleased,
                         captorFaction,
                         officer,
                         planet,
@@ -793,9 +802,9 @@ namespace Rebellion.Game.Messages
                     deliveries,
                     faction,
                     CreateOfficerMessage(
-                        result.Assassin == null
-                            ? MessageResultType.OfficerKilled
-                            : MessageResultType.OfficerAssassinated,
+                        result is OfficerAssassinatedResult
+                            ? MessageResultType.OfficerAssassinated
+                            : MessageResultType.OfficerKilled,
                         faction,
                         result.TargetOfficer,
                         planet,
@@ -1123,6 +1132,14 @@ namespace Rebellion.Game.Messages
                 : null;
         }
 
+        /// <summary>
+        /// Finds mission definition.
+        /// </summary>
+        /// <param name="resultType">The result type.</param>
+        /// <param name="outcome">The outcome.</param>
+        /// <param name="missionTypeID">The mission type id.</param>
+        /// <param name="completionReason">The completion reason.</param>
+        /// <returns>The matching mission definition.</returns>
         private MessageDefinition FindMissionDefinition(
             MessageResultType resultType,
             MessageResultOutcome outcome,
@@ -1143,6 +1160,11 @@ namespace Rebellion.Game.Messages
                 && candidate.MissionCompletionReason == completionReason
             );
 
+        /// <summary>
+        /// Checks whether the completion reason can use a generic mission definition.
+        /// </summary>
+        /// <param name="completionReason">The completion reason.</param>
+        /// <returns>True when a generic mission definition supports the reason; otherwise false.</returns>
         private static bool CanUseGenericMissionDefinition(
             MissionCompletionReason completionReason
         ) =>
@@ -1177,18 +1199,21 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Finds the first mission participant with audio for the requested outcome.
+        /// Finds the preferred officer to present a mission report.
         /// </summary>
         /// <param name="result">The completed mission result.</param>
-        /// <param name="voiceLineType">The requested officer voice line type.</param>
-        /// <returns>The matching officer, or null when none is available.</returns>
-        private static Officer GetMissionParticipantOfficer(
+        /// <param name="voiceLineType">The requested voice line when no main character is present.</param>
+        /// <returns>The preferred reporting officer, or null when none is available.</returns>
+        private static Officer GetMissionReporter(
             MissionCompletedResult result,
             OfficerVoiceLineType voiceLineType
         )
         {
-            return GetFirstParticipantOfficer(result?.Participants, voiceLineType)
-                ?? GetFirstParticipantOfficer(result?.Mission?.GetAllParticipants(), voiceLineType);
+            return GetPreferredParticipantOfficer(result?.Participants, voiceLineType)
+                ?? GetPreferredParticipantOfficer(
+                    result?.Mission?.GetAllParticipants(),
+                    voiceLineType
+                );
         }
 
         /// <summary>
@@ -1265,19 +1290,22 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Gets the first officer participant with a configured voice line.
+        /// Gets the preferred reporting officer from a participant collection.
+        /// Main characters take priority, followed by the first officer with matching audio.
         /// </summary>
         /// <param name="participants">The mission participants to inspect.</param>
         /// <param name="voiceLineType">The voice line type to require.</param>
-        /// <returns>The first matching officer, or null when none is available.</returns>
-        private static Officer GetFirstParticipantOfficer(
+        /// <returns>The preferred reporting officer, or null when none is available.</returns>
+        private static Officer GetPreferredParticipantOfficer(
             IEnumerable<IMissionParticipant> participants,
             OfficerVoiceLineType voiceLineType
         )
         {
-            return (participants ?? Enumerable.Empty<IMissionParticipant>())
+            Officer[] officers = (participants ?? Enumerable.Empty<IMissionParticipant>())
                 .OfType<Officer>()
-                .FirstOrDefault(officer => officer.HasVoicePath(voiceLineType));
+                .ToArray();
+            return officers.FirstOrDefault(officer => officer.IsMain)
+                ?? officers.FirstOrDefault(officer => officer.HasVoicePath(voiceLineType));
         }
 
         /// <summary>
@@ -1696,6 +1724,13 @@ namespace Rebellion.Game.Messages
     /// </summary>
     public partial class MessageFactory
     {
+        /// <summary>
+        /// Adds arrival messages.
+        /// </summary>
+        /// <param name="arrivals">The arrivals.</param>
+        /// <param name="deployments">The deployments.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddArrivalMessages(
             IEnumerable<UnitArrivedResult> arrivals,
             IEnumerable<GameObjectDeployedResult> deployments,
@@ -1814,6 +1849,13 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Creates fleet.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="fleet">The fleet.</param>
+        /// <param name="destination">The destination.</param>
+        /// <returns>The created fleet.</returns>
         private MessageDeliveryRequest CreateFleet(Faction faction, Fleet fleet, Planet destination)
         {
             MessageDeliveryRequest message = BuildArrivalMessage(
@@ -1860,6 +1902,13 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Creates ships.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="ships">The ships.</param>
+        /// <param name="destination">The destination.</param>
+        /// <returns>The created ships.</returns>
         private MessageDeliveryRequest CreateShips(
             Faction faction,
             IEnumerable<CapitalShip> ships,
@@ -1881,6 +1930,13 @@ namespace Rebellion.Game.Messages
             return WithAdvisorNotification(message, AdvisorNotificationType.UnitsArrived);
         }
 
+        /// <summary>
+        /// Creates units.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="units">The units.</param>
+        /// <param name="destination">The destination.</param>
+        /// <returns>The created units.</returns>
         private MessageDeliveryRequest CreateUnits(
             Faction faction,
             IEnumerable<IGameEntity> units,
@@ -1903,6 +1959,14 @@ namespace Rebellion.Game.Messages
             return WithAdvisorNotification(message, AdvisorNotificationType.UnitsArrived);
         }
 
+        /// <summary>
+        /// Creates personnel.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="personnel">The personnel.</param>
+        /// <param name="destination">The destination.</param>
+        /// <param name="game">The game.</param>
+        /// <returns>The created personnel.</returns>
         private MessageDeliveryRequest CreatePersonnel(
             Faction faction,
             IEnumerable<IGameEntity> personnel,
@@ -1949,6 +2013,13 @@ namespace Rebellion.Game.Messages
                 : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
         }
 
+        /// <summary>
+        /// Creates headquarters.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="headquarters">The headquarters.</param>
+        /// <param name="destination">The destination.</param>
+        /// <returns>The created headquarters.</returns>
         private MessageDeliveryRequest CreateHeadquarters(
             Faction faction,
             Building headquarters,
@@ -1972,6 +2043,15 @@ namespace Rebellion.Game.Messages
             return WithAdvisorNotification(message, AdvisorNotificationType.UnitsArrived);
         }
 
+        /// <summary>
+        /// Builds arrival message.
+        /// </summary>
+        /// <param name="resultType">The result type.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="values">The values.</param>
+        /// <param name="overlayImagePath">The overlay image path.</param>
+        /// <param name="officerVoicePath">The officer voice path.</param>
+        /// <returns>The constructed arrival message.</returns>
         private MessageDeliveryRequest BuildArrivalMessage(
             MessageResultType resultType,
             Faction faction,
@@ -1987,6 +2067,16 @@ namespace Rebellion.Game.Messages
                 officerVoicePath: officerVoicePath
             );
 
+        /// <summary>
+        /// Builds arrival message.
+        /// </summary>
+        /// <param name="definition">The definition.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="values">The values.</param>
+        /// <param name="imageOverride">The image override.</param>
+        /// <param name="overlayImagePath">The overlay image path.</param>
+        /// <param name="officerVoicePath">The officer voice path.</param>
+        /// <returns>The constructed arrival message.</returns>
         private MessageDeliveryRequest BuildArrivalMessage(
             MessageDefinition definition,
             Faction faction,
@@ -2010,6 +2100,12 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Builds the grouping key for one arriving unit.
+        /// </summary>
+        /// <param name="unit">The unit.</param>
+        /// <param name="arrival">The arrival.</param>
+        /// <returns>The unit owner, destination, and arrival group.</returns>
         private static (string Owner, string Destination, string Group) Key(
             IGameEntity unit,
             UnitArrivedResult arrival
@@ -2022,6 +2118,15 @@ namespace Rebellion.Game.Messages
                     : arrival.MovementGroupID
             );
 
+        /// <summary>
+        /// Adds group.
+        /// </summary>
+        /// <param name="groups">The groups.</param>
+        /// <param name="destinations">The destinations.</param>
+        /// <param name="key">The key.</param>
+        /// <param name="item">The item.</param>
+        /// <param name="destination">The destination.</param>
+        /// <typeparam name="T">The delivered scene-node type grouped for the message.</typeparam>
         private static void AddGroup<T>(
             IDictionary<(string Owner, string Destination, string Group), List<T>> groups,
             IDictionary<(string Owner, string Destination, string Group), Planet> destinations,
@@ -2039,6 +2144,12 @@ namespace Rebellion.Game.Messages
             items.Add(item);
         }
 
+        /// <summary>
+        /// Sets arrival location.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="target">The target.</param>
         private static void SetArrivalLocation(
             MessageDeliveryRequest message,
             Planet planet,
@@ -2051,12 +2162,24 @@ namespace Rebellion.Game.Messages
             message.NavigationTargetInstanceID = (target ?? planet)?.InstanceID;
         }
 
+        /// <summary>
+        /// Adds arrival delivery.
+        /// </summary>
+        /// <param name="deliveries">The deliveries.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="message">The message.</param>
         private void AddArrivalDelivery(
             ICollection<MessageDeliveryRequest> deliveries,
             Faction faction,
             MessageDeliveryRequest message
         ) => AddDelivery(deliveries, faction, message);
 
+        /// <summary>
+        /// Gets arrival faction.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="ownerID">The owner id.</param>
+        /// <returns>The requested arrival faction.</returns>
         private static Faction GetArrivalFaction(GameRoot game, string ownerID) =>
             string.IsNullOrEmpty(ownerID)
                 ? null
@@ -2069,6 +2192,13 @@ namespace Rebellion.Game.Messages
     /// </summary>
     public partial class MessageFactory
     {
+        /// <summary>
+        /// Adds blockade messages.
+        /// </summary>
+        /// <param name="blockadeResults">The blockade results.</param>
+        /// <param name="evacuationResults">The evacuation results.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddBlockadeMessages(
             IEnumerable<BlockadeChangedResult> blockadeResults,
             IEnumerable<EvacuationLossesResult> evacuationResults,
@@ -2085,6 +2215,8 @@ namespace Rebellion.Game.Messages
                     result.BlockadingFleet?.GetOwnerInstanceID()
                 );
                 Faction targetFaction = GetBlockadeFaction(game, result.Planet?.OwnerInstanceID);
+                if (targetFaction == null)
+                    continue;
                 AddBlockadeDelivery(
                     deliveries,
                     blockadingFaction,
@@ -2123,6 +2255,14 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Adds blockade delivery.
+        /// </summary>
+        /// <param name="deliveries">The deliveries.</param>
+        /// <param name="recipient">The recipient.</param>
+        /// <param name="result">The result.</param>
+        /// <param name="otherFaction">The other faction.</param>
+        /// <param name="resultType">The result type.</param>
         private void AddBlockadeDelivery(
             ICollection<MessageDeliveryRequest> deliveries,
             Faction recipient,
@@ -2156,6 +2296,14 @@ namespace Rebellion.Game.Messages
             AddDelivery(deliveries, recipient, message);
         }
 
+        /// <summary>
+        /// Builds blockade message.
+        /// </summary>
+        /// <param name="definition">The definition.</param>
+        /// <param name="recipient">The recipient.</param>
+        /// <param name="values">The values.</param>
+        /// <param name="imageFaction">The image faction.</param>
+        /// <returns>The constructed blockade message.</returns>
         private MessageDeliveryRequest BuildBlockadeMessage(
             MessageDefinition definition,
             Faction recipient,
@@ -2175,6 +2323,12 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Sets blockade location.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="target">The target.</param>
         private static void SetBlockadeLocation(
             MessageDeliveryRequest message,
             ISceneNode planet,
@@ -2187,6 +2341,11 @@ namespace Rebellion.Game.Messages
             message.NavigationTargetInstanceID = (target ?? planet)?.InstanceID;
         }
 
+        /// <summary>
+        /// Formats lost units.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>The formatted lost units.</returns>
         private static string FormatLostUnits(EvacuationLossesResult result)
         {
             IEnumerable<IGameEntity> units = result
@@ -2201,6 +2360,12 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Gets blockade faction.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="instanceID">The instance id.</param>
+        /// <returns>The requested blockade faction.</returns>
         private static Faction GetBlockadeFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
                 ? null
@@ -2213,6 +2378,14 @@ namespace Rebellion.Game.Messages
     /// </summary>
     public partial class MessageFactory
     {
+        /// <summary>
+        /// Adds combat messages.
+        /// </summary>
+        /// <param name="battles">The battles.</param>
+        /// <param name="bombardments">The bombardments.</param>
+        /// <param name="assaults">The assaults.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddCombatMessages(
             IEnumerable<SpaceCombatResult> battles,
             IEnumerable<BombardmentResult> bombardments,
@@ -2279,6 +2452,14 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Creates space battle.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="result">The result.</param>
+        /// <param name="opponent">The opponent.</param>
+        /// <param name="game">The game.</param>
+        /// <returns>The created space battle.</returns>
         private MessageDeliveryRequest CreateSpaceBattle(
             Faction faction,
             SpaceCombatResult result,
@@ -2315,6 +2496,13 @@ namespace Rebellion.Game.Messages
             return message;
         }
 
+        /// <summary>
+        /// Creates bombardment.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="result">The result.</param>
+        /// <param name="targetFaction">The target faction.</param>
+        /// <returns>The created bombardment.</returns>
         private MessageDeliveryRequest CreateBombardment(
             Faction faction,
             BombardmentResult result,
@@ -2343,6 +2531,13 @@ namespace Rebellion.Game.Messages
             return message;
         }
 
+        /// <summary>
+        /// Creates assault.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="result">The result.</param>
+        /// <param name="targetFaction">The target faction.</param>
+        /// <returns>The created assault.</returns>
         private MessageDeliveryRequest CreateAssault(
             Faction faction,
             PlanetaryAssaultResult result,
@@ -2371,6 +2566,14 @@ namespace Rebellion.Game.Messages
             return message;
         }
 
+        /// <summary>
+        /// Builds combat message.
+        /// </summary>
+        /// <param name="definition">The definition.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="values">The values.</param>
+        /// <param name="imageFaction">The image faction.</param>
+        /// <returns>The constructed combat message.</returns>
         private MessageDeliveryRequest BuildCombatMessage(
             MessageDefinition definition,
             Faction faction,
@@ -2390,6 +2593,12 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Gets outcome.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="result">The result.</param>
+        /// <returns>The requested outcome.</returns>
         private static MessageResultOutcome GetOutcome(Faction faction, SpaceCombatResult result)
         {
             if (result.Winner == CombatSide.Draw)
@@ -2405,6 +2614,12 @@ namespace Rebellion.Game.Messages
             return MessageResultOutcome.None;
         }
 
+        /// <summary>
+        /// Gets side.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="result">The result.</param>
+        /// <returns>The requested side.</returns>
         private static CombatSide GetSide(Faction faction, SpaceCombatResult result)
         {
             if (faction?.InstanceID == GetOwnerID(result, CombatSide.Attacker))
@@ -2414,6 +2629,12 @@ namespace Rebellion.Game.Messages
             return CombatSide.Draw;
         }
 
+        /// <summary>
+        /// Gets side outcome.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="result">The result.</param>
+        /// <returns>The requested side outcome.</returns>
         private static SpaceCombatSideOutcome GetSideOutcome(
             Faction faction,
             SpaceCombatResult result
@@ -2426,6 +2647,9 @@ namespace Rebellion.Game.Messages
             };
 
         /// <summary>Returns the recorded withdrawal destination for one battle perspective.</summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="result">The result.</param>
+        /// <returns>The requested retreat planet instance id.</returns>
         private static string GetRetreatPlanetInstanceID(
             Faction faction,
             SpaceCombatResult result
@@ -2438,10 +2662,19 @@ namespace Rebellion.Game.Messages
             };
 
         /// <summary>Resolves a recorded planet ID for display without inferring combat state.</summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planetInstanceID">The planet instance id.</param>
+        /// <returns>The requested planet name.</returns>
         private static string GetPlanetName(GameRoot game, string planetInstanceID) =>
             game.GetSceneNodeByInstanceID<Planet>(planetInstanceID)?.GetDisplayName()
             ?? string.Empty;
 
+        /// <summary>
+        /// Gets fleet.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="result">The result.</param>
+        /// <returns>The requested fleet.</returns>
         private static Fleet GetFleet(Faction faction, SpaceCombatResult result)
         {
             if (faction?.InstanceID == GetOwnerID(result, CombatSide.Attacker))
@@ -2451,6 +2684,12 @@ namespace Rebellion.Game.Messages
                 : null;
         }
 
+        /// <summary>
+        /// Gets owner id.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <param name="side">The side.</param>
+        /// <returns>The requested owner id.</returns>
         private static string GetOwnerID(SpaceCombatResult result, CombatSide side) =>
             side switch
             {
@@ -2463,6 +2702,11 @@ namespace Rebellion.Game.Messages
                 _ => null,
             };
 
+        /// <summary>
+        /// Gets bombardment outcome.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>The requested bombardment outcome.</returns>
         private static MessageResultOutcome GetBombardmentOutcome(BombardmentResult result)
         {
             if (
@@ -2479,21 +2723,43 @@ namespace Rebellion.Game.Messages
                 : MessageResultOutcome.NoLosses;
         }
 
+        /// <summary>
+        /// Gets bombardment ownership.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>The requested bombardment ownership.</returns>
         private static MessagePlanetOwnership GetBombardmentOwnership(BombardmentResult result) =>
             result?.OwnershipChange != null
                 ? Ownership(result.OwnershipChange.PreviousOwner?.InstanceID)
                 : Ownership(result?.Planet?.OwnerInstanceID);
 
+        /// <summary>
+        /// Gets assault ownership.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>The requested assault ownership.</returns>
         private static MessagePlanetOwnership GetAssaultOwnership(PlanetaryAssaultResult result) =>
             result?.OwnershipChange != null
                 ? Ownership(result.OwnershipChange.PreviousOwner?.InstanceID)
                 : Ownership(result?.Planet?.OwnerInstanceID);
 
+        /// <summary>
+        /// Classifies a planet by whether it has an owner.
+        /// </summary>
+        /// <param name="ownerID">The owner id.</param>
+        /// <returns>Owned when an owner ID is present; otherwise neutral.</returns>
         private static MessagePlanetOwnership Ownership(string ownerID) =>
             string.IsNullOrEmpty(ownerID)
                 ? MessagePlanetOwnership.Neutral
                 : MessagePlanetOwnership.Owned;
 
+        /// <summary>
+        /// Builds template values describing combat participants and location.
+        /// </summary>
+        /// <param name="attacker">The attacker.</param>
+        /// <param name="target">The target.</param>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The combat message template values.</returns>
         private static Dictionary<string, string> CombatValues(
             Faction attacker,
             Faction target,
@@ -2506,6 +2772,12 @@ namespace Rebellion.Game.Messages
                 { "system", planet?.GetDisplayName() ?? string.Empty },
             };
 
+        /// <summary>
+        /// Sets combat location.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="target">The target.</param>
         private static void SetCombatLocation(
             MessageDeliveryRequest message,
             Planet planet,
@@ -2541,12 +2813,24 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Adds combat delivery.
+        /// </summary>
+        /// <param name="deliveries">The deliveries.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="message">The message.</param>
         private void AddCombatDelivery(
             ICollection<MessageDeliveryRequest> deliveries,
             Faction faction,
             MessageDeliveryRequest message
         ) => AddDelivery(deliveries, faction, message);
 
+        /// <summary>
+        /// Gets combat faction.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="instanceID">The instance id.</param>
+        /// <returns>The requested combat faction.</returns>
         private static Faction GetCombatFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
                 ? null
@@ -2559,6 +2843,12 @@ namespace Rebellion.Game.Messages
     /// </summary>
     public partial class MessageFactory
     {
+        /// <summary>
+        /// Adds deployment messages.
+        /// </summary>
+        /// <param name="results">The results.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddDeploymentMessages(
             IEnumerable<GameObjectDeployedResult> results,
             GameRoot game,
@@ -2633,6 +2923,12 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Adds facility loss messages.
+        /// </summary>
+        /// <param name="results">The results.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddFacilityLossMessages(
             IEnumerable<GameObjectDestroyedOnArrivalResult> results,
             GameRoot game,
@@ -2660,6 +2956,13 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Creates facility message.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="building">The building.</param>
+        /// <param name="destination">The destination.</param>
+        /// <returns>The created facility message.</returns>
         public MessageDeliveryRequest CreateFacilityMessage(
             Faction faction,
             Building building,
@@ -2687,6 +2990,13 @@ namespace Rebellion.Game.Messages
             return message;
         }
 
+        /// <summary>
+        /// Creates unit.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="unit">The unit.</param>
+        /// <param name="destination">The destination.</param>
+        /// <returns>The created unit.</returns>
         private MessageDeliveryRequest CreateUnit(
             Faction faction,
             IGameEntity unit,
@@ -2720,6 +3030,14 @@ namespace Rebellion.Game.Messages
             return message;
         }
 
+        /// <summary>
+        /// Creates regiments.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="regiments">The regiments.</param>
+        /// <param name="destination">The destination.</param>
+        /// <param name="definition">The definition.</param>
+        /// <returns>The created regiments.</returns>
         private MessageDeliveryRequest CreateRegiments(
             Faction faction,
             IEnumerable<Regiment> regiments,
@@ -2752,6 +3070,14 @@ namespace Rebellion.Game.Messages
             return message;
         }
 
+        /// <summary>
+        /// Builds deployment message.
+        /// </summary>
+        /// <param name="definition">The definition.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="values">The values.</param>
+        /// <param name="imageOverride">The image override.</param>
+        /// <returns>The constructed deployment message.</returns>
         private MessageDeliveryRequest BuildDeploymentMessage(
             MessageDefinition definition,
             Faction faction,
@@ -2771,12 +3097,23 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Gets deployment planet.
+        /// </summary>
+        /// <param name="entity">The entity.</param>
+        /// <returns>The requested deployment planet.</returns>
         private static Planet GetDeploymentPlanet(IGameEntity entity) =>
             entity is Planet planet ? planet
             : entity is ISceneNode node
                 ? node.GetParentOfType<Planet>() ?? node.GetLastParent() as Planet
             : null;
 
+        /// <summary>
+        /// Sets deployment location.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="target">The target.</param>
         private static void SetDeploymentLocation(
             MessageDeliveryRequest message,
             Planet planet,
@@ -2789,6 +3126,12 @@ namespace Rebellion.Game.Messages
             message.NavigationTargetInstanceID = (target ?? planet)?.InstanceID;
         }
 
+        /// <summary>
+        /// Gets deployment faction.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="instanceID">The instance id.</param>
+        /// <returns>The requested deployment faction.</returns>
         private static Faction GetDeploymentFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
                 ? null
@@ -2801,6 +3144,11 @@ namespace Rebellion.Game.Messages
     /// </summary>
     public partial class MessageFactory
     {
+        /// <summary>
+        /// Adds smuggling messages.
+        /// </summary>
+        /// <param name="results">The results.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddSmugglingMessages(
             IEnumerable<SmugglingChangedResult> results,
             ICollection<MessageDeliveryRequest> deliveries
@@ -2813,6 +3161,11 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Adds manufacturing messages.
+        /// </summary>
+        /// <param name="results">The results.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddManufacturingMessages(
             IEnumerable<ManufacturingIdleResult> results,
             ICollection<MessageDeliveryRequest> deliveries
@@ -2844,6 +3197,13 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Adds smuggling delivery.
+        /// </summary>
+        /// <param name="deliveries">The deliveries.</param>
+        /// <param name="recipient">The recipient.</param>
+        /// <param name="result">The result.</param>
+        /// <param name="receivesBenefits">Whether receives benefits.</param>
         private void AddSmugglingDelivery(
             ICollection<MessageDeliveryRequest> deliveries,
             Faction recipient,
@@ -2875,6 +3235,13 @@ namespace Rebellion.Game.Messages
             AddDelivery(deliveries, recipient, message);
         }
 
+        /// <summary>
+        /// Builds economy message.
+        /// </summary>
+        /// <param name="definition">The definition.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="values">The values.</param>
+        /// <returns>The constructed economy message.</returns>
         private MessageDeliveryRequest BuildEconomyMessage(
             MessageDefinition definition,
             Faction faction,
@@ -2895,6 +3262,12 @@ namespace Rebellion.Game.Messages
     /// </summary>
     public partial class MessageFactory
     {
+        /// <summary>
+        /// Adds maintenance messages.
+        /// </summary>
+        /// <param name="results">The results.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddMaintenanceMessages(
             IEnumerable<GameObjectAutoscrappedResult> results,
             GameRoot game,
@@ -2968,6 +3341,11 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Gets maintenance planet.
+        /// </summary>
+        /// <param name="entity">The entity.</param>
+        /// <returns>The requested maintenance planet.</returns>
         private static Planet GetMaintenancePlanet(IGameEntity entity)
         {
             if (entity is Planet planet)
@@ -2977,11 +3355,23 @@ namespace Rebellion.Game.Messages
                 : null;
         }
 
+        /// <summary>
+        /// Gets owner.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="entity">The entity.</param>
+        /// <returns>The requested owner.</returns>
         private static Faction GetOwner(GameRoot game, IGameEntity entity) =>
             entity is ISceneNode node
                 ? GetMaintenanceFaction(game, node.GetOwnerInstanceID())
                 : null;
 
+        /// <summary>
+        /// Gets maintenance faction.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="instanceID">The instance id.</param>
+        /// <returns>The requested maintenance faction.</returns>
         private static Faction GetMaintenanceFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
                 ? null
@@ -2994,6 +3384,14 @@ namespace Rebellion.Game.Messages
     /// </summary>
     public partial class MessageFactory
     {
+        /// <summary>
+        /// Adds uprising messages.
+        /// </summary>
+        /// <param name="nearResults">The near results.</param>
+        /// <param name="startedResults">The started results.</param>
+        /// <param name="endedResults">The ended results.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddUprisingMessages(
             IEnumerable<PlanetNearUprisingResult> nearResults,
             IEnumerable<PlanetUprisingStartedResult> startedResults,
@@ -3042,6 +3440,12 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Adds ownership messages.
+        /// </summary>
+        /// <param name="results">The results.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddOwnershipMessages(
             IEnumerable<PlanetOwnershipChangedResult> results,
             GameRoot game,
@@ -3064,6 +3468,12 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Creates near uprising.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="result">The result.</param>
+        /// <returns>The created near uprising.</returns>
         private MessageDeliveryRequest CreateNearUprising(
             Faction faction,
             PlanetNearUprisingResult result
@@ -3083,6 +3493,13 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Creates uprising started.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="result">The result.</param>
+        /// <param name="controller">The controller.</param>
+        /// <returns>The created uprising started.</returns>
         private MessageDeliveryRequest CreateUprisingStarted(
             Faction faction,
             PlanetUprisingStartedResult result,
@@ -3108,6 +3525,13 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Creates uprising ended.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="result">The result.</param>
+        /// <param name="controller">The controller.</param>
+        /// <returns>The created uprising ended.</returns>
         private MessageDeliveryRequest CreateUprisingEnded(
             Faction faction,
             PlanetUprisingEndedResult result,
@@ -3130,6 +3554,11 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Creates joined.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>The created joined.</returns>
         private MessageDeliveryRequest CreateJoined(PlanetOwnershipChangedResult result)
         {
             if (result?.NewOwner == null)
@@ -3143,6 +3572,12 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Creates joined enemy.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <param name="recipient">The recipient.</param>
+        /// <returns>The created joined enemy.</returns>
         private MessageDeliveryRequest CreateJoinedEnemy(
             PlanetOwnershipChangedResult result,
             Faction recipient
@@ -3164,6 +3599,12 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Creates neutrality.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <param name="recipient">The recipient.</param>
+        /// <returns>The created neutrality.</returns>
         private MessageDeliveryRequest CreateNeutrality(
             PlanetOwnershipChangedResult result,
             Faction recipient
@@ -3180,6 +3621,16 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Builds political message.
+        /// </summary>
+        /// <param name="resultType">The result type.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="values">The values.</param>
+        /// <param name="planetInstanceID">The planet instance id.</param>
+        /// <param name="notification">The notification.</param>
+        /// <param name="imageFaction">The image faction.</param>
+        /// <returns>The constructed political message.</returns>
         private MessageDeliveryRequest BuildPoliticalMessage(
             MessageResultType resultType,
             Faction faction,
@@ -3206,12 +3657,24 @@ namespace Rebellion.Game.Messages
             return message;
         }
 
+        /// <summary>
+        /// Adds political delivery.
+        /// </summary>
+        /// <param name="deliveries">The deliveries.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="message">The message.</param>
         private void AddPoliticalDelivery(
             ICollection<MessageDeliveryRequest> deliveries,
             Faction faction,
             MessageDeliveryRequest message
         ) => AddDelivery(deliveries, faction, message);
 
+        /// <summary>
+        /// Builds template values describing a faction and planet.
+        /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planetName">The planet name.</param>
+        /// <returns>The political message template values.</returns>
         private static Dictionary<string, string> Values(Faction faction, string planetName) =>
             new Dictionary<string, string>
             {
@@ -3219,6 +3682,12 @@ namespace Rebellion.Game.Messages
                 { "system", planetName ?? string.Empty },
             };
 
+        /// <summary>
+        /// Gets recipients.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <param name="game">The game.</param>
+        /// <returns>The requested recipients.</returns>
         private static IEnumerable<Faction> GetRecipients(
             PlanetOwnershipChangedResult result,
             GameRoot game
@@ -3234,6 +3703,12 @@ namespace Rebellion.Game.Messages
             return game.GetFactions().Where(faction => recipientIds.Contains(faction.InstanceID));
         }
 
+        /// <summary>
+        /// Gets political faction.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="instanceID">The instance id.</param>
+        /// <returns>The requested political faction.</returns>
         private static Faction GetPoliticalFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
                 ? null
@@ -3246,6 +3721,13 @@ namespace Rebellion.Game.Messages
     /// </summary>
     public partial class MessageFactory
     {
+        /// <summary>
+        /// Adds repair messages.
+        /// </summary>
+        /// <param name="shipResults">The ship results.</param>
+        /// <param name="fighterResults">The fighter results.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddRepairMessages(
             IEnumerable<ShipHullDamageResult> shipResults,
             IEnumerable<FighterDamageResult> fighterResults,
@@ -3278,6 +3760,13 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Adds repair delivery.
+        /// </summary>
+        /// <param name="deliveries">The deliveries.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="unit">The unit.</param>
+        /// <param name="resultType">The result type.</param>
         private void AddRepairDelivery(
             ICollection<MessageDeliveryRequest> deliveries,
             GameRoot game,
@@ -3317,6 +3806,12 @@ namespace Rebellion.Game.Messages
     /// </summary>
     public partial class MessageFactory
     {
+        /// <summary>
+        /// Adds research messages.
+        /// </summary>
+        /// <param name="completedResults">The completed results.</param>
+        /// <param name="exhaustedResults">The exhausted results.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddResearchMessages(
             IEnumerable<ResearchOrderedResult> completedResults,
             IEnumerable<ResearchExhaustedResult> exhaustedResults,
@@ -3359,6 +3854,13 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Builds research message.
+        /// </summary>
+        /// <param name="definition">The definition.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="values">The values.</param>
+        /// <returns>The constructed research message.</returns>
         private MessageDeliveryRequest BuildResearchMessage(
             MessageDefinition definition,
             Faction faction,
@@ -3372,6 +3874,11 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Gets research display name.
+        /// </summary>
+        /// <param name="entity">The entity.</param>
+        /// <returns>The requested research display name.</returns>
         private static string GetResearchDisplayName(IGameEntity entity) =>
             entity?.GetDisplayName() ?? string.Empty;
     }
@@ -3382,6 +3889,13 @@ namespace Rebellion.Game.Messages
     /// </summary>
     public partial class MessageFactory
     {
+        /// <summary>
+        /// Adds objective messages.
+        /// </summary>
+        /// <param name="ownershipResults">The ownership results.</param>
+        /// <param name="headquartersResults">The headquarters results.</param>
+        /// <param name="game">The game.</param>
+        /// <param name="deliveries">The deliveries.</param>
         private void AddObjectiveMessages(
             IEnumerable<PlanetOwnershipChangedResult> ownershipResults,
             IEnumerable<HeadquartersDestroyedResult> headquartersResults,
@@ -3457,6 +3971,15 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Finds the requested operation.
+        /// </summary>
+        /// <param name="resultType">The result type.</param>
+        /// <param name="planetInstanceID">The planet instance id.</param>
+        /// <param name="previousOwnerInstanceID">The previous owner instance id.</param>
+        /// <param name="newOwnerInstanceID">The new owner instance id.</param>
+        /// <param name="factionInstanceID">The faction instance id.</param>
+        /// <returns>The matching value.</returns>
         private MessageDefinition Find(
             MessageResultType resultType,
             string planetInstanceID,
@@ -3472,6 +3995,14 @@ namespace Rebellion.Game.Messages
                 && Matches(definition.FactionInstanceID, factionInstanceID)
             );
 
+        /// <summary>
+        /// Builds strategic message.
+        /// </summary>
+        /// <param name="definition">The definition.</param>
+        /// <param name="recipient">The recipient.</param>
+        /// <param name="values">The values.</param>
+        /// <param name="imageFaction">The image faction.</param>
+        /// <returns>The constructed strategic message.</returns>
         private MessageDeliveryRequest BuildStrategicMessage(
             MessageDefinition definition,
             Faction recipient,
@@ -3491,6 +4022,12 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Sets strategic location.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="target">The target.</param>
         private static void SetStrategicLocation(
             MessageDeliveryRequest message,
             ISceneNode planet,
@@ -3503,6 +4040,12 @@ namespace Rebellion.Game.Messages
             message.NavigationTargetInstanceID = (target ?? planet)?.InstanceID;
         }
 
+        /// <summary>
+        /// Gets ownership recipients.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <param name="game">The game.</param>
+        /// <returns>The requested ownership recipients.</returns>
         private static IEnumerable<Faction> GetOwnershipRecipients(
             PlanetOwnershipChangedResult result,
             GameRoot game
@@ -3518,10 +4061,22 @@ namespace Rebellion.Game.Messages
             return game.GetFactions().Where(faction => recipientIDs.Contains(faction.InstanceID));
         }
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="selector">The selector.</param>
+        /// <param name="value">The value.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         private static bool Matches(string selector, string value) =>
             string.IsNullOrWhiteSpace(selector)
             || string.Equals(selector, value, StringComparison.Ordinal);
 
+        /// <summary>
+        /// Gets strategic faction.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="instanceID">The instance id.</param>
+        /// <returns>The requested strategic faction.</returns>
         private static Faction GetStrategicFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
                 ? null
@@ -3530,6 +4085,8 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Converts one valid authored request into the message shape consumed by delivery.
         /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>The created authored request.</returns>
         private MessageDeliveryRequest CreateAuthoredRequest(MessageDeliveryRequest result)
         {
             if (result?.Recipient == null)
@@ -3577,6 +4134,11 @@ namespace Rebellion.Game.Messages
             return delivery;
         }
 
+        /// <summary>
+        /// Creates background.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>The created background.</returns>
         private static MessageBackgroundImage CreateBackground(MessageDeliveryRequest result)
         {
             if (
@@ -3592,6 +4154,10 @@ namespace Rebellion.Game.Messages
             };
         }
 
+        /// <summary>
+        /// Applies advisor preset.
+        /// </summary>
+        /// <param name="delivery">The delivery.</param>
         private static void ApplyAdvisorPreset(MessageDeliveryRequest delivery)
         {
             AdvisorNotification notification = delivery.AdvisorNotification;

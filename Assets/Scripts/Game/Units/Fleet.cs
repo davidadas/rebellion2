@@ -63,9 +63,11 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>Creates an empty fleet copy.</summary>
+        /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new Fleet();
 
         /// <summary>Copies fleet state into an empty destination.</summary>
+        /// <param name="destination">The destination.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
             base.CopyStateTo(destination);
@@ -308,6 +310,7 @@ namespace Rebellion.Game.Units
         /// Sum of damage-adjusted attack ratings across completed, non-in-transit
         /// capital ships and starfighters.
         /// </summary>
+        /// <returns>The requested combat value.</returns>
         public int GetCombatValue()
         {
             IEnumerable<CapitalShip> activeShips = GetChildren<CapitalShip>()

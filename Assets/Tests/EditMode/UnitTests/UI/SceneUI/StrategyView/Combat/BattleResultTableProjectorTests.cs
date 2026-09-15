@@ -1,0 +1,712 @@
+using System;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
+using GameFleet = Rebellion.Game.Units.Fleet;
+
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
+{
+    [TestFixture]
+    public class BattleResultTableProjectorTests
+    {
+        private const string _playerFactionId = "FNALL1";
+        private const string _opponentFactionId = "FNEMP1";
+
+        /// <summary>
+        /// Verifies project capital ship damage separates survivors and destroyed ships.
+        /// </summary>
+        [Test]
+        public void Project_CapitalShipDamage_SeparatesSurvivorsAndDestroyedShips()
+        {
+            UIContext context = CreateContext();
+            CapitalShip intact = CreateCapitalShip("intact", _playerFactionId, "Intact Ship");
+            CapitalShip damaged = CreateCapitalShip("damaged", _playerFactionId, "Damaged Ship");
+            CapitalShip destroyed = CreateCapitalShip(
+                "destroyed",
+                _playerFactionId,
+                "Destroyed Ship"
+            );
+            GameFleet fleet = CreateFleet(_playerFactionId, intact, damaged);
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                AttackerFleet = fleet,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
+                AttackingUnits =
+                {
+                    Capture(intact),
+                    Capture(damaged, damaged: true),
+                    Capture(destroyed, damaged: true, destroyed: true),
+                },
+                ShipDamage =
+                {
+                    new ShipDamageResult
+                    {
+                        Ship = damaged,
+                        HullBefore = 100,
+                        HullAfter = 50,
+                    },
+                    new ShipDamageResult
+                    {
+                        Ship = destroyed,
+                        HullBefore = 100,
+                        HullAfter = 0,
+                    },
+                },
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                BattleResultCategory.CapitalShips
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Intact Ship", "Damaged Ship" },
+                table.Operational.Select(item => item.Text)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "Destroyed Ship" },
+                table.Destroyed.Select(item => item.Text)
+            );
+            Assert.IsNotNull(table.Operational[0].BaseTexture);
+            Assert.IsNotNull(table.Operational[0].WithdrawingOverlayTexture);
+            Assert.IsNull(table.Operational[0].DamagedOverlayTexture);
+            Assert.IsNotNull(table.Operational[1].WithdrawingOverlayTexture);
+            Assert.IsNotNull(table.Operational[1].DamagedOverlayTexture);
+            Assert.IsNotNull(table.Destroyed[0].DamagedOverlayTexture);
+        }
+
+        /// <summary>
+        /// Verifies project duplicate capital ship damage keeps one operational row.
+        /// </summary>
+        [Test]
+        public void Project_DuplicateCapitalShipDamage_KeepsOneOperationalRow()
+        {
+            UIContext context = CreateContext();
+            CapitalShip ship = CreateCapitalShip("ship", _playerFactionId, "Ship");
+            GameFleet fleet = CreateFleet(_playerFactionId, ship);
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                AttackerFleet = fleet,
+                AttackerOwnerInstanceID = _playerFactionId,
+                AttackerOutcome = SpaceCombatSideOutcome.Active,
+                AttackingUnits = { Capture(ship, damaged: true) },
+                ShipDamage =
+                {
+                    new ShipDamageResult
+                    {
+                        Ship = ship,
+                        HullBefore = 100,
+                        HullAfter = 75,
+                    },
+                },
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                BattleResultCategory.CapitalShips
+            );
+
+            Assert.AreEqual(1, table.Operational.Count);
+            Assert.AreEqual("Ship", table.Operational[0].Text);
+            Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
+        }
+
+        /// <summary>
+        /// Verifies project starfighter losses separates surviving and destroyed squadrons.
+        /// </summary>
+        [Test]
+        public void Project_StarfighterLosses_SeparatesSurvivingAndDestroyedSquadrons()
+        {
+            UIContext context = CreateContext();
+            Starfighter damaged = CreateStarfighter(
+                "damaged",
+                _playerFactionId,
+                "Damaged Squadron"
+            );
+            Starfighter destroyed = CreateStarfighter(
+                "destroyed",
+                _playerFactionId,
+                "Destroyed Squadron"
+            );
+            CapitalShip carrier = CreateCapitalShip("carrier", _playerFactionId, "Carrier");
+            carrier.AddTestChild(damaged);
+            GameFleet fleet = CreateFleet(_playerFactionId, carrier);
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                DefenderFleet = fleet,
+                DefenderOwnerInstanceID = _playerFactionId,
+                DefenderOutcome = SpaceCombatSideOutcome.Withdrawn,
+                DefendingUnits =
+                {
+                    Capture(damaged, damaged: true),
+                    Capture(destroyed, damaged: true, destroyed: true),
+                },
+                FighterLosses =
+                {
+                    new FighterLossResult
+                    {
+                        Fighter = damaged,
+                        SquadsBefore = 12,
+                        SquadsAfter = 6,
+                    },
+                    new FighterLossResult
+                    {
+                        Fighter = destroyed,
+                        SquadsBefore = 12,
+                        SquadsAfter = 0,
+                    },
+                },
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                BattleResultCategory.Starfighters
+            );
+
+            Assert.AreEqual(1, table.Operational.Count);
+            Assert.AreEqual("Damaged Squadron", table.Operational[0].Text);
+            Assert.IsNotNull(table.Operational[0].BaseTexture);
+            Assert.IsNotNull(table.Operational[0].WithdrawingOverlayTexture);
+            Assert.IsNotNull(table.Operational[0].DamagedOverlayTexture);
+            Assert.AreEqual(1, table.Destroyed.Count);
+            Assert.AreEqual("Destroyed Squadron", table.Destroyed[0].Text);
+            Assert.IsNotNull(table.Destroyed[0].DamagedOverlayTexture);
+        }
+
+        /// <summary>
+        /// Verifies project planetary starfighter without fleet returns operational squadron.
+        /// </summary>
+        [Test]
+        public void Project_PlanetaryStarfighterWithoutFleet_ReturnsOperationalSquadron()
+        {
+            UIContext context = CreateContext();
+            Starfighter fighter = CreateStarfighter(
+                "planet-fighter",
+                _opponentFactionId,
+                "Planetary Squadron"
+            );
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.CurrentSquadronSize = 12;
+            Planet planet = new Planet();
+            planet.AddTestChild(fighter);
+            fighter.SetParent(planet);
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                Planet = planet,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                DefenderOutcome = SpaceCombatSideOutcome.Active,
+                DefendingUnits = { Capture(fighter) },
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                BattleResultPresentation.Create(result),
+                _opponentFactionId,
+                BattleResultCategory.Starfighters
+            );
+
+            Assert.AreEqual(1, table.Operational.Count);
+            Assert.AreEqual("Planetary Squadron", table.Operational[0].Text);
+            Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
+        }
+
+        /// <summary>
+        /// Verifies project troops returns fleet regiments in carrier order.
+        /// </summary>
+        [Test]
+        public void Project_Troops_ReturnsFleetRegimentsInCarrierOrder()
+        {
+            UIContext context = CreateContext();
+            Regiment first = CreateRegiment("first", _playerFactionId, "First Regiment");
+            Regiment second = CreateRegiment("second", _playerFactionId, "Second Regiment");
+            CapitalShip carrier = CreateCapitalShip("carrier", _playerFactionId, "Carrier");
+            carrier.AddTestChild(first);
+            carrier.AddTestChild(second);
+            GameFleet fleet = CreateFleet(_playerFactionId, carrier);
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                AttackerFleet = fleet,
+                AttackerOwnerInstanceID = _playerFactionId,
+                AttackerOutcome = SpaceCombatSideOutcome.Active,
+                AttackingUnits = { Capture(first), Capture(second) },
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                BattleResultCategory.Troops
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "First Regiment", "Second Regiment" },
+                table.Operational.Select(item => item.Text)
+            );
+            Assert.IsTrue(table.Operational.All(item => item.BaseTexture != null));
+            Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
+        }
+
+        /// <summary>
+        /// Verifies project personnel combines officers then special forces.
+        /// </summary>
+        [Test]
+        public void Project_Personnel_CombinesOfficersThenSpecialForces()
+        {
+            UIContext context = CreateContext();
+            Officer officer = CreateOfficer("officer", _playerFactionId, "Officer");
+            SpecialForces specialForces = CreateSpecialForces(
+                "special-forces",
+                _playerFactionId,
+                "Special Forces"
+            );
+            CapitalShip carrier = CreateCapitalShip("carrier", _playerFactionId, "Carrier");
+            carrier.AddTestChild(officer);
+            carrier.AddTestChild(specialForces);
+            GameFleet fleet = CreateFleet(_playerFactionId, carrier);
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                DefenderFleet = fleet,
+                DefenderOwnerInstanceID = _playerFactionId,
+                DefenderOutcome = SpaceCombatSideOutcome.Active,
+                DefendingUnits = { Capture(officer), Capture(specialForces) },
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                BattleResultCategory.Personnel
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Officer", "Special Forces" },
+                table.Operational.Select(item => item.Text)
+            );
+            Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
+        }
+
+        /// <summary>
+        /// Verifies project captured officer includes captured overlay.
+        /// </summary>
+        [Test]
+        public void Project_CapturedOfficer_IncludesCapturedOverlay()
+        {
+            UIContext context = CreateContext();
+            Officer officer = CreateOfficer("captured", _playerFactionId, "Captured Officer");
+            officer.IsCaptured = true;
+            CapitalShip carrier = CreateCapitalShip("carrier", _playerFactionId, "Carrier");
+            carrier.AddTestChild(officer);
+            GameFleet fleet = CreateFleet(_playerFactionId, carrier);
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                DefenderFleet = fleet,
+                DefenderOwnerInstanceID = _playerFactionId,
+                DefenderOutcome = SpaceCombatSideOutcome.Active,
+                DefendingUnits = { Capture(officer) },
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                BattleResultCategory.Personnel
+            );
+
+            Assert.AreEqual("Captured Officer", table.Operational[0].Text);
+            Assert.IsNotNull(table.Operational[0].CapturedOverlayTexture);
+        }
+
+        /// <summary>
+        /// Verifies project bombardment manufacturing separates operational and destroyed facilities.
+        /// </summary>
+        [Test]
+        public void Project_BombardmentManufacturing_SeparatesOperationalAndDestroyedFacilities()
+        {
+            UIContext context = CreateContext();
+            Building operational = CreateBuilding(
+                "operational",
+                _opponentFactionId,
+                "Operational Shipyard",
+                BuildingType.Shipyard
+            );
+            Building destroyed = CreateBuilding(
+                "destroyed",
+                _opponentFactionId,
+                "Destroyed Training Facility",
+                BuildingType.TrainingFacility
+            );
+            BombardmentResult result = new BombardmentResult
+            {
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                DefendingUnits = { Capture(operational), Capture(destroyed, destroyed: true) },
+                DestroyedBuildings = { destroyed },
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                BattleResultPresentation.Create(result),
+                _opponentFactionId,
+                BattleResultCategory.Manufacturing
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Operational Shipyard" },
+                table.Operational.Select(item => item.Text)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "Destroyed Training Facility" },
+                table.Destroyed.Select(item => item.Text)
+            );
+            Assert.IsNull(table.Destroyed[0].DamagedOverlayTexture);
+        }
+
+        /// <summary>
+        /// Verifies project planetary assault troops separates surviving and destroyed regiments.
+        /// </summary>
+        [Test]
+        public void Project_PlanetaryAssaultTroops_SeparatesSurvivingAndDestroyedRegiments()
+        {
+            UIContext context = CreateContext();
+            Regiment operational = CreateRegiment(
+                "operational",
+                _playerFactionId,
+                "Operational Regiment"
+            );
+            Regiment destroyed = CreateRegiment(
+                "destroyed",
+                _playerFactionId,
+                "Destroyed Regiment"
+            );
+            operational.ManufacturingStatus = ManufacturingStatus.Complete;
+            destroyed.ManufacturingStatus = ManufacturingStatus.Complete;
+            PlanetaryAssaultResult result = new PlanetaryAssaultResult
+            {
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                AttackingUnits = { Capture(operational), Capture(destroyed, destroyed: true) },
+                DestroyedAttackerRegiments = { destroyed },
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                BattleResultCategory.Troops
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Operational Regiment" },
+                table.Operational.Select(item => item.Text)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "Destroyed Regiment" },
+                table.Destroyed.Select(item => item.Text)
+            );
+            Assert.IsNull(table.Destroyed[0].DamagedOverlayTexture);
+        }
+
+        /// <summary>
+        /// Verifies project unknown owner returns both empty state rows.
+        /// </summary>
+        [Test]
+        public void Project_UnknownOwner_ReturnsBothEmptyStateRows()
+        {
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                CreateContext(),
+                BattleResultPresentation.Create(new SpaceCombatResult()),
+                "unknown",
+                BattleResultCategory.CapitalShips
+            );
+
+            Assert.AreEqual(1, table.Operational.Count);
+            Assert.AreEqual("None", table.Operational[0].Text);
+            Assert.AreEqual(1, table.Destroyed.Count);
+            Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
+        }
+
+        /// <summary>
+        /// Verifies project live unit changes after capture do not rewrite result rows.
+        /// </summary>
+        [Test]
+        public void Project_LiveUnitChangesAfterCapture_DoNotRewriteResultRows()
+        {
+            UIContext context = CreateContext();
+            Officer officer = CreateOfficer("captured", _playerFactionId, "Captured Officer");
+            officer.IsCaptured = true;
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                AttackerOwnerInstanceID = _playerFactionId,
+                AttackerOutcome = SpaceCombatSideOutcome.Active,
+                AttackingUnits = { Capture(officer) },
+            };
+            officer.DisplayName = "Renamed Officer";
+            officer.IsCaptured = false;
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                BattleResultCategory.Personnel
+            );
+
+            Assert.AreEqual("Captured Officer", table.Operational[0].Text);
+            Assert.IsNotNull(table.Operational[0].CapturedOverlayTexture);
+            Assert.AreNotSame(officer, result.AttackingUnits[0].Unit);
+        }
+
+        /// <summary>
+        /// Creates context.
+        /// </summary>
+        /// <returns>The created context.</returns>
+        private static UIContext CreateContext()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _opponentFactionId, DisplayName = "Opponent" });
+            game.Summary.PlayerFactionID = _playerFactionId;
+            return TestContent.CreateUIContext(
+                game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+        }
+
+        /// <summary>
+        /// Creates fleet.
+        /// </summary>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="ships">The ships.</param>
+        /// <returns>The created fleet.</returns>
+        private static GameFleet CreateFleet(string ownerId, params CapitalShip[] ships)
+        {
+            return new GameFleet(ownerId, "Fleet", ships.ToList()) { InstanceID = "fleet" };
+        }
+
+        /// <summary>
+        /// Creates capital ship.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created capital ship.</returns>
+        private static CapitalShip CreateCapitalShip(
+            string instanceId,
+            string ownerId,
+            string displayName
+        )
+        {
+            CapitalShip definition = TestContent.Data.CapitalShips.First(item =>
+                item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
+            );
+            return new CapitalShip
+            {
+                InstanceID = instanceId,
+                TypeID = definition.TypeID,
+                OwnerInstanceID = ownerId,
+                DisplayName = displayName,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                InTransitImagePath = definition.InTransitImagePath,
+                InTransitSmallImagePath = definition.InTransitSmallImagePath,
+                DamagedImagePath = definition.DamagedImagePath,
+                DamagedSmallImagePath = definition.DamagedSmallImagePath,
+                BattleResultImagePath = definition.BattleResultImagePath,
+                BattleResultInTransitImagePath = definition.BattleResultInTransitImagePath,
+                BattleResultDamagedImagePath = definition.BattleResultDamagedImagePath,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        /// <summary>
+        /// Creates starfighter.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created starfighter.</returns>
+        private static Starfighter CreateStarfighter(
+            string instanceId,
+            string ownerId,
+            string displayName
+        )
+        {
+            Starfighter definition = TestContent.Data.Starfighters.First(item =>
+                item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
+            );
+            return new Starfighter
+            {
+                InstanceID = instanceId,
+                TypeID = definition.TypeID,
+                OwnerInstanceID = ownerId,
+                DisplayName = displayName,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                InTransitImagePath = definition.InTransitImagePath,
+                InTransitSmallImagePath = definition.InTransitSmallImagePath,
+                DamagedImagePath = definition.DamagedImagePath,
+                DamagedSmallImagePath = definition.DamagedSmallImagePath,
+                BattleResultImagePath = definition.BattleResultImagePath,
+                BattleResultInTransitImagePath = definition.BattleResultInTransitImagePath,
+                BattleResultDamagedImagePath = definition.BattleResultDamagedImagePath,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        /// <summary>
+        /// Creates building.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <returns>The created building.</returns>
+        private static Building CreateBuilding(
+            string instanceId,
+            string ownerId,
+            string displayName,
+            BuildingType buildingType
+        )
+        {
+            Building definition = TestContent.Data.Buildings.First(item =>
+                item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
+            );
+            return new Building
+            {
+                InstanceID = instanceId,
+                TypeID = definition.TypeID,
+                OwnerInstanceID = ownerId,
+                DisplayName = displayName,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                DamagedImagePath = definition.DamagedImagePath,
+                DamagedSmallImagePath = definition.DamagedSmallImagePath,
+                BuildingType = buildingType,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        /// <summary>
+        /// Creates regiment.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created regiment.</returns>
+        private static Regiment CreateRegiment(
+            string instanceId,
+            string ownerId,
+            string displayName
+        )
+        {
+            Regiment definition = TestContent.Data.Regiments.First(item =>
+                item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
+            );
+            return new Regiment
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = ownerId,
+                DisplayName = displayName,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        /// <summary>
+        /// Creates officer.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created officer.</returns>
+        private static Officer CreateOfficer(string instanceId, string ownerId, string displayName)
+        {
+            Officer definition = TestContent.Data.Officers.First(item =>
+                item.OwnerInstanceID == ownerId
+                || item.RecruitingFactionInstanceIDs?.Contains(ownerId) == true
+            );
+            return new Officer
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = ownerId,
+                DisplayName = displayName,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                CapturedOverlayImagePath = definition.CapturedOverlayImagePath,
+            };
+        }
+
+        /// <summary>
+        /// Creates special forces.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <returns>The created special forces.</returns>
+        private static SpecialForces CreateSpecialForces(
+            string instanceId,
+            string ownerId,
+            string displayName
+        )
+        {
+            SpecialForces definition = TestContent.Data.SpecialForces.First(item =>
+                item.OwnerInstanceID == ownerId
+                || item.ManufacturingFactionInstanceIDs?.Contains(ownerId) == true
+            );
+            return new SpecialForces
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = ownerId,
+                DisplayName = displayName,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        /// <summary>
+        /// Captures the requested operation.
+        /// </summary>
+        /// <param name="unit">The unit.</param>
+        /// <param name="damaged">Whether damaged.</param>
+        /// <param name="destroyed">Whether destroyed.</param>
+        /// <returns>The result of capture.</returns>
+        private static CombatUnitSnapshot Capture(
+            ISceneNode unit,
+            bool damaged = false,
+            bool destroyed = false
+        )
+        {
+            return new CombatUnitSnapshot(unit) { Damaged = damaged, Destroyed = destroyed };
+        }
+    }
+}

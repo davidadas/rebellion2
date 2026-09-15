@@ -134,7 +134,9 @@ public sealed class ConstructionWindowController
             view == null
             || window == null
             || planet?.Planet == null
-            || !ConstructionOrderController.GetManufacturingType(initialManufacturingTab).HasValue
+            || !FacilityManufacturingLaneCatalog
+                .GetManufacturingType(initialManufacturingTab)
+                .HasValue
         )
             return false;
 

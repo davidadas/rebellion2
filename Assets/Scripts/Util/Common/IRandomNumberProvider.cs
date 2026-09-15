@@ -11,11 +11,15 @@ namespace Rebellion.Util.Common
         /// <summary>
         /// Returns a random double in the range [0.0, 1.0).
         /// </summary>
+        /// <returns>The result of next double.</returns>
         double NextDouble();
 
         /// <summary>
         /// Returns a random integer in the range [min, max).
         /// </summary>
+        /// <param name="min">The min.</param>
+        /// <param name="max">The max.</param>
+        /// <returns>The result of next int.</returns>
         int NextInt(int min, int max);
     }
 
@@ -48,12 +52,22 @@ namespace Rebellion.Util.Common
             CallCount = advanceTo;
         }
 
+        /// <summary>
+        /// Generates the next random floating-point value.
+        /// </summary>
+        /// <returns>A random value greater than or equal to zero and less than one.</returns>
         public double NextDouble()
         {
             CallCount++;
             return _rng.NextDouble();
         }
 
+        /// <summary>
+        /// Generates the next random integer within the requested range.
+        /// </summary>
+        /// <param name="min">The inclusive lower bound.</param>
+        /// <param name="max">The exclusive upper bound.</param>
+        /// <returns>A random integer within the requested range.</returns>
         public int NextInt(int min, int max)
         {
             CallCount++;

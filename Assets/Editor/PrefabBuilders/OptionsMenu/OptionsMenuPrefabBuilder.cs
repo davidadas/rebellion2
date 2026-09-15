@@ -11,8 +11,8 @@ using UnityEngine.UI;
 /// </summary>
 public static class OptionsMenuPrefabBuilder
 {
-    private const int _navigationRowHeight = 30;
-    private const int _navigationRowSpacing = 6;
+    private const int _navigationRowHeight = 28;
+    private const int _navigationRowSpacing = 4;
     private const int _navigationRowStride = _navigationRowHeight + _navigationRowSpacing;
     private const int _tabNavigationStartY = 82;
     private const int _footerNavigationStartY = 318;
@@ -161,14 +161,19 @@ public static class OptionsMenuPrefabBuilder
         SetSourceRect(saveLoadPage, 228, 69, 382, 365);
         RectTransform controlsPage = CreateChildLayer("ControlsPage", contentRoot);
         SetSourceRect(controlsPage, 228, 69, 382, 365);
+        RectTransform modsPage = CreateChildLayer("ModsPage", contentRoot);
+        SetSourceRect(modsPage, 228, 69, 382, 365);
 
         // Hidden Pages.
         graphicsPage.gameObject.SetActive(false);
         audioPage.gameObject.SetActive(false);
         saveLoadPage.gameObject.SetActive(false);
         controlsPage.gameObject.SetActive(false);
+        modsPage.gameObject.SetActive(false);
 
         BuildGameplayPage(view, gameplayPage, accent);
+
+        BuildIdleBarOptions(view, gameplayPage);
 
         BuildGraphicsPage(view, graphicsPage, accent);
 
@@ -177,6 +182,7 @@ public static class OptionsMenuPrefabBuilder
         BuildSaveLoadPage(view, saveLoadPage, accent, textColor, textDim);
 
         BuildControlsPage(view, controlsPage, accent, textColor, textDim);
+        BuildModsPage(view, modsPage, accent, textDim);
         BuildFooter(view, contentRoot, textColor, textDim);
 
         AssignReference(view, "_backgroundImage", background);
@@ -195,6 +201,7 @@ public static class OptionsMenuPrefabBuilder
         AssignReference(view, "_audioPage", audioPage.gameObject);
         AssignReference(view, "_saveLoadPage", saveLoadPage.gameObject);
         AssignReference(view, "_controlsPage", controlsPage.gameObject);
+        AssignReference(view, "_modsPage", modsPage.gameObject);
 
         GameObject saved = SaveGeneratedPrefabAsset(window, _optionsMenuWindowPrefabPath);
         UnityEngine.Object.DestroyImmediate(window);
@@ -215,13 +222,14 @@ public static class OptionsMenuPrefabBuilder
         Color textColor
     )
     {
-        string[] tabNames = { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "SAVE / LOAD" };
+        string[] tabNames = { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "MODS", "SAVE / LOAD" };
         string[] tabObjectNames =
         {
             "GameplayTab",
             "GraphicsTab",
             "AudioTab",
             "ControlsTab",
+            "ModsTab",
             "SaveLoadTab",
         };
         Button[] tabButtons = new Button[tabNames.Length];
@@ -252,7 +260,7 @@ public static class OptionsMenuPrefabBuilder
             tabLabel.color = textColor;
             tabLabel.fontSize = 13;
             tabLabel.alignment = TextAlignmentOptions.MidlineLeft;
-            SetSourceRect(tabLabel.rectTransform, 14, 5, 140, 20);
+            SetSourceRect(tabLabel.rectTransform, 14, 0, 140, _navigationRowHeight);
             tabLabels[i] = tabLabel;
         }
 
@@ -262,68 +270,146 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
+    /// Builds the mod enablement controls.
+    /// </summary>
+    /// <param name="view">The Options view receiving the authored references.</param>
+    /// <param name="modsPage">The authored Mods page root.</param>
+    /// <param name="accent">The Options accent color.</param>
+    /// <param name="textDim">The secondary Options text color.</param>
+    private static void BuildModsPage(
+        OptionsMenuView view,
+        RectTransform modsPage,
+        Color accent,
+        Color textDim
+    )
+    {
+        CreateOptionsSectionHeader(modsPage, "ContentPackHeader", "CONTENT PACK", 16, accent);
+        TextMeshProUGUI packValue = CreateOptionsFieldRow(
+            modsPage,
+            "ContentPack",
+            "Active Pack",
+            41,
+            out Button packPrev,
+            out Button packNext
+        );
+        CreateOptionsSectionHeader(modsPage, "LoadedModsHeader", "MODS", 74, accent);
+
+        TextMeshProUGUI status = CreateTextLabel("ModsStatusTextField", modsPage);
+        status.text = "NO MODS LOADED";
+        status.color = textDim;
+        status.fontSize = 11;
+        status.alignment = TextAlignmentOptions.TopLeft;
+        SetSourceRect(status.rectTransform, 20, 101, 160, 18);
+
+        TextMeshProUGUI restart = CreateTextLabel("ModsRestartTextField", modsPage);
+        restart.text = "RESTART REQUIRED";
+        restart.color = new Color(0.95f, 0.25f, 0.25f);
+        restart.fontSize = 11;
+        restart.fontStyle = FontStyles.Bold;
+        restart.alignment = TextAlignmentOptions.TopRight;
+        SetSourceRect(restart.rectTransform, 180, 101, 180, 18);
+        restart.gameObject.SetActive(false);
+
+        ScrollAreaView modsScrollArea = CreateScrollAreaView(
+            modsPage,
+            "ModsScrollArea",
+            20,
+            128,
+            348,
+            214,
+            0,
+            0,
+            330,
+            214,
+            334,
+            0,
+            12,
+            214,
+            out RectTransform modsContent
+        );
+        OptionsToggleRowView rowTemplate = CreateOptionsToggleRow(
+            modsContent,
+            "ModRowTemplate",
+            0,
+            "Mod",
+            0,
+            0
+        );
+        rowTemplate.gameObject.SetActive(false);
+
+        AssignReference(view, "_modsStatusTextField", status);
+        AssignReference(view, "_modsRestartTextField", restart);
+        AssignReference(view, "_contentPackValueField", packValue);
+        AssignReference(view, "_contentPackPrevButton", packPrev);
+        AssignReference(view, "_contentPackNextButton", packNext);
+        AssignReference(view, "_modsScrollArea", modsScrollArea);
+        AssignReference(view, "_modRowTemplate", rowTemplate);
+    }
+
+    /// <summary>
     /// Builds and wires the Gameplay page controls.
     /// </summary>
+    /// <param name="view">The view.</param>
+    /// <param name="gameplayPage">The gameplay page.</param>
+    /// <param name="accent">The accent.</param>
     private static void BuildGameplayPage(
         OptionsMenuView view,
         RectTransform gameplayPage,
         Color accent
     )
     {
-        CreateOptionsSectionHeader(gameplayPage, "SavingHeader", "SAVING", 16, accent);
+        OptionsToggleRowView disableBriefingsRow = CreateOptionsToggleRow(
+            gameplayPage,
+            "GameplayDisableBriefings",
+            (int)UserGameplayOption.DisableBriefings,
+            "Disable Briefings",
+            20,
+            18
+        );
+
+        CreateOptionsSectionHeader(gameplayPage, "SavingHeader", "SAVING", 50, accent);
         OptionsToggleRowView autosaveRow = CreateOptionsToggleRow(
             gameplayPage,
             "GameplayAutosaveEnabled",
             (int)UserGameplayOption.AutosaveEnabled,
             "Enable Autosave",
             20,
-            44
+            78
         );
         TMP_InputField autosaveIntervalInput = CreateOptionsNumericFieldRow(
             gameplayPage,
             "AutosaveInterval",
             "Autosave Interval (Ticks)",
-            70,
+            104,
             out Image autosaveIntervalBadge
         );
         TMP_InputField autosavesToKeepInput = CreateOptionsNumericFieldRow(
             gameplayPage,
             "AutosavesToKeep",
             "Autosaves to Keep",
-            97,
+            131,
             out Image autosavesToKeepBadge
         );
 
-        CreateOptionsSectionHeader(
-            gameplayPage,
-            "GalacticModeHeader",
-            "GALACTIC MODE",
-            134,
-            accent
-        );
+        CreateOptionsSectionHeader(gameplayPage, "GalaxyViewHeader", "GALAXY VIEW", 168, accent);
         UserGameplayOption[] options =
         {
             UserGameplayOption.PauseAfterEnemyBombardment,
             UserGameplayOption.PauseWhenSpaceBattleBegins,
-            UserGameplayOption.ShowIdleBar,
         };
-        string[] labels =
-        {
-            "Pause After Enemy Bombardment",
-            "Pause on Space Battles",
-            "[Experimental] Show Idle Bar",
-        };
-        OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length + 1];
-        rows[0] = autosaveRow;
+        string[] labels = { "Pause After Enemy Bombardment", "Pause on Space Battles" };
+        OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length + 2];
+        rows[0] = disableBriefingsRow;
+        rows[1] = autosaveRow;
         for (int i = 0; i < options.Length; i++)
         {
-            rows[i + 1] = CreateOptionsToggleRow(
+            rows[i + 2] = CreateOptionsToggleRow(
                 gameplayPage,
                 $"Gameplay{options[i]}",
                 (int)options[i],
                 labels[i],
                 20,
-                162 + i * 26
+                196 + i * 26
             );
         }
 
@@ -401,6 +487,35 @@ public static class OptionsMenuPrefabBuilder
         AssignReference(view, "_fullScreenValueField", fullScreenValue);
         AssignReference(view, "_fullScreenPrevButton", fullScreenPrev);
         AssignReference(view, "_fullScreenNextButton", fullScreenNext);
+    }
+
+    /// <summary>
+    /// Builds and wires the Idle Bar controls in the Gameplay page's Galaxy View section.
+    /// </summary>
+    /// <param name="view">The Options view receiving the authored references.</param>
+    /// <param name="gameplayPage">The authored Gameplay page root.</param>
+    private static void BuildIdleBarOptions(OptionsMenuView view, RectTransform gameplayPage)
+    {
+        UserInterfaceOption[] options =
+        {
+            UserInterfaceOption.ShowIdleBar,
+            UserInterfaceOption.KeepIdleBarOpen,
+        };
+        string[] labels = { "Show Idle Bar", "Keep Idle Bar Open" };
+        OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
+        for (int i = 0; i < options.Length; i++)
+        {
+            rows[i] = CreateOptionsToggleRow(
+                gameplayPage,
+                $"UserInterface{options[i]}",
+                (int)options[i],
+                labels[i],
+                20,
+                214 + i * 26
+            );
+        }
+
+        AssignReferenceArray(view, "_userInterfaceRows", rows);
     }
 
     /// <summary>
@@ -1045,6 +1160,10 @@ public static class OptionsMenuPrefabBuilder
     /// <summary>
     /// Creates the navigation layout.
     /// </summary>
+    /// <param name="navigationRoot">The navigation root.</param>
+    /// <param name="backToGameButton">The back to game button.</param>
+    /// <param name="mainMenuButton">The main menu button.</param>
+    /// <param name="quitButton">The quit button.</param>
     private static void ConfigureOptionsNavigationLayout(
         RectTransform navigationRoot,
         Button backToGameButton,

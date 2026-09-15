@@ -32,7 +32,8 @@ internal sealed class IdleBarProjector
     }
 
     /// <summary>
-    /// Projects available officers, special-forces units, and manufacturing planets in order.
+    /// Projects available officers, special-forces units, and manufacturing planets in order,
+    /// with main characters ahead of other officers.
     /// </summary>
     /// <param name="playerFaction">The faction whose available entities are projected.</param>
     /// <param name="desktopBounds">The strategy desktop bounds.</param>
@@ -41,6 +42,7 @@ internal sealed class IdleBarProjector
     {
         UIContext uiContext = getUIContext();
         List<IdleBarEntry> entries = FindAvailableParticipants<Officer>(playerFaction)
+            .OrderByDescending(officer => officer.IsMain)
             .Select(officer => CreateEntry(officer, uiContext))
             .Concat(
                 FindAvailableParticipants<SpecialForces>(playerFaction)

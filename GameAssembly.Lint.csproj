@@ -67,6 +67,13 @@
       <Private>false</Private>
     </Reference>
     <Reference
+      Include="UnityEngine.IMGUIModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.IMGUIModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
       Include="UnityEngine.VideoModule"
       Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.VideoModule.dll')"
     >

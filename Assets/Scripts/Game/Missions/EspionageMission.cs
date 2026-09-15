@@ -161,6 +161,9 @@ namespace Rebellion.Game.Missions
         /// Neutral and owner-controlled planets still produce their direct intelligence snapshot,
         /// but do not grant the original game's additional-system bonus.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="targetPlanet">The target planet.</param>
+        /// <returns>True when the opposing faction planet condition is met; otherwise false.</returns>
         private bool IsOpposingFactionPlanet(GameRoot game, Planet targetPlanet)
         {
             if (string.IsNullOrEmpty(targetPlanet?.OwnerInstanceID))
@@ -173,6 +176,11 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Selects distinct bonus planets using the mission's target-specific pools.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="provider">The provider.</param>
+        /// <param name="targetPlanet">The target planet.</param>
+        /// <param name="targetSector">The target sector.</param>
+        /// <returns>The selected bonus planets.</returns>
         private IEnumerable<Planet> SelectBonusPlanets(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -219,6 +227,9 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns whether the target is currently another faction's headquarters planet.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="targetPlanet">The target planet.</param>
+        /// <returns>True when the opposing headquarters target condition is met; otherwise false.</returns>
         private bool IsOpposingHeadquartersTarget(GameRoot game, Planet targetPlanet)
         {
             Faction owner = game.GetFactionByOwnerInstanceID(targetPlanet.OwnerInstanceID);

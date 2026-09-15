@@ -169,6 +169,8 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Captures a completed fleet engagement.
         /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>The result of capture space battle.</returns>
         private static CombatReport CaptureSpaceBattle(SpaceCombatResult result)
         {
             return new CombatReport
@@ -218,6 +220,8 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Captures a completed orbital bombardment.
         /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>The result of capture bombardment.</returns>
         private static CombatReport CaptureBombardment(BombardmentResult result)
         {
             return new CombatReport
@@ -267,6 +271,8 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Captures a completed planetary assault.
         /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>The result of capture planetary assault.</returns>
         private static CombatReport CapturePlanetaryAssault(PlanetaryAssaultResult result)
         {
             return new CombatReport
@@ -298,6 +304,8 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Converts detached combat snapshots into persistable report rows.
         /// </summary>
+        /// <param name="snapshots">The snapshots.</param>
+        /// <returns>The result of capture units.</returns>
         private static List<CombatReportUnit> CaptureUnits(
             IEnumerable<CombatUnitSnapshot> snapshots
         )
@@ -312,6 +320,8 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Captures the presentation fields required to reproduce one result-table entry.
         /// </summary>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <returns>The result of capture unit.</returns>
         private static CombatReportUnit CaptureUnit(CombatUnitSnapshot snapshot)
         {
             ISceneNode unit = snapshot.Unit;
@@ -362,6 +372,8 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Maps one scene-node type to its original battle-result category.
         /// </summary>
+        /// <param name="unit">The unit.</param>
+        /// <returns>The requested category.</returns>
         private static CombatReportUnitCategory? GetCategory(ISceneNode unit)
         {
             return unit switch
@@ -381,6 +393,8 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Returns whether a building belongs to a manufacturing result category.
         /// </summary>
+        /// <param name="building">The building.</param>
+        /// <returns>True when the manufacturing facility condition is met; otherwise false.</returns>
         private static bool IsManufacturingFacility(Building building)
         {
             return building.BuildingType
@@ -392,6 +406,8 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Returns whether a building belongs to a defensive result category.
         /// </summary>
+        /// <param name="building">The building.</param>
+        /// <returns>True when the defense facility condition is met; otherwise false.</returns>
         private static bool IsDefenseFacility(Building building)
         {
             return building.BuildingType is BuildingType.Defense or BuildingType.Weapon
@@ -401,6 +417,8 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Returns the first nonblank identifier from an ordered fallback list.
         /// </summary>
+        /// <param name="values">The values.</param>
+        /// <returns>The result of first non blank.</returns>
         private static string FirstNonBlank(params string[] values)
         {
             return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));

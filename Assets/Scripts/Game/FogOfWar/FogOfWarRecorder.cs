@@ -86,6 +86,10 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Records one selected object in the snapshot for its containing or producing planet.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="faction">The faction.</param>
+        /// <param name="observation">The observation.</param>
+        /// <param name="currentTick">The current tick.</param>
         private void RecordObservation(
             GameRoot game,
             Faction faction,
@@ -129,6 +133,8 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Records a selected entity using the snapshot collection appropriate to its type.
         /// </summary>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="observation">The observation.</param>
         private static void RecordEntityObservation(PlanetSnapshot snapshot, ISceneNode observation)
         {
             switch (observation)
@@ -171,6 +177,11 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Gets the planet snapshot that receives one selected observation.
         /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="sector">The sector.</param>
+        /// <param name="currentTick">The current tick.</param>
+        /// <returns>The requested or create observed planet snapshot.</returns>
         private PlanetSnapshot GetOrCreateObservedPlanetSnapshot(
             Faction faction,
             Planet planet,
@@ -194,6 +205,10 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Records a selected item from the planet's active manufacturing queue.
         /// </summary>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="observation">The observation.</param>
+        /// <returns>True when the observation was a queued item and was recorded; otherwise false.</returns>
         private static bool RecordManufacturingObservation(
             PlanetSnapshot snapshot,
             Planet planet,
@@ -215,6 +230,9 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Gets the planet containing an active object or producing an object under construction.
         /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="observation">The observation.</param>
+        /// <returns>The requested containing or producing planet.</returns>
         private static Planet GetContainingOrProducingPlanet(GameRoot game, ISceneNode observation)
         {
             if (observation is Planet planet)
@@ -234,6 +252,8 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Records one capital ship without exposing any unselected embarked units.
         /// </summary>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="capitalShip">The capital ship.</param>
         private static void AddCapitalShipObservation(
             PlanetSnapshot snapshot,
             CapitalShip capitalShip
@@ -253,6 +273,10 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Records a unit directly at a planet or within a partial ship and fleet snapshot.
         /// </summary>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="source">The source.</param>
+        /// <param name="copy">The copy.</param>
+        /// <typeparam name="T">The carried scene-node type being copied.</typeparam>
         private static void RecordCarriedUnitSnapshot<T>(PlanetSnapshot snapshot, T source, T copy)
             where T : class, ISceneNode
         {
@@ -282,6 +306,9 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Gets a detached fleet snapshot containing only explicitly observed ships and cargo.
         /// </summary>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="source">The source.</param>
+        /// <returns>The requested or create partial fleet snapshot.</returns>
         private static Fleet GetOrCreatePartialFleetSnapshot(PlanetSnapshot snapshot, Fleet source)
         {
             Fleet existing = snapshot.Fleets.FirstOrDefault(fleet =>
@@ -299,6 +326,9 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Gets a detached ship snapshot containing only explicitly observed cargo.
         /// </summary>
+        /// <param name="fleet">The fleet.</param>
+        /// <param name="source">The source.</param>
+        /// <returns>The requested or create partial capital ship snapshot.</returns>
         private static CapitalShip GetOrCreatePartialCapitalShipSnapshot(
             Fleet fleet,
             CapitalShip source
@@ -320,6 +350,7 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Removes copied cargo that was not part of the current intelligence selection.
         /// </summary>
+        /// <param name="ship">The ship.</param>
         private static void RemoveUnobservedCargo(CapitalShip ship)
         {
             ship.RemoveAllChildren();
@@ -328,6 +359,8 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Adds one observed carried unit to the matching collection on a detached ship snapshot.
         /// </summary>
+        /// <param name="ship">The ship.</param>
+        /// <param name="child">The child.</param>
         private static void AddCapitalShipChild(CapitalShip ship, ISceneNode child)
         {
             UpsertChild(ship, child);
@@ -338,6 +371,9 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Replaces a prior snapshot with the same instance ID or appends a newly observed item.
         /// </summary>
+        /// <param name="items">The items.</param>
+        /// <param name="item">The item.</param>
+        /// <typeparam name="T">The scene-node type stored by the snapshot collection.</typeparam>
         private static void Upsert<T>(List<T> items, T item)
             where T : class, ISceneNode
         {
@@ -348,6 +384,9 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Replaces a matching detached child snapshot or adds a newly observed child.
         /// </summary>
+        /// <param name="container">The container.</param>
+        /// <param name="item">The item.</param>
+        /// <typeparam name="T">The detached child scene-node type.</typeparam>
         private static void UpsertChild<T>(ContainerNode container, T item)
             where T : class, ISceneNode
         {
@@ -398,6 +437,10 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>Returns the existing planet snapshot or creates its initial strategic state.</summary>
+        /// <param name="sectorSnapshot">The sector snapshot.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="currentTick">The current tick.</param>
+        /// <returns>The requested or create planet snapshot.</returns>
         private static PlanetSnapshot GetOrCreatePlanetSnapshot(
             PlanetSectorSnapshot sectorSnapshot,
             Planet planet,
@@ -419,6 +462,11 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>Refreshes only the intelligence categories revealed by this observation.</summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="currentTick">The current tick.</param>
+        /// <param name="categories">The categories.</param>
         private void UpdateSelectedIntelligence(
             Faction faction,
             Planet planet,
@@ -444,6 +492,10 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Replaces the directly stationed officer intelligence when that category is revealed.
         /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="categories">The categories.</param>
         private static void UpdateOfficerIntelligence(
             Faction faction,
             Planet planet,
@@ -468,6 +520,11 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Rebuilds fleet intelligence and removes cargo categories that remain hidden.
         /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="categories">The categories.</param>
+        /// <param name="accumulatedCategories">The accumulated categories.</param>
         private void UpdateFleetIntelligence(
             Faction faction,
             Planet planet,
@@ -495,6 +552,10 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Replaces stationed regiment and special-forces intelligence when revealed.
         /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="categories">The categories.</param>
         private void UpdateGroundForceIntelligence(
             Faction faction,
             Planet planet,
@@ -523,6 +584,10 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Replaces stationed starfighter intelligence when revealed.
         /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="categories">The categories.</param>
         private void UpdateStarfighterIntelligence(
             Faction faction,
             Planet planet,
@@ -544,6 +609,10 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Replaces building intelligence when revealed.
         /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="categories">The categories.</param>
         private void UpdateBuildingIntelligence(
             Faction faction,
             Planet planet,
@@ -566,6 +635,10 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Replaces enemy mission intelligence when revealed.
         /// </summary>
+        /// <param name="faction">The faction.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="categories">The categories.</param>
         private void UpdateMissionIntelligence(
             Faction faction,
             Planet planet,
@@ -1151,6 +1224,9 @@ namespace Rebellion.Game.FogOfWar
         /// the snapshot container cannot accept (for example a building on a view planet already
         /// at energy capacity) are skipped rather than failing view construction.
         /// </summary>
+        /// <param name="destination">The destination.</param>
+        /// <param name="source">The source.</param>
+        /// <typeparam name="T">The manufacturable scene-node type being merged.</typeparam>
         internal static void MergeManufacturingEntities<T>(
             ContainerNode destination,
             IEnumerable<T> source
@@ -1386,7 +1462,10 @@ namespace Rebellion.Game.FogOfWar
 
             copy.RemoveChildren<CapitalShip>(ship =>
                 (!includeInTransit && !IsObservableAtPlanet(ship, observerFactionInstanceID))
-                || (!includeManufacturing && IsManufacturingInProgress(ship))
+                || (
+                    !includeManufacturing
+                    && ship.ManufacturingStatus != ManufacturingStatus.Complete
+                )
             );
             foreach (CapitalShip ship in copy.GetChildren<CapitalShip>())
             {
@@ -1397,19 +1476,31 @@ namespace Rebellion.Game.FogOfWar
                     (
                         !includeInTransit
                         && !IsObservableAtPlanet(regiment, observerFactionInstanceID)
-                    ) || (!includeManufacturing && IsManufacturingInProgress(regiment))
+                    )
+                    || (
+                        !includeManufacturing
+                        && regiment.ManufacturingStatus != ManufacturingStatus.Complete
+                    )
                 );
                 ship.RemoveChildren<SpecialForces>(specialForces =>
                     (
                         !includeInTransit
                         && !IsObservableAtPlanet(specialForces, observerFactionInstanceID)
-                    ) || (!includeManufacturing && IsManufacturingInProgress(specialForces))
+                    )
+                    || (
+                        !includeManufacturing
+                        && specialForces.ManufacturingStatus != ManufacturingStatus.Complete
+                    )
                 );
                 ship.RemoveChildren<Starfighter>(starfighter =>
                     (
                         !includeInTransit
                         && !IsObservableAtPlanet(starfighter, observerFactionInstanceID)
-                    ) || (!includeManufacturing && IsManufacturingInProgress(starfighter))
+                    )
+                    || (
+                        !includeManufacturing
+                        && starfighter.ManufacturingStatus != ManufacturingStatus.Complete
+                    )
                 );
             }
 
@@ -1539,6 +1630,8 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Removes an entity from every retained collection in a planet snapshot.
         /// </summary>
+        /// <param name="snapshot">The snapshot.</param>
+        /// <param name="entityId">The entity id.</param>
         private static void RemoveEntityFromSnapshot(PlanetSnapshot snapshot, string entityId)
         {
             snapshot.Officers.RemoveAll(o => o.InstanceID == entityId);
@@ -1559,6 +1652,8 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Removes an entity from a retained fleet and its nested capital ships.
         /// </summary>
+        /// <param name="fleet">The fleet.</param>
+        /// <param name="entityId">The entity id.</param>
         private static void RemoveEntityFromFleet(Fleet fleet, string entityId)
         {
             foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
@@ -1570,6 +1665,8 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Removes an entity from the retained contents of a capital ship.
         /// </summary>
+        /// <param name="ship">The ship.</param>
+        /// <param name="entityId">The entity id.</param>
         private static void RemoveEntityFromCapitalShip(CapitalShip ship, string entityId)
         {
             ship.RemoveChildren<Officer>(officer => officer.InstanceID == entityId);

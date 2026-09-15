@@ -1,0 +1,298 @@
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
+
+namespace Rebellion.Tests.Game.Encyclopedia
+{
+    [TestFixture]
+    public class EncyclopediaCatalogBuilderTests
+    {
+        /// <summary>
+        /// Verifies build with entity encyclopedia data uses entity specific fields.
+        /// </summary>
+        [Test]
+        public void Build_WithEntityEncyclopediaData_UsesEntitySpecificFields()
+        {
+            CapitalShip ship = new CapitalShip
+            {
+                TypeID = "SHIP1",
+                DisplayName = "Static Ship",
+                DisplayImagePath =
+                    "Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_primary",
+                EncyclopediaImagePath =
+                    "Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_victory_ii_star_destroyer",
+                EncyclopediaStats = new List<EncyclopediaEntryStat>
+                {
+                    new EncyclopediaEntryStat { Label = "Maintenance Cost", Value = "4" },
+                },
+                Description = "Static description.",
+                EncyclopediaDescription = "Encyclopedia description.",
+            };
+
+            EncyclopediaCatalog catalog = BuildCatalog(
+                new EncyclopediaEntries(),
+                capitalShips: new[] { ship }
+            );
+
+            EncyclopediaEntry entry = catalog.FindEntry("SHIP1", null);
+
+            Assert.IsNotNull(entry);
+            Assert.AreEqual("Static Ship", entry.DisplayName);
+            Assert.AreEqual(EncyclopediaEntryCategory.Ship, entry.Category);
+            Assert.AreEqual(
+                "Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_victory_ii_star_destroyer",
+                entry.ImagePath
+            );
+            Assert.AreEqual(1, entry.Stats.Count);
+            Assert.AreEqual("Maintenance Cost", entry.Stats[0].Label);
+            Assert.AreEqual("4", entry.Stats[0].Value);
+            Assert.AreEqual("Encyclopedia description.", entry.Description);
+        }
+
+        /// <summary>
+        /// Verifies build with entity without encyclopedia data omits entry.
+        /// </summary>
+        [Test]
+        public void Build_WithEntityWithoutEncyclopediaData_OmitsEntry()
+        {
+            Building building = new Building
+            {
+                TypeID = "BUILDING1",
+                DisplayName = "Construction Yard",
+                DisplayImagePath = "Art/HD/UI/Units/ent_building_construction_yard",
+                Description = "Static building description.",
+            };
+
+            EncyclopediaCatalog catalog = BuildCatalog(
+                new EncyclopediaEntries(),
+                buildings: new[] { building }
+            );
+
+            EncyclopediaEntry entry = catalog.FindEntry("BUILDING1", null);
+
+            Assert.IsNull(entry);
+        }
+
+        /// <summary>
+        /// Verifies build with authored entity duplicate keeps generated entity entry.
+        /// </summary>
+        [Test]
+        public void Build_WithAuthoredEntityDuplicate_KeepsGeneratedEntityEntry()
+        {
+            EncyclopediaEntries authoredEntries = new EncyclopediaEntries
+            {
+                new EncyclopediaEntry
+                {
+                    TypeID = "BUILDING1",
+                    DisplayName = "Authored Facility",
+                    Category = EncyclopediaEntryCategory.Concept,
+                },
+            };
+            Building building = new Building
+            {
+                TypeID = "BUILDING1",
+                DisplayName = "Construction Yard",
+            };
+
+            EncyclopediaCatalog catalog = BuildCatalog(
+                authoredEntries,
+                buildings: new[] { building }
+            );
+
+            EncyclopediaEntry entry = catalog.FindEntry("BUILDING1", null);
+
+            Assert.IsNotNull(entry);
+            Assert.AreEqual("Authored Facility", entry.DisplayName);
+            Assert.AreEqual(EncyclopediaEntryCategory.Concept, entry.Category);
+        }
+
+        /// <summary>
+        /// Verifies build with concept overlay keeps authored entry.
+        /// </summary>
+        [Test]
+        public void Build_WithConceptOverlay_KeepsAuthoredEntry()
+        {
+            EncyclopediaEntries authoredEntries = new EncyclopediaEntries
+            {
+                new EncyclopediaEntry
+                {
+                    TypeID = "FLEET",
+                    DisplayName = "Fleet",
+                    Category = EncyclopediaEntryCategory.Concept,
+                    VisibleFactionInstanceID = "FNALL1",
+                    ImagePath = "Art/HD/UI/Encyclopedia/ui_encyclopedia_concept_fleet",
+                    Description = "Concept description.",
+                },
+            };
+
+            EncyclopediaCatalog catalog = BuildCatalog(authoredEntries);
+
+            EncyclopediaEntry entry = catalog.FindEntry("FLEET", "FNALL1");
+
+            Assert.IsNotNull(entry);
+            Assert.AreEqual(EncyclopediaEntryCategory.Concept, entry.Category);
+            Assert.AreEqual(
+                "Art/HD/UI/Encyclopedia/ui_encyclopedia_concept_fleet",
+                entry.ImagePath
+            );
+            Assert.AreEqual("Concept description.", entry.Description);
+            Assert.IsNull(catalog.FindEntry("FLEET", "FNEMP1"));
+        }
+
+        /// <summary>
+        /// Verifies build with planet sector adds planet entries.
+        /// </summary>
+        [Test]
+        public void Build_WithPlanetSector_AddsPlanetEntries()
+        {
+            PlanetSector sector = new PlanetSector();
+            sector.AddChild(
+                new Planet
+                {
+                    TypeID = "PLANET1",
+                    DisplayName = "Balmorra",
+                    PlanetIconPath =
+                        "Art/HD/UI/StrategyView/ui_strategyview_planetsector_planet_preview",
+                    EncyclopediaImagePath =
+                        "Art/HD/UI/Encyclopedia/ui_encyclopedia_system_ringed_planet",
+                    Description = "Planet description.",
+                    EncyclopediaDescription = "Planet encyclopedia description.",
+                }
+            );
+
+            EncyclopediaCatalog catalog = BuildCatalog(
+                new EncyclopediaEntries(),
+                planetSectors: new[] { sector }
+            );
+
+            EncyclopediaEntry entry = catalog.FindEntry("PLANET1", null);
+
+            Assert.IsNotNull(entry);
+            Assert.AreEqual("Balmorra", entry.DisplayName);
+            Assert.AreEqual(EncyclopediaEntryCategory.System, entry.Category);
+            Assert.AreEqual(
+                "Art/HD/UI/Encyclopedia/ui_encyclopedia_system_ringed_planet",
+                entry.ImagePath
+            );
+            Assert.AreEqual("Planet encyclopedia description.", entry.Description);
+        }
+
+        /// <summary>
+        /// Verifies build from active pack uses pack encyclopedia images.
+        /// </summary>
+        [Test]
+        public void Build_FromActivePack_UsesPackEncyclopediaImages()
+        {
+            EncyclopediaCatalog catalog = new EncyclopediaCatalogBuilder().Build(TestContent.Data);
+
+            List<EncyclopediaEntry> entriesWithWrongImagePath = catalog
+                .Where(entry =>
+                    string.IsNullOrEmpty(entry.ImagePath) || !entry.ImagePath.StartsWith("Pack/")
+                )
+                .ToList();
+
+            Assert.IsEmpty(entriesWithWrongImagePath);
+        }
+
+        /// <summary>
+        /// Verifies build with single producer faction sets entry owner.
+        /// </summary>
+        [Test]
+        public void Build_WithSingleProducerFaction_SetsEntryOwner()
+        {
+            Starfighter starfighter = new Starfighter
+            {
+                TypeID = "FIGHTER1",
+                DisplayName = "A-Wing Squadron",
+                ManufacturingFactionInstanceIDs = new List<string> { "FNALL1" },
+                EncyclopediaImagePath = "Pack/Starfighters/a-wing/encyclopedia",
+            };
+
+            EncyclopediaCatalog catalog = BuildCatalog(
+                new EncyclopediaEntries(),
+                starfighters: new[] { starfighter }
+            );
+
+            EncyclopediaEntry entry = catalog.FindEntry("FIGHTER1", null);
+
+            Assert.IsNotNull(entry);
+            Assert.AreEqual("FNALL1", entry.OwnerInstanceID);
+        }
+
+        /// <summary>
+        /// Verifies build with null static entries ignores null entries.
+        /// </summary>
+        [Test]
+        public void Build_WithNullStaticEntries_IgnoresNullEntries()
+        {
+            PlanetSector sector = new PlanetSector();
+            sector.AddChildren(
+                new Planet[]
+                {
+                    null,
+                    new Planet
+                    {
+                        TypeID = "PLANET1",
+                        DisplayName = "Balmorra",
+                        EncyclopediaImagePath = "Pack/Systems/Balmorra/encyclopedia",
+                    },
+                }
+            );
+            Building building = new Building
+            {
+                TypeID = "BUILDING1",
+                DisplayName = "Construction Yard",
+                EncyclopediaImagePath = "Pack/Facilities/construction-yard/encyclopedia",
+            };
+
+            EncyclopediaCatalog catalog = BuildCatalog(
+                new EncyclopediaEntries(),
+                planetSectors: new[] { sector },
+                buildings: new Building[] { null, building }
+            );
+
+            Assert.AreEqual(2, catalog.Count);
+            Assert.IsNotNull(catalog.FindEntry("PLANET1", null));
+            Assert.IsNotNull(catalog.FindEntry("BUILDING1", null));
+        }
+
+        /// <summary>
+        /// Builds catalog.
+        /// </summary>
+        /// <param name="authoredEntries">The authored entries.</param>
+        /// <param name="planetSectors">The planet sectors.</param>
+        /// <param name="buildings">The buildings.</param>
+        /// <param name="capitalShips">The capital ships.</param>
+        /// <param name="starfighters">The starfighters.</param>
+        /// <param name="regiments">The regiments.</param>
+        /// <param name="specialForces">The special forces.</param>
+        /// <param name="officers">The officers.</param>
+        /// <returns>The constructed catalog.</returns>
+        private static EncyclopediaCatalog BuildCatalog(
+            EncyclopediaEntries authoredEntries,
+            IEnumerable<PlanetSector> planetSectors = null,
+            IEnumerable<Building> buildings = null,
+            IEnumerable<CapitalShip> capitalShips = null,
+            IEnumerable<Starfighter> starfighters = null,
+            IEnumerable<Regiment> regiments = null,
+            IEnumerable<SpecialForces> specialForces = null,
+            IEnumerable<Officer> officers = null
+        )
+        {
+            EncyclopediaCatalogBuilder builder = new EncyclopediaCatalogBuilder();
+            return builder.Build(
+                authoredEntries,
+                planetSectors,
+                buildings,
+                capitalShips,
+                starfighters,
+                regiments,
+                specialForces,
+                officers
+            );
+        }
+    }
+}

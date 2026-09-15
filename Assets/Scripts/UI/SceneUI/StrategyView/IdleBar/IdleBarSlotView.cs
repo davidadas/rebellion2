@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -10,6 +11,7 @@ public sealed class IdleBarSlotView
     : MonoBehaviour,
         IPointerEnterHandler,
         IPointerExitHandler,
+        IPointerDownHandler,
         IPointerClickHandler
 {
     private const int _circleSize = 24;
@@ -31,16 +33,51 @@ public sealed class IdleBarSlotView
     [SerializeField]
     private RawImage portraitImage;
 
+    [SerializeField]
+    private Button ignoreButton;
+
+    [SerializeField]
+    private TextMeshProUGUI overflowTextField;
+
     private string instanceId;
     private bool hovered;
     private bool initialized;
     private int currentSlotSize;
 
-    /// <summary>Raised when the player selects this entry.</summary>
+    /// <summary>
+    /// Raised when the player selects this entry.
+    /// </summary>
     internal event Action<string> Selected;
 
-    /// <summary>Raised when the player requests that this entry stop being tracked.</summary>
-    internal event Action<string> UntrackRequested;
+    /// <summary>
+    /// Raised when the player ignores this entry.
+    /// </summary>
+    internal event Action<string> IgnoreRequested;
+
+    /// <summary>
+    /// Raised when the player requests this entry's normal context menu.
+    /// </summary>
+    internal event Action<string, PointerEventData> ContextRequested;
+
+    /// <summary>
+    /// Raised when the pointer begins hovering this entity.
+    /// </summary>
+    internal event Action<string> Hovered;
+
+    /// <summary>
+    /// Raised when the pointer stops hovering this entity.
+    /// </summary>
+    internal event Action<string> HoverCleared;
+
+    /// <summary>
+    /// Raised when a primary press may begin dragging this entity.
+    /// </summary>
+    internal event Action<string, DragPreview, PointerEventData> DragCandidateRequested;
+
+    /// <summary>
+    /// Raised when a primary click releases a pending drag candidate.
+    /// </summary>
+    internal event Action<PointerEventData> DragCandidateReleased;
 
     /// <summary>
     /// Renders one entity at its top-left source-space position.
@@ -56,14 +93,40 @@ public sealed class IdleBarSlotView
 
         Initialize();
         currentSlotSize = slotSize;
-        instanceId = entry.Entity?.InstanceID;
+        SetInstanceId(entry.Entity?.InstanceID);
         gameObject.name = entry.Name;
         SetSourceRect(transform as RectTransform, x, y, slotSize, slotSize);
         SetHovered(hovered);
 
+        portraitMask.gameObject.SetActive(true);
+        overflowTextField.gameObject.SetActive(false);
         portraitImage.texture = entry.Texture;
         portraitImage.uvRect = GetCenteredSquareUv(entry.Texture);
         button.interactable = !string.IsNullOrEmpty(instanceId);
+    }
+
+    /// <summary>
+    /// Renders the number of entries hidden by the compact shelf.
+    /// </summary>
+    /// <param name="hiddenCount">The number of hidden entries.</param>
+    /// <param name="x">The source-space horizontal position.</param>
+    /// <param name="y">The source-space vertical position.</param>
+    /// <param name="slotSize">The source-space square slot size.</param>
+    internal void RenderOverflow(int hiddenCount, int x, int y, int slotSize)
+    {
+        if (hiddenCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(hiddenCount));
+
+        Initialize();
+        currentSlotSize = slotSize;
+        SetInstanceId(null);
+        gameObject.name = $"+{hiddenCount}";
+        SetSourceRect(transform as RectTransform, x, y, slotSize, slotSize);
+        portraitMask.gameObject.SetActive(false);
+        overflowTextField.text = $"+{hiddenCount}";
+        overflowTextField.gameObject.SetActive(true);
+        button.interactable = false;
+        SetHovered(hovered);
     }
 
     /// <summary>
@@ -73,6 +136,8 @@ public sealed class IdleBarSlotView
     public void OnPointerEnter(PointerEventData eventData)
     {
         SetHovered(true);
+        if (!string.IsNullOrEmpty(instanceId))
+            Hovered?.Invoke(instanceId);
     }
 
     /// <summary>
@@ -82,22 +147,81 @@ public sealed class IdleBarSlotView
     public void OnPointerExit(PointerEventData eventData)
     {
         SetHovered(false);
+        if (!string.IsNullOrEmpty(instanceId))
+            HoverCleared?.Invoke(instanceId);
     }
 
     /// <summary>
-    /// Requests immediate removal from the idle bar on a secondary click.
+    /// Captures a primary press as a possible direct entity drag.
+    /// </summary>
+    /// <param name="eventData">The source pointer event.</param>
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        if (
+            eventData?.button != PointerEventData.InputButton.Left
+            || string.IsNullOrEmpty(instanceId)
+        )
+            return;
+
+        int previewSize = hovered ? _hoveredCircleSize : _circleSize;
+        DragCandidateRequested?.Invoke(
+            instanceId,
+            new DragPreview(
+                new[]
+                {
+                    new DragPreviewImage(
+                        portraitImage.texture,
+                        new RectInt(-previewSize / 2, -previewSize / 2, previewSize, previewSize),
+                        portraitImage.uvRect
+                    ),
+                },
+                0,
+                0
+            ),
+            eventData
+        );
+    }
+
+    /// <summary>
+    /// Requests the entity's normal context menu on a secondary click.
     /// </summary>
     /// <param name="eventData">The source pointer event.</param>
     public void OnPointerClick(PointerEventData eventData)
     {
+        if (eventData?.button == PointerEventData.InputButton.Left)
+        {
+            DragCandidateReleased?.Invoke(eventData);
+            return;
+        }
+
         if (
             eventData?.button == PointerEventData.InputButton.Right
             && !string.IsNullOrEmpty(instanceId)
         )
         {
             eventData.Use();
-            UntrackRequested?.Invoke(instanceId);
+            ContextRequested?.Invoke(instanceId, eventData);
         }
+    }
+
+    /// <summary>
+    /// Rebinds the rendered entity and transfers an active hover to its new identity.
+    /// </summary>
+    /// <param name="value">The rendered entity identity, or null for an overflow slot.</param>
+    private void SetInstanceId(string value)
+    {
+        if (instanceId == value)
+            return;
+
+        string previousInstanceId = instanceId;
+        instanceId = value;
+        if (!hovered)
+            return;
+
+        if (!string.IsNullOrEmpty(previousInstanceId))
+            HoverCleared?.Invoke(previousInstanceId);
+        if (!string.IsNullOrEmpty(instanceId))
+            Hovered?.Invoke(instanceId);
     }
 
     /// <summary>
@@ -116,12 +240,17 @@ public sealed class IdleBarSlotView
         if (initialized)
             return;
 
+        if (ignoreButton == null)
+            ignoreButton = CreateIgnoreButton();
+
         if (
             button == null
             || frameImage == null
             || portraitMask == null
             || portraitBackground == null
             || portraitImage == null
+            || ignoreButton == null
+            || overflowTextField == null
         )
         {
             throw new MissingReferenceException(
@@ -130,7 +259,48 @@ public sealed class IdleBarSlotView
         }
 
         button.onClick.AddListener(HandleSelected);
+        ignoreButton.onClick.AddListener(HandleIgnored);
         initialized = true;
+    }
+
+    /// <summary>
+    /// Creates the hover control when an older generated Strategy prefab is loaded.
+    /// </summary>
+    /// <returns>The newly created ignore button.</returns>
+    private Button CreateIgnoreButton()
+    {
+        GameObject ignoreObject = new GameObject(
+            "IgnoreButton",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Button)
+        );
+        ignoreObject.transform.SetParent(transform, false);
+        Image hitArea = ignoreObject.GetComponent<Image>();
+        hitArea.color = Color.clear;
+        Button createdButton = ignoreObject.GetComponent<Button>();
+        createdButton.targetGraphic = hitArea;
+        createdButton.transition = Selectable.Transition.None;
+        SetSourceRect(hitArea.rectTransform, 18, 0, 10, 10);
+
+        GameObject textObject = new GameObject(
+            "IgnoreText",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI)
+        );
+        textObject.transform.SetParent(ignoreObject.transform, false);
+        TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+        text.text = "×";
+        text.color = new Color(0.9f, 0.12f, 0.12f, 1f);
+        text.fontSize = 12;
+        text.fontStyle = FontStyles.Bold;
+        text.alignment = TextAlignmentOptions.Center;
+        text.raycastTarget = false;
+        FillParent(text.rectTransform);
+        ignoreObject.SetActive(false);
+        return createdButton;
     }
 
     /// <summary>
@@ -140,6 +310,21 @@ public sealed class IdleBarSlotView
     {
         if (initialized && button != null)
             button.onClick.RemoveListener(HandleSelected);
+        if (initialized && ignoreButton != null)
+            ignoreButton.onClick.RemoveListener(HandleIgnored);
+    }
+
+    /// <summary>
+    /// Clears hover state when shelf layout hides a reused slot beneath the pointer.
+    /// </summary>
+    private void OnDisable()
+    {
+        if (!hovered)
+            return;
+
+        SetHovered(false);
+        if (!string.IsNullOrEmpty(instanceId))
+            HoverCleared?.Invoke(instanceId);
     }
 
     /// <summary>
@@ -149,6 +334,15 @@ public sealed class IdleBarSlotView
     {
         if (!string.IsNullOrEmpty(instanceId))
             Selected?.Invoke(instanceId);
+    }
+
+    /// <summary>
+    /// Raises an ignore request for the stable identity represented by this slot.
+    /// </summary>
+    private void HandleIgnored()
+    {
+        if (!string.IsNullOrEmpty(instanceId))
+            IgnoreRequested?.Invoke(instanceId);
     }
 
     /// <summary>
@@ -165,6 +359,7 @@ public sealed class IdleBarSlotView
         portraitImage.rectTransform.localScale = hovered
             ? Vector3.one * _hoveredPortraitScale
             : Vector3.one;
+        ignoreButton.gameObject.SetActive(hovered && !string.IsNullOrEmpty(instanceId));
     }
 
     /// <summary>
@@ -202,5 +397,18 @@ public sealed class IdleBarSlotView
         rect.pivot = new Vector2(0f, 1f);
         rect.anchoredPosition = new Vector2(x, -y);
         rect.sizeDelta = new Vector2(width, height);
+    }
+
+    /// <summary>
+    /// Stretches a rectangle across its parent.
+    /// </summary>
+    /// <param name="rect">The rectangle to stretch.</param>
+    private static void FillParent(RectTransform rect)
+    {
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = Vector2.zero;
     }
 }

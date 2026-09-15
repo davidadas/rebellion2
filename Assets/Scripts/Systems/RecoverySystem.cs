@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.Systems
 {
@@ -73,7 +75,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Repairs hull damage on each damaged capital ship.
-        /// Ships at friendly planets repair faster.
+        /// Ships at friendly orbital shipyards repair faster.
         /// Emits a result only when the ship is fully repaired.
         /// </summary>
         /// <param name="results">Collection to append repair results to.</param>
@@ -81,11 +83,15 @@ namespace Rebellion.Systems
         {
             foreach (CapitalShip ship in _game.GetSceneNodesByType<CapitalShip>())
             {
-                if (!ship.IsDamaged() || ship.ManufacturingStatus != ManufacturingStatus.Complete)
+                if (
+                    !ship.IsDamaged()
+                    || ship.ManufacturingStatus != ManufacturingStatus.Complete
+                    || ship.GetTransitMovement() != null
+                )
                     continue;
 
                 int before = ship.CurrentHullStrength;
-                int amount = IsAtFriendlyPlanet(ship)
+                int amount = IsAtFriendlyShipyard(ship)
                     ? _config.FastRepairAmount
                     : _config.NormalRepairAmount;
                 ship.RepairHull(amount);
@@ -151,6 +157,26 @@ namespace Rebellion.Systems
         {
             Planet planet = unit.GetParentOfType<Planet>();
             return planet != null && planet.OwnerInstanceID == unit.OwnerInstanceID;
+        }
+
+        /// <summary>
+        /// Returns true if the ship is at a friendly planet with an operational orbital shipyard.
+        /// </summary>
+        /// <param name="ship">The capital ship to check.</param>
+        /// <returns>True when a friendly operational shipyard can accelerate repairs.</returns>
+        private static bool IsAtFriendlyShipyard(CapitalShip ship)
+        {
+            Planet planet = ship.GetParentOfType<Planet>();
+            return planet != null
+                && planet.OwnerInstanceID == ship.OwnerInstanceID
+                && planet
+                    .GetChildren<Building>()
+                    .Any(building =>
+                        building.OwnerInstanceID == ship.OwnerInstanceID
+                        && building.BuildingType == BuildingType.Shipyard
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                    );
         }
     }
 }

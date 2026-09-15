@@ -4,6 +4,12 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.AI.Proposals
 {
+    internal enum AIProposalPriority
+    {
+        Optional,
+        Mandatory,
+    }
+
     /// <summary>
     /// Base type for an AI proposal that can be scored, selected, and executed.
     /// </summary>
@@ -12,6 +18,7 @@ namespace Rebellion.AI.Proposals
         // Selection State.
         public double Score { get; private set; }
         public bool HasScore { get; private set; }
+        internal virtual AIProposalPriority Priority => AIProposalPriority.Optional;
 
         /// <summary>
         /// Sets the score used by proposal selection.

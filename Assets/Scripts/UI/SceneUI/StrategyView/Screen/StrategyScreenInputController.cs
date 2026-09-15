@@ -236,6 +236,15 @@ public sealed class StrategyScreenInputController : ICancelable
     /// <returns>True when targeting was cancelled.</returns>
     public bool TryCancel()
     {
+        if (strategyDragController.TryCancelItemDrag())
+        {
+            targetingController.TryCancel();
+            suppressNextClick = true;
+            renderOverlay();
+            markDirty();
+            return true;
+        }
+
         return CancelTargeting();
     }
 

@@ -169,6 +169,7 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
             destinationCursorSize,
             destinationCursorRadius
         );
+        destinationCursorImage.uvRect = new Rect(0f, 0f, 1f, 1f);
         destinationCursorImage.raycastTarget = false;
         UILayout.SetSourceRect(
             destinationCursorImage.rectTransform,
@@ -209,6 +210,7 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
 
             RawImage image = GetOrCreateDragImage(renderedImageCount);
             image.texture = previewImage.Texture;
+            image.uvRect = previewImage.UvRect;
             image.raycastTarget = false;
             RectInt bounds = previewImage.Bounds;
             UILayout.SetSourceRect(

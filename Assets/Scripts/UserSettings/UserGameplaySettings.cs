@@ -5,10 +5,10 @@ using System;
 /// </summary>
 public enum UserGameplayOption
 {
+    DisableBriefings,
     PauseAfterEnemyBombardment,
     PauseWhenSpaceBattleBegins,
     AutosaveEnabled,
-    ShowIdleBar,
 }
 
 /// <summary>
@@ -24,11 +24,11 @@ public sealed class UserGameplaySettings
     public const int MaximumAutosavesToKeep = 10;
 
     public bool AutosaveEnabled = true;
+    public bool DisableBriefings;
     public int AutosaveIntervalTicks = DefaultAutosaveIntervalTicks;
     public int AutosavesToKeep = DefaultAutosavesToKeep;
     public bool PauseAfterEnemyBombardment = true;
     public bool PauseWhenSpaceBattleBegins = true;
-    public bool ShowIdleBar;
     public bool ShowMissionOdds = true;
 
     /// <summary>
@@ -40,10 +40,10 @@ public sealed class UserGameplaySettings
     {
         return option switch
         {
+            UserGameplayOption.DisableBriefings => DisableBriefings,
             UserGameplayOption.PauseAfterEnemyBombardment => PauseAfterEnemyBombardment,
             UserGameplayOption.PauseWhenSpaceBattleBegins => PauseWhenSpaceBattleBegins,
             UserGameplayOption.AutosaveEnabled => AutosaveEnabled,
-            UserGameplayOption.ShowIdleBar => ShowIdleBar,
             _ => throw new ArgumentOutOfRangeException(nameof(option), option, null),
         };
     }
@@ -57,6 +57,9 @@ public sealed class UserGameplaySettings
     {
         switch (option)
         {
+            case UserGameplayOption.DisableBriefings:
+                DisableBriefings = enabled;
+                break;
             case UserGameplayOption.PauseAfterEnemyBombardment:
                 PauseAfterEnemyBombardment = enabled;
                 break;
@@ -65,9 +68,6 @@ public sealed class UserGameplaySettings
                 break;
             case UserGameplayOption.AutosaveEnabled:
                 AutosaveEnabled = enabled;
-                break;
-            case UserGameplayOption.ShowIdleBar:
-                ShowIdleBar = enabled;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(option), option, null);
@@ -112,11 +112,11 @@ public sealed class UserGameplaySettings
     public void RestoreDefaults()
     {
         AutosaveEnabled = true;
+        DisableBriefings = false;
         AutosaveIntervalTicks = DefaultAutosaveIntervalTicks;
         AutosavesToKeep = DefaultAutosavesToKeep;
         PauseAfterEnemyBombardment = true;
         PauseWhenSpaceBattleBegins = true;
-        ShowIdleBar = false;
         ShowMissionOdds = true;
     }
 }

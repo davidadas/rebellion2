@@ -87,7 +87,7 @@ public sealed class StrategyHudCounterViewData
 }
 
 /// <summary>
-/// Defines the action, hit area, and pressed presentation for one HUD button slot.
+/// Defines the action, hit area, and artwork for one HUD button slot.
 /// </summary>
 public sealed class StrategyHudButtonViewData
 {
@@ -95,28 +95,33 @@ public sealed class StrategyHudButtonViewData
 
     public RectInt HitArea { get; }
 
+    public Texture2D UpTexture { get; }
+
     public Texture2D PressedTexture { get; }
 
-    public RectInt PressedBounds { get; }
+    public RectInt ImageBounds { get; }
 
     /// <summary>
     /// Creates immutable HUD button presentation data.
     /// </summary>
     /// <param name="action">The semantic action assigned to the button.</param>
     /// <param name="hitArea">The source-space button hit area.</param>
+    /// <param name="upTexture">The texture displayed while released.</param>
     /// <param name="pressedTexture">The texture displayed while pressed.</param>
-    /// <param name="pressedBounds">The source-space pressed-art bounds.</param>
+    /// <param name="imageBounds">The source-space artwork bounds.</param>
     public StrategyHudButtonViewData(
         StrategyHudAction action,
         RectInt hitArea,
+        Texture2D upTexture,
         Texture2D pressedTexture,
-        RectInt pressedBounds
+        RectInt imageBounds
     )
     {
         Action = action;
         HitArea = hitArea;
+        UpTexture = upTexture;
         PressedTexture = pressedTexture;
-        PressedBounds = pressedBounds;
+        ImageBounds = imageBounds;
     }
 }
 

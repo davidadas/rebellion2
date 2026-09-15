@@ -1,0 +1,386 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.SceneGraph;
+
+namespace Rebellion.Tests.SceneGraph
+{
+    [TestFixture]
+    public class LeafNodeTests
+    {
+        private MockLeafNode _leafNode;
+        private MockLeafNodeA _leafNodeA;
+        private MockContainerNode _containerNode;
+
+        /// <summary>
+        /// Sets up.
+        /// </summary>
+        [SetUp]
+        public void Setup()
+        {
+            _leafNode = new MockLeafNode
+            {
+                DisplayName = "LeafNode",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+
+            _leafNodeA = new MockLeafNodeA
+            {
+                DisplayName = "LeafNodeA",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+
+            _containerNode = new MockContainerNode
+            {
+                DisplayName = "ContainerNode",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+        }
+
+        /// <summary>
+        /// Verifies add child with valid child does nothing.
+        /// </summary>
+        [Test]
+        public void AddChild_WithValidChild_DoesNothing()
+        {
+            MockLeafNode childNode = new MockLeafNode
+            {
+                DisplayName = "ChildNode",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+
+            // Should not throw and should silently accept
+            Assert.DoesNotThrow(() => _leafNode.AddChild(childNode));
+
+            // Verify no children were actually added
+            IEnumerable<ISceneNode> children = _leafNode.GetChildren();
+            Assert.AreEqual(0, children.Count());
+        }
+
+        /// <summary>
+        /// Verifies add child with null child does nothing.
+        /// </summary>
+        [Test]
+        public void AddChild_WithNullChild_DoesNothing()
+        {
+            // Should not throw even with null
+            Assert.DoesNotThrow(() => _leafNode.AddChild(null));
+
+            // Verify no children were actually added
+            IEnumerable<ISceneNode> children = _leafNode.GetChildren();
+            Assert.AreEqual(0, children.Count());
+        }
+
+        /// <summary>
+        /// Verifies remove child with valid child does nothing.
+        /// </summary>
+        [Test]
+        public void RemoveChild_WithValidChild_DoesNothing()
+        {
+            MockLeafNode childNode = new MockLeafNode
+            {
+                DisplayName = "ChildNode",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+
+            // Should not throw and should silently accept
+            Assert.DoesNotThrow(() => _leafNode.RemoveChild(childNode));
+
+            // Verify still no children
+            IEnumerable<ISceneNode> children = _leafNode.GetChildren();
+            Assert.AreEqual(0, children.Count());
+        }
+
+        /// <summary>
+        /// Verifies remove child with null child does nothing.
+        /// </summary>
+        [Test]
+        public void RemoveChild_WithNullChild_DoesNothing()
+        {
+            // Should not throw even with null
+            Assert.DoesNotThrow(() => _leafNode.RemoveChild(null));
+
+            // Verify still no children
+            IEnumerable<ISceneNode> children = _leafNode.GetChildren();
+            Assert.AreEqual(0, children.Count());
+        }
+
+        /// <summary>
+        /// Verifies get children with no children returns empty enumerable.
+        /// </summary>
+        [Test]
+        public void GetChildren_WithNoChildren_ReturnsEmptyEnumerable()
+        {
+            IEnumerable<ISceneNode> children = _leafNode.GetChildren();
+
+            Assert.IsNotNull(children);
+            Assert.AreEqual(0, children.Count());
+        }
+
+        /// <summary>
+        /// Verifies get children multiple calls to get children returns empty enumerable.
+        /// </summary>
+        [Test]
+        public void GetChildren_MultipleCallsToGetChildren_ReturnsEmptyEnumerable()
+        {
+            IEnumerable<ISceneNode> children1 = _leafNode.GetChildren();
+            IEnumerable<ISceneNode> children2 = _leafNode.GetChildren();
+
+            Assert.IsNotNull(children1);
+            Assert.IsNotNull(children2);
+            Assert.AreEqual(0, children1.Count());
+            Assert.AreEqual(0, children2.Count());
+        }
+
+        /// <summary>
+        /// Verifies get children after multiple add child calls remains empty.
+        /// </summary>
+        [Test]
+        public void GetChildren_AfterMultipleAddChildCalls_RemainsEmpty()
+        {
+            MockLeafNode child1 = new MockLeafNode
+            {
+                DisplayName = "Child1",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+
+            MockLeafNode child2 = new MockLeafNode
+            {
+                DisplayName = "Child2",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+
+            MockLeafNode child3 = new MockLeafNode
+            {
+                DisplayName = "Child3",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+
+            _leafNode.AddChild(child1);
+            _leafNode.AddChild(child2);
+            _leafNode.AddChild(child3);
+
+            IEnumerable<ISceneNode> children = _leafNode.GetChildren();
+            Assert.AreEqual(0, children.Count());
+        }
+
+        /// <summary>
+        /// Verifies get children generic with type filter returns empty enumerable.
+        /// </summary>
+        [Test]
+        public void GetChildrenGeneric_WithTypeFilter_ReturnsEmptyEnumerable()
+        {
+            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>(
+                recursive: true
+            );
+
+            Assert.IsNotNull(children);
+            Assert.AreEqual(0, children.Count());
+        }
+
+        /// <summary>
+        /// Verifies get children generic with predicate returns empty enumerable.
+        /// </summary>
+        [Test]
+        public void GetChildrenGeneric_WithPredicate_ReturnsEmptyEnumerable()
+        {
+            IEnumerable<MockLeafNode> children = _leafNode
+                .GetChildren<MockLeafNode>(recursive: true)
+                .Where(node => node.DisplayName == "Test");
+
+            Assert.IsNotNull(children);
+            Assert.AreEqual(0, children.Count());
+        }
+
+        /// <summary>
+        /// Verifies get children generic with non recursive returns empty enumerable.
+        /// </summary>
+        [Test]
+        public void GetChildrenGeneric_WithNonRecursive_ReturnsEmptyEnumerable()
+        {
+            IEnumerable<MockLeafNode> children = _leafNode.GetChildren<MockLeafNode>();
+
+            Assert.IsNotNull(children);
+            Assert.AreEqual(0, children.Count());
+        }
+
+        /// <summary>
+        /// Verifies get children generic with different type returns empty enumerable.
+        /// </summary>
+        [Test]
+        public void GetChildrenGeneric_WithDifferentType_ReturnsEmptyEnumerable()
+        {
+            IEnumerable<MockLeafNodeA> children = _leafNode.GetChildren<MockLeafNodeA>(
+                recursive: true
+            );
+
+            Assert.IsNotNull(children);
+            Assert.AreEqual(0, children.Count());
+        }
+
+        /// <summary>
+        /// Verifies get children generic with complex predicate returns empty.
+        /// </summary>
+        [Test]
+        public void GetChildrenGeneric_WithComplexPredicate_ReturnsEmpty()
+        {
+            IEnumerable<MockLeafNode> children = _leafNode
+                .GetChildren<MockLeafNode>(recursive: true)
+                .Where(node => node.DisplayName.StartsWith("Test") && node.InstanceID != null);
+
+            Assert.IsNotNull(children);
+            Assert.AreEqual(0, children.Count());
+        }
+
+        /// <summary>
+        /// Verifies traverse with action calls action on self only.
+        /// </summary>
+        [Test]
+        public void Traverse_WithAction_CallsActionOnSelfOnly()
+        {
+            List<ISceneNode> visitedNodes = new List<ISceneNode>();
+
+            _leafNode.Traverse(node => visitedNodes.Add(node));
+
+            Assert.AreEqual(1, visitedNodes.Count);
+            Assert.AreSame(_leafNode, visitedNodes[0]);
+        }
+
+        /// <summary>
+        /// Verifies traverse with multiple calls calls action on self only each time.
+        /// </summary>
+        [Test]
+        public void Traverse_WithMultipleCalls_CallsActionOnSelfOnlyEachTime()
+        {
+            int callCount = 0;
+
+            _leafNode.Traverse(_ => callCount++);
+            _leafNode.Traverse(_ => callCount++);
+
+            Assert.AreEqual(2, callCount);
+        }
+
+        /// <summary>
+        /// Verifies traverse with action that modifies state only affects self.
+        /// </summary>
+        [Test]
+        public void Traverse_WithActionThatModifiesState_OnlyAffectsSelf()
+        {
+            string originalName = _leafNode.DisplayName;
+            string newName = "ModifiedName";
+
+            _leafNode.Traverse(node => node.DisplayName = newName);
+
+            Assert.AreEqual(newName, _leafNode.DisplayName);
+            Assert.AreNotEqual(originalName, _leafNode.DisplayName);
+        }
+
+        /// <summary>
+        /// Verifies traverse does not traverse children even after add child call.
+        /// </summary>
+        [Test]
+        public void Traverse_DoesNotTraverseChildren_EvenAfterAddChildCall()
+        {
+            MockLeafNode childNode = new MockLeafNode
+            {
+                DisplayName = "ChildNode",
+                InstanceID = Guid.NewGuid().ToString(),
+            };
+
+            // Try to add a child (which does nothing)
+            _leafNode.AddChild(childNode);
+
+            List<ISceneNode> visitedNodes = new List<ISceneNode>();
+            _leafNode.Traverse(node => visitedNodes.Add(node));
+
+            // Should only visit the leaf node itself
+            Assert.AreEqual(1, visitedNodes.Count);
+            Assert.AreSame(_leafNode, visitedNodes[0]);
+        }
+
+        /// <summary>
+        /// Verifies create copy returns same concrete leaf type.
+        /// </summary>
+        [Test]
+        public void CreateCopy_ReturnsSameConcreteLeafType()
+        {
+            ISceneNode copy = _leafNode.CreateCopy();
+
+            Assert.IsInstanceOf<MockLeafNode>(copy);
+        }
+
+        // Mock implementation of LeafNode for testing purposes
+        private class MockLeafNode : LeafNode
+        {
+            /// <summary>
+            /// Initializes a new instance of the MockLeafNode class.
+            /// </summary>
+            public MockLeafNode() { }
+
+            /// <summary>
+            /// Creates node copy.
+            /// </summary>
+            /// <returns>The created node copy.</returns>
+            protected override BaseSceneNode CreateNodeCopy() => new MockLeafNode();
+        }
+
+        // Another mock implementation for type-specific tests
+        private class MockLeafNodeA : LeafNode
+        {
+            /// <summary>
+            /// Initializes a new instance of the MockLeafNodeA class.
+            /// </summary>
+            public MockLeafNodeA() { }
+
+            /// <summary>
+            /// Creates node copy.
+            /// </summary>
+            /// <returns>The created node copy.</returns>
+            protected override BaseSceneNode CreateNodeCopy() => new MockLeafNodeA();
+        }
+
+        // Mock container node to test parent relationships
+        private class MockContainerNode : BaseSceneNode
+        {
+            private readonly List<ISceneNode> _children = new List<ISceneNode>();
+
+            /// <summary>
+            /// Creates node copy.
+            /// </summary>
+            /// <returns>The created node copy.</returns>
+            protected override BaseSceneNode CreateNodeCopy() => new MockContainerNode();
+
+            /// <summary>
+            /// Checks whether the accept child condition is met.
+            /// </summary>
+            /// <param name="child">The child.</param>
+            /// <returns>True when the accept child condition is met; otherwise false.</returns>
+            public override bool CanAcceptChild(ISceneNode child) => true;
+
+            /// <summary>
+            /// Adds child.
+            /// </summary>
+            /// <param name="child">The child.</param>
+            public override void AddChild(ISceneNode child)
+            {
+                _children.Add(child);
+            }
+
+            /// <summary>
+            /// Removes child.
+            /// </summary>
+            /// <param name="child">The child.</param>
+            public override void RemoveChild(ISceneNode child)
+            {
+                _children.Remove(child);
+            }
+
+            /// <summary>
+            /// Enumerates children.
+            /// </summary>
+            /// <returns>The result of enumerate children.</returns>
+            protected override IEnumerable<ISceneNode> EnumerateChildren() => _children;
+        }
+    }
+} // namespace Rebellion.Tests.SceneGraph

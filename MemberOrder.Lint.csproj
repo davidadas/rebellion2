@@ -10,5 +10,7 @@
     <Compile Include="Assets/Scripts/**/*.cs" />
     <Compile Include="Assets/Editor/**/*.cs" />
     <Compile Include="Assets/Tests/**/*.cs" />
+    <Compile Include="Tools/Rebellion.Analyzers/*.cs" />
+    <Compile Include="Tools/Rebellion.Analyzers.Tests/*.cs" />
   </ItemGroup>
 </Project>

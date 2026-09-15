@@ -1,0 +1,1089 @@
+using System;
+using System.Linq;
+using NUnit.Framework;
+using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
+{
+    [TestFixture]
+    public class MissionCreateWindowViewTests
+    {
+        private const string _prefabPath =
+            "Assets/Prefabs/UI/StrategyView/MissionCreateWindow.prefab";
+
+        private Texture2D _texture;
+        private MissionCreateWindowView _view;
+        private GameObject _viewObject;
+
+        /// <summary>
+        /// Sets up.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            _viewObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            _view = _viewObject.GetComponent<MissionCreateWindowView>();
+            _texture = new Texture2D(80, 40);
+            UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
+            UIComponentTestHelper.InvokeLifecycle(
+                FindComponent<UICheckboxView>("MissionOddsCheckbox"),
+                "Awake"
+            );
+        }
+
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            UnityEngine.Object.DestroyImmediate(_texture);
+            UnityEngine.Object.DestroyImmediate(_viewObject);
+        }
+
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
+        [Test]
+        public void Render_NullData_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => _view.Render(null));
+        }
+
+        /// <summary>
+        /// Verifies render without primary participants disables confirm button and uses disabled texture.
+        /// </summary>
+        [Test]
+        public void Render_WithoutPrimaryParticipants_DisablesConfirmButtonAndUsesDisabledTexture()
+        {
+            RawImage image = FindComponent<RawImage>("OkButtonImage");
+            Texture disabledTexture = image.texture;
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                false,
+                Array.Empty<StrategyDropdownItemRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                canConfirm: false
+            );
+
+            _view.Render(data);
+
+            Assert.IsFalse(FindComponent<Button>("OkButtonImage").interactable);
+            Assert.AreSame(disabledTexture, image.texture);
+        }
+
+        /// <summary>
+        /// Verifies render mission tab applies title selection target tabs and dropdown.
+        /// </summary>
+        [Test]
+        public void Render_MissionTab_AppliesTitleSelectionTargetTabsAndDropdown()
+        {
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                true,
+                new[] { CreateDropdownItem("Diplomacy"), CreateDropdownItem("Espionage") },
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                _texture,
+                true
+            );
+
+            _view.Render(data);
+
+            RectInt rect = UILayout.GetSourceRect(_view.transform as RectTransform);
+            Assert.AreEqual(23, rect.x);
+            Assert.AreEqual(31, rect.y);
+            Assert.AreSame(_texture, FindComponent<RawImage>("LeftTitleImage").texture);
+            Assert.AreSame(_texture, FindComponent<RawImage>("RightTitleImage").texture);
+            Assert.AreEqual(Color.black, FindText("TitleTextField").color);
+            Assert.IsTrue(FindObject("MissionSelection").activeSelf);
+            Assert.IsFalse(FindObject("Personnel").activeSelf);
+            Assert.AreSame(_texture, FindComponent<RawImage>("SelectedMissionImage").texture);
+            Assert.AreEqual("Diplomacy", FindText("SelectedMissionNameTextField").text);
+            Assert.AreSame(_texture, FindComponent<RawImage>("TargetPreviewImage").texture);
+            Assert.AreEqual("Corellia", FindText("TargetPreviewNameTextField").text);
+            Assert.IsTrue(FindObject("Dropdown").activeSelf);
+            Assert.AreSame(_texture, FindComponent<RawImage>("MissionTabButtonImage").texture);
+            StrategyDropdownItemView[] items = FindDropdownItems();
+            Assert.AreEqual(2, items.Length);
+            Assert.AreEqual("Diplomacy", FindDropdownText(items[0]).text);
+            Assert.AreEqual("Espionage", FindDropdownText(items[1]).text);
+            Assert.AreSame(_texture, FindDropdownImage(items[0]).texture);
+        }
+
+        /// <summary>
+        /// Verifies render mission tab without selection hides optional selection fields.
+        /// </summary>
+        [Test]
+        public void Render_MissionTabWithoutSelection_HidesOptionalSelectionFields()
+        {
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                false,
+                Array.Empty<StrategyDropdownItemRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                null,
+                false,
+                string.Empty,
+                null,
+                string.Empty,
+                null,
+                false
+            );
+
+            _view.Render(data);
+
+            Assert.IsFalse(FindObject("SelectedMissionImage").activeSelf);
+            Assert.IsFalse(FindObject("SelectedMissionNameTextField").activeSelf);
+            Assert.IsFalse(FindObject("TargetPreviewImage").activeSelf);
+            Assert.IsFalse(FindObject("TargetPreviewNameTextField").activeSelf);
+            Assert.IsFalse(FindObject("Dropdown").activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies render mission odds overlays success and foil on selected and dropdown icons.
+        /// </summary>
+        [Test]
+        public void Render_MissionOdds_OverlaysSuccessAndFoilOnSelectedAndDropdownIcons()
+        {
+            MissionOddsRenderData odds = new MissionOddsRenderData(73.6, 41.2);
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                true,
+                new[]
+                {
+                    new StrategyDropdownItemRenderData(_texture, "Diplomacy", Color.white, odds),
+                },
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                selectedMissionOdds: odds
+            );
+
+            _view.Render(data);
+
+            RawImage selectedImage = FindComponent<RawImage>("SelectedMissionImage");
+            TextMeshProUGUI selectedSuccess = FindOddsText(
+                selectedImage.transform,
+                "OverallSuccessOddsTextField"
+            );
+            TextMeshProUGUI selectedFoil = FindOddsText(
+                selectedImage.transform,
+                "FoilOddsTextField"
+            );
+            StrategyDropdownItemView row = FindDropdownItems().Single();
+            RawImage rowImage = FindDropdownImage(row);
+            Assert.AreEqual("SUCCESS\n~74%", selectedSuccess.text);
+            Assert.AreEqual("FOILED\n~41%", selectedFoil.text);
+            Assert.AreEqual(
+                "SUCCESS\n~74%",
+                FindOddsText(rowImage.transform, "OverallSuccessOddsTextField").text
+            );
+            Assert.AreEqual(
+                "FOILED\n~41%",
+                FindOddsText(rowImage.transform, "FoilOddsTextField").text
+            );
+            Assert.Greater(selectedSuccess.color.g, selectedSuccess.color.r);
+            Assert.Greater(selectedFoil.color.r, selectedFoil.color.g);
+            Assert.AreEqual(0f, selectedFoil.rectTransform.anchorMin.x);
+            Assert.AreEqual(0.5f, selectedFoil.rectTransform.anchorMax.x);
+            Assert.AreEqual(0.5f, selectedSuccess.rectTransform.anchorMin.x);
+            Assert.AreEqual(1f, selectedSuccess.rectTransform.anchorMax.x);
+        }
+
+        /// <summary>
+        /// Verifies render mission odds visibility applies dark checkbox and raises changes.
+        /// </summary>
+        [Test]
+        public void Render_MissionOddsVisibility_AppliesDarkCheckboxAndRaisesChanges()
+        {
+            MissionCreateWindowView changedView = null;
+            bool? requestedVisibility = null;
+            _view.MissionOddsVisibilityChanged += (view, visible) =>
+            {
+                changedView = view;
+                requestedVisibility = visible;
+            };
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                false,
+                Array.Empty<StrategyDropdownItemRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                showMissionOdds: false,
+                checkboxFrameTexture: _texture,
+                checkboxCheckMarkTexture: _texture
+            );
+
+            _view.Render(data);
+
+            UICheckboxView checkbox = FindComponent<UICheckboxView>("MissionOddsCheckbox");
+            Image background = checkbox.GetComponent<Image>();
+            Assert.IsFalse(checkbox.IsChecked);
+            Assert.AreSame(_texture, FindComponent<RawImage>("CheckboxFrameImage").texture);
+            Assert.AreSame(_texture, FindComponent<RawImage>("CheckMark").texture);
+            Assert.AreEqual(
+                new RectInt(3, 2, 12, 12),
+                UILayout.GetSourceRect(FindComponent<RectMask2D>("CheckMarkClip").rectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(-1, 1, 14, 14),
+                UILayout.GetSourceRect(FindComponent<RawImage>("CheckMark").rectTransform)
+            );
+            Assert.Less(background.color.r, 0.1f);
+            Assert.Less(background.color.a, 1f);
+            Assert.IsFalse(FindObject("CheckMarkClip").activeSelf);
+
+            checkbox.GetComponent<Toggle>().isOn = true;
+
+            Assert.AreSame(_view, changedView);
+            Assert.IsTrue(requestedVisibility);
+            Assert.IsTrue(FindObject("CheckMarkClip").activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies render planet target preview uses authored preview texture.
+        /// </summary>
+        [Test]
+        public void Render_PlanetTargetPreview_UsesAuthoredPreviewTexture()
+        {
+            Texture authoredPlanetTexture = FindComponent<RawImage>("TargetPreviewImage").texture;
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                false,
+                Array.Empty<StrategyDropdownItemRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                null,
+                true
+            );
+
+            _view.Render(data);
+
+            Assert.IsNotNull(authoredPlanetTexture);
+            Assert.AreSame(
+                authoredPlanetTexture,
+                FindComponent<RawImage>("TargetPreviewImage").texture
+            );
+            Assert.IsTrue(FindObject("TargetPreviewImage").activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies render planet target uses original centered size.
+        /// </summary>
+        [Test]
+        public void Render_PlanetTarget_UsesOriginalCenteredSize()
+        {
+            Texture2D planetTexture = new Texture2D(833, 833);
+            try
+            {
+                MissionCreateWindowRenderData data = CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    false,
+                    Array.Empty<StrategyDropdownItemRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    planetTexture,
+                    true
+                );
+
+                _view.Render(data);
+
+                Assert.AreEqual(
+                    new RectInt(115, 232, 37, 37),
+                    UILayout.GetSourceRect(
+                        FindComponent<RawImage>("TargetPreviewImage").rectTransform
+                    )
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(planetTexture);
+            }
+        }
+
+        /// <summary>
+        /// Verifies render non planet target can use full original target area.
+        /// </summary>
+        [Test]
+        public void Render_NonPlanetTarget_CanUseFullOriginalTargetArea()
+        {
+            Texture2D targetTexture = new Texture2D(833, 833);
+            try
+            {
+                MissionCreateWindowRenderData data = CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    false,
+                    Array.Empty<StrategyDropdownItemRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    targetTexture,
+                    false
+                );
+
+                _view.Render(data);
+
+                Assert.AreEqual(
+                    new RectInt(94, 211, 79, 79),
+                    UILayout.GetSourceRect(
+                        FindComponent<RawImage>("TargetPreviewImage").rectTransform
+                    )
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(targetTexture);
+            }
+        }
+
+        /// <summary>
+        /// Verifies render closed dropdown hides previously rendered items.
+        /// </summary>
+        [Test]
+        public void Render_ClosedDropdown_HidesPreviouslyRenderedItems()
+        {
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    true,
+                    new[] { CreateDropdownItem("Diplomacy") },
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>()
+                )
+            );
+            StrategyDropdownItemView item = FindDropdownItems().Single();
+
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    false,
+                    new[] { CreateDropdownItem("Diplomacy") },
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>()
+                )
+            );
+
+            Assert.IsFalse(FindObject("Dropdown").activeSelf);
+            Assert.IsFalse(item.gameObject.activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies render shorter dropdown collection hides unused cached items.
+        /// </summary>
+        [Test]
+        public void Render_ShorterDropdownCollection_HidesUnusedCachedItems()
+        {
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    true,
+                    new[] { CreateDropdownItem("Diplomacy"), CreateDropdownItem("Espionage") },
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>()
+                )
+            );
+            StrategyDropdownItemView secondItem = FindDropdownItems()[1];
+
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    true,
+                    new[] { CreateDropdownItem("Recruitment") },
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>()
+                )
+            );
+
+            Assert.IsFalse(secondItem.gameObject.activeSelf);
+            Assert.AreEqual("Recruitment", FindDropdownText(FindDropdownItems()[0]).text);
+        }
+
+        /// <summary>
+        /// Verifies render personnel tab applies headers and both participant lists.
+        /// </summary>
+        [Test]
+        public void Render_PersonnelTab_AppliesHeadersAndBothParticipantLists()
+        {
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Personnel,
+                false,
+                Array.Empty<StrategyDropdownItemRenderData>(),
+                new[] { CreateParticipant("Leia", false), CreateParticipant("Han", true) },
+                new[] { CreateParticipant("Chewbacca", false) }
+            );
+
+            _view.Render(data);
+
+            Assert.AreEqual(Color.white, FindText("TitleTextField").color);
+            Assert.IsFalse(FindObject("MissionSelection").activeSelf);
+            Assert.IsTrue(FindObject("Personnel").activeSelf);
+            Assert.AreSame(_texture, FindComponent<RawImage>("AgentsHeaderImage").texture);
+            Assert.AreSame(_texture, FindComponent<RawImage>("DecoysHeaderImage").texture);
+            MissionParticipantRowView[] agents = FindParticipantRows(MissionParticipantRole.Agent);
+            MissionParticipantRowView[] decoys = FindParticipantRows(MissionParticipantRole.Decoy);
+            Assert.AreEqual(2, agents.Length);
+            Assert.AreEqual(1, decoys.Length);
+            Assert.AreEqual(0, agents[0].Index);
+            Assert.AreEqual(1, agents[1].Index);
+            Assert.AreEqual("Leia", FindParticipantText(agents[0]).text);
+            Assert.AreEqual("Han", FindParticipantText(agents[1]).text);
+            Assert.AreEqual("Chewbacca", FindParticipantText(decoys[0]).text);
+            Assert.AreSame(_texture, FindParticipantImage(agents[0], "EntityImage").texture);
+        }
+
+        /// <summary>
+        /// Verifies render shorter participant collections hide unused cached rows.
+        /// </summary>
+        [Test]
+        public void Render_ShorterParticipantCollections_HideUnusedCachedRows()
+        {
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Personnel,
+                    false,
+                    Array.Empty<StrategyDropdownItemRenderData>(),
+                    new[] { CreateParticipant("Leia", false), CreateParticipant("Han", false) },
+                    new[]
+                    {
+                        CreateParticipant("Chewbacca", false),
+                        CreateParticipant("Luke", false),
+                    }
+                )
+            );
+            MissionParticipantRowView secondAgent = FindParticipantRows(
+                MissionParticipantRole.Agent
+            )[1];
+            MissionParticipantRowView secondDecoy = FindParticipantRows(
+                MissionParticipantRole.Decoy
+            )[1];
+
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Personnel,
+                    false,
+                    Array.Empty<StrategyDropdownItemRenderData>(),
+                    new[] { CreateParticipant("Replacement Agent", false) },
+                    new[] { CreateParticipant("Replacement Decoy", false) }
+                )
+            );
+
+            Assert.IsFalse(secondAgent.gameObject.activeSelf);
+            Assert.IsFalse(secondDecoy.gameObject.activeSelf);
+            Assert.AreEqual(
+                "Replacement Agent",
+                FindParticipantText(FindParticipantRows(MissionParticipantRole.Agent)[0]).text
+            );
+            Assert.AreEqual(
+                "Replacement Decoy",
+                FindParticipantText(FindParticipantRows(MissionParticipantRole.Decoy)[0]).text
+            );
+        }
+
+        /// <summary>
+        /// Verifies render switching to mission tab hides participant rows.
+        /// </summary>
+        [Test]
+        public void Render_SwitchingToMissionTab_HidesParticipantRows()
+        {
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Personnel,
+                    false,
+                    Array.Empty<StrategyDropdownItemRenderData>(),
+                    new[] { CreateParticipant("Leia", false) },
+                    new[] { CreateParticipant("Han", false) }
+                )
+            );
+            MissionParticipantRowView agent = FindParticipantRows(MissionParticipantRole.Agent)
+                .Single();
+            MissionParticipantRowView decoy = FindParticipantRows(MissionParticipantRole.Decoy)
+                .Single();
+
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    false,
+                    Array.Empty<StrategyDropdownItemRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>()
+                )
+            );
+
+            Assert.IsFalse(agent.gameObject.activeSelf);
+            Assert.IsFalse(decoy.gameObject.activeSelf);
+            Assert.IsFalse(FindObject("Personnel").activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies render invalid tab count throws argument exception.
+        /// </summary>
+        [Test]
+        public void Render_InvalidTabCount_ThrowsArgumentException()
+        {
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                false,
+                Array.Empty<StrategyDropdownItemRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                null,
+                false,
+                "Diplomacy",
+                _texture,
+                "Corellia",
+                Array.Empty<MissionCreateTabRenderData>()
+            );
+
+            Assert.Throws<ArgumentException>(() => _view.Render(data));
+        }
+
+        /// <summary>
+        /// Verifies render invalid tab order throws argument exception.
+        /// </summary>
+        [Test]
+        public void Render_InvalidTabOrder_ThrowsArgumentException()
+        {
+            MissionCreateTabRenderData[] tabs = CreateTabs();
+            tabs[0] = new MissionCreateTabRenderData(
+                MissionCreateWindowTab.Personnel,
+                _texture,
+                _texture
+            );
+            MissionCreateWindowRenderData data = CreateRenderData(
+                MissionCreateWindowTab.Mission,
+                false,
+                Array.Empty<StrategyDropdownItemRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                Array.Empty<MissionParticipantRowRenderData>(),
+                null,
+                false,
+                "Diplomacy",
+                _texture,
+                "Corellia",
+                tabs
+            );
+
+            Assert.Throws<ArgumentException>(() => _view.Render(data));
+        }
+
+        /// <summary>
+        /// Verifies authored controls click raise tabs dropdown actions and participant moves.
+        /// </summary>
+        [Test]
+        public void AuthoredControls_Click_RaiseTabsDropdownActionsAndParticipantMoves()
+        {
+            MissionCreateWindowTab? tab = null;
+            int dropdownCount = 0;
+            MissionParticipantRole? firstMove = null;
+            MissionParticipantRole? secondMove = null;
+            int moveCount = 0;
+            _view.TabRequested += (_, requested) => tab = requested;
+            _view.DropdownToggleRequested += _ => dropdownCount++;
+            _view.MoveParticipantsRequested += (_, role) =>
+            {
+                moveCount++;
+                if (moveCount == 1)
+                    firstMove = role;
+                else
+                    secondMove = role;
+            };
+
+            FindComponent<Button>("PersonnelTabButtonImage").onClick.Invoke();
+            FindComponent<Button>("DropdownButtonImage").onClick.Invoke();
+            FindComponent<Button>("MoveRightButtonImage").onClick.Invoke();
+            FindComponent<Button>("MoveLeftButtonImage").onClick.Invoke();
+
+            Assert.AreEqual(MissionCreateWindowTab.Personnel, tab);
+            Assert.AreEqual(1, dropdownCount);
+            Assert.AreEqual(MissionParticipantRole.Agent, firstMove);
+            Assert.AreEqual(MissionParticipantRole.Decoy, secondMove);
+        }
+
+        /// <summary>
+        /// Verifies action buttons click raise info confirm and cancel requests.
+        /// </summary>
+        [Test]
+        public void ActionButtons_Click_RaiseInfoConfirmAndCancelRequests()
+        {
+            int infoCount = 0;
+            int confirmCount = 0;
+            int cancelCount = 0;
+            _view.InfoRequested += _ => infoCount++;
+            _view.ConfirmRequested += _ => confirmCount++;
+            _view.CancelRequested += _ => cancelCount++;
+
+            FindComponent<Button>("InfoButtonImage").onClick.Invoke();
+            FindComponent<Button>("OkButtonImage").onClick.Invoke();
+            FindComponent<Button>("CancelButtonImage").onClick.Invoke();
+
+            Assert.AreEqual(1, infoCount);
+            Assert.AreEqual(1, confirmCount);
+            Assert.AreEqual(1, cancelCount);
+        }
+
+        /// <summary>
+        /// Verifies dropdown item click raises stable visual index.
+        /// </summary>
+        [Test]
+        public void DropdownItem_Click_RaisesStableVisualIndex()
+        {
+            int requestedIndex = -1;
+            _view.DropdownItemRequested += (_, index) => requestedIndex = index;
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    true,
+                    new[] { CreateDropdownItem("Diplomacy"), CreateDropdownItem("Espionage") },
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>()
+                )
+            );
+            StrategyDropdownItemView item = FindDropdownItems()[1];
+            UIComponentTestHelper.InvokeLifecycle(item, "Awake");
+
+            item.GetComponent<Button>().onClick.Invoke();
+
+            Assert.AreEqual(1, requestedIndex);
+        }
+
+        /// <summary>
+        /// Verifies participant gestures rendered rows raise role index and original event.
+        /// </summary>
+        [Test]
+        public void ParticipantGestures_RenderedRows_RaiseRoleIndexAndOriginalEvent()
+        {
+            MissionParticipantRole? pressedRole = null;
+            MissionParticipantRole? clickedRole = null;
+            int pressedIndex = -1;
+            int clickedIndex = -1;
+            PointerEventData pressedEvent = null;
+            PointerEventData clickedEvent = null;
+            _view.ParticipantPressed += (_, role, index, eventData) =>
+            {
+                pressedRole = role;
+                pressedIndex = index;
+                pressedEvent = eventData;
+            };
+            _view.ParticipantClicked += (_, role, index, eventData) =>
+            {
+                clickedRole = role;
+                clickedIndex = index;
+                clickedEvent = eventData;
+            };
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Personnel,
+                    false,
+                    Array.Empty<StrategyDropdownItemRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    new[] { CreateParticipant("Han", false) }
+                )
+            );
+            MissionParticipantRowView row = FindParticipantRows(MissionParticipantRole.Decoy)
+                .Single();
+            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+            UIPointerGestureRelay relay = row.GetComponent<UIPointerGestureRelay>();
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            relay.OnPointerDown(eventData);
+            relay.OnPointerClick(eventData);
+
+            Assert.AreEqual(MissionParticipantRole.Decoy, pressedRole);
+            Assert.AreEqual(0, pressedIndex);
+            Assert.AreSame(eventData, pressedEvent);
+            Assert.AreEqual(MissionParticipantRole.Decoy, clickedRole);
+            Assert.AreEqual(0, clickedIndex);
+            Assert.AreSame(eventData, clickedEvent);
+        }
+
+        /// <summary>
+        /// Verifies on pointer click open dropdown outside primary click raises dismiss request.
+        /// </summary>
+        [Test]
+        public void OnPointerClick_OpenDropdownOutsidePrimaryClick_RaisesDismissRequest()
+        {
+            int dismissCount = 0;
+            _view.DropdownDismissRequested += _ => dismissCount++;
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    true,
+                    new[] { CreateDropdownItem("Diplomacy") },
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>()
+                )
+            );
+            PointerEventData outside = CreateRaycastEvent(
+                PointerEventData.InputButton.Left,
+                FindObject("TitleTextField")
+            );
+            PointerEventData inside = CreateRaycastEvent(
+                PointerEventData.InputButton.Left,
+                FindObject("DropdownButtonImage")
+            );
+            PointerEventData secondary = CreateRaycastEvent(
+                PointerEventData.InputButton.Right,
+                FindObject("TitleTextField")
+            );
+
+            _view.OnPointerClick(inside);
+            _view.OnPointerClick(secondary);
+            _view.OnPointerClick(outside);
+
+            Assert.AreEqual(1, dismissCount);
+        }
+
+        /// <summary>
+        /// Verifies scroll metrics authored templates return consistent row geometry.
+        /// </summary>
+        [Test]
+        public void ScrollMetrics_AuthoredTemplates_ReturnConsistentRowGeometry()
+        {
+            int dropdownStep = _view.GetDropdownScrollStep();
+            int participantStep = _view.GetParticipantScrollStep();
+
+            Assert.Greater(dropdownStep, 0);
+            Assert.Greater(participantStep, 0);
+            Assert.AreEqual(
+                dropdownStep,
+                _view.GetDropdownScrollContentHeight(2) - _view.GetDropdownScrollContentHeight(1)
+            );
+            Assert.AreEqual(
+                participantStep,
+                _view.GetParticipantScrollContentHeight(2)
+                    - _view.GetParticipantScrollContentHeight(1)
+            );
+        }
+
+        /// <summary>
+        /// Verifies child views null render data throw argument null exception.
+        /// </summary>
+        [Test]
+        public void ChildViews_NullRenderData_ThrowArgumentNullException()
+        {
+            StrategyDropdownItemView dropdownTemplate = _viewObject
+                .GetComponentsInChildren<StrategyDropdownItemView>(true)
+                .Single(item => item.name == "DropdownItemRowTemplate");
+            MissionParticipantRowView[] participantTemplates = _viewObject
+                .GetComponentsInChildren<MissionParticipantRowView>(true)
+                .Where(row => row.name.EndsWith("RowTemplate", StringComparison.Ordinal))
+                .ToArray();
+
+            Assert.Throws<ArgumentNullException>(() => dropdownTemplate.Render(null));
+            Assert.AreEqual(2, participantTemplates.Length);
+            Assert.Throws<ArgumentNullException>(() => participantTemplates[0].Render(null));
+            Assert.Throws<ArgumentNullException>(() => participantTemplates[1].Render(null));
+        }
+
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds controls rows and raises destroyed event.
+        /// </summary>
+        [Test]
+        public void OnDestroy_InitializedView_UnbindsControlsRowsAndRaisesDestroyedEvent()
+        {
+            MissionCreateWindowView destroyed = null;
+            int confirmCount = 0;
+            int dropdownItemCount = 0;
+            int participantCount = 0;
+            _view.Destroyed += view => destroyed = view;
+            _view.ConfirmRequested += _ => confirmCount++;
+            _view.DropdownItemRequested += (_, _) => dropdownItemCount++;
+            _view.ParticipantClicked += (_, _, _, _) => participantCount++;
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Mission,
+                    true,
+                    new[] { CreateDropdownItem("Diplomacy") },
+                    Array.Empty<MissionParticipantRowRenderData>(),
+                    Array.Empty<MissionParticipantRowRenderData>()
+                )
+            );
+            StrategyDropdownItemView dropdownItem = FindDropdownItems().Single();
+            UIComponentTestHelper.InvokeLifecycle(dropdownItem, "Awake");
+            _view.Render(
+                CreateRenderData(
+                    MissionCreateWindowTab.Personnel,
+                    false,
+                    Array.Empty<StrategyDropdownItemRenderData>(),
+                    new[] { CreateParticipant("Leia", false) },
+                    Array.Empty<MissionParticipantRowRenderData>()
+                )
+            );
+            MissionParticipantRowView participant = FindParticipantRows(
+                    MissionParticipantRole.Agent
+                )
+                .Single();
+            UIComponentTestHelper.InvokeLifecycle(participant, "Awake");
+
+            UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
+            FindComponent<Button>("OkButtonImage").onClick.Invoke();
+            dropdownItem.GetComponent<Button>().onClick.Invoke();
+            participant
+                .GetComponent<UIPointerGestureRelay>()
+                .OnPointerClick(new PointerEventData(null));
+
+            Assert.AreSame(_view, destroyed);
+            Assert.AreEqual(0, confirmCount);
+            Assert.AreEqual(0, dropdownItemCount);
+            Assert.AreEqual(0, participantCount);
+        }
+
+        /// <summary>
+        /// Creates render data.
+        /// </summary>
+        /// <param name="activeTab">The active tab.</param>
+        /// <param name="dropdownOpen">Whether dropdown open.</param>
+        /// <param name="dropdownItems">The dropdown items.</param>
+        /// <param name="agents">The agents.</param>
+        /// <param name="decoys">The decoys.</param>
+        /// <param name="targetTexture">The target texture.</param>
+        /// <param name="usePlanetTargetPreview">Whether use planet target preview.</param>
+        /// <param name="missionName">The mission name.</param>
+        /// <param name="selectedMissionTexture">The selected mission texture.</param>
+        /// <param name="targetName">The target name.</param>
+        /// <param name="tabs">The tabs.</param>
+        /// <param name="showSelectedMission">Whether show selected mission.</param>
+        /// <param name="canConfirm">Whether can confirm.</param>
+        /// <param name="selectedMissionOdds">The selected mission odds.</param>
+        /// <param name="showMissionOdds">Whether show mission odds.</param>
+        /// <param name="checkboxFrameTexture">The checkbox frame texture.</param>
+        /// <param name="checkboxCheckMarkTexture">The checkbox check mark texture.</param>
+        /// <returns>The created render data.</returns>
+        private MissionCreateWindowRenderData CreateRenderData(
+            MissionCreateWindowTab activeTab,
+            bool dropdownOpen,
+            StrategyDropdownItemRenderData[] dropdownItems,
+            MissionParticipantRowRenderData[] agents,
+            MissionParticipantRowRenderData[] decoys,
+            Texture targetTexture = null,
+            bool usePlanetTargetPreview = false,
+            string missionName = "Diplomacy",
+            Texture selectedMissionTexture = null,
+            string targetName = "Corellia",
+            MissionCreateTabRenderData[] tabs = null,
+            bool showSelectedMission = true,
+            bool canConfirm = true,
+            MissionOddsRenderData selectedMissionOdds = null,
+            bool showMissionOdds = true,
+            Texture checkboxFrameTexture = null,
+            Texture checkboxCheckMarkTexture = null
+        )
+        {
+            return new MissionCreateWindowRenderData(
+                23,
+                31,
+                activeTab,
+                dropdownOpen,
+                canConfirm,
+                _texture,
+                missionName,
+                showSelectedMission ? selectedMissionTexture ?? _texture : null,
+                targetName,
+                targetTexture,
+                usePlanetTargetPreview,
+                _texture,
+                _texture,
+                tabs ?? CreateTabs(),
+                dropdownItems,
+                agents,
+                decoys,
+                selectedMissionOdds,
+                showMissionOdds,
+                checkboxFrameTexture,
+                checkboxCheckMarkTexture
+            );
+        }
+
+        /// <summary>
+        /// Creates tabs.
+        /// </summary>
+        /// <returns>The created tabs.</returns>
+        private MissionCreateTabRenderData[] CreateTabs()
+        {
+            return MissionCreateWindowRenderData
+                .OrderedTabs.Select(tab => new MissionCreateTabRenderData(tab, _texture, _texture))
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Creates dropdown item.
+        /// </summary>
+        /// <param name="label">The label.</param>
+        /// <returns>The created dropdown item.</returns>
+        private StrategyDropdownItemRenderData CreateDropdownItem(string label)
+        {
+            return new StrategyDropdownItemRenderData(_texture, label, Color.white);
+        }
+
+        /// <summary>
+        /// Creates participant.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <param name="inTransit">Whether in transit.</param>
+        /// <returns>The created participant.</returns>
+        private MissionParticipantRowRenderData CreateParticipant(string name, bool inTransit)
+        {
+            return new MissionParticipantRowRenderData(
+                name,
+                Color.white,
+                inTransit ? _texture : null,
+                _texture
+            );
+        }
+
+        /// <summary>
+        /// Finds dropdown items.
+        /// </summary>
+        /// <returns>The matching dropdown items.</returns>
+        private StrategyDropdownItemView[] FindDropdownItems()
+        {
+            return _viewObject
+                .GetComponentsInChildren<StrategyDropdownItemView>(true)
+                .Where(item =>
+                    item.name.StartsWith("DropdownItemRow", StringComparison.Ordinal)
+                    && item.name != "DropdownItemRowTemplate"
+                )
+                .OrderBy(item => item.Index)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Finds participant rows.
+        /// </summary>
+        /// <param name="role">The role.</param>
+        /// <returns>The matching participant rows.</returns>
+        private MissionParticipantRowView[] FindParticipantRows(MissionParticipantRole role)
+        {
+            return _viewObject
+                .GetComponentsInChildren<MissionParticipantRowView>(true)
+                .Where(row =>
+                    row.name.StartsWith("MissionParticipantRow", StringComparison.Ordinal)
+                    && row.Role == role
+                )
+                .OrderBy(row => row.Index)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Finds component.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The matching component.</returns>
+        private T FindComponent<T>(string objectName)
+            where T : Component
+        {
+            return _viewObject
+                .GetComponentsInChildren<T>(true)
+                .Single(component => component.name == objectName);
+        }
+
+        /// <summary>
+        /// Finds object.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching object.</returns>
+        private GameObject FindObject(string objectName)
+        {
+            return _viewObject
+                .GetComponentsInChildren<Transform>(true)
+                .Single(item => item.name == objectName)
+                .gameObject;
+        }
+
+        /// <summary>
+        /// Finds text.
+        /// </summary>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching text.</returns>
+        private TextMeshProUGUI FindText(string objectName)
+        {
+            return FindComponent<TextMeshProUGUI>(objectName);
+        }
+
+        /// <summary>
+        /// Finds dropdown image.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        /// <returns>The matching dropdown image.</returns>
+        private static RawImage FindDropdownImage(StrategyDropdownItemView item)
+        {
+            return item.GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "ItemImage");
+        }
+
+        /// <summary>
+        /// Finds dropdown text.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        /// <returns>The matching dropdown text.</returns>
+        private static TextMeshProUGUI FindDropdownText(StrategyDropdownItemView item)
+        {
+            return item.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "ItemTextField");
+        }
+
+        /// <summary>
+        /// Finds odds text.
+        /// </summary>
+        /// <param name="root">The root.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching odds text.</returns>
+        private static TextMeshProUGUI FindOddsText(Transform root, string objectName)
+        {
+            return root.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == objectName);
+        }
+
+        /// <summary>
+        /// Finds participant image.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <param name="objectName">The object name.</param>
+        /// <returns>The matching participant image.</returns>
+        private static RawImage FindParticipantImage(
+            MissionParticipantRowView row,
+            string objectName
+        )
+        {
+            return row.GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == objectName);
+        }
+
+        /// <summary>
+        /// Finds participant text.
+        /// </summary>
+        /// <param name="row">The row.</param>
+        /// <returns>The matching participant text.</returns>
+        private static TextMeshProUGUI FindParticipantText(MissionParticipantRowView row)
+        {
+            return row.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "NameTextField");
+        }
+
+        /// <summary>
+        /// Creates raycast event.
+        /// </summary>
+        /// <param name="button">The button.</param>
+        /// <param name="target">The target.</param>
+        /// <returns>The created raycast event.</returns>
+        private static PointerEventData CreateRaycastEvent(
+            PointerEventData.InputButton button,
+            GameObject target
+        )
+        {
+            return new PointerEventData(null)
+            {
+                button = button,
+                pointerCurrentRaycast = new RaycastResult { gameObject = target },
+            };
+        }
+    }
+}

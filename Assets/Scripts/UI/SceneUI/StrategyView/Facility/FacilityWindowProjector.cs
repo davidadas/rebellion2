@@ -191,7 +191,8 @@ internal sealed class FacilityWindowProjector
         int activeFacilityCount = facilities.Count(building =>
             building.GetManufacturingStatus() == ManufacturingStatus.Complete
         );
-        bool selected = selectedCards?.Contains((int)manufacturingTab) == true;
+        int? cardIndex = FacilityManufacturingLaneCatalog.GetCardIndex(manufacturingTab);
+        bool selected = cardIndex.HasValue && selectedCards?.Contains(cardIndex.Value) == true;
         ManufacturingLaneStateTheme stateTheme = uiContext
             .GetTheme(ownerFactionId)
             ?.PlanetWindowTheme?.BuildingsPane?.ManufacturingLaneState;

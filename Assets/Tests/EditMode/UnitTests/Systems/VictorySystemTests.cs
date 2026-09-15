@@ -1,0 +1,407 @@
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Systems;
+
+namespace Rebellion.Tests.Systems
+{
+    [TestFixture]
+    public class VictorySystemTests
+    {
+        /// <summary>
+        /// Verifies process tick hq not configured returns empty.
+        /// </summary>
+        [Test]
+        public void ProcessTick_HQNotConfigured_ReturnsEmpty()
+        {
+            (GameRoot game, Faction empire, _, _, VictorySystem system) = BuildScene();
+            empire.HQInstanceID = null;
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(0, results.Count, "No HQ configured should return no results");
+        }
+
+        /// <summary>
+        /// Verifies process tick hq still owned by defender returns empty.
+        /// </summary>
+        [Test]
+        public void ProcessTick_HQStillOwnedByDefender_ReturnsEmpty()
+        {
+            (_, _, _, _, VictorySystem system) = BuildScene(rebelsCaptureEmpireHQ: false);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(0, results.Count, "HQ held by defender should not trigger victory");
+        }
+
+        /// <summary>
+        /// Verifies process tick hq captured headquarters mode returns victory result.
+        /// </summary>
+        [Test]
+        public void ProcessTick_HQCapturedHeadquartersMode_ReturnsVictoryResult()
+        {
+            (_, Faction empire, Faction rebels, _, VictorySystem system) = BuildScene(
+                GameVictoryCondition.Headquarters
+            );
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(1, results.Count);
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreEqual(rebels, victory.Winner);
+            Assert.AreEqual(empire, victory.Loser);
+        }
+
+        /// <summary>
+        /// Verifies process tick after victory declared does not declare victory again.
+        /// </summary>
+        [Test]
+        public void ProcessTick_AfterVictoryDeclared_DoesNotDeclareVictoryAgain()
+        {
+            (_, _, _, _, VictorySystem system) = BuildScene();
+
+            List<GameResult> firstResults = system.ProcessTick();
+            List<GameResult> secondResults = system.ProcessTick();
+
+            Assert.AreEqual(1, firstResults.OfType<VictoryResult>().Count());
+            Assert.IsEmpty(secondResults);
+        }
+
+        /// <summary>
+        /// Verifies process tick hq captured conquest mode leaders free returns empty.
+        /// </summary>
+        [Test]
+        public void ProcessTick_HQCapturedConquestMode_LeadersFree_ReturnsEmpty()
+        {
+            (GameRoot game, Faction empire, _, _, VictorySystem system) = BuildScene(
+                GameVictoryCondition.Conquest
+            );
+
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "p_empire",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int>(),
+            };
+            game.AttachNode(empirePlanet, game.GetSceneNodeByInstanceID<PlanetSector>("sector1"));
+
+            Officer leader = new Officer
+            {
+                InstanceID = "leader1",
+                OwnerInstanceID = "empire",
+                IsMain = true,
+                IsCaptured = false,
+            };
+            game.AttachNode(leader, empirePlanet);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(
+                0,
+                results.Count,
+                "Conquest mode with free leader should not trigger victory"
+            );
+        }
+
+        /// <summary>
+        /// Verifies process tick hq captured conquest mode all leaders captured returns victory result.
+        /// </summary>
+        [Test]
+        public void ProcessTick_HQCapturedConquestMode_AllLeadersCaptured_ReturnsVictoryResult()
+        {
+            (GameRoot game, Faction empire, Faction rebels, _, VictorySystem system) = BuildScene(
+                GameVictoryCondition.Conquest
+            );
+
+            Officer leader = new Officer
+            {
+                InstanceID = "leader1",
+                OwnerInstanceID = "empire",
+                IsMain = true,
+                IsCaptured = true,
+            };
+            game.AttachNode(leader, game.GetSceneNodeByInstanceID<Planet>("hq_empire"));
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(1, results.Count);
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreEqual(rebels, victory.Winner);
+            Assert.AreEqual(empire, victory.Loser);
+        }
+
+        /// <summary>
+        /// Verifies process tick hq captured conquest mode no main characters returns victory result.
+        /// </summary>
+        [Test]
+        public void ProcessTick_HQCapturedConquestMode_NoMainCharacters_ReturnsVictoryResult()
+        {
+            (_, _, Faction rebels, _, VictorySystem system) = BuildScene(
+                GameVictoryCondition.Conquest
+            );
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(1, results.Count);
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreEqual(rebels, victory.Winner);
+        }
+
+        /// <summary>
+        /// Verifies process tick mobile headquarters in transit returns empty.
+        /// </summary>
+        [Test]
+        public void ProcessTick_MobileHeadquartersInTransit_ReturnsEmpty()
+        {
+            (GameRoot game, Faction empire, _, Planet empireHQ, VictorySystem system) = BuildScene(
+                rebelsCaptureEmpireHQ: false
+            );
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+            empire.HQInstanceID = null;
+            empireHQ.EnergyCapacity = 1;
+            Building headquarters = new Building
+            {
+                InstanceID = "mobile-hq",
+                TypeID = "BDHQ01",
+                OwnerInstanceID = empire.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
+            };
+            game.AttachNode(headquarters, empireHQ);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(0, results.Count);
+        }
+
+        /// <summary>
+        /// Verifies process tick mobile headquarters missing returns empty.
+        /// </summary>
+        [Test]
+        public void ProcessTick_MobileHeadquartersMissing_ReturnsEmpty()
+        {
+            (_, Faction empire, _, _, VictorySystem system) = BuildScene(
+                rebelsCaptureEmpireHQ: false
+            );
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(0, results.Count);
+        }
+
+        /// <summary>
+        /// Verifies process tick mobile headquarters captured returns victory result.
+        /// </summary>
+        [Test]
+        public void ProcessTick_MobileHeadquartersCaptured_ReturnsVictoryResult()
+        {
+            (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =
+                BuildScene(rebelsCaptureEmpireHQ: false);
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+            empireHQ.OwnerInstanceID = rebels.InstanceID;
+            empireHQ.EnergyCapacity = 1;
+            Building headquarters = new Building
+            {
+                InstanceID = "mobile-hq",
+                TypeID = "BDHQ01",
+                OwnerInstanceID = rebels.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+            };
+            game.AttachNode(headquarters, empireHQ);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(1, results.Count);
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreEqual(rebels, victory.Winner);
+            Assert.AreEqual(empire, victory.Loser);
+        }
+
+        /// <summary>
+        /// Verifies process tick multiple mobile headquarters uses defender headquarters.
+        /// </summary>
+        [Test]
+        public void ProcessTick_MultipleMobileHeadquarters_UsesDefenderHeadquarters()
+        {
+            (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =
+                BuildScene(rebelsCaptureEmpireHQ: false);
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+            empireHQ.OwnerInstanceID = rebels.InstanceID;
+            empireHQ.EnergyCapacity = 1;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "empire-mobile-hq",
+                    TypeID = "BDHQ01",
+                    OwnerInstanceID = rebels.InstanceID,
+                    BuildingType = BuildingType.Headquarters,
+                },
+                empireHQ
+            );
+
+            Faction thirdFaction = new Faction
+            {
+                InstanceID = "third-faction",
+                HQInstanceID = "third-hq-planet",
+                Settings = new FactionSettings
+                {
+                    Headquarters = new HeadquartersSettings
+                    {
+                        FacilityTypeID = "BDHQ01",
+                        IsMobile = true,
+                    },
+                },
+            };
+            game.GetFactions().Add(thirdFaction);
+            Planet thirdHeadquartersPlanet = new Planet
+            {
+                InstanceID = thirdFaction.HQInstanceID,
+                OwnerInstanceID = thirdFaction.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 1,
+            };
+            game.AttachNode(
+                thirdHeadquartersPlanet,
+                game.GetSceneNodeByInstanceID<PlanetSector>("sector1")
+            );
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "third-mobile-hq",
+                    TypeID = "BDHQ01",
+                    OwnerInstanceID = thirdFaction.InstanceID,
+                    BuildingType = BuildingType.Headquarters,
+                },
+                thirdHeadquartersPlanet
+            );
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(1, results.Count);
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreSame(rebels, victory.Winner);
+            Assert.AreSame(empire, victory.Loser);
+        }
+
+        /// <summary>
+        /// Verifies handle results headquarters captured returns victory.
+        /// </summary>
+        [Test]
+        public void HandleResults_HeadquartersCaptured_ReturnsVictory()
+        {
+            (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =
+                BuildScene(rebelsCaptureEmpireHQ: false);
+
+            List<GameResult> results = system.HandleResults(
+                new List<HeadquartersLostResult>
+                {
+                    new HeadquartersCapturedResult
+                    {
+                        Planet = empireHQ,
+                        Defender = empire,
+                        Attacker = rebels,
+                    },
+                }
+            );
+
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreSame(rebels, victory.Winner);
+            Assert.AreSame(empire, victory.Loser);
+        }
+
+        /// <summary>
+        /// Builds scene.
+        /// </summary>
+        /// <param name="victoryCondition">The victory condition.</param>
+        /// <param name="rebelsCaptureEmpireHQ">Whether rebels capture empire hq.</param>
+        /// <returns>The constructed scene.</returns>
+        private (
+            GameRoot game,
+            Faction empire,
+            Faction rebels,
+            Planet empireHQ,
+            VictorySystem system
+        ) BuildScene(
+            GameVictoryCondition victoryCondition = GameVictoryCondition.Headquarters,
+            bool rebelsCaptureEmpireHQ = true
+        )
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Summary = new GameSummary { VictoryCondition = victoryCondition };
+            game.CurrentTick = 200;
+
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction rebels = new Faction { InstanceID = "rebels" };
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(rebels);
+
+            PlanetSector planetSector = new PlanetSector
+            {
+                InstanceID = "sector1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planetSector, game.Galaxy);
+
+            Planet empireHQ = new Planet
+            {
+                InstanceID = "hq_empire",
+                OwnerInstanceID = rebelsCaptureEmpireHQ ? "rebels" : "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int>(),
+            };
+            game.AttachNode(empireHQ, planetSector);
+            empire.HQInstanceID = "hq_empire";
+
+            return (game, empire, rebels, empireHQ, new VictorySystem(game));
+        }
+    }
+}

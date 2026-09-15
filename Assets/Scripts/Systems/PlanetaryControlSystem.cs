@@ -53,10 +53,153 @@ namespace Rebellion.Systems
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
+            UpdateBlockadeSupport();
             UpdateUncolonizedPlanets(results);
             CheckOwnershipTransfers(results);
 
             return results;
+        }
+
+        /// <summary>
+        /// Updates timed popular-support changes caused by blockades.
+        /// </summary>
+        private void UpdateBlockadeSupport()
+        {
+            GameConfig.SupportShiftConfig config = _game.Config.SupportShift;
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
+            {
+                UpdateBlockadeSupport(planet, config);
+            }
+        }
+
+        /// <summary>
+        /// Moves support toward the side already favored while a fleet blockades the planet.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="config">The config.</param>
+        private void UpdateBlockadeSupport(Planet planet, GameConfig.SupportShiftConfig config)
+        {
+            if (!planet.IsBlockaded())
+            {
+                ResetBlockadeSupportTimer(planet);
+                return;
+            }
+
+            Faction blockadingFaction = GetBlockadingFaction(planet);
+            if (blockadingFaction == null)
+                return;
+
+            bool blockadeSupportsFavoredFaction =
+                TryGetFavoredFaction(planet, out Faction supportLeader)
+                && blockadingFaction == supportLeader;
+            int interval = GetBlockadeSupportInterval(config, blockadeSupportsFavoredFaction);
+            if (interval <= 0)
+                return;
+
+            if (
+                planet.NextBlockadeSupportShiftTick <= 0
+                || planet.BlockadeSupportShiftIntervalTicks != interval
+            )
+            {
+                ScheduleBlockadeSupport(planet, interval);
+                return;
+            }
+
+            if (_game.CurrentTick < planet.NextBlockadeSupportShiftTick)
+                return;
+
+            int shift = blockadeSupportsFavoredFaction
+                ? config.BlockadeMatchShift
+                : config.BlockadeOpposeShift;
+            shift = ApplyCoreSupportResistance(
+                planet,
+                blockadingFaction,
+                shift,
+                config.WeakSupportPenaltyDivisor
+            );
+            ShiftPopularSupport(planet, blockadingFaction, shift);
+            ScheduleBlockadeSupport(planet, interval);
+        }
+
+        /// <summary>
+        /// Returns the faction operating the fleet that currently blockades a planet.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The requested blockading faction.</returns>
+        private Faction GetBlockadingFaction(Planet planet)
+        {
+            Fleet blockadingFleet = planet
+                .GetChildren<Fleet>()
+                .FirstOrDefault(fleet =>
+                    fleet.Movement == null
+                    && fleet.HasOperationalCapitalShips()
+                    && fleet.OwnerInstanceID != planet.OwnerInstanceID
+                );
+            return _game.GetFactionByOwnerInstanceID(blockadingFleet?.OwnerInstanceID);
+        }
+
+        /// <summary>
+        /// Finds the faction with strictly more popular support than every other faction.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="supportLeader">Receives the support leader.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        private bool TryGetFavoredFaction(Planet planet, out Faction supportLeader)
+        {
+            List<Faction> factions = _game.GetFactions();
+            Faction candidate = factions
+                .OrderByDescending(faction => planet.GetPopularSupport(faction.InstanceID))
+                .FirstOrDefault();
+            if (candidate == null)
+            {
+                supportLeader = null;
+                return false;
+            }
+
+            int leadingSupport = planet.GetPopularSupport(candidate.InstanceID);
+            bool supportIsTied = factions.Any(faction =>
+                faction != candidate
+                && planet.GetPopularSupport(faction.InstanceID) == leadingSupport
+            );
+            supportLeader = supportIsTied ? null : candidate;
+            return supportLeader != null;
+        }
+
+        /// <summary>
+        /// Returns the blockade shift interval for the planet's current support alignment.
+        /// </summary>
+        /// <param name="config">The config.</param>
+        /// <param name="blockadeSupportsFavoredFaction">Whether blockade supports favored faction.</param>
+        /// <returns>The requested blockade support interval.</returns>
+        private static int GetBlockadeSupportInterval(
+            GameConfig.SupportShiftConfig config,
+            bool blockadeSupportsFavoredFaction
+        )
+        {
+            return blockadeSupportsFavoredFaction
+                ? config.BlockadeMatchShiftIntervalTicks
+                : config.BlockadeOpposeShiftIntervalTicks;
+        }
+
+        /// <summary>
+        /// Clears a planet's blockade support-shift schedule.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        private static void ResetBlockadeSupportTimer(Planet planet)
+        {
+            planet.NextBlockadeSupportShiftTick = 0;
+            planet.BlockadeSupportShiftIntervalTicks = 0;
+        }
+
+        /// <summary>
+        /// Schedules the planet's next blockade support shift.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="interval">The interval.</param>
+        private void ScheduleBlockadeSupport(Planet planet, int interval)
+        {
+            planet.NextBlockadeSupportShiftTick = _game.CurrentTick + interval;
+            planet.BlockadeSupportShiftIntervalTicks = interval;
         }
 
         /// <summary>
@@ -83,6 +226,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Applies event-requested ownership changes through the authoritative rules.
         /// </summary>
+        /// <param name="requests">The requests.</param>
+        /// <returns>The result of handle requests.</returns>
         List<GameResult> IGameRequestHandler<OwnershipChangeRequest>.HandleRequests(
             IReadOnlyList<OwnershipChangeRequest> requests
         )
@@ -354,7 +499,7 @@ namespace Rebellion.Systems
         /// <param name="shift">The unadjusted signed support shift.</param>
         /// <param name="divisor">The configured weak-support divisor.</param>
         /// <returns>The support shift after any core-sector reduction.</returns>
-        internal static int ApplyCoreWeakSupportPenalty(
+        internal static int ApplyCoreSupportResistance(
             Planet planet,
             Faction faction,
             int shift,

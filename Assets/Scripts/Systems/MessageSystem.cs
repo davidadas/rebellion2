@@ -31,6 +31,7 @@ namespace Rebellion.Systems
         /// Creates and delivers faction messages for the supplied game results.
         /// </summary>
         /// <param name="results">The game results to process.</param>
+        /// <returns>The result of process results.</returns>
         public List<GameResult> ProcessResults(IEnumerable<GameResult> results)
         {
             GameResult[] resultBatch =

@@ -75,6 +75,11 @@ public sealed class ContextMenuController : ICancelable
 {
     private ContextMenuRequest activeRequest;
 
+    /// <summary>
+    /// Occurs after a context-menu request closes by selection or cancellation.
+    /// </summary>
+    public event Action<ContextMenuRequest> RequestClosed;
+
     public bool IsOpen => activeRequest != null;
 
     public ContextMenuRequest ActiveRequest => activeRequest;
@@ -110,6 +115,7 @@ public sealed class ContextMenuController : ICancelable
         ContextMenuRequest request = activeRequest;
         activeRequest = null;
 
+        RequestClosed?.Invoke(request);
         request.Receiver.OnContextMenuCommandSelected(request, command);
         return true;
     }
@@ -153,6 +159,7 @@ public sealed class ContextMenuController : ICancelable
         ContextMenuRequest request = activeRequest;
         activeRequest = null;
 
+        RequestClosed?.Invoke(request);
         request.Receiver.OnContextMenuCancelled(request);
     }
 

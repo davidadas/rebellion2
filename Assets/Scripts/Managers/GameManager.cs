@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
+using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -100,6 +101,11 @@ public sealed class GameManager
     public event Action<BombardmentResult> BombardmentCompleted;
 
     /// <summary>
+    /// Raised after a result batch and all of its domain reactions have been resolved.
+    /// </summary>
+    public event Action<IReadOnlyList<GameResult>> ResultsResolved;
+
+    /// <summary>
     /// Raised after planetary-assault results complete domain reaction processing.
     /// </summary>
     public event Action<IReadOnlyList<PlanetaryAssaultResult>> PlanetaryAssaultsResolved;
@@ -180,8 +186,18 @@ public sealed class GameManager
     /// <summary>
     /// Returns the player-controlled faction.
     /// </summary>
-    /// <returns>The faction whose PlayerID is set.</returns>
+    /// <returns>The faction controlled by the human game participant.</returns>
     public Faction GetPlayerFaction() => _game.GetPlayerFaction();
+
+    /// <summary>
+    /// Returns the durable interface state for the local human participant.
+    /// </summary>
+    /// <returns>The local participant's interface state.</returns>
+    public PlayerUIState GetPlayerUIState()
+    {
+        Faction faction = GetPlayerFaction();
+        return _game.GetFactionPlayer(faction.InstanceID).UIState;
+    }
 
     /// <summary>
     /// Returns the fog of war system for building faction-specific galaxy views.
@@ -328,6 +344,8 @@ public sealed class GameManager
         _factionAutomationSystem.ProcessTick();
         ProcessResults(_resourceProductionSystem.ProcessTick());
         ProcessResults(_manufacturingSystem.ProcessTick());
+        // Refill capacity released by completed orders before tick observers render idle lanes.
+        _factionAutomationSystem.ProcessTick();
         ProcessResults(_maintenanceSystem.ProcessTick());
         ProcessResults(_recoverySystem.ProcessTick());
         ProcessResults(_captiveSystem.ProcessTick());
@@ -521,7 +539,8 @@ public sealed class GameManager
             _bombardmentSystem,
             _planetaryAssaultSystem,
             _randomProvider,
-            _fogOfWarSystem
+            _fogOfWarSystem,
+            _maintenanceSystem
         );
 
         InitializeResultProcessing();
@@ -545,6 +564,9 @@ public sealed class GameManager
         _resultProcessor.Subscribe<OfficerCaptureStateResult>(_missionSystem);
         _resultProcessor.Subscribe<OfficerCaptureStateResult>(_captiveSystem);
         _resultProcessor.Subscribe<IntelligenceRevealedResult>(_fogOfWarSystem);
+        _resultProcessor.Subscribe<GameObjectDestroyedResult>(_manufacturingSystem);
+        _resultProcessor.Subscribe<BombardmentResult>(_manufacturingSystem);
+        _resultProcessor.Subscribe<PlanetaryAssaultResult>(_manufacturingSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
 
         _movementSystem.ResultsProduced += HandleSystemResultsProduced;
@@ -674,6 +696,8 @@ public sealed class GameManager
     )
     {
         List<GameResult> resolvedResults = _resultProcessor.Process(results);
+        if (resolvedResults.Count > 0)
+            ResultsResolved?.Invoke(resolvedResults);
         List<PlanetaryAssaultResult> assaultResults = resolvedResults
             .OfType<PlanetaryAssaultResult>()
             .ToList();

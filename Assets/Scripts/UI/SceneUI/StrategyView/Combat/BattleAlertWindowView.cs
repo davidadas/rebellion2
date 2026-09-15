@@ -109,6 +109,9 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     [SerializeField]
     private BattleResultItemView resultPersonnelItemTemplate;
 
+    [SerializeField]
+    private RectTransform resultItemsScrollPaddingTemplate;
+
     [Header("Primary Controls")]
     [SerializeField]
     private RawImage[] viewButtonImages = Array.Empty<RawImage>();
@@ -765,8 +768,9 @@ public sealed class BattleAlertWindowView : MonoBehaviour
             : standardDestroyedResultItems;
 
         SetResultColumnVisibility(result.UsesPersonnelColumns);
+        int paddingHeight = UILayout.GetSourceRect(resultItemsScrollPaddingTemplate).height;
         resultRowsScrollArea.SetContentHeight(
-            contentRows * template.Height,
+            contentRows * template.Height + paddingHeight,
             template.Height,
             resetRowsScroll
         );
@@ -1120,6 +1124,10 @@ public sealed class BattleAlertWindowView : MonoBehaviour
         RequireReference(resultPersonnelDestroyedColumn, nameof(resultPersonnelDestroyedColumn));
         RequireReference(resultStandardItemTemplate, nameof(resultStandardItemTemplate));
         RequireReference(resultPersonnelItemTemplate, nameof(resultPersonnelItemTemplate));
+        RequireReference(
+            resultItemsScrollPaddingTemplate,
+            nameof(resultItemsScrollPaddingTemplate)
+        );
         RequireValid(
             resultPlanetaryStandardColumnHeaderTextFields?.Length == _standardResultColumnCount,
             nameof(resultPlanetaryStandardColumnHeaderTextFields)
@@ -1170,6 +1178,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
         rowTemplate.gameObject.SetActive(false);
         resultStandardItemTemplate.gameObject.SetActive(false);
         resultPersonnelItemTemplate.gameObject.SetActive(false);
+        resultItemsScrollPaddingTemplate.gameObject.SetActive(false);
     }
 
     /// <summary>

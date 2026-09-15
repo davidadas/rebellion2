@@ -107,6 +107,11 @@ public sealed class MissionsWindowView : MonoBehaviour, IPointerClickHandler
     internal event Action<MissionsWindowView, int, PointerEventData> ParticipantPressed;
 
     /// <summary>
+    /// Occurs when the participant is released.
+    /// </summary>
+    internal event Action<MissionsWindowView, int, PointerEventData> ParticipantReleased;
+
+    /// <summary>
     /// Occurs when the surface is clicked.
     /// </summary>
     internal event Action<MissionsWindowView, PointerEventData> SurfaceClicked;
@@ -410,6 +415,7 @@ public sealed class MissionsWindowView : MonoBehaviour, IPointerClickHandler
             );
             row.name = $"MissionParticipantRow{participantRowViews.Count}";
             row.Pressed += HandleParticipantRowPressed;
+            row.Released += HandleParticipantRowReleased;
             participantRowViews.Add(row);
         }
 
@@ -475,6 +481,20 @@ public sealed class MissionsWindowView : MonoBehaviour, IPointerClickHandler
     }
 
     /// <summary>
+    /// Forwards a participant-row release with its stable visual index.
+    /// </summary>
+    /// <param name="row">The row that received the pointer.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleParticipantRowReleased(
+        MissionParticipantRowView row,
+        PointerEventData eventData
+    )
+    {
+        if (row != null)
+            ParticipantReleased?.Invoke(this, row.Index, eventData);
+    }
+
+    /// <summary>
     /// Removes event subscriptions from every instantiated mission row.
     /// </summary>
     private void UnbindMissionRows()
@@ -498,8 +518,11 @@ public sealed class MissionsWindowView : MonoBehaviour, IPointerClickHandler
     {
         foreach (MissionParticipantRowView row in participantRowViews)
         {
-            if (row != null)
-                row.Pressed -= HandleParticipantRowPressed;
+            if (row == null)
+                continue;
+
+            row.Pressed -= HandleParticipantRowPressed;
+            row.Released -= HandleParticipantRowReleased;
         }
     }
 

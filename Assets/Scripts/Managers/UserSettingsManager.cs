@@ -58,11 +58,17 @@ public sealed class UserSettingsManager
     /// </summary>
     /// <param name="packID">The selected pack ID, or null.</param>
     /// <param name="scenarioID">The selected scenario ID, or null.</param>
+    /// <param name="disabledModIDs">The IDs of mods disabled for the next startup.</param>
     /// <returns>True if a non-empty pack selection was read.</returns>
-    public static bool TryReadContentSelection(out string packID, out string scenarioID)
+    public static bool TryReadContentSelection(
+        out string packID,
+        out string scenarioID,
+        out string[] disabledModIDs
+    )
     {
         packID = null;
         scenarioID = null;
+        disabledModIDs = Array.Empty<string>();
         try
         {
             string path = Path.Combine(Application.persistentDataPath, _settingsFileName);
@@ -75,6 +81,7 @@ public sealed class UserSettingsManager
 
             packID = settings.Content.ActivePackID;
             scenarioID = settings.Content.ActiveScenarioID;
+            disabledModIDs = settings.Content.DisabledModIDs ?? Array.Empty<string>();
             return !string.IsNullOrWhiteSpace(packID);
         }
         catch

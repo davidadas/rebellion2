@@ -9,9 +9,7 @@ namespace Rebellion.Game.FogOfWar
     [PersistableObject]
     public class PlanetSectorSnapshot
     {
-        /// <summary>
-        /// Planet snapshots keyed by planet instance ID.
-        /// </summary>
+        // Planet snapshots keyed by planet instance ID.
         public Dictionary<string, PlanetSnapshot> Planets;
 
         /// <summary>

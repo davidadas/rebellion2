@@ -1148,7 +1148,7 @@ namespace Rebellion.Systems
             if (shift == 0)
                 return;
 
-            shift = PlanetaryControlSystem.ApplyCoreWeakSupportPenalty(
+            shift = PlanetaryControlSystem.ApplyCoreSupportResistance(
                 planet,
                 faction,
                 shift,

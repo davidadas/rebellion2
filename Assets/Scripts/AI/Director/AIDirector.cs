@@ -19,6 +19,7 @@ namespace Rebellion.AI.Director
         private readonly MissionSystem _missions;
         private readonly MovementSystem _movement;
         private readonly ManufacturingSystem _manufacturing;
+        private readonly MaintenanceSystem _maintenance;
         private readonly BombardmentSystem _bombardment;
         private readonly PlanetaryAssaultSystem _planetaryAssault;
         private readonly IReadOnlyList<IAITurnPhase> _turnPhases;
@@ -33,6 +34,7 @@ namespace Rebellion.AI.Director
         /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
         /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
+        /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         public AIDirector(
             GameRoot game,
             MissionSystem missions,
@@ -40,7 +42,8 @@ namespace Rebellion.AI.Director
             ManufacturingSystem manufacturing,
             BombardmentSystem bombardment,
             PlanetaryAssaultSystem planetaryAssault,
-            IRandomNumberProvider random
+            IRandomNumberProvider random,
+            MaintenanceSystem maintenance = null
         )
         {
             _game = game;
@@ -48,13 +51,16 @@ namespace Rebellion.AI.Director
             _missions = missions;
             _movement = movement;
             _manufacturing = manufacturing;
+            _maintenance = maintenance;
             _bombardment = bombardment;
             _planetaryAssault = planetaryAssault;
             _turnPhases = new List<IAITurnPhase>
             {
+                new AISpecialForcesIntentPhase(),
                 new AIPlanningPhase(),
                 new AIScoringPhase(),
                 new AISelectionPhase(),
+                new AIMissionDecoyAssignmentPhase(),
                 new AIExecutionPhase(),
             };
         }
@@ -95,11 +101,21 @@ namespace Rebellion.AI.Director
                 _bombardment,
                 _planetaryAssault,
                 _random,
-                factionView
+                factionView,
+                _maintenance
             );
+            yield return null;
+
             foreach (IAITurnPhase phase in _turnPhases)
             {
-                phase.Execute(context);
+                if (phase is IAIIncrementalTurnPhase incrementalPhase)
+                {
+                    foreach (object step in incrementalPhase.ExecuteIncrementally(context))
+                        yield return step;
+                }
+                else
+                    phase.Execute(context);
+
                 yield return null;
             }
 

@@ -1,0 +1,469 @@
+using System;
+using System.Linq;
+using System.Reflection;
+using NUnit.Framework;
+using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
+{
+    [TestFixture]
+    public class GalaxyMapViewTests
+    {
+        private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+
+        private Texture2D _backgroundTexture;
+        private Texture2D _headquartersTexture;
+        private GameObject _rootObject;
+        private Texture2D _starTexture;
+        private GalaxyMapView _view;
+
+        /// <summary>
+        /// Sets up.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            _view = _rootObject.GetComponentInChildren<GalaxyMapView>(true);
+            _backgroundTexture = new Texture2D(800, 400);
+            _starTexture = new Texture2D(45, 45);
+            _headquartersTexture = new Texture2D(36, 36);
+            UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
+            Canvas.ForceUpdateCanvases();
+        }
+
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            UnityEngine.Object.DestroyImmediate(_headquartersTexture);
+            UnityEngine.Object.DestroyImmediate(_starTexture);
+            UnityEngine.Object.DestroyImmediate(_backgroundTexture);
+            UnityEngine.Object.DestroyImmediate(_rootObject);
+        }
+
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
+        [Test]
+        public void Render_NullData_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => _view.Render(null));
+        }
+
+        /// <summary>
+        /// Verifies render complete map applies background filter label and clusters.
+        /// </summary>
+        [Test]
+        public void Render_CompleteMap_AppliesBackgroundFilterLabelAndClusters()
+        {
+            GalaxyMapRenderData data = CreateMap(
+                new[]
+                {
+                    CreateCluster("sector-1", "Corellian", 100, 120, "planet-1"),
+                    CreateCluster("sector-2", "Kessel", 300, 220, "planet-2"),
+                },
+                "Idle Shipyards"
+            );
+
+            _view.Render(data);
+
+            RawImage background = GetField<RawImage>("backgroundImage");
+            Assert.AreSame(_backgroundTexture, background.texture);
+            Assert.IsTrue(background.enabled);
+            Assert.IsFalse(background.raycastTarget);
+            Assert.AreEqual(Color.white, background.color);
+            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), background.uvRect);
+            Assert.AreEqual(
+                new RectInt(49, 26, 777, 392),
+                UILayout.GetSourceRect(_view.Background)
+            );
+            Assert.AreEqual(
+                new RectInt(49, 26, 777, 392),
+                UILayout.GetSourceRect(_view.PlanetSectorClusters)
+            );
+            TextMeshProUGUI filterLabel = GetField<TextMeshProUGUI>("activeFilterLabel");
+            Assert.IsTrue(filterLabel.gameObject.activeSelf);
+            Assert.AreEqual("Idle Shipyards", filterLabel.text);
+            Assert.AreEqual(Color.yellow, filterLabel.color);
+            Assert.AreEqual(15f, filterLabel.fontSize);
+            Assert.AreEqual(
+                new RectInt(200, 12, 300, 20),
+                UILayout.GetSourceRect(filterLabel.rectTransform)
+            );
+            PlanetSectorClusterView[] clusters = FindClusters();
+            Assert.AreEqual(2, clusters.Length);
+            Assert.AreEqual("sector-1", clusters[0].name);
+            Assert.AreEqual("sector-1", clusters[0].SectorInstanceId);
+            Assert.AreEqual(new RectInt(100, 120, 50, 50), clusters[0].GetRenderedSourceRect());
+            Assert.AreEqual("sector-2", clusters[1].name);
+        }
+
+        /// <summary>
+        /// Verifies render changed cluster set reuses existing and hides missing clusters.
+        /// </summary>
+        [Test]
+        public void Render_ChangedClusterSet_ReusesExistingAndHidesMissingClusters()
+        {
+            _view.Render(
+                CreateMap(
+                    new[]
+                    {
+                        CreateCluster("sector-1", "Corellian", 100, 120, "planet-1"),
+                        CreateCluster("sector-2", "Kessel", 300, 220, "planet-2"),
+                    },
+                    string.Empty
+                )
+            );
+            PlanetSectorClusterView first = FindCluster("sector-1");
+            PlanetSectorClusterView second = FindCluster("sector-2");
+
+            _view.Render(
+                CreateMap(
+                    new[]
+                    {
+                        CreateCluster("sector-2", "Updated Kessel", 320, 230, "planet-2"),
+                        CreateCluster("sector-3", "Naboo", 500, 100, "planet-3"),
+                    },
+                    string.Empty
+                )
+            );
+
+            Assert.IsFalse(first.gameObject.activeSelf);
+            Assert.AreSame(second, FindCluster("sector-2"));
+            Assert.IsTrue(second.gameObject.activeSelf);
+            Assert.AreEqual(new RectInt(320, 230, 50, 50), second.GetRenderedSourceRect());
+            Assert.IsTrue(FindCluster("sector-3").gameObject.activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies render null clusters and empty filter hides pooled clusters and label.
+        /// </summary>
+        [Test]
+        public void Render_NullClustersAndEmptyFilter_HidesPooledClustersAndLabel()
+        {
+            _view.Render(
+                CreateMap(
+                    new[] { CreateCluster("sector-1", "Corellian", 100, 120, "planet-1") },
+                    "Idle Shipyards"
+                )
+            );
+            PlanetSectorClusterView cluster = FindCluster("sector-1");
+
+            _view.Render(
+                new GalaxyMapRenderData(
+                    null,
+                    null,
+                    Color.white,
+                    new GalaxyMapActiveFilterLabelRenderData(string.Empty, Color.white, default, 0),
+                    null
+                )
+            );
+
+            Assert.IsFalse(GetField<RawImage>("backgroundImage").enabled);
+            Assert.IsFalse(GetField<TextMeshProUGUI>("activeFilterLabel").gameObject.activeSelf);
+            Assert.IsFalse(cluster.gameObject.activeSelf);
+        }
+
+        /// <summary>
+        /// Verifies try get planet instance id pointer over rendered marker returns planet identity.
+        /// </summary>
+        [Test]
+        public void TryGetPlanetInstanceID_PointerOverRenderedMarker_ReturnsPlanetIdentity()
+        {
+            _view.Render(
+                CreateMap(
+                    new[] { CreateCluster("sector-1", "Corellian", 100, 120, "planet-1") },
+                    string.Empty
+                )
+            );
+            PlanetSectorClusterView cluster = FindCluster("sector-1");
+            PointerEventData eventData = CreateClusterPointerEvent(cluster, new Vector2(7f, 9f));
+
+            bool found = _view.TryGetPlanetInstanceID(eventData, out string planetInstanceId);
+
+            Assert.IsTrue(found);
+            Assert.AreEqual("planet-1", planetInstanceId);
+        }
+
+        /// <summary>
+        /// Verifies try get planet instance id null or outside pointer returns false.
+        /// </summary>
+        [Test]
+        public void TryGetPlanetInstanceID_NullOrOutsidePointer_ReturnsFalse()
+        {
+            _view.Render(
+                CreateMap(
+                    new[] { CreateCluster("sector-1", "Corellian", 100, 120, "planet-1") },
+                    string.Empty
+                )
+            );
+            PointerEventData outside = CreateMapPointerEvent(new Vector2(-1000f, -1000f));
+
+            bool nullFound = _view.TryGetPlanetInstanceID(null, out string nullIdentity);
+            bool outsideFound = _view.TryGetPlanetInstanceID(outside, out string outsideIdentity);
+
+            Assert.IsFalse(nullFound);
+            Assert.IsNull(nullIdentity);
+            Assert.IsFalse(outsideFound);
+            Assert.IsNull(outsideIdentity);
+        }
+
+        /// <summary>
+        /// Verifies try get source position inside outside and null pointers return expected results.
+        /// </summary>
+        [Test]
+        public void TryGetSourcePosition_InsideOutsideAndNullPointers_ReturnExpectedResults()
+        {
+            PointerEventData inside = CreateMapPointerEvent(Vector2.zero);
+            PointerEventData outside = CreateMapPointerEvent(new Vector2(-10000f, -10000f));
+
+            bool insideResult = _view.TryGetSourcePosition(
+                inside,
+                out int insideX,
+                out int insideY
+            );
+            bool outsideResult = _view.TryGetSourcePosition(
+                outside,
+                out int outsideX,
+                out int outsideY
+            );
+            bool nullResult = _view.TryGetSourcePosition(null, out int nullX, out int nullY);
+
+            Assert.IsTrue(insideResult);
+            Assert.AreEqual(426, insideX);
+            Assert.AreEqual(240, insideY);
+            Assert.IsFalse(outsideResult);
+            Assert.Less(outsideX, 0);
+            Assert.Greater(outsideY, 480);
+            Assert.IsFalse(nullResult);
+            Assert.AreEqual(0, nullX);
+            Assert.AreEqual(0, nullY);
+        }
+
+        /// <summary>
+        /// Verifies cluster pointer events rendered cluster forward semantic map requests.
+        /// </summary>
+        [Test]
+        public void ClusterPointerEvents_RenderedCluster_ForwardSemanticMapRequests()
+        {
+            _view.Render(
+                CreateMap(
+                    new[] { CreateCluster("sector-1", "Corellian", 100, 120, "planet-1") },
+                    string.Empty
+                )
+            );
+            string hoveredSector = null;
+            int hoverClearedCount = 0;
+            string openedSector = null;
+            int openedX = -1;
+            int openedY = -1;
+            _view.SectorHovered += sectorId => hoveredSector = sectorId;
+            _view.SectorHoverCleared += () => hoverClearedCount++;
+            _view.SectorOpenRequested += (sectorId, x, y) =>
+            {
+                openedSector = sectorId;
+                openedX = x;
+                openedY = y;
+            };
+            PlanetSectorClusterView cluster = FindCluster("sector-1");
+            PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
+            eventData.button = PointerEventData.InputButton.Left;
+            eventData.clickCount = 2;
+
+            cluster.OnPointerEnter(eventData);
+            cluster.OnPointerExit(eventData);
+            cluster.OnPointerClick(eventData);
+
+            Assert.AreEqual("sector-1", hoveredSector);
+            Assert.AreEqual(1, hoverClearedCount);
+            Assert.AreEqual("sector-1", openedSector);
+            Assert.AreEqual(426, openedX);
+            Assert.AreEqual(240, openedY);
+        }
+
+        /// <summary>
+        /// Verifies on destroy rendered clusters unbinds children clears state and raises destroyed event.
+        /// </summary>
+        [Test]
+        public void OnDestroy_RenderedClusters_UnbindsChildrenClearsStateAndRaisesDestroyedEvent()
+        {
+            _view.Render(
+                CreateMap(
+                    new[] { CreateCluster("sector-1", "Corellian", 100, 120, "planet-1") },
+                    string.Empty
+                )
+            );
+            GalaxyMapView destroyedView = null;
+            int hoverCount = 0;
+            int clearCount = 0;
+            int openCount = 0;
+            _view.Destroyed += view => destroyedView = view;
+            _view.SectorHovered += _ => hoverCount++;
+            _view.SectorHoverCleared += () => clearCount++;
+            _view.SectorOpenRequested += (_, _, _) => openCount++;
+            PlanetSectorClusterView cluster = FindCluster("sector-1");
+            PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
+            eventData.button = PointerEventData.InputButton.Left;
+            eventData.clickCount = 2;
+
+            UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
+            cluster.OnPointerEnter(eventData);
+            cluster.OnPointerExit(eventData);
+            cluster.OnPointerClick(eventData);
+            bool found = _view.TryGetPlanetInstanceID(eventData, out string planetInstanceId);
+
+            Assert.AreSame(_view, destroyedView);
+            Assert.AreEqual(0, hoverCount);
+            Assert.AreEqual(0, clearCount);
+            Assert.AreEqual(0, openCount);
+            Assert.IsFalse(found);
+            Assert.IsNull(planetInstanceId);
+        }
+
+        /// <summary>
+        /// Creates map.
+        /// </summary>
+        /// <param name="clusters">The clusters.</param>
+        /// <param name="activeFilter">The active filter.</param>
+        /// <returns>The created map.</returns>
+        private GalaxyMapRenderData CreateMap(
+            GalaxyMapClusterRenderData[] clusters,
+            string activeFilter
+        )
+        {
+            return new GalaxyMapRenderData(
+                _backgroundTexture,
+                new RectInt(49, 26, 777, 392),
+                Color.white,
+                new GalaxyMapActiveFilterLabelRenderData(
+                    activeFilter,
+                    Color.yellow,
+                    new RectInt(200, 12, 300, 20),
+                    15
+                ),
+                clusters
+            );
+        }
+
+        /// <summary>
+        /// Creates cluster.
+        /// </summary>
+        /// <param name="sectorInstanceId">The sector instance id.</param>
+        /// <param name="label">The label.</param>
+        /// <param name="sourceX">The source x.</param>
+        /// <param name="sourceY">The source y.</param>
+        /// <param name="planetInstanceId">The planet instance id.</param>
+        /// <returns>The created cluster.</returns>
+        private GalaxyMapClusterRenderData CreateCluster(
+            string sectorInstanceId,
+            string label,
+            int sourceX,
+            int sourceY,
+            string planetInstanceId
+        )
+        {
+            return new GalaxyMapClusterRenderData(
+                sectorInstanceId,
+                sourceX,
+                sourceY,
+                label,
+                true,
+                new[]
+                {
+                    new GalaxyMapStarRenderData(
+                        planetInstanceId,
+                        5,
+                        7,
+                        _starTexture,
+                        _headquartersTexture
+                    ),
+                }
+            );
+        }
+
+        /// <summary>
+        /// Creates map pointer event.
+        /// </summary>
+        /// <param name="localPosition">The local position.</param>
+        /// <returns>The created map pointer event.</returns>
+        private PointerEventData CreateMapPointerEvent(Vector2 localPosition)
+        {
+            RectTransform rect = _view.transform as RectTransform;
+            return new PointerEventData(null)
+            {
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    rect.TransformPoint(localPosition)
+                ),
+            };
+        }
+
+        /// <summary>
+        /// Creates cluster pointer event.
+        /// </summary>
+        /// <param name="cluster">The cluster.</param>
+        /// <param name="sourcePosition">The source position.</param>
+        /// <returns>The created cluster pointer event.</returns>
+        private static PointerEventData CreateClusterPointerEvent(
+            PlanetSectorClusterView cluster,
+            Vector2 sourcePosition
+        )
+        {
+            RectTransform rect = cluster.transform as RectTransform;
+            Vector3 localPoint = new Vector3(
+                rect.rect.xMin + sourcePosition.x,
+                rect.rect.yMax - sourcePosition.y,
+                0f
+            );
+            return new PointerEventData(null)
+            {
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    rect.TransformPoint(localPoint)
+                ),
+            };
+        }
+
+        /// <summary>
+        /// Finds cluster.
+        /// </summary>
+        /// <param name="sectorInstanceId">The sector instance id.</param>
+        /// <returns>The matching cluster.</returns>
+        private PlanetSectorClusterView FindCluster(string sectorInstanceId)
+        {
+            return FindClusters().Single(cluster => cluster.name == sectorInstanceId);
+        }
+
+        /// <summary>
+        /// Finds clusters.
+        /// </summary>
+        /// <returns>The matching clusters.</returns>
+        private PlanetSectorClusterView[] FindClusters()
+        {
+            return _view
+                .GetComponentsInChildren<PlanetSectorClusterView>(true)
+                .OrderBy(cluster => cluster.name)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Gets field.
+        /// </summary>
+        /// <param name="fieldName">The field name.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        /// <returns>The requested field.</returns>
+        private T GetField<T>(string fieldName)
+        {
+            return (T)
+                typeof(GalaxyMapView)
+                    .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+                    .GetValue(_view);
+        }
+    }
+}

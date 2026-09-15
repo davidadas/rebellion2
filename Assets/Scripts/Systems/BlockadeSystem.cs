@@ -59,16 +59,18 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies evacuation losses when a unit departs a blockaded planet.
-        /// Only regiments are subject to losses — a friendly fleet at a planet
-        /// breaks the blockade, so fleets never evacuate through one.
+        /// Applies evacuation losses when a unit departs through an opposing blockade.
+        /// Only regiments are currently subject to losses.
         /// </summary>
         /// <param name="unit">The unit attempting to leave.</param>
         /// <param name="originPlanet">The planet the unit is departing from.</param>
         /// <returns>Result describing the loss, or null if the unit survived.</returns>
         public EvacuationLossesResult ApplyEvacuationLosses(IMovable unit, Planet originPlanet)
         {
-            if (!originPlanet.IsBlockaded())
+            if (
+                !originPlanet.IsBlockadedFor(unit.GetOwnerInstanceID())
+                || originPlanet.HasOperationalIonCannon()
+            )
                 return null;
 
             if (unit is Regiment regiment && RollEvacuationLoss())

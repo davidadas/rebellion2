@@ -1,0 +1,408 @@
+using System;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
+using UnityEngine;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
+{
+    [TestFixture]
+    public class FacilityWindowSessionTests
+    {
+        private GameObject _windowObject;
+        private Planet _planet;
+        private GalaxyMapPlanet _mapPlanet;
+        private FacilityWindowSession _session;
+
+        /// <summary>
+        /// Sets up.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            _windowObject = new GameObject(
+                "FacilityWindow",
+                typeof(RectTransform),
+                typeof(UIWindow)
+            );
+            UIWindow window = _windowObject.GetComponent<UIWindow>();
+            window.Configure(1, 10, 20, 100, 100, false, true, false);
+            _planet = new Planet
+            {
+                InstanceID = "planet",
+                DisplayName = "Corellia",
+                NumRawResourceNodes = 4,
+            };
+            _mapPlanet = new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty);
+            _session = new FacilityWindowSession(window, _mapPlanet);
+        }
+
+        /// <summary>
+        /// Executes tear down.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            UnityEngine.Object.DestroyImmediate(_windowObject);
+        }
+
+        /// <summary>
+        /// Verifies constructor null window throws argument null exception.
+        /// </summary>
+        [Test]
+        public void Constructor_NullWindow_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new FacilityWindowSession(null, _mapPlanet));
+        }
+
+        /// <summary>
+        /// Verifies constructor planet projection without planet throws argument exception.
+        /// </summary>
+        [Test]
+        public void Constructor_PlanetProjectionWithoutPlanet_ThrowsArgumentException()
+        {
+            GalaxyMapPlanet projection = new GalaxyMapPlanet(
+                new GalaxyPlanetSector(),
+                null,
+                string.Empty
+            );
+
+            Assert.Throws<ArgumentException>(() =>
+                new FacilityWindowSession(_windowObject.GetComponent<UIWindow>(), projection)
+            );
+        }
+
+        /// <summary>
+        /// Verifies reconcile mixed facilities orders inventory and calculates display counts.
+        /// </summary>
+        [Test]
+        public void Reconcile_MixedFacilities_OrdersInventoryAndCalculatesDisplayCounts()
+        {
+            _planet.AddTestChild(CreateBuilding("z-shipyard", "Zeta", BuildingType.Shipyard));
+            _planet.AddTestChild(CreateBuilding("a-shipyard", "Alpha", BuildingType.Shipyard));
+            _planet.AddTestChild(
+                CreateBuilding("training", "Training", BuildingType.TrainingFacility)
+            );
+            _planet.AddTestChild(CreateBuilding("mine", "Mine", BuildingType.Mine));
+
+            _session.Reconcile();
+
+            CollectionAssert.AreEqual(
+                new[] { "Alpha", "Zeta" },
+                _session.GetItems(FacilityWindowTab.Shipyards).Select(item => item.DisplayName)
+            );
+            Assert.AreEqual(1, _session.GetDisplayCount(FacilityWindowTab.Manufacturing));
+            Assert.AreEqual(2, _session.GetDisplayCount(FacilityWindowTab.Shipyards));
+            Assert.AreEqual(1, _session.GetDisplayCount(FacilityWindowTab.Training));
+            Assert.AreEqual(0, _session.GetDisplayCount(FacilityWindowTab.Construction));
+            Assert.AreEqual(4, _session.GetDisplayCount(FacilityWindowTab.Mines));
+        }
+
+        /// <summary>
+        /// Verifies reconcile removed context building clears selection and context.
+        /// </summary>
+        [Test]
+        public void Reconcile_RemovedContextBuilding_ClearsSelectionAndContext()
+        {
+            Building building = CreateBuilding("shipyard", "Shipyard", BuildingType.Shipyard);
+            _planet.AddTestChild(building);
+            _session.Reconcile();
+            _session.SetActiveTab(FacilityWindowTab.Shipyards);
+            _session.SelectBuildingForContext(0);
+
+            _planet.RemoveChildren<Building>(_ => true);
+            _session.Reconcile();
+
+            Assert.IsEmpty(_session.SelectedBuildingIds);
+            Assert.IsNull(_session.GetContextBuilding());
+            Assert.IsNull(_session.GetStatusBuilding());
+        }
+
+        /// <summary>
+        /// Verifies select manufacturing card valid card selects semantic lane.
+        /// </summary>
+        [Test]
+        public void SelectManufacturingCard_ValidCard_SelectsSemanticLane()
+        {
+            _session.SelectManufacturingCard(0);
+
+            Assert.AreEqual(FacilityWindowTab.Shipyards, _session.GetSelectedManufacturingTab());
+            Assert.AreEqual(FacilityWindowTab.Shipyards, _session.GetContextManufacturingTab());
+            CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedCards);
+        }
+
+        /// <summary>
+        /// Verifies select manufacturing card invalid card does not change selection.
+        /// </summary>
+        [Test]
+        public void SelectManufacturingCard_InvalidCard_DoesNotChangeSelection()
+        {
+            _session.SelectManufacturingCard(0);
+
+            _session.SelectManufacturingCard(-1);
+
+            Assert.AreEqual(FacilityWindowTab.Shipyards, _session.GetSelectedManufacturingTab());
+            CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedCards);
+        }
+
+        /// <summary>
+        /// Verifies select manufacturing card for context different lane replaces selection.
+        /// </summary>
+        [Test]
+        public void SelectManufacturingCardForContext_DifferentLane_ReplacesSelection()
+        {
+            _session.SelectManufacturingCard(0);
+
+            _session.SelectManufacturingCardForContext(FacilityWindowTab.Training);
+
+            Assert.AreEqual(FacilityWindowTab.Training, _session.ContextManufacturingTab);
+            Assert.AreEqual(FacilityWindowTab.Training, _session.GetContextManufacturingTab());
+            CollectionAssert.AreEqual(new[] { 1 }, _session.SelectedCards);
+        }
+
+        /// <summary>
+        /// Verifies set active tab different tab clears manufacturing selection and context.
+        /// </summary>
+        [Test]
+        public void SetActiveTab_DifferentTab_ClearsManufacturingSelectionAndContext()
+        {
+            _session.SelectManufacturingCardForContext(FacilityWindowTab.Shipyards);
+
+            _session.SetActiveTab(FacilityWindowTab.Shipyards);
+
+            Assert.AreEqual(FacilityWindowTab.Shipyards, _session.ActiveTab);
+            Assert.IsEmpty(_session.SelectedCards);
+            Assert.IsNull(_session.ContextManufacturingTab);
+            Assert.IsNull(_session.GetSelectedManufacturingTab());
+            Assert.IsNull(_session.GetContextManufacturingTab());
+        }
+
+        /// <summary>
+        /// Verifies select building valid index selects building by identity.
+        /// </summary>
+        [Test]
+        public void SelectBuilding_ValidIndex_SelectsBuildingByIdentity()
+        {
+            Building alpha = CreateBuilding("alpha", "Alpha", BuildingType.Shipyard);
+            Building zeta = CreateBuilding("zeta", "Zeta", BuildingType.Shipyard);
+            _planet.AddTestChild(zeta);
+            _planet.AddTestChild(alpha);
+            _session.Reconcile();
+            _session.SetActiveTab(FacilityWindowTab.Shipyards);
+
+            _session.SelectBuilding(0);
+
+            CollectionAssert.AreEqual(new[] { "alpha" }, _session.SelectedBuildingIds);
+            CollectionAssert.AreEqual(new[] { alpha }, _session.GetSelectedBuildings());
+            Assert.AreSame(alpha, _session.GetStatusBuilding());
+            Assert.AreSame(alpha, _session.GetInventoryBuilding(0));
+        }
+
+        /// <summary>
+        /// Verifies select building invalid index preserves selection.
+        /// </summary>
+        [Test]
+        public void SelectBuilding_InvalidIndex_PreservesSelection()
+        {
+            Building building = CreateBuilding("shipyard", "Shipyard", BuildingType.Shipyard);
+            _planet.AddTestChild(building);
+            _session.Reconcile();
+            _session.SetActiveTab(FacilityWindowTab.Shipyards);
+            _session.SelectBuilding(0);
+
+            _session.SelectBuilding(2);
+
+            CollectionAssert.AreEqual(new[] { "shipyard" }, _session.SelectedBuildingIds);
+            CollectionAssert.AreEqual(new[] { building }, _session.GetSelectedBuildings());
+        }
+
+        /// <summary>
+        /// Verifies select building known building navigates to inventory tab.
+        /// </summary>
+        [Test]
+        public void SelectBuilding_KnownBuilding_NavigatesToInventoryTab()
+        {
+            Building refinery = CreateBuilding("refinery", "Refinery", BuildingType.Refinery);
+            _planet.AddTestChild(refinery);
+            _session.Reconcile();
+
+            bool selected = _session.SelectBuilding(FacilityWindowTab.Refineries, refinery);
+
+            Assert.IsTrue(selected);
+            Assert.AreEqual(FacilityWindowTab.Refineries, _session.ActiveTab);
+            CollectionAssert.AreEqual(new[] { "refinery" }, _session.SelectedBuildingIds);
+            CollectionAssert.AreEqual(new[] { refinery }, _session.GetSelectedBuildings());
+        }
+
+        /// <summary>
+        /// Verifies select building building outside tab returns false.
+        /// </summary>
+        [Test]
+        public void SelectBuilding_BuildingOutsideTab_ReturnsFalse()
+        {
+            Building refinery = CreateBuilding("refinery", "Refinery", BuildingType.Refinery);
+            _planet.AddTestChild(refinery);
+            _session.Reconcile();
+
+            bool selected = _session.SelectBuilding(FacilityWindowTab.Shipyards, refinery);
+
+            Assert.IsFalse(selected);
+            Assert.AreEqual(FacilityWindowTab.Manufacturing, _session.ActiveTab);
+            Assert.IsEmpty(_session.SelectedBuildingIds);
+        }
+
+        /// <summary>
+        /// Verifies select building for context unselected building replaces selection.
+        /// </summary>
+        [Test]
+        public void SelectBuildingForContext_UnselectedBuilding_ReplacesSelection()
+        {
+            Building alpha = CreateBuilding("alpha", "Alpha", BuildingType.Shipyard);
+            Building beta = CreateBuilding("beta", "Beta", BuildingType.Shipyard);
+            _planet.AddTestChild(alpha);
+            _planet.AddTestChild(beta);
+            _session.Reconcile();
+            _session.SetActiveTab(FacilityWindowTab.Shipyards);
+            _session.SelectBuilding(0);
+
+            _session.SelectBuildingForContext(1);
+
+            CollectionAssert.AreEqual(new[] { "beta" }, _session.SelectedBuildingIds);
+            Assert.AreSame(beta, _session.GetContextBuilding());
+            Assert.AreSame(beta, _session.GetStatusBuilding());
+        }
+
+        /// <summary>
+        /// Verifies rebind planet replacement building with same id preserves selection.
+        /// </summary>
+        [Test]
+        public void RebindPlanet_ReplacementBuildingWithSameID_PreservesSelection()
+        {
+            Building original = CreateBuilding("shipyard", "Original", BuildingType.Shipyard);
+            _planet.AddTestChild(original);
+            _session.Reconcile();
+            _session.SelectBuilding(FacilityWindowTab.Shipyards, original);
+            Building replacement = CreateBuilding(
+                original.InstanceID,
+                "Replacement",
+                BuildingType.Shipyard
+            );
+            Planet refreshedPlanet = new Planet { InstanceID = _planet.InstanceID };
+            refreshedPlanet.AddTestChild(replacement);
+            GalaxyMapPlanet refreshedProjection = new GalaxyMapPlanet(
+                new GalaxyPlanetSector(),
+                refreshedPlanet,
+                string.Empty
+            );
+
+            _session.RebindPlanet(refreshedProjection);
+
+            Assert.AreSame(refreshedProjection, _session.Planet);
+            CollectionAssert.AreEqual(new[] { original.InstanceID }, _session.SelectedBuildingIds);
+            CollectionAssert.AreEqual(new[] { replacement }, _session.GetSelectedBuildings());
+        }
+
+        /// <summary>
+        /// Verifies get destination without override returns represented planet.
+        /// </summary>
+        [Test]
+        public void GetDestination_WithoutOverride_ReturnsRepresentedPlanet()
+        {
+            _session.GetDestination(ManufacturingType.Ship, out string planetId, out string itemId);
+
+            Assert.AreEqual(_planet.InstanceID, planetId);
+            Assert.IsNull(itemId);
+        }
+
+        /// <summary>
+        /// Verifies set destination valid pair returns stored destination.
+        /// </summary>
+        [Test]
+        public void SetDestination_ValidPair_ReturnsStoredDestination()
+        {
+            _session.SetDestination(ManufacturingType.Troop, "destination-planet", "fleet");
+
+            _session.GetDestination(
+                ManufacturingType.Troop,
+                out string planetId,
+                out string itemId
+            );
+
+            Assert.AreEqual("destination-planet", planetId);
+            Assert.AreEqual("fleet", itemId);
+        }
+
+        /// <summary>
+        /// Verifies set destination empty planet id throws argument exception.
+        /// </summary>
+        [Test]
+        public void SetDestination_EmptyPlanetID_ThrowsArgumentException()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                _session.SetDestination(ManufacturingType.Building, string.Empty, null)
+            );
+        }
+
+        /// <summary>
+        /// Verifies clear context selected building preserves selection.
+        /// </summary>
+        [Test]
+        public void ClearContext_SelectedBuilding_PreservesSelection()
+        {
+            Building building = CreateBuilding("shipyard", "Shipyard", BuildingType.Shipyard);
+            _planet.AddTestChild(building);
+            _session.Reconcile();
+            _session.SetActiveTab(FacilityWindowTab.Shipyards);
+            _session.SelectBuildingForContext(0);
+
+            _session.ClearContext();
+
+            CollectionAssert.AreEqual(new[] { "shipyard" }, _session.SelectedBuildingIds);
+            CollectionAssert.AreEqual(new[] { building }, _session.GetSelectedBuildings());
+            Assert.IsNull(_session.GetContextBuilding());
+        }
+
+        /// <summary>
+        /// Verifies clear selection selected building clears selection and context.
+        /// </summary>
+        [Test]
+        public void ClearSelection_SelectedBuilding_ClearsSelectionAndContext()
+        {
+            Building building = CreateBuilding("shipyard", "Shipyard", BuildingType.Shipyard);
+            _planet.AddTestChild(building);
+            _session.Reconcile();
+            _session.SetActiveTab(FacilityWindowTab.Shipyards);
+            _session.SelectBuildingForContext(0);
+
+            _session.ClearSelection();
+
+            Assert.IsEmpty(_session.SelectedBuildingIds);
+            Assert.IsEmpty(_session.SelectedCards);
+            Assert.IsNull(_session.GetContextBuilding());
+            Assert.IsNull(_session.GetStatusBuilding());
+        }
+
+        /// <summary>
+        /// Creates building.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="displayName">The display name.</param>
+        /// <param name="buildingType">The building type.</param>
+        /// <returns>The created building.</returns>
+        private static Building CreateBuilding(
+            string instanceId,
+            string displayName,
+            BuildingType buildingType
+        )
+        {
+            return new Building
+            {
+                InstanceID = instanceId,
+                DisplayName = displayName,
+                BuildingType = buildingType,
+            };
+        }
+    }
+}

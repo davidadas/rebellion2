@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Units;
 using UnityEngine;
 
 /// <summary>
@@ -23,6 +24,79 @@ public enum FacilityWindowTabState
     Active = 0,
     Inactive = 1,
     Disabled = 2,
+}
+
+/// <summary>
+/// Defines the authored manufacturing-card order and its semantic mappings.
+/// </summary>
+internal static class FacilityManufacturingLaneCatalog
+{
+    private static readonly (FacilityWindowTab Tab, ManufacturingType Type)[] _lanes =
+    {
+        (FacilityWindowTab.Shipyards, ManufacturingType.Ship),
+        (FacilityWindowTab.Training, ManufacturingType.Troop),
+        (FacilityWindowTab.Construction, ManufacturingType.Building),
+    };
+
+    internal static int Count => _lanes.Length;
+
+    /// <summary>
+    /// Gets the manufacturing tab at one authored card index.
+    /// </summary>
+    /// <param name="cardIndex">The zero-based manufacturing-card index.</param>
+    /// <returns>The matching tab, or null when the index is outside the authored cards.</returns>
+    internal static FacilityWindowTab? GetTab(int cardIndex)
+    {
+        return cardIndex >= 0 && cardIndex < _lanes.Length ? _lanes[cardIndex].Tab : null;
+    }
+
+    /// <summary>
+    /// Gets the authored card index for one manufacturing tab.
+    /// </summary>
+    /// <param name="tab">The manufacturing tab.</param>
+    /// <returns>The zero-based card index, or null for a non-manufacturing tab.</returns>
+    internal static int? GetCardIndex(FacilityWindowTab tab)
+    {
+        for (int index = 0; index < _lanes.Length; index++)
+        {
+            if (_lanes[index].Tab == tab)
+                return index;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Maps a manufacturing tab to its domain category.
+    /// </summary>
+    /// <param name="tab">The manufacturing tab.</param>
+    /// <returns>The matching category, or null for a non-manufacturing tab.</returns>
+    internal static ManufacturingType? GetManufacturingType(FacilityWindowTab tab)
+    {
+        for (int index = 0; index < _lanes.Length; index++)
+        {
+            if (_lanes[index].Tab == tab)
+                return _lanes[index].Type;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Maps a domain manufacturing category to its facility tab.
+    /// </summary>
+    /// <param name="type">The manufacturing category.</param>
+    /// <returns>The matching tab, or null for an unsupported category.</returns>
+    internal static FacilityWindowTab? GetTab(ManufacturingType type)
+    {
+        for (int index = 0; index < _lanes.Length; index++)
+        {
+            if (_lanes[index].Type == type)
+                return _lanes[index].Tab;
+        }
+
+        return null;
+    }
 }
 
 /// <summary>

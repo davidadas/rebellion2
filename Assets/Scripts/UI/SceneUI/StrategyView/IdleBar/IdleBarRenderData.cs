@@ -8,13 +8,10 @@ using UnityEngine;
 /// </summary>
 internal sealed class IdleBarEntry
 {
-    /// <summary>Gets the represented strategy entity.</summary>
     internal ISceneNode Entity { get; }
 
-    /// <summary>Gets the entry's display name.</summary>
     internal string Name { get; }
 
-    /// <summary>Gets the resolved portrait texture.</summary>
     internal Texture2D Texture { get; }
 
     /// <summary>
@@ -35,14 +32,13 @@ internal sealed class IdleBarEntry
 /// </summary>
 internal sealed class IdleBarRenderData
 {
-    /// <summary>Gets whether the idle bar is visible.</summary>
     internal bool Visible { get; }
 
-    /// <summary>Gets the ordered entries shown in the idle bar.</summary>
     internal IReadOnlyList<IdleBarEntry> Entries { get; }
 
-    /// <summary>Gets the strategy desktop bounds.</summary>
     internal RectInt DesktopBounds { get; }
+
+    internal bool AlwaysOpen { get; }
 
     /// <summary>
     /// Creates one idle-bar presentation.
@@ -50,14 +46,17 @@ internal sealed class IdleBarRenderData
     /// <param name="visible">Whether the idle bar is visible.</param>
     /// <param name="entries">The ordered entries to display.</param>
     /// <param name="desktopBounds">The strategy desktop bounds.</param>
+    /// <param name="alwaysOpen">Whether the idle bar remains expanded without pointer hover.</param>
     internal IdleBarRenderData(
         bool visible,
         IReadOnlyList<IdleBarEntry> entries,
-        RectInt desktopBounds
+        RectInt desktopBounds,
+        bool alwaysOpen = false
     )
     {
         Visible = visible;
         Entries = entries ?? Array.Empty<IdleBarEntry>();
         DesktopBounds = desktopBounds;
+        AlwaysOpen = alwaysOpen;
     }
 }

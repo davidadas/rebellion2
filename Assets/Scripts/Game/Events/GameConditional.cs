@@ -12,13 +12,35 @@ namespace Rebellion.Game.Events
     [PersistableObject]
     public abstract class GameConditional : BaseGameEntity
     {
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public abstract bool IsMet(GameConditionContext context);
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public bool IsMet(GameRoot game) => IsMet(new GameConditionContext(game));
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="triggerResult">The trigger result.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         public bool IsMet(GameRoot game, GameResult triggerResult) =>
             IsMet(new GameConditionContext(game, triggerResult));
 
+        /// <summary>
+        /// Checks whether the condition is met.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="evaluation">The evaluation.</param>
+        /// <returns>True when the condition is met; otherwise false.</returns>
         internal bool IsMet(GameRoot game, GameEventEvaluationContext evaluation) =>
             IsMet(new GameConditionContext(game, evaluation));
     }
@@ -33,15 +55,35 @@ namespace Rebellion.Game.Events
         public GameResult TriggerResult { get; }
         public IRandomNumberProvider Random { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the GameConditionContext class.
+        /// </summary>
+        /// <param name="game">The game.</param>
         public GameConditionContext(GameRoot game)
             : this(game, null, null) { }
 
+        /// <summary>
+        /// Initializes a new instance of the GameConditionContext class.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="triggerResult">The trigger result.</param>
         public GameConditionContext(GameRoot game, GameResult triggerResult)
             : this(game, null, triggerResult) { }
 
+        /// <summary>
+        /// Initializes a new instance of the GameConditionContext class.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="evaluation">The evaluation.</param>
         public GameConditionContext(GameRoot game, GameEventEvaluationContext evaluation)
             : this(game, evaluation, evaluation?.TriggerResult) { }
 
+        /// <summary>
+        /// Initializes a new instance of the GameConditionContext class.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="evaluation">The evaluation.</param>
+        /// <param name="triggerResult">The trigger result.</param>
         private GameConditionContext(
             GameRoot game,
             GameEventEvaluationContext evaluation,

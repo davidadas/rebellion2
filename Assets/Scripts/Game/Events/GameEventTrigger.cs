@@ -89,6 +89,11 @@ namespace Rebellion.Game.Events
         // Argument Type.
         internal Type ValueType { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the GameEventTriggerArgument class.
+        /// </summary>
+        /// <param name="valueType">The value type.</param>
+        /// <param name="resolve">The resolve.</param>
         private GameEventTriggerArgument(Type valueType, Func<GameResult, object> resolve)
         {
             ValueType = valueType;
@@ -477,6 +482,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(PlanetOwnershipChangedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is PlanetOwnershipChangedResult changed
             && MatchesInstanceID(PlanetInstanceID, changed.Planet?.InstanceID)
@@ -506,6 +516,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(PlanetStatChangedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is PlanetStatChangedResult changed
             && MatchesInstanceID(PlanetInstanceID, changed.Planet?.InstanceID)
@@ -531,6 +546,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(BlockadeChangedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is BlockadeChangedResult changed
             && MatchesInstanceID(PlanetInstanceID, changed.Planet?.InstanceID)
@@ -555,6 +575,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(PlanetUprisingStartedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is PlanetUprisingStartedResult started
             && MatchesInstanceID(PlanetInstanceID, started.Planet?.InstanceID)
@@ -579,6 +604,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(PlanetUprisingEndedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is PlanetUprisingEndedResult ended
             && MatchesInstanceID(PlanetInstanceID, ended.Planet?.InstanceID)
@@ -603,6 +633,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(IntelligenceRevealedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is IntelligenceRevealedResult revealed
             && MatchesInstanceID(RecipientFactionInstanceID, revealed.Recipient?.InstanceID)
@@ -629,6 +664,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(MaintenanceRequiredResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is MaintenanceRequiredResult required
             && MatchesInstanceID(FactionInstanceID, required.Faction?.InstanceID)
@@ -659,6 +699,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(ResearchOrderedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is ResearchOrderedResult advanced
             && MatchesInstanceID(FactionInstanceID, advanced.Faction?.InstanceID)
@@ -734,6 +779,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(MissionCompletedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result)
         {
             if (result is not MissionCompletedResult completed)
@@ -770,6 +820,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(OfficerCaptureStateResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result)
         {
             if (result is not OfficerCaptureStateResult changed)
@@ -795,6 +850,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(OfficerKilledResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is OfficerKilledResult killed
             && MatchesInstanceID(OfficerInstanceID, killed.TargetOfficer?.InstanceID)
@@ -815,6 +875,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(OfficerInjuredResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is OfficerInjuredResult injured
             && MatchesInstanceID(OfficerInstanceID, injured.Officer?.InstanceID)
@@ -841,6 +906,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(OfficerRecruitedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is OfficerRecruitedResult recruited
             && MatchesInstanceID(OfficerInstanceID, recruited.Officer?.InstanceID)
@@ -869,6 +939,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(ForceDiscoveryResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is ForceDiscoveryResult changed
             && MatchesInstanceID(OfficerInstanceID, changed.Officer?.InstanceID)
@@ -901,6 +976,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(UnitOwnershipChangedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is UnitOwnershipChangedResult changed
             && MatchesInstanceID(UnitInstanceID, changed.Unit?.InstanceID)
@@ -923,6 +1003,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(GameObjectCreatedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is GameObjectCreatedResult created
             && MatchesInstanceID(UnitInstanceID, created.GameObject?.InstanceID)
@@ -946,6 +1031,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(GameObjectDestroyedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is GameObjectDestroyedResult destroyed
             && MatchesInstanceID(UnitInstanceID, destroyed.DestroyedObject?.InstanceID)
@@ -970,6 +1060,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(UnitArrivedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result)
         {
             if (result is not UnitArrivedResult arrived)
@@ -1007,6 +1102,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(SpaceCombatResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is SpaceCombatResult combat
             && MatchesInstanceID(PlanetInstanceID, combat.Planet?.InstanceID)
@@ -1042,6 +1142,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(BombardmentResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is BombardmentResult bombardment
             && MatchesInstanceID(PlanetInstanceID, bombardment.Planet?.InstanceID)
@@ -1078,6 +1183,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(PlanetaryAssaultResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is PlanetaryAssaultResult assault
             && MatchesInstanceID(PlanetInstanceID, assault.Planet?.InstanceID)
@@ -1105,6 +1215,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(DuelResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result)
         {
             if (result is not DuelResult duel)
@@ -1139,6 +1254,11 @@ namespace Rebellion.Game.Events
 
         internal override Type ResultType => typeof(ManufacturingDeployedResult);
 
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
         internal override bool Matches(GameResult result) =>
             result is ManufacturingDeployedResult completed
             && MatchesInstanceID(FactionInstanceID, completed.Faction?.InstanceID)
