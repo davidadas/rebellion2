@@ -141,6 +141,9 @@ namespace Rebellion.Tests.Game
             Assert.AreSame(expected, actual);
         }
 
+        /// <summary>
+        /// Verifies a missing difficulty configuration returns neutral modifiers.
+        /// </summary>
         [Test]
         public void GetDifficultyModifier_MissingDifficulty_ReturnsNeutralModifier()
         {

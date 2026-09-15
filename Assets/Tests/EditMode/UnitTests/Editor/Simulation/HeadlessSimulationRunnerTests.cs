@@ -30,6 +30,9 @@ namespace Rebellion.Tests.Editor.Simulation
             );
         }
 
+        /// <summary>
+        /// Verifies parsing without a difficulty argument defaults to easy.
+        /// </summary>
         [Test]
         public void SimulationOptions_ParseDifficulty_DefaultsToEasy()
         {
@@ -41,6 +44,9 @@ namespace Rebellion.Tests.Editor.Simulation
             );
         }
 
+        /// <summary>
+        /// Verifies recording the same facility completion twice counts it once.
+        /// </summary>
         [Test]
         public void ManufacturedUnitTracker_RecordCompletion_CountsFacilityOnce()
         {
@@ -121,6 +127,11 @@ namespace Rebellion.Tests.Editor.Simulation
             );
         }
 
+        /// <summary>
+        /// Parses simulation options through the headless runner's private option type.
+        /// </summary>
+        /// <param name="args">The command-line arguments to parse.</param>
+        /// <returns>The parsed simulation options.</returns>
         private static object ParseSimulationOptions(params string[] args)
         {
             Type runnerType = AppDomain
