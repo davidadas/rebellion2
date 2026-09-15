@@ -2780,12 +2780,21 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(2, deliveries.Count);
-            Assert.AreEqual("owner:Target:Coruscant", FirstMessageFor(deliveries, alliance).Body);
+            Message ownerMessage = FirstMessageFor(deliveries, alliance);
+            Assert.AreEqual("owner:Target:Coruscant", ownerMessage.Body);
+            Assert.AreEqual(
+                AdvisorSubjectNotification.Released,
+                DeliveryFor(ownerMessage).AdvisorSubjectNotification
+            );
             Message captorMessage = FirstMessageFor(deliveries, empire);
             Assert.AreEqual("captor:Target:Coruscant", captorMessage.Body);
             Assert.AreEqual(
-                AdvisorSubjectNotification.Released,
+                AdvisorSubjectNotification.None,
                 DeliveryFor(captorMessage).AdvisorSubjectNotification
+            );
+            Assert.AreEqual(
+                AdvisorNotificationType.PrisonerEscaped,
+                DeliveryFor(captorMessage).NotificationType
             );
         }
 

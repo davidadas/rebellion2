@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -59,7 +60,25 @@ namespace Rebellion.Tests.App
         }
 
         /// <summary>
-        /// Executes destroy audio managers.
+        /// Verifies destruction during main-menu preload completes without retaining the bootstrap.
+        /// </summary>
+        /// <returns>A task that completes after the pending preload continuation.</returns>
+        [Test]
+        public async Task InitializeMainMenuContentAsync_DestroyedDuringPreload_CompletesSafelyAsync()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            Task preload = _bootstrap.InitializeMainMenuContentAsync();
+
+            Object.DestroyImmediate(_gameObject);
+            _gameObject = null;
+
+            await preload;
+
+            Assert.IsNull(AppBootstrap.Instance);
+        }
+
+        /// <summary>
+        /// Removes persistent audio managers created by bootstrap initialization.
         /// </summary>
         private static void DestroyAudioManagers()
         {

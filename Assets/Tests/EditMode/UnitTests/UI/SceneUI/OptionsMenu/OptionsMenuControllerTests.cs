@@ -238,6 +238,25 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies that the first gameplay toggle disables strategy briefings.
+        /// </summary>
+        [Test]
+        public void GameplayActions_ToggleDisableBriefingsOption()
+        {
+            OptionsMenuView view = OpenAndRender();
+            OptionsToggleRowView[] gameplayRows = GetField<OptionsToggleRowView[]>(
+                view,
+                "_gameplayRows"
+            );
+
+            Assert.AreEqual((int)UserGameplayOption.DisableBriefings, gameplayRows[0].OptionIndex);
+
+            GetField<Button>(gameplayRows[0], "_button").onClick.Invoke();
+
+            Assert.IsTrue(_bootstrap.GetUserSettingsManager().Settings.Gameplay.DisableBriefings);
+        }
+
+        /// <summary>
         /// Verifies gameplay actions toggle idle bar.
         /// </summary>
         [Test]

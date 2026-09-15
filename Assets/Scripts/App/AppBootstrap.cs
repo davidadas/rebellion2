@@ -247,7 +247,7 @@ public sealed class AppBootstrap : MonoBehaviour
             _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_mainMenuPreloadID))
         );
 
-        if (Instance != this)
+        if (this == null || Instance != this)
             return;
 
         StartStrategyContentPreload();

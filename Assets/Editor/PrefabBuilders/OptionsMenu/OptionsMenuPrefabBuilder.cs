@@ -358,48 +358,58 @@ public static class OptionsMenuPrefabBuilder
         Color accent
     )
     {
-        CreateOptionsSectionHeader(gameplayPage, "SavingHeader", "SAVING", 16, accent);
+        OptionsToggleRowView disableBriefingsRow = CreateOptionsToggleRow(
+            gameplayPage,
+            "GameplayDisableBriefings",
+            (int)UserGameplayOption.DisableBriefings,
+            "Disable Briefings",
+            20,
+            18
+        );
+
+        CreateOptionsSectionHeader(gameplayPage, "SavingHeader", "SAVING", 50, accent);
         OptionsToggleRowView autosaveRow = CreateOptionsToggleRow(
             gameplayPage,
             "GameplayAutosaveEnabled",
             (int)UserGameplayOption.AutosaveEnabled,
             "Enable Autosave",
             20,
-            44
+            78
         );
         TMP_InputField autosaveIntervalInput = CreateOptionsNumericFieldRow(
             gameplayPage,
             "AutosaveInterval",
             "Autosave Interval (Ticks)",
-            70,
+            104,
             out Image autosaveIntervalBadge
         );
         TMP_InputField autosavesToKeepInput = CreateOptionsNumericFieldRow(
             gameplayPage,
             "AutosavesToKeep",
             "Autosaves to Keep",
-            97,
+            131,
             out Image autosavesToKeepBadge
         );
 
-        CreateOptionsSectionHeader(gameplayPage, "GalaxyViewHeader", "GALAXY VIEW", 134, accent);
+        CreateOptionsSectionHeader(gameplayPage, "GalaxyViewHeader", "GALAXY VIEW", 168, accent);
         UserGameplayOption[] options =
         {
             UserGameplayOption.PauseAfterEnemyBombardment,
             UserGameplayOption.PauseWhenSpaceBattleBegins,
         };
         string[] labels = { "Pause After Enemy Bombardment", "Pause on Space Battles" };
-        OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length + 1];
-        rows[0] = autosaveRow;
+        OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length + 2];
+        rows[0] = disableBriefingsRow;
+        rows[1] = autosaveRow;
         for (int i = 0; i < options.Length; i++)
         {
-            rows[i + 1] = CreateOptionsToggleRow(
+            rows[i + 2] = CreateOptionsToggleRow(
                 gameplayPage,
                 $"Gameplay{options[i]}",
                 (int)options[i],
                 labels[i],
                 20,
-                162 + i * 26
+                196 + i * 26
             );
         }
 

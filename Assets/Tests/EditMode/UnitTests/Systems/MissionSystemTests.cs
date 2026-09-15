@@ -3483,6 +3483,34 @@ namespace Rebellion.Tests.Sectors
         }
 
         /// <summary>
+        /// Verifies the mission system rejects research after a discipline is exhausted.
+        /// </summary>
+        [Test]
+        public void InitiateMission_ExhaustedResearch_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            officer.ShipResearch = 1;
+            AddResearchFacilities(game, planet);
+            game.GetFactions().Single().ResearchCatalog[ResearchDiscipline.ShipDesign] =
+                new List<ResearchCatalogEntry>();
+            MissionSystem missions = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            bool initiated = missions.InitiateMission(
+                CreateRequest(
+                    MissionTypeIDs.Research,
+                    officer,
+                    planet,
+                    discipline: ResearchDiscipline.ShipDesign
+                )
+            );
+
+            Assert.IsFalse(initiated);
+            Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
+        }
+
+        /// <summary>
         /// Verifies initiate mission jedi training uses configured execution range.
         /// </summary>
         /// <param name="rolledSpread">The rolled spread.</param>
@@ -3798,6 +3826,33 @@ namespace Rebellion.Tests.Sectors
                 .ToArray();
             Assert.AreEqual(1, researchOptions.Length);
             Assert.AreEqual(ResearchDiscipline.ShipDesign, researchOptions.Single().Discipline);
+        }
+
+        /// <summary>
+        /// Verifies exhausted research disciplines are absent from available mission options.
+        /// </summary>
+        [Test]
+        public void GetAvailableMissionOptions_ExhaustedResearch_ExcludesResearchOption()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            officer.ShipResearch = 1;
+            AddResearchFacilities(game, planet);
+            game.GetFactions().Single().ResearchCatalog[ResearchDiscipline.ShipDesign] =
+                new List<ResearchCatalogEntry>();
+            MissionSystem missions = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            List<MissionOption> options = missions.GetAvailableMissionOptions(
+                CreateRequest(null, officer, planet)
+            );
+
+            Assert.IsFalse(
+                options.Any(option =>
+                    option.MissionTypeID == MissionTypeIDs.Research
+                    && option.Discipline == ResearchDiscipline.ShipDesign
+                )
+            );
         }
 
         /// <summary>

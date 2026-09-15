@@ -14,6 +14,7 @@ namespace Rebellion.Tests.UserSettings
         {
             global::UserSettings settings = new global::UserSettings();
             settings.Gameplay.PauseAfterEnemyBombardment = true;
+            settings.Gameplay.DisableBriefings = true;
             settings.Gameplay.PauseWhenSpaceBattleBegins = true;
             settings.UserInterface.ShowIdleBar = true;
             settings.UserInterface.KeepIdleBarOpen = true;
@@ -24,10 +25,28 @@ namespace Rebellion.Tests.UserSettings
             restored.Normalize();
 
             Assert.IsTrue(restored.Gameplay.PauseAfterEnemyBombardment);
+            Assert.IsTrue(restored.Gameplay.DisableBriefings);
             Assert.IsTrue(restored.Gameplay.PauseWhenSpaceBattleBegins);
             Assert.IsTrue(restored.UserInterface.ShowIdleBar);
             Assert.IsTrue(restored.UserInterface.KeepIdleBarOpen);
             Assert.IsFalse(restored.Gameplay.ShowMissionOdds);
+        }
+
+        /// <summary>
+        /// Verifies that briefings remain enabled until the user disables them.
+        /// </summary>
+        [Test]
+        public void DisableBriefings_DefaultAndRestore_RemainsDisabledOnlyWhenSelected()
+        {
+            UserGameplaySettings settings = new UserGameplaySettings();
+
+            Assert.IsFalse(settings.DisableBriefings);
+
+            settings.SetEnabled(UserGameplayOption.DisableBriefings, true);
+            Assert.IsTrue(settings.IsEnabled(UserGameplayOption.DisableBriefings));
+
+            settings.RestoreDefaults();
+            Assert.IsFalse(settings.DisableBriefings);
         }
 
         /// <summary>

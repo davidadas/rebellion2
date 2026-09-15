@@ -129,6 +129,29 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         /// <summary>
+        /// Verifies exhausted disciplines cannot create new research missions.
+        /// </summary>
+        [Test]
+        public void TryCreate_ExhaustedDiscipline_ReturnsNull()
+        {
+            Officer officer = CreateOfficer();
+            _faction.ResearchCatalog[ResearchDiscipline.ShipDesign] =
+                new List<ResearchCatalogEntry>();
+
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Research,
+                _game,
+                "empire",
+                _planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                discipline: ResearchDiscipline.ShipDesign
+            );
+
+            Assert.IsNull(mission);
+        }
+
+        /// <summary>
         /// Verifies resolve objective positive research skill and minimum roll awards research capacity.
         /// </summary>
         [Test]

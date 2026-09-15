@@ -2889,7 +2889,51 @@ namespace Rebellion.Tests.Sectors
         }
 
         /// <summary>
-        /// Verifies try get transit ticks fleet with unfinished slower ship ignores unfinished ship.
+        /// Verifies a fleet moves at the speed of its slowest completed capital ship.
+        /// </summary>
+        [Test]
+        public void RequestMove_FleetWithDifferentHyperdrives_UsesSlowestCompletedShip()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Movement.DistanceScale = 10;
+            config.Movement.SameSectorMinTransitTicks = 1;
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene(config);
+            Fleet fleet = EntityFactory.CreateFleet("mixed-speed-fleet", "empire");
+            game.AttachNode(fleet, origin);
+            CapitalShip fastShip = CreateMovableCapitalShip("fast-ship");
+            fastShip.Hyperdrive = 100;
+            game.AttachNode(fastShip, fleet);
+            Assert.IsTrue(
+                movement.TryGetTransitTicks(
+                    new List<IMovable> { fleet },
+                    destination,
+                    out int fastTransitTicks
+                )
+            );
+            CapitalShip slowShip = CreateMovableCapitalShip("slow-ship");
+            slowShip.Hyperdrive = 1;
+            game.AttachNode(slowShip, fleet);
+
+            movement.RequestMove(fleet, destination);
+
+            int expectedTransitTicks = (int)
+                System.Math.Ceiling(
+                    destination.GetRawDistanceTo(origin) * config.Movement.DistanceScale
+                );
+            Assert.Greater(fleet.Movement.TransitTicks, fastTransitTicks);
+            Assert.AreEqual(expectedTransitTicks, fleet.Movement.TransitTicks);
+
+            for (int tick = 0; tick < expectedTransitTicks; tick++)
+                movement.ProcessTick();
+
+            Assert.AreSame(destination, fleet.GetParent());
+            Assert.AreSame(fleet, fastShip.GetParent());
+            Assert.AreSame(fleet, slowShip.GetParent());
+        }
+
+        /// <summary>
+        /// Verifies an unfinished slower ship does not determine its fleet's transit time.
         /// </summary>
         [Test]
         public void TryGetTransitTicks_FleetWithUnfinishedSlowerShip_IgnoresUnfinishedShip()
