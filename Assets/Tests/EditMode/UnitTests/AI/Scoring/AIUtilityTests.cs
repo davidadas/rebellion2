@@ -110,6 +110,29 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
+        public void UtilityRankPreservesPositiveSignedOrdering()
+        {
+            AIUtilityScore lower = new AIUtilityScore();
+            lower.Add(0.25, new GameConfig.AIConsiderationConfig { Weight = 1 });
+            AIUtilityScore higher = new AIUtilityScore();
+            higher.Add(0.5, new GameConfig.AIConsiderationConfig { Weight = 1 });
+
+            Assert.That(lower.RankValue, Is.EqualTo(0.2).Within(0.000001));
+            Assert.Greater(higher.RankValue, lower.RankValue);
+            Assert.Less(higher.RankValue, 1);
+        }
+
+        [Test]
+        public void UtilityRankRejectsNonPositiveSignedUtility()
+        {
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(0.25, new GameConfig.AIConsiderationConfig { Weight = 1 });
+            score.AddCost(0.5, new GameConfig.AIConsiderationConfig { Weight = 1 });
+
+            Assert.Zero(score.RankValue);
+        }
+
+        [Test]
         public void SmoothStepPreservesEndpointsAndMidpoint()
         {
             GameConfig.AIResponseCurveConfig curve = new GameConfig.AIResponseCurveConfig

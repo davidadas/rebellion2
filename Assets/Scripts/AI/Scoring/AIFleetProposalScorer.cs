@@ -115,7 +115,7 @@ namespace Rebellion.AI.Scoring
                 utility.ExistingOrder
             );
 
-            return score.Value;
+            return GetSelectionValue(score);
         }
 
         /// <summary>
@@ -133,7 +133,7 @@ namespace Rebellion.AI.Scoring
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The fleet-defense proposal.</param>
         /// <returns>The defense score.</returns>
-        private static double ScoreDefense(AITurnContext context, AIFleetDefenseProposal proposal)
+        private double ScoreDefense(AITurnContext context, AIFleetDefenseProposal proposal)
         {
             GameConfig.AIDefenseUtilityConfig utility = context
                 .Game
@@ -147,7 +147,7 @@ namespace Rebellion.AI.Scoring
                 context.Assessment.GetDefensiveSupportRisk(proposal.TargetPlanet),
                 utility.SectorRisk
             );
-            return score.Value;
+            return GetSelectionValue(score);
         }
 
         /// <summary>
@@ -284,10 +284,16 @@ namespace Rebellion.AI.Scoring
             Planet target = proposal.TargetPlanet;
             bool existingOrder = fleet?.Order?.OrderType == FleetOrderType.Engage;
             if (existingOrder)
-                return AIUtility.Evaluate(
-                    1,
-                    context.Game.Config.AI.FleetDeployment.DefenseUtility.Base
-                );
+            {
+                GameConfig.AIFleetDeploymentConfig existingOrderConfig = context
+                    .Game
+                    .Config
+                    .AI
+                    .FleetDeployment;
+                AIUtilityScore existingOrderScore = new AIUtilityScore();
+                existingOrderScore.Add(1, existingOrderConfig.DefenseUtility.Base);
+                return GetSelectionValue(existingOrderScore);
+            }
 
             if (!CanScoreEngagement(context, fleet, target))
                 return 0;
@@ -305,7 +311,7 @@ namespace Rebellion.AI.Scoring
                 utility.TravelEfficiency
             );
             score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
-            return score.Value;
+            return GetSelectionValue(score);
         }
 
         /// <summary>
@@ -374,7 +380,7 @@ namespace Rebellion.AI.Scoring
                 utility.ExposedBombardment
             );
             score.Add(existingOrder ? 1 : 0, utility.ExistingOrder);
-            return score.Value;
+            return GetSelectionValue(score);
         }
 
         /// <summary>
@@ -472,7 +478,7 @@ namespace Rebellion.AI.Scoring
             score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
             score.Add(assessment.GetReadyFleetRegimentCount(fleet) > 0 ? 1 : 0, utility.Ready);
             score.Add(existingOrder ? 1 : 0, utility.ExistingOrder);
-            return score.Value;
+            return GetSelectionValue(score);
         }
 
         /// <summary>
@@ -519,7 +525,7 @@ namespace Rebellion.AI.Scoring
                     ScoreOpportunityCost(context, sourceFleet),
                     utility.OpportunityCost
                 );
-                return defenseScore.Value;
+                return GetSelectionValue(defenseScore);
             }
 
             AIUtilityScore score = new AIUtilityScore();
@@ -530,7 +536,7 @@ namespace Rebellion.AI.Scoring
             );
             score.Add(travelEfficiency, utility.TravelEfficiency);
             score.AddCost(ScoreOpportunityCost(context, sourceFleet), utility.OpportunityCost);
-            return score.Value;
+            return GetSelectionValue(score);
         }
 
         /// <summary>
@@ -590,8 +596,15 @@ namespace Rebellion.AI.Scoring
                 utility.StrategicValue
             );
             score.Add(travelEfficiency, utility.TravelEfficiency);
-            return score.Value;
+            return GetSelectionValue(score);
         }
+
+        /// <summary>
+        /// Returns fleet utility on the shared bounded ranking scale.
+        /// </summary>
+        /// <param name="score">The signed utility accumulated for one proposal.</param>
+        /// <returns>The comparable fleet-proposal utility from zero through one.</returns>
+        private static double GetSelectionValue(AIUtilityScore score) => score.RankValue;
 
         /// <summary>
         /// Returns the normalized strategic value of a target planet.

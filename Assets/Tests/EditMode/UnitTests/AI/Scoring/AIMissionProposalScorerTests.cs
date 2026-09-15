@@ -404,7 +404,8 @@ namespace Rebellion.Tests.AI.Scoring
             {
                 { -1000, 75 },
             };
-            game.Config.AI.MissionPlanning.Utility.Objective.FoilRisk.Weight = 1;
+            game.Config.AI.MissionPlanning.Utility.Objective.FoilRisk.Weight = 0.1;
+            game.Config.AI.MissionPlanning.MinimumMissionScore = 0;
             game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 100;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();

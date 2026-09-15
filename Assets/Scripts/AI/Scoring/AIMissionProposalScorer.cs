@@ -70,8 +70,8 @@ namespace Rebellion.AI.Scoring
                 utility.Objective.OfficerRisk
             );
 
-            return score.Value >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore
-                ? score.Value
+            return score.RankValue >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore
+                ? score.RankValue
                 : 0;
         }
 

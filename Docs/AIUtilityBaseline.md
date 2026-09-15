@@ -69,29 +69,28 @@ and `507859324` without tuning specifically for those results.
 ## Final Validation
 
 The completed migration was validated on Medium difficulty for 1000 ticks on the large galaxy.
-Seed `12345` remained the development seed. The other three seeds were held until the complete
-migration, then used to reject two isolated tuning attempts: increasing attack-reinforcement
-pressure and replacing unified fleet-allocation utility with a stronger readiness bias. The final
-configuration keeps one normalized fleet-allocation score and the original reinforcement weight.
+Seed `12345` remained the development seed. The other three seeds were held until the migration was
+complete. Global proposal selection uses signed benefit-minus-cost utility so different proposal
+types remain comparable; local fixed-vector choices continue to use weighted averages.
 
 | Seed | Faction | Planets | Fleets | Capital ships | Starfighters | Regiments | Shipyards | Construction | Assaults |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 12345 | Alliance | 60 | 9 | 51 | 69 | 212 | 30 | 29 | 3/3 |
-| 12345 | Empire | 91 | 14 | 74 | 446 | 311 | 52 | 59 | 14/14 |
-| 1892256962 | Alliance | 91 | 14 | 74 | 88 | 312 | 32 | 50 | 3/3 |
-| 1892256962 | Empire | 82 | 13 | 105 | 1,312 | 307 | 73 | 72 | 21/21 |
-| 1767770646 | Alliance | 139 | 20 | 149 | 747 | 568 | 65 | 81 | 12/12 |
-| 1767770646 | Empire | 37 | 8 | 46 | 198 | 134 | 18 | 20 | 5/5 |
-| 507859324 | Alliance | 49 | 8 | 33 | 58 | 213 | 12 | 24 | 2/2 |
-| 507859324 | Empire | 95 | 14 | 98 | 272 | 323 | 49 | 67 | 12/12 |
+| 12345 | Alliance | 67 | 10 | 43 | 47 | 261 | 21 | 28 | 2/2 |
+| 12345 | Empire | 78 | 12 | 82 | 356 | 241 | 35 | 42 | 14/14 |
+| 1892256962 | Alliance | 79 | 13 | 120 | 77 | 215 | 76 | 59 | 5/5 |
+| 1892256962 | Empire | 91 | 14 | 110 | 838 | 359 | 60 | 74 | 24/24 |
+| 1767770646 | Alliance | 121 | 18 | 178 | 362 | 423 | 84 | 72 | 12/12 |
+| 1767770646 | Empire | 59 | 9 | 58 | 299 | 164 | 41 | 41 | 14/14 |
+| 507859324 | Alliance | 66 | 10 | 31 | 19 | 253 | 31 | 28 | 0/0 |
+| 507859324 | Empire | 102 | 15 | 74 | 647 | 342 | 57 | 63 | 20/20 |
 
-Across the four seeds, assaults were 72 versus the 84-run baseline. Seed `12345` and seed
-`1767770646` matched baseline assault totals, seed `1892256962` increased from 21 to 24, and seed
-`507859324` decreased from 27 to 14. Aggregate planets decreased 2.7%, capital ships decreased
-4.4%, starfighters increased 17.3%, regiments increased 2.8%, shipyards decreased 21.0%, and
-construction facilities decreased 0.5%. No run reached a victory condition.
+Across the four seeds, assaults were 91 versus the 84-run baseline. Aggregate planets increased
+0.2%, capital ships increased 5.6%, starfighters decreased 2.8%, regiments decreased 2.5%,
+shipyards decreased 3.3%, and construction facilities increased 0.7%. No run reached a victory
+condition. Seed `507859324` remains the weakest individual result at 20 assaults versus 27 in the
+baseline; the aggregate parity result does not conceal that held-seed variance.
 
-Final median/p90/p99 tick timings were 142.839/338.932/492.585 ms, 197.739/601.974/956.226 ms,
-196.424/505.565/676.331 ms, and 161.806/364.485/518.950 ms in seed order. The p99 remains above
+Final median/p90/p99 tick timings were 147.554/324.677/488.867 ms, 200.961/537.319/744.880 ms,
+185.710/455.202/645.945 ms, and 168.717/348.536/640.469 ms in seed order. The p99 remains above
 the 300 ms target on every seed. Performance remains a separate follow-up; this migration does not
 claim to have solved it.

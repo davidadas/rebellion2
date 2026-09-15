@@ -137,7 +137,11 @@ namespace Rebellion.Systems
                     continue;
 
                 if (RollEscapeAttempt(officer, custodyContext))
-                    results.Add(ReleaseOfficer(officer, planet));
+                {
+                    OfficerCaptureStateResult result = ReleaseOfficer(officer, planet);
+                    if (result != null)
+                        results.Add(result);
+                }
             }
 
             return results;
@@ -339,15 +343,37 @@ namespace Rebellion.Systems
         private OfficerCaptureStateResult ReleaseOfficer(Officer officer, Planet planet)
         {
             string captorInstanceID = officer.CaptorInstanceID;
+            int previousLoyalty = officer.Loyalty;
             officer.IsCaptured = false;
             officer.CaptorInstanceID = null;
             officer.CanEscape = false;
             officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + _loyaltyShift));
 
             Faction faction = _game.GetFactionByOwnerInstanceID(officer.OwnerInstanceID);
-            Planet destination = faction?.GetNearestFriendlyPlanetTo(officer);
-            if (destination != null)
-                _movementSystem.RequestMove(officer, destination);
+            bool escaped =
+                faction
+                    ?.GetOwnedColonizedPlanets()
+                    .Where(destination =>
+                        !destination.IsDestroyed && destination.CanAcceptChild(officer)
+                    )
+                    .OrderBy(destination => destination.GetRawDistanceTo(officer.GetPosition()))
+                    .ThenBy(destination => destination.InstanceID, StringComparer.Ordinal)
+                    .Any(destination =>
+                        _movementSystem.TryRequestMove(
+                            new ISceneNode[] { officer },
+                            destination,
+                            faction.InstanceID
+                        )
+                    ) == true;
+
+            if (!escaped)
+            {
+                officer.IsCaptured = true;
+                officer.CaptorInstanceID = captorInstanceID;
+                officer.CanEscape = true;
+                officer.Loyalty = previousLoyalty;
+                return null;
+            }
 
             return new OfficerCaptureStateResult
             {

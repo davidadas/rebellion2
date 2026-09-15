@@ -764,7 +764,7 @@ namespace Rebellion.Tests.AI.Scoring
 
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
-            Assert.AreEqual(1, score);
+            Assert.AreEqual(2.0 / 3, score);
         }
 
         [Test]
@@ -862,7 +862,7 @@ namespace Rebellion.Tests.AI.Scoring
 
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
-            Assert.AreEqual(game.Config.AI.FleetDeployment.DefenseUtility.Base.Weight, score);
+            Assert.AreEqual(0.5, score);
         }
 
         [Test]

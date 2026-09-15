@@ -49,8 +49,8 @@ namespace Rebellion.Tests.AI.Scoring
                 CreateBuildingProposal(producer, building, 500)
             );
 
-            Assert.That(lowScore, Is.EqualTo(1.0 / 6).Within(0.0001));
-            Assert.That(highScore, Is.EqualTo(5.0 / 6).Within(0.0001));
+            Assert.That(lowScore, Is.EqualTo(1.0 / 7).Within(0.0001));
+            Assert.That(highScore, Is.EqualTo(5.0 / 11).Within(0.0001));
         }
 
         [Test]
@@ -111,7 +111,7 @@ namespace Rebellion.Tests.AI.Scoring
             );
 
             Assert.Greater(nearScore, farScore);
-            Assert.Greater(farScore, 0);
+            Assert.Zero(farScore);
         }
 
         private static AIManufactureProposal CreateBuildingProposal(

@@ -414,6 +414,13 @@ namespace Rebellion.AI.Director
         {
             return candidates
                 .OrderByDescending(candidate =>
+                    candidate.Planet.GetTotalBuildingTypeCount(buildingType)
+                )
+                .ThenByDescending(candidate =>
+                    assignedPrimaryPlanetIds?.Contains(candidate.Planet.InstanceID) != true
+                )
+                .ThenByDescending(candidate => candidate.FeasibleCount)
+                .ThenByDescending(candidate =>
                     AIInfrastructureAllocationScorer.Score(
                         context,
                         candidate.Planet,

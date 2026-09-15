@@ -329,6 +329,23 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_EscapeHasNoValidDestination_RemainsCaptured()
+        {
+            (GameRoot game, Planet _, Officer captive, MovementSystem movement) = BuildScene();
+            Planet destination = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
+            destination.IsColonized = false;
+            CaptiveSystem system = CreateSystem(game, new FixedRNG(0.0), movement);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.IsTrue(captive.IsCaptured);
+            Assert.AreEqual("rebels", captive.CaptorInstanceID);
+            Assert.IsTrue(captive.CanEscape);
+            Assert.AreEqual(80, captive.Loyalty);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
         public void ProcessTick_EscapeSucceeds_ShiftsLoyalty()
         {
             (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();

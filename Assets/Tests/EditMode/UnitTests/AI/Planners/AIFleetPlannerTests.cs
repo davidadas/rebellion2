@@ -353,12 +353,18 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(
                 proposals.All(proposal =>
                     proposal.TargetPlanet.InstanceID == headquarters.InstanceID
+                ),
+                string.Join(
+                    ", ",
+                    proposals.Select(proposal =>
+                        $"{proposal.TargetPlanet.InstanceID}:{proposal.Score}"
+                    )
                 )
             );
         }
 
         [Test]
-        public void Plan_WithFortifiedEnemyHeadquarters_CanPrepareForHeadquartersAttack()
+        public void Plan_WithViableAlternative_DoesNotStageAgainstFortifiedHeadquarters()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
@@ -410,7 +416,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsNotEmpty(proposals);
             Assert.IsTrue(
                 proposals.All(proposal =>
-                    proposal.TargetPlanet.InstanceID == headquarters.InstanceID
+                    proposal.TargetPlanet.InstanceID == viableEnemy.InstanceID
                 )
             );
         }

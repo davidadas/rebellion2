@@ -81,7 +81,7 @@ namespace Rebellion.AI.Scoring
             );
             score.AddCost(projectedHeadroom < 0 ? 1 : 0, utility.Shortfall);
 
-            return score.Value;
+            return score.RankValue;
         }
 
         /// <summary>

@@ -4,8 +4,7 @@ Strategic decisions follow one data flow:
 
 1. `AITurnContext` and `AIAssessment` capture reusable facts once per faction turn.
 2. Planners enumerate feasible proposals without discarding a stronger candidate by traversal order.
-3. Scorers normalize proposal considerations and combine them as a weighted average from zero
-   through one.
+3. Scorers normalize proposal considerations and combine them through the utility accumulator.
 4. Selection orders proposals by priority and utility, then enforces shared claims and resource
    reservations.
 5. Proposals revalidate game rules before execution.
@@ -82,13 +81,18 @@ Policy targets and limits remain explicit typed values. Preferences use `AIConsi
 - `Curve` controls the response shape.
 - `Weight` is a relative importance from zero through one.
 
-`AIUtilityScore` evaluates every active consideration and returns their weighted average. Costs
-contribute the inverse of their response curve, so all final proposal and candidate scores share
-the zero-to-one domain. Scale all weights in one fixed decision vector by a common denominator when
-preserving an established model; normalizing each feature against a different denominator changes
-its preference ratio. Production demand pressure remains a named zero-to-100 domain and uses the
-pressure evaluation methods explicitly. Its combined upper bound is 600, which is normalized before
-pressure enters proposal scoring.
+`AIUtilityScore.Value` returns a weighted average for local decisions whose candidates all use the
+same fixed consideration vector. `AIUtilityScore.RankValue` preserves signed benefit-minus-cost
+utility for global proposal selection, rejects non-positive utility, and maps positive values
+monotonically below one. This distinction prevents proposal types with fewer configured
+considerations from receiving a different implicit scale. Costs contribute their response as a
+subtraction in `RankValue`; they remain inverted benefits in `Value` for fixed-vector comparisons.
+
+Scale weights in one decision vector by a common denominator when preserving an established model;
+normalizing each feature against a different denominator changes its preference ratio. Production
+demand pressure remains a named zero-to-100 domain and uses the pressure evaluation methods
+explicitly. Its combined upper bound is 600, which is normalized before pressure enters proposal
+scoring.
 
 Mandatory proposals own lifecycle cleanup that must occur regardless of utility, such as clearing
 a completed fleet order. Mandatory priority is not a preference tier and must not be used to force
