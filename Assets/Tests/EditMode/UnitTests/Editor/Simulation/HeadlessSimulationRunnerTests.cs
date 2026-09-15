@@ -20,6 +20,34 @@ namespace Rebellion.Tests.Editor.Simulation
         /// Verifies manufactured unit tracker record completion counts facility once.
         /// </summary>
         [Test]
+        public void SimulationOptions_ParseDifficulty_UsesRequestedValue()
+        {
+            object options = ParseSimulationOptions("-simDifficulty", "Hard");
+
+            Assert.AreEqual(
+                GameDifficulty.Hard,
+                options.GetType().GetProperty("Difficulty").GetValue(options)
+            );
+        }
+
+        /// <summary>
+        /// Verifies parsing without a difficulty argument defaults to easy.
+        /// </summary>
+        [Test]
+        public void SimulationOptions_ParseDifficulty_DefaultsToEasy()
+        {
+            object options = ParseSimulationOptions();
+
+            Assert.AreEqual(
+                GameDifficulty.Easy,
+                options.GetType().GetProperty("Difficulty").GetValue(options)
+            );
+        }
+
+        /// <summary>
+        /// Verifies recording the same facility completion twice counts it once.
+        /// </summary>
+        [Test]
         public void ManufacturedUnitTracker_RecordCompletion_CountsFacilityOnce()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -97,6 +125,26 @@ namespace Rebellion.Tests.Editor.Simulation
                     new object[] { empire.InstanceID, BuildingType.Shipyard }
                 )
             );
+        }
+
+        /// <summary>
+        /// Parses simulation options through the headless runner's private option type.
+        /// </summary>
+        /// <param name="args">The command-line arguments to parse.</param>
+        /// <returns>The parsed simulation options.</returns>
+        private static object ParseSimulationOptions(params string[] args)
+        {
+            Type runnerType = AppDomain
+                .CurrentDomain.GetAssemblies()
+                .Select(assembly => assembly.GetType("HeadlessSimulationRunner"))
+                .Single(type => type != null);
+            Type optionsType = runnerType.GetNestedType(
+                "SimulationOptions",
+                BindingFlags.NonPublic
+            );
+            return optionsType
+                .GetMethod("Parse", BindingFlags.Public | BindingFlags.Static)
+                .Invoke(null, new object[] { args });
         }
     }
 }

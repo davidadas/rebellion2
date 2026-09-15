@@ -1164,7 +1164,12 @@ namespace Rebellion.Systems
                 config.CapitalShipProductionPenaltyPercent,
                 config.FighterProductionPenaltyPercent
             );
-            return (double)modifier / _productionRateScale;
+            int difficultyModifier = _game
+                .GetDifficultyModifier(planet.GetOwnerInstanceID())
+                .ManufacturingSpeedPercent;
+            return (double)modifier
+                * difficultyModifier
+                / (_productionRateScale * _productionRateScale);
         }
 
         /// <summary>
@@ -1199,7 +1204,7 @@ namespace Rebellion.Systems
             facility.ProductionCycleProgress += cycleIncrement;
             if (facility.ProductionCycleProgress >= processRate)
             {
-                facility.ProductionCycleProgress = 0;
+                facility.ProductionCycleProgress -= processRate;
                 facility.ProductionPointReady = true;
             }
         }
