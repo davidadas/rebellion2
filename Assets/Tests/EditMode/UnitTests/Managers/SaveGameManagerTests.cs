@@ -958,6 +958,9 @@ namespace Rebellion.Tests.Managers
 
             StringAssert.Contains("<Sections>", xml);
             StringAssert.Contains("<SectionID>Strategy</SectionID>", xml);
+            StringAssert.Contains("<Values>", xml);
+            StringAssert.Contains("<Key>GalacticInformationFilter</Key>", xml);
+            StringAssert.Contains("<Value>IdleConstructionYards</Value>", xml);
             StringAssert.Contains("<IgnoredItems>", xml);
             StringAssert.Contains("<TargetInstanceID>OFFICER1</TargetInstanceID>", xml);
             StringAssert.Contains("<ItemTypeID>Entity</ItemTypeID>", xml);
@@ -990,6 +993,7 @@ namespace Rebellion.Tests.Managers
             UIStateSection loadedSection = loadedUIState.GetOrCreateSection("Strategy");
 
             Assert.AreEqual("Strategy", loadedSection.SectionID);
+            CollectionAssert.AreEquivalent(section.Values, loadedSection.Values);
             CollectionAssert.AreEqual(
                 section.IgnoredItems.Select(item => (item.TargetInstanceID, item.ItemTypeID)),
                 loadedSection.IgnoredItems.Select(item => (item.TargetInstanceID, item.ItemTypeID))
@@ -1521,6 +1525,10 @@ namespace Rebellion.Tests.Managers
                     new UIStateSection
                     {
                         SectionID = "Strategy",
+                        Values = new Dictionary<string, string>
+                        {
+                            { "GalacticInformationFilter", "IdleConstructionYards" },
+                        },
                         BookmarkedItems = new List<BookmarkedItem>
                         {
                             new BookmarkedItem
