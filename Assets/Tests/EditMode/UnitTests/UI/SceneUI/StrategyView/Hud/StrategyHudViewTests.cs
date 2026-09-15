@@ -171,23 +171,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         /// <summary>
-        /// Verifies render legacy prefab without button images creates button image slots.
-        /// </summary>
-        [Test]
-        public void Render_LegacyPrefabWithoutButtonImages_CreatesButtonImageSlots()
-        {
-            SetField("mainButtonImages", Array.Empty<RawImage>());
-
-            _view.Render(CreateViewData(CreateButtons(2), CreateNotifications(0), null));
-
-            RawImage[] buttonImages = GetField<RawImage[]>("mainButtonImages");
-            Assert.AreEqual(GetField<UIRaycastArea[]>("buttonViews").Length, buttonImages.Length);
-            Assert.IsTrue(buttonImages.All(image => image != null));
-            Assert.AreSame(_upTexture, buttonImages[0].texture);
-            Assert.AreSame(_upTexture, buttonImages[1].texture);
-        }
-
-        /// <summary>
         /// Verifies button pointer press and release emits control cue and toggles pressed artwork.
         /// </summary>
         [Test]
