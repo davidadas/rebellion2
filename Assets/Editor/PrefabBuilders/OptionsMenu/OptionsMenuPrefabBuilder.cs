@@ -358,40 +358,39 @@ public static class OptionsMenuPrefabBuilder
         Color accent
     )
     {
-        OptionsToggleRowView disableBriefingsRow = CreateOptionsToggleRow(
-            gameplayPage,
-            "GameplayDisableBriefings",
-            (int)UserGameplayOption.DisableBriefings,
-            "Disable Briefings",
-            20,
-            18
-        );
-
-        CreateOptionsSectionHeader(gameplayPage, "SavingHeader", "SAVING", 50, accent);
+        CreateOptionsSectionHeader(gameplayPage, "SavingHeader", "SAVING", 16, accent);
         OptionsToggleRowView autosaveRow = CreateOptionsToggleRow(
             gameplayPage,
             "GameplayAutosaveEnabled",
             (int)UserGameplayOption.AutosaveEnabled,
             "Enable Autosave",
             20,
-            78
+            44
         );
         TMP_InputField autosaveIntervalInput = CreateOptionsNumericFieldRow(
             gameplayPage,
             "AutosaveInterval",
             "Autosave Interval (Ticks)",
-            104,
+            70,
             out Image autosaveIntervalBadge
         );
         TMP_InputField autosavesToKeepInput = CreateOptionsNumericFieldRow(
             gameplayPage,
             "AutosavesToKeep",
             "Autosaves to Keep",
-            131,
+            97,
             out Image autosavesToKeepBadge
         );
 
-        CreateOptionsSectionHeader(gameplayPage, "GalaxyViewHeader", "GALAXY VIEW", 168, accent);
+        CreateOptionsSectionHeader(gameplayPage, "GalaxyViewHeader", "GALAXY VIEW", 134, accent);
+        OptionsToggleRowView disableBriefingsRow = CreateOptionsToggleRow(
+            gameplayPage,
+            "GameplayDisableBriefings",
+            (int)UserGameplayOption.DisableBriefings,
+            "Disable Briefings",
+            20,
+            162
+        );
         UserGameplayOption[] options =
         {
             UserGameplayOption.PauseAfterEnemyBombardment,
@@ -409,7 +408,7 @@ public static class OptionsMenuPrefabBuilder
                 (int)options[i],
                 labels[i],
                 20,
-                196 + i * 26
+                188 + i * 26
             );
         }
 
@@ -449,38 +448,7 @@ public static class OptionsMenuPrefabBuilder
             out Button fullScreenPrev,
             out Button fullScreenNext
         );
-        CreateOptionsSectionHeader(graphicsPage, "DetailHeader", "DETAIL", 101, accent);
-
-        UserTacticalOption[] options =
-        {
-            UserTacticalOption.Starfield,
-            UserTacticalOption.Planet,
-            UserTacticalOption.Pyro,
-            UserTacticalOption.HighDetail,
-            UserTacticalOption.Holocube,
-        };
-        string[] optionLabels =
-        {
-            "Starfield",
-            "Planet Backdrop",
-            "Pyrotechnics",
-            "High Detail Textures",
-            "Holocube",
-        };
-        OptionsToggleRowView[] tacticalRows = new OptionsToggleRowView[options.Length];
-        for (int i = 0; i < options.Length; i++)
-        {
-            tacticalRows[i] = CreateOptionsToggleRow(
-                graphicsPage,
-                $"Tactical{options[i]}",
-                (int)options[i],
-                optionLabels[i],
-                20,
-                126 + i * 26
-            );
-        }
-
-        AssignReferenceArray(view, "_tacticalRows", tacticalRows);
+        AssignReferenceArray(view, "_tacticalRows", Array.Empty<OptionsToggleRowView>());
         AssignReference(view, "_resolutionValueField", resolutionValue);
         AssignReference(view, "_resolutionPrevButton", resolutionPrev);
         AssignReference(view, "_resolutionNextButton", resolutionNext);
@@ -511,7 +479,7 @@ public static class OptionsMenuPrefabBuilder
                 (int)options[i],
                 labels[i],
                 20,
-                214 + i * 26
+                240 + i * 26
             );
         }
 

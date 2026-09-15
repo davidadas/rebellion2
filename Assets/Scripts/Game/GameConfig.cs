@@ -803,6 +803,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class CaptiveConfig
         {
+            public MissionTickConfig EscapeAttempt { get; set; } = new MissionTickConfig();
+
             public Dictionary<int, int> EscapeTable { get; set; } = new Dictionary<int, int>();
 
             public int EscapeLoyaltyShift { get; set; }

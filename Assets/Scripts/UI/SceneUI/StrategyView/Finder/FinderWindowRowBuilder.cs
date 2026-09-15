@@ -463,9 +463,9 @@ public sealed class FinderWindowRowBuilder
         string display = $"{name} - {location}";
 
         if (!string.IsNullOrEmpty(status))
-            display += $" ( {status} )";
+            display += $" ({status})";
         if (!string.IsNullOrEmpty(rank))
-            display += $" ( {rank} )";
+            display += $" ({rank})";
 
         return display;
     }
@@ -484,7 +484,13 @@ public sealed class FinderWindowRowBuilder
     )
     {
         if (personnel is { IsEnabled: false })
-            return "Location Unknown";
+        {
+            return
+                personnel is BaseGameEntity entity
+                && !string.IsNullOrWhiteSpace(entity.DisplayStatus)
+                ? entity.DisplayStatus
+                : "Location Unknown";
+        }
         if (fleet != null)
             return fleet.GetDisplayName();
         if (personnel?.GetParentOfType<Fleet>() is Fleet parentFleet)
@@ -511,14 +517,17 @@ public sealed class FinderWindowRowBuilder
         if (personnel is Officer { InjuryPoints: > 0 })
             return "Injured";
         if (personnel is { IsEnabled: false })
-            return "On Mission";
+            return string.Empty;
         if (personnel is IMovable movable && movable.GetTransitMovement() != null)
             return "Enroute";
         if (personnel is Officer officerOnMission && officerOnMission.IsOnMission())
             return "On Mission";
 
-        if (personnel is BaseGameEntity entity && !string.IsNullOrWhiteSpace(entity.DisplayStatus))
-            return entity.DisplayStatus;
+        if (
+            personnel is BaseGameEntity statusEntity
+            && !string.IsNullOrWhiteSpace(statusEntity.DisplayStatus)
+        )
+            return statusEntity.DisplayStatus;
         if (personnel is SpecialForces specialForces && specialForces.IsOnMission())
         {
             return "On Mission";

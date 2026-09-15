@@ -28,6 +28,8 @@ public sealed class GalacticInformationDisplayController : ICancelable
     private bool displayOffHovered;
     private bool open;
 
+    public event Action<GalacticInformationFilterMode> FilterChanged;
+
     public bool Open => open;
 
     public GalacticInformationFilterMode FilterMode => filterMode;
@@ -151,9 +153,21 @@ public sealed class GalacticInformationDisplayController : ICancelable
     /// <param name="mode">The selected filter mode.</param>
     internal void SelectFilter(GalacticInformationFilterMode mode)
     {
+        bool changed = filterMode != mode;
         filterMode = mode;
         Hide();
+        if (changed)
+            FilterChanged?.Invoke(mode);
         actions.RequestGalacticInformationRender();
+    }
+
+    /// <summary>
+    /// Restores the selected filter without treating restoration as a user change.
+    /// </summary>
+    /// <param name="mode">The restored filter mode.</param>
+    internal void RestoreFilter(GalacticInformationFilterMode mode)
+    {
+        filterMode = mode;
     }
 
     /// <summary>

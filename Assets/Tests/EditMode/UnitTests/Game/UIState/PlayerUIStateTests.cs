@@ -18,7 +18,7 @@ namespace Rebellion.Tests.Game.UIState
             UIStateSection section = state.GetOrCreateSection("Strategy");
 
             Assert.AreEqual("Strategy", section.SectionID);
-            CollectionAssert.Contains(state.Sections, section);
+            CollectionAssert.Contains(state.UIStateSections, section);
         }
 
         /// <summary>
@@ -28,12 +28,12 @@ namespace Rebellion.Tests.Game.UIState
         public void GetOrCreateSection_ExistingSection_ReturnsExistingSection()
         {
             UIStateSection existing = new UIStateSection { SectionID = "Strategy" };
-            PlayerUIState state = new PlayerUIState { Sections = { existing } };
+            PlayerUIState state = new PlayerUIState { UIStateSections = { existing } };
 
             UIStateSection section = state.GetOrCreateSection("Strategy");
 
             Assert.AreSame(existing, section);
-            Assert.AreEqual(1, state.Sections.Count);
+            Assert.AreEqual(1, state.UIStateSections.Count);
         }
 
         /// <summary>
