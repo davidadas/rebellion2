@@ -173,7 +173,7 @@ namespace Rebellion.Systems
                 }
                 else if (destinationPlanet != null && item is CapitalShip)
                 {
-                    capitalShipDestination ??= _fleetSystem.CreateAtPlanet(
+                    capitalShipDestination ??= GetProductionFleet(
                         destinationPlanet,
                         producer.GetOwnerInstanceID()
                     );
@@ -201,6 +201,28 @@ namespace Rebellion.Systems
             }
 
             return started;
+        }
+
+        /// <summary>
+        /// Gets the first stationary friendly fleet at a production destination, creating one
+        /// when none exists.
+        /// </summary>
+        /// <param name="planet">The planet receiving completed capital ships.</param>
+        /// <param name="ownerInstanceId">The faction receiving the ships.</param>
+        /// <returns>The fleet that should receive the manufactured ships.</returns>
+        private Fleet GetProductionFleet(Planet planet, string ownerInstanceId)
+        {
+            return planet
+                    .GetChildren<Fleet>()
+                    .FirstOrDefault(fleet =>
+                        fleet.Movement == null
+                        && string.Equals(
+                            fleet.GetOwnerInstanceID(),
+                            ownerInstanceId,
+                            StringComparison.Ordinal
+                        )
+                    )
+                ?? _fleetSystem.CreateAtPlanet(planet, ownerInstanceId);
         }
 
         /// <summary>
