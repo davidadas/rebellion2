@@ -377,10 +377,10 @@ namespace Rebellion.Tests.Managers
         }
 
         /// <summary>
-        /// Verifies process tick captured officer can escape.
+        /// Verifies process tick frees a captured officer whose escape attempt is due.
         /// </summary>
         [Test]
-        public void ProcessTick_CapturedOfficerCanEscape()
+        public void ProcessTick_CapturedOfficerWithDueEscapeAttempt_FreesOfficer()
         {
             GameConfig config = new GameConfig();
             config.Captive.EscapeTable = new Dictionary<int, int> { { 0, 100 } };
@@ -400,6 +400,7 @@ namespace Rebellion.Tests.Managers
             captive.IsCaptured = true;
             captive.CaptorInstanceID = captor.InstanceID;
             captive.CanEscape = true;
+            game.NextCaptiveEscapeAttemptTick = 1;
             game.AttachNode(captive, captorPlanet);
             GameManager manager = new GameManager(game, TestGameData.Create(config));
 
