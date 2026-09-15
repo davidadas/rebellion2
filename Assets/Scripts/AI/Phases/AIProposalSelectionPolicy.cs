@@ -202,7 +202,7 @@ namespace Rebellion.AI.Phases
         {
             return CanSelect(context, proposal)
                 && HasProducerCapacity(proposal)
-                && ContinuesProductionStream(proposal);
+                && (proposal.IsProductionFacilityExpansion || ContinuesProductionStream(proposal));
         }
 
         /// <summary>

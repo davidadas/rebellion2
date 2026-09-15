@@ -199,5 +199,55 @@ namespace Rebellion.Tests.AI.Proposals
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(surplusFacility.InstanceID));
         }
+
+        /// <summary>
+        /// Verifies construction facilities outside the current allocation remain available.
+        /// </summary>
+        [Test]
+        public void Plan_WithConstructionFacilityOutsideAllocation_DoesNotRemoveFacility()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "primary",
+                empire.InstanceID,
+                energyCapacity: 20
+            );
+            Planet second = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "second",
+                empire.InstanceID,
+                energyCapacity: 1
+            );
+            Building constructionFacility = AITestSceneBuilder.AddProductionFacility(
+                game,
+                second,
+                "construction-facility",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            StubRNG random = new StubRNG();
+            MaintenanceSystem maintenance = new MaintenanceSystem(
+                game,
+                random,
+                new FleetSystem(game)
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: random,
+                maintenance: maintenance
+            );
+
+            Assert.IsEmpty(new AIFacilityRemovalPlanner().Plan(context));
+            Assert.AreSame(
+                constructionFacility,
+                game.GetSceneNodeByInstanceID<Building>(constructionFacility.InstanceID)
+            );
+        }
     }
 }

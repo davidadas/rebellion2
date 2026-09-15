@@ -599,6 +599,8 @@ namespace Rebellion.Game
         {
             public AIConsiderationConfig TravelCost { get; set; } = Weighted(0.1, 100);
 
+            public AIConsiderationConfig ColonyFoundation { get; set; } = Weighted(1);
+
             public AIConsiderationConfig HeadroomRisk { get; set; } = Weighted(0);
 
             public AIConsiderationConfig Shortfall { get; set; } = Weighted(0);
@@ -624,6 +626,10 @@ namespace Rebellion.Game
             public int PlanetsPerShipyard { get; set; }
             public int PlanetsPerTrainingFacility { get; set; }
             public int TrainingDemandsPerFacility { get; set; } = 4;
+            public int ConstructionFacilityPortfolioPercent { get; set; } = 25;
+            public int ShipyardPortfolioPercent { get; set; } = 40;
+            public int TrainingFacilityPortfolioPercent { get; set; } = 20;
+            public int StaticDefensePortfolioPercent { get; set; } = 15;
             public int ManufacturingFacilityBaseDemandPercent { get; set; }
             public int ConstructionFacilityDemandPercent { get; set; }
             public int ShipyardDemandPercent { get; set; }
@@ -712,6 +718,8 @@ namespace Rebellion.Game
             public AIConsiderationConfig PrimaryHub { get; set; } = Weighted(0.5);
             public AIConsiderationConfig FacilityBalance { get; set; } = Weighted(1);
             public AIConsiderationConfig FacilityInvestment { get; set; } = Weighted(1);
+            public AIConsiderationConfig ColonyFoundation { get; set; } = Weighted(1);
+            public AIConsiderationConfig FacilityPortfolio { get; set; } = Weighted(1);
             public AIConsiderationConfig UpgradeValue { get; set; } = Weighted(0.2);
             public AIConsiderationConfig UpgradeHeadquarters { get; set; } = Weighted(0.1);
             public AIConsiderationConfig ResourceShortage { get; set; } = Weighted(1);

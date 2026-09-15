@@ -129,7 +129,7 @@ namespace Rebellion.AI.Proposals
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
                     && building.GetBuildingType() == buildingType
                 )
-                .OrderByDescending(building => building.GetProcessRate())
+                .OrderBy(building => building.GetProcessRate())
                 .ThenByDescending(building =>
                     building.ManufacturingStatus == ManufacturingStatus.Complete
                 )
@@ -150,7 +150,7 @@ namespace Rebellion.AI.Proposals
                 && context.Manufacturing != null
                 && IsOwnedBy(context, Planet)
                 && context.Game.GetSceneNodeByInstanceID<Planet>(Planet.InstanceID) == Planet
-                && BuildingType is BuildingType.Shipyard or BuildingType.ConstructionFacility;
+                && BuildingType == BuildingType.Shipyard;
         }
     }
 }

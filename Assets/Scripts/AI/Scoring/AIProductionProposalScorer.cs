@@ -62,6 +62,11 @@ namespace Rebellion.AI.Scoring
             GameConfig.AIProductionUtilityConfig utility = config.ProductionUtility;
             AIUtilityScore score = new AIUtilityScore();
             score.AddRaw(demandPressure, config.DemandUtility);
+            double colonyFoundationInput = GetColonyFoundationInput(context, proposal);
+            if (proposal.Demand.BuildingType == BuildingType.ConstructionFacility)
+                score.Add(colonyFoundationInput, utility.ColonyFoundation);
+            else if (proposal.Demand.ManufacturingType == ManufacturingType.Building)
+                score.AddCost(colonyFoundationInput, utility.ColonyFoundation);
             score.AddCostRaw(GetTravelCost(context, proposal), utility.TravelCost);
 
             int projectedHeadroom =
@@ -82,6 +87,35 @@ namespace Rebellion.AI.Scoring
             score.AddCost(projectedHeadroom < 0 ? 1 : 0, utility.Shortfall);
 
             return score.RankValue;
+        }
+
+        /// <summary>
+        /// Returns the normalized value of using a proposal to found Outer Rim construction.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The production proposal to inspect.</param>
+        /// <returns>One before the first construction yard reaches an Outer Rim planet; otherwise zero.</returns>
+        private static double GetColonyFoundationInput(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            Planet destination = proposal?.Demand?.DestinationPlanet;
+            if (
+                destination?.GetParentOfType<PlanetSector>()?.SectorType
+                != PlanetSectorType.OuterRim
+            )
+            {
+                return 0;
+            }
+
+            return
+                context.Assessment.GetPlanetProductionFacilityCount(
+                    destination,
+                    ManufacturingType.Building
+                ) == 0
+                ? 1
+                : 0;
         }
 
         /// <summary>

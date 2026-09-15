@@ -16,7 +16,29 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionDemandGenerator
     {
-        private static readonly AIDemandSource _colonyDemandSource = new AIColonyDemandSource();
+        private readonly struct FacilityPortfolio
+        {
+            public int ConstructionFacilities { get; }
+            public int Shipyards { get; }
+            public int TrainingFacilities { get; }
+            public int StaticDefenses { get; }
+            public int Total =>
+                ConstructionFacilities + Shipyards + TrainingFacilities + StaticDefenses;
+
+            public FacilityPortfolio(
+                int constructionFacilities,
+                int shipyards,
+                int trainingFacilities,
+                int staticDefenses
+            )
+            {
+                ConstructionFacilities = constructionFacilities;
+                Shipyards = shipyards;
+                TrainingFacilities = trainingFacilities;
+                StaticDefenses = staticDefenses;
+            }
+        }
+
         private static readonly AIDemandSource _specialForcesDemandSource =
             new AISpecialForcesDemandSource();
 
@@ -32,9 +54,9 @@ namespace Rebellion.AI.Planners
             if (context?.Game == null || context.Faction == null || context.Assessment == null)
                 return demands;
 
-            _colonyDemandSource.AddDemands(context, demands);
+            FacilityPortfolio facilityPortfolio = BuildFacilityPortfolio(context);
             AddResourceBalanceDemand(context, demands);
-            AddPlanetaryDefenseDemands(context, demands);
+            AddPlanetaryDefenseDemands(context, demands, facilityPortfolio);
             AddPlanetaryStarfighterDemands(context, demands);
             AddFleetSeedDemand(context, demands);
             AddColonizationFleetSeedDemand(context, demands);
@@ -46,7 +68,8 @@ namespace Rebellion.AI.Planners
                 context,
                 demands,
                 new AIInfrastructurePlacementScorer(context),
-                developmentAllocation
+                developmentAllocation,
+                facilityPortfolio
             );
             AddProductionFacilityUpgradeDemands(context, demands, developmentAllocation);
             AddIdleShipyardFighterDemands(context, demands);
@@ -113,7 +136,11 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
-        private void AddPlanetaryDefenseDemands(AITurnContext context, List<AIDemand> demands)
+        private void AddPlanetaryDefenseDemands(
+            AITurnContext context,
+            List<AIDemand> demands,
+            FacilityPortfolio facilityPortfolio
+        )
         {
             foreach (
                 Planet planet in context
@@ -121,7 +148,7 @@ namespace Rebellion.AI.Planners
                     .OrderByDescending(context.Assessment.GetPlanetValue)
                     .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
-                AddPlanetaryDefenseDemands(context, demands, planet);
+                AddPlanetaryDefenseDemands(context, demands, planet, facilityPortfolio);
         }
 
         /// <summary>
@@ -133,11 +160,15 @@ namespace Rebellion.AI.Planners
         private void AddPlanetaryDefenseDemands(
             AITurnContext context,
             List<AIDemand> demands,
-            Planet planet
+            Planet planet,
+            FacilityPortfolio facilityPortfolio
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            int availableEnergy = planet.GetAvailableEnergy();
+            int availableEnergy = context.DevelopmentAllocation.GetAvailableEnergy(
+                planet,
+                BuildingType.Defense
+            );
             int shieldTarget = context.Assessment.GetPlanetaryShieldTargetCount(planet);
             int shieldCount = context
                 .Assessment.GetPlanetBuildings(planet)
@@ -158,7 +189,8 @@ namespace Rebellion.AI.Planners
                         shieldQuantity,
                         shieldTarget,
                         config.PlanetaryShieldDemandPercent,
-                        shieldCount == 0
+                        shieldCount == 0,
+                        facilityPortfolio
                     )
                 );
                 availableEnergy -= shieldQuantity;
@@ -185,7 +217,9 @@ namespace Rebellion.AI.Planners
                     BuildingType.Weapon,
                     Math.Min(weaponDeficit, availableEnergy),
                     weaponTarget,
-                    config.PlanetaryWeaponDemandPercent
+                    config.PlanetaryWeaponDemandPercent,
+                    false,
+                    facilityPortfolio
                 )
             );
         }
@@ -238,7 +272,8 @@ namespace Rebellion.AI.Planners
             int deficit,
             int targetCount,
             int baseDemandPercent,
-            bool isInitialShield = false
+            bool isInitialShield,
+            FacilityPortfolio facilityPortfolio
         )
         {
             return new AIDemand(
@@ -259,7 +294,8 @@ namespace Rebellion.AI.Planners
                     baseDemandPercent,
                     deficit,
                     targetCount,
-                    isInitialShield
+                    isInitialShield,
+                    facilityPortfolio
                 )
             );
         }
@@ -548,10 +584,12 @@ namespace Rebellion.AI.Planners
             AITurnContext context,
             List<AIDemand> demands,
             AIInfrastructurePlacementScorer placementScorer,
-            AIPlanetDevelopmentAllocation developmentAllocation
+            AIPlanetDevelopmentAllocation developmentAllocation,
+            FacilityPortfolio facilityPortfolio
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            AddOuterRimFoundationDemands(context, demands, placementScorer, facilityPortfolio);
             AddProductionFacilityDemand(
                 context,
                 demands,
@@ -560,7 +598,8 @@ namespace Rebellion.AI.Planners
                 BuildingType.Shipyard,
                 config.ShipyardDemandPercent,
                 placementScorer,
-                developmentAllocation
+                developmentAllocation,
+                facilityPortfolio
             );
             AddProductionFacilityDemand(
                 context,
@@ -570,7 +609,8 @@ namespace Rebellion.AI.Planners
                 BuildingType.ConstructionFacility,
                 config.ConstructionFacilityDemandPercent,
                 placementScorer,
-                developmentAllocation
+                developmentAllocation,
+                facilityPortfolio
             );
             AddProductionFacilityDemand(
                 context,
@@ -580,8 +620,87 @@ namespace Rebellion.AI.Planners
                 BuildingType.TrainingFacility,
                 config.TrainingFacilityDemandPercent,
                 placementScorer,
-                developmentAllocation
+                developmentAllocation,
+                facilityPortfolio
             );
+        }
+
+        /// <summary>
+        /// Adds the construction yard that converts a claimed Outer Rim planet into a colony.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="demands">The demand list to update.</param>
+        /// <param name="placementScorer">The turn-scoped infrastructure placement scorer.</param>
+        /// <param name="facilityPortfolio">The faction's current strategic-facility mix.</param>
+        private void AddOuterRimFoundationDemands(
+            AITurnContext context,
+            List<AIDemand> demands,
+            AIInfrastructurePlacementScorer placementScorer,
+            FacilityPortfolio facilityPortfolio
+        )
+        {
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            foreach (
+                IGrouping<string, Planet> sector in context
+                    .Assessment.OwnedPlanets.Where(planet =>
+                        planet?.IsColonized == false
+                        && !planet.IsDestroyed
+                        && planet.GetAvailableEnergy() > 0
+                        && planet.GetParentOfType<PlanetSector>()?.SectorType
+                            == PlanetSectorType.OuterRim
+                    )
+                    .GroupBy(context.Assessment.GetPlanetSystemId)
+                    .OrderBy(group => group.Key, StringComparer.Ordinal)
+            )
+            {
+                if (
+                    context.Assessment.OwnedPlanets.Any(planet =>
+                        context.Assessment.GetPlanetSystemId(planet) == sector.Key
+                        && planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility) > 0
+                    )
+                )
+                {
+                    continue;
+                }
+
+                Planet target = placementScorer
+                    .RankDestinations(
+                        sector.ToList(),
+                        null,
+                        ManufacturingType.Building,
+                        BuildingType.ConstructionFacility,
+                        planet => planet.GetAvailableEnergy()
+                    )
+                    .FirstOrDefault();
+                if (target == null)
+                    continue;
+
+                double pressure =
+                    GetProductionFacilityPressure(
+                        context,
+                        AIDemandKind.ConstructionFacility,
+                        0,
+                        1,
+                        config.ConstructionFacilityDemandPercent,
+                        1,
+                        facilityPortfolio
+                    ) + AIUtility.EvaluatePressure(1, config.DemandUtility.ColonyFoundation);
+                demands.Add(
+                    new AIDemand(
+                        AIDemand.CreateId(
+                            context.Faction.InstanceID,
+                            AIDemandKind.ConstructionFacility,
+                            target.InstanceID
+                        ),
+                        AIDemandKind.ConstructionFacility,
+                        ManufacturingType.Building,
+                        BuildingType.ConstructionFacility,
+                        target,
+                        1,
+                        pressure
+                    )
+                );
+            }
         }
 
         /// <summary>
@@ -756,7 +875,8 @@ namespace Rebellion.AI.Planners
             BuildingType buildingType,
             int baseDemandPercent,
             AIInfrastructurePlacementScorer placementScorer,
-            AIPlanetDevelopmentAllocation developmentAllocation
+            AIPlanetDevelopmentAllocation developmentAllocation,
+            FacilityPortfolio facilityPortfolio
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
@@ -766,31 +886,34 @@ namespace Rebellion.AI.Planners
                 .OrderByDescending(demand => demand.Pressure)
                 .ThenBy(demand => demand.Id, StringComparer.Ordinal)
                 .ToList();
-            if (productionDemands.Count == 0 && buildingType == BuildingType.TrainingFacility)
-                return;
-
-            int remainingTrainingFacilityCount = int.MaxValue;
+            int desiredFacilityCount = GetDesiredProductionFacilityCount(context, buildingType);
             if (buildingType == BuildingType.TrainingFacility)
             {
                 int demandCapacityTarget = IntegerMath.DivideRoundedUp(
                     productionDemands.Count,
                     Math.Max(1, config.TrainingDemandsPerFacility)
                 );
-                remainingTrainingFacilityCount = Math.Max(
-                    0,
-                    Math.Max(
-                        GetDesiredProductionFacilityCount(context, buildingType),
-                        demandCapacityTarget
-                    ) - GetOwnedFacilityCount(context, buildingType)
-                );
-                if (remainingTrainingFacilityCount == 0)
-                    return;
+                desiredFacilityCount = Math.Max(desiredFacilityCount, demandCapacityTarget);
             }
+            int remainingFacilityCount = Math.Max(
+                0,
+                desiredFacilityCount - GetOwnedFacilityCount(context, buildingType)
+            );
+            if (buildingType == BuildingType.ConstructionFacility)
+            {
+                remainingFacilityCount = Math.Max(
+                    remainingFacilityCount,
+                    GetUnestablishedOuterRimSectorCount(context)
+                );
+            }
+            if (remainingFacilityCount == 0)
+                return;
 
             List<IGrouping<string, Planet>> sectors = context
                 .Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet)
                 .GroupBy(context.Assessment.GetPlanetSystemId)
-                .OrderBy(group => group.Key, StringComparer.Ordinal)
+                .OrderByDescending(sector => GetColonyFoundationInput(sector, buildingType))
+                .ThenBy(group => group.Key, StringComparer.Ordinal)
                 .ToList();
             int hubTarget =
                 buildingType == BuildingType.Shipyard
@@ -802,24 +925,9 @@ namespace Rebellion.AI.Planners
                 hubTarget,
                 config.DemandUtility.FacilityBalance
             );
-            bool hasIncompleteShipyardHub =
-                buildingType == BuildingType.Shipyard
-                && sectors.Any(sector =>
-                    sector.Any(planet =>
-                        developmentAllocation.IsPrimaryHub(planet, buildingType)
-                        && GetAvailableFacilityExpansionEnergy(context, planet, buildingType) > 0
-                        && planet.GetTotalBuildingTypeCount(buildingType)
-                            < developmentAllocation.GetPrimaryTarget(
-                                planet,
-                                buildingType,
-                                hubTarget
-                            )
-                    )
-                );
-
             foreach (IGrouping<string, Planet> sector in sectors)
             {
-                if (remainingTrainingFacilityCount == 0)
+                if (remainingFacilityCount == 0)
                     break;
 
                 List<Planet> sectorPlanets = sector
@@ -856,33 +964,33 @@ namespace Rebellion.AI.Planners
                     buildingType,
                     hubTarget
                 );
+                double colonyFoundationInput = GetColonyFoundationInput(sector, buildingType);
+                int currentTarget = colonyFoundationInput > 0 ? 1 : primaryTarget;
                 int hubCount = hub.GetTotalBuildingTypeCount(buildingType);
-                if (hubCount < primaryTarget)
+                if (hubCount < currentTarget)
                 {
-                    int priorDemandCount = demands.Count;
-                    AddSectorFacilityDemand(
+                    double colonyFoundationPressure = AIUtility.EvaluatePressure(
+                        colonyFoundationInput,
+                        config.DemandUtility.ColonyFoundation
+                    );
+                    remainingFacilityCount -= AddSectorFacilityDemand(
                         context,
                         demands,
                         sectorDemand,
                         kind,
                         buildingType,
                         hub,
-                        primaryTarget,
+                        currentTarget,
                         baseDemandPercent,
                         AIUtility.EvaluatePressure(1, config.DemandUtility.SectorCoverage)
                             + AIUtility.EvaluatePressure(1, config.DemandUtility.PrimaryHub)
-                            + categoryBalancePressure
+                            + colonyFoundationPressure
+                            + categoryBalancePressure,
+                        facilityPortfolio,
+                        colonyFoundationInput > 0 ? 1 : remainingFacilityCount
                     );
-                    if (
-                        buildingType == BuildingType.TrainingFacility
-                        && demands.Count > priorDemandCount
-                    )
-                        remainingTrainingFacilityCount--;
                     continue;
                 }
-
-                if (hasIncompleteShipyardHub)
-                    continue;
 
                 int secondaryTarget = context
                     .Game
@@ -895,8 +1003,7 @@ namespace Rebellion.AI.Planners
                     && planet.GetTotalBuildingTypeCount(buildingType) < secondaryTarget
                 );
 
-                int priorSecondaryDemandCount = demands.Count;
-                AddSectorFacilityDemand(
+                remainingFacilityCount -= AddSectorFacilityDemand(
                     context,
                     demands,
                     sectorDemand,
@@ -905,14 +1012,58 @@ namespace Rebellion.AI.Planners
                     secondarySite,
                     secondaryTarget,
                     baseDemandPercent,
-                    categoryBalancePressure
+                    categoryBalancePressure,
+                    facilityPortfolio,
+                    remainingFacilityCount
                 );
-                if (
-                    buildingType == BuildingType.TrainingFacility
-                    && demands.Count > priorSecondaryDemandCount
-                )
-                    remainingTrainingFacilityCount--;
             }
+        }
+
+        /// <summary>
+        /// Returns the number of owned Outer Rim sectors without construction capacity.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The number of sectors requiring a founding construction yard.</returns>
+        private static int GetUnestablishedOuterRimSectorCount(AITurnContext context)
+        {
+            return context
+                .Assessment.OwnedPlanets.Where(planet =>
+                    planet?.IsColonized == true && !planet.IsDestroyed
+                )
+                .GroupBy(context.Assessment.GetPlanetSystemId)
+                .Count(sector =>
+                    GetColonyFoundationInput(sector, BuildingType.ConstructionFacility) > 0
+                );
+        }
+
+        /// <summary>
+        /// Returns the normalized need for founding construction capacity in an Outer Rim sector.
+        /// </summary>
+        /// <param name="sector">Owned planets in one sector.</param>
+        /// <param name="buildingType">The facility category being considered.</param>
+        /// <returns>One before the first construction yard and zero otherwise.</returns>
+        private static double GetColonyFoundationInput(
+            IEnumerable<Planet> sector,
+            BuildingType buildingType
+        )
+        {
+            if (buildingType != BuildingType.ConstructionFacility)
+                return 0;
+
+            List<Planet> planets = sector.ToList();
+            if (
+                planets.Count == 0
+                || planets[0].GetParentOfType<PlanetSector>()?.SectorType
+                    != PlanetSectorType.OuterRim
+            )
+            {
+                return 0;
+            }
+
+            int constructionFacilityCount = planets.Sum(planet =>
+                planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility)
+            );
+            return 1 - AIUtility.Fulfillment(constructionFacilityCount, 1);
         }
 
         /// <summary>
@@ -957,7 +1108,10 @@ namespace Rebellion.AI.Planners
         /// <param name="targetCount">The desired facility count at the destination.</param>
         /// <param name="baseDemandPercent">The base demand pressure.</param>
         /// <param name="strategicBonus">Additional pressure for the site's strategic role.</param>
-        private void AddSectorFacilityDemand(
+        /// <param name="facilityPortfolio">The faction's current strategic-facility mix.</param>
+        /// <param name="maximumQuantity">The remaining faction-wide capacity deficit.</param>
+        /// <returns>The number of facilities requested.</returns>
+        private int AddSectorFacilityDemand(
             AITurnContext context,
             List<AIDemand> demands,
             AIDemand primaryDemand,
@@ -966,23 +1120,24 @@ namespace Rebellion.AI.Planners
             Planet target,
             int targetCount,
             int baseDemandPercent,
-            double strategicBonus
+            double strategicBonus,
+            FacilityPortfolio facilityPortfolio,
+            int maximumQuantity
         )
         {
             if (target == null || target.GetAvailableEnergy() <= 0 || targetCount <= 0)
-                return;
+                return 0;
 
             int currentCount = target.GetTotalBuildingTypeCount(buildingType);
             if (currentCount >= targetCount)
-                return;
+                return 0;
 
-            int quantity = 1;
-            if (kind == AIDemandKind.ConstructionFacility)
-            {
-                quantity = Math.Min(targetCount - currentCount, target.GetAvailableEnergy());
-            }
+            int quantity = Math.Min(
+                Math.Min(targetCount - currentCount, target.GetAvailableEnergy()),
+                maximumQuantity
+            );
             if (quantity <= 0)
-                return;
+                return 0;
 
             double concentrationBonus = baseDemandPercent * currentCount / targetCount;
             double investmentDeficit = (double)(targetCount - currentCount) / targetCount;
@@ -1001,7 +1156,8 @@ namespace Rebellion.AI.Planners
                         currentCount,
                         targetCount,
                         baseDemandPercent,
-                        investmentDeficit
+                        investmentDeficit,
+                        facilityPortfolio
                     )
                         + strategicBonus
                         + concentrationBonus,
@@ -1009,6 +1165,7 @@ namespace Rebellion.AI.Planners
                     primaryDemand?.CapitalShipRole ?? AICapitalShipProductionRole.None
                 )
             );
+            return quantity;
         }
 
         /// <summary>
@@ -1027,7 +1184,8 @@ namespace Rebellion.AI.Planners
             int currentCount,
             int desiredCount,
             int baseDemandPercent,
-            double investmentDeficit
+            double investmentDeficit,
+            FacilityPortfolio facilityPortfolio
         )
         {
             int targetCount = Math.Max(currentCount + 1, desiredCount);
@@ -1049,6 +1207,8 @@ namespace Rebellion.AI.Planners
                     investmentDeficit,
                     context.Game.Config.AI.Infrastructure.DemandUtility.FacilityInvestment
                 );
+
+            pressure += GetFacilityPortfolioPressure(context, kind, facilityPortfolio);
 
             return pressure;
         }
@@ -1091,6 +1251,93 @@ namespace Rebellion.AI.Planners
             }
 
             return desiredCount;
+        }
+
+        /// <summary>
+        /// Captures the projected strategic-facility mix once for this production turn.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>Counts for productive and static-defense facilities.</returns>
+        private static FacilityPortfolio BuildFacilityPortfolio(AITurnContext context)
+        {
+            int constructionFacilities = 0;
+            int shipyards = 0;
+            int trainingFacilities = 0;
+            int staticDefenses = 0;
+            foreach (Planet planet in context.Assessment.OwnedPlanets)
+            {
+                foreach (Building building in context.Assessment.GetPlanetBuildings(planet))
+                {
+                    if (building.GetOwnerInstanceID() != context.Faction.InstanceID)
+                        continue;
+
+                    switch (building.GetBuildingType())
+                    {
+                        case BuildingType.ConstructionFacility:
+                            constructionFacilities++;
+                            break;
+                        case BuildingType.Shipyard:
+                            shipyards++;
+                            break;
+                        case BuildingType.TrainingFacility:
+                            trainingFacilities++;
+                            break;
+                        case BuildingType.Defense:
+                        case BuildingType.Weapon:
+                            staticDefenses++;
+                            break;
+                    }
+                }
+            }
+
+            return new FacilityPortfolio(
+                constructionFacilities,
+                shipyards,
+                trainingFacilities,
+                staticDefenses
+            );
+        }
+
+        /// <summary>
+        /// Returns signed demand pressure based on a facility category's target portfolio share.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="kind">The facility demand category.</param>
+        /// <param name="portfolio">The faction's current strategic-facility mix.</param>
+        /// <returns>Positive pressure below target and negative pressure above target.</returns>
+        private static double GetFacilityPortfolioPressure(
+            AITurnContext context,
+            AIDemandKind kind,
+            FacilityPortfolio portfolio
+        )
+        {
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            (int count, int targetPercent) = kind switch
+            {
+                AIDemandKind.ConstructionFacility => (
+                    portfolio.ConstructionFacilities,
+                    config.ConstructionFacilityPortfolioPercent
+                ),
+                AIDemandKind.Shipyard => (portfolio.Shipyards, config.ShipyardPortfolioPercent),
+                AIDemandKind.TrainingFacility => (
+                    portfolio.TrainingFacilities,
+                    config.TrainingFacilityPortfolioPercent
+                ),
+                AIDemandKind.PlanetaryDefense => (
+                    portfolio.StaticDefenses,
+                    config.StaticDefensePortfolioPercent
+                ),
+                _ => (0, 0),
+            };
+            if (portfolio.Total <= 0 || targetPercent <= 0)
+                return 0;
+
+            double currentPercent = count * 100.0 / portfolio.Total;
+            double targetDeviation = (targetPercent - currentPercent) / targetPercent;
+            GameConfig.AIConsiderationConfig consideration = config.DemandUtility.FacilityPortfolio;
+            return targetDeviation >= 0
+                ? AIUtility.EvaluatePressure(targetDeviation, consideration)
+                : -AIUtility.EvaluatePressure(-targetDeviation, consideration);
         }
 
         /// <summary>
@@ -2063,6 +2310,7 @@ namespace Rebellion.AI.Planners
         /// <param name="deficit">Current defense deficit.</param>
         /// <param name="targetCount">Target defense count.</param>
         /// <param name="isInitialShield">Whether the demand establishes the first shield.</param>
+        /// <param name="facilityPortfolio">The faction's current strategic-facility mix.</param>
         /// <returns>The defense pressure.</returns>
         private double GetPlanetaryDefensePressure(
             AITurnContext context,
@@ -2070,7 +2318,8 @@ namespace Rebellion.AI.Planners
             int baseDemandPercent,
             int deficit,
             int targetCount,
-            bool isInitialShield = false
+            bool isInitialShield = false,
+            FacilityPortfolio facilityPortfolio = default
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
@@ -2099,6 +2348,12 @@ namespace Rebellion.AI.Planners
                 context.Assessment.GetPlanetDefenseThreatStrength(planet) > 0 ? 1 : 0,
                 utility.DefenseThreat
             );
+            if (facilityPortfolio.Total > 0)
+                pressure += GetFacilityPortfolioPressure(
+                    context,
+                    AIDemandKind.PlanetaryDefense,
+                    facilityPortfolio
+                );
 
             double boundedPressure = ClampPressure(pressure);
             return isInitialShield

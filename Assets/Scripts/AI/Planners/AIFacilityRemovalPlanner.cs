@@ -34,9 +34,7 @@ namespace Rebellion.AI.Planners
                         .Assessment.GetPlanetBuildings(planet)
                         .Where(building =>
                             building.GetOwnerInstanceID() == context.Faction.InstanceID
-                            && building.GetBuildingType()
-                                is BuildingType.Shipyard
-                                    or BuildingType.ConstructionFacility
+                            && building.GetBuildingType() == BuildingType.Shipyard
                         )
                         .GroupBy(building => building.GetBuildingType())
                 )

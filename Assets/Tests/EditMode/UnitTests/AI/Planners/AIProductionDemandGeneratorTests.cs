@@ -19,10 +19,10 @@ namespace Rebellion.Tests.AI.Planners
     public class AIProductionDemandGeneratorTests
     {
         /// <summary>
-        /// Verifies generate with claimed uncolonized planet adds colony demand.
+        /// Verifies a claimed planet does not bypass shared infrastructure demand.
         /// </summary>
         [Test]
-        public void Generate_WithClaimedUncolonizedPlanet_AddsColonyDemand()
+        public void Generate_WithClaimedUncolonizedPlanet_DoesNotAddColonyDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -38,111 +38,6 @@ namespace Rebellion.Tests.AI.Planners
                 AITestSceneBuilder.CreateRegiment("garrison", empire.InstanceID),
                 planet
             );
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-
-            AIDemand demand = new AIProductionDemandGenerator()
-                .Generate(context)
-                .Single(item => item.Kind == AIDemandKind.Colony);
-
-            Assert.AreSame(planet, demand.DestinationPlanet);
-            Assert.AreEqual(BuildingType.Mine, demand.BuildingType);
-            Assert.AreEqual(1, demand.QuantityNeeded);
-        }
-
-        /// <summary>
-        /// Verifies generate with mine capacity ahead uses refinery as colony founding facility.
-        /// </summary>
-        [Test]
-        public void Generate_WithMineCapacityAhead_UsesRefineryAsColonyFoundingFacility()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet establishedPlanet = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "established-world",
-                empire.InstanceID,
-                rawResourceNodes: 2
-            );
-            AITestSceneBuilder.AddProductionFacility(
-                game,
-                establishedPlanet,
-                "existing-mine",
-                BuildingType.Mine,
-                ManufacturingType.None
-            );
-            Planet claimedPlanet = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "claimed-world",
-                empire.InstanceID,
-                rawResourceNodes: 2
-            );
-            claimedPlanet.IsColonized = false;
-            game.AttachNode(
-                AITestSceneBuilder.CreateRegiment("garrison", empire.InstanceID),
-                claimedPlanet
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-
-            AIDemand demand = new AIProductionDemandGenerator()
-                .Generate(context)
-                .Single(item => item.Kind == AIDemandKind.Colony);
-
-            Assert.AreEqual(BuildingType.Refinery, demand.BuildingType);
-        }
-
-        /// <summary>
-        /// Verifies generate with multiple claimed planets balances founding facilities.
-        /// </summary>
-        [Test]
-        public void Generate_WithMultipleClaimedPlanets_BalancesFoundingFacilities()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
-            foreach (string planetId in new[] { "claimed-one", "claimed-two" })
-            {
-                Planet planet = AITestSceneBuilder.AddPlanet(
-                    game,
-                    system,
-                    planetId,
-                    empire.InstanceID,
-                    rawResourceNodes: 2
-                );
-                planet.IsColonized = false;
-                game.AttachNode(
-                    AITestSceneBuilder.CreateRegiment($"{planetId}-garrison", empire.InstanceID),
-                    planet
-                );
-            }
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-
-            List<AIDemand> demands = new AIProductionDemandGenerator()
-                .Generate(context)
-                .Where(item => item.Kind == AIDemandKind.Colony)
-                .ToList();
-
-            CollectionAssert.AreEquivalent(
-                new[] { BuildingType.Mine, BuildingType.Refinery },
-                demands.Select(demand => demand.BuildingType)
-            );
-        }
-
-        /// <summary>
-        /// Verifies generate with abandoned uncolonized planet does not add colony demand.
-        /// </summary>
-        [Test]
-        public void Generate_WithAbandonedUncolonizedPlanet_DoesNotAddColonyDemand()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet planet = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "abandoned-world",
-                empire.InstanceID
-            );
-            planet.IsColonized = false;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
@@ -663,6 +558,54 @@ namespace Rebellion.Tests.AI.Planners
             List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
             Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.ConstructionFacility));
+        }
+
+        /// <summary>
+        /// Verifies a new Outer Rim sector receives a curve-prioritized construction-yard demand.
+        /// </summary>
+        [Test]
+        public void Generate_WithNewOuterRimColony_PrioritizesConstructionFacility()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.PlanetsPerConstructionFacility = 100;
+            PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
+            Planet established = AITestSceneBuilder.AddPlanet(
+                game,
+                core,
+                "established",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                established,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            PlanetSector outerRim = AITestSceneBuilder.AddSector(game, "outer-rim");
+            outerRim.SectorType = PlanetSectorType.OuterRim;
+            Planet colony = AITestSceneBuilder.AddPlanet(
+                game,
+                outerRim,
+                "colony",
+                empire.InstanceID
+            );
+            colony.IsColonized = false;
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            AIDemand construction = demands.Single(demand =>
+                demand.Kind == AIDemandKind.ConstructionFacility
+                && demand.DestinationPlanet == colony
+            );
+            Assert.Greater(
+                construction.Pressure,
+                demands
+                    .Where(demand => demand.BuildingType != BuildingType.ConstructionFacility)
+                    .Max(demand => demand.Pressure)
+            );
         }
 
         /// <summary>
