@@ -230,6 +230,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
+        /// <summary>
+        /// Verifies opening an occupied authored slot leaves its existing window unchanged.
+        /// </summary>
         [Test]
         public void TryOpenAtPosition_OccupiedAuthoredSlot_DoesNotReplaceWindow()
         {
@@ -244,6 +247,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(_controller.FindWindow(secondSector));
         }
 
+        /// <summary>
+        /// Verifies assigning an initialized sector window updates its session slot.
+        /// </summary>
         [Test]
         public void SetSectorPosition_InitializedWindow_UpdatesSessionSlot()
         {

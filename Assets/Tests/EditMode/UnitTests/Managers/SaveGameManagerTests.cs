@@ -149,6 +149,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, state.GetZOrder());
         }
 
+        /// <summary>
+        /// Verifies replacing an existing save leaves the updated save without temporary files.
+        /// </summary>
         [Test]
         public void SaveGameData_ExistingSave_AtomicallyReplacesWithoutTemporaryFiles()
         {

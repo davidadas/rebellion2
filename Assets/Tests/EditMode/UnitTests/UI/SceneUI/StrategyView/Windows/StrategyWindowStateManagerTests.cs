@@ -160,6 +160,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         /// <param name="x">The horizontal window position.</param>
         /// <param name="y">The vertical window position.</param>
         /// <param name="modal">Whether the window is modal.</param>
+        /// <returns>The registered test window.</returns>
         private UIWindow CreateWindow<TContent>(int x, int y, bool modal)
             where TContent : MonoBehaviour
         {
