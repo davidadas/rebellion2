@@ -511,7 +511,7 @@ public static class OptionsMenuPrefabBuilder
                 (int)options[i],
                 labels[i],
                 20,
-                214 + i * 26
+                248 + i * 26
             );
         }
 
