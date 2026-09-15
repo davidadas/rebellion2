@@ -1,5 +1,6 @@
 Required Notice: Copyright 2023-2026 David Adams.
-Required Notice: This license applies only to original Rebellion II software authored by David Adams. Third-party software, trademarks, names, artwork, audio, game data, and other materials remain subject to their respective rights and licenses.
+Required Notice: This license applies only to original Rebellion II source code authored by David Adams.
+Required Notice: It does not cover content or assets, including images, icons, artwork, 3D models, textures, animations, audio, video, fonts, game data, or other media, nor third-party software, names, or trademarks. Excluded materials remain subject to their respective rights and licenses.
 
 # PolyForm Noncommercial License 1.0.0
 
