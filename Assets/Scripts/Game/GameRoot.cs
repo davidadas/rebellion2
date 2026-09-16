@@ -68,7 +68,6 @@ namespace Rebellion.Game
 
         // Game state.
         public int CurrentTick;
-        public int NextCaptiveEscapeAttemptTick;
         public TickSpeed GameSpeed = TickSpeed.Slow;
 
         // Game events.

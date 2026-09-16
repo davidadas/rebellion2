@@ -1031,20 +1031,6 @@ namespace Rebellion.Tests.Game
         }
 
         /// <summary>
-        /// Verifies the next captive escape-attempt pulse survives serialization.
-        /// </summary>
-        [Test]
-        public void NextCaptiveEscapeAttemptTick_Serialized_PreservesValue()
-        {
-            _game.NextCaptiveEscapeAttemptTick = 725;
-
-            string xml = SerializationHelper.Serialize(_game);
-            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
-
-            Assert.AreEqual(725, restored.NextCaptiveEscapeAttemptTick);
-        }
-
-        /// <summary>
         /// Creates building.
         /// </summary>
         /// <param name="instanceId">The instance id.</param>

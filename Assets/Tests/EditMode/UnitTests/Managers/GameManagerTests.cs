@@ -400,7 +400,7 @@ namespace Rebellion.Tests.Managers
             captive.IsCaptured = true;
             captive.CaptorInstanceID = captor.InstanceID;
             captive.CanEscape = true;
-            game.NextCaptiveEscapeAttemptTick = 1;
+            captive.NextEscapeAttemptTick = 1;
             game.AttachNode(captive, captorPlanet);
             GameManager manager = new GameManager(game, TestGameData.Create(config));
 

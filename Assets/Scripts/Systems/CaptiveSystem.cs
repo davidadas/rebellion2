@@ -25,7 +25,7 @@ namespace Rebellion.Systems
         private readonly MovementSystem _movementSystem;
         private readonly FogOfWarSystem _fogOfWarSystem;
         private readonly ProbabilityTable _escapeTable;
-        private readonly GameConfig.MissionTickConfig _escapeAttempt;
+        private readonly GameConfig.TickRangeConfig _escapeAttemptInterval;
         private readonly int _loyaltyShift;
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace Rebellion.Systems
                 movementSystem ?? throw new ArgumentNullException(nameof(movementSystem));
             _fogOfWarSystem =
                 fogOfWarSystem ?? throw new ArgumentNullException(nameof(fogOfWarSystem));
-            _escapeAttempt = game.Config.Captive.EscapeAttempt;
+            _escapeAttemptInterval = game.Config.Captive.EscapeAttemptInterval;
             _escapeTable = new ProbabilityTable(game.Config.Captive.EscapeTable);
             _loyaltyShift = game.Config.Captive.EscapeLoyaltyShift;
         }
@@ -77,6 +77,7 @@ namespace Rebellion.Systems
                 );
                 if (result.IsCaptured == false)
                 {
+                    officer.NextEscapeAttemptTick = 0;
                     if (!officer.IsCaptured)
                         _fogOfWarSystem.RemoveEntityFromSnapshots(
                             originalFaction,
@@ -111,6 +112,8 @@ namespace Rebellion.Systems
                 }
 
                 _fogOfWarSystem.RecordObservations(originalFaction, new[] { officer }, result.Tick);
+                if (officer.CanEscape && officer.NextEscapeAttemptTick <= 0)
+                    ScheduleEscapeAttempt(officer);
             }
 
             return reactions;
@@ -123,21 +126,24 @@ namespace Rebellion.Systems
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
-            if (_game.NextCaptiveEscapeAttemptTick <= 0)
-            {
-                ScheduleEscapeAttempt();
-                return results;
-            }
-
-            if (_game.CurrentTick < _game.NextCaptiveEscapeAttemptTick)
-                return results;
-
-            ScheduleEscapeAttempt();
-
             foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
             {
                 if (!officer.IsCaptured || !officer.CanEscape || officer.IsKilled)
+                {
+                    officer.NextEscapeAttemptTick = 0;
                     continue;
+                }
+
+                if (officer.NextEscapeAttemptTick <= 0)
+                {
+                    ScheduleEscapeAttempt(officer);
+                    continue;
+                }
+
+                if (_game.CurrentTick < officer.NextEscapeAttemptTick)
+                    continue;
+
+                ScheduleEscapeAttempt(officer);
 
                 ContainerNode custodyContext = GetCustodyContext(officer);
                 Planet planet = officer.GetParentOfType<Planet>();
@@ -160,14 +166,15 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Schedules the next escape-attempt pulse from the configured base and spread.
+        /// Schedules an officer's next escape attempt within the configured inclusive range.
         /// </summary>
-        private void ScheduleEscapeAttempt()
+        /// <param name="officer">The captive officer whose next attempt is scheduled.</param>
+        private void ScheduleEscapeAttempt(Officer officer)
         {
-            int baseTicks = Math.Max(0, _escapeAttempt?.Base ?? 0);
-            int spreadTicks = Math.Max(0, _escapeAttempt?.Spread ?? 0);
-            _game.NextCaptiveEscapeAttemptTick = checked(
-                _game.CurrentTick + baseTicks + _provider.NextInt(0, spreadTicks + 1)
+            int minimum = Math.Max(0, _escapeAttemptInterval?.Minimum ?? 0);
+            int maximum = Math.Max(minimum, _escapeAttemptInterval?.Maximum ?? minimum);
+            officer.NextEscapeAttemptTick = checked(
+                _game.CurrentTick + _provider.NextInt(minimum, maximum + 1)
             );
         }
 
@@ -380,6 +387,7 @@ namespace Rebellion.Systems
             }
 
             officer.CanEscape = false;
+            officer.NextEscapeAttemptTick = 0;
             officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + _loyaltyShift));
 
             return new OfficerCaptureStateResult
