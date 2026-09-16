@@ -46,7 +46,9 @@ namespace Rebellion.AI.Planners
                 string DestinationId,
                 ManufacturingType ManufacturingType,
                 ProducerMode Mode,
-                AIDemandKind DemandKind
+                AIDemandKind DemandKind,
+                string ProductTypeId,
+                int Quantity
             ),
             List<Planet>
         > _producerPlanets =
@@ -55,7 +57,9 @@ namespace Rebellion.AI.Planners
                     string DestinationId,
                     ManufacturingType ManufacturingType,
                     ProducerMode Mode,
-                    AIDemandKind DemandKind
+                    AIDemandKind DemandKind,
+                    string ProductTypeId,
+                    int Quantity
                 ),
                 List<Planet>
             >();
@@ -158,7 +162,13 @@ namespace Rebellion.AI.Planners
             if (remainingQuantity <= 0)
                 return;
 
-            List<Planet> producerPlanets = FindProducerPlanets(context, demand).ToList();
+            List<Planet> producerPlanets = FindProducerPlanets(
+                    context,
+                    demand,
+                    product.GetReference(),
+                    remainingQuantity
+                )
+                .ToList();
             if (producerPlanets.Count == 0)
                 return;
             if (!distributesDemand)
@@ -1287,8 +1297,15 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">Demand item to satisfy.</param>
-        /// <returns>Eligible producer planets.</returns>
-        private IEnumerable<Planet> FindProducerPlanets(AITurnContext context, AIDemand demand)
+        /// <param name="product">The product to manufacture.</param>
+        /// <param name="quantity">The quantity required by the demand.</param>
+        /// <returns>Eligible producer planets in fulfillment order.</returns>
+        private IEnumerable<Planet> FindProducerPlanets(
+            AITurnContext context,
+            AIDemand demand,
+            IManufacturable product,
+            int quantity
+        )
         {
             if (context?.Assessment == null || demand?.Destination == null)
                 return Enumerable.Empty<Planet>();
@@ -1302,8 +1319,17 @@ namespace Rebellion.AI.Planners
                 string DestinationId,
                 ManufacturingType ManufacturingType,
                 ProducerMode Mode,
-                AIDemandKind DemandKind
-            ) key = (destinationPlanet?.InstanceID, demand.ManufacturingType, mode, demand.Kind);
+                AIDemandKind DemandKind,
+                string ProductTypeId,
+                int Quantity
+            ) key = (
+                destinationPlanet?.InstanceID,
+                demand.ManufacturingType,
+                mode,
+                demand.Kind,
+                product?.GetTypeID(),
+                quantity
+            );
             if (_producerPlanets.TryGetValue(key, out List<Planet> producers))
                 return producers;
 
@@ -1353,9 +1379,14 @@ namespace Rebellion.AI.Planners
                         .ToList()
                     : eligibleProducers
                         .OrderBy(planet =>
-                            destinationPlanet == null
-                                ? 0
-                                : destinationPlanet.GetRawDistanceTo(planet)
+                            GetProducerFulfillmentTicks(
+                                context,
+                                demand,
+                                product,
+                                quantity,
+                                planet,
+                                destinationPlanet
+                            )
                         )
                         .ThenByDescending(planet =>
                             context.Assessment.GetPlanetProductionRate(
@@ -1367,6 +1398,39 @@ namespace Rebellion.AI.Planners
                         .ToList();
             _producerPlanets.Add(key, producers);
             return producers;
+        }
+
+        /// <summary>
+        /// Returns the fulfillment time used to order eligible producers.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="demand">The demand being fulfilled.</param>
+        /// <param name="product">The product to manufacture.</param>
+        /// <param name="quantity">The quantity required by the demand.</param>
+        /// <param name="producer">The candidate producer.</param>
+        /// <param name="destinationPlanet">The destination planet, when available.</param>
+        /// <returns>Estimated arrival ticks for fleet reinforcements, otherwise raw distance.</returns>
+        private static double GetProducerFulfillmentTicks(
+            AITurnContext context,
+            AIDemand demand,
+            IManufacturable product,
+            int quantity,
+            Planet producer,
+            Planet destinationPlanet
+        )
+        {
+            if (demand.DestinationFleet != null && product is IMovable movable)
+            {
+                return context.ReinforcementArrivalForecast.GetArrivalTicks(
+                    producer,
+                    demand.DestinationFleet,
+                    product,
+                    movable,
+                    quantity
+                );
+            }
+
+            return destinationPlanet == null ? 0 : destinationPlanet.GetRawDistanceTo(producer);
         }
 
         /// <summary>

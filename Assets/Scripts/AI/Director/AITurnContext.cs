@@ -33,6 +33,8 @@ namespace Rebellion.AI.Director
         public AIStrategicPlan StrategicPlan { get; }
         public AIPlanetDevelopmentAllocation DevelopmentAllocation =>
             _developmentAllocation ??= new AIPlanetDevelopmentAllocation(this);
+        public AIReinforcementArrivalForecast ReinforcementArrivalForecast =>
+            _reinforcementArrivalForecast ??= new AIReinforcementArrivalForecast(this);
 
         // Turn Output.
         public IReadOnlyList<AIProposal> Proposals => _proposals;
@@ -46,6 +48,7 @@ namespace Rebellion.AI.Director
             new Dictionary<SpecialForces, SpecialForcesIntent>();
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
         private AIPlanetDevelopmentAllocation _developmentAllocation;
+        private AIReinforcementArrivalForecast _reinforcementArrivalForecast;
 
         /// <summary>
         /// Creates a turn context.
@@ -340,7 +343,7 @@ namespace Rebellion.AI.Director
         {
             foreach (
                 IGrouping<string, Planet> sector in context
-                    .Assessment.OwnedPlanets.Where(planet => planet != null && !planet.IsDestroyed)
+                    .Assessment.OwnedPlanets.Where(planet => planet?.IsDestroyed == false)
                     .GroupBy(context.Assessment.GetPlanetSystemId)
             )
             {

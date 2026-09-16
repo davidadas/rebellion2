@@ -2061,6 +2061,39 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
+        /// Verifies fleet reinforcement production uses the producer with the earliest arrival.
+        /// </summary>
+        [Test]
+        public void Plan_WithBackloggedNearbyProducer_UsesEarlierArrivalProducer()
+        {
+            (
+                GameRoot game,
+                Faction empire,
+                Fleet fleet,
+                Planet nearbyProducer,
+                Planet distantProducer
+            ) = CreateDistributedStarfighterScene(includeSecondProducer: true);
+            game.Config.AI.Selection.PreferredStarfighterTypeCountPerFleet = 1;
+            CapitalShip queuedShip = AITestSceneBuilder.CreateCapitalShip(
+                "queued-ship",
+                empire.InstanceID
+            );
+            queuedShip.ConstructionCost = 1000;
+            queuedShip.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(queuedShip, nearbyProducer);
+            nearbyProducer.AddToManufacturingQueue(queuedShip);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIManufactureProposal>()
+                .Single(item =>
+                    item.Demand.Kind == AIDemandKind.FleetStarfighter && item.Destination == fleet
+                );
+
+            Assert.AreSame(distantProducer, proposal.ProducerPlanet);
+        }
+
+        /// <summary>
         /// Verifies plan with distributed starfighter batch uses preferred fleet type count.
         /// </summary>
         [Test]

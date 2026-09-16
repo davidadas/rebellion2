@@ -5191,6 +5191,34 @@ namespace Rebellion.Tests.Systems
         }
 
         /// <summary>
+        /// Verifies appended completion estimates include existing queued work.
+        /// </summary>
+        [Test]
+        public void EstimateAppendedCompletionTicks_WithQueuedWork_IncludesQueueAndNewItems()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestPlanet(game, "p1", "empire");
+            game.AttachNode(CreateOrderTestConstructionFacility("yard", "empire", 2), planet);
+            Building queued = CreateOrderTestBuildingTemplate("queued");
+            queued.ConstructionCost = 10;
+            queued.ManufacturingProgress = 4;
+            queued.ManufacturingStatus = ManufacturingStatus.Building;
+            queued.OwnerInstanceID = "empire";
+            game.AttachNode(queued, planet);
+            planet.AddToManufacturingQueue(queued);
+            Building appended = CreateOrderTestBuildingTemplate("appended");
+            appended.ConstructionCost = 5;
+
+            int? estimate = ManufacturingSystem.EstimateAppendedCompletionTicks(
+                planet,
+                appended,
+                1
+            );
+
+            Assert.AreEqual(22, estimate);
+        }
+
+        /// <summary>
         /// Builds shipyard planet.
         /// </summary>
         /// <param name="_game">The game.</param>

@@ -512,6 +512,39 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Estimates when newly appended copies would finish after the producer's current queue.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The item template to append.</param>
+        /// <param name="count">The number of copies to append.</param>
+        /// <returns>The estimated completion ticks, or null when no facility can produce the item.</returns>
+        public static int? EstimateAppendedCompletionTicks(
+            Planet producer,
+            IManufacturable template,
+            int count
+        )
+        {
+            if (producer == null || template == null || count <= 0)
+                return null;
+
+            ManufacturingType type = template.GetManufacturingType();
+            long queuedProgress =
+                producer.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue)
+                && queue != null
+                    ? queue.Sum(item =>
+                        (long)
+                            Math.Max(
+                                item.GetConstructionCost() - item.GetManufacturingProgress(),
+                                0
+                            )
+                    )
+                    : 0;
+            long appendedProgress = (long)Math.Max(template.GetConstructionCost(), 0) * count;
+            long requiredProgress = Math.Min(int.MaxValue, queuedProgress + appendedProgress);
+            return EstimateManufacturingTicks(producer, type, requiredProgress);
+        }
+
+        /// <summary>
         /// Estimates when the current queue for one manufacturing category will finish.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>

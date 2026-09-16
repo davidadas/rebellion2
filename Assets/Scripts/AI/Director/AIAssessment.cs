@@ -603,9 +603,7 @@ namespace Rebellion.AI.Director
                 .Where(planet =>
                     planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.OuterRim
                 )
-                .Select(planet =>
-                    (planet, anchors.Select(anchor => anchor.GetRawDistanceTo(planet)).Min())
-                )
+                .Select(planet => (planet, anchors.Min(anchor => anchor.GetRawDistanceTo(planet))))
                 .ToList();
             double farthestDistance = distances
                 .Select(candidate => candidate.Distance)

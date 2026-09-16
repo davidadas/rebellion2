@@ -136,6 +136,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
+        /// <param name="facilityPortfolio">The turn-scoped facility portfolio.</param>
         private void AddPlanetaryDefenseDemands(
             AITurnContext context,
             List<AIDemand> demands,
@@ -157,6 +158,7 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
         /// <param name="planet">The planet to evaluate.</param>
+        /// <param name="facilityPortfolio">The turn-scoped facility portfolio.</param>
         private void AddPlanetaryDefenseDemands(
             AITurnContext context,
             List<AIDemand> demands,
@@ -264,6 +266,7 @@ namespace Rebellion.AI.Planners
         /// <param name="targetCount">The desired unit count.</param>
         /// <param name="baseDemandPercent">The base demand pressure.</param>
         /// <param name="isInitialShield">Whether this establishes the first shield.</param>
+        /// <param name="facilityPortfolio">The turn-scoped facility portfolio.</param>
         /// <returns>The defense demand.</returns>
         private AIDemand CreatePlanetaryDefenseBuildingDemand(
             AITurnContext context,
@@ -580,6 +583,7 @@ namespace Rebellion.AI.Planners
         /// <param name="demands">The demand list to update.</param>
         /// <param name="placementScorer">The turn-scoped infrastructure placement scorer.</param>
         /// <param name="developmentAllocation">The turn-scoped planet development allocation.</param>
+        /// <param name="facilityPortfolio">The turn-scoped facility portfolio.</param>
         private void AddProductionFacilityDemands(
             AITurnContext context,
             List<AIDemand> demands,
@@ -867,6 +871,7 @@ namespace Rebellion.AI.Planners
         /// <param name="baseDemandPercent">The base demand pressure.</param>
         /// <param name="placementScorer">The turn-scoped infrastructure placement scorer.</param>
         /// <param name="developmentAllocation">The turn-scoped planet development allocation.</param>
+        /// <param name="facilityPortfolio">The turn-scoped facility portfolio.</param>
         private void AddProductionFacilityDemand(
             AITurnContext context,
             List<AIDemand> demands,
@@ -918,8 +923,7 @@ namespace Rebellion.AI.Planners
                     IsOwnedUsablePlanet(planet)
                     || (
                         buildingType == BuildingType.ConstructionFacility
-                        && planet != null
-                        && !planet.IsDestroyed
+                        && planet?.IsDestroyed == false
                         && planet.GetParentOfType<PlanetSector>()?.SectorType
                             == PlanetSectorType.OuterRim
                     )
@@ -1049,7 +1053,7 @@ namespace Rebellion.AI.Planners
         {
             int target = context.Game.Config.AI.Infrastructure.FacilitySectorHubTargetCount;
             return context
-                .Assessment.OwnedPlanets.Where(planet => planet != null && !planet.IsDestroyed)
+                .Assessment.OwnedPlanets.Where(planet => planet?.IsDestroyed == false)
                 .GroupBy(context.Assessment.GetPlanetSystemId)
                 .Sum(sector =>
                     GetOuterRimConstructionDeficit(
@@ -1253,6 +1257,7 @@ namespace Rebellion.AI.Planners
         /// <param name="desiredCount">The minimum strategic facility count.</param>
         /// <param name="baseDemandPercent">The base demand pressure.</param>
         /// <param name="investmentDeficit">The remaining construction-capacity deficit.</param>
+        /// <param name="facilityPortfolio">The turn-scoped facility portfolio.</param>
         /// <returns>The adjusted pressure.</returns>
         private double GetProductionFacilityPressure(
             AITurnContext context,

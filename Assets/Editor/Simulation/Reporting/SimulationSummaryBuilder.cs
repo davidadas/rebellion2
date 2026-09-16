@@ -290,17 +290,19 @@ public static partial class HeadlessSimulationRunner
     {
         Faction faction = game.GetFactionByOwnerInstanceID(summary.FactionId);
         FleetSystem fleetSystem = new FleetSystem(game);
+        FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
+        MovementSystem movement = new MovementSystem(game, fogOfWar, fleetSystem);
         ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleetSystem);
         AITurnContext context = new AITurnContext(
             game,
             faction,
             null,
-            null,
+            movement,
             manufacturing,
             null,
             null,
             new SystemRandomProvider(0),
-            new FogOfWarSystem(game).BuildFactionView(faction)
+            fogOfWar.BuildFactionView(faction)
         );
         List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
         List<AIManufactureProposal> proposals = new AIProductionPlanner()
