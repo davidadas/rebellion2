@@ -108,6 +108,10 @@ namespace Rebellion.AI.Scoring
                     ),
                     utility.TravelEfficiency
                 );
+                score.Add(
+                    context.Assessment.GetColonizationAnchorProximity(proposal.EntryPlanet),
+                    utility.AnchorProximity
+                );
             }
 
             score.Add(

@@ -208,6 +208,77 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
+        /// <summary>
+        /// Verifies a full Outer Rim seed planet assigns construction growth to a feasible local planet.
+        /// </summary>
+        [Test]
+        public void DevelopmentAllocation_FullOuterRimSeed_UsesFeasibleLocalConstructionHub()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FacilitySectorHubTargetCount = 5;
+            game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "outer-rim");
+            sector.SectorType = PlanetSectorType.OuterRim;
+            Planet seed = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "seed",
+                empire.InstanceID,
+                energyCapacity: 5
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                seed,
+                "yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            foreach (
+                BuildingType type in new[]
+                {
+                    BuildingType.Headquarters,
+                    BuildingType.Mine,
+                    BuildingType.Refinery,
+                    BuildingType.Defense,
+                }
+            )
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    seed,
+                    type.ToString(),
+                    type,
+                    ManufacturingType.None
+                );
+            }
+
+            Planet expansion = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "expansion",
+                empire.InstanceID,
+                energyCapacity: 7
+            );
+            expansion.IsColonized = false;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Assert.IsFalse(
+                context.DevelopmentAllocation.IsPrimaryHub(seed, BuildingType.ConstructionFacility)
+            );
+            Assert.IsTrue(
+                context.DevelopmentAllocation.IsPrimaryHub(
+                    expansion,
+                    BuildingType.ConstructionFacility
+                )
+            );
+            Assert.IsTrue(
+                context.DevelopmentAllocation.HasIncompletePrimaryHub(
+                    sector.InstanceID,
+                    BuildingType.ConstructionFacility
+                )
+            );
+        }
+
         [Test]
         public void DevelopmentAllocation_UsesConfiguredHubUtility()
         {

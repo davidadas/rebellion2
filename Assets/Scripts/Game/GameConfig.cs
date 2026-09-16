@@ -412,6 +412,8 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig TravelEfficiency { get; set; } = Weighted(0.02);
 
+            public AIConsiderationConfig AnchorProximity { get; set; } = Weighted(0.25);
+
             public AIConsiderationConfig Ready { get; set; } = Weighted(0.035);
 
             public AIConsiderationConfig OpportunityCost { get; set; } = Weighted(0.02);

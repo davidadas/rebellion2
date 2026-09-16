@@ -126,6 +126,10 @@ namespace Rebellion.AI.Director
         private readonly Dictionary<string, Planet> _knownPlanets = new Dictionary<string, Planet>(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<string, double> _colonizationAnchorProximities = new(
+            StringComparer.Ordinal
+        );
+        private bool _colonizationAnchorProximitiesBuilt;
         private readonly Dictionary<string, IReadOnlyList<Planet>> _knownPlanetsBySystemId =
             new Dictionary<string, IReadOnlyList<Planet>>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _offensiveSupportLeverage = new Dictionary<
@@ -554,6 +558,64 @@ namespace Rebellion.AI.Director
                         .DefaultIfEmpty()
                         .Max()
             );
+        }
+
+        /// <summary>
+        /// Returns normalized proximity to the nearest headquarters or established Outer Rim colony.
+        /// </summary>
+        /// <param name="planet">Colonization candidate to inspect.</param>
+        /// <returns>One for the nearest candidate and zero for the farthest candidate.</returns>
+        public double GetColonizationAnchorProximity(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            BuildColonizationAnchorProximities();
+            return _colonizationAnchorProximities.TryGetValue(
+                planet.InstanceID,
+                out double proximity
+            )
+                ? proximity
+                : 0;
+        }
+
+        /// <summary>
+        /// Builds turn-scoped colony-network proximity values for every unexplored Outer Rim planet.
+        /// </summary>
+        private void BuildColonizationAnchorProximities()
+        {
+            if (_colonizationAnchorProximitiesBuilt)
+                return;
+
+            _colonizationAnchorProximitiesBuilt = true;
+            List<Planet> anchors = OwnedPlanets
+                .Where(planet =>
+                    IsFactionHeadquarters(planet)
+                    || planet.IsColonized
+                        && planet.GetParentOfType<PlanetSector>()?.SectorType
+                            == PlanetSectorType.OuterRim
+                )
+                .ToList();
+            if (anchors.Count == 0)
+                return;
+
+            List<(Planet Planet, double Distance)> distances = UnexploredPlanets
+                .Where(planet =>
+                    planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.OuterRim
+                )
+                .Select(planet =>
+                    (planet, anchors.Select(anchor => anchor.GetRawDistanceTo(planet)).Min())
+                )
+                .ToList();
+            double farthestDistance = distances
+                .Select(candidate => candidate.Distance)
+                .DefaultIfEmpty()
+                .Max();
+            foreach ((Planet candidate, double distance) in distances)
+            {
+                _colonizationAnchorProximities[candidate.InstanceID] =
+                    farthestDistance > 0 ? 1 - Math.Min(1, distance / farthestDistance) : 1;
+            }
         }
 
         /// <summary>

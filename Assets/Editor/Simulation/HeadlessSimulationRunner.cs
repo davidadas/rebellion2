@@ -50,6 +50,7 @@ public static partial class HeadlessSimulationRunner
     /// <param name="saveFileName">The optional save-file name override.</param>
     /// <param name="saveDisplayName">The optional save display-name override.</param>
     /// <param name="playerFactionId">The optional player-faction override for the saved game.</param>
+    /// <param name="difficulty">The game difficulty applied to the simulation.</param>
     /// <returns>The completed simulation result.</returns>
     public static SimulationRunResult RunPersistentSimulation(
         int tickCount,
@@ -57,7 +58,8 @@ public static partial class HeadlessSimulationRunner
         int? seed,
         string saveFileName = null,
         string saveDisplayName = null,
-        string playerFactionId = null
+        string playerFactionId = null,
+        GameDifficulty difficulty = GameDifficulty.Medium
     )
     {
         return RunSimulation(
@@ -69,6 +71,7 @@ public static partial class HeadlessSimulationRunner
                 SaveFileName = saveFileName,
                 SaveDisplayName = saveDisplayName,
                 PlayerFactionId = playerFactionId,
+                Difficulty = difficulty,
             }
         );
     }

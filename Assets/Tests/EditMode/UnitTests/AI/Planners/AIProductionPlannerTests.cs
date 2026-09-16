@@ -502,6 +502,88 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
+        /// Verifies established sectors compound facility expansion from local construction capacity.
+        /// </summary>
+        [Test]
+        public void Plan_WithEstablishedDestinationSector_UsesAllLocalFacilityProducers()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
+            game.Config.AI.Infrastructure.PlanetsPerConstructionFacility = 100;
+            game.Config.AI.Infrastructure.FacilitySectorHubTargetCount = 5;
+            PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
+            Planet coreProducer = AITestSceneBuilder.AddPlanet(
+                game,
+                core,
+                "core-producer",
+                empire.InstanceID,
+                energyCapacity: 20
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                coreProducer,
+                "core-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AddMaintenanceCapacity(game, coreProducer, 1);
+
+            PlanetSector outerRim = AITestSceneBuilder.AddSector(game, "outer-rim");
+            outerRim.SectorType = PlanetSectorType.OuterRim;
+            Planet localProducer = AITestSceneBuilder.AddPlanet(
+                game,
+                outerRim,
+                "flive",
+                empire.InstanceID,
+                energyCapacity: 6
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                localProducer,
+                "flive-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Planet siblingProducer = AITestSceneBuilder.AddPlanet(
+                game,
+                outerRim,
+                "gamorr",
+                empire.InstanceID,
+                energyCapacity: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                siblingProducer,
+                "gamorr-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Building constructionFacility = AITestSceneBuilder.CreateBuildingTemplate(
+                "construction-yard-template",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            constructionFacility.MaintenanceCost = 0;
+            empire.ResearchQueue[ManufacturingType.Building] = new List<Technology>
+            {
+                new Technology(constructionFacility),
+            };
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIManufactureProposal>()
+                .Single(item =>
+                    item.Demand.Kind == AIDemandKind.ConstructionFacility
+                    && item.Demand.DestinationPlanet == localProducer
+                );
+
+            CollectionAssert.AreEquivalent(
+                new[] { localProducer, siblingProducer },
+                proposal.ProducerOptions.Select(option => option.ProducerPlanet).ToArray()
+            );
+        }
+
+        /// <summary>
         /// Verifies plan with planetary shield demand selects strongest shield.
         /// </summary>
         [Test]

@@ -42,11 +42,21 @@ namespace Rebellion.AI.Planners
                 Technology
             >();
         private readonly Dictionary<
-            (string DestinationId, ManufacturingType ManufacturingType, ProducerMode Mode),
+            (
+                string DestinationId,
+                ManufacturingType ManufacturingType,
+                ProducerMode Mode,
+                AIDemandKind DemandKind
+            ),
             List<Planet>
         > _producerPlanets =
             new Dictionary<
-                (string DestinationId, ManufacturingType ManufacturingType, ProducerMode Mode),
+                (
+                    string DestinationId,
+                    ManufacturingType ManufacturingType,
+                    ProducerMode Mode,
+                    AIDemandKind DemandKind
+                ),
                 List<Planet>
             >();
         private readonly Dictionary<
@@ -1288,11 +1298,12 @@ namespace Rebellion.AI.Planners
                 IsFacilityExpansionDemand(demand) ? ProducerMode.FacilityExpansion
                 : IsDistributedProductionDemand(demand) ? ProducerMode.Distributed
                 : ProducerMode.AvailableCapacity;
-            (string DestinationId, ManufacturingType ManufacturingType, ProducerMode Mode) key = (
-                destinationPlanet?.InstanceID,
-                demand.ManufacturingType,
-                mode
-            );
+            (
+                string DestinationId,
+                ManufacturingType ManufacturingType,
+                ProducerMode Mode,
+                AIDemandKind DemandKind
+            ) key = (destinationPlanet?.InstanceID, demand.ManufacturingType, mode, demand.Kind);
             if (_producerPlanets.TryGetValue(key, out List<Planet> producers))
                 return producers;
 
@@ -1302,6 +1313,22 @@ namespace Rebellion.AI.Planners
                     ? HasProductionFacility(context, planet, demand.ManufacturingType)
                 : CanProduce(planet, demand.ManufacturingType)
             );
+            eligibleProducers = eligibleProducers.Where(producer =>
+                CanAllocateProducerToDemand(context, producer, demand, destinationPlanet)
+            );
+            if (mode == ProducerMode.FacilityExpansion && destinationPlanet != null)
+            {
+                string destinationSystemId = context.Assessment.GetPlanetSystemId(
+                    destinationPlanet
+                );
+                List<Planet> localProducers = eligibleProducers
+                    .Where(planet =>
+                        context.Assessment.GetPlanetSystemId(planet) == destinationSystemId
+                    )
+                    .ToList();
+                if (localProducers.Count > 0)
+                    eligibleProducers = localProducers;
+            }
             producers =
                 mode == ProducerMode.FacilityExpansion
                     ? eligibleProducers
@@ -1340,6 +1367,38 @@ namespace Rebellion.AI.Planners
                         .ToList();
             _producerPlanets.Add(key, producers);
             return producers;
+        }
+
+        /// <summary>
+        /// Reserves an Outer Rim sector's construction capacity until its local hub is complete.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="producer">The prospective producing planet.</param>
+        /// <param name="demand">The demand seeking production capacity.</param>
+        /// <param name="destination">The demand destination, if planetary.</param>
+        /// <returns>True when the producer may serve the demand.</returns>
+        private static bool CanAllocateProducerToDemand(
+            AITurnContext context,
+            Planet producer,
+            AIDemand demand,
+            Planet destination
+        )
+        {
+            string producerSystemId = context.Assessment.GetPlanetSystemId(producer);
+            PlanetSector producerSystem = producer?.GetParentOfType<PlanetSector>();
+            if (producerSystem?.SectorType != PlanetSectorType.OuterRim)
+                return true;
+
+            bool constructionHubIncomplete = context.DevelopmentAllocation.HasIncompletePrimaryHub(
+                producerSystemId,
+                BuildingType.ConstructionFacility
+            );
+            if (!constructionHubIncomplete)
+                return true;
+
+            return demand?.Kind == AIDemandKind.ConstructionFacility
+                && destination != null
+                && context.Assessment.GetPlanetSystemId(destination) == producerSystemId;
         }
 
         /// <summary>

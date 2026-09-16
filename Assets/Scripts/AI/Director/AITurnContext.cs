@@ -204,6 +204,8 @@ namespace Rebellion.AI.Director
         private readonly Dictionary<BuildingType, HashSet<string>> _primaryPlanetIdsByType = new();
         private readonly Dictionary<BuildingType, Dictionary<string, int>> _primaryTargetsByType =
             new();
+        private readonly Dictionary<BuildingType, HashSet<string>> _incompletePrimarySystemsByType =
+            new();
         private readonly Dictionary<string, Dictionary<BuildingType, int>> _reservedEnergyByPlanet =
             new(StringComparer.Ordinal);
 
@@ -315,6 +317,22 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns whether a system's designated primary facility hub is incomplete.
+        /// </summary>
+        /// <param name="systemId">The system identifier.</param>
+        /// <param name="buildingType">The facility type.</param>
+        /// <returns>True when the system has an incomplete primary hub.</returns>
+        public bool HasIncompletePrimaryHub(string systemId, BuildingType buildingType)
+        {
+            return !string.IsNullOrEmpty(systemId)
+                && _incompletePrimarySystemsByType.TryGetValue(
+                    buildingType,
+                    out HashSet<string> systemIds
+                )
+                && systemIds.Contains(systemId);
+        }
+
+        /// <summary>
         /// Builds the development allocation for every owned system.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -322,15 +340,22 @@ namespace Rebellion.AI.Director
         {
             foreach (
                 IGrouping<string, Planet> sector in context
-                    .Assessment.OwnedPlanets.Where(IsUsable)
+                    .Assessment.OwnedPlanets.Where(planet => planet != null && !planet.IsDestroyed)
                     .GroupBy(context.Assessment.GetPlanetSystemId)
             )
             {
-                List<Planet> planets = sector.ToList();
+                List<Planet> planets = sector.Where(IsUsable).ToList();
+                List<Planet> constructionPlanets = sector
+                    .Where(planet =>
+                        IsUsable(planet)
+                        || planet.GetParentOfType<PlanetSector>()?.SectorType
+                            == PlanetSectorType.OuterRim
+                    )
+                    .ToList();
                 HashSet<string> assignedPrimaryPlanetIds = new(StringComparer.Ordinal);
                 AllocateType(
                     context,
-                    planets,
+                    constructionPlanets,
                     BuildingType.ConstructionFacility,
                     assignedPrimaryPlanetIds
                 );
@@ -362,14 +387,22 @@ namespace Rebellion.AI.Director
             Dictionary<string, int> caps = GetOrAdd(_capsByType, buildingType);
             HashSet<string> primaryPlanetIds = GetOrAdd(_primaryPlanetIdsByType, buildingType);
             Dictionary<string, int> primaryTargets = GetOrAdd(_primaryTargetsByType, buildingType);
+            HashSet<string> incompletePrimarySystems = GetOrAdd(
+                _incompletePrimarySystemsByType,
+                buildingType
+            );
             List<InfrastructureCandidate> candidates = sector
                 .Select(planet => new InfrastructureCandidate(
                     planet,
                     GetFeasibleFacilityCount(planet, buildingType)
                 ))
                 .ToList();
-            int primaryTarget =
-                buildingType == BuildingType.Shipyard ? config.ShipyardSectorHubTargetCount : 0;
+            int primaryTarget = buildingType switch
+            {
+                BuildingType.Shipyard => config.ShipyardSectorHubTargetCount,
+                BuildingType.ConstructionFacility => config.FacilitySectorHubTargetCount,
+                _ => 0,
+            };
             IEnumerable<InfrastructureCandidate> preferred =
                 primaryTarget > 0
                     ? candidates.Where(item => item.FeasibleCount >= primaryTarget)
@@ -404,6 +437,12 @@ namespace Rebellion.AI.Director
             caps[primary.InstanceID] = feasibleTarget;
             primaryPlanetIds.Add(primary.InstanceID);
             primaryTargets[primary.InstanceID] = feasibleTarget;
+            if (currentCount < feasibleTarget)
+            {
+                string systemId = context.Assessment.GetPlanetSystemId(primary);
+                if (!string.IsNullOrEmpty(systemId))
+                    incompletePrimarySystems.Add(systemId);
+            }
             assignedPrimaryPlanetIds.Add(primary.InstanceID);
             if (buildingType != BuildingType.TrainingFacility)
                 ReserveEnergy(primary, buildingType, Math.Max(0, feasibleTarget - currentCount));
@@ -438,10 +477,10 @@ namespace Rebellion.AI.Director
         {
             return candidates
                 .OrderByDescending(candidate =>
-                    candidate.Planet.GetTotalBuildingTypeCount(buildingType)
+                    assignedPrimaryPlanetIds?.Contains(candidate.Planet.InstanceID) != true
                 )
                 .ThenByDescending(candidate =>
-                    assignedPrimaryPlanetIds?.Contains(candidate.Planet.InstanceID) != true
+                    candidate.Planet.GetTotalBuildingTypeCount(buildingType)
                 )
                 .ThenByDescending(candidate => candidate.FeasibleCount)
                 .ThenByDescending(candidate =>

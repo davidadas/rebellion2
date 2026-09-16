@@ -609,6 +609,106 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
+        /// Verifies a seeded Outer Rim construction hub continues to its allocated target.
+        /// </summary>
+        [Test]
+        public void Generate_WithSeededOuterRimConstructionHub_RequestsRemainingHubCapacity()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.PlanetsPerConstructionFacility = 100;
+            game.Config.AI.Infrastructure.FacilitySectorHubTargetCount = 5;
+            PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
+            Planet established = AITestSceneBuilder.AddPlanet(
+                game,
+                core,
+                "established",
+                empire.InstanceID,
+                energyCapacity: 20
+            );
+            for (int index = 0; index < 5; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    established,
+                    $"core-yard-{index}",
+                    BuildingType.ConstructionFacility,
+                    ManufacturingType.Building
+                );
+            }
+
+            PlanetSector outerRim = AITestSceneBuilder.AddSector(game, "outer-rim");
+            outerRim.SectorType = PlanetSectorType.OuterRim;
+            Planet colony = AITestSceneBuilder.AddPlanet(
+                game,
+                outerRim,
+                "flive",
+                empire.InstanceID,
+                energyCapacity: 6
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                colony,
+                "flive-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            AIDemand construction = demands.Single(demand =>
+                demand.Kind == AIDemandKind.ConstructionFacility
+                && demand.DestinationPlanet == colony
+            );
+            Assert.AreEqual(4, construction.QuantityNeeded);
+        }
+
+        /// <summary>
+        /// Verifies a full Outer Rim seed designates a feasible planet in the same system for the
+        /// complete construction hub.
+        /// </summary>
+        [Test]
+        public void Generate_WithFullOuterRimSeed_RequestsFullHubAtFeasibleSystemPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.PlanetsPerConstructionFacility = 100;
+            game.Config.AI.Infrastructure.FacilitySectorHubTargetCount = 5;
+            game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 1;
+            PlanetSector outerRim = AITestSceneBuilder.AddSector(game, "dufilvan");
+            outerRim.SectorType = PlanetSectorType.OuterRim;
+            Planet seed = AITestSceneBuilder.AddPlanet(
+                game,
+                outerRim,
+                "flive",
+                empire.InstanceID,
+                energyCapacity: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                seed,
+                "flive-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Planet hub = AITestSceneBuilder.AddPlanet(
+                game,
+                outerRim,
+                "gamorr",
+                empire.InstanceID,
+                energyCapacity: 7
+            );
+            hub.IsColonized = false;
+
+            AIDemand construction = new AIProductionDemandGenerator()
+                .Generate(AITestSceneBuilder.CreateContext(game, empire))
+                .Single(demand => demand.Kind == AIDemandKind.ConstructionFacility);
+
+            Assert.AreSame(hub, construction.DestinationPlanet);
+            Assert.AreEqual(5, construction.QuantityNeeded);
+        }
+
+        /// <summary>
         /// Verifies generate with ship demand and no shipyard adds shipyard at demand planet.
         /// </summary>
         [Test]

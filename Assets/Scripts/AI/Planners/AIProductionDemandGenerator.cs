@@ -903,22 +903,39 @@ namespace Rebellion.AI.Planners
             {
                 remainingFacilityCount = Math.Max(
                     remainingFacilityCount,
-                    GetUnestablishedOuterRimSectorCount(context)
+                    GetOuterRimConstructionDeficit(context, developmentAllocation)
                 );
             }
             if (remainingFacilityCount == 0)
                 return;
 
-            List<IGrouping<string, Planet>> sectors = context
-                .Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet)
-                .GroupBy(context.Assessment.GetPlanetSystemId)
-                .OrderByDescending(sector => GetColonyFoundationInput(sector, buildingType))
-                .ThenBy(group => group.Key, StringComparer.Ordinal)
-                .ToList();
             int hubTarget =
                 buildingType == BuildingType.Shipyard
                     ? context.Game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount
                     : context.Game.Config.AI.Infrastructure.FacilitySectorHubTargetCount;
+            List<IGrouping<string, Planet>> sectors = context
+                .Assessment.OwnedPlanets.Where(planet =>
+                    IsOwnedUsablePlanet(planet)
+                    || (
+                        buildingType == BuildingType.ConstructionFacility
+                        && planet != null
+                        && !planet.IsDestroyed
+                        && planet.GetParentOfType<PlanetSector>()?.SectorType
+                            == PlanetSectorType.OuterRim
+                    )
+                )
+                .GroupBy(context.Assessment.GetPlanetSystemId)
+                .OrderByDescending(sector =>
+                    GetOuterRimConstructionDeficit(
+                        sector,
+                        buildingType,
+                        developmentAllocation,
+                        hubTarget
+                    )
+                )
+                .ThenByDescending(sector => GetColonyFoundationInput(sector, buildingType))
+                .ThenBy(group => group.Key, StringComparer.Ordinal)
+                .ToList();
             double categoryBalancePressure = GetFacilityCategoryBalancePressure(
                 sectors,
                 buildingType,
@@ -1020,20 +1037,79 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns the number of owned Outer Rim sectors without construction capacity.
+        /// Returns the construction-yard deficit across owned Outer Rim sectors.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The number of sectors requiring a founding construction yard.</returns>
-        private static int GetUnestablishedOuterRimSectorCount(AITurnContext context)
+        /// <param name="allocation">The turn-scoped development allocation.</param>
+        /// <returns>The number of construction yards still required.</returns>
+        private static int GetOuterRimConstructionDeficit(
+            AITurnContext context,
+            AIPlanetDevelopmentAllocation allocation
+        )
         {
+            int target = context.Game.Config.AI.Infrastructure.FacilitySectorHubTargetCount;
             return context
-                .Assessment.OwnedPlanets.Where(planet =>
-                    planet?.IsColonized == true && !planet.IsDestroyed
-                )
+                .Assessment.OwnedPlanets.Where(planet => planet != null && !planet.IsDestroyed)
                 .GroupBy(context.Assessment.GetPlanetSystemId)
-                .Count(sector =>
-                    GetColonyFoundationInput(sector, BuildingType.ConstructionFacility) > 0
+                .Sum(sector =>
+                    GetOuterRimConstructionDeficit(
+                        sector,
+                        BuildingType.ConstructionFacility,
+                        allocation,
+                        target
+                    )
                 );
+        }
+
+        /// <summary>
+        /// Returns the construction deficit for one Outer Rim sector.
+        /// </summary>
+        /// <param name="sector">Owned planets in one sector.</param>
+        /// <param name="buildingType">The facility category being considered.</param>
+        /// <param name="allocation">The turn-scoped development allocation.</param>
+        /// <param name="fallbackTarget">The configured primary-site target.</param>
+        /// <returns>One for an unseeded sector, then the primary-site deficit after seeding.</returns>
+        private static int GetOuterRimConstructionDeficit(
+            IEnumerable<Planet> sector,
+            BuildingType buildingType,
+            AIPlanetDevelopmentAllocation allocation,
+            int fallbackTarget
+        )
+        {
+            if (buildingType != BuildingType.ConstructionFacility)
+                return 0;
+
+            List<Planet> planets = sector.ToList();
+            if (
+                planets.Count == 0
+                || planets[0].GetParentOfType<PlanetSector>()?.SectorType
+                    != PlanetSectorType.OuterRim
+            )
+            {
+                return 0;
+            }
+
+            int sectorCount = planets.Sum(planet =>
+                planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility)
+            );
+            if (sectorCount == 0)
+                return 1;
+
+            Planet primary = planets.FirstOrDefault(planet =>
+                allocation.IsPrimaryHub(planet, BuildingType.ConstructionFacility)
+            );
+            if (primary == null)
+                return 0;
+
+            int target = allocation.GetPrimaryTarget(
+                primary,
+                BuildingType.ConstructionFacility,
+                fallbackTarget
+            );
+            return Math.Max(
+                0,
+                target - primary.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility)
+            );
         }
 
         /// <summary>

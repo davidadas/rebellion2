@@ -772,6 +772,63 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         /// <summary>
+        /// Verifies colony campaigns favor sectors near an established faction anchor.
+        /// </summary>
+        [Test]
+        public void Score_ColonizationCampaignNearHeadquarters_ReturnsHigherScore()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameConfig.AIColonizationUtilityConfig utility = game.Config
+                .AI
+                .FleetDeployment
+                .ColonizationUtility;
+            utility.Base.Weight = 0;
+            utility.TravelEfficiency.Weight = 0;
+            utility.AnchorProximity.Weight = 1;
+            utility.Ready.Weight = 0;
+            utility.ExistingOrder.Weight = 0;
+            PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                core,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            headquarters.PositionX = 0;
+            headquarters.PositionY = 0;
+            empire.HQInstanceID = headquarters.InstanceID;
+            PlanetSector nearSector = AITestSceneBuilder.AddSector(game, "near-sector");
+            nearSector.SectorType = PlanetSectorType.OuterRim;
+            Planet near = AITestSceneBuilder.AddPlanet(game, nearSector, "near", null);
+            near.IsColonized = false;
+            near.PositionX = 10;
+            near.PositionY = 0;
+            PlanetSector farSector = AITestSceneBuilder.AddSector(game, "far-sector");
+            farSector.SectorType = PlanetSectorType.OuterRim;
+            Planet far = AITestSceneBuilder.AddPlanet(game, farSector, "far", null);
+            far.IsColonized = false;
+            far.PositionX = 100;
+            far.PositionY = 0;
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Colonization;
+            game.AttachNode(fleet, headquarters);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+
+            double nearScore = scorer.Score(
+                context,
+                new AIColonizationCampaignProposal(fleet, nearSector.InstanceID, new[] { near })
+            );
+            double farScore = scorer.Score(
+                context,
+                new AIColonizationCampaignProposal(fleet, farSector.InstanceID, new[] { far })
+            );
+
+            Assert.Greater(nearScore, farScore);
+        }
+
+        /// <summary>
         /// Verifies score existing colonization order on colonization fleet adds continuation bonus.
         /// </summary>
         [Test]
