@@ -180,10 +180,10 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         /// <summary>
-        /// Verifies resolve objective core target reports every additional sector revealed.
+        /// Verifies resolve objective core target reports every additional planet revealed.
         /// </summary>
         [Test]
-        public void ResolveObjective_CoreTarget_ReportsEveryAdditionalSectorRevealed()
+        public void ResolveObjective_CoreTarget_ReportsEveryAdditionalPlanetRevealed()
         {
             (
                 GameRoot game,
@@ -219,13 +219,11 @@ namespace Rebellion.Tests.Game.Missions
 
             List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
 
-            PlanetSectorsRevealedResult intelligence = results
-                .OfType<PlanetSectorsRevealedResult>()
-                .Single();
+            PlanetsRevealedResult intelligence = results.OfType<PlanetsRevealedResult>().Single();
             Assert.AreEqual(mission.InstanceID, intelligence.MissionInstanceID);
             CollectionAssert.AreEquivalent(
-                new[] { "Corellian", "Sluis" },
-                intelligence.AdditionalSectors.Select(sector => sector.DisplayName)
+                new[] { "core_planet2", "core_planet3" },
+                intelligence.AdditionalPlanets.Select(planet => planet.InstanceID)
             );
         }
 

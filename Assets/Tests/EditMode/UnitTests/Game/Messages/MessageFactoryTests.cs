@@ -1552,10 +1552,10 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         /// <summary>
-        /// Verifies create messages espionage success appends configured additional sectors.
+        /// Verifies create messages espionage success appends configured additional systems.
         /// </summary>
         [Test]
-        public void CreateMessages_EspionageSuccess_AppendsConfiguredAdditionalSectors()
+        public void CreateMessages_EspionageSuccess_AppendsConfiguredAdditionalSystems()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             Mission mission = new EspionageMission
@@ -1566,10 +1566,8 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
             };
             game.AttachNode(mission, target);
-            PlanetSector corellia = new PlanetSector { DisplayName = "Corellia" };
-            PlanetSector sullust = new PlanetSector { DisplayName = "Sullust" };
-            game.AttachNode(corellia, game.Galaxy);
-            game.AttachNode(sullust, game.Galaxy);
+            Planet corellia = new Planet { DisplayName = "Corellia" };
+            Planet sullust = new Planet { DisplayName = "Sullust" };
             MessageDefinition definition = Definition(
                 MessageResultType.MissionReport,
                 MessageType.Mission,
@@ -1578,17 +1576,17 @@ namespace Rebellion.Tests.Game.Messages
                 outcome: MessageResultOutcome.Success,
                 missionTypeId: MissionTypeIDs.Espionage
             );
-            definition.DetailListHeaderTemplate = "Additional sectors:";
-            definition.DetailListItemTemplate = "\n     {sector}";
+            definition.DetailListHeaderTemplate = "Additional systems:";
+            definition.DetailListItemTemplate = "\n     {system}";
 
             Message message = FirstMessageFor(
                 CreateMessages(
                     game,
                     new[] { definition },
-                    new PlanetSectorsRevealedResult
+                    new PlanetsRevealedResult
                     {
                         MissionInstanceID = mission.InstanceID,
-                        AdditionalSectors = new List<PlanetSector> { corellia, sullust },
+                        AdditionalPlanets = new List<Planet> { corellia, sullust },
                     },
                     new MissionCompletedResult
                     {
@@ -1603,16 +1601,16 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(
-                "Successful.  Additional sectors:\n     Corellia\n     Sullust",
+                "Successful.  Additional systems:\n     Corellia\n     Sullust",
                 message.Body
             );
         }
 
         /// <summary>
-        /// Verifies create messages espionage success without additional sectors omits details.
+        /// Verifies create messages espionage success without additional systems omits details.
         /// </summary>
         [Test]
-        public void CreateMessages_EspionageSuccessWithoutAdditionalSectors_OmitsDetails()
+        public void CreateMessages_EspionageSuccessWithoutAdditionalSystems_OmitsDetails()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             Mission mission = new EspionageMission

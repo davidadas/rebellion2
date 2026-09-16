@@ -101,7 +101,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider used to select bonus planets.</param>
         /// <param name="successfulParticipant">The participant whose espionage attempt succeeded.</param>
-        /// <returns>A result identifying any additional sectors revealed by the mission.</returns>
+        /// <returns>A result identifying any additional planets revealed by the mission.</returns>
         protected override List<GameResult> OnSuccess(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -118,7 +118,7 @@ namespace Rebellion.Game.Missions
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(faction, planet, sector, game.CurrentTick);
 
-            List<PlanetSector> additionalSectors = new List<PlanetSector>();
+            List<Planet> additionalPlanets = new List<Planet>();
             if (!IsOpposingFactionPlanet(game, planet))
                 return new List<GameResult>();
 
@@ -132,26 +132,20 @@ namespace Rebellion.Game.Missions
                     game.CurrentTick
                 );
 
-                if (
-                    bonusSector != null
-                    && additionalSectors.All(candidate =>
-                        candidate.InstanceID != bonusSector.InstanceID
-                    )
-                )
-                    additionalSectors.Add(bonusSector);
+                additionalPlanets.Add(bonusPlanet);
             }
 
-            if (additionalSectors.Count == 0)
+            if (additionalPlanets.Count == 0)
                 return new List<GameResult>();
 
             return new List<GameResult>
             {
-                new PlanetSectorsRevealedResult
+                new PlanetsRevealedResult
                 {
                     Tick = game.CurrentTick,
                     MissionInstanceID = InstanceID,
                     SourceEventInstanceID = SourceEventInstanceID,
-                    AdditionalSectors = additionalSectors,
+                    AdditionalPlanets = additionalPlanets,
                 },
             };
         }
