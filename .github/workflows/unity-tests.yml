@@ -328,6 +328,7 @@ jobs:
           dockerMemoryLimit: 8g
           customParameters: -executeMethod UIBuilderMenu.BuildAll
           coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
+          cliVersion: 0.1.65
 
       - name: Check coverage threshold
         run: |
