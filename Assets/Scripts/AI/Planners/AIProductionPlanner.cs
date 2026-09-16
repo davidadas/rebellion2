@@ -430,7 +430,7 @@ namespace Rebellion.AI.Planners
             return Math.Max(
                 0,
                 context.Assessment.ProjectedMaintenanceHeadroom
-                    - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
+                    - context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
             );
         }
 
@@ -444,7 +444,7 @@ namespace Rebellion.AI.Planners
             return Math.Max(
                 0,
                 context.Assessment.ProjectedMaintenanceHeadroom
-                    - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
+                    - context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
             );
         }
 
@@ -778,18 +778,10 @@ namespace Rebellion.AI.Planners
         private int GetDefensiveMaintenanceFloor(AITurnContext context)
         {
             return Math.Max(
-                context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor,
-                Math.Max(
-                    context.Game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction,
-                    IntegerMath.ScaleByPercentRoundedUp(
-                        context.Assessment.MaintenanceCapacity,
-                        context
-                            .Game
-                            .Config
-                            .AI
-                            .Infrastructure
-                            .PlanetaryDefenseMaintenanceReservePercent
-                    )
+                context.Game.Config.AI.Selection.MaintenanceHeadroomReserve,
+                IntegerMath.ScaleByPercentRoundedUp(
+                    context.Assessment.MaintenanceCapacity,
+                    context.Game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent
                 )
             );
         }
@@ -1379,6 +1371,12 @@ namespace Rebellion.AI.Planners
                         .ToList()
                     : eligibleProducers
                         .OrderBy(planet =>
+                            demand.RestoresMaintenanceCapacity
+                            && IsReservedConstructionHub(context, planet)
+                                ? 1
+                                : 0
+                        )
+                        .ThenBy(planet =>
                             GetProducerFulfillmentTicks(
                                 context,
                                 demand,
@@ -1434,7 +1432,7 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Reserves an Outer Rim sector's construction capacity until its local hub is complete.
+        /// Reserves an Outer Rim primary hub's construction capacity until the hub is complete.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="producer">The prospective producing planet.</param>
@@ -1448,21 +1446,40 @@ namespace Rebellion.AI.Planners
             Planet destination
         )
         {
+            if (!IsReservedConstructionHub(context, producer))
+                return true;
+
+            if (demand?.RestoresMaintenanceCapacity == true)
+                return true;
+
             string producerSystemId = context.Assessment.GetPlanetSystemId(producer);
-            PlanetSector producerSystem = producer?.GetParentOfType<PlanetSector>();
-            if (producerSystem?.SectorType != PlanetSectorType.OuterRim)
-                return true;
-
-            bool constructionHubIncomplete = context.DevelopmentAllocation.HasIncompletePrimaryHub(
-                producerSystemId,
-                BuildingType.ConstructionFacility
-            );
-            if (!constructionHubIncomplete)
-                return true;
-
             return demand?.Kind == AIDemandKind.ConstructionFacility
                 && destination != null
                 && context.Assessment.GetPlanetSystemId(destination) == producerSystemId;
+        }
+
+        /// <summary>
+        /// Returns whether an Outer Rim producer is the reserved primary construction hub.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="producer">The prospective producing planet.</param>
+        /// <returns>True when the producer's primary construction hub is incomplete.</returns>
+        private static bool IsReservedConstructionHub(AITurnContext context, Planet producer)
+        {
+            if (producer?.GetParentOfType<PlanetSector>()?.SectorType != PlanetSectorType.OuterRim)
+            {
+                return false;
+            }
+
+            string systemId = context.Assessment.GetPlanetSystemId(producer);
+            return context.DevelopmentAllocation.IsPrimaryHub(
+                    producer,
+                    BuildingType.ConstructionFacility
+                )
+                && context.DevelopmentAllocation.HasIncompletePrimaryHub(
+                    systemId,
+                    BuildingType.ConstructionFacility
+                );
         }
 
         /// <summary>

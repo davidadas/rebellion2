@@ -121,6 +121,71 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
+        /// Verifies non-hub Outer Rim construction remains available while the primary hub expands.
+        /// </summary>
+        [Test]
+        public void Plan_WithIncompleteOuterRimHub_UsesNonHubProducerForMine()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Infrastructure.FacilitySectorHubTargetCount = 5;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "outer-rim");
+            sector.SectorType = PlanetSectorType.OuterRim;
+            Planet primary = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "primary",
+                empire.InstanceID,
+                energyCapacity: 6
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                primary,
+                "primary-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Planet secondary = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "secondary",
+                empire.InstanceID,
+                energyCapacity: 2
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                secondary,
+                "secondary-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "resource-world",
+                empire.InstanceID,
+                energyCapacity: 4,
+                rawResourceNodes: 4
+            );
+            empire.PendingRawMaterialFacilityIDs.Add("primary-yard");
+            Building mine = AITestSceneBuilder.CreateBuildingTemplate(
+                "mine-template",
+                BuildingType.Mine
+            );
+            empire.ResearchQueue[ManufacturingType.Building] = new List<Technology>
+            {
+                new Technology(mine),
+            };
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIManufactureProposal>()
+                .Single(item => item.Demand.Kind == AIDemandKind.Mine);
+
+            Assert.AreSame(secondary, proposal.ProducerPlanet);
+        }
+
+        /// <summary>
         /// Verifies plan with advanced shipyard unlocked selects faster facility.
         /// </summary>
         [Test]
@@ -508,7 +573,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithEstablishedDestinationSector_UsesAllLocalFacilityProducers()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.PlanetsPerConstructionFacility = 100;
             game.Config.AI.Infrastructure.FacilitySectorHubTargetCount = 5;
             PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
@@ -606,7 +671,7 @@ namespace Rebellion.Tests.AI.Planners
                 BuildingType.ConstructionFacility,
                 ManufacturingType.Building
             );
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
             AddMaintenanceCapacity(game, headquarters, 1);
             Building shield = AITestSceneBuilder.CreateBuildingTemplate(
@@ -2257,8 +2322,7 @@ namespace Rebellion.Tests.AI.Planners
         ) CreatePlanetaryDefenseScene(int minimumMaintenanceHeadroom, int shieldMaintenance)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction =
-                minimumMaintenanceHeadroom;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = minimumMaintenanceHeadroom;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "defense-system");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -2312,8 +2376,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 3;
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction =
-                minimumMaintenanceHeadroom;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = minimumMaintenanceHeadroom;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
             game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = false;
             game.Config.AI.NonCapitalSummary.InteriorStarfighterBaselinePercent = 100;
@@ -2365,7 +2428,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
-            game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.ProductionFacilityMaintenanceAllocationPercent = 3;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "shipyard-system");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -2419,7 +2482,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
-            game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.ConstructionFacilityTargetClearTicks = 1;
             game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 100;
             game.Config.AI.Infrastructure.ProductionFacilityMaintenanceAllocationPercent = 4;
@@ -2617,8 +2680,7 @@ namespace Rebellion.Tests.AI.Planners
         ) CreateFacilityUpgradeScene(int maintenanceBudgetOffset)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
-            game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 20;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "upgrade-system");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -2696,7 +2758,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
-            game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.ProductionFacilityMaintenanceAllocationPercent = 3;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "shipyard-system");
             Planet planet = AITestSceneBuilder.AddPlanet(

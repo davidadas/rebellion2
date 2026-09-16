@@ -155,7 +155,8 @@ public static class PersistentSimulationRunner
                     saveAfterRun ? job.SaveFileName : null,
                     saveAfterRun ? job.SaveDisplayName : null,
                     saveAfterRun ? job.PlayerFactionId : null,
-                    difficulty
+                    difficulty,
+                    job.InputSaveFileName
                 );
 
             File.WriteAllText(
@@ -309,6 +310,7 @@ public static class PersistentSimulationRunner
         public string SaveDisplayName = string.Empty;
         public string PlayerFactionId = string.Empty;
         public string Difficulty = string.Empty;
+        public string InputSaveFileName = string.Empty;
     }
 
     [Serializable]

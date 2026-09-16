@@ -102,6 +102,7 @@ public static partial class HeadlessSimulationRunner
         public int TotalManufacturedTrainingFacilities;
         public int TotalManufacturedDefenseFacilities;
         public int TotalManufacturedWeapons;
+        public MineCompletionSummary[] MineCompletions;
         public int ProductionDemandCount;
         public int ProductionProposalCount;
         public int SelectedProductionProposalCount;
@@ -115,6 +116,13 @@ public static partial class HeadlessSimulationRunner
         public int BuildingProductionProposalCount;
         public int SelectedBuildingProductionProposalCount;
         public int SelectedProductionMaintenanceCost;
+        public int ProjectedEconomyMaintenanceHeadroom;
+        public int MineDemandCount;
+        public int RefineryDemandCount;
+        public int MineDestinationCount;
+        public int RefineryDestinationCount;
+        public int AvailableBuildingProducerCount;
+        public ProductionProposalDiagnostic[] ProductionProposalDiagnostics;
         public ConstructionFacilityExpansionSimulationSummary ConstructionFacilityExpansion;
         public TroopProductionSimulationSummary TroopProduction;
         public TroopReinforcementPackageSimulationSummary TroopReinforcementPackages;
@@ -129,6 +137,20 @@ public static partial class HeadlessSimulationRunner
         public ProductionFacilityPlanetSummary[] ProductionFacilityPlanets;
         public CurrentIdlePlanetSummary[] CurrentIdlePlanets;
         public FleetSimulationSummary[] Fleets;
+    }
+
+    [Serializable]
+    private sealed class ProductionProposalDiagnostic
+    {
+        public string DemandKind;
+        public string ProductTypeId;
+        public string DestinationId;
+        public string ProducerId;
+        public double Score;
+        public bool CanSelect;
+        public bool Selected;
+        public int MaintenanceCost;
+        public int MinimumMaintenanceHeadroom;
     }
 
     [Serializable]

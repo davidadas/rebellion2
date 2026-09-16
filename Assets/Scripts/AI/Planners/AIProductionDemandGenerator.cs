@@ -1997,8 +1997,8 @@ namespace Rebellion.AI.Planners
                 || context.Assessment.PendingRefinedMaterialRequestCount > 0
                 || GetProjectedRefinedMaterialPercent(context)
                     <= context.Game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
-                || context.Assessment.ProjectedMaintenanceHeadroom
-                    < context.Game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction;
+                || context.Assessment.ProjectedEconomyMaintenanceHeadroom
+                    < context.Game.Config.AI.Selection.MaintenanceHeadroomTarget;
         }
 
         /// <summary>
@@ -2278,10 +2278,18 @@ namespace Rebellion.AI.Planners
         )
         {
             return context.Assessment.OwnedPlanets.Where(planet =>
-                IsOwnedUsablePlanet(planet)
+                IsOwnedBuildingDestination(planet)
                 && context.DevelopmentAllocation.GetAvailableEnergy(planet, buildingType) > 0
             );
         }
+
+        /// <summary>
+        /// Returns whether an owned planet can receive a manufactured building.
+        /// </summary>
+        /// <param name="planet">The prospective destination.</param>
+        /// <returns>True when the planet exists and has not been destroyed.</returns>
+        private static bool IsOwnedBuildingDestination(Planet planet) =>
+            planet?.IsDestroyed == false;
 
         /// <summary>
         /// Returns whether a planet is an owned usable colony.
@@ -2531,22 +2539,21 @@ namespace Rebellion.AI.Planners
                 .AI
                 .Infrastructure
                 .DemandUtility;
-            int headroom = context.Assessment.ProjectedMaintenanceHeadroom;
-            int reserve = context
-                .Game
-                .Config
-                .AI
-                .Selection
-                .MinimumMaintenanceHeadroomAfterProduction;
+            int headroom = context.Assessment.ProjectedEconomyMaintenanceHeadroom;
+            int floor = context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
+            int target = Math.Max(
+                floor,
+                context.Game.Config.AI.Selection.MaintenanceHeadroomTarget
+            );
 
-            if (headroom < 0)
+            if (headroom < floor)
                 return AIUtility.EvaluatePressure(1, utility.MaintenanceShortfall);
 
-            if (headroom >= reserve)
+            if (headroom >= target)
                 return 0;
 
             return AIUtility.EvaluateDiscretePressure(
-                (reserve - headroom) / (double)Math.Max(1, reserve),
+                (target - headroom) / (double)Math.Max(1, target - floor),
                 utility.MaintenanceReserve
             );
         }

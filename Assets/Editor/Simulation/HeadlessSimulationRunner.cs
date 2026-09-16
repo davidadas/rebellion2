@@ -51,6 +51,7 @@ public static partial class HeadlessSimulationRunner
     /// <param name="saveDisplayName">The optional save display-name override.</param>
     /// <param name="playerFactionId">The optional player-faction override for the saved game.</param>
     /// <param name="difficulty">The game difficulty applied to the simulation.</param>
+    /// <param name="inputSaveFileName">The optional save file to continue.</param>
     /// <returns>The completed simulation result.</returns>
     public static SimulationRunResult RunPersistentSimulation(
         int tickCount,
@@ -59,7 +60,8 @@ public static partial class HeadlessSimulationRunner
         string saveFileName = null,
         string saveDisplayName = null,
         string playerFactionId = null,
-        GameDifficulty difficulty = GameDifficulty.Medium
+        GameDifficulty difficulty = GameDifficulty.Medium,
+        string inputSaveFileName = null
     )
     {
         return RunSimulation(
@@ -72,6 +74,7 @@ public static partial class HeadlessSimulationRunner
                 SaveDisplayName = saveDisplayName,
                 PlayerFactionId = playerFactionId,
                 Difficulty = difficulty,
+                InputSaveFileName = inputSaveFileName,
             }
         );
     }
@@ -86,7 +89,9 @@ public static partial class HeadlessSimulationRunner
         string logPath = GetLogPath(options.OutputPath);
         GameLogger.Configure(logPath, enableFileLogging: true);
         GameLogger.SetMinimumLevel(GameLogger.LogLevel.Warning);
-        BaseGameEntity.SetInstanceIdSeed(options.Seed);
+        BaseGameEntity.SetInstanceIdSeed(
+            string.IsNullOrWhiteSpace(options.InputSaveFileName) ? options.Seed : null
+        );
 
         try
         {
@@ -112,8 +117,10 @@ public static partial class HeadlessSimulationRunner
             UnityEngine.Debug.Log(startMessage);
             LogToFile(logPath, startMessage);
 
-            GameRoot game = CreateGameBuilder(summary, contentPack.GameData, options.Seed)
-                .BuildGame();
+            GameRoot game = string.IsNullOrWhiteSpace(options.InputSaveFileName)
+                ? CreateGameBuilder(summary, contentPack.GameData, options.Seed).BuildGame()
+                : SaveGameManager.Instance.LoadGameData(options.InputSaveFileName);
+            summary = game.Summary;
             foreach (Faction faction in game.GetFactions())
             {
                 Player player = game.GetFactionPlayer(faction.InstanceID);
@@ -125,6 +132,8 @@ public static partial class HeadlessSimulationRunner
             }
 
             GameManager manager = new GameManager(game, contentPack.GameData);
+            if (!string.IsNullOrWhiteSpace(options.InputSaveFileName))
+                manager.ReconcileLoadedState();
             ManufacturingIdleTracker idleTracker = new ManufacturingIdleTracker();
             ManufacturedUnitTracker manufacturedUnitTracker = new ManufacturedUnitTracker();
             FleetHistoryTracker fleetHistoryTracker = new FleetHistoryTracker();
@@ -142,7 +151,7 @@ public static partial class HeadlessSimulationRunner
             manager.ResultsResolved += garrisonRemovalBombardmentTracker.Record;
             manager.VictoriesResolved += results => victory ??= results.FirstOrDefault();
             manager.ResultsResolved += missionOutcomeTracker.Record;
-            manager.ResultsResolved += manufacturedUnitTracker.Record;
+            manager.ResultsResolved += results => manufacturedUnitTracker.Record(game, results);
             manager.ResultsResolved += specialForcesLifecycleTracker.Record;
             List<SpecialForces> initialSpecialForces = game.GetSceneNodesByType<SpecialForces>()
                 .ToList();

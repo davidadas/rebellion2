@@ -10,6 +10,7 @@ public static partial class HeadlessSimulationRunner
         public int? Seed { get; set; }
         public GameDifficulty Difficulty { get; set; } = GameDifficulty.Medium;
         public string SaveFileName { get; set; }
+        public string InputSaveFileName { get; set; }
         public string SaveDisplayName { get; set; }
         public string PlayerFactionId { get; set; }
 

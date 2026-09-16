@@ -382,21 +382,18 @@ namespace Rebellion.AI.Proposals
         /// <returns>The required maintenance headroom.</returns>
         public int GetMinimumMaintenanceHeadroom(AITurnContext context)
         {
-            int hardFloor = context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor;
+            if (Demand?.RestoresMaintenanceCapacity == true)
+                return 0;
+
+            int reserve = context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
             if (Demand?.UsesDefensiveReserve != true)
-                return hardFloor;
+                return reserve;
 
             int percentageFloor = IntegerMath.ScaleByPercentRoundedUp(
                 context.Assessment.MaintenanceCapacity,
                 context.Game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent
             );
-            return Math.Max(
-                hardFloor,
-                Math.Max(
-                    context.Game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction,
-                    percentageFloor
-                )
-            );
+            return Math.Max(reserve, percentageFloor);
         }
 
         /// <summary>

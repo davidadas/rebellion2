@@ -106,10 +106,24 @@ namespace Rebellion.AI.Scoring
         /// <returns>An upper bound for the proposal score.</returns>
         public double GetScoreUpperBound(AITurnContext context, AIMissionProposal proposal)
         {
-            if (context?.Game?.Config == null || proposal == null)
+            if (context?.Faction == null || context.Game?.Config == null || proposal == null)
                 return 0;
 
-            return 1;
+            GameConfig.AIMissionUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility;
+            AIUtilityScore score = GetMissionScore(context, proposal, successProbability: 100);
+            AddMissionPriorityUtility(ref score, utility.Priority, proposal);
+            score.AddCostRaw(0, utility.Objective.FoilRisk);
+            score.AddCostRaw(GetTravelCost(context, proposal), utility.Objective.TravelCost);
+            score.AddCost(
+                HasOfficerReplacementRisk(context, proposal) ? 1 : 0,
+                utility.Objective.OfficerRisk
+            );
+            return score.RankValue;
         }
 
         /// <summary>

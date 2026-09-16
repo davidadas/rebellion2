@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig();
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomRangeConfig();
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
             Mission mission = CreateMission(
@@ -153,10 +153,10 @@ namespace Rebellion.Tests.Game.Missions
             AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
             AddSector(game, "core3", "core_planet3", PlanetSectorType.Core);
             AddSector(game, "rim1", "rim_planet1", PlanetSectorType.OuterRim);
-            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomRangeConfig
             {
-                Base = 2,
-                Spread = 0,
+                Minimum = 2,
+                Maximum = 2,
             };
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
@@ -202,7 +202,11 @@ namespace Rebellion.Tests.Game.Missions
             corellian.DisplayName = "Corellian";
             PlanetSector sluis = AddSector(game, "core3", "core_planet3", PlanetSectorType.Core);
             sluis.DisplayName = "Sluis";
-            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig { Base = 2 };
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomRangeConfig
+            {
+                Minimum = 2,
+                Maximum = 2,
+            };
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
             Mission mission = CreateMission(
@@ -244,7 +248,11 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
             enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
-            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig { Base = 10 };
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomRangeConfig
+            {
+                Minimum = 10,
+                Maximum = 10,
+            };
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
             Mission mission = CreateMission(
@@ -277,7 +285,11 @@ namespace Rebellion.Tests.Game.Missions
             enemyPlanet.OwnerInstanceID = targetOwnerId;
             enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
             AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
-            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig { Base = 10 };
+            game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomRangeConfig
+            {
+                Minimum = 10,
+                Maximum = 10,
+            };
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
             Mission mission = CreateMission(
@@ -316,9 +328,10 @@ namespace Rebellion.Tests.Game.Missions
             Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
             rebels.HQInstanceID = enemyPlanet.InstanceID;
             rebels.Settings.Headquarters.IsMobile = true;
-            game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
+            game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomRangeConfig
             {
-                Base = 10,
+                Minimum = 10,
+                Maximum = 10,
             };
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
@@ -361,9 +374,10 @@ namespace Rebellion.Tests.Game.Missions
             Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
             rebels.HQInstanceID = enemyPlanet.InstanceID;
             rebels.Settings.Headquarters.IsMobile = false;
-            game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomCountConfig
+            game.Config.Espionage.HeadquartersBonus = new GameConfig.RandomRangeConfig
             {
-                Base = 10,
+                Minimum = 10,
+                Maximum = 10,
             };
             enemyPlanet.VisitingFactionIDs.Add("empire");
 

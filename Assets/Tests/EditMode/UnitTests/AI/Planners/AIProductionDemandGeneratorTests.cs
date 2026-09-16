@@ -53,7 +53,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -82,7 +82,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             empire.Settings.RefinementMultiplier = 10;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -127,6 +127,38 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.Mine));
             Assert.IsTrue(demands.Any(demand => demand.Kind == AIDemandKind.Refinery));
+        }
+
+        /// <summary>
+        /// Verifies economy buildings may be delivered to an owned Outer Rim planet before it is operational.
+        /// </summary>
+        [Test]
+        public void Generate_WithOwnedNonOperationalOuterRimPlanet_AddsEconomyDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "outer-rim");
+            sector.SectorType = PlanetSectorType.OuterRim;
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "claimed-world",
+                empire.InstanceID,
+                energyCapacity: 10,
+                rawResourceNodes: 5
+            );
+            planet.IsColonized = false;
+            empire.PendingRefinedMaterialFacilityIDs.Add("waiting-production-facility");
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            Assert.IsTrue(
+                demands.Any(demand =>
+                    demand.Kind is AIDemandKind.Mine or AIDemandKind.Refinery
+                    && demand.DestinationPlanet == planet
+                )
+            );
         }
 
         /// <summary>
@@ -1215,7 +1247,7 @@ namespace Rebellion.Tests.AI.Planners
             );
             headquarters.IsHeadquarters = true;
             empire.HQInstanceID = headquarters.InstanceID;
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
             AddMaintenanceCapacity(game, headquarters, 1);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -1237,7 +1269,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithDefensiveSurplus_AddsCompletePlanetaryDefensePackage()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -1286,7 +1318,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_InteriorPlanetWithScaledFloor_ReducesGarrisonTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Garrison.InteriorCaptureFloorPercent = 34;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -1319,7 +1351,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_ThreatenedPlanetWithScaledFloor_KeepsFullGarrisonTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Garrison.InteriorCaptureFloorPercent = 34;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "border", empire.InstanceID);
@@ -1353,7 +1385,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_IncompleteStaticDefenseWithGate_SkipsStarfighterReserve()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters = true;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -1384,7 +1416,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithUnthreatenedNonProductionPlanet_DoesNotAddStaticDefense()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -1414,7 +1446,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithOneDefenseEnergySlot_PrioritizesPartialShieldNetwork()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -1498,7 +1530,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Generate_WithInboundThreat_RaisesThreatenedPlanetDefensePressure()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet valuablePlanet = AITestSceneBuilder.AddPlanet(

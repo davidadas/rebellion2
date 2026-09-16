@@ -65,22 +65,22 @@ namespace Rebellion.AI.Scoring
             double colonyFoundationInput = GetColonyFoundationInput(context, proposal);
             if (proposal.Demand.BuildingType == BuildingType.ConstructionFacility)
                 score.Add(colonyFoundationInput, utility.ColonyFoundation);
-            else if (proposal.Demand.ManufacturingType == ManufacturingType.Building)
-                score.AddCost(colonyFoundationInput, utility.ColonyFoundation);
             score.AddCostRaw(GetTravelCost(context, proposal), utility.TravelCost);
 
             int projectedHeadroom =
                 context.Assessment.ProjectedMaintenanceHeadroom - maintenanceCost;
-            if (maintenanceCost > 0 && projectedHeadroom < config.MaintenanceHeadroomHardFloor)
+            if (
+                maintenanceCost > 0
+                && projectedHeadroom < proposal.GetMinimumMaintenanceHeadroom(context)
+            )
                 return 0;
 
-            int headroomDeficit =
-                config.MinimumMaintenanceHeadroomAfterProduction - projectedHeadroom;
+            int headroomDeficit = config.MaintenanceHeadroomReserve - projectedHeadroom;
 
             score.AddCost(
                 AIUtility.Fulfillment(
                     System.Math.Max(0, headroomDeficit),
-                    config.MinimumMaintenanceHeadroomAfterProduction
+                    config.MaintenanceHeadroomReserve
                 ),
                 utility.HeadroomRisk
             );

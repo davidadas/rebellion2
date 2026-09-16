@@ -175,6 +175,8 @@ namespace Rebellion.AI.Director
 
         public int ProjectedMaintenanceHeadroom { get; }
 
+        public int ProjectedEconomyMaintenanceHeadroom { get; }
+
         public int RefinedMaterialSupply { get; }
 
         public int RefinedMaterialStockpile { get; }
@@ -224,6 +226,16 @@ namespace Rebellion.AI.Director
                 availableMaterials * (faction?.Settings?.ResourceProcessingPointsPerFacility ?? 0);
             ProjectedMaintenanceHeadroom =
                 MaintenanceCapacity - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
+            int projectedMaterials = Math.Min(
+                faction?.GetTotalRawResourceNodes() ?? 0,
+                Math.Min(
+                    faction?.GetTotalRawMinedResources() ?? 0,
+                    faction?.GetTotalRawRefinementCapacity() ?? 0
+                )
+            );
+            ProjectedEconomyMaintenanceHeadroom =
+                projectedMaterials * (faction?.Settings?.ResourceProcessingPointsPerFacility ?? 0)
+                - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
             RefinedMaterialSupply =
                 availableMaterials * (faction?.Settings?.RefinementMultiplier ?? 0);
             RefinedMaterialStockpile = faction?.RefinedMaterialStockpile ?? 0;
@@ -510,12 +522,7 @@ namespace Rebellion.AI.Director
                 utility.TrainingFacility
             );
 
-            int maintenanceReserve = _context
-                .Game
-                .Config
-                .AI
-                .Selection
-                .MinimumMaintenanceHeadroomAfterProduction;
+            int maintenanceReserve = _context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
             if (ProjectedMaintenanceHeadroom < maintenanceReserve)
                 score.AddRaw(planet.GetRawResourceNodes(), utility.ResourceNode);
 

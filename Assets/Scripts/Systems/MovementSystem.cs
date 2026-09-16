@@ -1059,6 +1059,55 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Estimates how long an in-transit unit would take if retargeted from its current
+        /// position to a planet.
+        /// </summary>
+        /// <param name="unit">The in-transit unit to evaluate.</param>
+        /// <param name="destination">The proposed retarget destination.</param>
+        /// <param name="transitTicks">The estimated transit duration after retargeting.</param>
+        /// <returns>True when the unit is in transit and the retargeted route can be estimated.</returns>
+        public bool TryEstimateRetargetedTransitTicks(
+            IMovable unit,
+            Planet destination,
+            out int transitTicks
+        )
+        {
+            transitTicks = 0;
+            IMovable liveUnit = ResolveLiveNode(unit) as IMovable;
+            Planet liveDestination = ResolveLiveNode(destination) as Planet;
+            if (liveUnit?.Movement == null || liveDestination == null)
+                return false;
+
+            transitTicks = CalculateTransitTicks(
+                liveUnit,
+                liveUnit.Movement.CurrentPosition,
+                liveDestination,
+                sameSector: false
+            );
+            return true;
+        }
+
+        /// <summary>
+        /// Delays retargeted inbound fleet units so they arrive on the moving fleet's arrival tick.
+        /// </summary>
+        /// <param name="fleet">The moving destination fleet whose inbound units were retargeted.</param>
+        public void SynchronizeInTransitFleetJoiners(Fleet fleet)
+        {
+            if (fleet?.Movement == null)
+                return;
+
+            int fleetTransitTicks = fleet.Movement.TicksRemaining();
+            foreach (IMovable joiner in fleet.GetChildren<IMovable>(recursive: true))
+            {
+                if (joiner.Movement == null)
+                    continue;
+
+                joiner.Movement.TransitTicks = fleetTransitTicks;
+                joiner.Movement.TicksElapsed = 0;
+            }
+        }
+
+        /// <summary>
         /// Resolves the planet used for transit calculations for a requested destination.
         /// </summary>
         /// <param name="unit">The unit being evaluated.</param>
@@ -2440,15 +2489,6 @@ namespace Rebellion.Systems
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
 
-            if (!CanTravelBetweenPlanets(unit))
-            {
-                unit.Movement = null;
-                GameLogger.Warning(
-                    $"{unit.GetDisplayName()} has no hyperdrive or carrier and cannot evacuate."
-                );
-                return;
-            }
-
             string ownerID = GetMovementControlOwner(unit);
             if (string.IsNullOrEmpty(ownerID))
             {
@@ -2459,6 +2499,30 @@ namespace Rebellion.Systems
 
             Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
             Planet currentPlanet = unit.GetParentOfType<Planet>();
+            if (unit is Fleet inactiveFleet && !inactiveFleet.HasOperationalCapitalShips())
+            {
+                Planet rebasePlanet = FindEvacuationDestinations(owner, unit, currentPlanet)
+                    .FirstOrDefault();
+                if (rebasePlanet != null)
+                {
+                    _game.MoveNode(inactiveFleet, rebasePlanet);
+                    RetargetInTransitFleetJoiners(inactiveFleet, rebasePlanet);
+                    GameLogger.Log(
+                        $"{inactiveFleet.GetDisplayName()} rebased to {rebasePlanet.GetDisplayName()} because it has no operational capital ships."
+                    );
+                    return;
+                }
+            }
+
+            if (!CanTravelBetweenPlanets(unit))
+            {
+                unit.Movement = null;
+                GameLogger.Warning(
+                    $"{unit.GetDisplayName()} has no hyperdrive or carrier and cannot evacuate."
+                );
+                return;
+            }
+
             foreach (Planet fallback in FindEvacuationDestinations(owner, unit, currentPlanet))
             {
                 if (ExecuteMove(unit, fallback, _pendingResults))

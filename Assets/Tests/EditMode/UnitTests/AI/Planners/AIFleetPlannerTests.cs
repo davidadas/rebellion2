@@ -563,6 +563,38 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
+        /// Verifies an attack fleet shell at its hostile target returns even when its only ship is
+        /// still being delivered.
+        /// </summary>
+        [Test]
+        public void Plan_WithDeliveryOnlyFleetAtUnattackableTarget_ReturnsFleetToFriendlyTerritory()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID, "fleet");
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            ship.ManufacturingStatus = ManufacturingStatus.Delivering;
+            ship.Movement = new MovementState { TransitTicks = 10 };
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIFleetAttackProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetAttackProposal>()
+                .Single(candidate => candidate.Fleet == fleet);
+
+            Assert.AreEqual(FleetOrderStatus.Returning, proposal.Status);
+        }
+
+        /// <summary>
         /// Verifies plan with decisive planet advantage and staged attack continues current campaign.
         /// </summary>
         [Test]
@@ -1295,7 +1327,7 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 0;
-            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet staging = AITestSceneBuilder.AddPlanet(
                 game,

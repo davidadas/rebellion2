@@ -446,14 +446,33 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             CaptiveSystem system = CreateSystem(game, new FixedRNG(0.0), movement);
+            List<string> warnings = new List<string>();
+            UnityEngine.Application.LogCallback captureWarning = (condition, _, type) =>
+            {
+                if (type == UnityEngine.LogType.Warning)
+                    warnings.Add(condition);
+            };
+            UnityEngine.Application.logMessageReceived += captureWarning;
 
-            List<GameResult> results = system.ProcessTick();
+            List<GameResult> results;
+            try
+            {
+                results = system.ProcessTick();
+            }
+            finally
+            {
+                UnityEngine.Application.logMessageReceived -= captureWarning;
+            }
 
             Assert.IsFalse(captive.IsCaptured);
             Assert.IsNull(captive.CaptorInstanceID);
             Assert.IsFalse(captive.CanEscape);
             Assert.AreSame(ship, captive.GetParent());
             Assert.AreEqual(1, results.OfType<OfficerCaptureStateResult>().Count());
+            Assert.IsFalse(
+                warnings.Any(message => message.Contains("already in transit")),
+                "The accepted escape movement must stop destination evaluation."
+            );
         }
 
         /// <summary>

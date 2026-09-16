@@ -87,6 +87,9 @@ namespace Rebellion.AI.Planners
                     or AIDemandKind.TrainingFacility
                     or AIDemandKind.BuildingUpgrade;
 
+        public bool RestoresMaintenanceCapacity =>
+            Kind is AIDemandKind.Mine or AIDemandKind.Refinery;
+
         /// <summary>
         /// Creates a production demand.
         /// </summary>

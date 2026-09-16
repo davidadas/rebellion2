@@ -226,6 +226,9 @@ public static partial class HeadlessSimulationRunner
                         faction.InstanceID,
                         BuildingType.Weapon
                     ),
+                    MineCompletions = manufacturedUnitTracker.GetMineCompletions(
+                        faction.InstanceID
+                    ),
                     ConstructionFacilityExpansion = BuildConstructionFacilityExpansionSummary(
                         faction
                     ),
@@ -317,6 +320,25 @@ public static partial class HeadlessSimulationRunner
             .ToList();
 
         summary.ProductionDemandCount = demands.Count;
+        summary.ProjectedEconomyMaintenanceHeadroom = context
+            .Assessment
+            .ProjectedEconomyMaintenanceHeadroom;
+        summary.MineDemandCount = demands.Count(demand => demand.Kind == AIDemandKind.Mine);
+        summary.RefineryDemandCount = demands.Count(demand => demand.Kind == AIDemandKind.Refinery);
+        summary.MineDestinationCount = context.Assessment.OwnedPlanets.Count(planet =>
+            planet.IsColonized
+            && !planet.IsDestroyed
+            && planet.GetUnminedResourceNodeCount() > 0
+            && context.DevelopmentAllocation.GetAvailableEnergy(planet, BuildingType.Mine) > 0
+        );
+        summary.RefineryDestinationCount = context.Assessment.OwnedPlanets.Count(planet =>
+            planet.IsColonized
+            && !planet.IsDestroyed
+            && context.DevelopmentAllocation.GetAvailableEnergy(planet, BuildingType.Refinery) > 0
+        );
+        summary.AvailableBuildingProducerCount = context.Assessment.OwnedPlanets.Count(planet =>
+            planet.GetAvailableManufacturingCapacity(ManufacturingType.Building) > 0
+        );
         summary.ProductionProposalCount = proposals.Count;
         summary.SelectedProductionProposalCount = selected.Count;
         summary.PlanetaryDefenseDemandCount = demands.Count(demand =>
@@ -349,6 +371,20 @@ public static partial class HeadlessSimulationRunner
         summary.SelectedProductionMaintenanceCost = selected.Sum(proposal =>
             proposal.GetMaintenanceCost()
         );
+        summary.ProductionProposalDiagnostics = proposals
+            .Select(proposal => new ProductionProposalDiagnostic
+            {
+                DemandKind = proposal.Demand.Kind.ToString(),
+                ProductTypeId = proposal.Product?.GetReference()?.GetTypeID(),
+                DestinationId = proposal.Destination?.InstanceID,
+                ProducerId = proposal.ProducerPlanet?.InstanceID,
+                Score = proposal.Score,
+                CanSelect = proposal.CanSelect(context),
+                Selected = selected.Contains(proposal),
+                MaintenanceCost = proposal.GetMaintenanceCost(),
+                MinimumMaintenanceHeadroom = proposal.GetMinimumMaintenanceHeadroom(context),
+            })
+            .ToArray();
         return summary;
     }
 

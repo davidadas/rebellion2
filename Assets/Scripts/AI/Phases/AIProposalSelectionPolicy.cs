@@ -361,7 +361,7 @@ namespace Rebellion.AI.Phases
 
             int minimumHeadroom = proposal is AIManufactureProposal manufactureProposal
                 ? manufactureProposal.GetMinimumMaintenanceHeadroom(context)
-                : context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor;
+                : context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
             int projectedHeadroom =
                 context.Assessment.ProjectedMaintenanceHeadroom
                 - _selectedMaintenanceCost

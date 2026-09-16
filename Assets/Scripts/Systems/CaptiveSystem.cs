@@ -346,8 +346,15 @@ namespace Rebellion.Systems
             officer.CaptorInstanceID = null;
 
             Faction faction = _game.GetFactionByOwnerInstanceID(officer.OwnerInstanceID);
-            ContainerNode destination = GetEscapeDestinations(faction, officer, planet)
-                .FirstOrDefault(candidate => _movementSystem.TryRequestMove(officer, candidate));
+            ContainerNode destination = null;
+            foreach (ContainerNode candidate in GetEscapeDestinations(faction, officer, planet))
+            {
+                if (!_movementSystem.TryRequestMove(officer, candidate))
+                    continue;
+
+                destination = candidate;
+                break;
+            }
             if (destination == null)
             {
                 officer.IsCaptured = true;

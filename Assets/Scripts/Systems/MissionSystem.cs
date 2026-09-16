@@ -1327,13 +1327,11 @@ namespace Rebellion.Systems
         /// <returns>The mission duration in ticks.</returns>
         private int RollMissionDuration(Mission mission)
         {
-            GameConfig.MissionTickConfig tickConfig =
+            GameConfig.RandomRangeConfig tickRange =
                 _game.Config?.ProbabilityTables?.Mission?.TickRanges?.GetTickConfig(
                     mission.ConfigKey
-                );
-            int baseTicks = tickConfig?.Base ?? 0;
-            int spreadTicks = tickConfig?.Spread ?? 0;
-            return baseTicks + _provider.NextInt(0, spreadTicks + 1);
+                ) ?? new GameConfig.RandomRangeConfig();
+            return tickRange.Roll(_provider);
         }
 
         /// <summary>

@@ -117,6 +117,99 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Zero(farScore);
         }
 
+        /// <summary>
+        /// Verifies economy recovery remains selectable below the maintenance reserve.
+        /// </summary>
+        [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
+        [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
+        public void Score_WithEconomyRecoveryBelowMaintenanceReserve_ReturnsPositiveScore(
+            AIDemandKind kind,
+            BuildingType buildingType
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.DemandUtility.Weight = 1;
+            game.Config.AI.Selection.ProductionUtility.TravelCost.Weight = 0;
+            game.Config.AI.Selection.ProductionUtility.HeadroomRisk.Weight = 0;
+            game.Config.AI.Selection.ProductionUtility.Shortfall.Weight = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "producer",
+                empire.InstanceID
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve =
+                context.Assessment.ProjectedMaintenanceHeadroom + 100;
+            Building template = AITestSceneBuilder.CreateBuildingTemplate(
+                $"{kind}-template",
+                buildingType,
+                ManufacturingType.None
+            );
+            template.MaintenanceCost = 10;
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                new AIDemand(
+                    $"{kind}-demand",
+                    kind,
+                    ManufacturingType.Building,
+                    buildingType,
+                    producer,
+                    1,
+                    100
+                ),
+                producer,
+                new Technology(template)
+            );
+
+            double score = new AIProductionProposalScorer().Score(context, proposal);
+
+            Assert.Greater(score, 0);
+        }
+
+        /// <summary>
+        /// Verifies an Outer Rim economy building remains useful before local construction is founded.
+        /// </summary>
+        [Test]
+        public void Score_WithOuterRimEconomyDestination_ReturnsPositiveScore()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.ProductionUtility.TravelCost.Weight = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "outer-rim");
+            sector.SectorType = PlanetSectorType.OuterRim;
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "economy-world",
+                empire.InstanceID
+            );
+            Building template = AITestSceneBuilder.CreateBuildingTemplate(
+                "refinery",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                new AIDemand(
+                    "refinery-demand",
+                    AIDemandKind.Refinery,
+                    ManufacturingType.Building,
+                    BuildingType.Refinery,
+                    destination,
+                    1,
+                    100
+                ),
+                destination,
+                new Technology(template)
+            );
+
+            double score = new AIProductionProposalScorer().Score(
+                AITestSceneBuilder.CreateContext(game, empire),
+                proposal
+            );
+
+            Assert.Greater(score, 0);
+        }
+
         private static AIManufactureProposal CreateBuildingProposal(
             Planet producer,
             Technology building,

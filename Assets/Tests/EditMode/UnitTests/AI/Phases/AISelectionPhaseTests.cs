@@ -183,6 +183,56 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         /// <summary>
+        /// Verifies economy recovery may consume maintenance below the strategic reserve.
+        /// </summary>
+        [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
+        [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
+        public void Select_WithEconomyRecoveryBelowMaintenanceReserve_SelectsProposal(
+            AIDemandKind kind,
+            BuildingType buildingType
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "p1", empire.InstanceID);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve =
+                context.Assessment.ProjectedMaintenanceHeadroom + 100;
+            Building economyBuilding = AITestSceneBuilder.CreateBuildingTemplate(
+                $"{kind}-template",
+                buildingType,
+                ManufacturingType.None
+            );
+            economyBuilding.MaintenanceCost = 10;
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                new AIDemand(
+                    $"{kind}-demand",
+                    kind,
+                    ManufacturingType.Building,
+                    buildingType,
+                    planet,
+                    1,
+                    100
+                ),
+                planet,
+                new Technology(economyBuilding)
+            );
+            proposal.SetScore(100);
+            context.AddProposal(proposal);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
+        }
+
+        /// <summary>
         /// Verifies select with facility expansion at distinct producers selects both proposals.
         /// </summary>
         [Test]
@@ -229,7 +279,7 @@ namespace Rebellion.Tests.AI.Phases
                 out AIManufactureProposal _,
                 quantity: 4
             );
-            context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor =
+            context.Game.Config.AI.Selection.MaintenanceHeadroomReserve =
                 context.Assessment.ProjectedMaintenanceHeadroom - 25;
             context.AddProposal(proposal);
 
@@ -815,7 +865,7 @@ namespace Rebellion.Tests.AI.Phases
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.ProductionFacilityMaintenanceAllocationPercent =
                 allocationPercent;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "facility-system");

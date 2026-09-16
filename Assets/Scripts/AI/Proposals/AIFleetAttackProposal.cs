@@ -326,6 +326,7 @@ namespace Rebellion.AI.Proposals
 
             Fleet.Order.Status = FleetOrderStatus.Readying;
             context.Movement.RequestMove(Fleet, liveTarget);
+            context.Movement.SynchronizeInTransitFleetJoiners(Fleet);
         }
 
         /// <summary>
@@ -366,7 +367,45 @@ namespace Rebellion.AI.Proposals
         private bool IsReadyToLaunch(AITurnContext context)
         {
             return context.StrategicPlan.CanFleetDepart(Fleet)
-                && context.Assessment.IsFleetReadyToAttack(Fleet, TargetPlanet);
+                && context.Assessment.IsFleetReadyToAttack(Fleet, TargetPlanet)
+                && !HasInboundUnitThatWouldArriveAfterFleet(context);
+        }
+
+        /// <summary>
+        /// Returns whether launching now would leave an inbound unit unable to reach the hostile
+        /// destination by the fleet's arrival tick.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when an inbound unit would arrive after the fleet.</returns>
+        private bool HasInboundUnitThatWouldArriveAfterFleet(AITurnContext context)
+        {
+            if (
+                context.Movement == null
+                || !context.Movement.TryGetTransitTicks(
+                    new List<IMovable> { Fleet },
+                    TargetPlanet,
+                    out int fleetTransitTicks
+                )
+            )
+                return false;
+
+            foreach (IMovable inboundUnit in Fleet.GetChildren<IMovable>(recursive: true))
+            {
+                if (
+                    inboundUnit.Movement != null
+                    && context.Movement.TryEstimateRetargetedTransitTicks(
+                        inboundUnit,
+                        TargetPlanet,
+                        out int inboundTransitTicks
+                    )
+                    && inboundTransitTicks > fleetTransitTicks
+                )
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

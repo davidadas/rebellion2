@@ -194,12 +194,6 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
-            if (!CanRetargetAttackOrder(context, fleet))
-            {
-                proposals.Add(continuation);
-                return;
-            }
-
             bool targetCannotBeAttacked =
                 currentPlanet?.InstanceID == targetPlanet.InstanceID
                 && !context.Assessment.CanAdvanceAttack(fleet, targetPlanet);
@@ -213,6 +207,12 @@ namespace Rebellion.AI.Planners
                         targetPlanet
                     )
                 );
+                return;
+            }
+
+            if (!CanRetargetAttackOrder(context, fleet))
+            {
+                proposals.Add(continuation);
                 return;
             }
 

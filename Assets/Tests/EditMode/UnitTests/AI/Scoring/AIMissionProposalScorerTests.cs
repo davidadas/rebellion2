@@ -254,6 +254,60 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         /// <summary>
+        /// Verifies get score upper bound includes unavoidable travel cost.
+        /// </summary>
+        [Test]
+        public void GetScoreUpperBound_DistantTarget_ReturnsLowerBoundThanLocalTarget()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet localTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "local-target",
+                rebels.InstanceID
+            );
+            Planet distantTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "distant-target",
+                rebels.InstanceID
+            );
+            origin.PositionX = 0;
+            origin.PositionY = 0;
+            localTarget.PositionX = 0;
+            localTarget.PositionY = 0;
+            distantTarget.PositionX = 100;
+            distantTarget.PositionY = 0;
+            localTarget.AddVisitor(empire.InstanceID);
+            distantTarget.AddVisitor(empire.InstanceID);
+            SpecialForces participant = AITestSceneBuilder.CreateSpecialForces(
+                "participant",
+                empire.InstanceID
+            );
+            participant.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
+            game.AttachNode(participant, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double localUpperBound = scorer.GetScoreUpperBound(
+                context,
+                new AIMissionProposal(new[] { participant }, MissionTypeIDs.Espionage, localTarget)
+            );
+            double distantUpperBound = scorer.GetScoreUpperBound(
+                context,
+                new AIMissionProposal(
+                    new[] { participant },
+                    MissionTypeIDs.Espionage,
+                    distantTarget
+                )
+            );
+
+            Assert.Less(distantUpperBound, localUpperBound);
+        }
+
+        /// <summary>
         /// Verifies score reconnaissance proposal ignores participant rating.
         /// </summary>
         [Test]
