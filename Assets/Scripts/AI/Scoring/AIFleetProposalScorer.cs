@@ -147,8 +147,11 @@ namespace Rebellion.AI.Scoring
                 .DefenseUtility;
             AIUtilityScore score = new AIUtilityScore();
             score.Add(1, utility.Base);
-            score.AddRaw(
-                context.Assessment.GetDefensiveSupportRisk(proposal.TargetPlanet),
+            score.Add(
+                AIUtility.Fulfillment(
+                    context.Assessment.GetDefensiveSupportRisk(proposal.TargetPlanet),
+                    10
+                ),
                 utility.SectorRisk
             );
             return GetSelectionValue(score);
@@ -169,13 +172,19 @@ namespace Rebellion.AI.Scoring
                 .FleetDeployment
                 .DefenseAllocationUtility;
             AIUtilityScore score = new AIUtilityScore();
-            score.AddRaw(
-                context.Assessment.GetDefensiveSupportRisk(targetPlanet),
+            score.Add(
+                AIUtility.Fulfillment(context.Assessment.GetDefensiveSupportRisk(targetPlanet), 10),
                 utility.SectorRisk
             );
-            score.AddRaw(context.Assessment.GetPlanetValue(targetPlanet), utility.StrategicValue);
-            score.AddRaw(
-                context.Assessment.GetRequiredDefenseStrength(targetPlanet),
+            score.Add(
+                AIUtility.Fulfillment(context.Assessment.GetPlanetValue(targetPlanet), 1000),
+                utility.StrategicValue
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    context.Assessment.GetRequiredDefenseStrength(targetPlanet),
+                    10000
+                ),
                 utility.DefenseNeed
             );
             return score.Value;
@@ -347,8 +356,8 @@ namespace Rebellion.AI.Scoring
             );
             AIUtilityScore score = new AIUtilityScore();
             score.Add(ScoreStrategicTargetValue(assessment, targetPlanet), utility.StrategicValue);
-            score.AddRaw(
-                assessment.GetOffensiveSupportLeverage(targetPlanet),
+            score.Add(
+                AIUtility.Fulfillment(assessment.GetOffensiveSupportLeverage(targetPlanet), 10),
                 utility.SectorSupport
             );
             score.Add(

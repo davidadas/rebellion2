@@ -886,7 +886,10 @@ namespace Rebellion.AI.Planners
                 BuildingType.Defense => building.ShieldStrength,
                 _ => 0,
             };
-            return AIUtility.EvaluateRaw(capability, config.TechnologyUtility.Building.Capability);
+            return AIUtility.Evaluate(
+                AIUtility.Fulfillment(capability, 1000),
+                config.TechnologyUtility.Building.Capability
+            );
         }
 
         /// <summary>
@@ -1139,9 +1142,9 @@ namespace Rebellion.AI.Planners
             double efficiency =
                 starfighter.MaintenanceCost > 0
                     ? strength / (double)starfighter.MaintenanceCost
-                    : config.TechnologyUtility.Starfighter.PlanetDefenseEfficiency.InputMaximum;
-            return AIUtility.EvaluateRaw(
-                efficiency,
+                    : 100;
+            return AIUtility.Evaluate(
+                AIUtility.Fulfillment(efficiency, 100),
                 config.TechnologyUtility.Starfighter.PlanetDefenseEfficiency
             );
         }
@@ -1239,9 +1242,9 @@ namespace Rebellion.AI.Planners
                 .TechnologyUtility
                 .Starfighter;
             AIUtilityScore score = new AIUtilityScore();
-            score.AddRaw(starfighter.LaserCannon, utility.Laser);
-            score.AddRaw(starfighter.IonCannon, utility.Ion);
-            score.AddRaw(starfighter.Torpedoes, utility.Torpedo);
+            score.Add(AIUtility.Fulfillment(starfighter.LaserCannon, 20), utility.Laser);
+            score.Add(AIUtility.Fulfillment(starfighter.IonCannon, 20), utility.Ion);
+            score.Add(AIUtility.Fulfillment(starfighter.Torpedoes, 20), utility.Torpedo);
             score.Add(
                 starfighter.IonCannon > 0 && !FleetHasIonStarfighter(fleet) ? 1 : 0,
                 utility.MissingIon
@@ -1250,8 +1253,11 @@ namespace Rebellion.AI.Planners
                 starfighter.Torpedoes > 0 && !FleetHasTorpedoStarfighter(fleet) ? 1 : 0,
                 utility.MissingTorpedo
             );
-            score.AddCostRaw(
-                CountFleetUnitsByType<Starfighter>(fleet, starfighter.GetTypeID()),
+            score.AddCost(
+                AIUtility.Fulfillment(
+                    CountFleetUnitsByType<Starfighter>(fleet, starfighter.GetTypeID()),
+                    10
+                ),
                 config.TechnologyUtility.DuplicateCost
             );
             return score.Value;
@@ -1272,13 +1278,22 @@ namespace Rebellion.AI.Planners
         {
             GameConfig.AIRegimentSelectionUtilityConfig utility = config.TechnologyUtility.Regiment;
             AIUtilityScore score = new AIUtilityScore();
-            score.AddRaw(regiment.AttackRating, utility.Attack);
-            score.AddRaw(regiment.DefenseRating, utility.Defense);
-            score.AddRaw(regiment.BombardmentDefense, utility.BombardmentDefense);
+            score.Add(AIUtility.Fulfillment(regiment.AttackRating, 10), utility.Attack);
+            score.Add(AIUtility.Fulfillment(regiment.DefenseRating, 10), utility.Defense);
+            score.Add(
+                AIUtility.Fulfillment(regiment.BombardmentDefense, 10),
+                utility.BombardmentDefense
+            );
             score.Add(1, utility.Base);
-            score.AddCostRaw(regiment.MaintenanceCost, utility.MaintenanceCost);
-            score.AddCostRaw(
-                CountFleetUnitsByType<Regiment>(fleet, regiment.GetTypeID()),
+            score.AddCost(
+                AIUtility.Fulfillment(regiment.MaintenanceCost, 10),
+                utility.MaintenanceCost
+            );
+            score.AddCost(
+                AIUtility.Fulfillment(
+                    CountFleetUnitsByType<Regiment>(fleet, regiment.GetTypeID()),
+                    10
+                ),
                 config.TechnologyUtility.DuplicateCost
             );
             return score.Value;

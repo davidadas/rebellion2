@@ -37,33 +37,6 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
-        public void RawConsiderationNormalizesAgainstConfiguredMaximum()
-        {
-            GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
-            {
-                Weight = 0.3,
-                InputMaximum = 10,
-            };
-
-            Assert.That(AIUtility.EvaluateRaw(3, consideration), Is.EqualTo(0.09).Within(0.000001));
-        }
-
-        [Test]
-        public void RawPressureUsesPercentagePointDomain()
-        {
-            GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
-            {
-                Weight = 1,
-                InputMaximum = 300,
-            };
-
-            Assert.That(
-                AIUtility.EvaluateRawPressure(150, consideration),
-                Is.EqualTo(50).Within(0.000001)
-            );
-        }
-
-        [Test]
         public void DiscreteConsiderationTruncatesFractionalContribution()
         {
             GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig

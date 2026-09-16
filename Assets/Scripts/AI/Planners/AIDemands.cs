@@ -62,11 +62,7 @@ namespace Rebellion.AI.Planners
                     .BuildEfficiency;
                 SpecialForces template = role.OrderByDescending(candidate =>
                         AIUtility.Evaluate(
-                            1
-                                - AIUtility.Fulfillment(
-                                    candidate.ConstructionCost,
-                                    buildEfficiency.InputMaximum
-                                ),
+                            1 - AIUtility.Fulfillment(candidate.ConstructionCost, 100),
                             buildEfficiency
                         )
                     )

@@ -2451,8 +2451,11 @@ namespace Rebellion.AI.Planners
                         planet.GetOpposingPopularSupport(context.Faction.InstanceID) / 100.0,
                         utility.ShieldSupport
                     )
-                    + AIUtility.EvaluateRawPressure(
-                        context.Assessment.GetDefensiveSupportRisk(planet),
+                    + AIUtility.EvaluatePressure(
+                        AIUtility.Fulfillment(
+                            context.Assessment.GetDefensiveSupportRisk(planet),
+                            10
+                        ),
                         utility.ShieldSectorRisk
                     )
                 : boundedPressure;

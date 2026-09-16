@@ -509,22 +509,34 @@ namespace Rebellion.AI.Director
                 .Utility
                 .Diplomacy;
             AIUtilityScore score = new AIUtilityScore();
-            score.AddRaw(
-                planet.GetProductionFacilityCount(ManufacturingType.Building),
+            score.Add(
+                AIUtility.Fulfillment(
+                    planet.GetProductionFacilityCount(ManufacturingType.Building),
+                    10
+                ),
                 utility.ConstructionFacility
             );
-            score.AddRaw(
-                planet.GetProductionFacilityCount(ManufacturingType.Ship),
+            score.Add(
+                AIUtility.Fulfillment(
+                    planet.GetProductionFacilityCount(ManufacturingType.Ship),
+                    10
+                ),
                 utility.Shipyard
             );
-            score.AddRaw(
-                planet.GetProductionFacilityCount(ManufacturingType.Troop),
+            score.Add(
+                AIUtility.Fulfillment(
+                    planet.GetProductionFacilityCount(ManufacturingType.Troop),
+                    10
+                ),
                 utility.TrainingFacility
             );
 
             int maintenanceReserve = _context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
             if (ProjectedMaintenanceHeadroom < maintenanceReserve)
-                score.AddRaw(planet.GetRawResourceNodes(), utility.ResourceNode);
+                score.Add(
+                    AIUtility.Fulfillment(planet.GetRawResourceNodes(), 15),
+                    utility.ResourceNode
+                );
 
             return score;
         }

@@ -54,40 +54,6 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
-        /// Normalizes a raw consideration value against its configured maximum before evaluation.
-        /// </summary>
-        /// <param name="value">The raw consideration value.</param>
-        /// <param name="consideration">The input range, response curve, and contribution weight.</param>
-        /// <returns>The weighted utility contribution.</returns>
-        public static double EvaluateRaw(
-            double value,
-            GameConfig.AIConsiderationConfig consideration
-        )
-        {
-            if (consideration == null)
-                return 0;
-
-            double maximum = consideration.InputMaximum;
-            if (
-                maximum > 0
-                && (
-                    consideration.Curve == null
-                    || consideration.Curve.Shape == GameConfig.AIResponseCurveShape.Linear
-                )
-            )
-            {
-                if (double.IsNaN(value) || value <= 0)
-                    return 0;
-
-                return value >= maximum
-                    ? consideration.Weight
-                    : value * (consideration.Weight / maximum);
-            }
-
-            return Evaluate(Fulfillment(value, maximum), consideration);
-        }
-
-        /// <summary>
         /// Converts a normalized utility contribution to percentage-point demand pressure.
         /// </summary>
         /// <param name="input">The normalized consideration input.</param>
@@ -97,17 +63,6 @@ namespace Rebellion.AI.Scoring
             double input,
             GameConfig.AIConsiderationConfig consideration
         ) => Evaluate(input, consideration) * 100;
-
-        /// <summary>
-        /// Normalizes a raw value and converts its utility to percentage-point demand pressure.
-        /// </summary>
-        /// <param name="value">The raw consideration value.</param>
-        /// <param name="consideration">The input range, curve, and relative pressure weight.</param>
-        /// <returns>A demand-pressure contribution from zero through 100.</returns>
-        public static double EvaluateRawPressure(
-            double value,
-            GameConfig.AIConsiderationConfig consideration
-        ) => EvaluateRaw(value, consideration) * 100;
 
         /// <summary>
         /// Converts centered utility to signed percentage-point demand pressure.

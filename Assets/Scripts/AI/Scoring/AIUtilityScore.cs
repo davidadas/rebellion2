@@ -45,19 +45,6 @@ namespace Rebellion.AI.Scoring
         }
 
         /// <summary>
-        /// Adds a beneficial raw consideration after normalization by its configured maximum.
-        /// </summary>
-        /// <param name="value">The raw consideration value.</param>
-        /// <param name="consideration">The configured input range, curve, and relative weight.</param>
-        public void AddRaw(double value, GameConfig.AIConsiderationConfig consideration)
-        {
-            if (consideration == null)
-                return;
-
-            Add(AIUtility.Fulfillment(value, consideration.InputMaximum), consideration);
-        }
-
-        /// <summary>
         /// Adds a normalized cost whose absence has full utility.
         /// </summary>
         /// <param name="input">The normalized cost input.</param>
@@ -71,19 +58,6 @@ namespace Rebellion.AI.Scoring
                 (1 - AIUtility.EvaluateCurve(input, consideration.Curve)) * consideration.Weight;
             _totalWeight += consideration.Weight;
             _costWeight += consideration.Weight;
-        }
-
-        /// <summary>
-        /// Adds a raw cost after normalizing it against the consideration's configured range.
-        /// </summary>
-        /// <param name="value">The raw cost value.</param>
-        /// <param name="consideration">The response curve, range, and contribution weight.</param>
-        public void AddCostRaw(double value, GameConfig.AIConsiderationConfig consideration)
-        {
-            if (consideration == null)
-                return;
-
-            AddCost(AIUtility.Fulfillment(value, consideration.InputMaximum), consideration);
         }
 
         /// <summary>

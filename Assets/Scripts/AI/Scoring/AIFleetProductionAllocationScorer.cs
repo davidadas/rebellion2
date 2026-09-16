@@ -29,8 +29,11 @@ namespace Rebellion.AI.Scoring
             AIAssessment assessment = context.Assessment;
             AIUtilityScore score = new AIUtilityScore();
             score.Add(readiness, utility.AttackReadiness);
-            score.AddRaw(
-                assessment.CountCurrentAttackRequirementsMet(fleet, target),
+            score.Add(
+                AIUtility.Fulfillment(
+                    assessment.CountCurrentAttackRequirementsMet(fleet, target),
+                    10
+                ),
                 utility.AttackRequirements
             );
             score.Add(
@@ -38,7 +41,10 @@ namespace Rebellion.AI.Scoring
                 utility.SystemPresence
             );
             score.Add(target.IsHeadquarters ? 1 : 0, utility.Headquarters);
-            score.AddRaw(assessment.GetPlanetValue(target), utility.TargetValue);
+            score.Add(
+                AIUtility.Fulfillment(assessment.GetPlanetValue(target), 1000),
+                utility.TargetValue
+            );
             return score.Value;
         }
 
@@ -52,8 +58,14 @@ namespace Rebellion.AI.Scoring
         {
             GameConfig.AIFleetProductionAllocationUtilityConfig utility = GetUtility(context);
             AIUtilityScore score = new AIUtilityScore();
-            score.AddRaw(fleet.GetCurrentRegimentCount(), utility.ColonyRegiments);
-            score.AddRaw(fleet.GetRegimentCapacity(), utility.ColonyCapacity);
+            score.Add(
+                AIUtility.Fulfillment(fleet.GetCurrentRegimentCount(), 100),
+                utility.ColonyRegiments
+            );
+            score.Add(
+                AIUtility.Fulfillment(fleet.GetRegimentCapacity(), 100),
+                utility.ColonyCapacity
+            );
             return score.Value;
         }
 

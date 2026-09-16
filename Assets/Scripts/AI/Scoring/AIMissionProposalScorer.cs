@@ -63,8 +63,11 @@ namespace Rebellion.AI.Scoring
                 .Utility;
             AIUtilityScore score = GetMissionScore(context, missionProposal, successProbability);
             AddMissionPriorityUtility(ref score, utility.Priority, missionProposal);
-            score.AddCostRaw(foilProbability, utility.Objective.FoilRisk);
-            score.AddCostRaw(GetTravelCost(context, missionProposal), utility.Objective.TravelCost);
+            score.AddCost(AIUtility.Fulfillment(foilProbability, 100), utility.Objective.FoilRisk);
+            score.AddCost(
+                AIUtility.Fulfillment(GetTravelCost(context, missionProposal), 100),
+                utility.Objective.TravelCost
+            );
             score.AddCost(
                 HasOfficerReplacementRisk(context, missionProposal) ? 1 : 0,
                 utility.Objective.OfficerRisk
@@ -117,8 +120,11 @@ namespace Rebellion.AI.Scoring
                 .Utility;
             AIUtilityScore score = GetMissionScore(context, proposal, successProbability: 100);
             AddMissionPriorityUtility(ref score, utility.Priority, proposal);
-            score.AddCostRaw(0, utility.Objective.FoilRisk);
-            score.AddCostRaw(GetTravelCost(context, proposal), utility.Objective.TravelCost);
+            score.AddCost(0, utility.Objective.FoilRisk);
+            score.AddCost(
+                AIUtility.Fulfillment(GetTravelCost(context, proposal), 100),
+                utility.Objective.TravelCost
+            );
             score.AddCost(
                 HasOfficerReplacementRisk(context, proposal) ? 1 : 0,
                 utility.Objective.OfficerRisk
@@ -147,7 +153,7 @@ namespace Rebellion.AI.Scoring
                 .Utility
                 .Objective;
             AIUtilityScore score = new AIUtilityScore();
-            score.AddRaw(successProbability, utility.Success);
+            score.Add(AIUtility.Fulfillment(successProbability, 100), utility.Success);
             bool isDiplomacy = proposal.MissionTypeID == MissionTypeIDs.Diplomacy;
             bool isSabotage = proposal.MissionTypeID == MissionTypeIDs.Sabotage;
             AddDiplomacyUtility(ref score, context, proposal, isDiplomacy);
@@ -157,16 +163,22 @@ namespace Rebellion.AI.Scoring
                 isSabotage ? proposal.TargetPlanet : null,
                 isSabotage ? proposal.SelectedTarget as IManufacturable : null
             );
-            score.AddRaw(
-                proposal.MissionTypeID == MissionTypeIDs.Espionage
-                    ? GetIntelAge(context, proposal)
-                    : 0,
+            score.Add(
+                AIUtility.Fulfillment(
+                    proposal.MissionTypeID == MissionTypeIDs.Espionage
+                        ? GetIntelAge(context, proposal)
+                        : 0,
+                    1000
+                ),
                 utility.IntelAge
             );
-            score.AddRaw(
-                proposal.MissionTypeID == MissionTypeIDs.JediTraining
-                    ? GetJediTrainingValue(proposal)
-                    : 0,
+            score.Add(
+                AIUtility.Fulfillment(
+                    proposal.MissionTypeID == MissionTypeIDs.JediTraining
+                        ? GetJediTrainingValue(proposal)
+                        : 0,
+                    300
+                ),
                 utility.TrainingValue
             );
 
@@ -298,7 +310,7 @@ namespace Rebellion.AI.Scoring
                 && proposal.TargetPlanet?.GetParentOfType<PlanetSector>()?.SectorType
                     == PlanetSectorType.Core;
             score.Add(isCoreWorld ? 1 : 0, utility.CoreWorld);
-            score.AddRaw(opposingSupport, utility.SupportDeficit);
+            score.Add(AIUtility.Fulfillment(opposingSupport, 100), utility.SupportDeficit);
         }
 
         /// <summary>

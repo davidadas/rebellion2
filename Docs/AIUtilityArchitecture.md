@@ -13,8 +13,9 @@ Strategic decisions follow one data flow:
 
 Use a response curve when a measured fact changes how desirable an otherwise valid option is.
 Examples include strategic value, readiness, travel efficiency, risk, production deficit, and
-technology capability. Each consideration owns its input range, curve, and contribution weight in
-game configuration.
+technology capability. The domain owner normalizes its measurement to zero through one before
+scoring. Each consideration owns only its response curve and contribution weight in game
+configuration.
 
 Keep hard constraints outside utility scoring. Ownership, manufacturing compatibility, available
 energy, fleet capacity, mission legality, and minimum force requirements determine whether an
@@ -75,11 +76,14 @@ hard rule by using a score magnitude that other considerations cannot overcome.
 
 ## Configuration
 
-Policy targets and limits remain explicit typed values. Preferences use `AIConsiderationConfig`:
+Policy targets, limits, and normalization scales remain explicit domain values. Preferences use
+`AIConsiderationConfig`:
 
-- `InputMaximum` converts a raw domain value to the normalized interval.
 - `Curve` controls the response shape.
 - `Weight` is a relative importance from zero through one.
+
+Scorers must pass normalized inputs. Raw game-unit scales do not belong in consideration
+configuration, and the utility accumulator does not accept unnormalized values.
 
 `AIUtilityScore.Value` returns a weighted average for local decisions whose candidates all use the
 same fixed consideration vector. `AIUtilityScore.RankValue` preserves signed benefit-minus-cost

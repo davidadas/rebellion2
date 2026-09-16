@@ -17,8 +17,6 @@ namespace Rebellion.Tests.AI.Scoring
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             game.Config.AI.FleetDeployment.DefenseAllocationUtility.ReinforcementNeed.Weight = 1;
-            game.Config.AI.FleetDeployment.DefenseAllocationUtility.ReinforcementNeed.InputMaximum =
-                1000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
                 game,
@@ -36,7 +34,7 @@ namespace Rebellion.Tests.AI.Scoring
                 availableStrength: 400
             );
 
-            Assert.AreEqual(0.6, score);
+            Assert.AreEqual(0.06, score);
         }
     }
 }

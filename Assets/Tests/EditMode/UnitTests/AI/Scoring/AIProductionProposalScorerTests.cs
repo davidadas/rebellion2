@@ -23,7 +23,6 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Selection.DemandUtility.Weight = 1;
-            game.Config.AI.Selection.DemandUtility.InputMaximum = 600;
             game.Config.AI.Selection.ProductionUtility.TravelCost.Weight = 0;
             game.Config.AI.Selection.ProductionUtility.HeadroomRisk.Weight = 0;
             game.Config.AI.Selection.ProductionUtility.Shortfall.Weight = 0;
@@ -61,7 +60,6 @@ namespace Rebellion.Tests.AI.Scoring
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Selection.ProductionUtility.TravelCost.Weight = 1;
-            game.Config.AI.Selection.ProductionUtility.TravelCost.InputMaximum = 100;
             PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet nearProducer = AITestSceneBuilder.AddPlanet(
                 game,
