@@ -193,7 +193,7 @@ namespace Rebellion.Game.Missions
 
             GameConfig.EspionageConfig config =
                 game.Config?.Espionage ?? new GameConfig.EspionageConfig();
-            GameConfig.RandomRangeConfig countConfig = config.CoreSectorBonus;
+            GameConfig.RandomCountConfig countConfig = config.CoreSectorBonus;
             bool includeOuterRim = false;
 
             if (IsOpposingHeadquartersTarget(game, targetPlanet))
@@ -209,7 +209,9 @@ namespace Rebellion.Game.Missions
                 .Where(candidate => candidate != targetPlanet)
                 .Where(candidate => candidate.OwnerInstanceID == targetPlanet.OwnerInstanceID)
                 .ToList();
-            int count = countConfig.Roll(provider);
+            int count = countConfig.Base;
+            if (countConfig.Spread > 0)
+                count += provider.NextInt(0, countConfig.Spread);
 
             List<Planet> selected = new List<Planet>();
             while (selected.Count < count && candidates.Count > 0)

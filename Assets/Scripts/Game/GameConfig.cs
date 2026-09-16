@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Units;
@@ -1255,20 +1254,6 @@ namespace Rebellion.Game
         {
             public int Minimum { get; set; }
             public int Maximum { get; set; }
-
-            /// <summary>
-            /// Rolls a random value within this range, inclusive of both bounds. A negative
-            /// <see cref="Minimum"/> is clamped to zero and a <see cref="Maximum"/> below the
-            /// (clamped) minimum is raised to match it.
-            /// </summary>
-            /// <param name="provider">The random number provider to draw from.</param>
-            /// <returns>A random integer within the clamped inclusive range.</returns>
-            public int Roll(IRandomNumberProvider provider)
-            {
-                int minimum = Math.Max(0, Minimum);
-                int maximum = Math.Max(minimum, Maximum);
-                return provider.NextInt(minimum, maximum + 1);
-            }
         }
 
         /// <summary>
@@ -1301,9 +1286,20 @@ namespace Rebellion.Game
         [PersistableObject]
         public class EspionageConfig
         {
-            public RandomRangeConfig CoreSectorBonus { get; set; } = new RandomRangeConfig();
+            public RandomCountConfig CoreSectorBonus { get; set; } = new RandomCountConfig();
 
-            public RandomRangeConfig HeadquartersBonus { get; set; } = new RandomRangeConfig();
+            public RandomCountConfig HeadquartersBonus { get; set; } = new RandomCountConfig();
+        }
+
+        /// <summary>
+        /// Defines a count as a fixed minimum plus a random value below the spread.
+        /// </summary>
+        [PersistableObject]
+        public class RandomCountConfig
+        {
+            public int Base { get; set; }
+
+            public int Spread { get; set; }
         }
 
         /// <summary>
@@ -1428,41 +1424,52 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Mission tick range: minimum ticks before execution plus a random spread.
+        /// </summary>
+        [PersistableObject]
+        public class MissionTickConfig
+        {
+            public int Base { get; set; }
+
+            public int Spread { get; set; }
+        }
+
+        /// <summary>
         /// Per-mission tick ranges.
         /// </summary>
         [PersistableObject]
         public class MissionTickRangesConfig
         {
-            public RandomRangeConfig Abduction { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig Abduction { get; set; } = new MissionTickConfig();
 
-            public RandomRangeConfig Assassination { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig Assassination { get; set; } = new MissionTickConfig();
 
-            public RandomRangeConfig Diplomacy { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig Diplomacy { get; set; } = new MissionTickConfig();
 
-            public RandomRangeConfig Espionage { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig Espionage { get; set; } = new MissionTickConfig();
 
-            public RandomRangeConfig InciteUprising { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig InciteUprising { get; set; } = new MissionTickConfig();
 
-            public RandomRangeConfig Reconnaissance { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig Reconnaissance { get; set; } = new MissionTickConfig();
 
-            public RandomRangeConfig Recruitment { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig Recruitment { get; set; } = new MissionTickConfig();
 
-            public RandomRangeConfig Rescue { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig Rescue { get; set; } = new MissionTickConfig();
 
-            public RandomRangeConfig Sabotage { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig Sabotage { get; set; } = new MissionTickConfig();
 
-            public RandomRangeConfig SubdueUprising { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig SubdueUprising { get; set; } = new MissionTickConfig();
 
-            public RandomRangeConfig Research { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig Research { get; set; } = new MissionTickConfig();
 
-            public RandomRangeConfig JediTraining { get; set; } = new RandomRangeConfig();
+            public MissionTickConfig JediTraining { get; set; } = new MissionTickConfig();
 
             /// <summary>
-            /// Returns the tick range for the given mission config key, or null.
+            /// Returns the tick config for the given mission config key, or null.
             /// </summary>
             /// <param name="key">Mission config key.</param>
-            /// <returns>The matching tick range, or null.</returns>
-            public RandomRangeConfig GetTickConfig(string key)
+            /// <returns>The matching tick config, or null.</returns>
+            public MissionTickConfig GetTickConfig(string key)
             {
                 return key switch
                 {

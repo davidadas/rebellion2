@@ -162,7 +162,9 @@ namespace Rebellion.Systems
                 .Config
                 .OfficerLoyalty
                 .PlanetAcquisitionLoyaltyShift;
-            int loyaltyShift = range.Roll(_provider);
+            int minimum = Math.Max(0, range.Minimum);
+            int maximum = Math.Max(minimum, range.Maximum);
+            int loyaltyShift = _provider.NextInt(minimum, maximum + 1);
             if (loyaltyShift == 0)
                 return;
 
