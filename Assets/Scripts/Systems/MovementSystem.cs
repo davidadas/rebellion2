@@ -2806,6 +2806,9 @@ namespace Rebellion.Systems
                 return true;
             }
 
+            if (unit is Fleet departingFleet)
+                LeaveInTransitPersonnelAtDeparture(departingFleet, originPlanet);
+
             _game.MoveNode(unit, destination);
             ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet, results);
 
@@ -2855,6 +2858,23 @@ namespace Rebellion.Systems
                     .Where(movable => movable.Movement != null)
             )
                 RetargetMovement(joiner, destinationPlanet);
+        }
+
+        /// <summary>
+        /// Leaves personnel traveling to a fleet at the planet where that fleet was located when
+        /// their journey began.
+        /// </summary>
+        /// <param name="fleet">The fleet departing before its inbound personnel arrive.</param>
+        /// <param name="departurePlanet">The planet that remains the personnel destination.</param>
+        private void LeaveInTransitPersonnelAtDeparture(Fleet fleet, Planet departurePlanet)
+        {
+            List<IMovable> inboundPersonnel = fleet
+                .GetChildren<IMovable>(recursive: true)
+                .Where(movable => movable.Movement != null && movable is Officer or SpecialForces)
+                .ToList();
+
+            foreach (IMovable personnel in inboundPersonnel)
+                _game.MoveNode(personnel, departurePlanet);
         }
 
         /// <summary>
@@ -3140,6 +3160,9 @@ namespace Rebellion.Systems
 
             if (unit is Officer || unit is SpecialForces)
             {
+                if (fleet.Movement != null)
+                    return null;
+
                 return fleet
                     .GetChildren<CapitalShip>()
                     .FirstOrDefault(ship =>

@@ -1110,10 +1110,10 @@ namespace Rebellion.Tests.Sectors
         }
 
         /// <summary>
-        /// Verifies request move fleet with inbound units retargets inbound units.
+        /// Verifies request move fleet with inbound cargo retargets inbound cargo.
         /// </summary>
         [Test]
-        public void RequestMove_FleetWithInboundUnits_RetargetsInboundUnits()
+        public void RequestMove_FleetWithInboundCargo_RetargetsInboundCargo()
         {
             GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
@@ -1194,30 +1194,12 @@ namespace Rebellion.Tests.Sectors
             };
             game.AttachNode(regiment, planetA);
 
-            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
-            game.AttachNode(officer, planetA);
-
-            SpecialForces specialForces = new SpecialForces
-            {
-                InstanceID = "special",
-                OwnerInstanceID = "empire",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            game.AttachNode(specialForces, planetA);
-
             MovementSystem movement = new MovementSystem(
                 game,
                 new FogOfWarSystem(game),
                 new FleetSystem(game)
             );
-            IMovable[] inboundUnits =
-            {
-                capitalShip,
-                starfighter,
-                regiment,
-                officer,
-                specialForces,
-            };
+            IMovable[] inboundUnits = { capitalShip, starfighter, regiment };
 
             foreach (IMovable inboundUnit in inboundUnits)
                 movement.RequestMove(inboundUnit, destinationFleet);
@@ -1807,6 +1789,33 @@ namespace Rebellion.Tests.Sectors
             movement.RequestMove(specialForces, fleet);
 
             Assert.AreEqual(ship, specialForces.GetParent());
+            Assert.IsNull(specialForces.Movement);
+        }
+
+        /// <summary>
+        /// Verifies try request move special forces to moving fleet rejects the order.
+        /// </summary>
+        [Test]
+        public void TryRequestMove_SpecialForcesToMovingFleet_RejectsOrder()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("moving-fleet", "empire");
+            game.AttachNode(fleet, destination);
+            game.AttachNode(CreateMovableCapitalShip("fleet-ship"), fleet);
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, origin);
+            movement.RequestMove(fleet, origin);
+
+            bool moved = movement.TryRequestMove(specialForces, fleet);
+
+            Assert.IsFalse(moved);
+            Assert.AreSame(origin, specialForces.GetParent());
             Assert.IsNull(specialForces.Movement);
         }
 
@@ -3302,10 +3311,10 @@ namespace Rebellion.Tests.Sectors
         }
 
         /// <summary>
-        /// Verifies update movement fleet moves before unit arrives unit still en route.
+        /// Verifies update movement fleet moves before personnel arrive personnel finish at departure.
         /// </summary>
         [Test]
-        public void UpdateMovement_FleetMovesBeforeUnitArrives_UnitStillEnRoute()
+        public void UpdateMovement_FleetMovesBeforePersonnelArrive_PersonnelArriveAtDeparturePlanet()
         {
             GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
@@ -3364,6 +3373,13 @@ namespace Rebellion.Tests.Sectors
             // Officer at planet A moves toward the fleet
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, planetA);
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, planetA);
 
             MovementSystem movement = new MovementSystem(
                 game,
@@ -3371,26 +3387,29 @@ namespace Rebellion.Tests.Sectors
                 new FleetSystem(game)
             );
             movement.RequestMove(officer, fleet);
+            movement.RequestMove(specialForces, fleet);
 
             int transitTicks = officer.Movement.TransitTicks;
+            specialForces.Movement.TransitTicks = transitTicks;
 
             // Tick until one tick before arrival
             for (int i = 0; i < transitTicks - 1; i++)
                 movement.ProcessTick();
 
             Assert.IsNotNull(officer.Movement, "Officer should still be in transit.");
+            Assert.IsNotNull(specialForces.Movement, "Special forces should still be in transit.");
 
             // Fleet moves to planet C the tick before officer would arrive
             movement.RequestMove(fleet, planetC);
 
-            // Tick once more — officer would have arrived at old position
+            // Tick once more — officer arrives at the fleet's former location.
             movement.ProcessTick();
 
-            // Officer should still be en route because the fleet moved
-            Assert.IsNotNull(
-                officer.Movement,
-                "Officer should still be en route after fleet moved away."
-            );
+            Assert.IsNull(officer.Movement);
+            Assert.AreSame(planetB, officer.GetParent());
+            Assert.IsNull(specialForces.Movement);
+            Assert.AreSame(planetB, specialForces.GetParent());
+            Assert.AreSame(planetC, fleet.GetParent());
         }
 
         /// <summary>
