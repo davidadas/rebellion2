@@ -887,7 +887,7 @@ namespace Rebellion.AI.Planners
                 _ => 0,
             };
             return AIUtility.Evaluate(
-                AIUtility.Fulfillment(capability, 1000),
+                AIUtility.Fulfillment(capability, AIUtilityDomain.ProductionCapability),
                 config.TechnologyUtility.Building.Capability
             );
         }
@@ -1144,7 +1144,7 @@ namespace Rebellion.AI.Planners
                     ? strength / (double)starfighter.MaintenanceCost
                     : 100;
             return AIUtility.Evaluate(
-                AIUtility.Fulfillment(efficiency, 100),
+                AIUtility.Fulfillment(efficiency, AIUtilityDomain.Percent),
                 config.TechnologyUtility.Starfighter.PlanetDefenseEfficiency
             );
         }
@@ -1242,9 +1242,27 @@ namespace Rebellion.AI.Planners
                 .TechnologyUtility
                 .Starfighter;
             AIUtilityScore score = new AIUtilityScore();
-            score.Add(AIUtility.Fulfillment(starfighter.LaserCannon, 20), utility.Laser);
-            score.Add(AIUtility.Fulfillment(starfighter.IonCannon, 20), utility.Ion);
-            score.Add(AIUtility.Fulfillment(starfighter.Torpedoes, 20), utility.Torpedo);
+            score.Add(
+                AIUtility.Fulfillment(
+                    starfighter.LaserCannon,
+                    AIUtilityDomain.StarfighterWeaponRating
+                ),
+                utility.Laser
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    starfighter.IonCannon,
+                    AIUtilityDomain.StarfighterWeaponRating
+                ),
+                utility.Ion
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    starfighter.Torpedoes,
+                    AIUtilityDomain.StarfighterWeaponRating
+                ),
+                utility.Torpedo
+            );
             score.Add(
                 starfighter.IonCannon > 0 && !FleetHasIonStarfighter(fleet) ? 1 : 0,
                 utility.MissingIon
@@ -1256,7 +1274,7 @@ namespace Rebellion.AI.Planners
             score.AddCost(
                 AIUtility.Fulfillment(
                     CountFleetUnitsByType<Starfighter>(fleet, starfighter.GetTypeID()),
-                    10
+                    AIUtilityDomain.DuplicateFleetUnitCount
                 ),
                 config.TechnologyUtility.DuplicateCost
             );
@@ -1278,21 +1296,27 @@ namespace Rebellion.AI.Planners
         {
             GameConfig.AIRegimentSelectionUtilityConfig utility = config.TechnologyUtility.Regiment;
             AIUtilityScore score = new AIUtilityScore();
-            score.Add(AIUtility.Fulfillment(regiment.AttackRating, 10), utility.Attack);
-            score.Add(AIUtility.Fulfillment(regiment.DefenseRating, 10), utility.Defense);
             score.Add(
-                AIUtility.Fulfillment(regiment.BombardmentDefense, 10),
+                AIUtility.Fulfillment(regiment.AttackRating, AIUtilityDomain.RegimentRating),
+                utility.Attack
+            );
+            score.Add(
+                AIUtility.Fulfillment(regiment.DefenseRating, AIUtilityDomain.RegimentRating),
+                utility.Defense
+            );
+            score.Add(
+                AIUtility.Fulfillment(regiment.BombardmentDefense, AIUtilityDomain.RegimentRating),
                 utility.BombardmentDefense
             );
             score.Add(1, utility.Base);
             score.AddCost(
-                AIUtility.Fulfillment(regiment.MaintenanceCost, 10),
+                AIUtility.Fulfillment(regiment.MaintenanceCost, AIUtilityDomain.RegimentRating),
                 utility.MaintenanceCost
             );
             score.AddCost(
                 AIUtility.Fulfillment(
                     CountFleetUnitsByType<Regiment>(fleet, regiment.GetTypeID()),
-                    10
+                    AIUtilityDomain.DuplicateFleetUnitCount
                 ),
                 config.TechnologyUtility.DuplicateCost
             );

@@ -133,6 +133,14 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Creates a linear AI consideration with the supplied relative weight.
+        /// </summary>
+        /// <param name="weight">The relative contribution weight from zero through one.</param>
+        /// <returns>The configured consideration.</returns>
+        private static AIConsiderationConfig Weighted(double weight) =>
+            new AIConsiderationConfig { Weight = weight };
+
+        /// <summary>
         /// Mission planning priorities and intelligence freshness settings.
         /// </summary>
         [PersistableObject]
@@ -197,9 +205,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig IntelAge { get; set; } = Weighted(1);
 
             public AIConsiderationConfig TrainingValue { get; set; } = Weighted(0.3);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -223,9 +228,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig Espionage { get; set; } = Weighted(0.05);
 
             public AIConsiderationConfig Diplomacy { get; set; } = Weighted(0.03);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -251,9 +253,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig GarrisonStarfighter { get; set; } = Weighted(0.075);
 
             public AIConsiderationConfig OtherUnit { get; set; } = Weighted(0.025);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -275,9 +274,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig ResourceNode { get; set; } = Weighted(0.08);
 
             public AIConsiderationConfig SectorSupportRisk { get; set; } = Weighted(0.25);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -293,9 +289,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig ShipResearch { get; set; } = Weighted(1);
             public AIConsiderationConfig FacilityResearch { get; set; } = Weighted(1);
             public AIConsiderationConfig TroopResearch { get; set; } = Weighted(1);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -384,9 +377,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig OrbitalAdvantage { get; set; } = Weighted(0.25);
 
             public AIConsiderationConfig ExposedBombardment { get; set; } = Weighted(0.1);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -408,9 +398,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig OpportunityCost { get; set; } = Weighted(0.02);
 
             public AIConsiderationConfig ExistingOrder { get; set; } = Weighted(0.1);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -422,9 +409,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig Energy { get; set; } = Weighted(1);
 
             public AIConsiderationConfig Resources { get; set; } = Weighted(0.35);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -436,9 +420,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig Base { get; set; } = Weighted(1);
 
             public AIConsiderationConfig SectorRisk { get; set; } = Weighted(0.3);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -458,9 +439,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig ForceEfficiency { get; set; } = Weighted(0.75);
 
             public AIConsiderationConfig ReinforcementNeed { get; set; } = Weighted(1);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -483,9 +461,6 @@ namespace Rebellion.Game
             public int MaintenanceHeadroomTarget { get; set; } = 1000;
             public AIProductionUtilityConfig ProductionUtility { get; set; } =
                 new AIProductionUtilityConfig();
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -507,9 +482,6 @@ namespace Rebellion.Game
                 new AISpecialForcesSelectionUtilityConfig();
 
             public AIConsiderationConfig DuplicateCost { get; set; } = Weighted(1);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -519,9 +491,6 @@ namespace Rebellion.Game
         public class AIBuildingSelectionUtilityConfig
         {
             public AIConsiderationConfig Capability { get; set; } = Weighted(1);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -536,9 +505,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig MissingIon { get; set; } = Weighted(0.133);
             public AIConsiderationConfig MissingTorpedo { get; set; } = Weighted(0.133);
             public AIConsiderationConfig PlanetDefenseEfficiency { get; set; } = Weighted(0.55);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -552,9 +518,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig BombardmentDefense { get; set; } = Weighted(0.133);
             public AIConsiderationConfig Base { get; set; } = Weighted(0.111);
             public AIConsiderationConfig MaintenanceCost { get; set; } = Weighted(0.222);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -564,9 +527,6 @@ namespace Rebellion.Game
         public class AISpecialForcesSelectionUtilityConfig
         {
             public AIConsiderationConfig BuildEfficiency { get; set; } = Weighted(1);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -582,9 +542,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig HeadroomRisk { get; set; } = Weighted(0);
 
             public AIConsiderationConfig Shortfall { get; set; } = Weighted(0);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -673,9 +630,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig ColonyCapacity { get; set; } = Weighted(0.35);
             public AIConsiderationConfig AssemblyWeakness { get; set; } = Weighted(1);
             public AIConsiderationConfig AssemblyCapacityNeed { get; set; } = Weighted(0.25);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -708,9 +662,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig FleetReadiness { get; set; } = Weighted(0.5);
             public AIConsiderationConfig FinalReadiness { get; set; } = Weighted(0.6);
             public AIConsiderationConfig StarfighterFill { get; set; } = Weighted(0.2);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -736,9 +687,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig DemandProximity { get; set; } = Weighted(0.12);
 
             public AIConsiderationConfig ResourceOpportunityCost { get; set; } = Weighted(0.2);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>
@@ -754,9 +702,6 @@ namespace Rebellion.Game
             public AIConsiderationConfig FeasibleCapacity { get; set; } = Weighted(0.5);
 
             public AIConsiderationConfig StrategicValue { get; set; } = Weighted(0.35);
-
-            private static AIConsiderationConfig Weighted(double weight) =>
-                new AIConsiderationConfig { Weight = weight };
         }
 
         /// <summary>

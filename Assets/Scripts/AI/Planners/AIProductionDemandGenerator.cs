@@ -1415,10 +1415,11 @@ namespace Rebellion.AI.Planners
 
             double currentPercent = count * 100.0 / portfolio.Total;
             double targetDeviation = (targetPercent - currentPercent) / targetPercent;
+            double normalizedDeviation = AIUtility.Fulfillment(Math.Abs(targetDeviation), 1);
             GameConfig.AIConsiderationConfig consideration = config.DemandUtility.FacilityPortfolio;
             return targetDeviation >= 0
-                ? AIUtility.EvaluatePressure(targetDeviation, consideration)
-                : -AIUtility.EvaluatePressure(-targetDeviation, consideration);
+                ? AIUtility.EvaluatePressure(normalizedDeviation, consideration)
+                : -AIUtility.EvaluatePressure(normalizedDeviation, consideration);
         }
 
         /// <summary>
@@ -2454,7 +2455,7 @@ namespace Rebellion.AI.Planners
                     + AIUtility.EvaluatePressure(
                         AIUtility.Fulfillment(
                             context.Assessment.GetDefensiveSupportRisk(planet),
-                            10
+                            AIUtilityDomain.SectorSupport
                         ),
                         utility.ShieldSectorRisk
                     )

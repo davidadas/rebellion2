@@ -94,3 +94,21 @@ Final median/p90/p99 tick timings were 147.554/324.677/488.867 ms, 200.961/537.3
 185.710/455.202/645.945 ms, and 168.717/348.536/640.469 ms in seed order. The p99 remains above
 the 300 ms target on every seed. Performance remains a separate follow-up; this migration does not
 claim to have solved it.
+
+## Normalization Consistency Repair
+
+The post-migration consistency repair used code revision `b0abebd2` as its four-seed baseline. It
+made curve inputs strict, replaced anonymous raw-domain divisors with named semantic endpoints,
+and consolidated duplicated consideration factories. Strict evaluation exposed two callers that
+had depended on silent clamping: facility-portfolio deviation and regiment-transfer readiness
+gain. Both now explicitly saturate normalized values at their domain boundary. Fleet assembly and
+infrastructure allocation retain their established mathematical mappings under named domains.
+
+All four Medium, large-galaxy, tick-1000 runs completed without an out-of-range curve input or a
+victory. Canonicalized reports for seeds `12345`, `1767770646`, `1892256962`, and `507859324`
+matched their corresponding `b0abebd2` baselines exactly after removing only `OutputPath`.
+
+Mean median/p90/p99 tick timings changed from 237.999/458.050/739.520 ms to
+240.987/461.973/732.580 ms, or +1.26%/+0.86%/-0.94%. The repair adds one constant-time range check
+per evaluated curve and no scene traversal, sort, collection materialization, or nested entity
+query.

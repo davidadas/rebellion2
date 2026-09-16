@@ -53,17 +53,23 @@ namespace Rebellion.AI.Scoring
             double demandPressure = proposal?.Demand?.Pressure ?? 0;
             int maintenanceCost = proposal?.GetUnitMaintenanceCost() ?? 0;
             if (context?.Game == null || context.Faction == null || proposal == null)
-                return AIUtility.Fulfillment(demandPressure, 600);
+                return AIUtility.Fulfillment(
+                    demandPressure,
+                    AIUtilityDomain.ProductionDemandPressure
+                );
 
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
             GameConfig.AIProductionUtilityConfig utility = config.ProductionUtility;
             AIUtilityScore score = new AIUtilityScore();
-            score.Add(AIUtility.Fulfillment(demandPressure, 600), config.DemandUtility);
+            score.Add(
+                AIUtility.Fulfillment(demandPressure, AIUtilityDomain.ProductionDemandPressure),
+                config.DemandUtility
+            );
             double colonyFoundationInput = GetColonyFoundationInput(context, proposal);
             if (proposal.Demand.BuildingType == BuildingType.ConstructionFacility)
                 score.Add(colonyFoundationInput, utility.ColonyFoundation);
             score.AddCost(
-                AIUtility.Fulfillment(GetTravelCost(context, proposal), 100),
+                AIUtility.Fulfillment(GetTravelCost(context, proposal), AIUtilityDomain.TravelCost),
                 utility.TravelCost
             );
 

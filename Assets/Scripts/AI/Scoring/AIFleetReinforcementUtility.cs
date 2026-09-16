@@ -25,7 +25,7 @@ namespace Rebellion.AI.Scoring
             int requiredStrength = context.Assessment.GetRequiredDefenseStrength(targetPlanet);
             int strengthGap = Math.Max(0, requiredStrength - availableStrength);
             return AIUtility.Evaluate(
-                AIUtility.Fulfillment(strengthGap, 10000),
+                AIUtility.Fulfillment(strengthGap, AIUtilityDomain.DefenseStrengthGap),
                 context.Game.Config.AI.FleetDeployment.DefenseAllocationUtility.ReinforcementNeed
             );
         }

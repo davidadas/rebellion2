@@ -63,9 +63,15 @@ namespace Rebellion.AI.Scoring
                 .Utility;
             AIUtilityScore score = GetMissionScore(context, missionProposal, successProbability);
             AddMissionPriorityUtility(ref score, utility.Priority, missionProposal);
-            score.AddCost(AIUtility.Fulfillment(foilProbability, 100), utility.Objective.FoilRisk);
             score.AddCost(
-                AIUtility.Fulfillment(GetTravelCost(context, missionProposal), 100),
+                AIUtility.Fulfillment(foilProbability, AIUtilityDomain.Percent),
+                utility.Objective.FoilRisk
+            );
+            score.AddCost(
+                AIUtility.Fulfillment(
+                    GetTravelCost(context, missionProposal),
+                    AIUtilityDomain.TravelCost
+                ),
                 utility.Objective.TravelCost
             );
             score.AddCost(
@@ -122,7 +128,7 @@ namespace Rebellion.AI.Scoring
             AddMissionPriorityUtility(ref score, utility.Priority, proposal);
             score.AddCost(0, utility.Objective.FoilRisk);
             score.AddCost(
-                AIUtility.Fulfillment(GetTravelCost(context, proposal), 100),
+                AIUtility.Fulfillment(GetTravelCost(context, proposal), AIUtilityDomain.TravelCost),
                 utility.Objective.TravelCost
             );
             score.AddCost(
@@ -153,7 +159,10 @@ namespace Rebellion.AI.Scoring
                 .Utility
                 .Objective;
             AIUtilityScore score = new AIUtilityScore();
-            score.Add(AIUtility.Fulfillment(successProbability, 100), utility.Success);
+            score.Add(
+                AIUtility.Fulfillment(successProbability, AIUtilityDomain.Percent),
+                utility.Success
+            );
             bool isDiplomacy = proposal.MissionTypeID == MissionTypeIDs.Diplomacy;
             bool isSabotage = proposal.MissionTypeID == MissionTypeIDs.Sabotage;
             AddDiplomacyUtility(ref score, context, proposal, isDiplomacy);
@@ -168,7 +177,7 @@ namespace Rebellion.AI.Scoring
                     proposal.MissionTypeID == MissionTypeIDs.Espionage
                         ? GetIntelAge(context, proposal)
                         : 0,
-                    1000
+                    AIUtilityDomain.IntelligenceAge
                 ),
                 utility.IntelAge
             );
@@ -177,7 +186,7 @@ namespace Rebellion.AI.Scoring
                     proposal.MissionTypeID == MissionTypeIDs.JediTraining
                         ? GetJediTrainingValue(proposal)
                         : 0,
-                    300
+                    AIUtilityDomain.JediTrainingValue
                 ),
                 utility.TrainingValue
             );
@@ -310,7 +319,10 @@ namespace Rebellion.AI.Scoring
                 && proposal.TargetPlanet?.GetParentOfType<PlanetSector>()?.SectorType
                     == PlanetSectorType.Core;
             score.Add(isCoreWorld ? 1 : 0, utility.CoreWorld);
-            score.Add(AIUtility.Fulfillment(opposingSupport, 100), utility.SupportDeficit);
+            score.Add(
+                AIUtility.Fulfillment(opposingSupport, AIUtilityDomain.Percent),
+                utility.SupportDeficit
+            );
         }
 
         /// <summary>

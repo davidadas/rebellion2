@@ -150,7 +150,7 @@ namespace Rebellion.AI.Scoring
             score.Add(
                 AIUtility.Fulfillment(
                     context.Assessment.GetDefensiveSupportRisk(proposal.TargetPlanet),
-                    10
+                    AIUtilityDomain.SectorSupport
                 ),
                 utility.SectorRisk
             );
@@ -173,17 +173,23 @@ namespace Rebellion.AI.Scoring
                 .DefenseAllocationUtility;
             AIUtilityScore score = new AIUtilityScore();
             score.Add(
-                AIUtility.Fulfillment(context.Assessment.GetDefensiveSupportRisk(targetPlanet), 10),
+                AIUtility.Fulfillment(
+                    context.Assessment.GetDefensiveSupportRisk(targetPlanet),
+                    AIUtilityDomain.SectorSupport
+                ),
                 utility.SectorRisk
             );
             score.Add(
-                AIUtility.Fulfillment(context.Assessment.GetPlanetValue(targetPlanet), 1000),
+                AIUtility.Fulfillment(
+                    context.Assessment.GetPlanetValue(targetPlanet),
+                    AIUtilityDomain.FleetPlanetValue
+                ),
                 utility.StrategicValue
             );
             score.Add(
                 AIUtility.Fulfillment(
                     context.Assessment.GetRequiredDefenseStrength(targetPlanet),
-                    10000
+                    AIUtilityDomain.DefenseStrengthGap
                 ),
                 utility.DefenseNeed
             );
@@ -357,7 +363,10 @@ namespace Rebellion.AI.Scoring
             AIUtilityScore score = new AIUtilityScore();
             score.Add(ScoreStrategicTargetValue(assessment, targetPlanet), utility.StrategicValue);
             score.Add(
-                AIUtility.Fulfillment(assessment.GetOffensiveSupportLeverage(targetPlanet), 10),
+                AIUtility.Fulfillment(
+                    assessment.GetOffensiveSupportLeverage(targetPlanet),
+                    AIUtilityDomain.SectorSupport
+                ),
                 utility.SectorSupport
             );
             score.Add(
@@ -598,7 +607,10 @@ namespace Rebellion.AI.Scoring
                     assessment.GetProjectedFleetRegimentAttackStrength(proposal.TargetFleet),
                     requiredStrength
                 );
-            double readinessGain = Math.Max(0, countGain) + Math.Max(0, strengthGain);
+            double readinessGain = AIUtility.Fulfillment(
+                Math.Max(0, countGain) + Math.Max(0, strengthGain),
+                1
+            );
             Planet receivingPlanet = assessment.GetFleetPlanet(proposal.TargetFleet);
             double travelEfficiency = ScoreTravelEfficiency(
                 assessment,

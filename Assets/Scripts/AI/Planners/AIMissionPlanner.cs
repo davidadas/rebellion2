@@ -1053,15 +1053,24 @@ namespace Rebellion.AI.Planners
             if (context.Assessment.IsOwnedPlanet(planet))
             {
                 int supportRisk = context.Assessment.GetDefensiveSupportRisk(planet);
-                score.Add(AIUtility.Fulfillment(100 - support, 100), utility.SupportDeficit);
-                score.Add(AIUtility.Fulfillment(supportRisk, 10), utility.SectorSupportRisk);
+                score.Add(
+                    AIUtility.Fulfillment(100 - support, AIUtilityDomain.Percent),
+                    utility.SupportDeficit
+                );
+                score.Add(
+                    AIUtility.Fulfillment(supportRisk, AIUtilityDomain.SectorSupport),
+                    utility.SectorSupportRisk
+                );
                 return score.Value;
             }
 
             if (!context.Assessment.IsNeutralPlanet(planet))
                 return 0;
 
-            score.Add(AIUtility.Fulfillment(support, 100), utility.SupportDeficit);
+            score.Add(
+                AIUtility.Fulfillment(support, AIUtilityDomain.Percent),
+                utility.SupportDeficit
+            );
             return score.Value;
         }
 
@@ -1093,34 +1102,52 @@ namespace Rebellion.AI.Planners
                 .OfficerTarget;
             AIUtilityScore score = new AIUtilityScore();
             score.Add(
-                AIUtility.Fulfillment(officer.GetEffectiveRating(OfficerRating.Combat), 300),
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(OfficerRating.Combat),
+                    AIUtilityDomain.OfficerRating
+                ),
                 utility.Combat
             );
             score.Add(
-                AIUtility.Fulfillment(officer.GetEffectiveRating(OfficerRating.Espionage), 300),
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(OfficerRating.Espionage),
+                    AIUtilityDomain.OfficerRating
+                ),
                 utility.Espionage
             );
             score.Add(
-                AIUtility.Fulfillment(officer.GetEffectiveRating(OfficerRating.Diplomacy), 300),
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(OfficerRating.Diplomacy),
+                    AIUtilityDomain.OfficerRating
+                ),
                 utility.Diplomacy
             );
             score.Add(
-                AIUtility.Fulfillment(officer.GetEffectiveRating(OfficerRating.Leadership), 300),
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(OfficerRating.Leadership),
+                    AIUtilityDomain.OfficerRating
+                ),
                 utility.Leadership
             );
             score.Add(
-                AIUtility.Fulfillment(officer.GetBaseRating(ResearchDiscipline.ShipDesign), 300),
+                AIUtility.Fulfillment(
+                    officer.GetBaseRating(ResearchDiscipline.ShipDesign),
+                    AIUtilityDomain.OfficerRating
+                ),
                 utility.ShipResearch
             );
             score.Add(
                 AIUtility.Fulfillment(
                     officer.GetBaseRating(ResearchDiscipline.FacilityDesign),
-                    300
+                    AIUtilityDomain.OfficerRating
                 ),
                 utility.FacilityResearch
             );
             score.Add(
-                AIUtility.Fulfillment(officer.GetBaseRating(ResearchDiscipline.TroopTraining), 300),
+                AIUtility.Fulfillment(
+                    officer.GetBaseRating(ResearchDiscipline.TroopTraining),
+                    AIUtilityDomain.OfficerRating
+                ),
                 utility.TroopResearch
             );
             return score.Value;

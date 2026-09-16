@@ -26,6 +26,11 @@ Keep domain calculations outside utility scoring. Percent bounds, combat totals,
 travel distance, build duration, and fulfillment ratios describe game state. Feed their normalized
 results into considerations when they influence preference.
 
+Named raw-domain endpoints live at the shared `AIUtilityDomain` boundary. Decision-specific
+endpoints have distinct semantic names instead of anonymous divisors. `AIUtility.EvaluateCurve`
+rejects inputs outside zero through one so a missing normalization step fails at its source instead
+of silently saturating.
+
 Use deterministic identifiers only to resolve equal utility. A tie-break must not silently act as
 a second preference model. If a gameplay attribute consistently decides between otherwise valid
 options, represent it as a configured consideration.
@@ -68,6 +73,9 @@ strategic value.
 Production capacity is routed among attack, colonization, and unassigned battle fleets through
 `AIFleetProductionAllocationScorer`. `FleetAllocationUtility` owns the ordering considerations;
 the demand generator only enumerates fleets that are eligible to receive reinforcement.
+Unassigned battle-fleet assembly retains its established weak-first ordering on an explicitly
+named normalized ranking scale. That allocation preference is separate from the production
+generator's hard combat and regiment-capacity targets.
 
 Strict requirements and fallbacks are not represented by oversized weights. Put legality in
 eligibility checks, urgent work in `AIProposalPriority`, and ordered fallback groups at the shared

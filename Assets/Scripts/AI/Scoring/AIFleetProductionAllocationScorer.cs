@@ -32,7 +32,7 @@ namespace Rebellion.AI.Scoring
             score.Add(
                 AIUtility.Fulfillment(
                     assessment.CountCurrentAttackRequirementsMet(fleet, target),
-                    10
+                    AIUtilityDomain.AttackRequirementCount
                 ),
                 utility.AttackRequirements
             );
@@ -42,7 +42,10 @@ namespace Rebellion.AI.Scoring
             );
             score.Add(target.IsHeadquarters ? 1 : 0, utility.Headquarters);
             score.Add(
-                AIUtility.Fulfillment(assessment.GetPlanetValue(target), 1000),
+                AIUtility.Fulfillment(
+                    assessment.GetPlanetValue(target),
+                    AIUtilityDomain.FleetPlanetValue
+                ),
                 utility.TargetValue
             );
             return score.Value;
@@ -59,11 +62,17 @@ namespace Rebellion.AI.Scoring
             GameConfig.AIFleetProductionAllocationUtilityConfig utility = GetUtility(context);
             AIUtilityScore score = new AIUtilityScore();
             score.Add(
-                AIUtility.Fulfillment(fleet.GetCurrentRegimentCount(), 100),
+                AIUtility.Fulfillment(
+                    fleet.GetCurrentRegimentCount(),
+                    AIUtilityDomain.FleetRegimentCount
+                ),
                 utility.ColonyRegiments
             );
             score.Add(
-                AIUtility.Fulfillment(fleet.GetRegimentCapacity(), 100),
+                AIUtility.Fulfillment(
+                    fleet.GetRegimentCapacity(),
+                    AIUtilityDomain.FleetRegimentCount
+                ),
                 utility.ColonyCapacity
             );
             return score.Value;
@@ -81,14 +90,22 @@ namespace Rebellion.AI.Scoring
             double combat = context.Assessment.GetProjectedFleetCombatValue(fleet);
             double capacity = fleet.GetRegimentCapacity();
             AIUtilityScore score = new AIUtilityScore();
-            score.Add(1 - AIUtility.Fulfillment(combat, int.MaxValue), utility.AssemblyWeakness);
             score.Add(
-                1 - AIUtility.Fulfillment(capacity, int.MaxValue),
+                1 - AIUtility.Fulfillment(combat, AIUtilityDomain.AssemblyOrderingScale),
+                utility.AssemblyWeakness
+            );
+            score.Add(
+                1 - AIUtility.Fulfillment(capacity, AIUtilityDomain.AssemblyOrderingScale),
                 utility.AssemblyCapacityNeed
             );
             return score.Value;
         }
 
+        /// <summary>
+        /// Returns the fleet-production allocation utility configuration.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The configured fleet-allocation considerations.</returns>
         private static GameConfig.AIFleetProductionAllocationUtilityConfig GetUtility(
             AITurnContext context
         ) => context.Game.Config.AI.Infrastructure.FleetAllocationUtility;

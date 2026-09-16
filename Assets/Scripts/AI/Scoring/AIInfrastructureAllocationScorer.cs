@@ -36,16 +36,25 @@ namespace Rebellion.AI.Scoring
                 .AllocationUtility;
             AIUtilityScore score = new AIUtilityScore();
             score.Add(
-                AIUtility.Fulfillment(planet.GetTotalBuildingTypeCount(buildingType), 100),
+                AIUtility.Fulfillment(
+                    planet.GetTotalBuildingTypeCount(buildingType),
+                    AIUtilityDomain.InfrastructureFacilityCount
+                ),
                 utility.ExistingFacilities
             );
             score.Add(
                 assignedHubIds?.Contains(planet.InstanceID) == true ? 0 : 1,
                 utility.UnassignedHub
             );
-            score.Add(AIUtility.Fulfillment(feasibleCount, 100), utility.FeasibleCapacity);
             score.Add(
-                AIUtility.Fulfillment(context.Assessment.GetPlanetValue(planet), 10000),
+                AIUtility.Fulfillment(feasibleCount, AIUtilityDomain.InfrastructureFacilityCount),
+                utility.FeasibleCapacity
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    context.Assessment.GetPlanetValue(planet),
+                    AIUtilityDomain.InfrastructurePlanetValue
+                ),
                 utility.StrategicValue
             );
             return score.Value;

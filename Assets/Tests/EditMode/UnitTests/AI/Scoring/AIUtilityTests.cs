@@ -1,3 +1,4 @@
+using System;
 using NUnit.Framework;
 using Rebellion.AI.Scoring;
 using Rebellion.Game;
@@ -7,12 +8,18 @@ namespace Rebellion.Tests.AI.Scoring
     [TestFixture]
     public class AIUtilityTests
     {
-        [TestCase(-1, 0)]
+        /// <summary>
+        /// Verifies a linear curve returns normalized inputs unchanged.
+        /// </summary>
+        /// <param name="input">The normalized input.</param>
+        /// <param name="expected">The expected curve output.</param>
         [TestCase(0, 0)]
         [TestCase(0.25, 0.25)]
         [TestCase(1, 1)]
-        [TestCase(2, 1)]
-        public void LinearCurveClampsNormalizedInput(double input, double expected)
+        public void EvaluateCurve_WithNormalizedLinearInput_ReturnsInput(
+            double input,
+            double expected
+        )
         {
             Assert.That(
                 AIUtility.EvaluateCurve(input, new GameConfig.AIResponseCurveConfig()),
@@ -20,8 +27,27 @@ namespace Rebellion.Tests.AI.Scoring
             );
         }
 
+        /// <summary>
+        /// Verifies response curves reject values outside their normalized contract.
+        /// </summary>
+        /// <param name="input">The invalid curve input.</param>
+        [TestCase(-0.01)]
+        [TestCase(1.01)]
+        [TestCase(double.NaN)]
+        public void EvaluateCurve_WithUnnormalizedInput_ThrowsArgumentOutOfRangeException(
+            double input
+        )
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                AIUtility.EvaluateCurve(input, new GameConfig.AIResponseCurveConfig())
+            );
+        }
+
+        /// <summary>
+        /// Verifies consideration weight is applied after curve evaluation.
+        /// </summary>
         [Test]
-        public void ConsiderationAppliesWeightAfterCurve()
+        public void Evaluate_WithWeightedPowerCurve_AppliesWeightAfterCurve()
         {
             GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
             {
@@ -36,8 +62,11 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(AIUtility.Evaluate(0.5, consideration), Is.EqualTo(0.1).Within(0.000001));
         }
 
+        /// <summary>
+        /// Verifies discrete pressure truncates fractional score points.
+        /// </summary>
         [Test]
-        public void DiscreteConsiderationTruncatesFractionalContribution()
+        public void EvaluateDiscretePressure_WithFractionalContribution_TruncatesScore()
         {
             GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
             {
@@ -47,10 +76,15 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(AIUtility.EvaluateDiscretePressure(1.0 / 3, consideration), Is.EqualTo(33));
         }
 
+        /// <summary>
+        /// Verifies centered utility spans both sides of its neutral midpoint.
+        /// </summary>
+        /// <param name="input">The normalized input.</param>
+        /// <param name="expected">The expected centered contribution.</param>
         [TestCase(0, -0.5)]
         [TestCase(0.5, 0)]
         [TestCase(1, 0.5)]
-        public void CenteredConsiderationSpansBothSidesOfNeutral(double input, double expected)
+        public void EvaluateCentered_WithNormalizedInput_SpansNeutral(double input, double expected)
         {
             GameConfig.AIConsiderationConfig consideration = new GameConfig.AIConsiderationConfig
             {
@@ -63,8 +97,11 @@ namespace Rebellion.Tests.AI.Scoring
             );
         }
 
+        /// <summary>
+        /// Verifies utility scores return their weighted average.
+        /// </summary>
         [Test]
-        public void UtilityScoreReturnsWeightedAverage()
+        public void Value_WithWeightedConsiderations_ReturnsWeightedAverage()
         {
             AIUtilityScore score = new AIUtilityScore();
             score.Add(1, new GameConfig.AIConsiderationConfig { Weight = 1 });
@@ -73,8 +110,11 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(score.Value, Is.EqualTo(2.0 / 3).Within(0.000001));
         }
 
+        /// <summary>
+        /// Verifies cost inputs are inverted for fixed-vector utility scores.
+        /// </summary>
         [Test]
-        public void UtilityScoreInvertsCosts()
+        public void Value_WithCostConsideration_InvertsCost()
         {
             AIUtilityScore score = new AIUtilityScore();
             score.AddCost(0.25, new GameConfig.AIConsiderationConfig { Weight = 1 });
@@ -82,8 +122,11 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(score.Value, Is.EqualTo(0.75).Within(0.000001));
         }
 
+        /// <summary>
+        /// Verifies rank utility preserves positive signed ordering.
+        /// </summary>
         [Test]
-        public void UtilityRankPreservesPositiveSignedOrdering()
+        public void RankValue_WithPositiveScores_PreservesOrdering()
         {
             AIUtilityScore lower = new AIUtilityScore();
             lower.Add(0.25, new GameConfig.AIConsiderationConfig { Weight = 1 });
@@ -95,8 +138,11 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Less(higher.RankValue, 1);
         }
 
+        /// <summary>
+        /// Verifies rank utility rejects non-positive signed totals.
+        /// </summary>
         [Test]
-        public void UtilityRankRejectsNonPositiveSignedUtility()
+        public void RankValue_WithNonPositiveSignedUtility_ReturnsZero()
         {
             AIUtilityScore score = new AIUtilityScore();
             score.Add(0.25, new GameConfig.AIConsiderationConfig { Weight = 1 });
@@ -105,8 +151,11 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Zero(score.RankValue);
         }
 
+        /// <summary>
+        /// Verifies smooth-step curves preserve their endpoints and midpoint.
+        /// </summary>
         [Test]
-        public void SmoothStepPreservesEndpointsAndMidpoint()
+        public void EvaluateCurve_WithSmoothStepCurve_PreservesEndpointsAndMidpoint()
         {
             GameConfig.AIResponseCurveConfig curve = new GameConfig.AIResponseCurveConfig
             {
@@ -118,8 +167,11 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(AIUtility.EvaluateCurve(1, curve), Is.EqualTo(1));
         }
 
+        /// <summary>
+        /// Verifies logistic curves are endpoint-normalized and centered.
+        /// </summary>
         [Test]
-        public void LogisticCurveIsNormalizedAndCentered()
+        public void EvaluateCurve_WithLogisticCurve_IsNormalizedAndCentered()
         {
             GameConfig.AIResponseCurveConfig curve = new GameConfig.AIResponseCurveConfig
             {
@@ -134,11 +186,17 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(AIUtility.EvaluateCurve(0.75, curve), Is.GreaterThan(0.75));
         }
 
+        /// <summary>
+        /// Verifies fulfillment converts raw progress to a normalized value.
+        /// </summary>
+        /// <param name="value">The measured value.</param>
+        /// <param name="target">The full-fulfillment target.</param>
+        /// <param name="expected">The expected normalized fulfillment.</param>
         [TestCase(0, 0, 1)]
         [TestCase(5, 10, 0.5)]
         [TestCase(20, 10, 1)]
         [TestCase(-5, 10, 0)]
-        public void FulfillmentReturnsNormalizedProgress(
+        public void Fulfillment_WithRawProgress_ReturnsNormalizedValue(
             double value,
             double target,
             double expected

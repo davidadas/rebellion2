@@ -94,25 +94,20 @@ namespace Rebellion.AI.Scoring
         /// <returns>A normalized utility value.</returns>
         public static double EvaluateCurve(double input, GameConfig.AIResponseCurveConfig curve)
         {
-            double boundedInput = Clamp(input);
+            ValidateNormalizedInput(input);
             if (curve == null)
-                return boundedInput;
+                return input;
 
             return curve.Shape switch
             {
-                GameConfig.AIResponseCurveShape.Power => EvaluatePower(
-                    boundedInput,
-                    curve.Exponent
-                ),
-                GameConfig.AIResponseCurveShape.SmoothStep => boundedInput
-                    * boundedInput
-                    * (3 - 2 * boundedInput),
+                GameConfig.AIResponseCurveShape.Power => EvaluatePower(input, curve.Exponent),
+                GameConfig.AIResponseCurveShape.SmoothStep => input * input * (3 - 2 * input),
                 GameConfig.AIResponseCurveShape.Logistic => EvaluateLogistic(
-                    boundedInput,
+                    input,
                     curve.Midpoint,
                     curve.Steepness
                 ),
-                _ => boundedInput,
+                _ => input,
             };
         }
 
@@ -135,7 +130,7 @@ namespace Rebellion.AI.Scoring
         /// </summary>
         /// <param name="value">The value to constrain.</param>
         /// <returns>A value from zero through one.</returns>
-        public static double Clamp(double value)
+        private static double Clamp(double value)
         {
             if (double.IsNaN(value) || value <= 0)
                 return 0;
@@ -143,6 +138,29 @@ namespace Rebellion.AI.Scoring
             return value >= 1 ? 1 : value;
         }
 
+        /// <summary>
+        /// Rejects values that violate the normalized utility-input contract.
+        /// </summary>
+        /// <param name="input">The value supplied to a response curve.</param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when <paramref name="input"/> is not between zero and one.
+        /// </exception>
+        private static void ValidateNormalizedInput(double input)
+        {
+            if (double.IsNaN(input) || input < 0 || input > 1)
+                throw new ArgumentOutOfRangeException(
+                    nameof(input),
+                    input,
+                    "AI utility curve inputs must be normalized from zero through one."
+                );
+        }
+
+        /// <summary>
+        /// Evaluates a normalized input through a power response curve.
+        /// </summary>
+        /// <param name="input">The normalized input.</param>
+        /// <param name="exponent">The configured curve exponent.</param>
+        /// <returns>The normalized curve output.</returns>
         private static double EvaluatePower(double input, double exponent)
         {
             double safeExponent =
@@ -152,6 +170,13 @@ namespace Rebellion.AI.Scoring
             return Math.Pow(input, safeExponent);
         }
 
+        /// <summary>
+        /// Evaluates a normalized input through an endpoint-normalized logistic response curve.
+        /// </summary>
+        /// <param name="input">The normalized input.</param>
+        /// <param name="midpoint">The configured midpoint.</param>
+        /// <param name="steepness">The configured steepness.</param>
+        /// <returns>The normalized curve output.</returns>
         private static double EvaluateLogistic(double input, double midpoint, double steepness)
         {
             double safeMidpoint = Clamp(midpoint);
@@ -168,6 +193,13 @@ namespace Rebellion.AI.Scoring
             return Clamp((Logistic(input, safeMidpoint, safeSteepness) - minimum) / range);
         }
 
+        /// <summary>
+        /// Evaluates the logistic function for the supplied parameters.
+        /// </summary>
+        /// <param name="input">The input value.</param>
+        /// <param name="midpoint">The curve midpoint.</param>
+        /// <param name="steepness">The curve steepness.</param>
+        /// <returns>The logistic function value.</returns>
         private static double Logistic(double input, double midpoint, double steepness)
         {
             return 1 / (1 + Math.Exp(-steepness * (input - midpoint)));
