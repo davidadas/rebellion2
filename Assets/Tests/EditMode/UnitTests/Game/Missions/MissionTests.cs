@@ -57,6 +57,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(neutralProbability + 15, modifiedProbability, 0.0001);
         }
 
+        /// <summary>
+        /// Verifies participants assigned before initiation remain mission children.
+        /// </summary>
         [Test]
         public void GetChildren_ParticipantAssignedBeforeMissionInitiates_ReturnsParticipant()
         {

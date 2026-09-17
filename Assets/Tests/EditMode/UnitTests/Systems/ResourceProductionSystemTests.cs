@@ -89,6 +89,9 @@ namespace Rebellion.Tests.Systems
             Assert.Greater(mine.ProductionCycleDuration, 1);
         }
 
+        /// <summary>
+        /// Verifies refinery output modifiers adjust the production cycle duration.
+        /// </summary>
         [Test]
         public void ProcessTick_RefineryOutputModifier_AdjustsProductionCycleDuration()
         {
@@ -108,6 +111,9 @@ namespace Rebellion.Tests.Systems
             Assert.Greater(refinery.ProductionCycleDuration, 1);
         }
 
+        /// <summary>
+        /// Verifies a successful smuggling roll redirects the completed resource.
+        /// </summary>
         [Test]
         public void ProcessTick_SmugglingRoll_RedirectsCompletedResourceToBeneficiary()
         {

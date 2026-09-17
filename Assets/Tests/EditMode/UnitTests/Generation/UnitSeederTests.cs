@@ -491,6 +491,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(0, planet.GetChildren<Regiment>().Count(r => r.TypeID == "SECOND"));
         }
 
+        /// <summary>
+        /// Verifies seed budget table with special forces deploys special forces.
+        /// </summary>
         [Test]
         public void Seed_BudgetTableWithSpecialForces_DeploysSpecialForces()
         {
