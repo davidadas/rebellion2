@@ -23,13 +23,14 @@ On Windows, the default installation has this layout:
   rebellion2-launcher.exe
 ```
 
-On macOS, `Content` and `Mods` are beside the application bundle:
+On macOS, press **Command+Shift+G** in Finder and open
+`~/Library/Application Support/Rebellion 2`. The launcher stores player-managed content there,
+regardless of where `Rebellion2.app` is installed:
 
 ```text
-Rebellion 2 installation folder/
+~/Library/Application Support/Rebellion 2/
   Content/
   Mods/
-  Rebellion2.app
 ```
 
 When developing from the Unity project, use `Assets/Mods`.
