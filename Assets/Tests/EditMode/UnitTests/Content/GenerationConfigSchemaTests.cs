@@ -167,19 +167,13 @@ namespace Rebellion.Tests.Content
         </StartingPlanets>
       </FactionSetup>
     </FactionSetups>
-    <Profiles>
-      <DifficultyProfile>
-        <Name>Default</Name>
-        <Difficulty>-1</Difficulty>
-        <FactionBuckets>
-          <FactionBucketConfig>
-            <FactionID>FACTION</FactionID>
-            <StrongPct>0</StrongPct>
-            <WeakPct>0</WeakPct>
-          </FactionBucketConfig>
-        </FactionBuckets>
-      </DifficultyProfile>
-    </Profiles>
+    <FactionBuckets>
+      <FactionBucketConfig>
+        <FactionID>FACTION</FactionID>
+        <StrongPct>0</StrongPct>
+        <WeakPct>0</WeakPct>
+      </FactionBucketConfig>
+    </FactionBuckets>
   </GalaxyClassification>
   <PlanetResources>
     <Profiles>
@@ -221,7 +215,6 @@ namespace Rebellion.Tests.Content
   <UnitDeployment>
     <UprisingPreventionThreshold>0</UprisingPreventionThreshold>
     <SupportDeficitPerGarrisonTroop>1</SupportDeficitPerGarrisonTroop>
-    <BudgetDifficultyMappings/>
     <FixedGarrisons/>
     <FixedFleets/>
     <FactionBudgets>
@@ -230,7 +223,6 @@ namespace Rebellion.Tests.Content
         <BudgetLevels>
           <BudgetLevel>
             <GalaxySize>0</GalaxySize>
-            <Difficulty>-1</Difficulty>
             <Percentage>0</Percentage>
           </BudgetLevel>
         </BudgetLevels>

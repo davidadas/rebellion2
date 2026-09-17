@@ -90,7 +90,88 @@ namespace Rebellion.Tests.Game
         }
 
         /// <summary>
-        /// Verifies constructor with summary initializes correctly.
+        /// Verifies AI-controlled factions receive the selected difficulty modifier.
+        /// </summary>
+        [Test]
+        public void GetDifficultyModifier_AIControlledFaction_ReturnsSelectedDifficultyModifier()
+        {
+            DifficultyModifiers expected = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = expected;
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
+
+            Assert.AreSame(expected, actual);
+        }
+
+        /// <summary>
+        /// Verifies player-controlled factions receive neutral difficulty modifiers.
+        /// </summary>
+        [Test]
+        public void GetDifficultyModifier_PlayerControlledFaction_ReturnsNeutralModifier()
+        {
+            _faction1.PlayerID = "PLAYER1";
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
+
+            Assert.AreEqual(0, actual.MissionSuccessChancePoints);
+            Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
+        }
+
+        /// <summary>
+        /// Verifies an unconfigured difficulty returns neutral modifiers.
+        /// </summary>
+        [Test]
+        public void GetDifficultyModifier_AutomatedPlayerFaction_ReturnsSelectedDifficultyModifier()
+        {
+            DifficultyModifiers expected = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = expected;
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
+
+            Assert.AreSame(expected, actual);
+        }
+
+        /// <summary>
+        /// Verifies a missing difficulty configuration returns neutral modifiers.
+        /// </summary>
+        [Test]
+        public void GetDifficultyModifier_MissingDifficulty_ReturnsNeutralModifier()
+        {
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
+
+            Assert.AreEqual(0, actual.MissionSuccessChancePoints);
+            Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
+        }
+
+        /// <summary>
+        /// Verifies runtime difficulty configuration is not persisted with game state.
+        /// </summary>
+        [Test]
+        public void Serialize_RuntimeDifficultyModifiers_DoesNotPersistConfiguration()
+        {
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            string xml = SerializationHelper.Serialize(_game);
+
+            StringAssert.DoesNotContain("DifficultyModifiers", xml);
+            StringAssert.DoesNotContain("MissionSuccessChancePoints", xml);
+        }
+
+        /// <summary>
+        /// Verifies constructing a game with a summary initializes its runtime state.
         /// </summary>
         [Test]
         public void Constructor_WithSummary_InitializesCorrectly()

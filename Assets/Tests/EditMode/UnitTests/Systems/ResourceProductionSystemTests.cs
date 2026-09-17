@@ -71,6 +71,50 @@ namespace Rebellion.Tests.Systems
         /// Verifies process tick smuggling roll redirects completed resource to beneficiary.
         /// </summary>
         [Test]
+        public void ProcessTick_MineOutputModifier_AdjustsProductionCycleDuration()
+        {
+            _game.Summary.Difficulty = GameDifficulty.Easy;
+            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
+            {
+                MineOutputPercent = 50,
+            };
+            Building mine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 1);
+            mine.ProductionInputReserved = true;
+            mine.ResourceStartupCyclePending = false;
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(0, _faction.RawMaterialStockpile);
+            Assert.Greater(mine.ProductionCycleDuration, 1);
+        }
+
+        /// <summary>
+        /// Verifies refinery output modifiers adjust the production cycle duration.
+        /// </summary>
+        [Test]
+        public void ProcessTick_RefineryOutputModifier_AdjustsProductionCycleDuration()
+        {
+            _game.Summary.Difficulty = GameDifficulty.Easy;
+            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
+            {
+                RefineryOutputPercent = 50,
+            };
+            Building refinery = AddCompleteBuilding(_planet, BuildingType.Refinery, processRate: 1);
+            refinery.ProductionInputReserved = true;
+            refinery.ResourceStartupCyclePending = false;
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(0, _faction.RefinedMaterialStockpile);
+            Assert.Greater(refinery.ProductionCycleDuration, 1);
+        }
+
+        /// <summary>
+        /// Verifies a successful smuggling roll redirects the completed resource.
+        /// </summary>
+        [Test]
         public void ProcessTick_SmugglingRoll_RedirectsCompletedResourceToBeneficiary()
         {
             _planet.PopularSupport = new Dictionary<string, int>
