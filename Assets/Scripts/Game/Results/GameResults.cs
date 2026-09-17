@@ -268,11 +268,11 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// An espionage mission revealed intelligence about sectors beyond its primary target.
+    /// An espionage mission revealed intelligence about planets beyond its primary target.
     /// </summary>
-    public class PlanetSectorsRevealedResult : GameResult
+    public class PlanetsRevealedResult : GameResult
     {
-        public List<PlanetSector> AdditionalSectors { get; set; } = new List<PlanetSector>();
+        public List<Planet> AdditionalPlanets { get; set; } = new List<Planet>();
     }
 
     #endregion

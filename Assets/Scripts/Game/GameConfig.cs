@@ -803,9 +803,22 @@ namespace Rebellion.Game
         [PersistableObject]
         public class CaptiveConfig
         {
+            public TickRangeConfig EscapeAttemptInterval { get; set; } = new TickRangeConfig();
+
             public Dictionary<int, int> EscapeTable { get; set; } = new Dictionary<int, int>();
 
             public int EscapeLoyaltyShift { get; set; }
+        }
+
+        /// <summary>
+        /// Inclusive tick bounds for scheduling recurring activity.
+        /// </summary>
+        [PersistableObject]
+        public class TickRangeConfig
+        {
+            public int Minimum { get; set; }
+
+            public int Maximum { get; set; }
         }
 
         /// <summary>

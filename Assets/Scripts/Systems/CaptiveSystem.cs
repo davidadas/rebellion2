@@ -14,7 +14,7 @@ using Rebellion.Util.Extensions;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Processes escape attempts for captured officers each tick.
+    /// Processes scheduled escape attempts for captured officers.
     /// Escape probability is based on the officer's skills and the forces guarding
     /// the planet, fleet, or ship where the officer is held.
     /// </summary>
@@ -25,6 +25,7 @@ namespace Rebellion.Systems
         private readonly MovementSystem _movementSystem;
         private readonly FogOfWarSystem _fogOfWarSystem;
         private readonly ProbabilityTable _escapeTable;
+        private readonly GameConfig.TickRangeConfig _escapeAttemptInterval;
         private readonly int _loyaltyShift;
 
         /// <summary>
@@ -47,6 +48,7 @@ namespace Rebellion.Systems
                 movementSystem ?? throw new ArgumentNullException(nameof(movementSystem));
             _fogOfWarSystem =
                 fogOfWarSystem ?? throw new ArgumentNullException(nameof(fogOfWarSystem));
+            _escapeAttemptInterval = game.Config.Captive.EscapeAttemptInterval;
             _escapeTable = new ProbabilityTable(game.Config.Captive.EscapeTable);
             _loyaltyShift = game.Config.Captive.EscapeLoyaltyShift;
         }
@@ -75,6 +77,7 @@ namespace Rebellion.Systems
                 );
                 if (result.IsCaptured == false)
                 {
+                    officer.NextEscapeAttemptTick = 0;
                     if (!officer.IsCaptured)
                         _fogOfWarSystem.RemoveEntityFromSnapshots(
                             originalFaction,
@@ -109,23 +112,38 @@ namespace Rebellion.Systems
                 }
 
                 _fogOfWarSystem.RecordObservations(originalFaction, new[] { officer }, result.Tick);
+                if (officer.CanEscape && officer.NextEscapeAttemptTick <= 0)
+                    ScheduleEscapeAttempt(officer);
             }
 
             return reactions;
         }
 
         /// <summary>
-        /// Processes one tick of escape attempts for all captured officers.
+        /// Processes escape attempts that are due on the current tick.
         /// </summary>
         /// <returns>Results for any officers that escaped.</returns>
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
-
             foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
             {
                 if (!officer.IsCaptured || !officer.CanEscape || officer.IsKilled)
+                {
+                    officer.NextEscapeAttemptTick = 0;
                     continue;
+                }
+
+                if (officer.NextEscapeAttemptTick <= 0)
+                {
+                    ScheduleEscapeAttempt(officer);
+                    continue;
+                }
+
+                if (_game.CurrentTick < officer.NextEscapeAttemptTick)
+                    continue;
+
+                ScheduleEscapeAttempt(officer);
 
                 ContainerNode custodyContext = GetCustodyContext(officer);
                 Planet planet = officer.GetParentOfType<Planet>();
@@ -145,6 +163,19 @@ namespace Rebellion.Systems
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Schedules an officer's next escape attempt within the configured inclusive range.
+        /// </summary>
+        /// <param name="officer">The captive officer whose next attempt is scheduled.</param>
+        private void ScheduleEscapeAttempt(Officer officer)
+        {
+            int minimum = Math.Max(0, _escapeAttemptInterval?.Minimum ?? 0);
+            int maximum = Math.Max(minimum, _escapeAttemptInterval?.Maximum ?? minimum);
+            officer.NextEscapeAttemptTick = checked(
+                _game.CurrentTick + _provider.NextInt(minimum, maximum + 1)
+            );
         }
 
         /// <summary>
@@ -356,6 +387,7 @@ namespace Rebellion.Systems
             }
 
             officer.CanEscape = false;
+            officer.NextEscapeAttemptTick = 0;
             officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + _loyaltyShift));
 
             return new OfficerCaptureStateResult

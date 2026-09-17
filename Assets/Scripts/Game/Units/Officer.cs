@@ -241,6 +241,7 @@ namespace Rebellion.Game.Units
         public bool IsCaptured { get; set; }
         public string CaptorInstanceID { get; set; }
         public bool CanEscape { get; set; }
+        public int NextEscapeAttemptTick { get; set; }
         public bool IsKilled { get; set; }
         public bool CanBetray { get; set; }
         public bool IsTraitor { get; set; }
@@ -364,6 +365,7 @@ namespace Rebellion.Game.Units
             copy.IsCaptured = IsCaptured;
             copy.CaptorInstanceID = CaptorInstanceID;
             copy.CanEscape = CanEscape;
+            copy.NextEscapeAttemptTick = NextEscapeAttemptTick;
             copy.IsKilled = IsKilled;
             copy.CanBetray = CanBetray;
             copy.IsTraitor = IsTraitor;

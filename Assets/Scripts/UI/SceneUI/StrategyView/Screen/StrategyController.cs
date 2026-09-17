@@ -42,6 +42,7 @@ public sealed class StrategyController
         IStatusWindowActions,
         IBattleAlertWindowActions
 {
+    private const string _galacticInformationFilterStateID = "GalacticInformationFilter";
     private const string _defenseWindowTypeID = "Planet.Defense";
     private const string _facilityWindowTypeID = "Planet.Facility";
     private const string _fleetWindowTypeID = "Planet.Fleet";
@@ -302,6 +303,8 @@ public sealed class StrategyController
             () => uiContext,
             PlaySfx
         );
+        galacticInformationDisplayController.RestoreFilter(GetSavedGalacticInformationFilter());
+        galacticInformationDisplayController.FilterChanged += SaveGalacticInformationFilter;
         galacticInformationDisplayController.Initialize(this);
         galacticInformationDisplayController.BindViews(
             galacticInformationDisplay,
@@ -316,6 +319,30 @@ public sealed class StrategyController
     private UIStateSection GetStrategyUIState()
     {
         return gameManager.GetPlayerUIState().GetOrCreateSection(_uiStateSectionID);
+    }
+
+    /// <summary>
+    /// Reads the saved galactic-information filter for the active strategy session.
+    /// </summary>
+    /// <returns>The saved filter, or display-off when no valid filter is stored.</returns>
+    private GalacticInformationFilterMode GetSavedGalacticInformationFilter()
+    {
+        UIStateSection state = GetStrategyUIState();
+        return
+            state.Values.TryGetValue(_galacticInformationFilterStateID, out string value)
+            && Enum.TryParse(value, out GalacticInformationFilterMode mode)
+            && Enum.IsDefined(typeof(GalacticInformationFilterMode), mode)
+            ? mode
+            : GalacticInformationFilterMode.DisplayOff;
+    }
+
+    /// <summary>
+    /// Stores the selected galactic-information filter in the active strategy session.
+    /// </summary>
+    /// <param name="mode">The selected filter.</param>
+    private void SaveGalacticInformationFilter(GalacticInformationFilterMode mode)
+    {
+        GetStrategyUIState().Values[_galacticInformationFilterStateID] = mode.ToString();
     }
 
     /// <summary>
@@ -1865,6 +1892,7 @@ public sealed class StrategyController
         UIStateSection uiState = GetStrategyUIState();
         idleBarController.ResetSession(uiState.IgnoredItems);
         bookmarkController.ResetSession(uiState.BookmarkedItems);
+        galacticInformationDisplayController.RestoreFilter(GetSavedGalacticInformationFilter());
         ResetStrategyPresentation();
         windowStateManager.Reset(uiState.Windows);
         uiContext.ReplaceGame(game);

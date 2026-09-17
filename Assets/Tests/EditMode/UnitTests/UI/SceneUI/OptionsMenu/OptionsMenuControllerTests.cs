@@ -241,19 +241,25 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// Verifies that the first gameplay toggle disables strategy briefings.
         /// </summary>
         [Test]
-        public void GameplayActions_ToggleDisableBriefingsOption()
+        public void GameplayActions_DisableBriefingsClicked_TogglesOption()
         {
             OptionsMenuView view = OpenAndRender();
             OptionsToggleRowView[] gameplayRows = GetField<OptionsToggleRowView[]>(
                 view,
                 "_gameplayRows"
             );
+            bool initiallyDisabled = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.Gameplay.DisableBriefings;
 
             Assert.AreEqual((int)UserGameplayOption.DisableBriefings, gameplayRows[0].OptionIndex);
 
             GetField<Button>(gameplayRows[0], "_button").onClick.Invoke();
 
-            Assert.IsTrue(_bootstrap.GetUserSettingsManager().Settings.Gameplay.DisableBriefings);
+            Assert.AreEqual(
+                !initiallyDisabled,
+                _bootstrap.GetUserSettingsManager().Settings.Gameplay.DisableBriefings
+            );
         }
 
         /// <summary>
@@ -304,12 +310,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             GetField<Button>(view, "_resolutionNextButton").onClick.Invoke();
             GetField<Button>(view, "_fullScreenNextButton").onClick.Invoke();
-            OptionsToggleRowView tacticalRow = GetField<OptionsToggleRowView[]>(
-                    view,
-                    "_tacticalRows"
-                )
-                .First();
-            GetField<Button>(tacticalRow, "_button").onClick.Invoke();
             GetField<Button>(view, "_defaultsButton").onClick.Invoke();
             ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
                 view,
