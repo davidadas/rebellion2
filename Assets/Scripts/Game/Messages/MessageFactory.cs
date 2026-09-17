@@ -3454,7 +3454,10 @@ namespace Rebellion.Game.Messages
         {
             foreach (PlanetOwnershipChangedResult result in results)
             {
-                if (result.Reason != PlanetOwnershipChangeReason.PopularSupport)
+                if (
+                    result.NewOwner != null
+                    && result.Reason != PlanetOwnershipChangeReason.PopularSupport
+                )
                     continue;
 
                 foreach (Faction recipient in GetRecipients(result, game))
