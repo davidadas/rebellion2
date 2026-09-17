@@ -339,7 +339,11 @@ namespace Rebellion.Game.Messages
                 planetArray.Select(planet =>
                     MessageTemplateBuilder.Interpolate(
                         definition.DetailListItemTemplate,
-                        new Dictionary<string, string> { { "system", planet.GetDisplayName() } }
+                        new Dictionary<string, string>
+                        {
+                            { "system", planet.GetDisplayName() },
+                            { "sector", planet.GetDisplayName() },
+                        }
                     )
                 )
             );

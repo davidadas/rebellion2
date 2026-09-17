@@ -194,6 +194,25 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
+            bool strandedAtHostileNonTarget =
+                currentPlanet != null
+                && currentPlanet.InstanceID != targetPlanet.InstanceID
+                && !string.IsNullOrEmpty(currentPlanet.GetOwnerInstanceID())
+                && currentPlanet.GetOwnerInstanceID() != context.Faction.InstanceID
+                && !context.Assessment.CanAdvanceAttack(fleet, currentPlanet);
+            if (strandedAtHostileNonTarget)
+            {
+                proposals.Add(
+                    new AIFleetAttackProposal(
+                        fleet,
+                        order.OrderType,
+                        FleetOrderStatus.Returning,
+                        currentPlanet
+                    )
+                );
+                return;
+            }
+
             bool targetCannotBeAttacked =
                 currentPlanet?.InstanceID == targetPlanet.InstanceID
                 && !context.Assessment.CanAdvanceAttack(fleet, targetPlanet);

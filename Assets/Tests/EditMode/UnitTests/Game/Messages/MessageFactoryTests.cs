@@ -1607,6 +1607,59 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         /// <summary>
+        /// Verifies create messages espionage success supports the sector detail placeholder.
+        /// </summary>
+        [Test]
+        public void CreateMessages_EspionageSuccessWithSectorDetailTemplate_AppendsPlanets()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Mission mission = new EspionageMission
+            {
+                InstanceID = "espionage-mission",
+                DisplayName = "Espionage",
+                ConfigKey = MissionTypeIDs.Espionage,
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+            MessageDefinition definition = Definition(
+                MessageResultType.MissionReport,
+                MessageType.Mission,
+                "title",
+                "Successful.  {details}",
+                outcome: MessageResultOutcome.Success,
+                missionTypeId: MissionTypeIDs.Espionage
+            );
+            definition.DetailListHeaderTemplate = "Additional sectors:";
+            definition.DetailListItemTemplate = "\n     {sector}";
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[] { definition },
+                    new PlanetsRevealedResult
+                    {
+                        MissionInstanceID = mission.InstanceID,
+                        AdditionalPlanets = new List<Planet>
+                        {
+                            new Planet { DisplayName = "Corellia" },
+                        },
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionInstanceID = mission.InstanceID,
+                        MissionName = "Espionage",
+                        MissionTypeID = MissionTypeIDs.Espionage,
+                        Outcome = MissionOutcome.Success,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Successful.  Additional sectors:\n     Corellia", message.Body);
+        }
+
+        /// <summary>
         /// Verifies create messages espionage success without additional systems omits details.
         /// </summary>
         [Test]

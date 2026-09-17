@@ -58,6 +58,30 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         /// <summary>
+        /// Verifies equal scored conflicting proposals use the persisted random stream.
+        /// </summary>
+        [Test]
+        public void Select_WithEqualScoredConflictingProposals_UsesPersistedRandomTieBreaker()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: new SequenceRNG(intValues: new[] { 0 })
+            );
+            TestAIProposal first = new TestAIProposal("first", new[] { "claim:shared" });
+            TestAIProposal second = new TestAIProposal("second", new[] { "claim:shared" });
+            first.SetScore(10);
+            second.SetScore(10);
+            context.AddProposal(first);
+            context.AddProposal(second);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { second }, selected);
+        }
+
+        /// <summary>
         /// Verifies select with mandatory proposal selects it before higher scored optional proposal.
         /// </summary>
         [Test]

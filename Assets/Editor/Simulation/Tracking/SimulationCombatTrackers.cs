@@ -2,12 +2,231 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Systems;
 
 public static partial class HeadlessSimulationRunner
 {
+    /// <summary>
+    /// Records event-backed force ratios and losses from resolved space battles.
+    /// </summary>
+    private sealed class SpaceCombatCalibrationTracker
+    {
+        private readonly Dictionary<string, List<SpaceCombatCalibrationResult>> _results = new(
+            StringComparer.Ordinal
+        );
+
+        /// <summary>
+        /// Records completed space-combat results without querying the scene graph.
+        /// </summary>
+        /// <param name="results">The resolved game results.</param>
+        public void Record(IReadOnlyList<GameResult> results)
+        {
+            foreach (
+                SpaceCombatResult result in results?.OfType<SpaceCombatResult>()
+                    ?? Enumerable.Empty<SpaceCombatResult>()
+            )
+            {
+                CombatStrengthSnapshot attacker = CalculateStrength(
+                    result.AttackingUnits,
+                    result.ShipDamage,
+                    result.FighterLosses
+                );
+                CombatStrengthSnapshot defender = CalculateStrength(
+                    result.DefendingUnits,
+                    result.ShipDamage,
+                    result.FighterLosses
+                );
+                string factionId = result.AttackerOwnerInstanceID ?? string.Empty;
+                if (!_results.TryGetValue(factionId, out List<SpaceCombatCalibrationResult> items))
+                {
+                    items = new List<SpaceCombatCalibrationResult>();
+                    _results[factionId] = items;
+                }
+
+                items.Add(
+                    new SpaceCombatCalibrationResult
+                    {
+                        Tick = result.Tick,
+                        PlanetId = result.Planet?.InstanceID,
+                        PlanetName = result.Planet?.GetDisplayName(),
+                        AttackerInitialCombat = attacker.Initial,
+                        DefenderInitialCombat = defender.Initial,
+                        AttackerSurvivingCombat = attacker.Surviving,
+                        DefenderSurvivingCombat = defender.Surviving,
+                        AttackerToDefenderRatio =
+                            defender.Initial > 0
+                                ? attacker.Initial / (double)defender.Initial
+                                : double.PositiveInfinity,
+                        AttackerLossPercent = GetLossPercent(attacker),
+                        DefenderLossPercent = GetLossPercent(defender),
+                        AttackerWon = result.Winner == CombatSide.Attacker,
+                        AttackerOutcome = result.AttackerOutcome.ToString(),
+                        DefenderOutcome = result.DefenderOutcome.ToString(),
+                    }
+                );
+            }
+        }
+
+        /// <summary>
+        /// Builds the recorded calibration results for an attacking faction.
+        /// </summary>
+        /// <param name="factionId">The attacking faction identifier.</param>
+        /// <returns>The faction's resolved space combats.</returns>
+        public SpaceCombatCalibrationSummary BuildSummary(string factionId)
+        {
+            return new SpaceCombatCalibrationSummary
+            {
+                Results = _results.TryGetValue(
+                    factionId ?? string.Empty,
+                    out List<SpaceCombatCalibrationResult> results
+                )
+                    ? results.ToArray()
+                    : Array.Empty<SpaceCombatCalibrationResult>(),
+            };
+        }
+
+        /// <summary>
+        /// Calculates initial and surviving strategic combat values for one combat side.
+        /// </summary>
+        /// <param name="units">Detached pre-combat unit snapshots.</param>
+        /// <param name="shipDamage">Resolved capital-ship hull changes.</param>
+        /// <param name="fighterLosses">Resolved fighter squadron losses.</param>
+        /// <returns>The initial and surviving combat values.</returns>
+        private static CombatStrengthSnapshot CalculateStrength(
+            IReadOnlyList<CombatUnitSnapshot> units,
+            IReadOnlyList<ShipDamageResult> shipDamage,
+            IReadOnlyList<FighterLossResult> fighterLosses
+        )
+        {
+            Dictionary<string, int> survivingHull = (shipDamage ?? Array.Empty<ShipDamageResult>())
+                .Where(damage => damage?.Ship != null)
+                .ToDictionary(damage => damage.Ship.InstanceID, damage => damage.HullAfter);
+            Dictionary<string, int> survivingFighters = (
+                fighterLosses ?? Array.Empty<FighterLossResult>()
+            )
+                .Where(loss => loss?.Fighter != null)
+                .ToDictionary(loss => loss.Fighter.InstanceID, loss => loss.SquadsAfter);
+            int initial = 0;
+            int surviving = 0;
+            foreach (CombatUnitSnapshot snapshot in units ?? Array.Empty<CombatUnitSnapshot>())
+            {
+                if (snapshot?.WasOperational != true)
+                    continue;
+
+                if (snapshot.Unit is CapitalShip ship)
+                {
+                    initial += CalculateCapitalShipCombatValue(ship, ship.CurrentHullStrength);
+                    int hull =
+                        snapshot.Destroyed ? 0
+                        : survivingHull.TryGetValue(ship.InstanceID, out int hullAfter) ? hullAfter
+                        : ship.CurrentHullStrength;
+                    surviving += CalculateCapitalShipCombatValue(ship, hull);
+                }
+                else if (snapshot.Unit is Starfighter fighter)
+                {
+                    initial += CalculateStarfighterCombatValue(
+                        fighter,
+                        fighter.CurrentSquadronSize
+                    );
+                    int count =
+                        snapshot.Destroyed ? 0
+                        : survivingFighters.TryGetValue(fighter.InstanceID, out int countAfter)
+                            ? countAfter
+                        : fighter.CurrentSquadronSize;
+                    surviving += CalculateStarfighterCombatValue(fighter, count);
+                }
+            }
+
+            return new CombatStrengthSnapshot(initial, surviving);
+        }
+
+        /// <summary>
+        /// Calculates strategic combat value for a capital ship at a specified hull strength.
+        /// </summary>
+        /// <param name="ship">The capital ship definition.</param>
+        /// <param name="hullStrength">The hull strength to evaluate.</param>
+        /// <returns>The strategic combat value.</returns>
+        private static int CalculateCapitalShipCombatValue(CapitalShip ship, int hullStrength)
+        {
+            int attackStrength = ship?.GetPrimaryWeaponStrength() ?? 0;
+            long durability =
+                Math.Max(0L, hullStrength) + Math.Max(0L, ship?.MaxShieldStrength ?? 0);
+            if (attackStrength <= 0 || durability <= 0)
+                return attackStrength;
+
+            double value = Math.Sqrt(attackStrength * (double)durability);
+            return value >= int.MaxValue ? int.MaxValue : (int)value;
+        }
+
+        /// <summary>
+        /// Calculates strategic combat value for a fighter squadron at a specified size.
+        /// </summary>
+        /// <param name="fighter">The fighter definition.</param>
+        /// <param name="squadronSize">The surviving fighter count.</param>
+        /// <returns>The strategic combat value.</returns>
+        private static int CalculateStarfighterCombatValue(Starfighter fighter, int squadronSize)
+        {
+            return fighter == null ? 0 : fighter.GetWeaponStrength() * Math.Max(0, squadronSize);
+        }
+
+        /// <summary>
+        /// Returns the percentage of initial combat value lost.
+        /// </summary>
+        /// <param name="strength">The initial and surviving strength.</param>
+        /// <returns>The loss percentage from zero through one hundred.</returns>
+        private static double GetLossPercent(CombatStrengthSnapshot strength)
+        {
+            return strength.Initial > 0
+                ? 100 * (1 - strength.Surviving / (double)strength.Initial)
+                : 0;
+        }
+
+        private readonly struct CombatStrengthSnapshot
+        {
+            internal int Initial { get; }
+            internal int Surviving { get; }
+
+            /// <summary>
+            /// Creates a combat-strength snapshot.
+            /// </summary>
+            /// <param name="initial">The initial strength.</param>
+            /// <param name="surviving">The surviving strength.</param>
+            internal CombatStrengthSnapshot(int initial, int surviving)
+            {
+                Initial = initial;
+                Surviving = surviving;
+            }
+        }
+    }
+
+    [Serializable]
+    private sealed class SpaceCombatCalibrationSummary
+    {
+        public SpaceCombatCalibrationResult[] Results;
+    }
+
+    [Serializable]
+    private sealed class SpaceCombatCalibrationResult
+    {
+        public int Tick;
+        public string PlanetId;
+        public string PlanetName;
+        public int AttackerInitialCombat;
+        public int DefenderInitialCombat;
+        public int AttackerSurvivingCombat;
+        public int DefenderSurvivingCombat;
+        public double AttackerToDefenderRatio;
+        public double AttackerLossPercent;
+        public double DefenderLossPercent;
+        public bool AttackerWon;
+        public string AttackerOutcome;
+        public string DefenderOutcome;
+    }
+
     /// <summary>
     /// Records the existing bombardment results that prove the final defending garrison was
     /// removed and the sector-wide support shift was applied. This is event-backed and performs

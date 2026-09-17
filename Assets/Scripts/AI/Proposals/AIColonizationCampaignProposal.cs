@@ -119,14 +119,13 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            IReadOnlyList<string> route = BuildRoute(
-                Fleet.GetParentOfType<Planet>(),
-                UnexploredPlanets
-            );
+            if (EntryPlanet == null)
+                return;
+
             bool accepted =
                 context.Movement?.TrySetFleetWaypointRoute(
                     new ISceneNode[] { Fleet },
-                    route,
+                    new[] { EntryPlanet.InstanceID },
                     context.Faction.InstanceID
                 ) == true;
             if (!accepted)
@@ -190,31 +189,6 @@ namespace Rebellion.AI.Proposals
                 .OrderBy(planet => origin?.GetRawDistanceTo(planet) ?? double.MaxValue)
                 .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
                 .FirstOrDefault();
-        }
-
-        /// <summary>
-        /// Builds a deterministic nearest-neighbor route through the supplied planets.
-        /// </summary>
-        /// <param name="origin">The first route origin.</param>
-        /// <param name="candidates">Planets to visit.</param>
-        /// <returns>Planet identifiers in visit order.</returns>
-        private static IReadOnlyList<string> BuildRoute(
-            Planet origin,
-            IReadOnlyList<Planet> candidates
-        )
-        {
-            List<Planet> remaining = candidates.ToList();
-            List<string> route = new List<string>(remaining.Count);
-            Planet current = origin;
-            while (remaining.Count > 0)
-            {
-                Planet next = FindNearestPlanet(current, remaining);
-                route.Add(next.InstanceID);
-                remaining.Remove(next);
-                current = next;
-            }
-
-            return route;
         }
     }
 }

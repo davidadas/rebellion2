@@ -98,7 +98,7 @@ public sealed class GalaxyMapController
     }
 
     /// <summary>
-    /// Rebuilds the authoritative galaxy snapshot used by map and window projection.
+    /// Rebuilds the faction-filtered galaxy snapshot used by map and window projection.
     /// </summary>
     /// <param name="gameManager">The active game manager.</param>
     public void RebuildSnapshot(GameManager gameManager)
@@ -112,7 +112,7 @@ public sealed class GalaxyMapController
         visibleGalaxyMap = null;
         if (playerFaction != null)
         {
-            visibleGalaxyMap = gameManager.GetGame().Galaxy;
+            visibleGalaxyMap = gameManager.GetFogOfWarSystem().BuildFactionView(playerFaction);
             IReadOnlyList<PlanetSector> visibleSectors =
                 visibleGalaxyMap?.GetChildren<PlanetSector>();
             foreach (PlanetSector sector in visibleSectors ?? Array.Empty<PlanetSector>())

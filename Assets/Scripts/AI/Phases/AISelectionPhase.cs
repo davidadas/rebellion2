@@ -34,7 +34,7 @@ namespace Rebellion.AI.Phases
 
             AIProposalSelectionPolicy selectionPolicy = new AIProposalSelectionPolicy();
             float minimumSelectableScore = GetMinimumSelectableScore(context);
-            foreach (AIProposal proposal in GetSortedProposals(context.Proposals))
+            foreach (AIProposal proposal in GetSortedProposals(context))
             {
                 if (
                     !proposal.HasScore
@@ -64,18 +64,62 @@ namespace Rebellion.AI.Phases
         }
 
         /// <summary>
-        /// Returns proposals in deterministic selection order.
+        /// Returns proposals ordered by strategic value with seed-faithful random tie resolution.
         /// </summary>
-        /// <param name="proposals">The proposals to sort.</param>
+        /// <param name="context">The current AI turn context.</param>
         /// <returns>Sorted proposals.</returns>
-        private static IEnumerable<AIProposal> GetSortedProposals(IEnumerable<AIProposal> proposals)
+        private static IEnumerable<AIProposal> GetSortedProposals(AITurnContext context)
         {
-            return proposals
-                .Where(proposal => proposal != null)
+            List<AIProposal> proposals = context
+                .Proposals.Where(proposal => proposal != null)
                 .OrderByDescending(proposal => proposal.Priority)
                 .ThenByDescending(proposal => proposal.Score)
-                .ThenBy(proposal => proposal.GetType().Name, StringComparer.Ordinal)
-                .ThenBy(proposal => proposal.GetSortKey(), StringComparer.Ordinal);
+                .ToList();
+            int groupStart = 0;
+            while (groupStart < proposals.Count)
+            {
+                int groupEnd = groupStart + 1;
+                while (
+                    groupEnd < proposals.Count
+                    && proposals[groupEnd].Priority == proposals[groupStart].Priority
+                    && proposals[groupEnd].Score == proposals[groupStart].Score
+                )
+                {
+                    groupEnd++;
+                }
+
+                ShuffleRange(proposals, groupStart, groupEnd, context.Random);
+                groupStart = groupEnd;
+            }
+
+            return proposals;
+        }
+
+        /// <summary>
+        /// Randomizes one tied proposal range using the persisted game random stream.
+        /// </summary>
+        /// <param name="proposals">The proposal list to update.</param>
+        /// <param name="start">The inclusive tied-range start.</param>
+        /// <param name="end">The exclusive tied-range end.</param>
+        /// <param name="random">The persisted random provider.</param>
+        private static void ShuffleRange(
+            IList<AIProposal> proposals,
+            int start,
+            int end,
+            Rebellion.Util.Common.IRandomNumberProvider random
+        )
+        {
+            if (random == null)
+                return;
+
+            for (int index = end - 1; index > start; index--)
+            {
+                int otherIndex = random.NextInt(start, index + 1);
+                (proposals[index], proposals[otherIndex]) = (
+                    proposals[otherIndex],
+                    proposals[index]
+                );
+            }
         }
     }
 }

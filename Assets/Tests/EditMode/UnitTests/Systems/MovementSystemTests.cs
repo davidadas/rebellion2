@@ -3971,6 +3971,46 @@ namespace Rebellion.Tests.Sectors
         }
 
         /// <summary>
+        /// Verifies a persisted multi-leg colonization survey stops after its current leg so the
+        /// strategic planner can rebuild the route from current intelligence.
+        /// </summary>
+        [Test]
+        public void ProcessTick_ColonizationSurveyWithLegacyWaypoints_CompletesAfterCurrentLeg()
+        {
+            (
+                _,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet fleet,
+                MovementSystem movement
+            ) = BuildWaypointScene();
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Colonize,
+                Status = FleetOrderStatus.Readying,
+                TargetSystemId = "outer-rim",
+            };
+            Assert.IsTrue(
+                movement.TrySetFleetWaypointRoute(
+                    new ISceneNode[] { fleet },
+                    new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                    "empire"
+                )
+            );
+            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+
+            List<GameResult> results = movement.ProcessTick();
+
+            Assert.IsNull(fleet.Movement);
+            Assert.IsEmpty(fleet.Waypoints);
+            FleetWaypointsCompletedResult completed = results
+                .OfType<FleetWaypointsCompletedResult>()
+                .Single();
+            Assert.AreSame(firstDestination, completed.Destination);
+        }
+
+        /// <summary>
         /// Verifies try set fleet waypoint route fleet already moving queues continuation.
         /// </summary>
         [Test]

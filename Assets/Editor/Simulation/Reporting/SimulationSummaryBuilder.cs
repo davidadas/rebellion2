@@ -31,6 +31,7 @@ public static partial class HeadlessSimulationRunner
     /// <param name="specialForcesLifecycleTracker">The special-forces lifecycle tracker.</param>
     /// <param name="planetaryAssaultTracker">The planetary-assault activity tracker.</param>
     /// <param name="garrisonRemovalBombardmentTracker">The garrison-removal bombardment tracker.</param>
+    /// <param name="spaceCombatCalibrationTracker">The space-combat calibration tracker.</param>
     /// <param name="attackReadinessTracker">The attack-readiness blocker tracker.</param>
     /// <param name="victory">The first victory reached during the simulation.</param>
     /// <returns>The simulation summary.</returns>
@@ -47,6 +48,7 @@ public static partial class HeadlessSimulationRunner
         SpecialForcesLifecycleTracker specialForcesLifecycleTracker,
         PlanetaryAssaultTracker planetaryAssaultTracker,
         GarrisonRemovalBombardmentTracker garrisonRemovalBombardmentTracker,
+        SpaceCombatCalibrationTracker spaceCombatCalibrationTracker,
         AttackReadinessTracker attackReadinessTracker,
         VictoryResult victory
     )
@@ -241,6 +243,9 @@ public static partial class HeadlessSimulationRunner
                     PersonnelOutcomes = personnelOutcomeTracker.BuildSummary(faction.InstanceID),
                     PlanetaryAssaults = planetaryAssaultTracker.BuildSummary(faction.InstanceID),
                     GarrisonRemovalBombardments = garrisonRemovalBombardmentTracker.BuildSummary(
+                        faction.InstanceID
+                    ),
+                    SpaceCombatCalibration = spaceCombatCalibrationTracker.BuildSummary(
                         faction.InstanceID
                     ),
                     AttackReadiness = attackReadinessTracker.BuildSummary(faction.InstanceID),

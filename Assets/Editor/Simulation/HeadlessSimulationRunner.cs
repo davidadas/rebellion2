@@ -145,10 +145,13 @@ public static partial class HeadlessSimulationRunner
             PlanetaryAssaultTracker planetaryAssaultTracker = new PlanetaryAssaultTracker(game);
             GarrisonRemovalBombardmentTracker garrisonRemovalBombardmentTracker =
                 new GarrisonRemovalBombardmentTracker(game);
+            SpaceCombatCalibrationTracker spaceCombatCalibrationTracker =
+                new SpaceCombatCalibrationTracker();
             AttackReadinessTracker attackReadinessTracker = new AttackReadinessTracker();
             VictoryResult victory = null;
             manager.ResultsResolved += planetaryAssaultTracker.Record;
             manager.ResultsResolved += garrisonRemovalBombardmentTracker.Record;
+            manager.ResultsResolved += spaceCombatCalibrationTracker.Record;
             manager.VictoriesResolved += results => victory ??= results.FirstOrDefault();
             manager.ResultsResolved += missionOutcomeTracker.Record;
             manager.ResultsResolved += results => manufacturedUnitTracker.Record(game, results);
@@ -232,6 +235,7 @@ public static partial class HeadlessSimulationRunner
                 specialForcesLifecycleTracker,
                 planetaryAssaultTracker,
                 garrisonRemovalBombardmentTracker,
+                spaceCombatCalibrationTracker,
                 attackReadinessTracker,
                 victory
             );

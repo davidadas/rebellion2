@@ -133,6 +133,7 @@ public static partial class HeadlessSimulationRunner
         public PersonnelOutcomeSimulationSummary PersonnelOutcomes;
         public PlanetaryAssaultSimulationSummary PlanetaryAssaults;
         public GarrisonRemovalBombardmentSimulationSummary GarrisonRemovalBombardments;
+        public SpaceCombatCalibrationSummary SpaceCombatCalibration;
         public AttackReadinessSimulationSummary AttackReadiness;
         public ProductionFacilityPlanetSummary[] ProductionFacilityPlanets;
         public CurrentIdlePlanetSummary[] CurrentIdlePlanets;

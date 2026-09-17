@@ -14,7 +14,7 @@ namespace Rebellion.Tests.AI.Proposals
     public class AIColonizationCampaignProposalTests
     {
         [Test]
-        public void Execute_WithUnexploredPlanets_StartsNearestNeighborSurveyRoute()
+        public void Execute_WithUnexploredPlanets_StartsOnlyNearestSurveyLeg()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.AI.Proposals
 
             Assert.AreEqual(FleetOrderType.Colonize, fleet.Order.OrderType);
             Assert.AreEqual(outerRim.InstanceID, fleet.Order.TargetSystemId);
-            CollectionAssert.AreEqual(new[] { near.InstanceID, far.InstanceID }, fleet.Waypoints);
+            CollectionAssert.AreEqual(new[] { near.InstanceID }, fleet.Waypoints);
             Assert.IsNotNull(fleet.Movement);
         }
 

@@ -2130,6 +2130,14 @@ namespace Rebellion.Systems
                 return false;
 
             fleet.Waypoints.RemoveAt(0);
+            if (
+                fleet.Order?.OrderType == FleetOrderType.Colonize
+                && string.IsNullOrEmpty(fleet.Order.TargetPlanetId)
+            )
+            {
+                fleet.Waypoints.Clear();
+            }
+
             return !fleet.HasWaypoints();
         }
 

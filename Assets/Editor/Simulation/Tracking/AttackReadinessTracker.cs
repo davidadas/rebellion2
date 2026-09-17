@@ -75,7 +75,8 @@ public static partial class HeadlessSimulationRunner
                         assessment,
                         context.StrategicPlan,
                         fleet,
-                        planets
+                        planets,
+                        game.Config.AI.FleetDeployment.MinimumAttackStrength
                     );
                     counters.Record(blockers);
                 }
@@ -116,12 +117,14 @@ public static partial class HeadlessSimulationRunner
         /// <param name="strategicPlan">The faction's current strategic fleet targets.</param>
         /// <param name="fleet">The attack fleet to inspect.</param>
         /// <param name="planets">Known planets indexed by instance identifier.</param>
+        /// <param name="minimumAttackStrength">The configured baseline attack strength.</param>
         /// <returns>The active readiness blocker names.</returns>
         private static List<string> GetBlockers(
             AIAssessment assessment,
             AIStrategicPlan strategicPlan,
             Fleet fleet,
-            IReadOnlyDictionary<string, Planet> planets
+            IReadOnlyDictionary<string, Planet> planets,
+            int minimumAttackStrength
         )
         {
             List<string> blockers = new List<string>();
@@ -138,11 +141,15 @@ public static partial class HeadlessSimulationRunner
                 blockers.Add("HeadquartersReserve");
             if (!fleet.HasOperationalCapitalShips())
                 blockers.Add("OperationalCapitalShips");
-            if (
-                assessment.GetReadyFleetCombatValue(fleet)
-                < assessment.GetRequiredAttackCombatStrength(target)
-            )
-                blockers.Add("CombatStrength");
+            int requiredCombat = assessment.GetRequiredAttackCombatStrength(target);
+            if (assessment.GetReadyFleetCombatValue(fleet) < requiredCombat)
+            {
+                blockers.Add(
+                    requiredCombat > minimumAttackStrength
+                        ? "CombatStrengthOppositionEscalated"
+                        : "CombatStrengthBaseline"
+                );
+            }
             if (
                 assessment.GetReadyFleetRegimentCount(fleet)
                 < assessment.GetRequiredAttackRegimentCount(target)
