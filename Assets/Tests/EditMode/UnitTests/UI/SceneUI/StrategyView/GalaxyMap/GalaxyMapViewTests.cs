@@ -47,18 +47,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render complete map applies background filter label and clusters.
-        /// </summary>
         [Test]
         public void Render_CompleteMap_AppliesBackgroundFilterLabelAndClusters()
         {
@@ -104,9 +98,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual("sector-2", clusters[1].name);
         }
 
-        /// <summary>
-        /// Verifies render changed cluster set reuses existing and hides missing clusters.
-        /// </summary>
         [Test]
         public void Render_ChangedClusterSet_ReusesExistingAndHidesMissingClusters()
         {
@@ -141,9 +132,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsTrue(FindCluster("sector-3").gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render null clusters and empty filter hides pooled clusters and label.
-        /// </summary>
         [Test]
         public void Render_NullClustersAndEmptyFilter_HidesPooledClustersAndLabel()
         {
@@ -170,9 +158,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(cluster.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies try get planet instance id pointer over rendered marker returns planet identity.
-        /// </summary>
         [Test]
         public void TryGetPlanetInstanceID_PointerOverRenderedMarker_ReturnsPlanetIdentity()
         {
@@ -191,9 +176,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual("planet-1", planetInstanceId);
         }
 
-        /// <summary>
-        /// Verifies try get planet instance id null or outside pointer returns false.
-        /// </summary>
         [Test]
         public void TryGetPlanetInstanceID_NullOrOutsidePointer_ReturnsFalse()
         {
@@ -214,9 +196,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(outsideIdentity);
         }
 
-        /// <summary>
-        /// Verifies try get source position inside outside and null pointers return expected results.
-        /// </summary>
         [Test]
         public void TryGetSourcePosition_InsideOutsideAndNullPointers_ReturnExpectedResults()
         {
@@ -246,9 +225,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, nullY);
         }
 
-        /// <summary>
-        /// Verifies cluster pointer events rendered cluster forward semantic map requests.
-        /// </summary>
         [Test]
         public void ClusterPointerEvents_RenderedCluster_ForwardSemanticMapRequests()
         {
@@ -287,9 +263,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(240, openedY);
         }
 
-        /// <summary>
-        /// Verifies on destroy rendered clusters unbinds children clears state and raises destroyed event.
-        /// </summary>
         [Test]
         public void OnDestroy_RenderedClusters_UnbindsChildrenClearsStateAndRaisesDestroyedEvent()
         {

@@ -13,9 +13,6 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AIColonizationProposalTests
     {
-        /// <summary>
-        /// Verifies execute with remote target moves colonization fleet intact.
-        /// </summary>
         [Test]
         public void Execute_WithRemoteTarget_MovesColonizationFleetIntact()
         {
@@ -59,9 +56,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNull(target.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies execute with fleet and regiment at target claims planet.
-        /// </summary>
         [Test]
         public void Execute_WithFleetAndRegimentAtTarget_ClaimsPlanet()
         {
@@ -88,9 +82,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNull(fleet.Order);
         }
 
-        /// <summary>
-        /// Verifies execute with colonization fleet at target preserves fleet role.
-        /// </summary>
         [Test]
         public void Execute_WithColonizationFleetAtTarget_PreservesFleetRole()
         {
@@ -120,9 +111,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNull(fleet.Order);
         }
 
-        /// <summary>
-        /// Verifies execute with multiple regiments drops weakest regiment.
-        /// </summary>
         [Test]
         public void Execute_WithMultipleRegiments_DropsWeakestRegiment()
         {
@@ -159,9 +147,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreSame(ship, strongerRegiment.GetParent());
         }
 
-        /// <summary>
-        /// Verifies execute with stale target state travels before rejecting colonization.
-        /// </summary>
         [Test]
         public void Execute_WithStaleTargetState_TravelsBeforeRejectingColonization()
         {

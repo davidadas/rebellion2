@@ -116,9 +116,6 @@ namespace Rebellion.Tests.Generation
             _factionIds = new[] { "FNALL1", "FNEMP1" };
         }
 
-        /// <summary>
-        /// Verifies seed coruscant gets0 alliance100 empire.
-        /// </summary>
         [Test]
         public void Seed_Coruscant_Gets0Alliance100Empire()
         {
@@ -150,9 +147,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(100, planet.PopularSupport["FNEMP1"]);
         }
 
-        /// <summary>
-        /// Verifies seed yavin gets100 alliance0 empire.
-        /// </summary>
         [Test]
         public void Seed_Yavin_Gets100Alliance0Empire()
         {
@@ -179,9 +173,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(0, planet.PopularSupport["FNEMP1"]);
         }
 
-        /// <summary>
-        /// Verifies seed alliance owned rim gets100 alliance0 empire.
-        /// </summary>
         [Test]
         public void Seed_AllianceOwnedRim_Gets100Alliance0Empire()
         {
@@ -206,9 +197,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(0, planet.PopularSupport["FNEMP1"]);
         }
 
-        /// <summary>
-        /// Verifies seed unowned rim gets50 50.
-        /// </summary>
         [Test]
         public void Seed_UnownedRim_Gets50_50()
         {
@@ -228,9 +216,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(50, planet.PopularSupport["FNEMP1"]);
         }
 
-        /// <summary>
-        /// Verifies seed strong alliance range is60 to90.
-        /// </summary>
         [Test]
         public void Seed_StrongAlliance_RangeIs60To90()
         {
@@ -256,9 +241,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(40, planet.PopularSupport["FNEMP1"]);
         }
 
-        /// <summary>
-        /// Verifies seed strong empire gives empire60.
-        /// </summary>
         [Test]
         public void Seed_StrongEmpire_GivesEmpire60()
         {
@@ -285,9 +267,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(60, planet.PopularSupport["FNEMP1"]);
         }
 
-        /// <summary>
-        /// Verifies seed neutral range is41 to59.
-        /// </summary>
         [Test]
         public void Seed_Neutral_RangeIs41To59()
         {
@@ -313,9 +292,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(59, planet.PopularSupport["FNEMP1"]);
         }
 
-        /// <summary>
-        /// Verifies seed core planet sets energy in range.
-        /// </summary>
         [Test]
         public void Seed_CorePlanet_SetsEnergyInRange()
         {
@@ -340,9 +316,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(10, planet.EnergyCapacity);
         }
 
-        /// <summary>
-        /// Verifies seed raw materials clamped to energy.
-        /// </summary>
         [Test]
         public void Seed_RawMaterials_ClampedToEnergy()
         {
@@ -379,9 +352,6 @@ namespace Rebellion.Tests.Generation
             Assert.LessOrEqual(planet.NumRawResourceNodes, planet.EnergyCapacity);
         }
 
-        /// <summary>
-        /// Verifies seed core planet is always colonized.
-        /// </summary>
         [Test]
         public void Seed_CorePlanet_IsAlwaysColonized()
         {
@@ -405,9 +375,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsTrue(planet.IsColonized);
         }
 
-        /// <summary>
-        /// Verifies seed rim planet colonized at31 percent.
-        /// </summary>
         [Test]
         public void Seed_RimPlanet_ColonizedAt31Percent()
         {
@@ -427,9 +394,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsTrue(planet.IsColonized);
         }
 
-        /// <summary>
-        /// Verifies seed rim planet not colonized when roll above threshold.
-        /// </summary>
         [Test]
         public void Seed_RimPlanet_NotColonizedWhenRollAboveThreshold()
         {
@@ -459,9 +423,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsFalse(planet.IsColonized);
         }
 
-        /// <summary>
-        /// Verifies seed uncolonized rim planet has no popular support.
-        /// </summary>
         [Test]
         public void Seed_UncolonizedRimPlanet_HasNoPopularSupport()
         {
@@ -483,9 +444,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsFalse(planet.IsPopulated());
         }
 
-        /// <summary>
-        /// Verifies seed already colonized rim stays colonized.
-        /// </summary>
         [Test]
         public void Seed_AlreadyColonizedRim_StaysColonized()
         {
@@ -507,9 +465,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsTrue(planet.IsColonized);
         }
 
-        /// <summary>
-        /// Verifies seed abundant availability selects matching resource profile.
-        /// </summary>
         [Test]
         public void Seed_AbundantAvailability_SelectsMatchingResourceProfile()
         {
@@ -576,9 +531,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(50, planet.EnergyCapacity);
         }
 
-        /// <summary>
-        /// Verifies seed availability has no profile falls back to normal profile.
-        /// </summary>
         [Test]
         public void Seed_AvailabilityHasNoProfile_FallsBackToNormalProfile()
         {

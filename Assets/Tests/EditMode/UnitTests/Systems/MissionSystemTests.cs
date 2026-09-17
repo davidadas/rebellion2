@@ -19,9 +19,6 @@ namespace Rebellion.Tests.Sectors
     [TestFixture]
     public class MissionSystemTests
     {
-        /// <summary>
-        /// Verifies update mission betraying officer produces foiled completion.
-        /// </summary>
         [Test]
         public void UpdateMission_BetrayingOfficer_ProducesFoiledCompletion()
         {
@@ -41,9 +38,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(MissionCompletionReason.Foiled, completed.CompletionReason);
         }
 
-        /// <summary>
-        /// Verifies update mission completed without return destination captures officer and detaches mission.
-        /// </summary>
         [Test]
         public void UpdateMission_CompletedWithoutReturnDestination_CapturesOfficerAndDetachesMission()
         {
@@ -110,9 +104,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission missing owner faction detaches mission.
-        /// </summary>
         [Test]
         public void UpdateMission_MissingOwnerFaction_DetachesMission()
         {
@@ -149,9 +140,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(game.GetSceneNodesByType<StubMission>().Contains(mission));
         }
 
-        /// <summary>
-        /// Verifies update mission completed participant parented to mission returns participant to planet.
-        /// </summary>
         [Test]
         public void UpdateMission_CompletedParticipantParentedToMission_ReturnsParticipantToPlanet()
         {
@@ -176,9 +164,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(game.GetSceneNodesByType<StubMission>().Contains(mission));
         }
 
-        /// <summary>
-        /// Verifies update mission completed participant on neutral planet returns to nearest friendly planet.
-        /// </summary>
         [Test]
         public void UpdateMission_CompletedParticipantOnNeutralPlanet_ReturnsToNearestFriendlyPlanet()
         {
@@ -242,9 +227,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(officer.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies update mission on completion detaches mission.
-        /// </summary>
         [Test]
         public void UpdateMission_OnCompletion_DetachesMission()
         {
@@ -265,9 +247,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission diplo before incite diplo aborts on next lifecycle step.
-        /// </summary>
         [Test]
         public void UpdateMission_DiploBeforeIncite_DiploAbortsOnNextLifecycleStep()
         {
@@ -303,9 +282,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(diplomacyMission.GetParent());
         }
 
-        /// <summary>
-        /// Verifies update mission incite before diplo diplo aborts when advanced.
-        /// </summary>
         [Test]
         public void UpdateMission_InciteBeforeDiplo_DiploAbortsWhenAdvanced()
         {
@@ -330,9 +306,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(diplomacyMission.GetParent());
         }
 
-        /// <summary>
-        /// Verifies update mission incite removes opposing control without own troops succeeds and improves agent.
-        /// </summary>
         [Test]
         public void UpdateMission_InciteRemovesOpposingControlWithoutOwnTroops_SucceedsAndImprovesAgent()
         {
@@ -356,9 +329,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission diplomacy completion from fleet participant remains at target planet.
-        /// </summary>
         [Test]
         public void UpdateMission_DiplomacyCompletionFromFleet_ParticipantRemainsAtTargetPlanet()
         {
@@ -437,9 +407,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(mission.GetParent());
         }
 
-        /// <summary>
-        /// Verifies update mission any participant in transit does not progress or execute.
-        /// </summary>
         [Test]
         public void UpdateMission_AnyParticipantInTransit_DoesNotProgressOrExecute()
         {
@@ -470,9 +437,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, game.GetSceneNodesByType<StubMission>().Count);
         }
 
-        /// <summary>
-        /// Verifies update mission any participant in transit no detection or capture.
-        /// </summary>
         [Test]
         public void UpdateMission_AnyParticipantInTransit_NoDetectionOrCapture()
         {
@@ -510,9 +474,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission main participant removed returns failed mission completed result.
-        /// </summary>
         [Test]
         public void UpdateMission_MainParticipantRemoved_ReturnsFailedMissionCompletedResult()
         {
@@ -533,9 +494,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<StubMission>().Count);
         }
 
-        /// <summary>
-        /// Verifies update mission detection roll fails mission continues.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectionRollFails_MissionContinues()
         {
@@ -567,9 +525,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies get mission odds combines known detectors and assigned decoys.
-        /// </summary>
         [Test]
         public void GetMissionOdds_CombinesKnownDetectorsAndAssignedDecoys()
         {
@@ -598,9 +553,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(50, odds.FoilProbability, 0.001);
         }
 
-        /// <summary>
-        /// Verifies get mission odds tracks which decoy survives each detector.
-        /// </summary>
         [Test]
         public void GetMissionOdds_TracksWhichDecoySurvivesEachDetector()
         {
@@ -637,9 +589,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(52.777, odds.FoilProbability, 0.001);
         }
 
-        /// <summary>
-        /// Verifies get mission odds includes stationary fleet detectors.
-        /// </summary>
         [Test]
         public void GetMissionOdds_IncludesStationaryFleetDetectors()
         {
@@ -668,9 +617,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(100, odds.FoilProbability, 0.001);
         }
 
-        /// <summary>
-        /// Verifies get mission odds with multiple officers combines personnel loss probability.
-        /// </summary>
         [Test]
         public void GetMissionOdds_WithMultipleOfficers_CombinesPersonnelLossProbability()
         {
@@ -702,9 +648,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(75, odds.PersonnelLossProbability, 0.001);
         }
 
-        /// <summary>
-        /// Verifies get mission odds diplomacy uses observed planet support.
-        /// </summary>
         [Test]
         public void GetMissionOdds_DiplomacyUsesObservedPlanetSupport()
         {
@@ -728,9 +671,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(90, odds.ObjectiveSuccessProbability, 0.001);
         }
 
-        /// <summary>
-        /// Verifies get mission odds does not expose hidden betrayal state.
-        /// </summary>
         [Test]
         public void GetMissionOdds_DoesNotExposeHiddenBetrayalState()
         {
@@ -762,9 +702,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(loyalOdds.FoilProbability, betrayalOdds.FoilProbability, 0.001);
         }
 
-        /// <summary>
-        /// Verifies get mission odds reconnaissance uses its guaranteed completion rule.
-        /// </summary>
         [Test]
         public void GetMissionOdds_ReconnaissanceUsesItsGuaranteedCompletionRule()
         {
@@ -790,11 +727,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(100, odds.OverallSuccessProbability, 0.001);
         }
 
-        /// <summary>
-        /// Verifies get mission odds officer target mission uses observed target rating.
-        /// </summary>
-        /// <param name="missionTypeId">The mission type id.</param>
-        /// <param name="expectedProbability">The expected probability.</param>
         [TestCase(MissionTypeIDs.Abduction, 80)]
         [TestCase(MissionTypeIDs.Assassination, 20)]
         public void GetMissionOdds_OfficerTargetMissionUsesObservedTargetRating(
@@ -841,9 +773,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(expectedProbability, odds.ObjectiveSuccessProbability, 0.001);
         }
 
-        /// <summary>
-        /// Verifies get mission odds assassination of main character cannot report success.
-        /// </summary>
         [Test]
         public void GetMissionOdds_AssassinationOfMainCharacterCannotReportSuccess()
         {
@@ -873,9 +802,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, odds.OverallSuccessProbability, 0.001);
         }
 
-        /// <summary>
-        /// Verifies get mission odds assassination combines hit and kill checks per participant.
-        /// </summary>
         [Test]
         public void GetMissionOdds_AssassinationCombinesHitAndKillChecksPerParticipant()
         {
@@ -912,9 +838,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(43.75, odds.OverallSuccessProbability, 0.001);
         }
 
-        /// <summary>
-        /// Verifies update mission diplomacy with hostile detector can be foiled.
-        /// </summary>
         [Test]
         public void UpdateMission_DiplomacyWithHostileDetector_CanBeFoiled()
         {
@@ -953,9 +876,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission diplomacy without hostile detector does not injure participant.
-        /// </summary>
         [Test]
         public void UpdateMission_DiplomacyWithoutHostileDetector_DoesNotInjureParticipant()
         {
@@ -999,9 +919,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(results.OfType<OfficerInjuredResult>().Any());
         }
 
-        /// <summary>
-        /// Verifies update mission recruitment on friendly planet with hostile detector can be foiled.
-        /// </summary>
         [Test]
         public void UpdateMission_RecruitmentOnFriendlyPlanetWithHostileDetector_CanBeFoiled()
         {
@@ -1042,9 +959,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission recruitment on friendly planet with successful decoy continues.
-        /// </summary>
         [Test]
         public void UpdateMission_RecruitmentOnFriendlyPlanetWithSuccessfulDecoy_Continues()
         {
@@ -1085,9 +999,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(recruiter.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies update mission foil score uses espionage instead of mission rating.
-        /// </summary>
         [Test]
         public void UpdateMission_FoilScore_UsesEspionageInsteadOfMissionRating()
         {
@@ -1124,9 +1035,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission detector rating and rank select matching commander.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectorRatingAndRank_SelectMatchingCommander()
         {
@@ -1163,9 +1071,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission first detector fails second detector foils mission.
-        /// </summary>
         [Test]
         public void UpdateMission_FirstDetectorFailsSecondDetectorFoilsMission()
         {
@@ -1209,9 +1114,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(spy.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies update mission completed building does not detect mission.
-        /// </summary>
         [Test]
         public void UpdateMission_CompletedBuilding_DoesNotDetectMission()
         {
@@ -1247,9 +1149,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies update mission detection already resolved does not roll again.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectionAlreadyResolved_DoesNotRollAgain()
         {
@@ -1276,9 +1175,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(2, mission.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies update mission completed unit on incomplete capital ship does not detect mission.
-        /// </summary>
         [Test]
         public void UpdateMission_CompletedUnitOnIncompleteCapitalShip_DoesNotDetectMission()
         {
@@ -1322,9 +1218,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies update mission fleet detector uses fleet decoy table.
-        /// </summary>
         [Test]
         public void UpdateMission_FleetDetector_UsesFleetDecoyTable()
         {
@@ -1372,9 +1265,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies update mission unblocked fleet detector foils mission.
-        /// </summary>
         [Test]
         public void UpdateMission_UnblockedFleetDetector_FoilsMission()
         {
@@ -1413,9 +1303,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission in transit fleet detector does not foil mission.
-        /// </summary>
         [Test]
         public void UpdateMission_InTransitFleetDetector_DoesNotFoilMission()
         {
@@ -1456,9 +1343,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies update mission friendly building blocks fleet detection.
-        /// </summary>
         [Test]
         public void UpdateMission_FriendlyBuildingBlocksFleetDetection()
         {
@@ -1504,9 +1388,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies update mission friendly building does not block planetary detection.
-        /// </summary>
         [Test]
         public void UpdateMission_FriendlyBuildingDoesNotBlockPlanetaryDetection()
         {
@@ -1544,9 +1425,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission main special forces reduces foil score.
-        /// </summary>
         [Test]
         public void UpdateMission_MainSpecialForces_ReducesFoilScore()
         {
@@ -1591,9 +1469,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission evasion fails captures participant.
-        /// </summary>
         [Test]
         public void UpdateMission_EvasionFails_CapturesParticipant()
         {
@@ -1633,9 +1508,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission captured by orbital fleet over own planet records capturing ship.
-        /// </summary>
         [Test]
         public void UpdateMission_CapturedByOrbitalFleetOverOwnPlanet_RecordsCapturingShip()
         {
@@ -1661,9 +1533,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission captured by orbital fleet over neutral planet records capturing ship.
-        /// </summary>
         [Test]
         public void UpdateMission_CapturedByOrbitalFleetOverNeutralPlanet_RecordsCapturingShip()
         {
@@ -1685,9 +1554,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission captured by garrison on enemy planet stays on captor planet.
-        /// </summary>
         [Test]
         public void UpdateMission_CapturedByGarrisonOnEnemyPlanet_StaysOnCaptorPlanet()
         {
@@ -1719,9 +1585,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(spy.GetParentOfType<CapitalShip>());
         }
 
-        /// <summary>
-        /// Verifies update mission espionage detected applies foiled participant consequences.
-        /// </summary>
         [Test]
         public void UpdateMission_EspionageDetected_AppliesFoiledParticipantConsequences()
         {
@@ -1764,9 +1627,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(mission.GetParent());
         }
 
-        /// <summary>
-        /// Verifies update mission detection succeeds without capture or kill foils mission.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectionSucceedsWithoutCaptureOrKill_FoilsMission()
         {
@@ -1800,9 +1660,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(mission.GetParent());
         }
 
-        /// <summary>
-        /// Verifies update mission evasion fails moves captive to mission planet.
-        /// </summary>
         [Test]
         public void UpdateMission_EvasionFails_MovesCaptiveToMissionPlanet()
         {
@@ -1836,9 +1693,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission evasion succeeds returns participant.
-        /// </summary>
         [Test]
         public void UpdateMission_EvasionSucceeds_ReturnsParticipant()
         {
@@ -1868,9 +1722,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(results.Any(result => result is OfficerCaptureStateResult));
         }
 
-        /// <summary>
-        /// Verifies update mission participant injured after initiation does not abort mission.
-        /// </summary>
         [Test]
         public void UpdateMission_ParticipantInjuredAfterInitiation_DoesNotAbortMission()
         {
@@ -1894,9 +1745,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission detection without evasion table uses configured default.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectionWithoutEvasionTable_UsesConfiguredDefault()
         {
@@ -1927,9 +1775,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission detection on own planet never detected.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectionOnOwnPlanet_NeverDetected()
         {
@@ -1953,9 +1798,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(spy.IsCaptured, "Missions on own planets should never be detected");
         }
 
-        /// <summary>
-        /// Verifies update mission detector without commander can foil.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectorWithoutCommander_CanFoil()
         {
@@ -1990,9 +1832,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, mission.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies update mission detection with decoy prevents capture.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectionWithDecoy_PreventsCapture()
         {
@@ -2023,9 +1862,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(spy.IsCaptured, "Successful decoy should prevent capture");
         }
 
-        /// <summary>
-        /// Verifies update mission decoy check always uses espionage.
-        /// </summary>
         [Test]
         public void UpdateMission_DecoyCheck_AlwaysUsesEspionage()
         {
@@ -2067,9 +1903,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(spy.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies update mission high detector rating decoy fails.
-        /// </summary>
         [Test]
         public void UpdateMission_HighDetectorRating_DecoyFails()
         {
@@ -2116,9 +1949,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission detection picks one random decoy not all.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectionPicksOneRandomDecoy_NotAll()
         {
@@ -2161,9 +1991,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission detection captures participant cancels mission.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectionCapturesParticipant_CancelsMission()
         {
@@ -2200,9 +2027,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission detection with special forces destroys unit.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectionWithSpecialForces_DestroysUnit()
         {
@@ -2240,9 +2064,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission special forces evades detector is not destroyed.
-        /// </summary>
         [Test]
         public void UpdateMission_SpecialForcesEvadesDetector_IsNotDestroyed()
         {
@@ -2281,9 +2102,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission officer evades detector does not apply capture evasion injury.
-        /// </summary>
         [Test]
         public void UpdateMission_OfficerEvadesDetector_DoesNotApplyCaptureEvasionInjury()
         {
@@ -2315,9 +2133,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(results.OfType<OfficerInjuredResult>().Any());
         }
 
-        /// <summary>
-        /// Verifies update mission officer fails to evade detector applies capture evasion injury.
-        /// </summary>
         [Test]
         public void UpdateMission_OfficerFailsToEvadeDetector_AppliesCaptureEvasionInjury()
         {
@@ -2350,9 +2165,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(results.OfType<OfficerInjuredResult>().Any());
         }
 
-        /// <summary>
-        /// Verifies update mission failed decoy injury kills minor does not reuse decoy.
-        /// </summary>
         [Test]
         public void UpdateMission_FailedDecoyInjuryKillsMinor_DoesNotReuseDecoy()
         {
@@ -2403,9 +2215,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(results.OfType<OfficerAssassinatedResult>());
         }
 
-        /// <summary>
-        /// Verifies update mission faction view sabotage target missing at arrival fails and tears down.
-        /// </summary>
         [Test]
         public void UpdateMission_FactionViewSabotageTargetMissingAtArrival_FailsAndTearsDown()
         {
@@ -2441,9 +2250,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies update mission sabotage target begins construction before arrival fails and tears down.
-        /// </summary>
         [Test]
         public void UpdateMission_SabotageTargetBeginsConstructionBeforeArrival_FailsAndTearsDown()
         {
@@ -2478,9 +2284,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies update mission abduction target captured before arrival fails and tears down.
-        /// </summary>
         [Test]
         public void UpdateMission_AbductionTargetCapturedBeforeArrival_FailsAndTearsDown()
         {
@@ -2512,9 +2315,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies update mission abduction target begins transit before arrival fails and tears down.
-        /// </summary>
         [Test]
         public void UpdateMission_AbductionTargetBeginsTransitBeforeArrival_FailsAndTearsDown()
         {
@@ -2546,9 +2346,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies update mission abduction target moved after faction view snapshot fails and tears down.
-        /// </summary>
         [Test]
         public void UpdateMission_AbductionTargetMovedAfterFactionViewSnapshot_FailsAndTearsDown()
         {
@@ -2595,9 +2392,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies update mission stale missing view target waits for arrival then fails and tears down.
-        /// </summary>
         [Test]
         public void UpdateMission_StaleMissingViewTarget_WaitsForArrivalThenFailsAndTearsDown()
         {
@@ -2642,9 +2436,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies update mission target planet destroyed during travel waits for arrival then fails.
-        /// </summary>
         [Test]
         public void UpdateMission_TargetPlanetDestroyedDuringTravel_WaitsForArrivalThenFails()
         {
@@ -2684,9 +2475,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
         }
 
-        /// <summary>
-        /// Verifies update mission assassination target captured before arrival fails and tears down.
-        /// </summary>
         [Test]
         public void UpdateMission_AssassinationTargetCapturedBeforeArrival_FailsAndTearsDown()
         {
@@ -2718,9 +2506,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies update mission rescue target freed before arrival fails and tears down.
-        /// </summary>
         [Test]
         public void UpdateMission_RescueTargetFreedBeforeArrival_FailsAndTearsDown()
         {
@@ -2752,9 +2537,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies update mission captured participant with different captor stays on mission planet.
-        /// </summary>
         [Test]
         public void UpdateMission_CapturedParticipantWithDifferentCaptor_StaysOnMissionPlanet()
         {
@@ -2792,9 +2574,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission officer killed result disables and retains killed officer.
-        /// </summary>
         [Test]
         public void UpdateMission_OfficerKilledResult_DisablesAndRetainsKilledOfficer()
         {
@@ -2823,9 +2602,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies tear down mission participant attached to mission via scene graph does not throw.
-        /// </summary>
         [Test]
         public void TearDownMission_ParticipantAttachedToMissionViaSceneGraph_DoesNotThrow()
         {
@@ -2854,9 +2630,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies tear down mission friendly location participants remain at planet.
-        /// </summary>
         [Test]
         public void TearDownMission_FriendlyLocation_ParticipantsRemainAtPlanet()
         {
@@ -2898,9 +2671,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies tear down mission friendly uncolonized location returns officer to origin.
-        /// </summary>
         [Test]
         public void TearDownMission_FriendlyUncolonizedLocation_ReturnsOfficerToOrigin()
         {
@@ -2932,9 +2702,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(mission.GetParent());
         }
 
-        /// <summary>
-        /// Verifies tear down mission hostile location origin fleet moved returns to recorded ship.
-        /// </summary>
         [Test]
         public void TearDownMission_HostileLocation_OriginFleetMoved_ReturnsToRecordedShip()
         {
@@ -3001,9 +2768,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission diplomacy target captured returns officer to nearest friendly planet.
-        /// </summary>
         [Test]
         public void UpdateMission_DiplomacyTargetCaptured_ReturnsOfficerToNearestFriendlyPlanet()
         {
@@ -3051,9 +2815,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(results.OfType<OfficerCaptureStateResult>().Any());
         }
 
-        /// <summary>
-        /// Verifies tear down mission captured participant skips movement.
-        /// </summary>
         [Test]
         public void TearDownMission_CapturedParticipant_SkipsMovement()
         {
@@ -3077,9 +2838,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies begin mission participant assigned sets participant parent to mission.
-        /// </summary>
         [Test]
         public void BeginMission_ParticipantAssigned_SetsParticipantParentToMission()
         {
@@ -3149,9 +2907,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(empirePlanet.InstanceID, officer.MissionReturnLocationInstanceID);
         }
 
-        /// <summary>
-        /// Verifies is on mission after begin mission returns true.
-        /// </summary>
         [Test]
         public void IsOnMission_AfterBeginMission_ReturnsTrue()
         {
@@ -3216,9 +2971,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies process tick with completed mission returns mission completed result.
-        /// </summary>
         [Test]
         public void ProcessTick_WithCompletedMission_ReturnsMissionCompletedResult()
         {
@@ -3239,9 +2991,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies process tick recruitment missions exhaust candidates returns one recruitment exhausted result.
-        /// </summary>
         [Test]
         public void ProcessTick_RecruitmentMissionsExhaustCandidates_ReturnsOneRecruitmentExhaustedResult()
         {
@@ -3297,9 +3046,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(planet, exhausted.Planet);
         }
 
-        /// <summary>
-        /// Verifies update mission with special forces participant appears in participants.
-        /// </summary>
         [Test]
         public void UpdateMission_WithSpecialForcesParticipant_AppearsInParticipants()
         {
@@ -3333,9 +3079,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update mission with decoy participant decoy appears in participants.
-        /// </summary>
         [Test]
         public void UpdateMission_WithDecoyParticipant_DecoyAppearsInParticipants()
         {
@@ -3373,9 +3116,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies abort mission active mission returns participant and detaches mission.
-        /// </summary>
         [Test]
         public void AbortMission_ActiveMission_ReturnsParticipantAndDetachesMission()
         {
@@ -3394,9 +3134,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(mission.GetParent());
         }
 
-        /// <summary>
-        /// Verifies abort mission participant in transit returns participant to origin.
-        /// </summary>
         [Test]
         public void AbortMission_ParticipantInTransit_ReturnsParticipantToOrigin()
         {
@@ -3415,9 +3152,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(mission.GetParent());
         }
 
-        /// <summary>
-        /// Verifies handle results captured mission participant tears down mission at current planet.
-        /// </summary>
         [Test]
         public void HandleResults_CapturedMissionParticipant_TearsDownMissionAtCurrentPlanet()
         {
@@ -3450,9 +3184,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(officer.IsEnabled);
         }
 
-        /// <summary>
-        /// Verifies initiate mission research with discipline attaches research mission to planet.
-        /// </summary>
         [Test]
         public void InitiateMission_ResearchWithDiscipline_AttachesResearchMissionToPlanet()
         {
@@ -3482,9 +3213,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(planet, mission.GetParent());
         }
 
-        /// <summary>
-        /// Verifies the mission system rejects research after a discipline is exhausted.
-        /// </summary>
         [Test]
         public void InitiateMission_ExhaustedResearch_ReturnsFalse()
         {
@@ -3510,11 +3238,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
         }
 
-        /// <summary>
-        /// Verifies initiate mission jedi training uses configured execution range.
-        /// </summary>
-        /// <param name="rolledSpread">The rolled spread.</param>
-        /// <param name="expectedTicks">The expected ticks.</param>
         [TestCase(0, 60)]
         [TestCase(30, 90)]
         public void InitiateMission_JediTraining_UsesConfiguredExecutionRange(
@@ -3556,9 +3279,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies initiate mission with faction view objects uses live scene graph nodes.
-        /// </summary>
         [Test]
         public void InitiateMission_WithFactionViewObjects_UsesLiveSceneGraphNodes()
         {
@@ -3593,9 +3313,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(participant, mission.GetMainParticipants().Single());
         }
 
-        /// <summary>
-        /// Verifies initiate mission enemy regiment faction view target attaches to live planet.
-        /// </summary>
         [Test]
         public void InitiateMission_EnemyRegimentFactionViewTarget_AttachesToLivePlanet()
         {
@@ -3634,9 +3351,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies initiate mission enemy officer faction view target attaches to live planet.
-        /// </summary>
         [Test]
         public void InitiateMission_EnemyOfficerFactionViewTarget_AttachesToLivePlanet()
         {
@@ -3667,9 +3381,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(target.InstanceID, ((AbductionMission)mission).TargetOfficerInstanceID);
         }
 
-        /// <summary>
-        /// Verifies initiate mission stale completed view target creates mission from observed state.
-        /// </summary>
         [Test]
         public void InitiateMission_StaleCompletedViewTarget_CreatesMissionFromObservedState()
         {
@@ -3703,9 +3414,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies initiate mission ineligible selected target returns false.
-        /// </summary>
         [Test]
         public void InitiateMission_IneligibleSelectedTarget_ReturnsFalse()
         {
@@ -3731,9 +3439,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies initiate mission sabotage target on different planet returns false.
-        /// </summary>
         [Test]
         public void InitiateMission_SabotageTargetOnDifferentPlanet_ReturnsFalse()
         {
@@ -3770,9 +3475,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies get available mission options own planet research returns research options.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_OwnPlanetResearch_ReturnsResearchOptions()
         {
@@ -3804,9 +3506,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies get available mission options research with single matching rating returns matching research option.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_ResearchWithSingleMatchingRating_ReturnsMatchingResearchOption()
         {
@@ -3828,9 +3527,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(ResearchDiscipline.ShipDesign, researchOptions.Single().Discipline);
         }
 
-        /// <summary>
-        /// Verifies exhausted research disciplines are absent from available mission options.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_ExhaustedResearch_ExcludesResearchOption()
         {
@@ -3855,9 +3551,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies get available mission options troop training without facility excludes research option.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_TroopTrainingWithoutFacility_ExcludesResearchOption()
         {
@@ -3874,9 +3567,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Research));
         }
 
-        /// <summary>
-        /// Verifies get available mission options research without matching rating excludes research options.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_ResearchWithoutMatchingRating_ExcludesResearchOptions()
         {
@@ -3892,9 +3582,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Research));
         }
 
-        /// <summary>
-        /// Verifies get available mission options disallowed research excludes research options.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_DisallowedResearch_ExcludesResearchOptions()
         {
@@ -3915,9 +3602,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Research));
         }
 
-        /// <summary>
-        /// Verifies get available mission options enemy planet recruitment excludes recruitment option.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_EnemyPlanetRecruitment_ExcludesRecruitmentOption()
         {
@@ -3948,9 +3632,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies get available mission options planet only sabotage target excludes sabotage option.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_PlanetOnlySabotageTarget_ExcludesSabotageOption()
         {
@@ -3972,9 +3653,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
         }
 
-        /// <summary>
-        /// Verifies get available mission options manufacturable sabotage target returns sabotage option.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_ManufacturableSabotageTarget_ReturnsSabotageOption()
         {
@@ -3996,9 +3674,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
         }
 
-        /// <summary>
-        /// Verifies get available mission options selected trainer without student excludes jedi training option.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_SelectedTrainerWithoutStudent_ExcludesJediTrainingOption()
         {
@@ -4020,9 +3695,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies get available mission options reconnaissance special forces returns reconnaissance option.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_ReconnaissanceSpecialForces_ReturnsReconnaissanceOption()
         {
@@ -4082,9 +3754,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(MissionTypeIDs.Reconnaissance, options.Single().MissionTypeID);
         }
 
-        /// <summary>
-        /// Verifies can create mission stale completed view target returns true.
-        /// </summary>
         [Test]
         public void CanCreateMission_StaleCompletedViewTarget_ReturnsTrue()
         {
@@ -4118,9 +3787,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies can create mission stale stationary officer view with live transit returns true.
-        /// </summary>
         [Test]
         public void CanCreateMission_StaleStationaryOfficerViewWithLiveTransit_ReturnsTrue()
         {
@@ -4150,9 +3816,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>
-        /// Verifies can create mission inactive officer returns false.
-        /// </summary>
         [Test]
         public void CanCreateMission_InactiveOfficer_ReturnsFalse()
         {

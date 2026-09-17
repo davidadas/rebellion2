@@ -86,18 +86,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 UnityEngine.Object.DestroyImmediate(texture);
         }
 
-        /// <summary>
-        /// Verifies constructor null context provider throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new FacilityWindowProjector(null));
         }
 
-        /// <summary>
-        /// Verifies create render data null window throws argument null exception.
-        /// </summary>
         [Test]
         public void CreateRenderData_NullWindow_ThrowsArgumentNullException()
         {
@@ -106,9 +100,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
-        /// <summary>
-        /// Verifies create render data null session throws argument null exception.
-        /// </summary>
         [Test]
         public void CreateRenderData_NullSession_ThrowsArgumentNullException()
         {
@@ -117,9 +108,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
-        /// <summary>
-        /// Verifies create render data unavailable context throws invalid operation exception.
-        /// </summary>
         [Test]
         public void CreateRenderData_UnavailableContext_ThrowsInvalidOperationException()
         {
@@ -130,9 +118,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
-        /// <summary>
-        /// Verifies create render data manufacturing tab returns lane and tab presentation.
-        /// </summary>
         [Test]
         public void CreateRenderData_ManufacturingTab_ReturnsLaneAndTabPresentation()
         {
@@ -231,9 +216,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual("0:0", troopCard.FacilityCount);
         }
 
-        /// <summary>
-        /// Verifies create render data mines tab returns inventory slots and selection.
-        /// </summary>
         [Test]
         public void CreateRenderData_MinesTab_ReturnsInventorySlotsAndSelection()
         {
@@ -268,9 +250,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
-        /// <summary>
-        /// Verifies create render data moving building uses transit texture.
-        /// </summary>
         [Test]
         public void CreateRenderData_MovingBuilding_UsesTransitTexture()
         {
@@ -294,9 +273,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
-        /// <summary>
-        /// Verifies create render data under construction inventory building uses construction texture.
-        /// </summary>
         [Test]
         public void CreateRenderData_UnderConstructionInventoryBuilding_UsesConstructionTexture()
         {
@@ -315,9 +291,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreSame(_constructionTexture, data.InventoryItems[0].Texture);
         }
 
-        /// <summary>
-        /// Verifies create render data queued building uses compact entity texture.
-        /// </summary>
         [Test]
         public void CreateRenderData_QueuedBuilding_UsesCompactEntityTexture()
         {
@@ -340,9 +313,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
-        /// <summary>
-        /// Verifies create render data active queue item uses live delivery destination.
-        /// </summary>
         [Test]
         public void CreateRenderData_ActiveQueueItem_UsesLiveDeliveryDestination()
         {

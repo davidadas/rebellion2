@@ -7,9 +7,6 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public class GameEventSchedulerTests
     {
-        /// <summary>
-        /// Verifies get initial range at schedule returns absolute tick.
-        /// </summary>
         [Test]
         public void GetInitialRange_AtSchedule_ReturnsAbsoluteTick()
         {
@@ -21,9 +18,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(25, maximum);
         }
 
-        /// <summary>
-        /// Verifies get initial range every schedule returns initial delay.
-        /// </summary>
         [Test]
         public void GetInitialRange_EverySchedule_ReturnsInitialDelay()
         {
@@ -38,9 +32,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(5, maximum);
         }
 
-        /// <summary>
-        /// Verifies get initial range random delay schedule returns inclusive range.
-        /// </summary>
         [Test]
         public void GetInitialRange_RandomDelaySchedule_ReturnsInclusiveRange()
         {
@@ -55,9 +46,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(30, maximum);
         }
 
-        /// <summary>
-        /// Verifies get repeat range random interval schedule returns inclusive range.
-        /// </summary>
         [Test]
         public void GetRepeatRange_RandomIntervalSchedule_ReturnsInclusiveRange()
         {
@@ -72,9 +60,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(30, maximum);
         }
 
-        /// <summary>
-        /// Verifies serialization random interval until conditions round trips.
-        /// </summary>
         [Test]
         public void Serialization_RandomIntervalUntilConditions_RoundTrips()
         {
@@ -103,9 +88,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(100, condition.Ticks);
         }
 
-        /// <summary>
-        /// Verifies serialization explicit after all dependencies preserves order.
-        /// </summary>
         [Test]
         public void Serialization_ExplicitAfterAllDependencies_PreservesOrder()
         {

@@ -6,9 +6,6 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AIProposalTests
     {
-        /// <summary>
-        /// Verifies set score with score marks proposal as scored.
-        /// </summary>
         [Test]
         public void SetScore_WithScore_MarksProposalAsScored()
         {

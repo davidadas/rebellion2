@@ -27,27 +27,18 @@ namespace Rebellion.Tests.UI.Components
             UnityEngine.Object.DestroyImmediate(_texture);
         }
 
-        /// <summary>
-        /// Verifies constructor negative start distance throws argument out of range exception.
-        /// </summary>
         [Test]
         public void Constructor_NegativeStartDistance_ThrowsArgumentOutOfRangeException()
         {
             Assert.Throws<ArgumentOutOfRangeException>(() => new DragController(-1));
         }
 
-        /// <summary>
-        /// Verifies drag request null source throws argument null exception.
-        /// </summary>
         [Test]
         public void DragRequest_NullSource_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new DragRequest(null));
         }
 
-        /// <summary>
-        /// Verifies drag preview multiple images preserves image bounds and hotspot.
-        /// </summary>
         [Test]
         public void DragPreview_MultipleImages_PreservesImageBoundsAndHotspot()
         {
@@ -71,9 +62,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(preview.HasDrawableImages);
         }
 
-        /// <summary>
-        /// Verifies start candidate null request throws argument null exception.
-        /// </summary>
         [Test]
         public void StartCandidate_NullRequest_ThrowsArgumentNullException()
         {
@@ -82,9 +70,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.Throws<ArgumentNullException>(() => controller.StartCandidate(null, 0, 0));
         }
 
-        /// <summary>
-        /// Verifies has candidate drag started distance below threshold returns false.
-        /// </summary>
         [Test]
         public void HasCandidateDragStarted_DistanceBelowThreshold_ReturnsFalse()
         {
@@ -99,9 +84,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(request, controller.CandidateRequest);
         }
 
-        /// <summary>
-        /// Verifies has candidate drag started distance at threshold returns true.
-        /// </summary>
         [Test]
         public void HasCandidateDragStarted_DistanceAtThreshold_ReturnsTrue()
         {
@@ -113,9 +95,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(started);
         }
 
-        /// <summary>
-        /// Verifies has candidate drag started missing candidate returns false.
-        /// </summary>
         [Test]
         public void HasCandidateDragStarted_MissingCandidate_ReturnsFalse()
         {
@@ -126,9 +105,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(started);
         }
 
-        /// <summary>
-        /// Verifies begin drag missing candidate throws invalid operation exception.
-        /// </summary>
         [Test]
         public void BeginDrag_MissingCandidate_ThrowsInvalidOperationException()
         {
@@ -138,9 +114,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.Throws<InvalidOperationException>(() => controller.BeginDrag(preview, 0, 0));
         }
 
-        /// <summary>
-        /// Verifies begin drag null preview throws argument null exception.
-        /// </summary>
         [Test]
         public void BeginDrag_NullPreview_ThrowsArgumentNullException()
         {
@@ -150,9 +123,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.Throws<ArgumentNullException>(() => controller.BeginDrag(null, 0, 0));
         }
 
-        /// <summary>
-        /// Verifies begin move preview and end active drag tracks complete flow.
-        /// </summary>
         [Test]
         public void BeginMovePreviewAndEnd_ActiveDrag_TracksCompleteFlow()
         {
@@ -187,9 +157,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsNull(controller.ActiveRequest);
         }
 
-        /// <summary>
-        /// Verifies try get preview multiple images returns preview and current pointer.
-        /// </summary>
         [Test]
         public void TryGetPreview_MultipleImages_ReturnsPreviewAndCurrentPointer()
         {
@@ -219,9 +186,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(70, pointerY);
         }
 
-        /// <summary>
-        /// Verifies try get preview missing active drag returns cleared outputs.
-        /// </summary>
         [Test]
         public void TryGetPreview_MissingActiveDrag_ReturnsClearedOutputs()
         {
@@ -243,9 +207,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, height);
         }
 
-        /// <summary>
-        /// Verifies try get preview null preview texture returns false with geometry.
-        /// </summary>
         [Test]
         public void TryGetPreview_NullPreviewTexture_ReturnsFalseWithGeometry()
         {
@@ -269,9 +230,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(20, height);
         }
 
-        /// <summary>
-        /// Verifies move and end missing active drag return false.
-        /// </summary>
         [Test]
         public void MoveAndEnd_MissingActiveDrag_ReturnFalse()
         {
@@ -285,9 +243,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsNull(request);
         }
 
-        /// <summary>
-        /// Verifies clear source matching candidate clears candidate only.
-        /// </summary>
         [Test]
         public void ClearSource_MatchingCandidate_ClearsCandidateOnly()
         {
@@ -301,9 +256,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(controller.IsDragging);
         }
 
-        /// <summary>
-        /// Verifies clear source matching active drag clears active drag only.
-        /// </summary>
         [Test]
         public void ClearSource_MatchingActiveDrag_ClearsActiveDragOnly()
         {
@@ -318,9 +270,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(controller.IsDragging);
         }
 
-        /// <summary>
-        /// Verifies clear source nonmatching or null source preserves state.
-        /// </summary>
         [Test]
         public void ClearSource_NonmatchingOrNullSource_PreservesState()
         {
@@ -334,9 +283,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(controller.HasCandidate);
         }
 
-        /// <summary>
-        /// Verifies clear candidate and active state clears both.
-        /// </summary>
         [Test]
         public void Clear_CandidateAndActiveState_ClearsBoth()
         {

@@ -42,18 +42,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
-        /// <summary>
-        /// Verifies constructor null window throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullWindow_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new EncyclopediaWindowSession(null));
         }
 
-        /// <summary>
-        /// Verifies constructor window returns initial index state.
-        /// </summary>
         [Test]
         public void Constructor_Window_ReturnsInitialIndexState()
         {
@@ -69,9 +63,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(EncyclopediaWindowTab.AllDatabases, session.State.ActiveTab);
         }
 
-        /// <summary>
-        /// Verifies set projected entries source changes preserves read only snapshot.
-        /// </summary>
         [Test]
         public void SetProjectedEntries_SourceChanges_PreservesReadOnlySnapshot()
         {
@@ -88,9 +79,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             );
         }
 
-        /// <summary>
-        /// Verifies set projected entries empty projection clears selection and panel.
-        /// </summary>
         [Test]
         public void SetProjectedEntries_EmptyProjection_ClearsSelectionAndPanel()
         {
@@ -106,9 +94,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsFalse(session.Panel);
         }
 
-        /// <summary>
-        /// Verifies set projected entries reordered projection preserves selection identity.
-        /// </summary>
         [Test]
         public void SetProjectedEntries_ReorderedProjection_PreservesSelectionIdentity()
         {
@@ -123,9 +108,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsTrue(session.Panel);
         }
 
-        /// <summary>
-        /// Verifies set projected entries selected entry removed while panel open selects first entry.
-        /// </summary>
         [Test]
         public void SetProjectedEntries_SelectedEntryRemovedWhilePanelOpen_SelectsFirstEntry()
         {
@@ -140,9 +122,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsTrue(session.Panel);
         }
 
-        /// <summary>
-        /// Verifies open entry projected entry selects topic in all databases.
-        /// </summary>
         [Test]
         public void OpenEntry_ProjectedEntry_SelectsTopicInAllDatabases()
         {
@@ -160,9 +139,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsTrue(session.Panel);
         }
 
-        /// <summary>
-        /// Verifies open entry before projection reconciles selection when entries arrive.
-        /// </summary>
         [Test]
         public void OpenEntry_BeforeProjection_ReconcilesSelectionWhenEntriesArrive()
         {
@@ -176,9 +152,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsTrue(session.Panel);
         }
 
-        /// <summary>
-        /// Verifies open entry null entry returns to empty index selection.
-        /// </summary>
         [Test]
         public void OpenEntry_NullEntry_ReturnsToEmptyIndexSelection()
         {
@@ -194,9 +167,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsFalse(session.Panel);
         }
 
-        /// <summary>
-        /// Verifies set search text value clears selection and returns to index.
-        /// </summary>
         [Test]
         public void SetSearchText_Value_ClearsSelectionAndReturnsToIndex()
         {
@@ -214,9 +184,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(string.Empty, session.SearchText);
         }
 
-        /// <summary>
-        /// Verifies select tab different tab clears incompatible state.
-        /// </summary>
         [Test]
         public void SelectTab_DifferentTab_ClearsIncompatibleState()
         {
@@ -235,9 +202,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsFalse(session.Panel);
         }
 
-        /// <summary>
-        /// Verifies select tab active tab preserves state.
-        /// </summary>
         [Test]
         public void SelectTab_ActiveTab_PreservesState()
         {
@@ -251,9 +215,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsTrue(session.Panel);
         }
 
-        /// <summary>
-        /// Verifies select row visible entry selects without opening topic.
-        /// </summary>
         [Test]
         public void SelectRow_VisibleEntry_SelectsWithoutOpeningTopic()
         {
@@ -267,9 +228,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsFalse(session.Panel);
         }
 
-        /// <summary>
-        /// Verifies select row missing entry clears selection.
-        /// </summary>
         [Test]
         public void SelectRow_MissingEntry_ClearsSelection()
         {
@@ -283,9 +241,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsNull(session.SelectedTypeId);
         }
 
-        /// <summary>
-        /// Verifies activate row visible entry opens topic.
-        /// </summary>
         [Test]
         public void ActivateRow_VisibleEntry_OpensTopic()
         {
@@ -302,9 +257,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsTrue(session.Panel);
         }
 
-        /// <summary>
-        /// Verifies activate row missing entry does not open topic.
-        /// </summary>
         [Test]
         public void ActivateRow_MissingEntry_DoesNotOpenTopic()
         {
@@ -317,9 +269,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsFalse(session.Panel);
         }
 
-        /// <summary>
-        /// Verifies move selection entries moves within bounds.
-        /// </summary>
         [Test]
         public void MoveSelection_Entries_MovesWithinBounds()
         {
@@ -338,9 +287,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsFalse(session.MoveSelection(1));
         }
 
-        /// <summary>
-        /// Verifies move selection empty projection returns false.
-        /// </summary>
         [Test]
         public void MoveSelection_EmptyProjection_ReturnsFalse()
         {

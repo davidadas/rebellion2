@@ -64,18 +64,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 UnityEngine.Object.DestroyImmediate(texture);
         }
 
-        /// <summary>
-        /// Verifies constructor null context provider throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new ConstructionWindowProjector(null));
         }
 
-        /// <summary>
-        /// Verifies create render data null items throws argument null exception.
-        /// </summary>
         [Test]
         public void CreateRenderData_NullItems_ThrowsArgumentNullException()
         {
@@ -95,9 +89,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
         }
 
-        /// <summary>
-        /// Verifies create render data null start selections throws argument null exception.
-        /// </summary>
         [Test]
         public void CreateRenderData_NullStartSelections_ThrowsArgumentNullException()
         {
@@ -117,9 +108,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
         }
 
-        /// <summary>
-        /// Verifies create render data null estimates throws argument null exception.
-        /// </summary>
         [Test]
         public void CreateRenderData_NullEstimates_ThrowsArgumentNullException()
         {
@@ -139,9 +127,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
         }
 
-        /// <summary>
-        /// Verifies create render data unavailable context throws invalid operation exception.
-        /// </summary>
         [Test]
         public void CreateRenderData_UnavailableContext_ThrowsInvalidOperationException()
         {
@@ -163,9 +148,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
         }
 
-        /// <summary>
-        /// Verifies create render data selected item projects selection and dropdown rows.
-        /// </summary>
         [Test]
         public void CreateRenderData_SelectedItem_ProjectsSelectionAndDropdownRows()
         {
@@ -206,9 +188,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(new Color32(255, 255, 255, 255), data.DropdownItems[1].LabelColor);
         }
 
-        /// <summary>
-        /// Verifies create render data starfighter uses battle result artwork.
-        /// </summary>
         [Test]
         public void CreateRenderData_Starfighter_UsesBattleResultArtwork()
         {
@@ -231,9 +210,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreSame(_textures["fighter-status"], data.DropdownItems[0].Texture);
         }
 
-        /// <summary>
-        /// Verifies create render data missing status artwork uses full display artwork.
-        /// </summary>
         [Test]
         public void CreateRenderData_MissingStatusArtwork_UsesFullDisplayArtwork()
         {
@@ -257,9 +233,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreSame(_textures["ship-display"], data.DropdownItems[0].Texture);
         }
 
-        /// <summary>
-        /// Verifies create render data out of range estimates clamps displayed values.
-        /// </summary>
         [Test]
         public void CreateRenderData_OutOfRangeEstimates_ClampsDisplayedValues()
         {
@@ -283,9 +256,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsFalse(data.CanStart);
         }
 
-        /// <summary>
-        /// Verifies create render data missing estimate projects unavailable values.
-        /// </summary>
         [Test]
         public void CreateRenderData_MissingEstimate_ProjectsUnavailableValues()
         {
@@ -309,9 +279,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsTrue(data.CanStart);
         }
 
-        /// <summary>
-        /// Verifies create render data completion only estimate shows completion and unavailable deployment.
-        /// </summary>
         [Test]
         public void CreateRenderData_CompletionOnlyEstimate_ShowsCompletionAndUnavailableDeployment()
         {
@@ -334,9 +301,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual("N/A", data.DeploymentEstimate);
         }
 
-        /// <summary>
-        /// Verifies create render data empty selection projects hidden selection state.
-        /// </summary>
         [Test]
         public void CreateRenderData_EmptySelection_ProjectsHiddenSelectionState()
         {

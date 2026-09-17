@@ -40,18 +40,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render pending summary applies window summary and buttons.
-        /// </summary>
         [Test]
         public void Render_PendingSummary_AppliesWindowSummaryAndButtons()
         {
@@ -79,9 +73,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindComponent<Button>("AutoResolveButtonImage").interactable);
         }
 
-        /// <summary>
-        /// Verifies render pending rows applies header icons labels and cached visibility.
-        /// </summary>
         [Test]
         public void Render_PendingRows_AppliesHeaderIconsLabelsAndCachedVisibility()
         {
@@ -113,9 +104,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(secondRow.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render hidden after pending clears and deactivates window.
-        /// </summary>
         [Test]
         public void Render_HiddenAfterPending_ClearsAndDeactivatesWindow()
         {
@@ -136,9 +124,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("RetreatButtonImage").activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render result summary applies summary and close control.
-        /// </summary>
         [Test]
         public void Render_ResultSummary_AppliesSummaryAndCloseControl()
         {
@@ -181,9 +166,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("ResultDirectSectorButtonImage").activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render standard result detail applies headers categories and both columns.
-        /// </summary>
         [Test]
         public void Render_StandardResultDetail_AppliesHeadersCategoriesAndBothColumns()
         {
@@ -272,9 +254,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("Destroyed Ship", FindItemText(destroyed, "NameTextField").text);
         }
 
-        /// <summary>
-        /// Verifies render planetary result detail uses source labels without filters.
-        /// </summary>
         [Test]
         public void Render_PlanetaryResultDetail_UsesSourceLabelsWithoutFilters()
         {
@@ -329,9 +308,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
-        /// <summary>
-        /// Verifies render personnel result detail uses personnel headers and columns.
-        /// </summary>
         [Test]
         public void Render_PersonnelResultDetail_UsesPersonnelHeadersAndColumns()
         {
@@ -365,9 +341,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(TextAlignmentOptions.Center, emptyText.alignment);
         }
 
-        /// <summary>
-        /// Verifies render result detail without table hides result columns.
-        /// </summary>
         [Test]
         public void Render_ResultDetailWithoutTable_HidesResultColumns()
         {
@@ -386,9 +359,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("ResultPersonnelDestroyedColumn").activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render switching result layouts hides cached items from inactive layout.
-        /// </summary>
         [Test]
         public void Render_SwitchingResultLayouts_HidesCachedItemsFromInactiveLayout()
         {
@@ -436,9 +406,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
-        /// <summary>
-        /// Verifies render shorter result columns hides unused cached items.
-        /// </summary>
         [Test]
         public void Render_ShorterResultColumns_HidesUnusedCachedItems()
         {
@@ -489,9 +456,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
-        /// <summary>
-        /// Verifies render result rows leaves room below final name.
-        /// </summary>
         [Test]
         public void Render_ResultRows_LeavesRoomBelowFinalName()
         {
@@ -529,9 +493,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.GreaterOrEqual(scrollArea.ContentRoot.rect.height, requiredHeight);
         }
 
-        /// <summary>
-        /// Verifies render direct result shows authored navigation prompt.
-        /// </summary>
         [Test]
         public void Render_DirectResult_ShowsAuthoredNavigationPrompt()
         {
@@ -550,9 +511,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("ResultSummaryTextField").activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render direct result shows navigation controls.
-        /// </summary>
         [Test]
         public void Render_DirectResult_ShowsNavigationControls()
         {
@@ -566,9 +524,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("ResultRowsScrollArea").activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render result with unsupported category ignores category button.
-        /// </summary>
         [Test]
         public void Render_ResultWithUnsupportedCategory_IgnoresCategoryButton()
         {
@@ -586,9 +541,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("ResultCapitalShipsButtonImage").activeSelf);
         }
 
-        /// <summary>
-        /// Verifies primary panel button press then click raises control before ordered panel request.
-        /// </summary>
         [Test]
         public void PrimaryPanelButton_PressThenClick_RaisesControlBeforeOrderedPanelRequest()
         {
@@ -615,9 +567,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(BattleAlertPanel.SecondForces, requested);
         }
 
-        /// <summary>
-        /// Verifies command button click raises ordered choice request.
-        /// </summary>
         [Test]
         public void CommandButton_Click_RaisesOrderedChoiceRequest()
         {
@@ -630,9 +579,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(BattleAlertChoice.AutoResolve, requested);
         }
 
-        /// <summary>
-        /// Verifies result category button click raises ordered category request.
-        /// </summary>
         [Test]
         public void ResultCategoryButton_Click_RaisesOrderedCategoryRequest()
         {
@@ -645,9 +591,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(BattleResultCategory.Troops, requested);
         }
 
-        /// <summary>
-        /// Verifies result controls press then click raise control before semantic requests.
-        /// </summary>
         [Test]
         public void ResultControls_PressThenClick_RaiseControlBeforeSemanticRequests()
         {
@@ -690,9 +633,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(1, fleetCount);
         }
 
-        /// <summary>
-        /// Verifies child views null render data throw argument null exception.
-        /// </summary>
         [Test]
         public void ChildViews_NullRenderData_ThrowArgumentNullException()
         {
@@ -710,9 +650,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.Throws<ArgumentNullException>(() => itemTemplates[1].Render(null));
         }
 
-        /// <summary>
-        /// Verifies on destroy initialized view unbinds controls and raises destroyed event.
-        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsControlsAndRaisesDestroyedEvent()
         {

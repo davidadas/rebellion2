@@ -75,9 +75,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             DeleteIfPresent(_settingsPath + ".tmp");
         }
 
-        /// <summary>
-        /// Verifies returning an audio channel to its opening value clears pending state.
-        /// </summary>
         [Test]
         public void SetVolume_ReturnedToSnapshot_ClearsDirtyState()
         {
@@ -89,9 +86,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_session.IsDirty);
         }
 
-        /// <summary>
-        /// Verifies returning display and tactical choices to their opening values clears pending state.
-        /// </summary>
         [Test]
         public void GraphicsChanges_ReturnedToSnapshot_ClearDirtyState()
         {
@@ -111,9 +105,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_session.IsDirty);
         }
 
-        /// <summary>
-        /// Verifies display selections remain staged until the settings session is committed.
-        /// </summary>
         [Test]
         public void DisplayChanges_ApplyOnlyWhenCommitted()
         {
@@ -135,9 +126,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(FullScreenMode.FullScreenWindow, _appliedFullScreenMode);
         }
 
-        /// <summary>
-        /// Verifies returning gameplay choices to their opening values clears pending state.
-        /// </summary>
         [Test]
         public void GameplayChanges_ReturnedToSnapshot_ClearDirtyState()
         {
@@ -149,9 +137,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_session.IsDirty);
         }
 
-        /// <summary>
-        /// Verifies autosave cadence and retention changes participate in staged settings.
-        /// </summary>
         [Test]
         public void AutosaveChanges_ReturnedToSnapshot_ClearDirtyState()
         {
@@ -166,9 +151,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_session.IsDirty);
         }
 
-        /// <summary>
-        /// Verifies removing a newly staged binding override clears pending state.
-        /// </summary>
         [Test]
         public void BindingOverride_ReturnedToSnapshot_ClearsDirtyState()
         {

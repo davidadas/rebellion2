@@ -16,9 +16,6 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public sealed class GameRequestDispatcherTests
     {
-        /// <summary>
-        /// Verifies process registered request returns facts with source event.
-        /// </summary>
         [Test]
         public void Process_RegisteredRequest_ReturnsFactsWithSourceEvent()
         {
@@ -32,9 +29,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("source-event", results[0].SourceEventInstanceID);
         }
 
-        /// <summary>
-        /// Verifies process unregistered request returns no results.
-        /// </summary>
         [Test]
         public void Process_UnregisteredRequest_ReturnsNoResults()
         {
@@ -49,9 +43,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results);
         }
 
-        /// <summary>
-        /// Verifies process handler throws processes remaining requests.
-        /// </summary>
         [Test]
         public void Process_HandlerThrows_ProcessesRemainingRequests()
         {

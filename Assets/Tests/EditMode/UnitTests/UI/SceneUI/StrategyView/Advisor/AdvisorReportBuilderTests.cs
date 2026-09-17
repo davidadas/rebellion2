@@ -13,9 +13,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
     [TestFixture]
     public class AdvisorReportBuilderTests
     {
-        /// <summary>
-        /// Verifies build galaxy overview completed stationary units groups and formats totals.
-        /// </summary>
         [Test]
         public void BuildGalaxyOverview_CompletedStationaryUnits_GroupsAndFormatsTotals()
         {
@@ -90,9 +87,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreEqual("0024", rows[0].SecondaryText);
         }
 
-        /// <summary>
-        /// Verifies build galaxy overview null faction returns empty.
-        /// </summary>
         [Test]
         public void BuildGalaxyOverview_NullFaction_ReturnsEmpty()
         {
@@ -101,9 +95,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.IsEmpty(rows);
         }
 
-        /// <summary>
-        /// Verifies build galaxy overview unit carried by moving fleet excludes unit.
-        /// </summary>
         [Test]
         public void BuildGalaxyOverview_UnitCarriedByMovingFleet_ExcludesUnit()
         {
@@ -126,9 +117,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.IsEmpty(rows);
         }
 
-        /// <summary>
-        /// Verifies build objectives configured conditions and victory mode returns visible results in order.
-        /// </summary>
         [Test]
         public void BuildObjectives_ConfiguredConditionsAndVictoryMode_ReturnsVisibleResultsInOrder()
         {
@@ -181,9 +169,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             );
         }
 
-        /// <summary>
-        /// Verifies build objectives missing game or objectives returns empty.
-        /// </summary>
         [Test]
         public void BuildObjectives_MissingGameOrObjectives_ReturnsEmpty()
         {
@@ -201,9 +186,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.IsEmpty(missingObjectives);
         }
 
-        /// <summary>
-        /// Verifies build objectives headquarters officer and unknown conditions returns evaluated rows.
-        /// </summary>
         [Test]
         public void BuildObjectives_HeadquartersOfficerAndUnknownConditions_ReturnsEvaluatedRows()
         {

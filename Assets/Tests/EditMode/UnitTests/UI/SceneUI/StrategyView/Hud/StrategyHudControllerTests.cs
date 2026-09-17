@@ -32,9 +32,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             _controller.Initialize(_actions);
         }
 
-        /// <summary>
-        /// Verifies constructor null dependencies throw argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullDependencies_ThrowArgumentNullException()
         {
@@ -52,11 +49,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             );
         }
 
-        /// <summary>
-        /// Verifies get source speed game speed returns source speed.
-        /// </summary>
-        /// <param name="speed">The speed.</param>
-        /// <param name="expected">The expected.</param>
         [TestCase(TickSpeed.Paused, 0)]
         [TestCase(TickSpeed.VerySlow, 1)]
         [TestCase(TickSpeed.Slow, 2)]
@@ -67,9 +59,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(expected, StrategyHudController.GetSourceSpeed(speed));
         }
 
-        /// <summary>
-        /// Verifies get speed indicator path configured theme returns mapped artwork.
-        /// </summary>
         [Test]
         public void GetSpeedIndicatorPath_ConfiguredTheme_ReturnsMappedArtwork()
         {
@@ -105,9 +94,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsNull(StrategyHudController.GetSpeedIndicatorPath(null, TickSpeed.Fast));
         }
 
-        /// <summary>
-        /// Verifies create view data paused speed shows paused instead of tick.
-        /// </summary>
         [Test]
         public void CreateViewData_PausedSpeed_ShowsPausedInsteadOfTick()
         {
@@ -119,9 +105,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual("PAUSED", data.TickCounter.Text);
         }
 
-        /// <summary>
-        /// Verifies create view data running speed shows tick.
-        /// </summary>
         [Test]
         public void CreateViewData_RunningSpeed_ShowsTick()
         {
@@ -133,9 +116,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual("42", data.TickCounter.Text);
         }
 
-        /// <summary>
-        /// Verifies create view data configured button resolves released and pressed artwork.
-        /// </summary>
         [Test]
         public void CreateViewData_ConfiguredButton_ResolvesReleasedAndPressedArtwork()
         {
@@ -195,9 +175,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies build speed menu commands default catalog returns ordered enabled commands.
-        /// </summary>
         [Test]
         public void BuildSpeedMenuCommands_DefaultCatalog_ReturnsOrderedEnabledCommands()
         {
@@ -222,9 +199,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(commands.All(command => command.Enabled));
         }
 
-        /// <summary>
-        /// Verifies get unread message types mixed messages returns unread categories.
-        /// </summary>
         [Test]
         public void GetUnreadMessageTypes_MixedMessages_ReturnsUnreadCategories()
         {
@@ -247,9 +221,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             CollectionAssert.AreEquivalent(new[] { MessageType.Fleet }, types);
         }
 
-        /// <summary>
-        /// Verifies get unread message types missing faction returns empty collection.
-        /// </summary>
         [Test]
         public void GetUnreadMessageTypes_MissingFaction_ReturnsEmptyCollection()
         {
@@ -258,9 +229,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsEmpty(types);
         }
 
-        /// <summary>
-        /// Verifies on context menu command selected owned enabled speed command sets game speed.
-        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_OwnedEnabledSpeedCommand_SetsGameSpeed()
         {
@@ -280,9 +248,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(TickSpeed.Fast, _actions.SelectedSpeed);
         }
 
-        /// <summary>
-        /// Verifies on context menu command selected foreign request ignores command.
-        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ForeignRequest_IgnoresCommand()
         {

@@ -54,18 +54,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render index presentation applies frame and shows index panel.
-        /// </summary>
         [Test]
         public void Render_IndexPresentation_AppliesFrameAndShowsIndexPanel()
         {
@@ -86,9 +80,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
-        /// <summary>
-        /// Verifies render detail presentation hides index and shows detail panel.
-        /// </summary>
         [Test]
         public void Render_DetailPresentation_HidesIndexAndShowsDetailPanel()
         {
@@ -104,9 +95,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
-        /// <summary>
-        /// Verifies command controls press then click raise parent control before semantic requests.
-        /// </summary>
         [Test]
         public void CommandControls_PressThenClick_RaiseParentControlBeforeSemanticRequests()
         {
@@ -162,9 +150,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(1, chatCount);
         }
 
-        /// <summary>
-        /// Verifies index controls and rows interact raise parent semantic requests.
-        /// </summary>
         [Test]
         public void IndexControlsAndRows_Interact_RaiseParentSemanticRequests()
         {
@@ -207,9 +192,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreSame(secondary, contextEvent);
         }
 
-        /// <summary>
-        /// Verifies detail navigation buttons click raise parent previous and next requests.
-        /// </summary>
         [Test]
         public void DetailNavigationButtons_Click_RaiseParentPreviousAndNextRequests()
         {
@@ -225,9 +207,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(1, nextCount);
         }
 
-        /// <summary>
-        /// Verifies awake initialized view does not duplicate child bindings.
-        /// </summary>
         [Test]
         public void Awake_InitializedView_DoesNotDuplicateChildBindings()
         {
@@ -240,9 +219,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(1, closeCount);
         }
 
-        /// <summary>
-        /// Verifies update inactive window does not raise keyboard requests.
-        /// </summary>
         [Test]
         public void Update_InactiveWindow_DoesNotRaiseKeyboardRequests()
         {
@@ -264,9 +240,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(0, removalCount);
         }
 
-        /// <summary>
-        /// Verifies on destroy initialized view unbinds children and raises destroyed event.
-        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsChildrenAndRaisesDestroyedEvent()
         {

@@ -7,9 +7,6 @@ namespace Rebellion.Tests.Game.UIState
     [TestFixture]
     public sealed class PlayerUIStateTests
     {
-        /// <summary>
-        /// Verifies that requesting an absent section creates and stores it.
-        /// </summary>
         [Test]
         public void GetOrCreateSection_MissingSection_CreatesSection()
         {
@@ -21,9 +18,6 @@ namespace Rebellion.Tests.Game.UIState
             CollectionAssert.Contains(state.UIStateSections, section);
         }
 
-        /// <summary>
-        /// Verifies that requesting an existing section reuses the stored instance.
-        /// </summary>
         [Test]
         public void GetOrCreateSection_ExistingSection_ReturnsExistingSection()
         {
@@ -36,10 +30,6 @@ namespace Rebellion.Tests.Game.UIState
             Assert.AreEqual(1, state.UIStateSections.Count);
         }
 
-        /// <summary>
-        /// Verifies that section identifiers must contain non-whitespace text.
-        /// </summary>
-        /// <param name="sectionID">The invalid identifier under test.</param>
         [TestCase(null)]
         [TestCase("")]
         [TestCase(" ")]

@@ -40,9 +40,6 @@ namespace Rebellion.Tests.UI.Input
             Object.DestroyImmediate(_eventSystemObject);
         }
 
-        /// <summary>
-        /// Verifies a focused input field owns keyboard input even when its child is selected.
-        /// </summary>
         [Test]
         public void IsTextEntryActive_FocusedParentInputField_ReturnsTrue()
         {
@@ -51,9 +48,6 @@ namespace Rebellion.Tests.UI.Input
             Assert.IsTrue(UIInputFocus.IsTextEntryActive(_eventSystem));
         }
 
-        /// <summary>
-        /// Verifies selecting an unfocused input hierarchy does not suppress shortcuts.
-        /// </summary>
         [Test]
         public void IsTextEntryActive_UnfocusedInputField_ReturnsFalse()
         {
@@ -62,9 +56,6 @@ namespace Rebellion.Tests.UI.Input
             Assert.IsFalse(UIInputFocus.IsTextEntryActive(_eventSystem));
         }
 
-        /// <summary>
-        /// Verifies a stale focused flag on a disabled field does not suppress shortcuts.
-        /// </summary>
         [Test]
         public void IsTextEntryActive_DisabledInputField_ReturnsFalse()
         {
@@ -74,9 +65,6 @@ namespace Rebellion.Tests.UI.Input
             Assert.IsFalse(UIInputFocus.IsTextEntryActive(_eventSystem));
         }
 
-        /// <summary>
-        /// Verifies a destroyed selected object is treated as no text focus.
-        /// </summary>
         [Test]
         public void IsTextEntryActive_DestroyedSelectedObject_ReturnsFalse()
         {

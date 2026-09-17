@@ -7,9 +7,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
     [TestFixture]
     public sealed class StrategyUISoundPathsTests
     {
-        /// <summary>
-        /// Verifies get preload paths null theme returns only shared cues.
-        /// </summary>
         [Test]
         public void GetPreloadPaths_NullTheme_ReturnsOnlySharedCues()
         {
@@ -28,9 +25,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
         }
 
-        /// <summary>
-        /// Verifies get preload paths configured theme returns shared and themed cues.
-        /// </summary>
         [Test]
         public void GetPreloadPaths_ConfiguredTheme_ReturnsSharedAndThemedCues()
         {

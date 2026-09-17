@@ -44,18 +44,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render complete presentation applies position artwork controls and lines.
-        /// </summary>
         [Test]
         public void Render_CompletePresentation_AppliesPositionArtworkControlsAndLines()
         {
@@ -89,9 +83,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsTrue(_view.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render shorter presentation reuses first line and hides surplus lines.
-        /// </summary>
         [Test]
         public void Render_ShorterPresentation_ReusesFirstLineAndHidesSurplusLines()
         {
@@ -111,9 +102,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsFalse(lines[1].gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render null line collection is rejected by render data.
-        /// </summary>
         [Test]
         public void Render_NullLineCollection_IsRejectedByRenderData()
         {
@@ -122,9 +110,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
         }
 
-        /// <summary>
-        /// Verifies confirm button click raises accepted choice.
-        /// </summary>
         [Test]
         public void ConfirmButton_Click_RaisesAcceptedChoice()
         {
@@ -142,9 +127,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(true, confirmed);
         }
 
-        /// <summary>
-        /// Verifies cancel button click raises rejected choice.
-        /// </summary>
         [Test]
         public void CancelButton_Click_RaisesRejectedChoice()
         {
@@ -162,9 +144,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(false, confirmed);
         }
 
-        /// <summary>
-        /// Verifies on destroy initialized view unbinds buttons and raises destroyed event.
-        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsButtonsAndRaisesDestroyedEvent()
         {

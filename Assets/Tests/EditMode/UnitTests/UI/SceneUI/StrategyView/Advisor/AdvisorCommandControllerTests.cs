@@ -9,9 +9,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
     [TestFixture]
     public class AdvisorCommandControllerTests
     {
-        /// <summary>
-        /// Verifies find producer planet multiple eligible planets returns closest idle producer.
-        /// </summary>
         [Test]
         public void FindProducerPlanet_MultipleEligiblePlanets_ReturnsClosestIdleProducer()
         {
@@ -33,9 +30,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreSame(nearProducer, producer);
         }
 
-        /// <summary>
-        /// Verifies find producer planet closest producer is busy returns next closest idle producer.
-        /// </summary>
         [Test]
         public void FindProducerPlanet_ClosestProducerIsBusy_ReturnsNextClosestIdleProducer()
         {
@@ -59,9 +53,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreSame(farProducer, producer);
         }
 
-        /// <summary>
-        /// Verifies find producer planet missing faction or destination returns null.
-        /// </summary>
         [Test]
         public void FindProducerPlanet_MissingFactionOrDestination_ReturnsNull()
         {

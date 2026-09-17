@@ -28,9 +28,6 @@ namespace Rebellion.Tests.UI.Components
                 Object.DestroyImmediate(_eventSystem.gameObject);
         }
 
-        /// <summary>
-        /// Verifies on drag movable window previews and commits move on release.
-        /// </summary>
         [Test]
         public void OnDrag_MovableWindow_PreviewsAndCommitsMoveOnRelease()
         {
@@ -61,9 +58,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(82, _window.Y);
         }
 
-        /// <summary>
-        /// Verifies on drag locked window does not preview or move window.
-        /// </summary>
         [Test]
         public void OnDrag_LockedWindow_DoesNotPreviewOrMoveWindow()
         {

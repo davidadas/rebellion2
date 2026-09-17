@@ -8,9 +8,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
     [TestFixture]
     public class ConfirmDialogWindowRenderDataTests
     {
-        /// <summary>
-        /// Verifies constructor null lines throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullLines_ThrowsArgumentNullException()
         {
@@ -19,9 +16,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
         }
 
-        /// <summary>
-        /// Verifies constructor source lines change preserves read only snapshot.
-        /// </summary>
         [Test]
         public void Constructor_SourceLinesChange_PreservesReadOnlySnapshot()
         {

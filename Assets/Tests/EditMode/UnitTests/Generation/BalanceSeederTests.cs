@@ -9,9 +9,6 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class BalanceSeederTests
     {
-        /// <summary>
-        /// Verifies seed headquarters planet owner support pinned to max.
-        /// </summary>
         [Test]
         public void Seed_HeadquartersPlanet_OwnerSupportPinnedToMax()
         {
@@ -29,9 +26,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(100, planet.GetPopularSupport("FNEMP1"));
         }
 
-        /// <summary>
-        /// Verifies seed owned planet with military presence boosts owner support.
-        /// </summary>
         [Test]
         public void Seed_OwnedPlanetWithMilitaryPresence_BoostsOwnerSupport()
         {
@@ -47,9 +41,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(54, planet.GetPopularSupport("FNALL1"));
         }
 
-        /// <summary>
-        /// Verifies seed high military presence boost capped at max boost.
-        /// </summary>
         [Test]
         public void Seed_HighMilitaryPresence_BoostCappedAtMaxBoost()
         {
@@ -67,9 +58,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(60, planet.GetPopularSupport("FNALL1"));
         }
 
-        /// <summary>
-        /// Verifies seed unowned planet no support change.
-        /// </summary>
         [Test]
         public void Seed_UnownedPlanet_NoSupportChange()
         {

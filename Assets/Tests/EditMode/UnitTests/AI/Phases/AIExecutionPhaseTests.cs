@@ -10,9 +10,6 @@ namespace Rebellion.Tests.AI.Phases
     [TestFixture]
     public class AIExecutionPhaseTests
     {
-        /// <summary>
-        /// Verifies execute with selected executable proposal executes proposal.
-        /// </summary>
         [Test]
         public void Execute_WithSelectedExecutableProposal_ExecutesProposal()
         {
@@ -25,9 +22,6 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(1, proposal.ExecuteCount);
         }
 
-        /// <summary>
-        /// Verifies execute with selected non executable proposal does not execute proposal.
-        /// </summary>
         [Test]
         public void Execute_WithSelectedNonExecutableProposal_DoesNotExecuteProposal()
         {
@@ -40,9 +34,6 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(0, proposal.ExecuteCount);
         }
 
-        /// <summary>
-        /// Verifies execute incrementally with selected proposals yields after each proposal.
-        /// </summary>
         [Test]
         public void ExecuteIncrementally_WithSelectedProposals_YieldsAfterEachProposal()
         {
@@ -63,9 +54,6 @@ namespace Rebellion.Tests.AI.Phases
             Assert.IsFalse(execution.MoveNext());
         }
 
-        /// <summary>
-        /// Verifies execute incrementally with invalid proposal does not execute proposal.
-        /// </summary>
         [Test]
         public void ExecuteIncrementally_WithInvalidProposal_DoesNotExecuteProposal()
         {

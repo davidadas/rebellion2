@@ -7,9 +7,6 @@ namespace Rebellion.Tests.Game.Movement
     [TestFixture]
     public sealed class MovementStateTests
     {
-        /// <summary>
-        /// Verifies serialize transit state round trips positions and origin.
-        /// </summary>
         [Test]
         public void Serialize_TransitState_RoundTripsPositionsAndOrigin()
         {

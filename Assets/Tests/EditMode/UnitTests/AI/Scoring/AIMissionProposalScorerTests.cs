@@ -15,9 +15,6 @@ namespace Rebellion.Tests.AI.Scoring
     [TestFixture]
     public class AIMissionProposalScorerTests
     {
-        /// <summary>
-        /// Verifies score diplomacy proposal returns higher score for lower support planet.
-        /// </summary>
         [Test]
         public void Score_DiplomacyProposal_ReturnsHigherScoreForLowerSupportPlanet()
         {
@@ -57,9 +54,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(lowSupportScore, highSupportScore);
         }
 
-        /// <summary>
-        /// Verifies score recruitment proposal returns higher score for higher support planet.
-        /// </summary>
         [Test]
         public void Score_RecruitmentProposal_ReturnsHigherScoreForHigherSupportPlanet()
         {
@@ -101,9 +95,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(highSupportScore, lowSupportScore);
         }
 
-        /// <summary>
-        /// Verifies score reconnaissance proposal with distant target remains selectable.
-        /// </summary>
         [Test]
         public void Score_ReconnaissanceProposal_WithDistantTarget_RemainsSelectable()
         {
@@ -134,9 +125,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(score, 0);
         }
 
-        /// <summary>
-        /// Verifies score subdue uprising below probability floor returns zero despite priority bonus.
-        /// </summary>
         [Test]
         public void Score_SubdueUprisingBelowProbabilityFloor_ReturnsZeroDespitePriorityBonus()
         {
@@ -180,9 +168,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreEqual(0, score);
         }
 
-        /// <summary>
-        /// Verifies get score upper bound executable proposal does not underestimate score.
-        /// </summary>
         [Test]
         public void GetScoreUpperBound_ExecutableProposal_DoesNotUnderestimateScore()
         {
@@ -212,9 +197,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.GreaterOrEqual(upperBound, score);
         }
 
-        /// <summary>
-        /// Verifies score reconnaissance proposal ignores participant rating.
-        /// </summary>
         [Test]
         public void Score_ReconnaissanceProposal_IgnoresParticipantRating()
         {
@@ -257,9 +239,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreEqual(lowRatedScore, highRatedScore);
         }
 
-        /// <summary>
-        /// Verifies score multiple main participants uses combined mission success probability.
-        /// </summary>
         [Test]
         public void Score_MultipleMainParticipants_UsesCombinedMissionSuccessProbability()
         {
@@ -305,9 +284,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreEqual(25, multipleParticipantScore - singleParticipantScore);
         }
 
-        /// <summary>
-        /// Verifies score mission with distant decoy uses farthest participant travel distance.
-        /// </summary>
         [Test]
         public void Score_MissionWithDistantDecoy_UsesFarthestParticipantTravelDistance()
         {
@@ -361,9 +337,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(nearScore, distantScore);
         }
 
-        /// <summary>
-        /// Verifies score hostile mission with effective decoy returns higher score.
-        /// </summary>
         [Test]
         public void Score_HostileMissionWithEffectiveDecoy_ReturnsHigherScore()
         {
@@ -412,9 +385,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreEqual(60, decoyedScore - soloScore, 0.0001);
         }
 
-        /// <summary>
-        /// Verifies score officer mission above personnel loss limit remains available for decoy.
-        /// </summary>
         [Test]
         public void Score_OfficerMissionAbovePersonnelLossLimit_RemainsAvailableForDecoy()
         {
@@ -448,9 +418,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(score, 0);
         }
 
-        /// <summary>
-        /// Verifies score special forces mission above personnel loss limit remains selectable.
-        /// </summary>
         [Test]
         public void Score_SpecialForcesMissionAbovePersonnelLossLimit_RemainsSelectable()
         {
@@ -485,9 +452,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(score, 0);
         }
 
-        /// <summary>
-        /// Verifies score sabotage proposal adds target priority bonus.
-        /// </summary>
         [Test]
         public void Score_SabotageProposal_AddsTargetPriorityBonus()
         {
@@ -549,9 +513,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreEqual(expectedDifference, shieldScore - shipyardScore);
         }
 
-        /// <summary>
-        /// Verifies score sabotage proposal uses tactical target priority order.
-        /// </summary>
         [Test]
         public void Score_SabotageProposal_UsesTacticalTargetPriorityOrder()
         {
@@ -614,9 +575,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(starfighterScore, shipyardScore);
         }
 
-        /// <summary>
-        /// Verifies score sabotage proposal favors regiment where opposition has majority support.
-        /// </summary>
         [Test]
         public void Score_SabotageProposal_FavorsRegimentWhereOppositionHasMajoritySupport()
         {
@@ -677,9 +635,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreEqual(37, favoredScore - unfavoredScore);
         }
 
-        /// <summary>
-        /// Verifies score targeted officer mission with weaker target returns higher score.
-        /// </summary>
         [Test]
         public void Score_TargetedOfficerMission_WithWeakerTarget_ReturnsHigherScore()
         {
@@ -730,9 +685,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(weakTargetScore, strongTargetScore);
         }
 
-        /// <summary>
-        /// Verifies score hostile mission with special forces technology prefers special forces.
-        /// </summary>
         [Test]
         public void Score_HostileMissionWithSpecialForcesTechnology_PrefersSpecialForces()
         {
@@ -785,9 +737,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(specialForcesScore, officerScore);
         }
 
-        /// <summary>
-        /// Verifies score enemy espionage with special forces technology prefers special forces.
-        /// </summary>
         [Test]
         public void Score_EnemyEspionageWithSpecialForcesTechnology_PrefersSpecialForces()
         {

@@ -61,18 +61,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies constructor null context provider throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new GalaxyMapController(null));
         }
 
-        /// <summary>
-        /// Verifies bind view before initialization throws invalid operation exception.
-        /// </summary>
         [Test]
         public void BindView_BeforeInitialization_ThrowsInvalidOperationException()
         {
@@ -81,9 +75,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.Throws<InvalidOperationException>(() => controller.BindView(_view));
         }
 
-        /// <summary>
-        /// Verifies render before view binding throws invalid operation exception.
-        /// </summary>
         [Test]
         public void Render_BeforeViewBinding_ThrowsInvalidOperationException()
         {
@@ -99,9 +90,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
-        /// <summary>
-        /// Verifies render visible sector routes hover and open requests.
-        /// </summary>
         [Test]
         public void Render_VisibleSector_RoutesHoverAndOpenRequests()
         {
@@ -126,9 +114,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(240, _actions.OpenedY);
         }
 
-        /// <summary>
-        /// Verifies render empty snapshot clears mission target lookup.
-        /// </summary>
         [Test]
         public void Render_EmptySnapshot_ClearsMissionTargetLookup()
         {
@@ -150,9 +135,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(target);
         }
 
-        /// <summary>
-        /// Verifies try get mission target rendered planet marker returns domain target.
-        /// </summary>
         [Test]
         public void TryGetMissionTarget_RenderedPlanetMarker_ReturnsDomainTarget()
         {
@@ -175,9 +157,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreSame(_sector.Planets[0].Planet, target.Item);
         }
 
-        /// <summary>
-        /// Verifies find planet current snapshot returns projected planet.
-        /// </summary>
         [Test]
         public void FindPlanet_CurrentSnapshot_ReturnsProjectedPlanet()
         {
@@ -193,9 +172,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(_controller.FindPlanet("missing"));
         }
 
-        /// <summary>
-        /// Verifies find sector current snapshot returns projected sector by instance id.
-        /// </summary>
         [Test]
         public void FindSector_CurrentSnapshot_ReturnsProjectedSectorByInstanceID()
         {
@@ -215,9 +191,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreNotSame(liveSector, sector.PlanetSector);
         }
 
-        /// <summary>
-        /// Verifies find sector sector outside current snapshot returns null.
-        /// </summary>
         [Test]
         public void FindSector_SectorOutsideCurrentSnapshot_ReturnsNull()
         {
@@ -232,18 +205,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(sector);
         }
 
-        /// <summary>
-        /// Verifies clear hover no hovered sector returns false.
-        /// </summary>
         [Test]
         public void ClearHover_NoHoveredSector_ReturnsFalse()
         {
             Assert.IsFalse(_controller.ClearHover());
         }
 
-        /// <summary>
-        /// Verifies set spotlight planet changed and cleared requests render.
-        /// </summary>
         [Test]
         public void SetSpotlightPlanet_ChangedAndCleared_RequestsRender()
         {
@@ -254,9 +221,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(2, _actions.RenderRequestCount);
         }
 
-        /// <summary>
-        /// Verifies get sector source position null sector returns zero.
-        /// </summary>
         [Test]
         public void GetSectorSourcePosition_NullSector_ReturnsZero()
         {

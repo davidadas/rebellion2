@@ -26,9 +26,6 @@ namespace Rebellion.Tests.Game.Galaxy
             _planetSector2 = new PlanetSector { InstanceID = "SECTOR2" };
         }
 
-        /// <summary>
-        /// Verifies add child with planet sector adds planet sector.
-        /// </summary>
         [Test]
         public void AddChild_WithPlanetSector_AddsPlanetSector()
         {
@@ -37,9 +34,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(_planetSector1, _galaxyMap.GetChildren<PlanetSector>().ToList());
         }
 
-        /// <summary>
-        /// Verifies add child with multiple planet sectors adds all sectors.
-        /// </summary>
         [Test]
         public void AddChild_WithMultiplePlanetSectors_AddsAllSectors()
         {
@@ -55,9 +49,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(planetSector3, _galaxyMap.GetChildren<PlanetSector>().ToList());
         }
 
-        /// <summary>
-        /// Verifies add child with null planet sector leaves children empty.
-        /// </summary>
         [Test]
         public void AddChild_WithNullPlanetSector_LeavesChildrenEmpty()
         {
@@ -66,9 +57,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsEmpty(_galaxyMap.GetChildren<PlanetSector>());
         }
 
-        /// <summary>
-        /// Verifies add child with non planet sector node does not add to list.
-        /// </summary>
         [Test]
         public void AddChild_WithNonPlanetSectorNode_DoesNotAddToList()
         {
@@ -79,9 +67,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(0, _galaxyMap.GetChildren<PlanetSector>().Count);
         }
 
-        /// <summary>
-        /// Verifies add child with same planet sector twice adds it twice.
-        /// </summary>
         [Test]
         public void AddChild_WithSamePlanetSectorTwice_AddsItTwice()
         {
@@ -91,9 +76,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(2, _galaxyMap.GetChildren<PlanetSector>().Count);
         }
 
-        /// <summary>
-        /// Verifies remove child existing planet sector removes it.
-        /// </summary>
         [Test]
         public void RemoveChild_ExistingPlanetSector_RemovesIt()
         {
@@ -104,9 +86,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsFalse(_galaxyMap.GetChildren<PlanetSector>().Contains(_planetSector1));
         }
 
-        /// <summary>
-        /// Verifies remove child with multiple planet sectors removes correct sector.
-        /// </summary>
         [Test]
         public void RemoveChild_WithMultiplePlanetSectors_RemovesCorrectSector()
         {
@@ -120,9 +99,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(_planetSector2, _galaxyMap.GetChildren<PlanetSector>().ToList());
         }
 
-        /// <summary>
-        /// Verifies remove child removing all sectors results in empty list.
-        /// </summary>
         [Test]
         public void RemoveChild_RemovingAllSectors_ResultsInEmptyList()
         {
@@ -135,9 +111,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(0, _galaxyMap.GetChildren<PlanetSector>().Count);
         }
 
-        /// <summary>
-        /// Verifies remove child with null planet sector leaves children unchanged.
-        /// </summary>
         [Test]
         public void RemoveChild_WithNullPlanetSector_LeavesChildrenUnchanged()
         {
@@ -151,9 +124,6 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
-        /// <summary>
-        /// Verifies remove child with sector not in list does not change count.
-        /// </summary>
         [Test]
         public void RemoveChild_WithSectorNotInList_DoesNotChangeCount()
         {
@@ -164,9 +134,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(1, _galaxyMap.GetChildren<PlanetSector>().Count);
         }
 
-        /// <summary>
-        /// Verifies get children map with planet sectors returns all planet sectors.
-        /// </summary>
         [Test]
         public void GetChildren_MapWithPlanetSectors_ReturnsAllPlanetSectors()
         {
@@ -182,9 +149,6 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
-        /// <summary>
-        /// Verifies serialize and deserialize map with planet sectors maintains state.
-        /// </summary>
         [Test]
         public void SerializeAndDeserialize_MapWithPlanetSectors_MaintainsState()
         {
@@ -206,9 +170,6 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
-        /// <summary>
-        /// Verifies planet sectors when initialized is empty list.
-        /// </summary>
         [Test]
         public void PlanetSectors_WhenInitialized_IsEmptyList()
         {
@@ -218,9 +179,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(0, newMap.GetChildren<PlanetSector>().Count);
         }
 
-        /// <summary>
-        /// Verifies planet sectors after adding and removing maintains correct count.
-        /// </summary>
         [Test]
         public void PlanetSectors_AfterAddingAndRemoving_MaintainsCorrectCount()
         {

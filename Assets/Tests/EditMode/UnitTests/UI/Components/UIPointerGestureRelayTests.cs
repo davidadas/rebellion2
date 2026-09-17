@@ -29,10 +29,6 @@ namespace Rebellion.Tests.UI.Components
             UnityEngine.Object.DestroyImmediate(_object);
         }
 
-        /// <summary>
-        /// Verifies on pointer down supported button raises pressed.
-        /// </summary>
-        /// <param name="button">The button.</param>
         [TestCase(PointerEventData.InputButton.Left)]
         [TestCase(PointerEventData.InputButton.Right)]
         public void OnPointerDown_SupportedButton_RaisesPressed(PointerEventData.InputButton button)
@@ -46,9 +42,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(eventData, received);
         }
 
-        /// <summary>
-        /// Verifies on pointer down unsupported or null event does not raise pressed.
-        /// </summary>
         [Test]
         public void OnPointerDown_UnsupportedOrNullEvent_DoesNotRaisePressed()
         {
@@ -63,9 +56,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, pressedCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer click left double click raises release and double click.
-        /// </summary>
         [Test]
         public void OnPointerClick_LeftDoubleClick_RaisesReleaseAndDoubleClick()
         {
@@ -85,9 +75,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(eventData, doubleClicked);
         }
 
-        /// <summary>
-        /// Verifies on pointer click left single click raises release only.
-        /// </summary>
         [Test]
         public void OnPointerClick_LeftSingleClick_RaisesReleaseOnly()
         {
@@ -107,9 +94,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, doubleClickedCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer click nonprimary or null event does not raise click events.
-        /// </summary>
         [Test]
         public void OnPointerClick_NonprimaryOrNullEvent_DoesNotRaiseClickEvents()
         {
@@ -131,9 +115,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, doubleClickedCount);
         }
 
-        /// <summary>
-        /// Verifies on drop valid then null event raises only valid drop.
-        /// </summary>
         [Test]
         public void OnDrop_ValidThenNullEvent_RaisesOnlyValidDrop()
         {

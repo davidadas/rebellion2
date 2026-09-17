@@ -38,9 +38,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies render complete frame applies textures and section geometry.
-        /// </summary>
         [Test]
         public void Render_CompleteFrame_AppliesTexturesAndSectionGeometry()
         {
@@ -78,9 +75,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(FindImage("BottomRightImage").raycastTarget);
         }
 
-        /// <summary>
-        /// Verifies render null data hides all frame sections.
-        /// </summary>
         [Test]
         public void Render_NullData_HidesAllFrameSections()
         {
@@ -102,9 +96,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             }
         }
 
-        /// <summary>
-        /// Verifies render incomplete texture collection throws argument exception.
-        /// </summary>
         [Test]
         public void Render_IncompleteTextureCollection_ThrowsArgumentException()
         {
@@ -117,9 +108,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
-        /// <summary>
-        /// Verifies render missing section texture hides only missing section.
-        /// </summary>
         [Test]
         public void Render_MissingSectionTexture_HidesOnlyMissingSection()
         {

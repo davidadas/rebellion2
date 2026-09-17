@@ -37,9 +37,6 @@ namespace Rebellion.Tests.Generation
             _summary = new GameSummary { GalaxySize = GameSize.Small };
         }
 
-        /// <summary>
-        /// Verifies seed with recruitable officer includes in deployed.
-        /// </summary>
         [Test]
         public void Seed_WithRecruitableOfficer_IncludesInDeployed()
         {
@@ -57,9 +54,6 @@ namespace Rebellion.Tests.Generation
             Assert.Contains(officer, results.Deployed);
         }
 
-        /// <summary>
-        /// Verifies seed with non recruitable officer excludes from deployed.
-        /// </summary>
         [Test]
         public void Seed_WithNonRecruitableOfficer_ExcludesFromDeployed()
         {
@@ -77,9 +71,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsFalse(results.Deployed.Contains(officer));
         }
 
-        /// <summary>
-        /// Verifies seed with guaranteed officers exceeding limit deploys all guaranteed.
-        /// </summary>
         [Test]
         public void Seed_WithGuaranteedOfficersExceedingLimit_DeploysAllGuaranteed()
         {
@@ -107,9 +98,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(3, results.Deployed.Length);
         }
 
-        /// <summary>
-        /// Verifies seed with more recruitable than limit deploys only allowed.
-        /// </summary>
         [Test]
         public void Seed_WithMoreRecruitableThanLimit_DeploysOnlyAllowed()
         {
@@ -129,9 +117,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(2, results.Deployed.Length);
         }
 
-        /// <summary>
-        /// Verifies seed starting officer count is total rather than additional recruitable count.
-        /// </summary>
         [Test]
         public void Seed_StartingOfficerCount_IsTotalRatherThanAdditionalRecruitableCount()
         {
@@ -155,9 +140,6 @@ namespace Rebellion.Tests.Generation
             Assert.Contains(main, results.Deployed);
         }
 
-        /// <summary>
-        /// Verifies seed guaranteed starter is included without becoming main character.
-        /// </summary>
         [Test]
         public void Seed_GuaranteedStarter_IsIncludedWithoutBecomingMainCharacter()
         {
@@ -182,9 +164,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsFalse(starter.IsMain);
         }
 
-        /// <summary>
-        /// Verifies seed starting officer rule for different galaxy size does not guarantee officer.
-        /// </summary>
         [Test]
         public void Seed_StartingOfficerRuleForDifferentGalaxySize_DoesNotGuaranteeOfficer()
         {
@@ -210,9 +189,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsEmpty(results.Deployed);
         }
 
-        /// <summary>
-        /// Verifies seed officer with ambiguous allowed factions is excluded.
-        /// </summary>
         [Test]
         public void Seed_OfficerWithAmbiguousAllowedFactions_IsExcluded()
         {
@@ -236,9 +212,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsEmpty(results.Deployed);
         }
 
-        /// <summary>
-        /// Verifies seed unrecruited officers are complement of deployed.
-        /// </summary>
         [Test]
         public void Seed_UnrecruitedOfficers_AreComplementOfDeployed()
         {
@@ -259,9 +232,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsEmpty(results.Deployed.Intersect(results.Unrecruited));
         }
 
-        /// <summary>
-        /// Verifies seed with multiple factions selects officers per faction independently.
-        /// </summary>
         [Test]
         public void Seed_WithMultipleFactions_SelectsOfficersPerFactionIndependently()
         {
@@ -298,9 +268,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(4, results.Deployed.Length);
         }
 
-        /// <summary>
-        /// Verifies seed with zero variance skills match base.
-        /// </summary>
         [Test]
         public void Seed_WithZeroVariance_SkillsMatchBase()
         {
@@ -314,9 +281,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(10, officer.Ratings[OfficerRating.Diplomacy]);
         }
 
-        /// <summary>
-        /// Verifies seed with variance skills at least base.
-        /// </summary>
         [Test]
         public void Seed_WithVariance_SkillsAtLeastBase()
         {
@@ -330,9 +294,6 @@ namespace Rebellion.Tests.Generation
             Assert.GreaterOrEqual(officer.Ratings[OfficerRating.Espionage], 5);
         }
 
-        /// <summary>
-        /// Verifies seed with maximum variance includes configured extent.
-        /// </summary>
         [Test]
         public void Seed_WithMaximumVariance_IncludesConfiguredExtent()
         {
@@ -346,9 +307,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(15, officer.Ratings[OfficerRating.Espionage]);
         }
 
-        /// <summary>
-        /// Verifies seed unrecruited officer rolls ratings.
-        /// </summary>
         [Test]
         public void Seed_UnrecruitedOfficer_RollsRatings()
         {
@@ -370,9 +328,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(15, officer.Ratings[OfficerRating.Espionage]);
         }
 
-        /// <summary>
-        /// Verifies seed with owned planet officer added to planet.
-        /// </summary>
         [Test]
         public void Seed_WithOwnedPlanet_OfficerAddedToPlanet()
         {
@@ -391,9 +346,6 @@ namespace Rebellion.Tests.Generation
             Assert.Contains(officer, planet.GetChildren<Officer>().ToList());
         }
 
-        /// <summary>
-        /// Verifies seed with starting officer destination id officer added to designated planet.
-        /// </summary>
         [Test]
         public void Seed_WithStartingOfficerDestinationID_OfficerAddedToDesignatedPlanet()
         {
@@ -428,9 +380,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsEmpty(other.GetChildren<Officer>());
         }
 
-        /// <summary>
-        /// Verifies seed with starting officer destination type deploys pinned officer outside limit.
-        /// </summary>
         [Test]
         public void Seed_WithStartingOfficerDestinationType_DeploysPinnedOfficerOutsideLimit()
         {
@@ -478,9 +427,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsEmpty(other.GetChildren<Officer>());
         }
 
-        /// <summary>
-        /// Verifies seed with faction hq destination officer added to faction headquarters.
-        /// </summary>
         [Test]
         public void Seed_WithFactionHqDestination_OfficerAddedToFactionHeadquarters()
         {

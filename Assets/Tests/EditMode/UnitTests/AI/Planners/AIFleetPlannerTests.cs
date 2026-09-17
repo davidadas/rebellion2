@@ -18,9 +18,6 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public class AIFleetPlannerTests
     {
-        /// <summary>
-        /// Verifies plan with idle battle fleet and enemy planet adds attack proposal.
-        /// </summary>
         [Test]
         public void Plan_WithIdleBattleFleetAndEnemyPlanet_AddsAttackProposal()
         {
@@ -45,9 +42,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with multiple idle battle fleets adds best attack proposal.
-        /// </summary>
         [Test]
         public void Plan_WithMultipleIdleBattleFleets_AddsBestAttackProposal()
         {
@@ -95,9 +89,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(expected.TargetPlanet, proposals[0].TargetPlanet);
         }
 
-        /// <summary>
-        /// Verifies plan with transport only fleet and enemy planet does not add attack proposal.
-        /// </summary>
         [Test]
         public void Plan_WithTransportOnlyFleetAndEnemyPlanet_DoesNotAddAttackProposal()
         {
@@ -130,9 +121,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with assembling campaign adds attack order for different system.
-        /// </summary>
         [Test]
         public void Plan_WithAssemblingCampaign_AddsAttackOrderForDifferentSystem()
         {
@@ -181,9 +169,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with enemy systems prioritizes greatest friendly presence.
-        /// </summary>
         [Test]
         public void Plan_WithEnemySystems_PrioritizesGreatestFriendlyPresence()
         {
@@ -254,9 +239,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with no friendly presence prioritizes enemy headquarters system.
-        /// </summary>
         [Test]
         public void Plan_WithNoFriendlyPresence_PrioritizesEnemyHeadquartersSystem()
         {
@@ -306,9 +288,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with fortified enemy headquarters prioritizes viable system.
-        /// </summary>
         [Test]
         public void Plan_WithFortifiedEnemyHeadquarters_PrioritizesViableSystem()
         {
@@ -367,9 +346,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with staged attack order adds alternative target proposal.
-        /// </summary>
         [Test]
         public void Plan_WithStagedAttackOrder_AddsAlternativeTargetProposal()
         {
@@ -411,9 +387,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with shield blocked attack at hostile target returns without retargeting.
-        /// </summary>
         [Test]
         public void Plan_WithShieldBlockedAttackAtHostileTarget_ReturnsWithoutRetargeting()
         {
@@ -459,9 +432,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(blockedTarget.InstanceID, proposals[0].TargetPlanet.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies plan with stalled attack and no alternative returns fleet to friendly territory.
-        /// </summary>
         [Test]
         public void Plan_WithStalledAttackAndNoAlternative_ReturnsFleetToFriendlyTerritory()
         {
@@ -487,9 +457,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(FleetOrderStatus.Returning, proposal.Status);
         }
 
-        /// <summary>
-        /// Verifies plan with decisive planet advantage and staged attack continues current campaign.
-        /// </summary>
         [Test]
         public void Plan_WithDecisivePlanetAdvantageAndStagedAttack_ContinuesCurrentCampaign()
         {
@@ -547,9 +514,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with decisive planet advantage and mobile enemy headquarters adds attack proposal.
-        /// </summary>
         [Test]
         public void Plan_WithDecisivePlanetAdvantageAndMobileEnemyHeadquarters_AddsAttackProposal()
         {
@@ -577,9 +541,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with attack fleet in transit does not add alternative target proposal.
-        /// </summary>
         [Test]
         public void Plan_WithAttackFleetInTransit_DoesNotAddAlternativeTargetProposal()
         {
@@ -620,9 +581,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(firstEnemy.InstanceID, proposals[0].TargetPlanet.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies plan with invalid attack order defers order cleanup until execution.
-        /// </summary>
         [Test]
         public void Plan_WithInvalidAttackOrder_DefersOrderCleanupUntilExecution()
         {
@@ -651,9 +609,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsNull(fleet.Order);
         }
 
-        /// <summary>
-        /// Verifies plan with another attack order adds attack proposal for idle fleet.
-        /// </summary>
         [Test]
         public void Plan_WithAnotherAttackOrder_AddsAttackProposalForIdleFleet()
         {
@@ -697,9 +652,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with another attack order and favorable orbital target adds response proposal.
-        /// </summary>
         [Test]
         public void Plan_WithAnotherAttackOrderAndFavorableOrbitalTarget_AddsResponseProposal()
         {
@@ -751,9 +703,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with insufficient fleet assigned to orbital target does not split campaign.
-        /// </summary>
         [Test]
         public void Plan_WithInsufficientFleetAssignedToOrbitalTarget_DoesNotSplitCampaign()
         {
@@ -798,9 +747,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with capable fleet assigned to orbital target does not add another response proposal.
-        /// </summary>
         [Test]
         public void Plan_WithCapableFleetAssignedToOrbitalTarget_DoesNotAddAnotherResponseProposal()
         {
@@ -845,9 +791,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with inbound capital ship filling attack need does not add transfer proposal.
-        /// </summary>
         [Test]
         public void Plan_WithInboundCapitalShipFillingAttackNeed_DoesNotAddTransferProposal()
         {
@@ -893,9 +836,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with inbound regiment filling attack need does not add transfer proposal.
-        /// </summary>
         [Test]
         public void Plan_WithInboundRegimentFillingAttackNeed_DoesNotAddTransferProposal()
         {
@@ -970,9 +910,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsEmpty(proposals);
         }
 
-        /// <summary>
-        /// Verifies plan with carried starfighters providing missing combat adds transfer proposal.
-        /// </summary>
         [Test]
         public void Plan_WithCarriedStarfightersProvidingMissingCombat_AddsTransferProposal()
         {
@@ -1028,9 +965,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with carried starfighters required for local defense does not transfer carrier.
-        /// </summary>
         [Test]
         public void Plan_WithCarriedStarfightersRequiredForLocalDefense_DoesNotTransferCarrier()
         {
@@ -1084,9 +1018,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(proposals.Any(proposal => proposal.Unit == carrier));
         }
 
-        /// <summary>
-        /// Verifies plan with split local defense below hostile fleet does not transfer capital ship.
-        /// </summary>
         [Test]
         public void Plan_WithSplitLocalDefenseBelowHostileFleet_DoesNotTransferCapitalShip()
         {
@@ -1141,9 +1072,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(proposals.Any(proposal => proposal.Unit == donor));
         }
 
-        /// <summary>
-        /// Verifies plan with pending carried starfighter not counted as current source defense.
-        /// </summary>
         [Test]
         public void Plan_WithPendingCarriedStarfighter_NotCountedAsCurrentSourceDefense()
         {
@@ -1210,9 +1138,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with capital ship production available still adds transfer proposal.
-        /// </summary>
         [Test]
         public void Plan_WithCapitalShipProductionAvailable_StillAddsTransferProposal()
         {
@@ -1278,9 +1203,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(proposals.Any(proposal => proposal.Unit.InstanceID == donor.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies plan with capacity and combat gaps transfers transport first.
-        /// </summary>
         [Test]
         public void Plan_WithCapacityAndCombatGaps_TransfersTransportFirst()
         {
@@ -1333,9 +1255,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(proposals.Any(proposal => proposal.Unit == combatShip));
         }
 
-        /// <summary>
-        /// Verifies plan with bombardment and combat gaps transfers bombardment ship first.
-        /// </summary>
         [Test]
         public void Plan_WithBombardmentAndCombatGaps_TransfersBombardmentShipFirst()
         {
@@ -1402,9 +1321,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(proposals.Any(proposal => proposal.Unit == combatShip));
         }
 
-        /// <summary>
-        /// Verifies plan with ground and combat gaps transfers loaded regiment first.
-        /// </summary>
         [Test]
         public void Plan_WithGroundAndCombatGaps_TransfersLoadedRegimentFirst()
         {
@@ -1460,9 +1376,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(proposals.Any(proposal => proposal.Unit == combatShip));
         }
 
-        /// <summary>
-        /// Verifies plan with idle colonization fleet and uncolonized planet adds colonization proposal.
-        /// </summary>
         [Test]
         public void Plan_WithIdleColonizationFleetAndUncolonizedPlanet_AddsColonizationProposal()
         {
@@ -1491,9 +1404,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with unloaded battle fleet and uncolonized planet does not add colonization proposal.
-        /// </summary>
         [Test]
         public void Plan_WithUnloadedBattleFleetAndUncolonizedPlanet_DoesNotAddColonizationProposal()
         {
@@ -1513,9 +1423,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with conquest and colonization targets offers each fleet its role order.
-        /// </summary>
         [Test]
         public void Plan_WithConquestAndColonizationTargets_OffersEachFleetItsRoleOrder()
         {
@@ -1570,9 +1477,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with existing colonization order adds continuation proposal.
-        /// </summary>
         [Test]
         public void Plan_WithExistingColonizationOrder_AddsContinuationProposal()
         {
@@ -1599,9 +1503,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(target.InstanceID, proposal.TargetPlanet.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies plan with another colonization order adds proposal for idle fleet.
-        /// </summary>
         [Test]
         public void Plan_WithAnotherColonizationOrder_AddsProposalForIdleFleet()
         {
@@ -1638,9 +1539,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with unguarded headquarters adds nearest sufficient defense fleet proposal.
-        /// </summary>
         [Test]
         public void Plan_WithUnguardedHeadquarters_AddsNearestSufficientDefenseFleetProposal()
         {
@@ -1696,9 +1594,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(headquarters, proposal.TargetPlanet);
         }
 
-        /// <summary>
-        /// Verifies plan with fleet required at its planet does not assign it to headquarters.
-        /// </summary>
         [Test]
         public void Plan_WithFleetRequiredAtItsPlanet_DoesNotAssignItToHeadquarters()
         {
@@ -1750,9 +1645,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(reserveFleet, proposal.Fleet);
         }
 
-        /// <summary>
-        /// Verifies plan with hostile fleet at headquarters adds sufficient defense fleet proposal.
-        /// </summary>
         [Test]
         public void Plan_WithHostileFleetAtHeadquarters_AddsSufficientDefenseFleetProposal()
         {
@@ -1815,9 +1707,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(sufficientFleet, proposal.Fleet);
         }
 
-        /// <summary>
-        /// Verifies plan with only insufficient fleet for threat adds staging defense proposal.
-        /// </summary>
         [Test]
         public void Plan_WithOnlyInsufficientFleetForThreat_AddsStagingDefenseProposal()
         {
@@ -1864,9 +1753,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(headquarters, proposal.TargetPlanet);
         }
 
-        /// <summary>
-        /// Verifies plan with existing headquarters defense order adds continuation proposal.
-        /// </summary>
         [Test]
         public void Plan_WithExistingHeadquartersDefenseOrder_AddsContinuationProposal()
         {
@@ -1910,9 +1796,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(headquarters.InstanceID, proposal.TargetPlanet.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies plan with understrength headquarters order adds another defense fleet.
-        /// </summary>
         [Test]
         public void Plan_WithUnderstrengthHeadquartersOrder_AddsAnotherDefenseFleet()
         {
@@ -1963,9 +1846,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(headquarters, proposal.TargetPlanet);
         }
 
-        /// <summary>
-        /// Verifies plan with threatened owned planet adds nearest sufficient defense proposal.
-        /// </summary>
         [Test]
         public void Plan_WithThreatenedOwnedPlanet_AddsNearestSufficientDefenseProposal()
         {
@@ -2026,9 +1906,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(targetPlanet, proposal.TargetPlanet);
         }
 
-        /// <summary>
-        /// Verifies plan with inbound hostile fleet dispatches defense before arrival.
-        /// </summary>
         [Test]
         public void Plan_WithInboundHostileFleet_DispatchesDefenseBeforeArrival()
         {
@@ -2076,9 +1953,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(625, context.Assessment.GetRequiredPlanetDefenseStrength(targetPlanet));
         }
 
-        /// <summary>
-        /// Verifies plan with threatened owned planet and no sufficient fleet does not add defense proposal.
-        /// </summary>
         [Test]
         public void Plan_WithThreatenedOwnedPlanetAndNoSufficientFleet_DoesNotAddDefenseProposal()
         {
@@ -2122,9 +1996,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with attack fleet required at headquarters adds order cleanup proposal.
-        /// </summary>
         [Test]
         public void Plan_WithAttackFleetRequiredAtHeadquarters_AddsOrderCleanupProposal()
         {
@@ -2169,9 +2040,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsNull(fleet.Order);
         }
 
-        /// <summary>
-        /// Verifies plan with understrength headquarters defense fleet adds transfer proposal.
-        /// </summary>
         [Test]
         public void Plan_WithUnderstrengthHeadquartersDefenseFleet_AddsTransferProposal()
         {
@@ -2232,9 +2100,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(headquarters.InstanceID, proposal.TargetPlanet.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies plan with projected headquarters defense strength met does not add transfer proposal.
-        /// </summary>
         [Test]
         public void Plan_WithProjectedHeadquartersDefenseStrengthMet_DoesNotAddTransferProposal()
         {
@@ -2301,9 +2166,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsEmpty(proposals);
         }
 
-        /// <summary>
-        /// Verifies plan with attack fleet missing regiment sources from most secure planet.
-        /// </summary>
         [Test]
         public void Plan_WithAttackFleetMissingRegiment_SourcesFromMostSecurePlanet()
         {
@@ -2364,9 +2226,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(fleet, proposal.Destination);
         }
 
-        /// <summary>
-        /// Verifies plan with equally secure regiment sources prefers nearest planet.
-        /// </summary>
         [Test]
         public void Plan_WithEquallySecureRegimentSources_PrefersNearestPlanet()
         {
@@ -2423,9 +2282,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(nearRegiment, proposal.Unit);
         }
 
-        /// <summary>
-        /// Verifies plan with inbound headquarters defense does not add another defense proposal.
-        /// </summary>
         [Test]
         public void Plan_WithInboundHeadquartersDefense_DoesNotAddAnotherDefenseProposal()
         {

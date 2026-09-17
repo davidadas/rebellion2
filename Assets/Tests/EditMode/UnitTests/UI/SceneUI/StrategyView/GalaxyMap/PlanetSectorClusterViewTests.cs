@@ -46,18 +46,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render complete cluster applies bounds label stars and headquarters.
-        /// </summary>
         [Test]
         public void Render_CompleteCluster_AppliesBoundsLabelStarsAndHeadquarters()
         {
@@ -122,9 +116,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
-        /// <summary>
-        /// Verifies render shorter cluster reuses and hides pooled images.
-        /// </summary>
         [Test]
         public void Render_ShorterCluster_ReusesAndHidesPooledImages()
         {
@@ -174,9 +165,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
-        /// <summary>
-        /// Verifies render null stars and hidden label hides cached presentation.
-        /// </summary>
         [Test]
         public void Render_NullStarsAndHiddenLabel_HidesCachedPresentation()
         {
@@ -209,9 +197,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
-        /// <summary>
-        /// Verifies try get planet instance id overlapping markers returns topmost rendered planet.
-        /// </summary>
         [Test]
         public void TryGetPlanetInstanceID_OverlappingMarkers_ReturnsTopmostRenderedPlanet()
         {
@@ -235,9 +220,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual("planet-2", planetInstanceId);
         }
 
-        /// <summary>
-        /// Verifies try get planet instance id invalid inputs returns false and null identity.
-        /// </summary>
         [Test]
         public void TryGetPlanetInstanceID_InvalidInputs_ReturnsFalseAndNullIdentity()
         {
@@ -267,9 +249,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(inactiveIdentity);
         }
 
-        /// <summary>
-        /// Verifies get rendered star source rect invalid index returns default bounds.
-        /// </summary>
         [Test]
         public void GetRenderedStarSourceRect_InvalidIndex_ReturnsDefaultBounds()
         {
@@ -282,9 +261,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(default(RectInt), missingBounds);
         }
 
-        /// <summary>
-        /// Verifies pointer events rendered cluster emit hover exit and double click requests.
-        /// </summary>
         [Test]
         public void PointerEvents_RenderedCluster_EmitHoverExitAndDoubleClickRequests()
         {
@@ -314,9 +290,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreSame(eventData, openedEvent);
         }
 
-        /// <summary>
-        /// Verifies pointer events unrendered or single click do not emit open or hover requests.
-        /// </summary>
         [Test]
         public void PointerEvents_UnrenderedOrSingleClick_DoNotEmitOpenOrHoverRequests()
         {

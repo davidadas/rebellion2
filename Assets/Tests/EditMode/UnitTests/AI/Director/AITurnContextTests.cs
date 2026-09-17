@@ -11,9 +11,6 @@ namespace Rebellion.Tests.AI.Director
     [TestFixture]
     public class AITurnContextTests
     {
-        /// <summary>
-        /// Verifies constructor with faction view preserves turn input.
-        /// </summary>
         [Test]
         public void Constructor_WithFactionView_PreservesTurnInput()
         {
@@ -34,9 +31,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreSame(factionView, context.FactionView);
         }
 
-        /// <summary>
-        /// Verifies add proposal with null proposal does not add proposal.
-        /// </summary>
         [Test]
         public void AddProposal_WithNullProposal_DoesNotAddProposal()
         {
@@ -56,9 +50,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(0, context.Proposals.Count);
         }
 
-        /// <summary>
-        /// Verifies set selected proposals with new batch replaces existing selection.
-        /// </summary>
         [Test]
         public void SetSelectedProposals_WithNewBatch_ReplacesExistingSelection()
         {
@@ -82,9 +73,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreSame(second, context.SelectedProposals[0]);
         }
 
-        /// <summary>
-        /// Verifies add result with null result does not add result.
-        /// </summary>
         [Test]
         public void AddResult_WithNullResult_DoesNotAddResult()
         {
@@ -104,9 +92,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(0, context.Results.Count);
         }
 
-        /// <summary>
-        /// Verifies add results with result batch adds non null results.
-        /// </summary>
         [Test]
         public void AddResults_WithResultBatch_AddsNonNullResults()
         {

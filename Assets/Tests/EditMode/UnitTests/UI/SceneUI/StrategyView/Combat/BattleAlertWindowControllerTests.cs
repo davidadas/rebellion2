@@ -96,9 +96,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies constructor null pending combat provider throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullPendingCombatProvider_ThrowsArgumentNullException()
         {
@@ -120,18 +117,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
         }
 
-        /// <summary>
-        /// Verifies initialize null actions throws argument null exception.
-        /// </summary>
         [Test]
         public void Initialize_NullActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _controller.Initialize(null));
         }
 
-        /// <summary>
-        /// Verifies sync pending combat window before initialize throws invalid operation exception.
-        /// </summary>
         [Test]
         public void SyncPendingCombatWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -140,9 +131,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.Throws<InvalidOperationException>(() => controller.SyncPendingCombatWindow());
         }
 
-        /// <summary>
-        /// Verifies sync pending combat window no pending combat does not create window.
-        /// </summary>
         [Test]
         public void SyncPendingCombatWindow_NoPendingCombat_DoesNotCreateWindow()
         {
@@ -155,9 +143,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(0, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies sync pending combat window new combat creates named modal and starts music.
-        /// </summary>
         [Test]
         public void SyncPendingCombatWindow_NewCombat_CreatesNamedModalAndStartsMusic()
         {
@@ -174,9 +159,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotEmpty(_playedTracks[0]);
         }
 
-        /// <summary>
-        /// Verifies sync pending combat window existing combat reuses window.
-        /// </summary>
         [Test]
         public void SyncPendingCombatWindow_ExistingCombat_ReusesWindow()
         {
@@ -191,9 +173,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(1, _playedTracks.Count);
         }
 
-        /// <summary>
-        /// Verifies sync pending combat window pending combat cleared closes pending window.
-        /// </summary>
         [Test]
         public void SyncPendingCombatWindow_PendingCombatCleared_ClosesPendingWindow()
         {
@@ -208,9 +187,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(_windowManager.Windows.Contains(window));
         }
 
-        /// <summary>
-        /// Verifies sync pending combat window result with pending cleared preserves result window.
-        /// </summary>
         [Test]
         public void SyncPendingCombatWindow_ResultWithPendingCleared_PreservesResultWindow()
         {
@@ -225,9 +201,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsTrue(_controller.HasCombatResult(view));
         }
 
-        /// <summary>
-        /// Verifies bind window before initialize throws invalid operation exception.
-        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -240,9 +213,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
         }
 
-        /// <summary>
-        /// Verifies retreat button resolved combat preserves result and routes refresh.
-        /// </summary>
         [Test]
         public void RetreatButton_ResolvedCombat_PreservesResultAndRoutesRefresh()
         {
@@ -256,9 +226,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(2, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies open result bombardment opens shared result window without battle music.
-        /// </summary>
         [Test]
         public void OpenResult_Bombardment_OpensSharedResultWindowWithoutBattleMusic()
         {
@@ -288,9 +255,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsEmpty(_playedTracks);
         }
 
-        /// <summary>
-        /// Verifies open result planetary assault defaults to troops without battle music.
-        /// </summary>
         [Test]
         public void OpenResult_PlanetaryAssault_DefaultsToTroopsWithoutBattleMusic()
         {
@@ -321,9 +285,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             CollectionAssert.AreEqual(new[] { StrategyUISoundPaths.PlanetaryAssault }, _playedSfx);
         }
 
-        /// <summary>
-        /// Verifies open result space combat plays completed battle music.
-        /// </summary>
         [Test]
         public void OpenResult_SpaceCombat_PlaysCompletedBattleMusic()
         {
@@ -336,9 +297,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotEmpty(_playedTracks[0]);
         }
 
-        /// <summary>
-        /// Verifies open report space combat preserves strategy music.
-        /// </summary>
         [Test]
         public void OpenReport_SpaceCombat_PreservesStrategyMusic()
         {
@@ -359,9 +317,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsEmpty(_playedTracks);
         }
 
-        /// <summary>
-        /// Verifies open report planetary assault plays report sound without changing music.
-        /// </summary>
         [Test]
         public void OpenReport_PlanetaryAssault_PlaysReportSoundWithoutChangingMusic()
         {
@@ -382,9 +337,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             CollectionAssert.AreEqual(new[] { StrategyUISoundPaths.PlanetaryAssault }, _playedSfx);
         }
 
-        /// <summary>
-        /// Verifies control button pointer down plays shared control sound before click.
-        /// </summary>
         [Test]
         public void ControlButton_PointerDown_PlaysSharedControlSoundBeforeClick()
         {
@@ -402,9 +354,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             CollectionAssert.AreEqual(new[] { StrategyUISoundPaths.ControlPress }, _playedSfx);
         }
 
-        /// <summary>
-        /// Verifies view destroyed bound session releases controller state.
-        /// </summary>
         [Test]
         public void ViewDestroyed_BoundSession_ReleasesControllerState()
         {

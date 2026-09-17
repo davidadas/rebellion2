@@ -13,9 +13,6 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public sealed class GameEventBindingTests
     {
-        /// <summary>
-        /// Verifies bind numeric ranges stores rolled values.
-        /// </summary>
         [Test]
         public void Bind_NumericRanges_StoresRolledValues()
         {
@@ -41,9 +38,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(0.5, context.GetBinding<double>("probability"), 0.0001);
         }
 
-        /// <summary>
-        /// Verifies bind typed sources stores resolved values.
-        /// </summary>
         [Test]
         public void Bind_TypedSources_StoresResolvedValues()
         {
@@ -125,9 +119,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(1, context.GetBinding<int>("officerCount"));
         }
 
-        /// <summary>
-        /// Verifies bind typed officer sources with inactive officer stores resolved values.
-        /// </summary>
         [Test]
         public void Bind_TypedOfficerSourcesWithInactiveOfficer_StoresResolvedValues()
         {
@@ -181,9 +172,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(expectedForceRank, context.GetBinding<int>("force"));
         }
 
-        /// <summary>
-        /// Verifies bind planet stat with inactive planet stores resolved value.
-        /// </summary>
         [Test]
         public void Bind_PlanetStatWithInactivePlanet_StoresResolvedValue()
         {
@@ -215,9 +203,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(7, context.GetBinding<int>("resources"));
         }
 
-        /// <summary>
-        /// Verifies round trip numeric ranges restores concrete rolls.
-        /// </summary>
         [Test]
         public void RoundTrip_NumericRanges_RestoresConcreteRolls()
         {
@@ -249,9 +234,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(0.9, restored.Bindings[1].RollDouble.Maximum);
         }
 
-        /// <summary>
-        /// Verifies round trip typed sources restores concrete sources.
-        /// </summary>
         [Test]
         public void RoundTrip_TypedSources_RestoresConcreteSources()
         {

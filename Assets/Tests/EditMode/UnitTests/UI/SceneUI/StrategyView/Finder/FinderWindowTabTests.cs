@@ -5,9 +5,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
     [TestFixture]
     public class FinderWindowTabTests
     {
-        /// <summary>
-        /// Verifies all default factory creates tab without faction identity.
-        /// </summary>
         [Test]
         public void All_DefaultFactory_CreatesTabWithoutFactionIdentity()
         {
@@ -21,9 +18,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsNull(tab.FactionDisplayName);
         }
 
-        /// <summary>
-        /// Verifies neutral default factory creates tab without faction identity.
-        /// </summary>
         [Test]
         public void Neutral_DefaultFactory_CreatesTabWithoutFactionIdentity()
         {
@@ -36,9 +30,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsNull(tab.FactionInstanceId);
         }
 
-        /// <summary>
-        /// Verifies unexplored default factory creates tab without faction identity.
-        /// </summary>
         [Test]
         public void Unexplored_DefaultFactory_CreatesTabWithoutFactionIdentity()
         {
@@ -51,9 +42,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsNull(tab.FactionInstanceId);
         }
 
-        /// <summary>
-        /// Verifies faction identity creates faction tab.
-        /// </summary>
         [Test]
         public void Faction_Identity_CreatesFactionTab()
         {

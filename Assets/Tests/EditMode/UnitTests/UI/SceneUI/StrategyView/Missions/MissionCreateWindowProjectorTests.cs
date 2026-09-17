@@ -79,18 +79,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
-        /// <summary>
-        /// Verifies constructor null context provider throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new MissionCreateWindowProjector(null));
         }
 
-        /// <summary>
-        /// Verifies build missing session or window throws argument null exception.
-        /// </summary>
         [Test]
         public void Build_MissingSessionOrWindow_ThrowsArgumentNullException()
         {
@@ -103,9 +97,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentNullException>(() => _projector.Build(session, null));
         }
 
-        /// <summary>
-        /// Verifies build unavailable context throws invalid operation exception.
-        /// </summary>
         [Test]
         public void Build_UnavailableContext_ThrowsInvalidOperationException()
         {
@@ -118,9 +109,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<InvalidOperationException>(() => projector.Build(session, _window));
         }
 
-        /// <summary>
-        /// Verifies build mission tab with open dropdown returns mission workflow presentation.
-        /// </summary>
         [Test]
         public void Build_MissionTabWithOpenDropdown_ReturnsMissionWorkflowPresentation()
         {
@@ -191,9 +179,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(data.DecoyRows);
         }
 
-        /// <summary>
-        /// Verifies build mission odds uses current agent and decoy split for every icon.
-        /// </summary>
         [Test]
         public void Build_MissionOdds_UsesCurrentAgentAndDecoySplitForEveryIcon()
         {
@@ -235,9 +220,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies build mission odds uses latest observed planet fleet state.
-        /// </summary>
         [Test]
         public void Build_MissionOdds_UsesLatestObservedPlanetFleetState()
         {
@@ -278,9 +260,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies build mission odds missing from latest observed planet omits target estimate.
-        /// </summary>
         [Test]
         public void Build_MissionOdds_MissingFromLatestObservedPlanetOmitsTargetEstimate()
         {
@@ -317,9 +296,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(0, estimateCount);
         }
 
-        /// <summary>
-        /// Verifies build mission odds disabled omits every estimate.
-        /// </summary>
         [Test]
         public void Build_MissionOddsDisabled_OmitsEveryEstimate()
         {
@@ -347,9 +323,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(0, estimateCount);
         }
 
-        /// <summary>
-        /// Verifies build planet target without artwork uses planet preview fallback.
-        /// </summary>
         [Test]
         public void Build_PlanetTargetWithoutArtwork_UsesPlanetPreviewFallback()
         {
@@ -365,9 +338,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsTrue(data.UsePlanetTargetPreview);
         }
 
-        /// <summary>
-        /// Verifies build personnel tab returns selection and transit presentation.
-        /// </summary>
         [Test]
         public void Build_PersonnelTab_ReturnsSelectionAndTransitPresentation()
         {
@@ -410,9 +380,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(data.DecoyRows);
         }
 
-        /// <summary>
-        /// Verifies build personnel carried by moving fleet uses transit presentation.
-        /// </summary>
         [Test]
         public void Build_PersonnelCarriedByMovingFleet_UsesTransitPresentation()
         {
@@ -435,9 +402,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies build entity targeted mission returns entity preview.
-        /// </summary>
         [Test]
         public void Build_EntityTargetedMission_ReturnsEntityPreview()
         {
@@ -463,9 +427,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(data.UsePlanetTargetPreview);
         }
 
-        /// <summary>
-        /// Verifies build empty choices returns empty mission selection.
-        /// </summary>
         [Test]
         public void Build_EmptyChoices_ReturnsEmptyMissionSelection()
         {
