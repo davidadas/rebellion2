@@ -573,7 +573,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             new StrategyMenuCommand(
                 StrategyMenuAction.AdvisorMarkAllMessagesRead,
                 "Mark All Read",
-                HasUnreadMessages(faction)
+                faction?.HasUnreadMessages() == true
             ),
             new StrategyMenuCommand("Message Alerts", faction != null, alerts),
         };
@@ -868,18 +868,6 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             enabled,
             selected ? StrategyContextMenuIconKeys.CheckMark : StrategyContextMenuIconKeys.None
         );
-    }
-
-    /// <summary>
-    /// Returns whether a faction has at least one unread message.
-    /// </summary>
-    /// <param name="faction">The faction whose messages should be inspected.</param>
-    /// <returns>True when an unread message exists.</returns>
-    private static bool HasUnreadMessages(Faction faction)
-    {
-        return faction?.Messages?.Values.Any(messages =>
-                messages?.Any(message => message?.Read == false) == true
-            ) == true;
     }
 
     /// <summary>

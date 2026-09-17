@@ -645,6 +645,30 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         /// <summary>
+        /// Verifies has unread messages with an unread message returns true.
+        /// </summary>
+        [Test]
+        public void HasUnreadMessages_UnreadMessage_ReturnsTrue()
+        {
+            _faction.AddMessage(new StatusMessage(MessageType.Fleet, "Fleet arrived"));
+
+            Assert.IsTrue(_faction.HasUnreadMessages());
+        }
+
+        /// <summary>
+        /// Verifies has unread messages with only read messages returns false.
+        /// </summary>
+        [Test]
+        public void HasUnreadMessages_OnlyReadMessages_ReturnsFalse()
+        {
+            _faction.AddMessage(
+                new StatusMessage(MessageType.Mission, "Mission completed") { Read = true }
+            );
+
+            Assert.IsFalse(_faction.HasUnreadMessages());
+        }
+
+        /// <summary>
         /// Verifies remove message existing message removes from list.
         /// </summary>
         [Test]
