@@ -22,6 +22,9 @@ internal static class StrategyUISoundPaths
     public const string PlanetaryAssault =
         "Application/Strategy/Messages/Audio/message-planetary-assault";
 
+    public const string OrbitalBombardment =
+        "Application/Strategy/Messages/Audio/message-orbital-bombardment";
+
     /// <summary>
     /// Enumerates shared and themed sound-effect paths used by the strategy interface.
     /// </summary>
@@ -34,6 +37,7 @@ internal static class StrategyUISoundPaths
         yield return SectorWindowClose;
         yield return GalacticInformationOpen;
         yield return GalacticInformationControl;
+        yield return OrbitalBombardment;
         yield return PlanetaryAssault;
 
         foreach (string path in GetPlanetaryAssaultAdvisorAudioPaths(theme?.StrategyAdvisor))

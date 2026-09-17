@@ -88,7 +88,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 .SubmenuCommands;
 
             CollectionAssert.AreEqual(
-                new[] { "Messages", "Message Alerts" },
+                new[] { "Messages", "Mark All Read", "Message Alerts" },
                 commands.Select(command => command.Text)
             );
             CollectionAssert.AreEqual(
@@ -114,6 +114,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 StrategyContextMenuIconKeys.CheckMark,
                 alerts.Single(command => command.Text == "Mission").IconKey
             );
+            Assert.IsFalse(commands.Single(command => command.Text == "Mark All Read").Enabled);
+        }
+
+        /// <summary>
+        /// Verifies build notification menu with unread messages enables mark all read.
+        /// </summary>
+        [Test]
+        public void BuildNotificationMenu_UnreadMessages_EnablesMarkAllRead()
+        {
+            Faction faction = new Faction();
+            faction.AddMessage(new StatusMessage(MessageType.Fleet, "Fleet arrived"));
+
+            IReadOnlyList<StrategyMenuCommand> commands =
+                StrategyAdvisorController.BuildNotificationMenu(faction);
+
+            Assert.IsTrue(commands.Single(command => command.Text == "Mark All Read").Enabled);
         }
 
         /// <summary>

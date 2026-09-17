@@ -112,6 +112,7 @@ public enum StrategyMenuAction
     AdvisorTranslateCounterpart,
     AdvisorAgentAdvice,
     AdvisorMessages,
+    AdvisorMarkAllMessagesRead,
     AdvisorLoyaltyMessages,
     AdvisorFleetMessages,
     AdvisorMissionMessages,
