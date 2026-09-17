@@ -6,9 +6,6 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public sealed class GameEventRuntimeStateTests
     {
-        /// <summary>
-        /// Verifies get state new event returns incomplete state.
-        /// </summary>
         [Test]
         public void GetState_NewEvent_ReturnsIncompleteState()
         {
@@ -19,9 +16,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(result.IsComplete);
         }
 
-        /// <summary>
-        /// Verifies get state same event returns canonical state.
-        /// </summary>
         [Test]
         public void GetState_SameEvent_ReturnsCanonicalState()
         {
@@ -33,9 +27,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(first, second);
         }
 
-        /// <summary>
-        /// Verifies get variable missing key returns zero.
-        /// </summary>
         [Test]
         public void GetVariable_MissingKey_ReturnsZero()
         {

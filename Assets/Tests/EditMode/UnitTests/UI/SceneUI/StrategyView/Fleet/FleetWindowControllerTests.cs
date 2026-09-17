@@ -88,9 +88,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies constructor null fleet command controller throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullFleetCommandController_ThrowsArgumentNullException()
         {
@@ -107,9 +104,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
-        /// <summary>
-        /// Verifies initialize null window actions throws argument null exception.
-        /// </summary>
         [Test]
         public void Initialize_NullWindowActions_ThrowsArgumentNullException()
         {
@@ -128,9 +122,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
-        /// <summary>
-        /// Verifies try initialize window before initialize throws invalid operation exception.
-        /// </summary>
         [Test]
         public void TryInitializeWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -146,9 +137,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
-        /// <summary>
-        /// Verifies try initialize window null planet returns false.
-        /// </summary>
         [Test]
         public void TryInitializeWindow_NullPlanet_ReturnsFalse()
         {
@@ -164,9 +152,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
-        /// <summary>
-        /// Verifies open valid planet creates named window at resolved position.
-        /// </summary>
         [Test]
         public void Open_ValidPlanet_CreatesNamedWindowAtResolvedPosition()
         {
@@ -182,9 +167,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(0, _controller.GetSelectedFleetIndex(view));
         }
 
-        /// <summary>
-        /// Verifies open existing planet reuses window without additional invalidation.
-        /// </summary>
         [Test]
         public void Open_ExistingPlanet_ReusesWindowWithoutAdditionalInvalidation()
         {
@@ -199,9 +181,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies select target contained officer selects fleet and personnel tab.
-        /// </summary>
         [Test]
         public void SelectTarget_ContainedOfficer_SelectsFleetAndPersonnelTab()
         {
@@ -214,9 +193,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(0, _controller.GetSelectedFleetIndex(view));
         }
 
-        /// <summary>
-        /// Verifies clear selection populated fleet preserves required fleet selection.
-        /// </summary>
         [Test]
         public void ClearSelection_PopulatedFleet_PreservesRequiredFleetSelection()
         {
@@ -229,9 +205,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(FleetWindowTab.Personnel, _controller.GetActiveTab(view));
         }
 
-        /// <summary>
-        /// Verifies window drop active targeting selects current fleet.
-        /// </summary>
         [Test]
         public void WindowDrop_ActiveTargeting_SelectsCurrentFleet()
         {
@@ -251,9 +224,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_fleet, target.GetMoveDestination());
         }
 
-        /// <summary>
-        /// Verifies window drop without selected fleet selects represented planet.
-        /// </summary>
         [Test]
         public void WindowDrop_WithoutSelectedFleet_SelectsRepresentedPlanet()
         {
@@ -274,9 +244,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_planet.Planet, target.GetMoveDestination());
         }
 
-        /// <summary>
-        /// Verifies render window after all fleets removed clears selected fleet details.
-        /// </summary>
         [Test]
         public void RenderWindow_AfterAllFleetsRemoved_ClearsSelectedFleetDetails()
         {
@@ -291,9 +258,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(-1, _controller.GetSelectedFleetIndex(view));
         }
 
-        /// <summary>
-        /// Verifies fleet list drop active targeting selects represented planet.
-        /// </summary>
         [Test]
         public void FleetListDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
@@ -316,9 +280,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_planet.Planet, target.GetMoveDestination());
         }
 
-        /// <summary>
-        /// Verifies detail item drop during active targeting selects the current fleet.
-        /// </summary>
         [Test]
         public void DetailItemDrop_ActiveTargeting_SelectsCurrentFleet()
         {
@@ -341,9 +302,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_fleet, target.GetMoveDestination());
         }
 
-        /// <summary>
-        /// Verifies fleet row press unselected fleet label starts drag on first gesture.
-        /// </summary>
         [Test]
         public void FleetRowPress_UnselectedFleetLabel_StartsDragOnFirstGesture()
         {
@@ -397,9 +355,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
-        /// <summary>
-        /// Verifies fleet row release unselected fleet renders selection without invalidating screen.
-        /// </summary>
         [Test]
         public void FleetRowRelease_UnselectedFleet_RendersSelectionWithoutInvalidatingScreen()
         {
@@ -434,9 +389,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(1, _selectionRouteRenderCount);
         }
 
-        /// <summary>
-        /// Verifies reconcile window fresh projection rebinds planet and target by identity.
-        /// </summary>
         [Test]
         public void ReconcileWindow_FreshProjection_RebindsPlanetAndTargetByIdentity()
         {
@@ -467,9 +419,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(_controller.SelectTarget(view, freshOfficer));
         }
 
-        /// <summary>
-        /// Verifies try create context menu no context item returns disabled information commands.
-        /// </summary>
         [Test]
         public void TryCreateContextMenu_NoContextItem_ReturnsDisabledInformationCommands()
         {
@@ -496,9 +445,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
-        /// <summary>
-        /// Verifies on context menu command selected bombardment leaf executes and routes battle result.
-        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_BombardmentLeaf_ExecutesAndRoutesBattleResult()
         {
@@ -549,9 +495,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(1, _actions.RefreshCount);
         }
 
-        /// <summary>
-        /// Verifies on context menu command selected capital ship rename marks name as assigned.
-        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_CapitalShipRename_MarksNameAsAssigned()
         {
@@ -598,9 +541,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(ship.HasAssignedName);
         }
 
-        /// <summary>
-        /// Verifies view destroyed initialized session releases planet association.
-        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {

@@ -51,9 +51,6 @@ namespace Rebellion.Tests.Content
                 Directory.Delete(_contentRoot, true);
         }
 
-        /// <summary>
-        /// Verifies get texture existing address loads and caches texture.
-        /// </summary>
         [Test]
         public void GetTexture_ExistingAddress_LoadsAndCachesTexture()
         {
@@ -68,9 +65,6 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(TextureWrapMode.Clamp, first.wrapMode);
         }
 
-        /// <summary>
-        /// Verifies get texture missing address returns null.
-        /// </summary>
         [Test]
         public void GetTexture_MissingAddress_ReturnsNull()
         {
@@ -80,9 +74,6 @@ namespace Rebellion.Tests.Content
             Assert.IsNull(assets.GetTexture("Application/Textures/missing"));
         }
 
-        /// <summary>
-        /// Verifies get texture unscoped address throws argument exception.
-        /// </summary>
         [Test]
         public void GetTexture_UnscopedAddress_ThrowsArgumentException()
         {
@@ -91,9 +82,6 @@ namespace Rebellion.Tests.Content
             Assert.Throws<ArgumentException>(() => assets.GetTexture("Textures/outside"));
         }
 
-        /// <summary>
-        /// Verifies get texture address leaves pack root throws argument exception.
-        /// </summary>
         [Test]
         public void GetTexture_AddressLeavesPackRoot_ThrowsArgumentException()
         {
@@ -102,9 +90,6 @@ namespace Rebellion.Tests.Content
             Assert.Throws<ArgumentException>(() => assets.GetTexture("Pack/../../outside"));
         }
 
-        /// <summary>
-        /// Verifies sprite caching distinguishes explicit nine-slice borders.
-        /// </summary>
         [Test]
         public void GetSprite_DifferentBorders_CachesDistinctVariants()
         {
@@ -122,10 +107,6 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(border, bordered.border);
         }
 
-        /// <summary>
-        /// Verifies preload async texture directory caches extensionless address.
-        /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
         [Test]
         public async Task PreloadAsync_TextureDirectory_CachesExtensionlessAddressAsync()
         {
@@ -142,9 +123,6 @@ namespace Rebellion.Tests.Content
             Assert.IsNotNull(assets.GetTexture(_textureAddress));
         }
 
-        /// <summary>
-        /// Verifies get video url existing address returns existing local file.
-        /// </summary>
         [Test]
         public void GetVideoUrl_ExistingAddress_ReturnsExistingLocalFile()
         {
@@ -156,9 +134,6 @@ namespace Rebellion.Tests.Content
             Assert.IsTrue(File.Exists(new Uri(url).LocalPath));
         }
 
-        /// <summary>
-        /// Verifies get video url absolute address throws argument exception.
-        /// </summary>
         [Test]
         public void GetVideoUrl_AbsoluteAddress_ThrowsArgumentException()
         {
@@ -167,9 +142,6 @@ namespace Rebellion.Tests.Content
             Assert.Throws<ArgumentException>(() => assets.GetVideoUrl(_packRoot));
         }
 
-        /// <summary>
-        /// Verifies dispose subsequent asset request throws object disposed exception.
-        /// </summary>
         [Test]
         public void Dispose_SubsequentAssetRequest_ThrowsObjectDisposedException()
         {

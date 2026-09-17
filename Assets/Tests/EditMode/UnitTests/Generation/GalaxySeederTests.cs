@@ -34,9 +34,6 @@ namespace Rebellion.Tests.Generation
             };
         }
 
-        /// <summary>
-        /// Verifies seed strong bucket planet is assigned ownership.
-        /// </summary>
         [Test]
         public void Seed_StrongBucketPlanet_IsAssignedOwnership()
         {
@@ -69,9 +66,6 @@ namespace Rebellion.Tests.Generation
             }
         }
 
-        /// <summary>
-        /// Verifies seed weak bucket planet is assigned ownership.
-        /// </summary>
         [Test]
         public void Seed_WeakBucketPlanet_IsAssignedOwnership()
         {
@@ -115,9 +109,6 @@ namespace Rebellion.Tests.Generation
             }
         }
 
-        /// <summary>
-        /// Verifies seed neutral bucket planet remains unowned.
-        /// </summary>
         [Test]
         public void Seed_NeutralBucketPlanet_RemainsUnowned()
         {
@@ -156,9 +147,6 @@ namespace Rebellion.Tests.Generation
             }
         }
 
-        /// <summary>
-        /// Verifies seed profile with strong and weak buckets owns sum of both.
-        /// </summary>
         [Test]
         public void Seed_ProfileWithStrongAndWeakBuckets_OwnsSumOfBoth()
         {
@@ -193,9 +181,6 @@ namespace Rebellion.Tests.Generation
             );
         }
 
-        /// <summary>
-        /// Verifies seed starting planet in bucket preserves original ownership.
-        /// </summary>
         [Test]
         public void Seed_StartingPlanetInBucket_PreservesOriginalOwnership()
         {

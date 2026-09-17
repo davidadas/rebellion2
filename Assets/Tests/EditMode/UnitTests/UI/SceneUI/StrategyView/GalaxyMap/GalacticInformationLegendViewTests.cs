@@ -56,9 +56,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies render legend applies bounds artwork frame and close control.
-        /// </summary>
         [Test]
         public void Render_Legend_AppliesBoundsArtworkFrameAndCloseControl()
         {
@@ -93,9 +90,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
-        /// <summary>
-        /// Verifies render subsequent bounds preserves initial source position.
-        /// </summary>
         [Test]
         public void Render_SubsequentBounds_PreservesInitialSourcePosition()
         {
@@ -110,9 +104,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(135, bounds.height);
         }
 
-        /// <summary>
-        /// Verifies render initial position outside parent clamps to parent bounds.
-        /// </summary>
         [Test]
         public void Render_InitialPositionOutsideParent_ClampsToParentBounds()
         {
@@ -127,9 +118,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(expectedY, bounds.y);
         }
 
-        /// <summary>
-        /// Verifies render missing legend texture hides legend.
-        /// </summary>
         [Test]
         public void Render_MissingLegendTexture_HidesLegend()
         {
@@ -147,9 +135,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render null data hides visible legend.
-        /// </summary>
         [Test]
         public void Render_NullData_HidesVisibleLegend()
         {
@@ -160,9 +145,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies close hit area press release and click updates texture and raises request.
-        /// </summary>
         [Test]
         public void CloseHitArea_PressReleaseAndClick_UpdatesTextureAndRaisesRequest()
         {
@@ -184,9 +166,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, closeCount);
         }
 
-        /// <summary>
-        /// Verifies hide visible legend deactivates legend.
-        /// </summary>
         [Test]
         public void Hide_VisibleLegend_DeactivatesLegend()
         {
@@ -197,9 +176,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies on destroy initialized view unbinds close and raises destroyed event.
-        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsCloseAndRaisesDestroyedEvent()
         {

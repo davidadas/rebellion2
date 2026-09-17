@@ -7,9 +7,6 @@ namespace Rebellion.Tests.SceneGraph
     [TestFixture]
     public class BaseGameEntityTests
     {
-        /// <summary>
-        /// Verifies instance id when not set generates unique value.
-        /// </summary>
         [Test]
         public void InstanceID_WhenNotSet_GeneratesUniqueValue()
         {
@@ -21,9 +18,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(32, instanceId.Length, "InstanceID should be a 32-character string.");
         }
 
-        /// <summary>
-        /// Verifies instance id with same deterministic seed repeats unique sequence.
-        /// </summary>
         [Test]
         public void InstanceID_WithSameDeterministicSeed_RepeatsUniqueSequence()
         {
@@ -47,9 +41,6 @@ namespace Rebellion.Tests.SceneGraph
             }
         }
 
-        /// <summary>
-        /// Verifies instance id when set returns set value.
-        /// </summary>
         [Test]
         public void InstanceID_WhenSet_ReturnsSetValue()
         {
@@ -65,9 +56,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies type id set value returns correct value.
-        /// </summary>
         [Test]
         public void TypeID_SetValue_ReturnsCorrectValue()
         {
@@ -83,9 +71,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies type id when not set returns null.
-        /// </summary>
         [Test]
         public void TypeID_WhenNotSet_ReturnsNull()
         {
@@ -96,9 +81,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(typeId, "TypeID should be null when not explicitly set.");
         }
 
-        /// <summary>
-        /// Verifies type id set to null returns null.
-        /// </summary>
         [Test]
         public void TypeID_SetToNull_ReturnsNull()
         {
@@ -109,9 +91,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(entity.TypeID, "TypeID should return null when set to null.");
         }
 
-        /// <summary>
-        /// Verifies type id set to empty string returns empty string.
-        /// </summary>
         [Test]
         public void TypeID_SetToEmptyString_ReturnsEmptyString()
         {
@@ -126,9 +105,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies display name set value returns correct value.
-        /// </summary>
         [Test]
         public void DisplayName_SetValue_ReturnsCorrectValue()
         {
@@ -144,9 +120,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies display name when not set returns null.
-        /// </summary>
         [Test]
         public void DisplayName_WhenNotSet_ReturnsNull()
         {
@@ -157,9 +130,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(displayName, "DisplayName should be null when not explicitly set.");
         }
 
-        /// <summary>
-        /// Verifies display name set to null returns null.
-        /// </summary>
         [Test]
         public void DisplayName_SetToNull_ReturnsNull()
         {
@@ -170,9 +140,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(entity.DisplayName, "DisplayName should return null when set to null.");
         }
 
-        /// <summary>
-        /// Verifies display name set to empty string returns empty string.
-        /// </summary>
         [Test]
         public void DisplayName_SetToEmptyString_ReturnsEmptyString()
         {
@@ -187,9 +154,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies description set value returns correct value.
-        /// </summary>
         [Test]
         public void Description_SetValue_ReturnsCorrectValue()
         {
@@ -205,9 +169,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies description when not set returns null.
-        /// </summary>
         [Test]
         public void Description_WhenNotSet_ReturnsNull()
         {
@@ -218,9 +179,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(description, "Description should be null when not explicitly set.");
         }
 
-        /// <summary>
-        /// Verifies description set to null returns null.
-        /// </summary>
         [Test]
         public void Description_SetToNull_ReturnsNull()
         {
@@ -231,9 +189,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(entity.Description, "Description should return null when set to null.");
         }
 
-        /// <summary>
-        /// Verifies description set to empty string returns empty string.
-        /// </summary>
         [Test]
         public void Description_SetToEmptyString_ReturnsEmptyString()
         {
@@ -248,9 +203,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies get instance id entity with instance id returns expected instance id.
-        /// </summary>
         [Test]
         public void GetInstanceID_EntityWithInstanceID_ReturnsExpectedInstanceID()
         {
@@ -265,9 +217,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies get type id entity with type id returns expected type id.
-        /// </summary>
         [Test]
         public void GetTypeID_EntityWithTypeID_ReturnsExpectedTypeID()
         {
@@ -285,9 +234,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies get display name entity with name returns expected name.
-        /// </summary>
         [Test]
         public void GetDisplayName_EntityWithName_ReturnsExpectedName()
         {
@@ -305,9 +251,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies get deep copy ignores instance id when deep copying.
-        /// </summary>
         [Test]
         public void GetDeepCopy_IgnoresInstanceID_WhenDeepCopying()
         {
@@ -343,9 +286,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies display image path set value returns correct value.
-        /// </summary>
         [Test]
         public void DisplayImagePath_SetValue_ReturnsCorrectValue()
         {
@@ -361,9 +301,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies display image path when not set returns null.
-        /// </summary>
         [Test]
         public void DisplayImagePath_WhenNotSet_ReturnsNull()
         {
@@ -374,9 +311,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(imagePath, "DisplayImagePath should be null when not explicitly set.");
         }
 
-        /// <summary>
-        /// Verifies display image path set to null returns null.
-        /// </summary>
         [Test]
         public void DisplayImagePath_SetToNull_ReturnsNull()
         {
@@ -390,9 +324,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies display image path set to empty string returns empty string.
-        /// </summary>
         [Test]
         public void DisplayImagePath_SetToEmptyString_ReturnsEmptyString()
         {
@@ -407,9 +338,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies get display image path entity with image path returns expected path.
-        /// </summary>
         [Test]
         public void GetDisplayImagePath_EntityWithImagePath_ReturnsExpectedPath()
         {
@@ -427,9 +355,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies get display image path when not set returns null.
-        /// </summary>
         [Test]
         public void GetDisplayImagePath_WhenNotSet_ReturnsNull()
         {
@@ -443,9 +368,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies serialize and deserialize populated entity maintains property values.
-        /// </summary>
         [Test]
         public void SerializeAndDeserialize_PopulatedEntity_MaintainsPropertyValues()
         {

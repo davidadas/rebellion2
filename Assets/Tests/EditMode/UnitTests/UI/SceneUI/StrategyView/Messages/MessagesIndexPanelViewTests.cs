@@ -54,9 +54,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
-        /// <summary>
-        /// Verifies initialize null navigation predicate throws argument null exception.
-        /// </summary>
         [Test]
         public void Initialize_NullNavigationPredicate_ThrowsArgumentNullException()
         {
@@ -65,27 +62,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
-        /// <summary>
-        /// Verifies initialize null navigation scope throws argument null exception.
-        /// </summary>
         [Test]
         public void Initialize_NullNavigationScope_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Initialize(() => true, null));
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render index applies tabs title rows and selection artwork.
-        /// </summary>
         [Test]
         public void Render_Index_AppliesTabsTitleRowsAndSelectionArtwork()
         {
@@ -123,9 +111,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             );
         }
 
-        /// <summary>
-        /// Verifies render tab without texture disables authored control.
-        /// </summary>
         [Test]
         public void Render_TabWithoutTexture_DisablesAuthoredControl()
         {
@@ -145,9 +130,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(FindComponent<RawImage>("FleetTabButtonImage").raycastTarget);
         }
 
-        /// <summary>
-        /// Verifies render incomplete tabs throws argument exception.
-        /// </summary>
         [Test]
         public void Render_IncompleteTabs_ThrowsArgumentException()
         {
@@ -161,9 +143,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
-        /// <summary>
-        /// Verifies render tabs outside authored order throws argument exception.
-        /// </summary>
         [Test]
         public void Render_TabsOutsideAuthoredOrder_ThrowsArgumentException()
         {
@@ -179,9 +158,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
-        /// <summary>
-        /// Verifies render shorter rows hides unused cached row views.
-        /// </summary>
         [Test]
         public void Render_ShorterRows_HidesUnusedCachedRowViews()
         {
@@ -205,9 +181,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual("Replacement", FindRowText(FindRows().Single()).text);
         }
 
-        /// <summary>
-        /// Verifies index controls click raise tab select all and remove requests.
-        /// </summary>
         [Test]
         public void IndexControls_Click_RaiseTabSelectAllAndRemoveRequests()
         {
@@ -227,9 +200,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(1, removeCount);
         }
 
-        /// <summary>
-        /// Verifies row gestures rendered row raise selection activation and context requests.
-        /// </summary>
         [Test]
         public void RowGestures_RenderedRow_RaiseSelectionActivationAndContextRequests()
         {
@@ -262,9 +232,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreSame(secondary, context);
         }
 
-        /// <summary>
-        /// Verifies hide visible panel deactivates panel.
-        /// </summary>
         [Test]
         public void Hide_VisiblePanel_DeactivatesPanel()
         {
@@ -275,9 +242,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies on destroy initialized view unbinds index controls.
-        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsIndexControls()
         {

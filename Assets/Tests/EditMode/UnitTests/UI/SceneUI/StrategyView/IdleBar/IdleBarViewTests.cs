@@ -38,9 +38,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies prefab properties authored view contains compact shelf and circular slot template.
-        /// </summary>
         [Test]
         public void PrefabProperties_AuthoredView_ContainsCompactShelfAndCircularSlotTemplate()
         {
@@ -73,9 +70,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsFalse(overflowText.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies prefab properties idle bar is top level non window feature.
-        /// </summary>
         [Test]
         public void PrefabProperties_IdleBarIsTopLevelNonWindowFeature()
         {
@@ -88,9 +82,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.Less(_view.transform.GetSiblingIndex(), windows.GetSiblingIndex());
         }
 
-        /// <summary>
-        /// Verifies render few entries creates small right aligned single row.
-        /// </summary>
         [Test]
         public void Render_FewEntries_CreatesSmallRightAlignedSingleRow()
         {
@@ -134,9 +125,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(new Color(0.08f, 0.09f, 0.11f, 0.9f), hitArea.color);
         }
 
-        /// <summary>
-        /// Verifies pointer hover expands portrait within fixed slot.
-        /// </summary>
         [Test]
         public void PointerHover_ExpandsPortraitWithinFixedSlot()
         {
@@ -195,9 +183,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsFalse(hoverLabel.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render hovered slot changes entity rebinds hover identity.
-        /// </summary>
         [Test]
         public void Render_HoveredSlotChangesEntity_RebindsHoverIdentity()
         {
@@ -229,9 +214,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
         }
 
-        /// <summary>
-        /// Verifies pointer hover overflowing entries reveals three rows until pointer leaves.
-        /// </summary>
         [Test]
         public void PointerHover_OverflowingEntries_RevealsThreeRowsUntilPointerLeaves()
         {
@@ -307,9 +289,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(1, CountRows(GetVisibleSlots()));
         }
 
-        /// <summary>
-        /// Verifies scroll overflowing entries moves shared scroll area by one row.
-        /// </summary>
         [Test]
         public void Scroll_OverflowingEntries_MovesSharedScrollAreaByOneRow()
         {
@@ -341,9 +320,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
         }
 
-        /// <summary>
-        /// Verifies drag candidate centered portrait preserves crop.
-        /// </summary>
         [Test]
         public void DragCandidate_CenteredPortrait_PreservesCrop()
         {
@@ -368,9 +344,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Object.DestroyImmediate(texture);
         }
 
-        /// <summary>
-        /// Verifies render then click raises selected entity identity.
-        /// </summary>
         [Test]
         public void Render_ThenClick_RaisesSelectedEntityIdentity()
         {
@@ -388,9 +361,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual("Officer", selectedInstanceId);
         }
 
-        /// <summary>
-        /// Verifies render then right click raises context request without selecting.
-        /// </summary>
         [Test]
         public void Render_ThenRightClick_RaisesContextRequestWithoutSelecting()
         {
@@ -423,9 +393,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsTrue(rightClick.used);
         }
 
-        /// <summary>
-        /// Verifies right click open context menu keeps expanded until menu closes.
-        /// </summary>
         [Test]
         public void RightClick_OpenContextMenu_KeepsExpandedUntilMenuCloses()
         {
@@ -451,9 +418,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual("+4", GetVisibleSlots()[4].name);
         }
 
-        /// <summary>
-        /// Verifies render empty entries hides shelf and existing slots.
-        /// </summary>
         [Test]
         public void Render_AlwaysOpen_KeepsExpandedWithoutHover()
         {
@@ -464,9 +428,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(8, GetVisibleSlots().Count);
         }
 
-        /// <summary>
-        /// Verifies that rendering no entries hides the shelf and existing slots.
-        /// </summary>
         [Test]
         public void Render_EmptyEntries_HidesShelfAndExistingSlots()
         {
@@ -482,9 +443,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsEmpty(GetVisibleSlots());
         }
 
-        /// <summary>
-        /// Verifies render hidden presentation deactivates feature root.
-        /// </summary>
         [Test]
         public void Render_HiddenPresentation_DeactivatesFeatureRoot()
         {

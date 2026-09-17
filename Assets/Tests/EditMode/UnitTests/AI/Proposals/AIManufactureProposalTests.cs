@@ -19,9 +19,6 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AIManufactureProposalTests
     {
-        /// <summary>
-        /// Verifies uses defensive reserve with training facility demand returns true.
-        /// </summary>
         [Test]
         public void UsesDefensiveReserve_WithTrainingFacilityDemand_ReturnsTrue()
         {
@@ -38,9 +35,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsTrue(demand.UsesDefensiveReserve);
         }
 
-        /// <summary>
-        /// Verifies get claim keys with building demand claims demand and destination.
-        /// </summary>
         [Test]
         public void GetClaimKeys_WithBuildingDemand_ClaimsDemandAndDestination()
         {
@@ -60,9 +54,6 @@ namespace Rebellion.Tests.AI.Proposals
             CollectionAssert.Contains(claimKeys, "production:building-destination:destination");
         }
 
-        /// <summary>
-        /// Verifies get claim keys with fleet capital ship demand claims capital reinforcement.
-        /// </summary>
         [Test]
         public void GetClaimKeys_WithFleetCapitalShipDemand_ClaimsCapitalReinforcement()
         {
@@ -88,9 +79,6 @@ namespace Rebellion.Tests.AI.Proposals
             CollectionAssert.Contains(claimKeys, "fleet:capital-reinforcement:fleet");
         }
 
-        /// <summary>
-        /// Verifies execute with valid building proposal queues manufacturing.
-        /// </summary>
         [Test]
         public void Execute_WithValidBuildingProposal_QueuesManufacturing()
         {
@@ -127,9 +115,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Building].Count);
         }
 
-        /// <summary>
-        /// Verifies execute with facility batch queues exactly calculated quantity.
-        /// </summary>
         [Test]
         public void Execute_WithFacilityBatch_QueuesExactlyCalculatedQuantity()
         {
@@ -203,9 +188,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(3, planet.GetTotalBuildingTypeCount(BuildingType.Shipyard));
         }
 
-        /// <summary>
-        /// Verifies execute with facility upgrade replaces exactly one facility.
-        /// </summary>
         [Test]
         public void Execute_WithFacilityUpgrade_ReplacesExactlyOneFacility()
         {
@@ -233,9 +215,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(2, planet.GetTotalBuildingTypeCount(BuildingType.Shipyard));
         }
 
-        /// <summary>
-        /// Verifies execute with only one facility does not remove it.
-        /// </summary>
         [Test]
         public void Execute_WithOnlyOneFacility_DoesNotRemoveIt()
         {
@@ -256,9 +235,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Building));
         }
 
-        /// <summary>
-        /// Verifies can execute with facility upgrade on over capacity planet returns false.
-        /// </summary>
         [Test]
         public void CanExecute_WithFacilityUpgradeOnOverCapacityPlanet_ReturnsFalse()
         {
@@ -278,9 +254,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsFalse(canExecute);
         }
 
-        /// <summary>
-        /// Verifies get maintenance cost with facility upgrade returns net increase.
-        /// </summary>
         [Test]
         public void GetMaintenanceCost_WithFacilityUpgrade_ReturnsNetIncrease()
         {
@@ -297,9 +270,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(7, proposal.GetMaintenanceCost());
         }
 
-        /// <summary>
-        /// Verifies execute with planetary shield batch queues complete shield network.
-        /// </summary>
         [Test]
         public void Execute_WithPlanetaryShieldBatch_QueuesCompleteShieldNetwork()
         {
@@ -349,9 +319,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(2, planet.GetTotalBuildingTypeCount(BuildingType.Defense));
         }
 
-        /// <summary>
-        /// Verifies execute with garrison batch queues calculated regiment count.
-        /// </summary>
         [Test]
         public void Execute_WithGarrisonBatch_QueuesCalculatedRegimentCount()
         {
@@ -398,9 +365,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(6, planet.GetAllRegiments().Count);
         }
 
-        /// <summary>
-        /// Verifies execute with full destination does not replace existing facility.
-        /// </summary>
         [Test]
         public void Execute_WithFullDestination_DoesNotReplaceExistingFacility()
         {
@@ -465,9 +429,6 @@ namespace Rebellion.Tests.AI.Proposals
             );
         }
 
-        /// <summary>
-        /// Verifies execute with special forces proposal queues requested unit at planet.
-        /// </summary>
         [Test]
         public void Execute_WithSpecialForcesProposal_QueuesRequestedUnitAtPlanet()
         {
@@ -519,9 +480,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(70, queued.GetBaseRating(OfficerRating.Combat));
         }
 
-        /// <summary>
-        /// Verifies execute with distributed starfighter batch queues exact quantity.
-        /// </summary>
         [Test]
         public void Execute_WithDistributedStarfighterBatch_QueuesExactQuantity()
         {
@@ -582,9 +540,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(3, fleet.GetCurrentStarfighterCount());
         }
 
-        /// <summary>
-        /// Verifies execute with planetary starfighter batch queues exact quantity at planet.
-        /// </summary>
         [Test]
         public void Execute_WithPlanetaryStarfighterBatch_QueuesExactQuantityAtPlanet()
         {
@@ -633,9 +588,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsTrue(planet.GetAllStarfighters().All(item => item.GetParent() == planet));
         }
 
-        /// <summary>
-        /// Verifies can execute with distributed batch for moving fleet returns false.
-        /// </summary>
         [Test]
         public void CanExecute_WithDistributedBatchForMovingFleet_ReturnsFalse()
         {
@@ -683,9 +635,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsFalse(canExecute);
         }
 
-        /// <summary>
-        /// Verifies execute with fleet seed demand beyond minimum creates battle fleet and queues capital ship.
-        /// </summary>
         [Test]
         public void Execute_WithFleetSeedDemandBeyondMinimum_CreatesBattleFleetAndQueuesCapitalShip()
         {
@@ -768,9 +717,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Ship].Count);
         }
 
-        /// <summary>
-        /// Verifies execute with colonization fleet seed demand creates colonization fleet.
-        /// </summary>
         [Test]
         public void Execute_WithColonizationFleetSeedDemand_CreatesColonizationFleet()
         {

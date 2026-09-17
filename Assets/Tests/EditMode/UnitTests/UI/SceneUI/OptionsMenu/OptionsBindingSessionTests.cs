@@ -31,9 +31,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Object.DestroyImmediate(_root);
         }
 
-        /// <summary>
-        /// Verifies that modifier composites include their platform modifier and authored key paths.
-        /// </summary>
         [Test]
         public void CompositeSignatures_UsePlatformModifierAndAuthoredBindingParts()
         {
@@ -60,9 +57,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreNotEqual(decreaseSignature, increaseSignature);
         }
 
-        /// <summary>
-        /// Verifies that an overridden authored composite matches an equivalent default chord.
-        /// </summary>
         [Test]
         public void CompositeSignatures_EquivalentChordOverridesMatch()
         {
@@ -88,9 +82,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
-        /// <summary>
-        /// Verifies that a plain key does not conflict with a modifier chord using the same base key.
-        /// </summary>
         [Test]
         public void BindingSignatures_DistinguishPlainKeyFromModifiedChord()
         {
@@ -111,18 +102,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
-        /// <summary>
-        /// Verifies the project enables Unity's shortcut consumption required by authored chords.
-        /// </summary>
         [Test]
         public void ProjectInputSettings_ShortcutConsumption_IsEnabled()
         {
             Assert.IsTrue(InputSystem.settings.shortcutKeysConsumeInput);
         }
 
-        /// <summary>
-        /// Verifies the dedicated game-menu chord is exposed with its player-facing label.
-        /// </summary>
         [Test]
         public void Rebuild_GlobalBindings_IncludesOpenGameMenu()
         {
@@ -140,9 +125,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual("<Keyboard>/escape", openGameMenu.bindings[chord + 2].effectivePath);
         }
 
-        /// <summary>
-        /// Verifies selection controls expose only the two configured selection behaviors.
-        /// </summary>
         [Test]
         public void Rebuild_SelectionModifiers_ExposeToggleAndRangeOnly()
         {
@@ -156,9 +138,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             CollectionAssert.DoesNotContain(labels, "Alternate Select Modifier");
         }
 
-        /// <summary>
-        /// Verifies the reserved Escape slot cannot enter interactive capture.
-        /// </summary>
         [Test]
         public void BeginRebind_OpenGameMenuPrimary_DoesNotStartCapture()
         {
@@ -174,9 +153,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(-1, session.ListeningRow);
         }
 
-        /// <summary>
-        /// Verifies an unbound secondary slot can begin capture through the temporary listening action.
-        /// </summary>
         [Test]
         public void BeginRebind_UnboundSecondarySlot_StartsInteractiveCapture()
         {
@@ -196,9 +172,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(-1, session.ListeningRow);
         }
 
-        /// <summary>
-        /// Verifies Escape cancels binding capture without leaking into the global menu command.
-        /// </summary>
         [Test]
         public void BeginRebind_Escape_CancelsCaptureWithoutPerformingGlobalShortcut()
         {
@@ -243,9 +216,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             }
         }
 
-        /// <summary>
-        /// Verifies restoring one row leaves overrides on other actions intact.
-        /// </summary>
         [Test]
         public void RestoreDefault_OneBinding_RestoresOnlySelectedAction()
         {
@@ -272,9 +242,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
-        /// <summary>
-        /// Verifies restoring all bindings removes overrides throughout the bindable maps.
-        /// </summary>
         [Test]
         public void RestoreAllDefaults_MultipleBindings_RemovesEveryOverride()
         {
@@ -295,9 +262,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
-        /// <summary>
-        /// Verifies a modifier chord consumes its base key instead of firing the plain shortcut.
-        /// </summary>
         [Test]
         public void AuthoredChord_ModifierHeld_ConsumesPlainBaseKeyAction()
         {

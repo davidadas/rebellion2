@@ -14,9 +14,6 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public class AIOrbitalEngagementPlannerTests
     {
-        /// <summary>
-        /// Verifies plan with nearby weaker known enemy fleet adds engagement proposal.
-        /// </summary>
         [Test]
         public void Plan_WithNearbyWeakerKnownEnemyFleet_AddsEngagementProposal()
         {
@@ -35,9 +32,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(scenario.Origin, proposal.OriginPlanet);
         }
 
-        /// <summary>
-        /// Verifies plan with stronger known enemy fleet does not add engagement proposal.
-        /// </summary>
         [Test]
         public void Plan_WithStrongerKnownEnemyFleet_DoesNotAddEngagementProposal()
         {
@@ -54,9 +48,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(hasEngagement);
         }
 
-        /// <summary>
-        /// Verifies plan with unobserved enemy fleet does not add engagement proposal.
-        /// </summary>
         [Test]
         public void Plan_WithUnobservedEnemyFleet_DoesNotAddEngagementProposal()
         {
@@ -74,9 +65,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(hasEngagement);
         }
 
-        /// <summary>
-        /// Verifies plan with another offensive order adds new engagement proposal.
-        /// </summary>
         [Test]
         public void Plan_WithAnotherOffensiveOrder_AddsNewEngagementProposal()
         {
@@ -109,9 +97,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(hasNewEngagement);
         }
 
-        /// <summary>
-        /// Verifies plan with missing ordered target adds clear order proposal.
-        /// </summary>
         [Test]
         public void Plan_WithMissingOrderedTarget_AddsClearOrderProposal()
         {

@@ -10,9 +10,6 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class GameResultProcessorTests
     {
-        /// <summary>
-        /// Verifies process matching results invokes only matching handlers in registration order.
-        /// </summary>
         [Test]
         public void Process_MatchingResults_InvokesOnlyMatchingHandlersInRegistrationOrder()
         {
@@ -48,9 +45,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, unrelatedCalls);
         }
 
-        /// <summary>
-        /// Verifies process reaction results processes breadth first waves in registration order.
-        /// </summary>
         [Test]
         public void Process_ReactionResults_ProcessesBreadthFirstWavesInRegistrationOrder()
         {
@@ -113,9 +107,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies process observers receive matching results after all reaction waves.
-        /// </summary>
         [Test]
         public void Process_Observers_ReceiveMatchingResultsAfterAllReactionWaves()
         {

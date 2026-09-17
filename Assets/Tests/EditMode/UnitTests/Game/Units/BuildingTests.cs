@@ -9,9 +9,6 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class BuildingTests
     {
-        /// <summary>
-        /// Verifies construction info set values returns correct values.
-        /// </summary>
         [Test]
         public void ConstructionInfo_SetValues_ReturnsCorrectValues()
         {
@@ -31,9 +28,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(24, building.ResearchDifficulty);
         }
 
-        /// <summary>
-        /// Verifies get building type valid building type returns correct type.
-        /// </summary>
         [Test]
         public void GetBuildingType_ValidBuildingType_ReturnsCorrectType()
         {
@@ -42,9 +36,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(BuildingType.Mine, building.GetBuildingType());
         }
 
-        /// <summary>
-        /// Verifies set manufacturing status valid status updates successfully.
-        /// </summary>
         [Test]
         public void SetManufacturingStatus_ValidStatus_UpdatesSuccessfully()
         {
@@ -55,9 +46,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
         }
 
-        /// <summary>
-        /// Verifies set manufacturing status invalid transition throws exception.
-        /// </summary>
         [Test]
         public void SetManufacturingStatus_InvalidTransition_ThrowsException()
         {
@@ -68,9 +56,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies set manufacturing status building to complete updates successfully.
-        /// </summary>
         [Test]
         public void SetManufacturingStatus_BuildingToComplete_UpdatesSuccessfully()
         {
@@ -81,9 +66,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
         }
 
-        /// <summary>
-        /// Verifies set manufacturing status building to delivering updates successfully.
-        /// </summary>
         [Test]
         public void SetManufacturingStatus_BuildingToDelivering_UpdatesSuccessfully()
         {
@@ -94,9 +76,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingStatus.Delivering, building.ManufacturingStatus);
         }
 
-        /// <summary>
-        /// Verifies set manufacturing status delivering to complete updates successfully.
-        /// </summary>
         [Test]
         public void SetManufacturingStatus_DeliveringToComplete_UpdatesSuccessfully()
         {
@@ -110,9 +89,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
         }
 
-        /// <summary>
-        /// Verifies set manufacturing status delivering to building throws exception.
-        /// </summary>
         [Test]
         public void SetManufacturingStatus_DeliveringToBuilding_ThrowsException()
         {
@@ -126,9 +102,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies set manufacturing status complete to delivering throws exception.
-        /// </summary>
         [Test]
         public void SetManufacturingStatus_CompleteToDelivering_ThrowsException()
         {
@@ -139,9 +112,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies set manufacturing status complete to complete updates successfully.
-        /// </summary>
         [Test]
         public void SetManufacturingStatus_CompleteToComplete_UpdatesSuccessfully()
         {
@@ -152,9 +122,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
         }
 
-        /// <summary>
-        /// Verifies set manufacturing status building to building updates successfully.
-        /// </summary>
         [Test]
         public void SetManufacturingStatus_BuildingToBuilding_UpdatesSuccessfully()
         {
@@ -165,9 +132,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingStatus.Building, building.ManufacturingStatus);
         }
 
-        /// <summary>
-        /// Verifies is movable idle status returns true.
-        /// </summary>
         [Test]
         public void IsMovable_IdleStatus_ReturnsTrue()
         {
@@ -176,9 +140,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(building.IsMovable());
         }
 
-        /// <summary>
-        /// Verifies is movable in transit status returns false.
-        /// </summary>
         [Test]
         public void IsMovable_InTransitStatus_ReturnsFalse()
         {
@@ -187,9 +148,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(building.IsMovable());
         }
 
-        /// <summary>
-        /// Verifies get process rate valid process rate returns correct value.
-        /// </summary>
         [Test]
         public void GetProcessRate_ValidProcessRate_ReturnsCorrectValue()
         {
@@ -198,9 +156,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(25, building.GetProcessRate());
         }
 
-        /// <summary>
-        /// Verifies can upgrade to authored upgrade returns true.
-        /// </summary>
         [Test]
         public void CanUpgradeTo_AuthoredUpgrade_ReturnsTrue()
         {
@@ -210,9 +165,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(building.CanUpgradeTo(upgrade));
         }
 
-        /// <summary>
-        /// Verifies can upgrade to unlisted building returns false.
-        /// </summary>
         [Test]
         public void CanUpgradeTo_UnlistedBuilding_ReturnsFalse()
         {
@@ -222,9 +174,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(building.CanUpgradeTo(upgrade));
         }
 
-        /// <summary>
-        /// Verifies is defense facility defense building returns true.
-        /// </summary>
         [Test]
         public void IsDefenseFacility_DefenseBuilding_ReturnsTrue()
         {
@@ -233,9 +182,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(building.IsDefenseFacility());
         }
 
-        /// <summary>
-        /// Verifies is defense facility non defense building returns false.
-        /// </summary>
         [Test]
         public void IsDefenseFacility_NonDefenseBuilding_ReturnsFalse()
         {
@@ -244,9 +190,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(building.IsDefenseFacility());
         }
 
-        /// <summary>
-        /// Verifies is planetary shield generator positive shield strength returns true.
-        /// </summary>
         [Test]
         public void IsPlanetaryShieldGenerator_PositiveShieldStrength_ReturnsTrue()
         {
@@ -259,9 +202,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(building.IsPlanetaryShieldGenerator());
         }
 
-        /// <summary>
-        /// Verifies is planetary shield generator weapon building returns false.
-        /// </summary>
         [Test]
         public void IsPlanetaryShieldGenerator_WeaponBuilding_ReturnsFalse()
         {
@@ -274,9 +214,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(building.IsPlanetaryShieldGenerator());
         }
 
-        /// <summary>
-        /// Verifies is unit shield generator protected unit type returns true.
-        /// </summary>
         [Test]
         public void IsUnitShieldGenerator_ProtectedUnitType_ReturnsTrue()
         {
@@ -285,9 +222,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(building.IsUnitShieldGenerator());
         }
 
-        /// <summary>
-        /// Verifies is shield generator no shield capability returns false.
-        /// </summary>
         [Test]
         public void IsShieldGenerator_NoShieldCapability_ReturnsFalse()
         {
@@ -296,9 +230,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(building.IsShieldGenerator());
         }
 
-        /// <summary>
-        /// Verifies get production type valid production type returns correct type.
-        /// </summary>
         [Test]
         public void GetProductionType_ValidProductionType_ReturnsCorrectType()
         {
@@ -307,9 +238,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingType.Building, building.GetProductionType());
         }
 
-        /// <summary>
-        /// Verifies get manufacturing type always returns building.
-        /// </summary>
         [Test]
         public void GetManufacturingType_Always_ReturnsBuilding()
         {
@@ -318,9 +246,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingType.Building, building.GetManufacturingType());
         }
 
-        /// <summary>
-        /// Verifies get manufacturing status valid status returns correct status.
-        /// </summary>
         [Test]
         public void GetManufacturingStatus_ValidStatus_ReturnsCorrectStatus()
         {
@@ -329,9 +254,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingStatus.Complete, building.GetManufacturingStatus());
         }
 
-        /// <summary>
-        /// Verifies bombardment set value returns correct value.
-        /// </summary>
         [Test]
         public void Bombardment_SetValue_ReturnsCorrectValue()
         {
@@ -340,9 +262,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(10, building.Bombardment);
         }
 
-        /// <summary>
-        /// Verifies weapon strength set value returns correct value.
-        /// </summary>
         [Test]
         public void WeaponStrength_SetValue_ReturnsCorrectValue()
         {
@@ -351,9 +270,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(20, building.WeaponStrength);
         }
 
-        /// <summary>
-        /// Verifies shield strength set value returns correct value.
-        /// </summary>
         [Test]
         public void ShieldStrength_SetValue_ReturnsCorrectValue()
         {
@@ -362,9 +278,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(30, building.ShieldStrength);
         }
 
-        /// <summary>
-        /// Verifies manufacturing progress zero value returns zero.
-        /// </summary>
         [Test]
         public void ManufacturingProgress_ZeroValue_ReturnsZero()
         {
@@ -373,9 +286,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, building.ManufacturingProgress);
         }
 
-        /// <summary>
-        /// Verifies manufacturing progress max value returns max value.
-        /// </summary>
         [Test]
         public void ManufacturingProgress_MaxValue_ReturnsMaxValue()
         {
@@ -384,9 +294,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(int.MaxValue, building.ManufacturingProgress);
         }
 
-        /// <summary>
-        /// Verifies manufacturing progress negative value returns negative value.
-        /// </summary>
         [Test]
         public void ManufacturingProgress_NegativeValue_ReturnsNegativeValue()
         {
@@ -395,9 +302,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(-10, building.ManufacturingProgress);
         }
 
-        /// <summary>
-        /// Verifies manufacturing progress partial progress returns correct value.
-        /// </summary>
         [Test]
         public void ManufacturingProgress_PartialProgress_ReturnsCorrectValue()
         {
@@ -406,9 +310,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(75, building.ManufacturingProgress);
         }
 
-        /// <summary>
-        /// Verifies serialize and deserialize populated building retains properties.
-        /// </summary>
         [Test]
         public void SerializeAndDeserialize_PopulatedBuilding_RetainsProperties()
         {

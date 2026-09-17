@@ -40,18 +40,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render data applies texture text and visibility.
-        /// </summary>
         [Test]
         public void Render_Data_AppliesTextureTextAndVisibility()
         {

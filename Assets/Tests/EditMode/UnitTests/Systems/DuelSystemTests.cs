@@ -16,9 +16,6 @@ namespace Rebellion.Tests.Sectors
     [TestFixture]
     public class DuelSystemTests
     {
-        /// <summary>
-        /// Verifies handle results failed avoidance captures encountered officer.
-        /// </summary>
         [Test]
         public void HandleResults_FailedAvoidance_CapturesEncounteredOfficer()
         {
@@ -45,9 +42,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(results.OfType<DuelResult>().Single().EncounteredOfficerCaptured);
         }
 
-        /// <summary>
-        /// Verifies handle results injuries reward the other officers combat.
-        /// </summary>
         [Test]
         public void HandleResults_Injuries_RewardTheOtherOfficersCombat()
         {
@@ -69,9 +63,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(2, results.OfType<OfficerInjuredResult>().Count());
         }
 
-        /// <summary>
-        /// Verifies handle results officers on different planets rejects duel.
-        /// </summary>
         [Test]
         public void HandleResults_OfficersOnDifferentPlanets_RejectsDuel()
         {

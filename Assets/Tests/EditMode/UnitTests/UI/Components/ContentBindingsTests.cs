@@ -31,9 +31,6 @@ public sealed class ContentBindingsTests
         _createdObjects.Clear();
     }
 
-    /// <summary>
-    /// Verifies apply stripped raw image texture restores from content.
-    /// </summary>
     [Test]
     public void Apply_StrippedRawImageTexture_RestoresFromContent()
     {
@@ -50,9 +47,6 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(expectedTexture, rawImage.texture);
     }
 
-    /// <summary>
-    /// Verifies apply stripped image sprite restores from content.
-    /// </summary>
     [Test]
     public void Apply_StrippedImageSprite_RestoresFromContent()
     {
@@ -69,9 +63,6 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(expectedSprite, image.sprite);
     }
 
-    /// <summary>
-    /// Verifies a sprite binding forwards its explicit nine-slice border to the content source.
-    /// </summary>
     [Test]
     public void Apply_BorderedImageSprite_RequestsExplicitBorder()
     {
@@ -91,9 +82,6 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(expectedBorder, contentAssets.LastSpriteBorder);
     }
 
-    /// <summary>
-    /// Verifies apply stripped press visual restores released texture.
-    /// </summary>
     [Test]
     public void Apply_StrippedPressVisual_RestoresReleasedTexture()
     {
@@ -118,9 +106,6 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(releasedTexture, rawImage.texture);
     }
 
-    /// <summary>
-    /// Verifies apply stripped press visual restores pressed texture.
-    /// </summary>
     [Test]
     public void Apply_StrippedPressVisual_RestoresPressedTexture()
     {
@@ -147,9 +132,6 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(pressedTexture, rawImage.texture);
     }
 
-    /// <summary>
-    /// Verifies apply inactive descendant binding restores from content.
-    /// </summary>
     [Test]
     public void Apply_InactiveDescendantBinding_RestoresFromContent()
     {
@@ -169,9 +151,6 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(expectedTexture, rawImage.texture);
     }
 
-    /// <summary>
-    /// Verifies apply inactive initializable initializes from content.
-    /// </summary>
     [Test]
     public void Apply_InactiveInitializable_InitializesFromContent()
     {
@@ -186,9 +165,6 @@ public sealed class ContentBindingsTests
         Assert.AreSame(contentAssets, initializable.ContentAssets);
     }
 
-    /// <summary>
-    /// Verifies apply unresolvable address throws with address in message.
-    /// </summary>
     [Test]
     public void Apply_UnresolvableAddress_ThrowsWithAddressInMessage()
     {

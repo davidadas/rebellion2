@@ -54,9 +54,6 @@ namespace Rebellion.Tests.UI.Components
             Object.DestroyImmediate(_control);
         }
 
-        /// <summary>
-        /// Verifies set interactive textures normal texture enables image and raycast target.
-        /// </summary>
         [Test]
         public void SetInteractiveTextures_NormalTexture_EnablesImageAndRaycastTarget()
         {
@@ -71,9 +68,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(_control.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies set interactive textures null normal texture disables control.
-        /// </summary>
         [Test]
         public void SetInteractiveTextures_NullNormalTexture_DisablesControl()
         {
@@ -85,9 +79,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(_control.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies on pointer down interactive control uses pressed texture and emits press.
-        /// </summary>
         [Test]
         public void OnPointerDown_InteractiveControl_UsesPressedTextureAndEmitsPress()
         {
@@ -103,9 +94,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(1, pressedCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer down already pressed does not emit another press.
-        /// </summary>
         [Test]
         public void OnPointerDown_AlreadyPressed_DoesNotEmitAnotherPress()
         {
@@ -123,9 +111,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(1, pressedCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer down disabled button preserves normal texture.
-        /// </summary>
         [Test]
         public void OnPointerDown_DisabledButton_PreservesNormalTexture()
         {
@@ -140,9 +125,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, pressedCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer down right button preserves normal texture without emitting press.
-        /// </summary>
         [Test]
         public void OnPointerDown_RightButton_PreservesNormalTextureWithoutEmittingPress()
         {
@@ -158,9 +140,6 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, pressedCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer up after pointer down restores normal texture.
-        /// </summary>
         [Test]
         public void OnPointerUp_AfterPointerDown_RestoresNormalTexture()
         {

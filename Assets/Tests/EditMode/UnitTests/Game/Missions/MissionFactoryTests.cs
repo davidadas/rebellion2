@@ -15,9 +15,6 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class MissionFactoryTests
     {
-        /// <summary>
-        /// Verifies try create mission valid sabotage target returns mission with matching config key.
-        /// </summary>
         [Test]
         public void TryCreateMission_ValidSabotageTarget_ReturnsMissionWithMatchingConfigKey()
         {
@@ -40,9 +37,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(MissionTypeIDs.Sabotage, mission.ConfigKey);
         }
 
-        /// <summary>
-        /// Verifies try create mission sabotage target under construction returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_SabotageTargetUnderConstruction_ReturnsFalse()
         {
@@ -65,9 +59,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission sabotage target carried by moving fleet returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_SabotageTargetCarriedByMovingFleet_ReturnsFalse()
         {
@@ -105,9 +96,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission disallowed mission type id returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_DisallowedMissionTypeID_ReturnsFalse()
         {
@@ -132,9 +120,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission unknown owner returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_UnknownOwner_ReturnsFalse()
         {
@@ -156,9 +141,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission null game returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_NullGame_ReturnsFalse()
         {
@@ -181,9 +163,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission mixed primary participant owners returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_MixedPrimaryParticipantOwners_ReturnsFalse()
         {
@@ -205,9 +184,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission mixed decoy participant owner returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_MixedDecoyParticipantOwner_ReturnsFalse()
         {
@@ -229,9 +205,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission injured primary officer returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_InjuredPrimaryOfficer_ReturnsFalse()
         {
@@ -254,9 +227,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission injured decoy officer returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_InjuredDecoyOfficer_ReturnsFalse()
         {
@@ -280,9 +250,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission duplicate primary participant returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_DuplicatePrimaryParticipant_ReturnsFalse()
         {
@@ -301,9 +268,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(factory.TryCreateMission(context, out _));
         }
 
-        /// <summary>
-        /// Verifies try create mission participant used as primary and decoy returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_ParticipantUsedAsPrimaryAndDecoy_ReturnsFalse()
         {
@@ -322,9 +286,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(factory.TryCreateMission(context, out _));
         }
 
-        /// <summary>
-        /// Verifies try create mission participant on existing mission returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_ParticipantOnExistingMission_ReturnsFalse()
         {
@@ -354,9 +315,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission participant in transit returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_ParticipantInTransit_ReturnsFalse()
         {
@@ -379,9 +337,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission participant aboard moving fleet returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_ParticipantAboardMovingFleet_ReturnsFalse()
         {
@@ -407,9 +362,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission null optional fields does not mutate context.
-        /// </summary>
         [Test]
         public void TryCreateMission_NullOptionalFields_DoesNotMutateContext()
         {
@@ -433,9 +385,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(context.DecoyParticipants);
         }
 
-        /// <summary>
-        /// Verifies try create mission recruitment with unrecruited returns mission with matching config key.
-        /// </summary>
         [Test]
         public void TryCreateMission_RecruitmentWithUnrecruited_ReturnsMissionWithMatchingConfigKey()
         {
@@ -452,9 +401,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(MissionTypeIDs.Recruitment, mission.ConfigKey);
         }
 
-        /// <summary>
-        /// Verifies try create mission recruitment no unrecruited returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_RecruitmentNoUnrecruited_ReturnsFalse()
         {
@@ -469,9 +415,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies try create mission research with discipline returns mission with matching discipline.
-        /// </summary>
         [Test]
         public void TryCreateMission_ResearchWithDiscipline_ReturnsMissionWithMatchingDiscipline()
         {
@@ -496,9 +439,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(ResearchDiscipline.ShipDesign, ((ResearchMission)mission).Discipline);
         }
 
-        /// <summary>
-        /// Verifies try create mission research without discipline returns false.
-        /// </summary>
         [Test]
         public void TryCreateMission_ResearchWithoutDiscipline_ReturnsFalse()
         {
@@ -512,9 +452,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(created);
         }
 
-        /// <summary>
-        /// Verifies get available mission options multiple options returns espionage last.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_MultipleOptions_ReturnsEspionageLast()
         {
@@ -528,9 +465,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(MissionTypeIDs.Espionage, options.Last().MissionTypeID);
         }
 
-        /// <summary>
-        /// Verifies get available mission options capital ship target returns only entity missions.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_CapitalShipTarget_ReturnsOnlyEntityMissions()
         {
@@ -559,9 +493,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(options.All(option => option.TargetKind != MissionTargetKind.Planet));
         }
 
-        /// <summary>
-        /// Verifies get available mission options sabotage unit targets return sabotage.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_SabotageUnitTargets_ReturnSabotage()
         {
@@ -597,9 +528,6 @@ namespace Rebellion.Tests.Game.Missions
             }
         }
 
-        /// <summary>
-        /// Verifies get available mission options enemy officer target returns hostile officer missions.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_EnemyOfficerTarget_ReturnsHostileOfficerMissions()
         {
@@ -632,9 +560,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies get available mission options fleet target returns no missions.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_FleetTarget_ReturnsNoMissions()
         {
@@ -655,9 +580,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsEmpty(options);
         }
 
-        /// <summary>
-        /// Verifies get available mission options planet destroying capital ship target excludes sabotage.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_PlanetDestroyingCapitalShipTarget_ExcludesSabotage()
         {
@@ -686,9 +608,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
         }
 
-        /// <summary>
-        /// Verifies get available mission options planet target returns only planet missions.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_PlanetTarget_ReturnsOnlyPlanetMissions()
         {
@@ -702,9 +621,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(options.All(option => option.TargetKind == MissionTargetKind.Planet));
         }
 
-        /// <summary>
-        /// Verifies get available mission options disallowed entity mission excludes mission.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_DisallowedEntityMission_ExcludesMission()
         {
@@ -733,9 +649,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
         }
 
-        /// <summary>
-        /// Verifies get available mission options recruitment and diplomacy lists recruitment first.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_RecruitmentAndDiplomacy_ListsRecruitmentFirst()
         {
@@ -757,9 +670,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.Greater(diplomacyIndex, recruitmentIndex);
         }
 
-        /// <summary>
-        /// Verifies get available mission options with research and diplomacy lists research first.
-        /// </summary>
         [Test]
         public void GetAvailableMissionOptions_WithResearchAndDiplomacy_ListsResearchFirst()
         {

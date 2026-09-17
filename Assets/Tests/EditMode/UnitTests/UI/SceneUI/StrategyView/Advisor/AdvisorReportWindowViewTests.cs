@@ -45,18 +45,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render galaxy overview applies frame and overview rows.
-        /// </summary>
         [Test]
         public void Render_GalaxyOverview_AppliesFrameAndOverviewRows()
         {
@@ -87,9 +81,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.IsFalse(FindRowImage(rows[1]).gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render objectives uses objective template and hides overview rows.
-        /// </summary>
         [Test]
         public void Render_Objectives_UsesObjectiveTemplateAndHidesOverviewRows()
         {
@@ -127,9 +118,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             );
         }
 
-        /// <summary>
-        /// Verifies render shorter same mode reuses rows and hides unused rows.
-        /// </summary>
         [Test]
         public void Render_ShorterSameMode_ReusesRowsAndHidesUnusedRows()
         {
@@ -160,9 +148,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.IsFalse(originalRows[1].gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render empty rows hides cached rows.
-        /// </summary>
         [Test]
         public void Render_EmptyRows_HidesCachedRows()
         {
@@ -187,9 +172,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreEqual(0, FindActiveRows().Length);
         }
 
-        /// <summary>
-        /// Verifies render invalid mode throws argument out of range exception.
-        /// </summary>
         [Test]
         public void Render_InvalidMode_ThrowsArgumentOutOfRangeException()
         {
@@ -202,9 +184,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.Throws<ArgumentOutOfRangeException>(() => _view.Render(data));
         }
 
-        /// <summary>
-        /// Verifies request close subscribed handler emits semantic request.
-        /// </summary>
         [Test]
         public void RequestClose_SubscribedHandler_EmitsSemanticRequest()
         {
@@ -216,9 +195,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreSame(_view, requestedView);
         }
 
-        /// <summary>
-        /// Verifies authored close button click emits semantic request.
-        /// </summary>
         [Test]
         public void AuthoredCloseButton_Click_EmitsSemanticRequest()
         {
@@ -230,9 +206,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreEqual(1, closeCount);
         }
 
-        /// <summary>
-        /// Verifies on destroy initialized view unbinds close button and raises destroyed event.
-        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsCloseButtonAndRaisesDestroyedEvent()
         {

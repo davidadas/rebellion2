@@ -12,9 +12,6 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class HeadquartersSystemTests
     {
-        /// <summary>
-        /// Verifies try relocate mobile headquarters departs and clears planet marker.
-        /// </summary>
         [Test]
         public void TryRelocate_MobileHeadquarters_DepartsAndClearsPlanetMarker()
         {
@@ -28,9 +25,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(faction.HQInstanceID);
         }
 
-        /// <summary>
-        /// Verifies try relocate fixed headquarters is rejected.
-        /// </summary>
         [Test]
         public void TryRelocate_FixedHeadquarters_IsRejected()
         {
@@ -42,9 +36,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
         }
 
-        /// <summary>
-        /// Verifies handle results headquarters arrival assigns destination.
-        /// </summary>
         [Test]
         public void HandleResults_HeadquartersArrival_AssignsDestination()
         {
@@ -64,9 +55,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(destination.InstanceID, faction.HQInstanceID);
         }
 
-        /// <summary>
-        /// Verifies handle results fixed headquarters captured clears marker and preserves location.
-        /// </summary>
         [Test]
         public void HandleResults_FixedHeadquartersCaptured_ClearsMarkerAndPreservesLocation()
         {
@@ -96,9 +84,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(attacker, captured.Attacker);
         }
 
-        /// <summary>
-        /// Verifies handle results fixed headquarters recaptured restores marker.
-        /// </summary>
         [Test]
         public void HandleResults_FixedHeadquartersRecaptured_RestoresMarker()
         {
@@ -125,9 +110,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results);
         }
 
-        /// <summary>
-        /// Verifies handle results hostile planet capture destroys mobile headquarters.
-        /// </summary>
         [Test]
         public void HandleResults_HostilePlanetCapture_DestroysMobileHeadquarters()
         {

@@ -37,9 +37,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies constructor null scroll area throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullScrollArea_ThrowsArgumentNullException()
         {
@@ -54,9 +51,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             );
         }
 
-        /// <summary>
-        /// Verifies constructor null row template throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullRowTemplate_ThrowsArgumentNullException()
         {
@@ -71,9 +65,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             );
         }
 
-        /// <summary>
-        /// Verifies render rows creates named views with stable indexes and geometry.
-        /// </summary>
         [Test]
         public void Render_Rows_CreatesNamedViewsWithStableIndexesAndGeometry()
         {
@@ -98,9 +89,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             );
         }
 
-        /// <summary>
-        /// Verifies render shorter collection reuses first row and hides remaining rows.
-        /// </summary>
         [Test]
         public void Render_ShorterCollection_ReusesFirstRowAndHidesRemainingRows()
         {
@@ -135,9 +123,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsFalse(initialViews[1].gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render null collection hides cached rows.
-        /// </summary>
         [Test]
         public void Render_NullCollection_HidesCachedRows()
         {
@@ -160,9 +145,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsFalse(row.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies hide rendered rows hides every cached view.
-        /// </summary>
         [Test]
         public void Hide_RenderedRows_HidesEveryCachedView()
         {
@@ -185,9 +167,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsFalse(row.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies clear rendered row detaches selection callback.
-        /// </summary>
         [Test]
         public void Clear_RenderedRow_DetachesSelectionCallback()
         {

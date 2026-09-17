@@ -11,9 +11,6 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AIMissionProposalTests
     {
-        /// <summary>
-        /// Verifies get claim keys with recruitment adds faction recruitment claim.
-        /// </summary>
         [Test]
         public void GetClaimKeys_WithRecruitment_AddsFactionRecruitmentClaim()
         {
@@ -31,9 +28,6 @@ namespace Rebellion.Tests.AI.Proposals
             CollectionAssert.Contains(claimKeys, "mission:recruitment:empire");
         }
 
-        /// <summary>
-        /// Verifies can select with captured officer returns false.
-        /// </summary>
         [Test]
         public void CanSelect_WithCapturedOfficer_ReturnsFalse()
         {
@@ -51,9 +45,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsFalse(canSelect);
         }
 
-        /// <summary>
-        /// Verifies can select with participant in moving fleet returns false.
-        /// </summary>
         [Test]
         public void CanSelect_WithParticipantInMovingFleet_ReturnsFalse()
         {
@@ -81,9 +72,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsFalse(canSelect);
         }
 
-        /// <summary>
-        /// Verifies get claim keys with participant team claims every participant.
-        /// </summary>
         [Test]
         public void GetClaimKeys_WithParticipantTeam_ClaimsEveryParticipant()
         {
@@ -102,9 +90,6 @@ namespace Rebellion.Tests.AI.Proposals
             CollectionAssert.Contains(claimKeys, "mission:actor:student");
         }
 
-        /// <summary>
-        /// Verifies get claim keys with decoy claims main and decoy participants.
-        /// </summary>
         [Test]
         public void GetClaimKeys_WithDecoy_ClaimsMainAndDecoyParticipants()
         {
@@ -124,9 +109,6 @@ namespace Rebellion.Tests.AI.Proposals
             CollectionAssert.Contains(claimKeys, "mission:actor:decoy");
         }
 
-        /// <summary>
-        /// Verifies get claim keys with hostile mission does not claim faction wide hostile slot.
-        /// </summary>
         [Test]
         public void GetClaimKeys_WithHostileMission_DoesNotClaimFactionWideHostileSlot()
         {

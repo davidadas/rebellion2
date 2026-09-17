@@ -13,9 +13,6 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public class GameEventSelectorTests
     {
-        /// <summary>
-        /// Verifies select planets matching instance id returns planet.
-        /// </summary>
         [Test]
         public void SelectPlanets_MatchingInstanceID_ReturnsPlanet()
         {
@@ -27,9 +24,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(planet, selected);
         }
 
-        /// <summary>
-        /// Verifies select planets destroyed planet returns nothing.
-        /// </summary>
         [Test]
         public void SelectPlanets_DestroyedPlanet_ReturnsNothing()
         {
@@ -42,9 +36,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(any);
         }
 
-        /// <summary>
-        /// Verifies select planets no filters returns every surviving planet.
-        /// </summary>
         [Test]
         public void SelectPlanets_NoFilters_ReturnsEverySurvivingPlanet()
         {
@@ -58,9 +49,6 @@ namespace Rebellion.Tests.Game.Events
             CollectionAssert.AreEqual(new[] { firstPlanet, secondPlanet }, selected);
         }
 
-        /// <summary>
-        /// Verifies select random filtered planet set returns requested count.
-        /// </summary>
         [Test]
         public void SelectRandom_FilteredPlanetSet_ReturnsRequestedCount()
         {
@@ -84,9 +72,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(rimPlanet, selected);
         }
 
-        /// <summary>
-        /// Verifies select manufacturing orders matching planet returns queued product.
-        /// </summary>
         [Test]
         public void SelectManufacturingOrders_MatchingPlanet_ReturnsQueuedProduct()
         {
@@ -116,9 +101,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(building, selected);
         }
 
-        /// <summary>
-        /// Verifies select capital ships include inactive returns capital ship.
-        /// </summary>
         [Test]
         public void SelectCapitalShips_IncludeInactive_ReturnsCapitalShip()
         {
@@ -143,9 +125,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(ship, selected);
         }
 
-        /// <summary>
-        /// Verifies select officers include inactive at current planet returns officer.
-        /// </summary>
         [Test]
         public void SelectOfficers_IncludeInactiveAtCurrentPlanet_ReturnsOfficer()
         {
@@ -167,9 +146,6 @@ namespace Rebellion.Tests.Game.Events
             CollectionAssert.AreEqual(new ISceneNode[] { officer }, selected);
         }
 
-        /// <summary>
-        /// Verifies select binding stale reference with registered instance id returns canonical node.
-        /// </summary>
         [Test]
         public void SelectBinding_StaleReferenceWithRegisteredInstanceID_ReturnsCanonicalNode()
         {
@@ -191,9 +167,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(canonical, selected);
         }
 
-        /// <summary>
-        /// Verifies select binding inactive registered node returns canonical node.
-        /// </summary>
         [Test]
         public void SelectBinding_InactiveRegisteredNode_ReturnsCanonicalNode()
         {
@@ -215,9 +188,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(officer, selected);
         }
 
-        /// <summary>
-        /// Verifies select previous location inactive unit returns previous location.
-        /// </summary>
         [Test]
         public void SelectPreviousLocation_InactiveUnit_ReturnsPreviousLocation()
         {

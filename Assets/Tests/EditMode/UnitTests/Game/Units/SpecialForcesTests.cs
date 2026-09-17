@@ -38,9 +38,6 @@ namespace Rebellion.Tests.Game.Units
             _specialForces.Ratings[OfficerRating.Leadership] = 15;
         }
 
-        /// <summary>
-        /// Verifies get manufacturing type for special forces returns troop.
-        /// </summary>
         [Test]
         public void GetManufacturingType_ForSpecialForces_ReturnsTroop()
         {
@@ -49,9 +46,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingType.Troop, type, "SpecialForces should be of type Troop");
         }
 
-        /// <summary>
-        /// Verifies set base rating valid rating sets value.
-        /// </summary>
         [Test]
         public void SetBaseRating_ValidRating_SetsValue()
         {
@@ -60,9 +54,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(99, _specialForces.GetBaseRating(OfficerRating.Combat));
         }
 
-        /// <summary>
-        /// Verifies is on mission when assigned to mission returns true.
-        /// </summary>
         [Test]
         public void IsOnMission_WhenAssignedToMission_ReturnsTrue()
         {
@@ -74,9 +65,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(isOnMission, "SpecialForces should be on mission when parent is Mission");
         }
 
-        /// <summary>
-        /// Verifies is on mission when not assigned to mission returns false.
-        /// </summary>
         [Test]
         public void IsOnMission_WhenNotAssignedToMission_ReturnsFalse()
         {
@@ -88,9 +76,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies is movable when in transit returns false.
-        /// </summary>
         [Test]
         public void IsMovable_WhenInTransit_ReturnsFalse()
         {
@@ -101,9 +86,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(isMovable, "SpecialForces should not be movable when in transit");
         }
 
-        /// <summary>
-        /// Verifies is movable when idle returns true.
-        /// </summary>
         [Test]
         public void IsMovable_WhenIdle_ReturnsTrue()
         {
@@ -114,9 +96,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(isMovable, "SpecialForces should be movable when idle");
         }
 
-        /// <summary>
-        /// Verifies is movable when on mission returns false.
-        /// </summary>
         [Test]
         public void IsMovable_WhenOnMission_ReturnsFalse()
         {
@@ -129,9 +108,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(isMovable, "SpecialForces should not be movable when on mission");
         }
 
-        /// <summary>
-        /// Verifies get base rating diplomacy returns correct value.
-        /// </summary>
         [Test]
         public void GetBaseRating_Diplomacy_ReturnsCorrectValue()
         {
@@ -140,9 +116,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(10, ratingValue, "Diplomacy rating should return the correct value");
         }
 
-        /// <summary>
-        /// Verifies get base rating espionage returns correct value.
-        /// </summary>
         [Test]
         public void GetBaseRating_Espionage_ReturnsCorrectValue()
         {
@@ -151,9 +124,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(20, ratingValue, "Espionage rating should return the correct value");
         }
 
-        /// <summary>
-        /// Verifies get base rating combat returns correct value.
-        /// </summary>
         [Test]
         public void GetBaseRating_Combat_ReturnsCorrectValue()
         {
@@ -162,9 +132,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(30, ratingValue, "Combat rating should return the correct value");
         }
 
-        /// <summary>
-        /// Verifies get base rating leadership returns correct value.
-        /// </summary>
         [Test]
         public void GetBaseRating_Leadership_ReturnsCorrectValue()
         {
@@ -173,9 +140,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(15, ratingValue, "Leadership rating should return the correct value");
         }
 
-        /// <summary>
-        /// Verifies ratings when set stores correct values.
-        /// </summary>
         [Test]
         public void Ratings_WhenSet_StoresCorrectValues()
         {
@@ -187,9 +151,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(60, newSpecialForces.Ratings[OfficerRating.Espionage]);
         }
 
-        /// <summary>
-        /// Verifies ratings when updated stores new value.
-        /// </summary>
         [Test]
         public void Ratings_WhenUpdated_StoresNewValue()
         {
@@ -200,9 +161,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(100, ratingValue, "Combat rating should update correctly");
         }
 
-        /// <summary>
-        /// Verifies construction cost when set returns correct value.
-        /// </summary>
         [Test]
         public void ConstructionCost_WhenSet_ReturnsCorrectValue()
         {
@@ -211,9 +169,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(500, newSpecialForces.ConstructionCost);
         }
 
-        /// <summary>
-        /// Verifies base build speed when set returns correct value.
-        /// </summary>
         [Test]
         public void BaseBuildSpeed_WhenSet_ReturnsCorrectValue()
         {
@@ -222,9 +177,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(15, newSpecialForces.BaseBuildSpeed);
         }
 
-        /// <summary>
-        /// Verifies maintenance cost when set returns correct value.
-        /// </summary>
         [Test]
         public void MaintenanceCost_WhenSet_ReturnsCorrectValue()
         {
@@ -233,9 +185,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(35, newSpecialForces.MaintenanceCost);
         }
 
-        /// <summary>
-        /// Verifies research order when set returns correct value.
-        /// </summary>
         [Test]
         public void ResearchOrder_WhenSet_ReturnsCorrectValue()
         {
@@ -249,9 +198,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(50, newSpecialForces.ResearchDifficulty);
         }
 
-        /// <summary>
-        /// Verifies manufacturing progress initial value is zero.
-        /// </summary>
         [Test]
         public void ManufacturingProgress_InitialValue_IsZero()
         {
@@ -260,9 +206,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, newSpecialForces.ManufacturingProgress);
         }
 
-        /// <summary>
-        /// Verifies manufacturing progress when incremented updates correctly.
-        /// </summary>
         [Test]
         public void ManufacturingProgress_WhenIncremented_UpdatesCorrectly()
         {
@@ -271,9 +214,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(50, _specialForces.ManufacturingProgress);
         }
 
-        /// <summary>
-        /// Verifies manufacturing progress when completed reaches construction cost.
-        /// </summary>
         [Test]
         public void ManufacturingProgress_WhenCompleted_ReachesConstructionCost()
         {
@@ -286,9 +226,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies manufacturing status initial value is building.
-        /// </summary>
         [Test]
         public void ManufacturingStatus_InitialValue_IsBuilding()
         {
@@ -297,9 +234,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingStatus.Building, newSpecialForces.ManufacturingStatus);
         }
 
-        /// <summary>
-        /// Verifies manufacturing status when changed updates correctly.
-        /// </summary>
         [Test]
         public void ManufacturingStatus_WhenChanged_UpdatesCorrectly()
         {
@@ -308,9 +242,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingStatus.Complete, _specialForces.ManufacturingStatus);
         }
 
-        /// <summary>
-        /// Verifies can improve mission rating always returns false.
-        /// </summary>
         [Test]
         public void CanImproveMissionRating_Always_ReturnsFalse()
         {
@@ -320,9 +251,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies can perform mission allowed type returns true.
-        /// </summary>
         [Test]
         public void CanPerformMission_AllowedType_ReturnsTrue()
         {
@@ -331,9 +259,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(_specialForces.CanPerformMission(MissionTypeIDs.Espionage));
         }
 
-        /// <summary>
-        /// Verifies can perform mission disallowed type returns false.
-        /// </summary>
         [Test]
         public void CanPerformMission_DisallowedType_ReturnsFalse()
         {
@@ -342,9 +267,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_specialForces.CanPerformMission(MissionTypeIDs.Sabotage));
         }
 
-        /// <summary>
-        /// Verifies serialize and deserialize with populated special forces maintains state.
-        /// </summary>
         [Test]
         public void SerializeAndDeserialize_WithPopulatedSpecialForces_MaintainsState()
         {

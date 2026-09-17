@@ -16,9 +16,6 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class EspionageMissionTests
     {
-        /// <summary>
-        /// Verifies resolve objective enemy planet target captures snapshot for faction.
-        /// </summary>
         [Test]
         public void ResolveObjective_EnemyPlanetTarget_CapturesSnapshotForFaction()
         {
@@ -56,9 +53,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective enemy planet target captures current planet contents.
-        /// </summary>
         [Test]
         public void ResolveObjective_EnemyPlanetTarget_CapturesCurrentPlanetContents()
         {
@@ -95,9 +89,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(snapshot.Buildings.Any(item => item.InstanceID == "enemy_building"));
         }
 
-        /// <summary>
-        /// Verifies resolve objective enemy planet target reveals enemy missions.
-        /// </summary>
         [Test]
         public void ResolveObjective_EnemyPlanetTarget_RevealsEnemyMissions()
         {
@@ -135,9 +126,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(enemyMission.InstanceID, snapshot.Missions[0].InstanceID);
         }
 
-        /// <summary>
-        /// Verifies resolve objective core target reveals same allegiance core planets.
-        /// </summary>
         [Test]
         public void ResolveObjective_CoreTarget_RevealsSameAllegianceCorePlanets()
         {
@@ -179,9 +167,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective core target reports every additional planet revealed.
-        /// </summary>
         [Test]
         public void ResolveObjective_CoreTarget_ReportsEveryAdditionalPlanetRevealed()
         {
@@ -227,9 +212,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective outer rim target does not reveal bonus planets.
-        /// </summary>
         [Test]
         public void ResolveObjective_OuterRimTarget_DoesNotRevealBonusPlanets()
         {
@@ -261,10 +243,6 @@ namespace Rebellion.Tests.Game.Missions
             CollectionAssert.AreEquivalent(new[] { "enemy_planet" }, RevealedPlanetIDs(empire));
         }
 
-        /// <summary>
-        /// Verifies resolve objective non enemy core target does not reveal bonus planets.
-        /// </summary>
-        /// <param name="targetOwnerId">The target owner id.</param>
         [TestCase("empire")]
         [TestCase(null)]
         public void ResolveObjective_NonEnemyCoreTarget_DoesNotRevealBonusPlanets(
@@ -294,9 +272,6 @@ namespace Rebellion.Tests.Game.Missions
             CollectionAssert.AreEquivalent(new[] { "enemy_planet" }, RevealedPlanetIDs(empire));
         }
 
-        /// <summary>
-        /// Verifies resolve objective mobile headquarters target can reveal core and outer rim planets.
-        /// </summary>
         [Test]
         public void ResolveObjective_MobileHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
         {
@@ -339,9 +314,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective fixed headquarters target can reveal core and outer rim planets.
-        /// </summary>
         [Test]
         public void ResolveObjective_FixedHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
         {
@@ -384,9 +356,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective without fog system completes mission.
-        /// </summary>
         [Test]
         public void ResolveObjective_WithoutFogSystem_CompletesMission()
         {
@@ -415,9 +384,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(mission.IsComplete());
         }
 
-        /// <summary>
-        /// Verifies resolve objective planet became owned by mission faction still succeeds.
-        /// </summary>
         [Test]
         public void ResolveObjective_PlanetBecameOwnedByMissionFaction_StillSucceeds()
         {
@@ -456,9 +422,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective foreign planet target improves successful officer espionage rating.
-        /// </summary>
         [Test]
         public void ResolveObjective_ForeignPlanetTarget_ImprovesSuccessfulOfficerEspionageRating()
         {
@@ -492,9 +455,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective multiple officers tries next officer when lowest score officer fails.
-        /// </summary>
         [Test]
         public void ResolveObjective_MultipleOfficers_TriesNextOfficerWhenLowestScoreOfficerFails()
         {
@@ -536,9 +496,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective multiple officers succeed improves every successful officer.
-        /// </summary>
         [Test]
         public void ResolveObjective_MultipleOfficersSucceed_ImprovesEverySuccessfulOfficer()
         {
@@ -585,9 +542,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective decoy participant does not improve officer espionage rating.
-        /// </summary>
         [Test]
         public void ResolveObjective_DecoyParticipant_DoesNotImproveOfficerEspionageRating()
         {
@@ -622,9 +576,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective own planet target does not improve officer espionage rating.
-        /// </summary>
         [Test]
         public void ResolveObjective_OwnPlanetTarget_DoesNotImproveOfficerEspionageRating()
         {
@@ -658,9 +609,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective neutral planet target does not improve officer espionage rating.
-        /// </summary>
         [Test]
         public void ResolveObjective_NeutralPlanetTarget_DoesNotImproveOfficerEspionageRating()
         {
@@ -683,9 +631,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(ratingBefore, officer.GetBaseRating(OfficerRating.Espionage));
         }
 
-        /// <summary>
-        /// Verifies try create not visited planet returns null.
-        /// </summary>
         [Test]
         public void TryCreate_NotVisitedPlanet_ReturnsNull()
         {
@@ -709,9 +654,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null when planet has not been visited");
         }
 
-        /// <summary>
-        /// Verifies try create visited own planet returns not null.
-        /// </summary>
         [Test]
         public void TryCreate_VisitedOwnPlanet_ReturnsNotNull()
         {
@@ -739,9 +681,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies serialize round trip preserves data.
-        /// </summary>
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {

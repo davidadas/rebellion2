@@ -45,18 +45,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render complete presentation applies frame images label rows and controls.
-        /// </summary>
         [Test]
         public void Render_CompletePresentation_AppliesFrameImagesLabelRowsAndControls()
         {
@@ -98,9 +92,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.IsTrue(_viewObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render long detail row keeps columns separate and fits text without wrapping.
-        /// </summary>
         [Test]
         public void Render_LongDetailRow_KeepsColumnsSeparateAndFitsTextWithoutWrapping()
         {
@@ -135,9 +126,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(TextOverflowModes.Ellipsis, right.overflowMode);
         }
 
-        /// <summary>
-        /// Verifies render long left label with short value allocates additional label width.
-        /// </summary>
         [Test]
         public void Render_LongLeftLabelWithShortValue_AllocatesAdditionalLabelWidth()
         {
@@ -164,9 +152,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.LessOrEqual(labelRect.xMax, valueRect.x);
         }
 
-        /// <summary>
-        /// Verifies render centered image centers fitted image in authored area.
-        /// </summary>
         [Test]
         public void Render_CenteredImage_CentersFittedImageInAuthoredArea()
         {
@@ -190,9 +175,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(imageArea.y + (imageArea.height - imageRect.height) / 2, imageRect.y);
         }
 
-        /// <summary>
-        /// Verifies render long label wraps within authored status column.
-        /// </summary>
         [Test]
         public void Render_LongLabel_WrapsWithinAuthoredStatusColumn()
         {
@@ -215,9 +197,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.Greater(labelRect.height, 17);
         }
 
-        /// <summary>
-        /// Verifies render null images and empty text hides optional presentation.
-        /// </summary>
         [Test]
         public void Render_NullImagesAndEmptyText_HidesOptionalPresentation()
         {
@@ -251,9 +230,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.IsFalse(FindComponent<Button>("InfoButtonImage").interactable);
         }
 
-        /// <summary>
-        /// Verifies render shorter presentation reuses caches and hides unused entries.
-        /// </summary>
         [Test]
         public void Render_ShorterPresentation_ReusesCachesAndHidesUnusedEntries()
         {
@@ -293,9 +269,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.IsFalse(secondLeft.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies request methods subscribed handlers emit semantic requests.
-        /// </summary>
         [Test]
         public void RequestMethods_SubscribedHandlers_EmitSemanticRequests()
         {
@@ -311,9 +284,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreSame(_view, infoView);
         }
 
-        /// <summary>
-        /// Verifies authored buttons press then click emit control before semantic requests.
-        /// </summary>
         [Test]
         public void AuthoredButtons_PressThenClick_EmitControlBeforeSemanticRequests()
         {
@@ -353,9 +323,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(1, infoCount);
         }
 
-        /// <summary>
-        /// Verifies on destroy initialized view unbinds buttons and raises destroyed event.
-        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsButtonsAndRaisesDestroyedEvent()
         {

@@ -6,9 +6,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
     [TestFixture]
     public class MessagesWindowThemeTests
     {
-        /// <summary>
-        /// Verifies get detail image path matching key returns configured path.
-        /// </summary>
         [Test]
         public void GetDetailImagePath_MatchingKey_ReturnsConfiguredPath()
         {
@@ -26,9 +23,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual("Art/HD/UI/Messages/mission_report", path);
         }
 
-        /// <summary>
-        /// Verifies get icon image path matching type returns configured path.
-        /// </summary>
         [Test]
         public void GetIconImagePath_MatchingType_ReturnsConfiguredPath()
         {
@@ -46,9 +40,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual("Art/HD/UI/StrategyView/messages_fleet_selected", path);
         }
 
-        /// <summary>
-        /// Verifies get normal icon image path without normal path falls back to selected path.
-        /// </summary>
         [Test]
         public void GetNormalIconImagePath_WithoutNormalPath_FallsBackToSelectedPath()
         {

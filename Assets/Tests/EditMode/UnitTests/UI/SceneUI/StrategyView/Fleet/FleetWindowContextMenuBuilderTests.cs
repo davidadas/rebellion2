@@ -10,9 +10,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
     [TestFixture]
     public class FleetWindowContextMenuBuilderTests
     {
-        /// <summary>
-        /// Verifies build empty selection returns disabled information commands.
-        /// </summary>
         [Test]
         public void Build_EmptySelection_ReturnsDisabledInformationCommands()
         {
@@ -31,9 +28,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(commands.All(command => !command.Enabled));
         }
 
-        /// <summary>
-        /// Verifies build single fleet returns fleet operations in authored order.
-        /// </summary>
         [Test]
         public void Build_SingleFleet_ReturnsFleetOperationsInAuthoredOrder()
         {
@@ -107,9 +101,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
-        /// <summary>
-        /// Verifies build multiple fleets offers fleet commands and disables single item commands.
-        /// </summary>
         [Test]
         public void Build_MultipleFleets_OffersFleetCommandsAndDisablesSingleItemCommands()
         {
@@ -158,9 +149,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
-        /// <summary>
-        /// Verifies build fleet with waypoints returns enabled clear waypoints command.
-        /// </summary>
         [Test]
         public void Build_FleetWithWaypoints_ReturnsEnabledClearWaypointsCommand()
         {
@@ -182,9 +170,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(command.Enabled);
         }
 
-        /// <summary>
-        /// Verifies build moving fleet without waypoints returns enabled waypoint move command.
-        /// </summary>
         [Test]
         public void Build_MovingFleetWithoutWaypoints_ReturnsEnabledWaypointMoveCommand()
         {
@@ -208,9 +193,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(command.Enabled);
         }
 
-        /// <summary>
-        /// Verifies build single capital ship returns create fleet and rename commands.
-        /// </summary>
         [Test]
         public void Build_SingleCapitalShip_ReturnsCreateFleetAndRenameCommands()
         {
@@ -244,9 +226,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(commands.All(command => command.Enabled));
         }
 
-        /// <summary>
-        /// Verifies build capital ship under construction allows delivery reassignment.
-        /// </summary>
         [Test]
         public void Build_CapitalShipUnderConstruction_AllowsDeliveryReassignment()
         {
@@ -272,9 +251,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(commands.Last().Enabled);
         }
 
-        /// <summary>
-        /// Verifies build capital ship without move eligibility disables movement commands.
-        /// </summary>
         [Test]
         public void Build_CapitalShipWithoutMoveEligibility_DisablesMovementCommands()
         {
@@ -298,9 +274,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(commands.Last().Enabled);
         }
 
-        /// <summary>
-        /// Verifies build completed transported unit uses move eligibility for scrap.
-        /// </summary>
         [Test]
         public void Build_CompletedTransportedUnit_UsesMoveEligibilityForScrap()
         {
@@ -334,9 +307,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
-        /// <summary>
-        /// Verifies build transported unit under construction uses control eligibility for stop.
-        /// </summary>
         [Test]
         public void Build_TransportedUnitUnderConstruction_UsesControlEligibilityForStop()
         {
@@ -354,9 +324,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(commands.Last().Enabled);
         }
 
-        /// <summary>
-        /// Verifies build officer selection returns personnel operations.
-        /// </summary>
         [Test]
         public void Build_OfficerSelection_ReturnsPersonnelOperations()
         {
@@ -386,9 +353,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(commands.All(command => command.Enabled));
         }
 
-        /// <summary>
-        /// Verifies build special forces selection returns personnel operations.
-        /// </summary>
         [Test]
         public void Build_SpecialForcesSelection_ReturnsPersonnelOperations()
         {
@@ -420,9 +384,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
-        /// <summary>
-        /// Verifies build unsupported selection returns disabled information commands.
-        /// </summary>
         [Test]
         public void Build_UnsupportedSelection_ReturnsDisabledInformationCommands()
         {

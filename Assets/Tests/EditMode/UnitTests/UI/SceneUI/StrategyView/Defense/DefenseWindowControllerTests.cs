@@ -79,9 +79,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             UnityEngine.Object.DestroyImmediate(_texture);
         }
 
-        /// <summary>
-        /// Verifies constructor null ui context provider throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullUIContextProvider_ThrowsArgumentNullException()
         {
@@ -97,9 +94,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
-        /// <summary>
-        /// Verifies initialize null window actions throws argument null exception.
-        /// </summary>
         [Test]
         public void Initialize_NullWindowActions_ThrowsArgumentNullException()
         {
@@ -118,9 +112,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
-        /// <summary>
-        /// Verifies bind window before initialize throws invalid operation exception.
-        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -133,9 +124,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
         }
 
-        /// <summary>
-        /// Verifies try initialize window null planet returns false.
-        /// </summary>
         [Test]
         public void TryInitializeWindow_NullPlanet_ReturnsFalse()
         {
@@ -150,9 +138,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
-        /// <summary>
-        /// Verifies open valid planet creates named window at resolved position.
-        /// </summary>
         [Test]
         public void Open_ValidPlanet_CreatesNamedWindowAtResolvedPosition()
         {
@@ -170,9 +155,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(_planet, _controller.GetPlanet(view));
         }
 
-        /// <summary>
-        /// Verifies open existing planet reuses window without additional invalidation.
-        /// </summary>
         [Test]
         public void Open_ExistingPlanet_ReusesWindowWithoutAdditionalInvalidation()
         {
@@ -187,9 +169,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies select finder tab valid tab changes active tab.
-        /// </summary>
         [Test]
         public void SelectFinderTab_ValidTab_ChangesActiveTab()
         {
@@ -200,9 +179,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(DefenseWindowTab.Regiments, _controller.GetActiveTab(view));
         }
 
-        /// <summary>
-        /// Verifies select target matching item selects item and status target.
-        /// </summary>
         [Test]
         public void SelectTarget_MatchingItem_SelectsItemAndStatusTarget()
         {
@@ -217,9 +193,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(_officer, target.Item);
         }
 
-        /// <summary>
-        /// Verifies item press modified portrait selection renders selection before starting drag.
-        /// </summary>
         [Test]
         public void ItemPress_ModifiedPortraitSelection_RendersSelectionBeforeStartingDrag()
         {
@@ -274,9 +247,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(1, dragStartCount);
         }
 
-        /// <summary>
-        /// Verifies window drop active targeting selects represented planet.
-        /// </summary>
         [Test]
         public void WindowDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
@@ -296,9 +266,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(_planet.Planet, target.GetMoveDestination());
         }
 
-        /// <summary>
-        /// Verifies reconcile window fresh projection rebinds planet and selection by identity.
-        /// </summary>
         [Test]
         public void ReconcileWindow_FreshProjection_RebindsPlanetAndSelectionByIdentity()
         {
@@ -327,9 +294,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             CollectionAssert.AreEqual(new[] { 0 }, _controller.GetSelectedItems(view));
         }
 
-        /// <summary>
-        /// Verifies clear selection selected item removes selection and status target.
-        /// </summary>
         [Test]
         public void ClearSelection_SelectedItem_RemovesSelectionAndStatusTarget()
         {
@@ -342,9 +306,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNull(_controller.GetStatusTarget(window));
         }
 
-        /// <summary>
-        /// Verifies try create context menu no context item returns disabled information commands.
-        /// </summary>
         [Test]
         public void TryCreateContextMenu_NoContextItem_ReturnsDisabledInformationCommands()
         {
@@ -370,9 +331,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsFalse(((StrategyMenuCommand)request.Commands[1]).Enabled);
         }
 
-        /// <summary>
-        /// Verifies create context menu for item officer uses normal defense commands.
-        /// </summary>
         [Test]
         public void CreateContextMenuForItem_Officer_UsesNormalDefenseCommands()
         {
@@ -402,9 +360,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(_controller, request.Receiver);
         }
 
-        /// <summary>
-        /// Verifies context menu direct officer move confirm starts targeting without source window.
-        /// </summary>
         [Test]
         public void ContextMenu_DirectOfficerMoveConfirm_StartsTargetingWithoutSourceWindow()
         {
@@ -430,9 +385,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             CollectionAssert.AreEqual(new ISceneNode[] { _officer }, source.Items);
         }
 
-        /// <summary>
-        /// Verifies view destroyed initialized session releases planet association.
-        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {

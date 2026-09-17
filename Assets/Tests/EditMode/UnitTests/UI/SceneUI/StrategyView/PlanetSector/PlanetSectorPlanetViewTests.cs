@@ -53,18 +53,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null, Vector2Int.zero));
         }
 
-        /// <summary>
-        /// Verifies render complete presentation applies images name position and bars.
-        /// </summary>
         [Test]
         public void Render_CompletePresentation_AppliesImagesNamePositionAndBars()
         {
@@ -133,9 +127,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(planetImage.raycastTarget);
         }
 
-        /// <summary>
-        /// Verifies render continuous zero fill hides fill image.
-        /// </summary>
         [Test]
         public void Render_ContinuousZeroFill_HidesFillImage()
         {
@@ -154,9 +145,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(GetField<Image>("supportBarFillImage").gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies try get icon source rect visible and hidden icons reports availability.
-        /// </summary>
         [Test]
         public void TryGetIconSourceRect_VisibleAndHiddenIcons_ReportsAvailability()
         {
@@ -177,9 +165,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(defenseRect);
         }
 
-        /// <summary>
-        /// Verifies try get fleet drag image rendered fleet prefers pressed texture.
-        /// </summary>
         [Test]
         public void TryGetFleetDragImage_RenderedFleet_PrefersPressedTexture()
         {
@@ -192,9 +177,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(GetField<RawImage>("fleetImage").rectTransform, rect);
         }
 
-        /// <summary>
-        /// Verifies try create element explicit visible icon returns semantic element.
-        /// </summary>
         [Test]
         public void TryCreateElement_ExplicitVisibleIcon_ReturnsSemanticElement()
         {
@@ -217,9 +199,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(element.PlanetImage);
         }
 
-        /// <summary>
-        /// Verifies try create element explicit planet image returns planet element.
-        /// </summary>
         [Test]
         public void TryCreateElement_ExplicitPlanetImage_ReturnsPlanetElement()
         {
@@ -242,9 +221,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(element.PlanetImage);
         }
 
-        /// <summary>
-        /// Verifies pointer handlers visible icon raise semantic interaction events.
-        /// </summary>
         [Test]
         public void PointerHandlers_VisibleIcon_RaiseSemanticInteractionEvents()
         {
@@ -299,9 +275,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(7, lastElement.PlanetIndex);
         }
 
-        /// <summary>
-        /// Verifies pointer handlers unsupported button do not raise interaction events.
-        /// </summary>
         [Test]
         public void PointerHandlers_UnsupportedButton_DoNotRaiseInteractionEvents()
         {

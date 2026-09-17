@@ -9,9 +9,6 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public sealed class GameEventTests
     {
-        /// <summary>
-        /// Verifies can activate maximum activations reached returns false.
-        /// </summary>
         [Test]
         public void CanActivate_MaximumActivationsReached_ReturnsFalse()
         {
@@ -23,9 +20,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(result);
         }
 
-        /// <summary>
-        /// Verifies can activate unlimited event returns true.
-        /// </summary>
         [Test]
         public void CanActivate_UnlimitedEvent_ReturnsTrue()
         {
@@ -37,9 +31,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(result);
         }
 
-        /// <summary>
-        /// Verifies conditionals authored aliases round trip concrete types.
-        /// </summary>
         [Test]
         public void Conditionals_AuthoredAliases_RoundTripConcreteTypes()
         {
@@ -69,9 +60,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(ComparisonOperator.GreaterThan, conditional.Comparison);
         }
 
-        /// <summary>
-        /// Verifies is active authored node instance id round trips.
-        /// </summary>
         [Test]
         public void IsActive_AuthoredNodeInstanceID_RoundTrips()
         {
@@ -92,9 +80,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("DARTH_VADER", conditional.NodeInstanceID);
         }
 
-        /// <summary>
-        /// Verifies composite conditionals round trip without collection wrappers.
-        /// </summary>
         [Test]
         public void CompositeConditionals_RoundTripWithoutCollectionWrappers()
         {
@@ -139,9 +124,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(2, any.Conditionals.Count);
         }
 
-        /// <summary>
-        /// Verifies maximum activations authored value round trips attribute.
-        /// </summary>
         [Test]
         public void MaximumActivations_AuthoredValue_RoundTripsAttribute()
         {

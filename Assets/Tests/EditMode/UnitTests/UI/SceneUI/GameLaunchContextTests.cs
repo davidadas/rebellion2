@@ -24,9 +24,6 @@ namespace Rebellion.Tests.UI.SceneUI
             GameLaunchContext.Reset(TestContent.Pack);
         }
 
-        /// <summary>
-        /// Verifies reset modified context restores new game defaults.
-        /// </summary>
         [Test]
         public void Reset_ModifiedContext_RestoresNewGameDefaults()
         {
@@ -56,9 +53,6 @@ namespace Rebellion.Tests.UI.SceneUI
             Assert.IsFalse(GameLaunchContext.PlayIntroCutscene);
         }
 
-        /// <summary>
-        /// Verifies reset existing summary replaces summary instance.
-        /// </summary>
         [Test]
         public void Reset_ExistingSummary_ReplacesSummaryInstance()
         {

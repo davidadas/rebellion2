@@ -14,9 +14,6 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class UnitSeederTests
     {
-        /// <summary>
-        /// Verifies seed uprising threshold not met adds garrison troops.
-        /// </summary>
         [Test]
         public void Seed_UprisingThresholdNotMet_AddsGarrisonTroops()
         {
@@ -60,9 +57,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(3, planet.GetRegimentCount());
         }
 
-        /// <summary>
-        /// Verifies seed owner support at threshold no garrison troops.
-        /// </summary>
         [Test]
         public void Seed_OwnerSupportAtThreshold_NoGarrisonTroops()
         {
@@ -105,9 +99,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(0, planet.GetRegimentCount());
         }
 
-        /// <summary>
-        /// Verifies seed fixed garrison places configured troops on configured planet type.
-        /// </summary>
         [Test]
         public void Seed_FixedGarrison_PlacesConfiguredTroopsOnConfiguredPlanetType()
         {
@@ -163,9 +154,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(4, planet.GetRegimentCount());
         }
 
-        /// <summary>
-        /// Verifies seed fixed garrison with faction hq sentinel resolves to faction hq.
-        /// </summary>
         [Test]
         public void Seed_FixedGarrisonWithFactionHqSentinel_ResolvesToFactionHq()
         {
@@ -219,9 +207,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(2, hq.GetRegimentCount());
         }
 
-        /// <summary>
-        /// Verifies seed fixed garrison with unknown unit id throws invalid operation exception.
-        /// </summary>
         [Test]
         public void Seed_FixedGarrisonWithUnknownUnitID_ThrowsInvalidOperationException()
         {
@@ -274,9 +259,6 @@ namespace Rebellion.Tests.Generation
             Assert.That(exception.Message, Does.Contain("UNKNOWN"));
         }
 
-        /// <summary>
-        /// Verifies seed fixed fleet places configured ships on configured planet type.
-        /// </summary>
         [Test]
         public void Seed_FixedFleet_PlacesConfiguredShipsOnConfiguredPlanetType()
         {
@@ -335,9 +317,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(2, fleets[0].GetChildren<CapitalShip>().Count);
         }
 
-        /// <summary>
-        /// Verifies seed fixed fleet with target planets selects one target by type id.
-        /// </summary>
         [Test]
         public void Seed_FixedFleetWithTargetPlanets_SelectsOneTargetByTypeID()
         {
@@ -381,9 +360,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(2, hq.GetChildren<Fleet>()[0].GetChildren<CapitalShip>().Count);
         }
 
-        /// <summary>
-        /// Verifies seed fixed fleet with ship entries loads cargo onto configured ship.
-        /// </summary>
         [Test]
         public void Seed_FixedFleetWithShipEntries_LoadsCargoOntoConfiguredShip()
         {
@@ -434,9 +410,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsTrue(transport.GetChildren<Regiment>().All(r => r.TypeID == "REAL001"));
         }
 
-        /// <summary>
-        /// Verifies seed budget unit table uses previous threshold row.
-        /// </summary>
         [Test]
         public void Seed_BudgetUnitTable_UsesPreviousThresholdRow()
         {
@@ -524,9 +497,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(0, planet.GetChildren<Regiment>().Count(r => r.TypeID == "SECOND"));
         }
 
-        /// <summary>
-        /// Verifies seed budget difficulty mapping uses mapped difficulty.
-        /// </summary>
         [Test]
         public void Seed_BudgetDifficultyMapping_UsesMappedDifficulty()
         {
@@ -617,9 +587,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(4, planet.GetRegimentCount());
         }
 
-        /// <summary>
-        /// Verifies seed budget table with special forces deploys special forces.
-        /// </summary>
         [Test]
         public void Seed_BudgetTableWithSpecialForces_DeploysSpecialForces()
         {
