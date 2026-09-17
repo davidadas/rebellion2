@@ -53,28 +53,6 @@ files from the selected base pack; files beneath `Content/Application` replace s
 files. The pack `game.xml` remains a sparse override merged over the application `game.xml`. The
 installer, launcher, application updater, and content updater do not overwrite the `Mods` directory.
 
-## Messages
-
-Automatic strategy messages are selected from the catalog referenced by
-`MessageDefinitionsPath`. Set the optional `ShowSubjectImage` element to `true` when an
-automatic message should use its subject officer's current message image as an overlay. Every
-automatic message honors this setting, which defaults to `false`:
-
-```xml
-<MessageDefinition>
-  <ResultType>TraitorDiscovered</ResultType>
-  <MessageType>Mission</MessageType>
-  <Subject>{discoverer} Discovers Traitor</Subject>
-  <Body>{discoverer} has discovered that {traitor} betrayed us.</Body>
-  <ShowSubjectImage>true</ShowSubjectImage>
-  <BackgroundImage Key="mission_report"/>
-</MessageDefinition>
-```
-
-Authored event messages expose the same setting as the `ShowSubjectImage` attribute on
-`SendMessage`. See [`SendMessage`](Events/Actions.md#sendmessage) for its complete options and
-overlay precedence.
-
 ## Guides
 
 - [Creating game events](Events/Index.md)
