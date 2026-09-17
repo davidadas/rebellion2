@@ -8,6 +8,9 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public sealed class InputManagerBindingTests
     {
+        /// <summary>
+        /// Verifies that macOS shortcuts use a resolvable Command-key binding.
+        /// </summary>
         [Test]
         public void SetShortcutModifier_MacOS_UsesResolvableCommandKey()
         {
@@ -36,6 +39,9 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies that Windows shortcuts use the Control-key binding.
+        /// </summary>
         [Test]
         public void SetShortcutModifier_Windows_UsesControl()
         {
@@ -46,6 +52,9 @@ namespace Rebellion.Tests.Managers
             AssertModifierPath(asset.FindAction("Test/Shortcut", true), "<Keyboard>/ctrl");
         }
 
+        /// <summary>
+        /// Verifies that overrides attached to authored binding IDs survive a manager restart.
+        /// </summary>
         [Test]
         public void BindingOverrides_AuthoredSlots_RestoreAcrossManagerRestart()
         {
@@ -80,6 +89,9 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies persisted overrides cannot replace the reserved cancel binding.
+        /// </summary>
         [Test]
         public void LoadBindingOverrides_CancelPrimary_RestoresEscapeAndKeepsSecondary()
         {
@@ -124,6 +136,9 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies persisted overrides cannot replace the reserved game-menu chord.
+        /// </summary>
         [Test]
         public void LoadBindingOverrides_OpenGameMenuPrimary_PreservesShiftEscapeShortcut()
         {

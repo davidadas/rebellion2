@@ -9,6 +9,9 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public sealed class UserSettingsManagerTests
     {
+        /// <summary>
+        /// Verifies settings persistence restores Unity binding overrides by authored binding ID.
+        /// </summary>
         [Test]
         public void SaveThenLoad_RestoresRuntimeBindingOverridesFromDisk()
         {
@@ -74,6 +77,9 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies save then load restores mission odds visibility from disk.
+        /// </summary>
         [Test]
         public void SaveThenLoad_RestoresMissionOddsVisibilityFromDisk()
         {
@@ -112,6 +118,9 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        /// <summary>
+        /// Verifies disabled mod identifiers persist through a settings save and load.
+        /// </summary>
         [Test]
         public void SaveThenLoad_RestoresDisabledModsFromDisk()
         {

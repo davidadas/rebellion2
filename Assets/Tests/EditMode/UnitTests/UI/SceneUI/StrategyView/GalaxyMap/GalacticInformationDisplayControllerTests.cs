@@ -84,6 +84,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null dependencies throw argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullDependencies_ThrowArgumentNullException()
         {
@@ -95,6 +98,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies show closed selector opens authored display.
+        /// </summary>
         [Test]
         public void Show_ClosedSelector_OpensAuthoredDisplay()
         {
@@ -107,6 +113,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies try cancel open selector closes display plays control sound and requests render.
+        /// </summary>
         [Test]
         public void TryCancel_OpenSelector_ClosesDisplayPlaysControlSoundAndRequestsRender()
         {
@@ -124,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies try cancel closed selector returns false without side effects.
+        /// </summary>
         [Test]
         public void TryCancel_ClosedSelector_ReturnsFalseWithoutSideEffects()
         {
@@ -134,6 +146,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies select filter changed visible filter requests render without pointer audio.
+        /// </summary>
         [Test]
         public void SelectFilter_ChangedVisibleFilter_RequestsRenderWithoutPointerAudio()
         {
@@ -144,6 +159,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies selecting a different filter publishes the durable selection.
+        /// </summary>
         [Test]
         public void SelectFilter_ChangedVisibleFilter_RaisesFilterChanged()
         {
@@ -155,6 +173,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(GalacticInformationFilterMode.IdleConstructionYards, changedFilter);
         }
 
+        /// <summary>
+        /// Verifies restoring a filter updates selection without publishing a user change.
+        /// </summary>
         [Test]
         public void RestoreFilter_SavedFilter_RestoresWithoutRaisingFilterChanged()
         {
@@ -170,6 +191,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, changeCount);
         }
 
+        /// <summary>
+        /// Verifies select filter active filter requests render without repeating audio.
+        /// </summary>
         [Test]
         public void SelectFilter_ActiveFilter_RequestsRenderWithoutRepeatingAudio()
         {
@@ -183,6 +207,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies shortcut-driven filter changes play control audio and request rendering.
+        /// </summary>
         [Test]
         public void SelectFilterFromShortcut_ChangedFilter_PlaysControlSoundAndRequestsRender()
         {
@@ -196,6 +223,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies selecting the active shortcut filter does not replay control audio.
+        /// </summary>
         [Test]
         public void SelectFilterFromShortcut_ActiveFilter_DoesNotRepeatControlSound()
         {
@@ -208,6 +238,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies selector controls filter selection route semantic controller action.
+        /// </summary>
         [Test]
         public void SelectorControls_FilterSelection_RouteSemanticControllerAction()
         {
@@ -237,6 +270,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies dismiss pointer down plays control sound before selector closes.
+        /// </summary>
         [Test]
         public void DismissPointerDown_PlaysControlSoundBeforeSelectorCloses()
         {

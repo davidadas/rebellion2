@@ -19,6 +19,9 @@ namespace Rebellion.Tests.Sectors
     [TestFixture]
     public class BlockadeSystemTests
     {
+        /// <summary>
+        /// Verifies process tick new blockade emits blockade started.
+        /// </summary>
         [Test]
         public void ProcessTick_NewBlockade_EmitsBlockadeStarted()
         {
@@ -34,6 +37,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(hostileFleet, result.BlockadingFleet);
         }
 
+        /// <summary>
+        /// Verifies process tick new neutral planet blockade emits blockade started.
+        /// </summary>
         [Test]
         public void ProcessTick_NewNeutralPlanetBlockade_EmitsBlockadeStarted()
         {
@@ -51,6 +57,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(blockadingFleet, result.BlockadingFleet);
         }
 
+        /// <summary>
+        /// Verifies process tick hostile fleet in transit emits blockade only after arrival.
+        /// </summary>
         [Test]
         public void ProcessTick_HostileFleetInTransit_EmitsBlockadeOnlyAfterArrival()
         {
@@ -68,6 +77,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(hostileFleet, result.BlockadingFleet);
         }
 
+        /// <summary>
+        /// Verifies process tick already blockaded no repeated event.
+        /// </summary>
         [Test]
         public void ProcessTick_AlreadyBlockaded_NoRepeatedEvent()
         {
@@ -80,6 +92,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, results.OfType<BlockadeChangedResult>().Count());
         }
 
+        /// <summary>
+        /// Verifies process tick blockade ends emits blockade cleared.
+        /// </summary>
         [Test]
         public void ProcessTick_BlockadeEnds_EmitsBlockadeCleared()
         {
@@ -106,6 +121,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(planet, result.Planet);
         }
 
+        /// <summary>
+        /// Verifies process tick never blockaded no end event.
+        /// </summary>
         [Test]
         public void ProcessTick_NeverBlockaded_NoEndEvent()
         {
@@ -123,6 +141,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick new blockade in transit defenders survive.
+        /// </summary>
         [Test]
         public void ProcessTick_NewBlockade_InTransitDefendersSurvive()
         {
@@ -145,6 +166,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies process tick multiple planets handled independently.
+        /// </summary>
         [Test]
         public void ProcessTick_MultiplePlanets_HandledIndependently()
         {
@@ -177,6 +201,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(blockaded, results.OfType<BlockadeChangedResult>().First().Planet);
         }
 
+        /// <summary>
+        /// Verifies roll evacuation loss roll below threshold returns true.
+        /// </summary>
         [Test]
         public void RollEvacuationLoss_RollBelowThreshold_ReturnsTrue()
         {
@@ -190,6 +217,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(system.RollEvacuationLoss());
         }
 
+        /// <summary>
+        /// Verifies roll evacuation loss roll above threshold returns false.
+        /// </summary>
         [Test]
         public void RollEvacuationLoss_RollAboveThreshold_ReturnsFalse()
         {
@@ -203,6 +233,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(system.RollEvacuationLoss());
         }
 
+        /// <summary>
+        /// Verifies roll evacuation loss zero percent never destroys.
+        /// </summary>
         [Test]
         public void RollEvacuationLoss_ZeroPercent_NeverDestroys()
         {
@@ -215,6 +248,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(system.RollEvacuationLoss());
         }
 
+        /// <summary>
+        /// Verifies roll evacuation loss hundred percent always destroys.
+        /// </summary>
         [Test]
         public void RollEvacuationLoss_HundredPercent_AlwaysDestroys()
         {
@@ -227,6 +263,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(system.RollEvacuationLoss());
         }
 
+        /// <summary>
+        /// Verifies apply evacuation losses neutral planet blockading faction returns no loss.
+        /// </summary>
         [Test]
         public void ApplyEvacuationLosses_NeutralPlanetBlockadingFaction_ReturnsNoLoss()
         {
@@ -247,6 +286,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
+        /// <summary>
+        /// Verifies apply evacuation losses operational ion cannon prevents loss.
+        /// </summary>
         [Test]
         public void ApplyEvacuationLosses_OperationalIonCannon_PreventsLoss()
         {

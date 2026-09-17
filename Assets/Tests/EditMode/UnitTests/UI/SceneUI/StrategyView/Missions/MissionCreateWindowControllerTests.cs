@@ -88,6 +88,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null game provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullGameProvider_ThrowsArgumentNullException()
         {
@@ -106,12 +109,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies initialize null actions throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _controller.Initialize(null));
         }
 
+        /// <summary>
+        /// Verifies bind window before initialize throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -124,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
         }
 
+        /// <summary>
+        /// Verifies open invalid participant selection destroys rejected window.
+        /// </summary>
         [Test]
         public void Open_InvalidParticipantSelection_DestroysRejectedWindow()
         {
@@ -133,6 +145,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(0, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open valid selection creates named modal window at authored position.
+        /// </summary>
         [Test]
         public void Open_ValidSelection_CreatesNamedModalWindowAtAuthoredPosition()
         {
@@ -147,6 +162,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies that repeating a mission target command closes its existing window.
+        /// </summary>
         [Test]
         public void Open_SameTarget_TogglesExistingWindowClosed()
         {
@@ -159,6 +177,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies info button initialized session routes semantic action.
+        /// </summary>
         [Test]
         public void InfoButton_InitializedSession_RoutesSemanticAction()
         {
@@ -170,6 +191,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(window, _windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Verifies dropdown button initialized session changes local state and invalidates.
+        /// </summary>
         [Test]
         public void DropdownButton_InitializedSession_ChangesLocalStateAndInvalidates()
         {
@@ -181,6 +205,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(window, _windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Verifies mission odds checkbox initialized session changes visibility and invalidates.
+        /// </summary>
         [Test]
         public void MissionOddsCheckbox_InitializedSession_ChangesVisibilityAndInvalidates()
         {
@@ -199,6 +226,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(window, _windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Verifies mission odds checkbox persisted hidden state initializes hidden.
+        /// </summary>
         [Test]
         public void MissionOddsCheckbox_PersistedHiddenState_InitializesHidden()
         {
@@ -213,6 +243,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(0, _showMissionOddsSaveCount);
         }
 
+        /// <summary>
+        /// Verifies cancel button initialized session closes owning window.
+        /// </summary>
         [Test]
         public void CancelButton_InitializedSession_ClosesOwningWindow()
         {
@@ -224,6 +257,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(_windowManager.Windows);
         }
 
+        /// <summary>
+        /// Verifies view destroyed initialized session rejects further rendering.
+        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_RejectsFurtherRendering()
         {

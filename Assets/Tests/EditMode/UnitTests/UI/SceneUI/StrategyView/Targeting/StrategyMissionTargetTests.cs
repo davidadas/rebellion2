@@ -11,6 +11,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
     [TestFixture]
     public class StrategyMissionTargetTests
     {
+        /// <summary>
+        /// Verifies get move destination missing planet returns null.
+        /// </summary>
         [Test]
         public void GetMoveDestination_MissingPlanet_ReturnsNull()
         {
@@ -21,6 +24,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsNull(destination);
         }
 
+        /// <summary>
+        /// Verifies get move destination planet without item returns planet.
+        /// </summary>
         [Test]
         public void GetMoveDestination_PlanetWithoutItem_ReturnsPlanet()
         {
@@ -32,6 +38,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(mapPlanet.Planet, destination);
         }
 
+        /// <summary>
+        /// Verifies get move destination fleet or capital ship returns item.
+        /// </summary>
         [Test]
         public void GetMoveDestination_FleetOrCapitalShip_ReturnsItem()
         {
@@ -52,6 +61,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(ship, shipDestination);
         }
 
+        /// <summary>
+        /// Verifies get move destination item inside fleet or ship returns parent.
+        /// </summary>
         [Test]
         public void GetMoveDestination_ItemInsideFleetOrShip_ReturnsParent()
         {
@@ -76,6 +88,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(ship, shipDestination);
         }
 
+        /// <summary>
+        /// Verifies get move destination other item returns planet.
+        /// </summary>
         [Test]
         public void GetMoveDestination_OtherItem_ReturnsPlanet()
         {
@@ -88,6 +103,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(mapPlanet.Planet, destination);
         }
 
+        /// <summary>
+        /// Verifies get mission target officer target returns officer.
+        /// </summary>
         [Test]
         public void GetMissionTarget_OfficerTarget_ReturnsOfficer()
         {
@@ -99,6 +117,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(officer, specificTarget);
         }
 
+        /// <summary>
+        /// Verifies get mission target location mission returns planet.
+        /// </summary>
         [Test]
         public void GetMissionTarget_LocationMission_ReturnsPlanet()
         {
@@ -113,6 +134,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(mapPlanet.Planet, locationTarget);
         }
 
+        /// <summary>
+        /// Verifies get mission target planet mission from capital ship returns null.
+        /// </summary>
         [Test]
         public void GetMissionTarget_PlanetMissionFromCapitalShip_ReturnsNull()
         {
@@ -124,6 +148,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsNull(missionTarget);
         }
 
+        /// <summary>
+        /// Verifies get mission target targeted mission without item returns null.
+        /// </summary>
         [Test]
         public void GetMissionTarget_TargetedMissionWithoutItem_ReturnsNull()
         {

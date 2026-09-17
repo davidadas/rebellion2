@@ -15,6 +15,9 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class MessageSystemTests
     {
+        /// <summary>
+        /// Verifies process results with message delivery request adds message to faction.
+        /// </summary>
         [Test]
         public void ProcessResults_WithMessageDeliveryRequest_AddsMessageToFaction()
         {
@@ -67,6 +70,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(game.CurrentTick, message.CreatedTick);
         }
 
+        /// <summary>
+        /// Verifies handle requests with combat report delivers report as message.
+        /// </summary>
         [Test]
         public void HandleRequests_WithCombatReport_DeliversReportAsMessage()
         {
@@ -98,6 +104,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(42, report.CreatedTick);
         }
 
+        /// <summary>
+        /// Verifies process results without matching definition does not create message bucket.
+        /// </summary>
         [Test]
         public void ProcessResults_WithoutMatchingDefinition_DoesNotCreateMessageBucket()
         {
@@ -125,6 +134,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(faction.Messages.Values.All(messages => messages.Count == 0));
         }
 
+        /// <summary>
+        /// Verifies process results messages older than retention does not expire messages.
+        /// </summary>
         [Test]
         public void ProcessResults_MessagesOlderThanRetention_DoesNotExpireMessages()
         {
@@ -153,6 +165,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick messages older than retention removes expired messages.
+        /// </summary>
         [Test]
         public void ProcessTick_MessagesOlderThanRetention_RemovesExpiredMessages()
         {

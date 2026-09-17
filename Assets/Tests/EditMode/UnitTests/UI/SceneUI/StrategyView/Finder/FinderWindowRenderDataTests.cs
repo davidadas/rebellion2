@@ -30,6 +30,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             UnityEngine.Object.DestroyImmediate(_secondTexture);
         }
 
+        /// <summary>
+        /// Verifies window state null search text normalizes complete state.
+        /// </summary>
         [Test]
         public void WindowState_NullSearchText_NormalizesCompleteState()
         {
@@ -42,6 +45,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(string.Empty, state.SearchText);
         }
 
+        /// <summary>
+        /// Verifies row render data source changes preserves normalized snapshot.
+        /// </summary>
         [Test]
         public void RowRenderData_SourceChanges_PreservesNormalizedSnapshot()
         {
@@ -64,6 +70,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies frame render data source changes preserves complete snapshot.
+        /// </summary>
         [Test]
         public void FrameRenderData_SourceChanges_PreservesCompleteSnapshot()
         {
@@ -101,6 +110,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(button, data.DialogButtons[0]);
         }
 
+        /// <summary>
+        /// Verifies window render data null frame throws argument null exception.
+        /// </summary>
         [Test]
         public void WindowRenderData_NullFrame_ThrowsArgumentNullException()
         {
@@ -121,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies window render data source changes preserves normalized snapshot.
+        /// </summary>
         [Test]
         public void WindowRenderData_SourceChanges_PreservesNormalizedSnapshot()
         {

@@ -59,6 +59,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null resolver or negative threshold throws.
+        /// </summary>
         [Test]
         public void Constructor_NullResolverOrNegativeThreshold_Throws()
         {
@@ -88,6 +91,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
         }
 
+        /// <summary>
+        /// Verifies event results static factories expose expected effects.
+        /// </summary>
         [Test]
         public void EventResults_StaticFactories_ExposeExpectedEffects()
         {
@@ -116,6 +122,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(finished.Dirty);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move no candidate returns none.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_NoCandidate_ReturnsNone()
         {
@@ -126,6 +135,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(result.Handled);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move below threshold returns handled only.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_BelowThreshold_ReturnsHandledOnly()
         {
@@ -144,6 +156,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(result.ClearPressedWindow);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move empty candidate crosses threshold clears candidate.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_EmptyCandidateCrossesThreshold_ClearsCandidate()
         {
@@ -166,6 +181,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(next.Handled);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move items without preview starts targeting.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_ItemsWithoutPreview_StartsTargeting()
         {
@@ -185,6 +203,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(_targetingController.IsTargeting);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move preview candidate starts and moves source drag.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_PreviewCandidate_StartsAndMovesSourceDrag()
         {
@@ -216,6 +237,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(new RectInt(48, 57, 20, 30), bounds);
         }
 
+        /// <summary>
+        /// Verifies try start item candidate direct entity uses shared drag flow.
+        /// </summary>
         [Test]
         public void TryStartItemCandidate_DirectEntity_UsesSharedDragFlow()
         {
@@ -243,6 +267,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreSame(_texture, texture);
         }
 
+        /// <summary>
+        /// Verifies try cancel direct item interaction direct candidate clears only direct state.
+        /// </summary>
         [Test]
         public void TryCancelDirectItemInteraction_DirectCandidate_ClearsOnlyDirectState()
         {
@@ -267,6 +294,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(nextMove.Handled);
         }
 
+        /// <summary>
+        /// Verifies try cancel direct item interaction window candidate preserves window state.
+        /// </summary>
         [Test]
         public void TryCancelDirectItemInteraction_WindowCandidate_PreservesWindowState()
         {
@@ -286,6 +316,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(nextMove.Handled);
         }
 
+        /// <summary>
+        /// Verifies try cancel direct item interaction direct targeting cancels targeting.
+        /// </summary>
         [Test]
         public void TryCancelDirectItemInteraction_DirectTargeting_CancelsTargeting()
         {
@@ -300,6 +333,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(_targetingController.IsTargeting);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer move different press clears candidate without dragging.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerMove_DifferentPress_ClearsCandidateWithoutDragging()
         {
@@ -328,6 +364,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(_targetingController.IsTargeting);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer up unresolved without state returns none.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerUp_UnresolvedWithoutState_ReturnsNone()
         {
@@ -338,6 +377,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(result.Handled);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer up unresolved with candidate clears and finishes.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerUp_UnresolvedWithCandidate_ClearsAndFinishes()
         {
@@ -357,6 +399,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(nextMove.Handled);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer up resolved candidate without source drag clears and returns none.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerUp_ResolvedCandidateWithoutSourceDrag_ClearsAndReturnsNone()
         {
@@ -375,6 +420,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(nextMove.Handled);
         }
 
+        /// <summary>
+        /// Verifies try handle item pointer up resolved source drag finishes drag.
+        /// </summary>
         [Test]
         public void TryHandleItemPointerUp_ResolvedSourceDrag_FinishesDrag()
         {
@@ -394,6 +442,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(_targetingController.IsTargeting);
         }
 
+        /// <summary>
+        /// Verifies clear window matching source clears drag presentation.
+        /// </summary>
         [Test]
         public void ClearWindow_MatchingSource_ClearsDragPresentation()
         {

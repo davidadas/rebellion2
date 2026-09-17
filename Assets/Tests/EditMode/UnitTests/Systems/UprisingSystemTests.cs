@@ -16,6 +16,9 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class UprisingSystemTests
     {
+        /// <summary>
+        /// Verifies process tick sufficient garrison no uprising.
+        /// </summary>
         [Test]
         public void ProcessTick_SufficientGarrison_NoUprising()
         {
@@ -30,6 +33,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(planet.IsInUprising, "Sufficient garrison should prevent uprising");
         }
 
+        /// <summary>
+        /// Verifies process tick no garrison uprising starts.
+        /// </summary>
         [Test]
         public void ProcessTick_NoGarrison_UprisingStarts()
         {
@@ -50,6 +56,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
         }
 
+        /// <summary>
+        /// Verifies process tick exact garrison no uprising.
+        /// </summary>
         [Test]
         public void ProcessTick_ExactGarrison_NoUprising()
         {
@@ -67,6 +76,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick garrison falls to requirement reports near uprising once.
+        /// </summary>
         [Test]
         public void ProcessTick_GarrisonFallsToRequirement_ReportsNearUprisingOnce()
         {
@@ -84,6 +96,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(planet.IsInUprising);
         }
 
+        /// <summary>
+        /// Verifies process tick active uprising with facility destroys facility.
+        /// </summary>
         [Test]
         public void ProcessTick_ActiveUprisingWithFacility_DestroysFacility()
         {
@@ -113,6 +128,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(planet.IsInUprising, "Uprising should remain active after consequence");
         }
 
+        /// <summary>
+        /// Verifies process tick active uprising last building destroyed does not change control.
+        /// </summary>
         [Test]
         public void ProcessTick_ActiveUprisingLastBuildingDestroyed_DoesNotChangeControl()
         {
@@ -135,6 +153,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results.OfType<PlanetOwnershipChangedResult>());
         }
 
+        /// <summary>
+        /// Verifies process tick active uprising officer captured.
+        /// </summary>
         [Test]
         public void ProcessTick_ActiveUprising_OfficerCaptured()
         {
@@ -159,6 +180,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(results.OfType<OfficerCaptureStateResult>().Any(r => r.IsCaptured));
         }
 
+        /// <summary>
+        /// Verifies process tick active uprising captured officer freed.
+        /// </summary>
         [Test]
         public void ProcessTick_ActiveUprising_CapturedOfficerFreed()
         {
@@ -189,6 +213,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick incident excludes incomplete facility.
+        /// </summary>
         [Test]
         public void ProcessTick_IncidentExcludesIncompleteFacility()
         {
@@ -207,6 +234,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
         }
 
+        /// <summary>
+        /// Verifies process tick incident excludes enroute regiment.
+        /// </summary>
         [Test]
         public void ProcessTick_IncidentExcludesEnrouteRegiment()
         {
@@ -231,6 +261,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick incident captures only usable officer.
+        /// </summary>
         [Test]
         public void ProcessTick_IncidentCapturesOnlyUsableOfficer()
         {
@@ -265,6 +298,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(usable.IsCaptured);
         }
 
+        /// <summary>
+        /// Verifies process tick high support no uprising.
+        /// </summary>
         [Test]
         public void ProcessTick_HighSupport_NoUprising()
         {
@@ -281,6 +317,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(planet.IsInUprising, "High support should prevent uprising");
         }
 
+        /// <summary>
+        /// Verifies process tick active uprising zero troops planet goes neutral.
+        /// </summary>
         [Test]
         public void ProcessTick_ActiveUprising_ZeroTroops_PlanetGoesNeutral()
         {
@@ -302,6 +341,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(flip.NewOwner);
         }
 
+        /// <summary>
+        /// Verifies process tick active uprising zero troops with opposing support transfers control.
+        /// </summary>
         [Test]
         public void ProcessTick_ActiveUprisingZeroTroopsWithOpposingSupport_TransfersControl()
         {
@@ -323,6 +365,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("rebels", result.NewOwner?.InstanceID);
         }
 
+        /// <summary>
+        /// Verifies process tick sufficient uprising garrison clears only when timer expires.
+        /// </summary>
         [Test]
         public void ProcessTick_SufficientUprisingGarrison_ClearsOnlyWhenTimerExpires()
         {
@@ -342,6 +387,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, atTimer.OfType<PlanetUprisingEndedResult>().Count());
         }
 
+        /// <summary>
+        /// Verifies process tick incident ignores hostile fleet presence.
+        /// </summary>
         [Test]
         public void ProcessTick_IncidentIgnoresHostileFleetPresence()
         {
@@ -362,6 +410,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
         }
 
+        /// <summary>
+        /// Verifies process tick incident applies incite and subdue leadership adjustments.
+        /// </summary>
         [Test]
         public void ProcessTick_IncidentAppliesInciteAndSubdueLeadershipAdjustments()
         {
@@ -385,6 +436,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(92, planet.GetPopularSupport("rebels"));
         }
 
+        /// <summary>
+        /// Verifies process tick incident excludes mission participants in transit.
+        /// </summary>
         [Test]
         public void ProcessTick_IncidentExcludesMissionParticipantsInTransit()
         {
@@ -413,6 +467,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, planet.GetPopularSupport("empire"));
         }
 
+        /// <summary>
+        /// Verifies process tick neutral planet skipped.
+        /// </summary>
         [Test]
         public void ProcessTick_NeutralPlanet_Skipped()
         {
@@ -449,6 +506,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(planet.IsInUprising, "Neutral planet should not revolt");
         }
 
+        /// <summary>
+        /// Verifies process tick empire garrison on core sector halves requirement.
+        /// </summary>
         [Test]
         public void ProcessTick_EmpireGarrisonOnCoreSector_HalvesRequirement()
         {
@@ -506,6 +566,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick empire garrison on outer rim no bonus.
+        /// </summary>
         [Test]
         public void ProcessTick_EmpireGarrisonOnOuterRim_NoBonus()
         {
@@ -563,6 +626,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies handle results garrison deficit starts uprising.
+        /// </summary>
         [Test]
         public void HandleResults_GarrisonDeficit_StartsUprising()
         {
@@ -584,6 +650,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, results.OfType<PlanetUprisingStartedResult>().Count());
         }
 
+        /// <summary>
+        /// Verifies reconcile garrison captured planet at requirement reports near uprising.
+        /// </summary>
         [Test]
         public void ReconcileGarrison_CapturedPlanetAtRequirement_ReportsNearUprising()
         {
@@ -606,6 +675,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(planet.IsInUprising);
         }
 
+        /// <summary>
+        /// Verifies reconcile garrison deficit returns before clear pulse cancels clear timer.
+        /// </summary>
         [Test]
         public void ReconcileGarrison_DeficitReturnsBeforeClearPulse_CancelsClearTimer()
         {
@@ -631,6 +703,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results.OfType<PlanetUprisingEndedResult>());
         }
 
+        /// <summary>
+        /// Verifies try execute mission officers out of score order attempts lowest score first.
+        /// </summary>
         [Test]
         public void TryExecuteMission_OfficersOutOfScoreOrder_AttemptsLowestScoreFirst()
         {
@@ -815,6 +890,11 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class GarrisonRequirementTests
     {
+        /// <summary>
+        /// Verifies calculate garrison requirement standard planet matches original formula.
+        /// </summary>
+        /// <param name="support">The support.</param>
+        /// <param name="expectedGarrison">The expected garrison.</param>
         [TestCase(80, 0)]
         [TestCase(60, 0)]
         [TestCase(55, 1)]
@@ -859,6 +939,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(expectedGarrison, garrison, $"Garrison for support={support}");
         }
 
+        /// <summary>
+        /// Verifies calculate garrison requirement core world empire halved.
+        /// </summary>
         [Test]
         public void CalculateGarrisonRequirement_CoreWorldEmpire_Halved()
         {
@@ -897,6 +980,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(2, garrison, "Empire core world should halve garrison");
         }
 
+        /// <summary>
+        /// Verifies calculate garrison requirement core world alliance not halved.
+        /// </summary>
         [Test]
         public void CalculateGarrisonRequirement_CoreWorldAlliance_NotHalved()
         {
@@ -935,6 +1021,10 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(4, garrison, "Alliance core world should NOT halve garrison");
         }
 
+        /// <summary>
+        /// Verifies calculate garrison requirement keeps one troop required for an efficient core
+        /// faction when support is below the ownership threshold.
+        /// </summary>
         [Test]
         public void CalculateGarrisonRequirement_EfficientCoreFactionBelowThreshold_RequiresOneTroop()
         {

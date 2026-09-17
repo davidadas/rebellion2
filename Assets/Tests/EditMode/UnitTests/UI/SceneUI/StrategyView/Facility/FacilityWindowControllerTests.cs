@@ -78,6 +78,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null game provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullGameProvider_ThrowsArgumentNullException()
         {
@@ -96,6 +99,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies constructor null manufacturing system provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullManufacturingSystemProvider_ThrowsArgumentNullException()
         {
@@ -114,6 +120,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies initialize null actions throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullActions_ThrowsArgumentNullException()
         {
@@ -122,6 +131,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies bind window before initialize throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -134,6 +146,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
         }
 
+        /// <summary>
+        /// Verifies try initialize window null planet returns false.
+        /// </summary>
         [Test]
         public void TryInitializeWindow_NullPlanet_ReturnsFalse()
         {
@@ -149,6 +164,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Verifies open valid planet creates named window at resolved position.
+        /// </summary>
         [Test]
         public void Open_ValidPlanet_CreatesNamedWindowAtResolvedPosition()
         {
@@ -166,6 +184,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreSame(_planet, _controller.GetPlanet(view));
         }
 
+        /// <summary>
+        /// Verifies open existing planet reuses window without additional invalidation.
+        /// </summary>
         [Test]
         public void Open_ExistingPlanet_ReusesWindowWithoutAdditionalInvalidation()
         {
@@ -180,6 +201,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies select target matching building selects inventory status and scrap target.
+        /// </summary>
         [Test]
         public void SelectTarget_MatchingBuilding_SelectsInventoryStatusAndScrapTarget()
         {
@@ -197,6 +221,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies try get construction destination i ds manufacturing tab returns planet fallback.
+        /// </summary>
         [Test]
         public void TryGetConstructionDestinationIDs_ManufacturingTab_ReturnsPlanetFallback()
         {
@@ -214,6 +241,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsNull(destinationItemId);
         }
 
+        /// <summary>
+        /// Verifies reconcile window fresh projection rebinds planet and selection by identity.
+        /// </summary>
         [Test]
         public void ReconcileWindow_FreshProjection_RebindsPlanetAndSelectionByIdentity()
         {
@@ -247,6 +277,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies clear selection selected building removes status and scrap targets.
+        /// </summary>
         [Test]
         public void ClearSelection_SelectedBuilding_RemovesStatusAndScrapTargets()
         {
@@ -259,6 +292,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsEmpty(_controller.GetScrapItems(view));
         }
 
+        /// <summary>
+        /// Verifies on context menu command selected manufacturing reservation toggles selected lane.
+        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ManufacturingReservation_TogglesSelectedLane()
         {
@@ -302,6 +338,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(_planet.Planet.IsManufacturingReserved(ManufacturingType.Troop));
         }
 
+        /// <summary>
+        /// Verifies view destroyed initialized session releases planet association.
+        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {

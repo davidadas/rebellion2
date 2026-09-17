@@ -12,6 +12,9 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class InciteUprisingMissionTests
     {
+        /// <summary>
+        /// Verifies roll participant success garrisoned regiment does not affect score.
+        /// </summary>
         [Test]
         public void RollParticipantSuccess_GarrisonedRegimentDoesNotAffectScore()
         {
@@ -50,6 +53,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
         }
 
+        /// <summary>
+        /// Verifies try create planet already in uprising returns null.
+        /// </summary>
         [Test]
         public void TryCreate_PlanetAlreadyInUprising_ReturnsNull()
         {
@@ -72,6 +78,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion neutral planet without friendly troops returns false.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_NeutralPlanetWithoutFriendlyTroops_ReturnsFalse()
         {
@@ -88,6 +97,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(mission.ShouldRepeatAfterCompletion(game));
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion enemy controls planet returns true.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_EnemyControlsPlanet_ReturnsTrue()
         {
@@ -103,6 +115,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(mission.ShouldRepeatAfterCompletion(game));
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion neutral planet with friendly troops returns true.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_NeutralPlanetWithFriendlyTroops_ReturnsTrue()
         {
@@ -124,6 +139,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(mission.ShouldRepeatAfterCompletion(game));
         }
 
+        /// <summary>
+        /// Verifies try create owned planet target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_OwnedPlanetTarget_ReturnsNull()
         {
@@ -146,6 +164,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create neutral planet target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NeutralPlanetTarget_ReturnsNull()
         {
@@ -170,6 +191,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies display name is human readable.
+        /// </summary>
         [Test]
         public void DisplayName_IsHumanReadable()
         {
@@ -193,6 +217,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("Incite Uprising", mission.DisplayName);
         }
 
+        /// <summary>
+        /// Verifies get abort reason uprising already started does not abort.
+        /// </summary>
         [Test]
         public void GetAbortReason_UprisingAlreadyStarted_DoesNotAbort()
         {
@@ -218,6 +245,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission.GetAbortReason(game));
         }
 
+        /// <summary>
+        /// Verifies serialize round trip preserves data.
+        /// </summary>
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {

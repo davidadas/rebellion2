@@ -12,6 +12,9 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AIFleetDefenseProposalTests
     {
+        /// <summary>
+        /// Verifies execute with ready defense fleet moves fleet to headquarters.
+        /// </summary>
         [Test]
         public void Execute_WithReadyDefenseFleet_MovesFleetToHeadquarters()
         {
@@ -48,6 +51,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(headquarters.InstanceID, fleet.Order.TargetPlanetId);
         }
 
+        /// <summary>
+        /// Verifies execute with insufficient defense fleet moves fleet to headquarters.
+        /// </summary>
         [Test]
         public void Execute_WithInsufficientDefenseFleet_MovesFleetToHeadquarters()
         {
@@ -91,6 +97,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(headquarters.InstanceID, fleet.Order.TargetPlanetId);
         }
 
+        /// <summary>
+        /// Verifies execute with threatened owned planet moves fleet to planet.
+        /// </summary>
         [Test]
         public void Execute_WithThreatenedOwnedPlanet_MovesFleetToPlanet()
         {
@@ -135,6 +144,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(threatenedPlanet.InstanceID, fleet.Order.TargetPlanetId);
         }
 
+        /// <summary>
+        /// Verifies execute after planet threat ends clears defense order.
+        /// </summary>
         [Test]
         public void Execute_AfterPlanetThreatEnds_ClearsDefenseOrder()
         {

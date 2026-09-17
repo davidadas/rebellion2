@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.Components
                 Object.DestroyImmediate(_windowManagerObject);
         }
 
+        /// <summary>
+        /// Verifies try cancel active window emits close request.
+        /// </summary>
         [Test]
         public void TryCancel_ActiveWindow_EmitsCloseRequest()
         {
@@ -32,6 +35,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(window, closedWindow);
         }
 
+        /// <summary>
+        /// Verifies try cancel focused window uses focused window.
+        /// </summary>
         [Test]
         public void TryCancel_FocusedWindow_UsesFocusedWindow()
         {
@@ -48,6 +54,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(firstWindow, closedWindow);
         }
 
+        /// <summary>
+        /// Verifies try cancel without active window returns false.
+        /// </summary>
         [Test]
         public void TryCancel_WithoutActiveWindow_ReturnsFalse()
         {
@@ -59,6 +68,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(cancelled);
         }
 
+        /// <summary>
+        /// Verifies try cancel without close listener returns false.
+        /// </summary>
         [Test]
         public void TryCancel_WithoutCloseListener_ReturnsFalse()
         {
@@ -70,6 +82,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(cancelled);
         }
 
+        /// <summary>
+        /// Verifies try cancel content consumes cancel does not emit close request.
+        /// </summary>
         [Test]
         public void TryCancel_ContentConsumesCancel_DoesNotEmitCloseRequest()
         {
@@ -87,6 +102,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, closeRequestCount);
         }
 
+        /// <summary>
+        /// Verifies register modal window blocks earlier window.
+        /// </summary>
         [Test]
         public void Register_ModalWindow_BlocksEarlierWindow()
         {
@@ -99,6 +117,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(modalWindow, windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Verifies that repeating an exclusive-window request closes the current window.
+        /// </summary>
         [Test]
         public void ToggleExclusiveWindow_RepeatedRequest_ClosesCurrentWindow()
         {
@@ -114,6 +135,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, windowManager.Windows.Count);
         }
 
+        /// <summary>
+        /// Verifies that a different exclusive-window request replaces the current window.
+        /// </summary>
         [Test]
         public void ToggleExclusiveWindow_DifferentRequest_ReplacesCurrentWindow()
         {
@@ -131,6 +155,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(second, windowManager.Windows[0]);
         }
 
+        /// <summary>
+        /// Verifies that successive exclusive requests never register multiple exclusive windows.
+        /// </summary>
         [Test]
         public void ToggleExclusiveWindow_SuccessiveRequests_RegisterOnlyOneWindow()
         {
@@ -147,6 +174,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(windowManager.Windows[0].Content is TestContent);
         }
 
+        /// <summary>
+        /// Verifies that a blocking modal overlay prevents changes to the exclusive slot.
+        /// </summary>
         [Test]
         public void ToggleExclusiveWindow_BlockingOverlay_DoesNotChangeExclusiveWindow()
         {
@@ -164,6 +194,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(overlay, windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Verifies that external closure releases the exclusive slot for another window.
+        /// </summary>
         [Test]
         public void ToggleExclusiveWindow_AfterExternalClose_OpensReplacement()
         {
@@ -179,6 +212,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(replacement, windowManager.Windows[0]);
         }
 
+        /// <summary>
+        /// Verifies focus active window does not emit focus changed.
+        /// </summary>
         [Test]
         public void Focus_ActiveWindow_DoesNotEmitFocusChanged()
         {
@@ -193,6 +229,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, focusChangedCount);
         }
 
+        /// <summary>
+        /// Verifies unregister active window promotes previous focusable window.
+        /// </summary>
         [Test]
         public void Unregister_ActiveWindow_PromotesPreviousFocusableWindow()
         {
@@ -206,6 +245,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(firstWindow.ActiveWindow);
         }
 
+        /// <summary>
+        /// Verifies find window registered content returns owning window.
+        /// </summary>
         [Test]
         public void FindWindow_RegisteredContent_ReturnsOwningWindow()
         {
@@ -221,6 +263,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(expected, window);
         }
 
+        /// <summary>
+        /// Verifies find window missing content returns null.
+        /// </summary>
         [Test]
         public void FindWindow_MissingContent_ReturnsNull()
         {
@@ -232,6 +277,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsNull(window);
         }
 
+        /// <summary>
+        /// Verifies find window view matching predicate returns authored content.
+        /// </summary>
         [Test]
         public void FindWindowView_MatchingPredicate_ReturnsAuthoredContent()
         {
@@ -252,6 +300,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(expected, result);
         }
 
+        /// <summary>
+        /// Verifies create window immovable modeless window preserves authored position.
+        /// </summary>
         [Test]
         public void CreateWindow_ImmovableModelessWindow_PreservesAuthoredPosition()
         {
@@ -276,6 +327,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(new Vector2Int(500, 400), new Vector2Int(window.X, window.Y));
         }
 
+        /// <summary>
+        /// Verifies for each window mixed content visits matching windows only.
+        /// </summary>
         [Test]
         public void ForEachWindow_MixedContent_VisitsMatchingWindowsOnly()
         {
@@ -304,6 +358,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(expected, visitedContent);
         }
 
+        /// <summary>
+        /// Verifies that registering a window announces a persistent window-state change.
+        /// </summary>
         [Test]
         public void Register_NewWindow_RaisesWindowsChanged()
         {
@@ -316,6 +373,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(1, changedCount);
         }
 
+        /// <summary>
+        /// Verifies that unregistering a window announces a persistent window-state change.
+        /// </summary>
         [Test]
         public void Unregister_RegisteredWindow_RaisesWindowsChanged()
         {
@@ -329,6 +389,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(1, changedCount);
         }
 
+        /// <summary>
+        /// Verifies that changing the focused window announces a stacking-order change.
+        /// </summary>
         [Test]
         public void Focus_BackgroundWindow_RaisesWindowsChanged()
         {
@@ -343,6 +406,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(1, changedCount);
         }
 
+        /// <summary>
+        /// Verifies that completing a window move announces a geometry change.
+        /// </summary>
         [Test]
         public void NotifyMoved_RegisteredWindow_RaisesWindowsChanged()
         {
@@ -356,6 +422,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(1, changedCount);
         }
 
+        /// <summary>
+        /// Verifies that resizing a registered window announces a geometry change.
+        /// </summary>
         [Test]
         public void Resize_RegisteredWindow_RaisesWindowsChanged()
         {

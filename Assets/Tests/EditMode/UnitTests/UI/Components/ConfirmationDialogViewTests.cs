@@ -35,6 +35,9 @@ namespace Rebellion.Tests.UI.Components
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies the blocker fills its host while the fixed-size dialog art remains centered.
+        /// </summary>
         [Test]
         public void AuthoredPrefab_BlockerFillsHostAndDialogSurfaceRemainsCentered()
         {
@@ -56,6 +59,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(Vector2.zero, dialogSurface.anchoredPosition);
         }
 
+        /// <summary>
+        /// Verifies showing a prompt applies its text and authored presentation.
+        /// </summary>
         [Test]
         public void Show_Message_AppliesPresentationAndDisplaysDialog()
         {
@@ -80,6 +86,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies a null prompt is displayed as empty text.
+        /// </summary>
         [Test]
         public void Show_NullMessage_DisplaysEmptyText()
         {
@@ -88,6 +97,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(string.Empty, GetField<TextMeshProUGUI>("messageTextField").text);
         }
 
+        /// <summary>
+        /// Verifies hiding a prompt does not emit a response.
+        /// </summary>
         [Test]
         public void Hide_VisibleDialog_HidesWithoutResponse()
         {
@@ -102,6 +114,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, responseCount);
         }
 
+        /// <summary>
+        /// Verifies the confirm button closes the prompt and emits confirmation.
+        /// </summary>
         [Test]
         public void ConfirmButton_Click_HidesAndRaisesConfirmed()
         {
@@ -115,6 +130,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies the cancel button closes the prompt and emits cancellation.
+        /// </summary>
         [Test]
         public void CancelButton_Click_HidesAndRaisesCanceled()
         {
@@ -128,6 +146,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies destruction removes button listeners owned by the dialog.
+        /// </summary>
         [Test]
         public void OnDestroy_BoundDialog_UnbindsButtons()
         {

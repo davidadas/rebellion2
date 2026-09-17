@@ -50,6 +50,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
                 UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies awake authored prefab configures playback components.
+        /// </summary>
         [Test]
         public void Awake_AuthoredPrefab_ConfiguresPlaybackComponents()
         {
@@ -76,6 +79,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(AspectRatioFitter.AspectMode.FitInParent, screenAspect.aspectMode);
         }
 
+        /// <summary>
+        /// Verifies play valid clip configures video and audio output.
+        /// </summary>
         [Test]
         public void Play_ValidClip_ConfiguresVideoAndAudioOutput()
         {
@@ -88,6 +94,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(Color.black, _screen.color);
         }
 
+        /// <summary>
+        /// Verifies set volume value outside range clamps audio source volume.
+        /// </summary>
         [Test]
         public void SetVolume_ValueOutsideRange_ClampsAudioSourceVolume()
         {
@@ -96,6 +105,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(1f, _audioSource.volume);
         }
 
+        /// <summary>
+        /// Verifies configure url playback valid url configures url video source.
+        /// </summary>
         [Test]
         public void ConfigureUrlPlayback_ValidUrl_ConfiguresUrlVideoSource()
         {
@@ -111,6 +123,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(Color.black, _screen.color);
         }
 
+        /// <summary>
+        /// Verifies reveal frame decoded texture uses native texture and aspect ratio.
+        /// </summary>
         [Test]
         public void RevealFrame_DecodedTexture_UsesNativeTextureAndAspectRatio()
         {
@@ -135,6 +150,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             }
         }
 
+        /// <summary>
+        /// Verifies end cutscene repeated termination invokes completion once.
+        /// </summary>
         [Test]
         public void EndCutscene_RepeatedTermination_InvokesCompletionOnce()
         {
@@ -150,6 +168,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
         }
 
+        /// <summary>
+        /// Verifies a platform decoder failure releases playback through the normal completion path.
+        /// </summary>
         [Test]
         public void HandlePlaybackError_ActivePlayback_InvokesCompletionOnce()
         {
@@ -162,6 +183,9 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(Color.black, _screen.color);
         }
 
+        /// <summary>
+        /// Verifies on destroy active playback blanks screen and releases frame events.
+        /// </summary>
         [Test]
         public void OnDestroy_ActivePlayback_BlanksScreenAndReleasesFrameEvents()
         {

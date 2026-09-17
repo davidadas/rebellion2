@@ -81,6 +81,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies constructor null sectors throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullSectors_ThrowsArgumentNullException()
         {
@@ -89,6 +92,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies get rows troops without configured columns throws invalid operation exception.
+        /// </summary>
         [Test]
         public void GetRows_TroopsWithoutConfiguredColumns_ThrowsInvalidOperationException()
         {
@@ -104,6 +110,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies get rows unit mode without faction tab returns no rows.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="panel">Whether panel.</param>
         [TestCase(FinderMode.Troops, false)]
         [TestCase(FinderMode.Personnel, true)]
         public void GetRows_UnitModeWithoutFactionTab_ReturnsNoRows(FinderMode mode, bool panel)
@@ -113,6 +124,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsEmpty(rows);
         }
 
+        /// <summary>
+        /// Verifies get rows troops with duplicate columns throws invalid operation exception.
+        /// </summary>
         [Test]
         public void GetRows_TroopsWithDuplicateColumns_ThrowsInvalidOperationException()
         {
@@ -131,6 +145,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies get rows troops with unmapped unit type throws invalid operation exception.
+        /// </summary>
         [Test]
         public void GetRows_TroopsWithUnmappedUnitType_ThrowsInvalidOperationException()
         {
@@ -149,6 +166,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies get rows all systems returns every planet in alphabetical order.
+        /// </summary>
         [Test]
         public void GetRows_AllSystems_ReturnsEveryPlanetInAlphabeticalOrder()
         {
@@ -165,6 +185,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsTrue(rows.All(row => row.TargetIcon == PlanetIcon.None));
         }
 
+        /// <summary>
+        /// Verifies get rows faction systems returns only faction owned planets.
+        /// </summary>
         [Test]
         public void GetRows_FactionSystems_ReturnsOnlyFactionOwnedPlanets()
         {
@@ -178,6 +201,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(_alphaMapPlanet, rows[0].Planet);
         }
 
+        /// <summary>
+        /// Verifies get rows neutral systems excludes unexplored planets.
+        /// </summary>
         [Test]
         public void GetRows_NeutralSystems_ExcludesUnexploredPlanets()
         {
@@ -190,6 +216,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             CollectionAssert.AreEqual(new[] { "Neutral" }, rows.Select(row => row.Name));
         }
 
+        /// <summary>
+        /// Verifies get rows unexplored systems returns planets without visitors.
+        /// </summary>
         [Test]
         public void GetRows_UnexploredSystems_ReturnsPlanetsWithoutVisitors()
         {
@@ -202,6 +231,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             CollectionAssert.AreEqual(new[] { "Unknown" }, rows.Select(row => row.Name));
         }
 
+        /// <summary>
+        /// Verifies get rows null system tab returns no rows.
+        /// </summary>
         [Test]
         public void GetRows_NullSystemTab_ReturnsNoRows()
         {
@@ -210,6 +242,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsEmpty(rows);
         }
 
+        /// <summary>
+        /// Verifies get rows all fleets returns fleet destinations in alphabetical order.
+        /// </summary>
         [Test]
         public void GetRows_AllFleets_ReturnsFleetDestinationsInAlphabeticalOrder()
         {
@@ -233,6 +268,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(escort, rows[0].Node);
         }
 
+        /// <summary>
+        /// Verifies get rows faction fleets returns only matching owner.
+        /// </summary>
         [Test]
         public void GetRows_FactionFleets_ReturnsOnlyMatchingOwner()
         {
@@ -250,6 +288,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(playerFleet, rows[0].Node);
         }
 
+        /// <summary>
+        /// Verifies get rows ship panel returns ships with containing fleet.
+        /// </summary>
         [Test]
         public void GetRows_ShipPanel_ReturnsShipsWithContainingFleet()
         {
@@ -273,6 +314,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(PlanetIcon.Fleet, rows[0].TargetIcon);
         }
 
+        /// <summary>
+        /// Verifies get rows troops on planet aggregates counts in authored column order.
+        /// </summary>
         [Test]
         public void GetRows_TroopsOnPlanet_AggregatesCountsInAuthoredColumnOrder()
         {
@@ -297,6 +341,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(PlanetIcon.Defense, rows[0].TargetIcon);
         }
 
+        /// <summary>
+        /// Verifies get rows troops in fleet aggregates counts in authored column order.
+        /// </summary>
         [Test]
         public void GetRows_TroopsInFleet_AggregatesCountsInAuthoredColumnOrder()
         {
@@ -322,6 +369,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(fleet, rows[0].Node);
         }
 
+        /// <summary>
+        /// Verifies get rows troops without faction tab returns no rows.
+        /// </summary>
         [Test]
         public void GetRows_TroopsWithoutFactionTab_ReturnsNoRows()
         {
@@ -334,6 +384,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsEmpty(rows);
         }
 
+        /// <summary>
+        /// Verifies get rows personnel projects mission fleet and planet locations without duplicates.
+        /// </summary>
         [Test]
         public void GetRows_Personnel_ProjectsMissionFleetAndPlanetLocationsWithoutDuplicates()
         {
@@ -404,6 +457,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(PlanetIcon.Defense, rows[2].TargetIcon);
         }
 
+        /// <summary>
+        /// Verifies get rows personnel retained outside galaxy includes owned officer.
+        /// </summary>
         [Test]
         public void GetRows_PersonnelRetainedOutsideGalaxy_IncludesOwnedOfficer()
         {
@@ -425,6 +481,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual("Retired Officer - Location Unknown (Retired)", rows.Single().Name);
         }
 
+        /// <summary>
+        /// Verifies get rows killed player personnel includes killed officer without navigation.
+        /// </summary>
         [Test]
         public void GetRows_KilledPlayerPersonnel_IncludesKilledOfficerWithoutNavigation()
         {
@@ -453,6 +512,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsNull(row.Mission);
         }
 
+        /// <summary>
+        /// Verifies get rows disabled player personnel outside galaxy includes owned officer.
+        /// </summary>
         [Test]
         public void GetRows_DisabledPlayerPersonnelOutsideGalaxy_IncludesOwnedOfficer()
         {
@@ -475,6 +537,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual("Inactive Officer - Away on an event", rows.Single().Name);
         }
 
+        /// <summary>
+        /// Verifies get rows uses an inactive officer's authored status as its displayed location.
+        /// </summary>
         [Test]
         public void GetRows_DisabledPersonnelWithDisplayStatus_UsesStatusAsLocation()
         {
@@ -503,6 +568,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsNull(row.Mission);
         }
 
+        /// <summary>
+        /// Verifies get rows combines an inactive captive's authored location with captured status.
+        /// </summary>
         [Test]
         public void GetRows_DisabledCapturedPersonnelWithDisplayStatus_ShowsKnownCaptivityLocation()
         {
@@ -532,6 +600,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsNull(row.Mission);
         }
 
+        /// <summary>
+        /// Verifies get rows disabled player personnel on planet hides location and navigation.
+        /// </summary>
         [Test]
         public void GetRows_DisabledPlayerPersonnelOnPlanet_HidesLocationAndNavigation()
         {
@@ -561,6 +632,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsNull(row.Mission);
         }
 
+        /// <summary>
+        /// Verifies get rows opponent personnel outside snapshot does not reveal live officer state.
+        /// </summary>
         [Test]
         public void GetRows_OpponentPersonnelOutsideSnapshot_DoesNotRevealLiveOfficerState()
         {
@@ -583,6 +657,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsEmpty(rows);
         }
 
+        /// <summary>
+        /// Verifies get rows personnel excludes special forces shown by dedicated panel.
+        /// </summary>
         [Test]
         public void GetRows_Personnel_ExcludesSpecialForcesShownByDedicatedPanel()
         {
@@ -619,6 +696,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             CollectionAssert.AreEqual(new[] { 0, 0, 1, 1, 1, 0 }, specialForcesRows[0].Counts);
         }
 
+        /// <summary>
+        /// Verifies get rows special forces aggregates planet mission and fleet units.
+        /// </summary>
         [Test]
         public void GetRows_SpecialForces_AggregatesPlanetMissionAndFleetUnits()
         {
@@ -650,6 +730,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(_alpha, rows[0].Node);
         }
 
+        /// <summary>
+        /// Verifies get rows unsupported mode returns no rows.
+        /// </summary>
         [Test]
         public void GetRows_UnsupportedMode_ReturnsNoRows()
         {
@@ -658,6 +741,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsEmpty(rows);
         }
 
+        /// <summary>
+        /// Verifies get tabs null factions returns mode specific non faction tabs.
+        /// </summary>
         [Test]
         public void GetTabs_NullFactions_ReturnsModeSpecificNonFactionTabs()
         {

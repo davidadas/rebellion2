@@ -39,12 +39,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render systems presentation applies frame search tabs and rows.
+        /// </summary>
         [Test]
         public void Render_SystemsPresentation_AppliesFrameSearchTabsAndRows()
         {
@@ -87,6 +93,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsFalse(FindRowObject(rows[1], "CountColumnSlot1TextField").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render upper button layout hides button strip and uses upper slots.
+        /// </summary>
         [Test]
         public void Render_UpperButtonLayout_HidesButtonStripAndUsesUpperSlots()
         {
@@ -109,6 +118,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsFalse(FindObject("FourButtonLayoutTargetButtonImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render four button layout uses four lower slots.
+        /// </summary>
         [Test]
         public void Render_FourButtonLayout_UsesFourLowerSlots()
         {
@@ -131,6 +143,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsFalse(FindObject("UpperLayoutTargetButtonImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render command with source rect applies configured button bounds.
+        /// </summary>
         [Test]
         public void Render_CommandWithSourceRect_AppliesConfiguredButtonBounds()
         {
@@ -164,6 +179,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies render none command hides its authored button slot.
+        /// </summary>
         [Test]
         public void Render_NoneCommand_HidesItsAuthoredButtonSlot()
         {
@@ -193,6 +211,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsTrue(FindObject("TwoButtonLayoutTargetButtonImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render too many tabs throws missing reference exception.
+        /// </summary>
         [Test]
         public void Render_TooManyTabs_ThrowsMissingReferenceException()
         {
@@ -207,6 +228,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.Throws<MissingReferenceException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render too many upper commands throws missing reference exception.
+        /// </summary>
         [Test]
         public void Render_TooManyUpperCommands_ThrowsMissingReferenceException()
         {
@@ -221,6 +245,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.Throws<MissingReferenceException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render troops mode uses compact tab default title and rows layout.
+        /// </summary>
         [Test]
         public void Render_TroopsMode_UsesCompactTabDefaultTitleAndRowsLayout()
         {
@@ -249,6 +276,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies render personnel list uses personnel row and compact subjects.
+        /// </summary>
         [Test]
         public void Render_PersonnelList_UsesPersonnelRowAndCompactSubjects()
         {
@@ -277,6 +307,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies render personnel panel uses panel row and default subjects.
+        /// </summary>
         [Test]
         public void Render_PersonnelPanel_UsesPanelRowAndDefaultSubjects()
         {
@@ -305,6 +338,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies render shorter row collection hides unused cached rows.
+        /// </summary>
         [Test]
         public void Render_ShorterRowCollection_HidesUnusedCachedRows()
         {
@@ -338,6 +374,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual("Replacement", FindRowText(FindRows()[0], "NameTextField").text);
         }
 
+        /// <summary>
+        /// Verifies search input value changed raises normalized search request.
+        /// </summary>
         [Test]
         public void SearchInput_ValueChanged_RaisesNormalizedSearchRequest()
         {
@@ -350,6 +389,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(string.Empty, received);
         }
 
+        /// <summary>
+        /// Verifies tab button press then click raises focus without control press.
+        /// </summary>
         [Test]
         public void TabButton_PressThenClick_RaisesFocusWithoutControlPress()
         {
@@ -372,6 +414,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(3, selectedTab);
         }
 
+        /// <summary>
+        /// Verifies dialog button press then click raises control before rendered semantic command.
+        /// </summary>
         [Test]
         public void DialogButton_PressThenClick_RaisesControlBeforeRenderedSemanticCommand()
         {
@@ -408,6 +453,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(FinderWindowCommand.Close, command);
         }
 
+        /// <summary>
+        /// Verifies row gestures rendered row raise selection activation and context requests.
+        /// </summary>
         [Test]
         public void RowGestures_RenderedRow_RaiseSelectionActivationAndContextRequests()
         {
@@ -455,6 +503,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(right, contextEvent);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds controls and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsControlsAndRaisesDestroyedEvent()
         {

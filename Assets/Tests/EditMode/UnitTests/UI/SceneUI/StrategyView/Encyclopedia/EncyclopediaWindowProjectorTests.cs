@@ -88,6 +88,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies create render data missing required input throws argument null exception.
+        /// </summary>
         [Test]
         public void CreateRenderData_MissingRequiredInput_ThrowsArgumentNullException()
         {
@@ -104,6 +107,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             );
         }
 
+        /// <summary>
+        /// Verifies create render data selected topic returns complete lower layout presentation.
+        /// </summary>
         [Test]
         public void CreateRenderData_SelectedTopic_ReturnsCompleteLowerLayoutPresentation()
         {
@@ -171,6 +177,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsFalse(data.Detail.NextDisabled);
         }
 
+        /// <summary>
+        /// Verifies create render data index panel upper layout returns upper command presentation.
+        /// </summary>
         [Test]
         public void CreateRenderData_IndexPanelUpperLayout_ReturnsUpperCommandPresentation()
         {
@@ -204,6 +213,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsFalse(data.Detail.NextDisabled);
         }
 
+        /// <summary>
+        /// Verifies create render data no selection returns empty disabled detail.
+        /// </summary>
         [Test]
         public void CreateRenderData_NoSelection_ReturnsEmptyDisabledDetail()
         {
@@ -226,6 +238,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsTrue(data.Detail.NextDisabled);
         }
 
+        /// <summary>
+        /// Verifies get visible entries null catalog returns empty list.
+        /// </summary>
         [Test]
         public void GetVisibleEntries_NullCatalog_ReturnsEmptyList()
         {
@@ -238,6 +253,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsEmpty(entries);
         }
 
+        /// <summary>
+        /// Verifies get visible entries category faction and search returns matching entries.
+        /// </summary>
         [Test]
         public void GetVisibleEntries_CategoryFactionAndSearch_ReturnsMatchingEntries()
         {
@@ -259,6 +277,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreSame(_secondEntry, entries[1]);
         }
 
+        /// <summary>
+        /// Verifies filter entries whitespace search returns isolated source order.
+        /// </summary>
         [Test]
         public void FilterEntries_WhitespaceSearch_ReturnsIsolatedSourceOrder()
         {
@@ -276,6 +297,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreSame(_firstEntry, entries[2]);
         }
 
+        /// <summary>
+        /// Verifies filter entries search text returns case insensitive display name matches.
+        /// </summary>
         [Test]
         public void FilterEntries_SearchText_ReturnsCaseInsensitiveDisplayNameMatches()
         {
@@ -292,6 +316,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsEmpty(EncyclopediaWindowProjector.FilterEntries(null, "wing"));
         }
 
+        /// <summary>
+        /// Verifies create rows entries returns normalized selection presentation.
+        /// </summary>
         [Test]
         public void CreateRows_Entries_ReturnsNormalizedSelectionPresentation()
         {

@@ -42,12 +42,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render items and tabs applies complete authored presentation.
+        /// </summary>
         [Test]
         public void Render_ItemsAndTabs_AppliesCompleteAuthoredPresentation()
         {
@@ -87,6 +93,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.Greater(_view.GetItemScrollContentHeight(2), 0);
         }
 
+        /// <summary>
+        /// Verifies render shorter item collection hides unused cached cards.
+        /// </summary>
         [Test]
         public void Render_ShorterItemCollection_HidesUnusedCachedCards()
         {
@@ -109,6 +118,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual("Replacement", FindCardText(FindItemCards()[0], "NameTextField").text);
         }
 
+        /// <summary>
+        /// Verifies render item selection item with background preserves background.
+        /// </summary>
         [Test]
         public void RenderItemSelection_ItemWithBackground_PreservesBackground()
         {
@@ -131,6 +143,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsFalse(FindCardObject(card, "SelectionImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render invalid tab count throws argument exception.
+        /// </summary>
         [Test]
         public void Render_InvalidTabCount_ThrowsArgumentException()
         {
@@ -149,6 +164,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render regiment tab applies garrison requirement.
+        /// </summary>
         [Test]
         public void Render_RegimentTab_AppliesGarrisonRequirement()
         {
@@ -165,6 +183,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Verifies render invalid tab order throws argument exception.
+        /// </summary>
         [Test]
         public void Render_InvalidTabOrder_ThrowsArgumentException()
         {
@@ -189,6 +210,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies authored regiment labels match source bounds.
+        /// </summary>
         [Test]
         public void AuthoredRegimentLabels_MatchSourceBounds()
         {
@@ -213,6 +237,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Verifies item template status renders above entity.
+        /// </summary>
         [Test]
         public void ItemTemplate_StatusRendersAboveEntity()
         {
@@ -231,6 +258,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Verifies on pointer click primary then secondary click raises only primary surface event.
+        /// </summary>
         [Test]
         public void OnPointerClick_PrimaryThenSecondaryClick_RaisesOnlyPrimarySurfaceEvent()
         {
@@ -258,6 +288,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(leftClick, received);
         }
 
+        /// <summary>
+        /// Verifies authored tab button click raises semantic tab request.
+        /// </summary>
         [Test]
         public void AuthoredTabButton_Click_RaisesSemanticTabRequest()
         {
@@ -270,6 +303,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(DefenseWindowTab.Batteries, requested);
         }
 
+        /// <summary>
+        /// Verifies item gestures rendered card raise indexed semantic events.
+        /// </summary>
         [Test]
         public void ItemGestures_RenderedCard_RaiseIndexedSemanticEvents()
         {
@@ -306,6 +342,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(0, doubleClickedIndex);
         }
 
+        /// <summary>
+        /// Verifies scroll gestures authored scroll area raise semantic events.
+        /// </summary>
         [Test]
         public void ScrollGestures_AuthoredScrollArea_RaiseSemanticEvents()
         {
@@ -329,6 +368,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(eventData, dropped);
         }
 
+        /// <summary>
+        /// Verifies tab drops all authored tabs raise planet destination event.
+        /// </summary>
         [Test]
         public void TabDrops_AllAuthoredTabs_RaisePlanetDestinationEvent()
         {
@@ -351,6 +393,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(DefenseWindowRenderData.TabCount, dropCount);
         }
 
+        /// <summary>
+        /// Verifies window background drop routes to planet destination.
+        /// </summary>
         [Test]
         public void WindowBackgroundDrop_RoutesToPlanetDestination()
         {
@@ -375,6 +420,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Verifies item queries rendered cards resolve index and drag preview.
+        /// </summary>
         [Test]
         public void ItemQueries_RenderedCards_ResolveIndexAndDragPreview()
         {
@@ -429,6 +477,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsFalse(_view.ItemContainsDragSource(0, null));
         }
 
+        /// <summary>
+        /// Verifies item queries missing pointer target return false and default index.
+        /// </summary>
         [Test]
         public void ItemQueries_MissingPointerTarget_ReturnFalseAndDefaultIndex()
         {
@@ -445,6 +496,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNotNull(_view.WindowShell);
         }
 
+        /// <summary>
+        /// Verifies drag preview card background and entity preserve their rendered layering.
+        /// </summary>
         [Test]
         public void DragPreview_CardBackgroundAndEntity_PreserveTheirRenderedLayering()
         {
@@ -479,6 +533,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Verifies strategy unit card render and drag state updates optional presentation.
+        /// </summary>
         [Test]
         public void StrategyUnitCard_RenderAndDragState_UpdatesOptionalPresentation()
         {
@@ -505,6 +562,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.Throws<ArgumentNullException>(() => card.Render(null));
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_RaisesDestroyedEvent()
         {

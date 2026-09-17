@@ -38,6 +38,9 @@ namespace Rebellion.Tests.SceneGraph
             };
         }
 
+        /// <summary>
+        /// Verifies add child with valid child does nothing.
+        /// </summary>
         [Test]
         public void AddChild_WithValidChild_DoesNothing()
         {
@@ -55,6 +58,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
+        /// <summary>
+        /// Verifies add child with null child does nothing.
+        /// </summary>
         [Test]
         public void AddChild_WithNullChild_DoesNothing()
         {
@@ -66,6 +72,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
+        /// <summary>
+        /// Verifies remove child with valid child does nothing.
+        /// </summary>
         [Test]
         public void RemoveChild_WithValidChild_DoesNothing()
         {
@@ -83,6 +92,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
+        /// <summary>
+        /// Verifies remove child with null child does nothing.
+        /// </summary>
         [Test]
         public void RemoveChild_WithNullChild_DoesNothing()
         {
@@ -94,6 +106,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
+        /// <summary>
+        /// Verifies get children with no children returns empty enumerable.
+        /// </summary>
         [Test]
         public void GetChildren_WithNoChildren_ReturnsEmptyEnumerable()
         {
@@ -103,6 +118,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
+        /// <summary>
+        /// Verifies get children multiple calls to get children returns empty enumerable.
+        /// </summary>
         [Test]
         public void GetChildren_MultipleCallsToGetChildren_ReturnsEmptyEnumerable()
         {
@@ -115,6 +133,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children2.Count());
         }
 
+        /// <summary>
+        /// Verifies get children after multiple add child calls remains empty.
+        /// </summary>
         [Test]
         public void GetChildren_AfterMultipleAddChildCalls_RemainsEmpty()
         {
@@ -144,6 +165,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
+        /// <summary>
+        /// Verifies get children generic with type filter returns empty enumerable.
+        /// </summary>
         [Test]
         public void GetChildrenGeneric_WithTypeFilter_ReturnsEmptyEnumerable()
         {
@@ -155,6 +179,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
+        /// <summary>
+        /// Verifies get children generic with predicate returns empty enumerable.
+        /// </summary>
         [Test]
         public void GetChildrenGeneric_WithPredicate_ReturnsEmptyEnumerable()
         {
@@ -166,6 +193,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
+        /// <summary>
+        /// Verifies get children generic with non recursive returns empty enumerable.
+        /// </summary>
         [Test]
         public void GetChildrenGeneric_WithNonRecursive_ReturnsEmptyEnumerable()
         {
@@ -175,6 +205,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
+        /// <summary>
+        /// Verifies get children generic with different type returns empty enumerable.
+        /// </summary>
         [Test]
         public void GetChildrenGeneric_WithDifferentType_ReturnsEmptyEnumerable()
         {
@@ -186,6 +219,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
+        /// <summary>
+        /// Verifies get children generic with complex predicate returns empty.
+        /// </summary>
         [Test]
         public void GetChildrenGeneric_WithComplexPredicate_ReturnsEmpty()
         {
@@ -197,6 +233,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
+        /// <summary>
+        /// Verifies traverse with action calls action on self only.
+        /// </summary>
         [Test]
         public void Traverse_WithAction_CallsActionOnSelfOnly()
         {
@@ -208,6 +247,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreSame(_leafNode, visitedNodes[0]);
         }
 
+        /// <summary>
+        /// Verifies traverse with multiple calls calls action on self only each time.
+        /// </summary>
         [Test]
         public void Traverse_WithMultipleCalls_CallsActionOnSelfOnlyEachTime()
         {
@@ -219,6 +261,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(2, callCount);
         }
 
+        /// <summary>
+        /// Verifies traverse with action that modifies state only affects self.
+        /// </summary>
         [Test]
         public void Traverse_WithActionThatModifiesState_OnlyAffectsSelf()
         {
@@ -231,6 +276,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreNotEqual(originalName, _leafNode.DisplayName);
         }
 
+        /// <summary>
+        /// Verifies traverse does not traverse children even after add child call.
+        /// </summary>
         [Test]
         public void Traverse_DoesNotTraverseChildren_EvenAfterAddChildCall()
         {
@@ -251,6 +299,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreSame(_leafNode, visitedNodes[0]);
         }
 
+        /// <summary>
+        /// Verifies create copy returns same concrete leaf type.
+        /// </summary>
         [Test]
         public void CreateCopy_ReturnsSameConcreteLeafType()
         {

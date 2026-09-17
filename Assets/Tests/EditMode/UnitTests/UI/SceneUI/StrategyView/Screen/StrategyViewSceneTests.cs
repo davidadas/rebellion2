@@ -16,6 +16,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
         private const string _scenePath = "Assets/Scenes/StrategyView.unity";
 
+        /// <summary>
+        /// Verifies authored scene canvas scaler fits complete strategy surface.
+        /// </summary>
         [Test]
         public void AuthoredScene_CanvasScaler_FitsCompleteStrategySurface()
         {
@@ -48,6 +51,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies authored prefab strategy controller references root content group.
+        /// </summary>
         [Test]
         public void AuthoredPrefab_StrategyController_ReferencesRootContentGroup()
         {
@@ -72,6 +78,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies authored prefab fits centered sixteen by nine viewport.
+        /// </summary>
         [Test]
         public void AuthoredPrefab_FitsCenteredSixteenByNineViewport()
         {

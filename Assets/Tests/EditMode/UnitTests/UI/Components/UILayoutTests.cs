@@ -40,6 +40,9 @@ namespace Rebellion.Tests.UI.Components
             UnityEngine.Object.DestroyImmediate(_imageObject);
         }
 
+        /// <summary>
+        /// Verifies set image texture and position uses texture source dimensions.
+        /// </summary>
         [Test]
         public void SetImage_TextureAndPosition_UsesTextureSourceDimensions()
         {
@@ -53,6 +56,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(_image.raycastTarget);
         }
 
+        /// <summary>
+        /// Verifies set image explicit bounds applies provided rectangle.
+        /// </summary>
         [Test]
         public void SetImage_ExplicitBounds_AppliesProvidedRectangle()
         {
@@ -61,6 +67,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(new RectInt(1, 2, 3, 4), UILayout.GetSourceRect(_image.rectTransform));
         }
 
+        /// <summary>
+        /// Verifies set image texture null texture hides image.
+        /// </summary>
         [Test]
         public void SetImageTexture_NullTexture_HidesImage()
         {
@@ -72,6 +81,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(_image.raycastTarget);
         }
 
+        /// <summary>
+        /// Verifies set centered image texture larger than slot fits and centers image.
+        /// </summary>
         [Test]
         public void SetCenteredImage_TextureLargerThanSlot_FitsAndCentersImage()
         {
@@ -83,6 +95,9 @@ namespace Rebellion.Tests.UI.Components
             );
         }
 
+        /// <summary>
+        /// Verifies set horizontally centered image texture larger than slot preserves top and centers image.
+        /// </summary>
         [Test]
         public void SetHorizontallyCenteredImage_TextureLargerThanSlot_PreservesTopAndCentersImage()
         {
@@ -94,6 +109,9 @@ namespace Rebellion.Tests.UI.Components
             );
         }
 
+        /// <summary>
+        /// Verifies set interactive image texture texture shows interactive image.
+        /// </summary>
         [Test]
         public void SetInteractiveImageTexture_Texture_ShowsInteractiveImage()
         {
@@ -105,6 +123,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(_image.raycastTarget);
         }
 
+        /// <summary>
+        /// Verifies set right aligned image size texture preserves authored right edge.
+        /// </summary>
         [Test]
         public void SetRightAlignedImageSize_Texture_PreservesAuthoredRightEdge()
         {
@@ -118,6 +139,9 @@ namespace Rebellion.Tests.UI.Components
             );
         }
 
+        /// <summary>
+        /// Verifies set right aligned image size null inputs preserves authored rectangle.
+        /// </summary>
         [Test]
         public void SetRightAlignedImageSize_NullInputs_PreservesAuthoredRectangle()
         {
@@ -132,6 +156,9 @@ namespace Rebellion.Tests.UI.Components
             );
         }
 
+        /// <summary>
+        /// Verifies set text content value and color applies presentation without raycast.
+        /// </summary>
         [Test]
         public void SetTextContent_ValueAndColor_AppliesPresentationWithoutRaycast()
         {
@@ -145,6 +172,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(_textObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies set text content null value normalizes to empty string.
+        /// </summary>
         [Test]
         public void SetTextContent_NullValue_NormalizesToEmptyString()
         {
@@ -153,6 +183,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(string.Empty, _text.text);
         }
 
+        /// <summary>
+        /// Verifies set template text explicit rectangle copies typography and applies bounds.
+        /// </summary>
         [Test]
         public void SetTemplateText_ExplicitRectangle_CopiesTypographyAndAppliesBounds()
         {
@@ -175,6 +208,9 @@ namespace Rebellion.Tests.UI.Components
             UnityEngine.Object.DestroyImmediate(templateObject);
         }
 
+        /// <summary>
+        /// Verifies set template text authored rectangle copies typography and bounds.
+        /// </summary>
         [Test]
         public void SetTemplateText_AuthoredRectangle_CopiesTypographyAndBounds()
         {
@@ -191,18 +227,27 @@ namespace Rebellion.Tests.UI.Components
             UnityEngine.Object.DestroyImmediate(templateObject);
         }
 
+        /// <summary>
+        /// Verifies wrap text null template throws argument null exception.
+        /// </summary>
         [Test]
         public void WrapText_NullTemplate_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => UILayout.WrapText(null, "Value", 10));
         }
 
+        /// <summary>
+        /// Verifies wrap text nonpositive maximum width throws argument out of range exception.
+        /// </summary>
         [Test]
         public void WrapText_NonpositiveMaximumWidth_ThrowsArgumentOutOfRangeException()
         {
             Assert.Throws<ArgumentOutOfRangeException>(() => UILayout.WrapText(_text, "Value", 0));
         }
 
+        /// <summary>
+        /// Verifies wrap text empty text returns empty collection.
+        /// </summary>
         [Test]
         public void WrapText_EmptyText_ReturnsEmptyCollection()
         {
@@ -211,6 +256,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsEmpty(lines);
         }
 
+        /// <summary>
+        /// Verifies wrap text tabular and multiline text preserves source rows.
+        /// </summary>
         [Test]
         public void WrapText_TabularAndMultilineText_PreservesSourceRows()
         {
@@ -219,6 +267,12 @@ namespace Rebellion.Tests.UI.Components
             CollectionAssert.AreEqual(new[] { "A\tB", "C\tD" }, lines);
         }
 
+        /// <summary>
+        /// Verifies set text anchor applies alignment and horizontal reference.
+        /// </summary>
+        /// <param name="anchor">The anchor.</param>
+        /// <param name="expectedAlignment">The expected alignment.</param>
+        /// <param name="expectedX">The expected x.</param>
         [TestCase(TextAnchor.UpperLeft, TextAlignmentOptions.TopLeft, 40)]
         [TestCase(TextAnchor.UpperCenter, TextAlignmentOptions.Top, 20)]
         [TestCase(TextAnchor.MiddleCenter, TextAlignmentOptions.Center, 20)]
@@ -240,6 +294,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(TextOverflowModes.Overflow, _text.overflowMode);
         }
 
+        /// <summary>
+        /// Verifies copy source rect source transform copies complete authored geometry.
+        /// </summary>
         [Test]
         public void CopySourceRect_SourceTransform_CopiesCompleteAuthoredGeometry()
         {
@@ -262,6 +319,9 @@ namespace Rebellion.Tests.UI.Components
             UnityEngine.Object.DestroyImmediate(sourceObject);
         }
 
+        /// <summary>
+        /// Verifies stretch layout methods transforms apply expected anchors and offsets.
+        /// </summary>
         [Test]
         public void StretchLayoutMethods_Transforms_ApplyExpectedAnchorsAndOffsets()
         {
@@ -287,6 +347,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(new Vector2(-7, 14), _image.rectTransform.offsetMax);
         }
 
+        /// <summary>
+        /// Verifies side and corner layout methods transforms apply expected geometry.
+        /// </summary>
         [Test]
         public void SideAndCornerLayoutMethods_Transforms_ApplyExpectedGeometry()
         {
@@ -313,6 +376,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(new Vector2(11, 12), _image.rectTransform.sizeDelta);
         }
 
+        /// <summary>
+        /// Verifies get source size authored transform returns positive dimensions.
+        /// </summary>
         [Test]
         public void GetSourceSize_AuthoredTransform_ReturnsPositiveDimensions()
         {
@@ -323,6 +389,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(new Vector2Int(640, 480), size);
         }
 
+        /// <summary>
+        /// Verifies get source size missing transform returns zero.
+        /// </summary>
         [Test]
         public void GetSourceSize_MissingTransform_ReturnsZero()
         {
@@ -331,6 +400,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(Vector2Int.zero, size);
         }
 
+        /// <summary>
+        /// Verifies try get source position surface center returns source center.
+        /// </summary>
         [Test]
         public void TryGetSourcePosition_SurfaceCenter_ReturnsSourceCenter()
         {
@@ -351,6 +423,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(new Vector2Int(320, 240), sourcePosition);
         }
 
+        /// <summary>
+        /// Verifies try get source position missing surface returns false.
+        /// </summary>
         [Test]
         public void TryGetSourcePosition_MissingSurface_ReturnsFalse()
         {
@@ -365,6 +440,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(Vector2Int.zero, sourcePosition);
         }
 
+        /// <summary>
+        /// Verifies try get source position zero size surface returns false.
+        /// </summary>
         [Test]
         public void TryGetSourcePosition_ZeroSizeSurface_ReturnsFalse()
         {
@@ -381,6 +459,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(Vector2Int.zero, sourcePosition);
         }
 
+        /// <summary>
+        /// Verifies get fitted image size invalid inputs returns zero.
+        /// </summary>
         [Test]
         public void GetFittedImageSize_InvalidInputs_ReturnsZero()
         {
@@ -398,6 +479,9 @@ namespace Rebellion.Tests.UI.Components
             );
         }
 
+        /// <summary>
+        /// Verifies texture source size hd texture returns source dimensions.
+        /// </summary>
         [Test]
         public void TextureSourceSize_HdTexture_ReturnsSourceDimensions()
         {
@@ -412,6 +496,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(1, UILayout.ToSourceUnits(1));
         }
 
+        /// <summary>
+        /// Verifies create drag preview valid geometry returns pointer relative preview.
+        /// </summary>
         [Test]
         public void CreateDragPreview_ValidGeometry_ReturnsPointerRelativePreview()
         {
@@ -430,6 +517,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(9, preview.OffsetY);
         }
 
+        /// <summary>
+        /// Verifies create drag preview missing texture or geometry returns null.
+        /// </summary>
         [Test]
         public void CreateDragPreview_MissingTextureOrGeometry_ReturnsNull()
         {
@@ -438,6 +528,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsNull(UILayout.CreateDragPreview(_texture, new RectInt(0, 0, 1, 0), 0, 0));
         }
 
+        /// <summary>
+        /// Verifies create drag preview mixed images preserves drawable source layout.
+        /// </summary>
         [Test]
         public void CreateDragPreview_MixedImages_PreservesDrawableSourceLayout()
         {
@@ -461,6 +554,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(29, preview.HotspotY);
         }
 
+        /// <summary>
+        /// Verifies create drag preview no drawable images returns null.
+        /// </summary>
         [Test]
         public void CreateDragPreview_NoDrawableImages_ReturnsNull()
         {

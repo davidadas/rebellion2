@@ -44,6 +44,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render visible submenu applies bounds background frame and rows.
+        /// </summary>
         [Test]
         public void Render_VisibleSubmenu_AppliesBoundsBackgroundFrameAndRows()
         {
@@ -92,6 +95,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(Color.yellow, firstText.color);
         }
 
+        /// <summary>
+        /// Verifies render hidden filter hides authored row slot.
+        /// </summary>
         [Test]
         public void Render_HiddenFilter_HidesAuthoredRowSlot()
         {
@@ -124,6 +130,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, FindActiveFilterHitAreas().Length);
         }
 
+        /// <summary>
+        /// Verifies render null data hides submenu and rows.
+        /// </summary>
         [Test]
         public void Render_NullData_HidesSubmenuAndRows()
         {
@@ -151,6 +160,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsEmpty(FindActiveFilterHitAreas());
         }
 
+        /// <summary>
+        /// Verifies render shorter filter collection hides unused authored rows.
+        /// </summary>
         [Test]
         public void Render_ShorterFilterCollection_HidesUnusedAuthoredRows()
         {
@@ -197,6 +209,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual("Mines", FindActiveFilterTexts().Single().text);
         }
 
+        /// <summary>
+        /// Verifies filter hit area interact raises category index filter index and mode.
+        /// </summary>
         [Test]
         public void FilterHitArea_Interact_RaisesCategoryIndexFilterIndexAndMode()
         {
@@ -255,6 +270,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(GalacticInformationFilterMode.AvailableEnergy, selectedMode);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds filter hit areas.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsFilterHitAreas()
         {

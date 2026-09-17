@@ -6,6 +6,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
     [TestFixture]
     public class BookmarkEntryTests
     {
+        /// <summary>
+        /// Verifies reconcile planet fresh projection replaces planet only.
+        /// </summary>
         [Test]
         public void ReconcilePlanet_FreshProjection_ReplacesPlanetOnly()
         {

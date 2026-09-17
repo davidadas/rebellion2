@@ -41,6 +41,9 @@ namespace Rebellion.Tests.Game.Units
             };
         }
 
+        /// <summary>
+        /// Verifies assign name valid name replaces display name and marks assigned.
+        /// </summary>
         [Test]
         public void AssignName_ValidName_ReplacesDisplayNameAndMarksAssigned()
         {
@@ -52,6 +55,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(_capitalShip.HasAssignedName);
         }
 
+        /// <summary>
+        /// Verifies assign name whitespace name throws argument exception.
+        /// </summary>
         [Test]
         public void AssignName_WhitespaceName_ThrowsArgumentException()
         {
@@ -59,6 +65,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.HasAssignedName);
         }
 
+        /// <summary>
+        /// Verifies add starfighter within capacity adds starfighter.
+        /// </summary>
         [Test]
         public void AddStarfighter_WithinCapacity_AddsStarfighter()
         {
@@ -69,6 +78,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Contains(starfighter, _capitalShip.GetChildren<Starfighter>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add starfighter exceeds capacity throws exception.
+        /// </summary>
         [Test]
         public void AddStarfighter_ExceedsCapacity_ThrowsException()
         {
@@ -80,6 +92,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies add regiment within capacity adds regiment.
+        /// </summary>
         [Test]
         public void AddRegiment_WithinCapacity_AddsRegiment()
         {
@@ -90,6 +105,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Contains(regiment, _capitalShip.GetChildren<Regiment>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add regiment exceeds capacity throws exception.
+        /// </summary>
         [Test]
         public void AddRegiment_ExceedsCapacity_ThrowsException()
         {
@@ -102,6 +120,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies add officer valid owner adds officer.
+        /// </summary>
         [Test]
         public void AddOfficer_ValidOwner_AddsOfficer()
         {
@@ -112,6 +133,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Contains(officer, _capitalShip.GetChildren<Officer>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add officer invalid owner throws exception.
+        /// </summary>
         [Test]
         public void AddOfficer_InvalidOwner_ThrowsException()
         {
@@ -120,6 +144,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Throws<SceneAccessException>(() => _capitalShip.AddOfficer(officer));
         }
 
+        /// <summary>
+        /// Verifies add officer captured enemy adds officer.
+        /// </summary>
         [Test]
         public void AddOfficer_CapturedEnemy_AddsOfficer()
         {
@@ -130,6 +157,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Contains(officer, _capitalShip.GetChildren<Officer>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add special forces valid owner adds special forces.
+        /// </summary>
         [Test]
         public void AddSpecialForces_ValidOwner_AddsSpecialForces()
         {
@@ -140,6 +170,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Contains(specialForces, _capitalShip.GetChildren<SpecialForces>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add special forces invalid owner throws exception.
+        /// </summary>
         [Test]
         public void AddSpecialForces_InvalidOwner_ThrowsException()
         {
@@ -148,6 +181,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Throws<SceneAccessException>(() => _capitalShip.AddSpecialForces(specialForces));
         }
 
+        /// <summary>
+        /// Verifies can accept child captured enemy officer returns true.
+        /// </summary>
         [Test]
         public void CanAcceptChild_CapturedEnemyOfficer_ReturnsTrue()
         {
@@ -156,6 +192,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(_capitalShip.CanAcceptChild(officer));
         }
 
+        /// <summary>
+        /// Verifies can accept child uncaptured enemy officer returns false.
+        /// </summary>
         [Test]
         public void CanAcceptChild_UncapturedEnemyOfficer_ReturnsFalse()
         {
@@ -164,6 +203,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.CanAcceptChild(officer));
         }
 
+        /// <summary>
+        /// Verifies can accept child friendly special forces returns true.
+        /// </summary>
         [Test]
         public void CanAcceptChild_FriendlySpecialForces_ReturnsTrue()
         {
@@ -172,6 +214,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(_capitalShip.CanAcceptChild(specialForces));
         }
 
+        /// <summary>
+        /// Verifies can accept child enemy special forces returns false.
+        /// </summary>
         [Test]
         public void CanAcceptChild_EnemySpecialForces_ReturnsFalse()
         {
@@ -180,6 +225,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.CanAcceptChild(specialForces));
         }
 
+        /// <summary>
+        /// Verifies can accept child ship under construction returns false.
+        /// </summary>
         [Test]
         public void CanAcceptChild_ShipUnderConstruction_ReturnsFalse()
         {
@@ -188,6 +236,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.CanAcceptChild(new Officer { OwnerInstanceID = "FNALL1" }));
         }
 
+        /// <summary>
+        /// Verifies remove starfighter existing starfighter removes it from fleet.
+        /// </summary>
         [Test]
         public void RemoveStarfighter_ExistingStarfighter_RemovesItFromFleet()
         {
@@ -199,6 +250,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.GetChildren<Starfighter>().Contains(starfighter));
         }
 
+        /// <summary>
+        /// Verifies remove regiment existing regiment removes it from fleet.
+        /// </summary>
         [Test]
         public void RemoveRegiment_ExistingRegiment_RemovesItFromFleet()
         {
@@ -210,6 +264,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.GetChildren<Regiment>().Contains(regiment));
         }
 
+        /// <summary>
+        /// Verifies remove officer existing officer removes it from fleet.
+        /// </summary>
         [Test]
         public void RemoveOfficer_ExistingOfficer_RemovesItFromFleet()
         {
@@ -221,6 +278,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.GetChildren<Officer>().Contains(officer));
         }
 
+        /// <summary>
+        /// Verifies remove special forces existing special forces removes it from fleet.
+        /// </summary>
         [Test]
         public void RemoveSpecialForces_ExistingSpecialForces_RemovesItFromFleet()
         {
@@ -232,6 +292,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.GetChildren<SpecialForces>().Contains(specialForces));
         }
 
+        /// <summary>
+        /// Verifies get children fleet with children returns all child nodes.
+        /// </summary>
         [Test]
         public void GetChildren_FleetWithChildren_ReturnsAllChildNodes()
         {
@@ -254,6 +317,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies add child valid starfighter adds to fleet.
+        /// </summary>
         [Test]
         public void AddChild_ValidStarfighter_AddsToFleet()
         {
@@ -264,6 +330,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Contains(starfighter, _capitalShip.GetChildren<Starfighter>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add child valid regiment adds to fleet.
+        /// </summary>
         [Test]
         public void AddChild_ValidRegiment_AddsToFleet()
         {
@@ -274,6 +343,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Contains(regiment, _capitalShip.GetChildren<Regiment>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add child valid officer adds to fleet.
+        /// </summary>
         [Test]
         public void AddChild_ValidOfficer_AddsToFleet()
         {
@@ -284,6 +356,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Contains(officer, _capitalShip.GetChildren<Officer>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add child valid special forces adds to fleet.
+        /// </summary>
         [Test]
         public void AddChild_ValidSpecialForces_AddsToFleet()
         {
@@ -294,6 +369,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Contains(specialForces, _capitalShip.GetChildren<SpecialForces>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add child invalid owner throws exception.
+        /// </summary>
         [Test]
         public void AddChild_InvalidOwner_ThrowsException()
         {
@@ -302,6 +380,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Throws<SceneAccessException>(() => _capitalShip.AddChild(officer));
         }
 
+        /// <summary>
+        /// Verifies remove child existing starfighter removes it.
+        /// </summary>
         [Test]
         public void RemoveChild_ExistingStarfighter_RemovesIt()
         {
@@ -313,6 +394,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.GetChildren<Starfighter>().Contains(starfighter));
         }
 
+        /// <summary>
+        /// Verifies remove child existing regiment removes it.
+        /// </summary>
         [Test]
         public void RemoveChild_ExistingRegiment_RemovesIt()
         {
@@ -324,6 +408,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.GetChildren<Regiment>().Contains(regiment));
         }
 
+        /// <summary>
+        /// Verifies remove child existing officer removes it.
+        /// </summary>
         [Test]
         public void RemoveChild_ExistingOfficer_RemovesIt()
         {
@@ -335,6 +422,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.GetChildren<Officer>().Contains(officer));
         }
 
+        /// <summary>
+        /// Verifies remove child existing special forces removes it.
+        /// </summary>
         [Test]
         public void RemoveChild_ExistingSpecialForces_RemovesIt()
         {
@@ -346,6 +436,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_capitalShip.GetChildren<SpecialForces>().Contains(specialForces));
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize capital ship with children maintains state.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_CapitalShipWithChildren_MaintainsState()
         {
@@ -415,6 +508,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies set manufacturing status building to complete updates successfully.
+        /// </summary>
         [Test]
         public void SetManufacturingStatus_BuildingToComplete_UpdatesSuccessfully()
         {
@@ -425,6 +521,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingStatus.Complete, _capitalShip.ManufacturingStatus);
         }
 
+        /// <summary>
+        /// Verifies set manufacturing status complete to building throws exception.
+        /// </summary>
         [Test]
         public void SetManufacturingStatus_CompleteToBuilding_ThrowsException()
         {
@@ -435,6 +534,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies get starfighter capacity default capital ship returns expected value.
+        /// </summary>
         [Test]
         public void GetStarfighterCapacity_DefaultCapitalShip_ReturnsExpectedValue()
         {
@@ -443,6 +545,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(2, capacity);
         }
 
+        /// <summary>
+        /// Verifies get current starfighter count no starfighters returns zero.
+        /// </summary>
         [Test]
         public void GetCurrentStarfighterCount_NoStarfighters_ReturnsZero()
         {
@@ -451,6 +556,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, count);
         }
 
+        /// <summary>
+        /// Verifies get current starfighter count with starfighters returns correct count.
+        /// </summary>
         [Test]
         public void GetCurrentStarfighterCount_WithStarfighters_ReturnsCorrectCount()
         {
@@ -462,6 +570,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(2, count);
         }
 
+        /// <summary>
+        /// Verifies get regiment capacity default capital ship returns expected value.
+        /// </summary>
         [Test]
         public void GetRegimentCapacity_DefaultCapitalShip_ReturnsExpectedValue()
         {
@@ -470,6 +581,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(3, capacity);
         }
 
+        /// <summary>
+        /// Verifies get current regiment count no regiments returns zero.
+        /// </summary>
         [Test]
         public void GetCurrentRegimentCount_NoRegiments_ReturnsZero()
         {
@@ -478,6 +592,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, count);
         }
 
+        /// <summary>
+        /// Verifies get current regiment count with regiments returns correct count.
+        /// </summary>
         [Test]
         public void GetCurrentRegimentCount_WithRegiments_ReturnsCorrectCount()
         {
@@ -489,6 +606,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(2, count);
         }
 
+        /// <summary>
+        /// Verifies primary weapons default capital ship has correct types.
+        /// </summary>
         [Test]
         public void PrimaryWeapons_DefaultCapitalShip_HasCorrectTypes()
         {
@@ -497,6 +617,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(_capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.LaserCannon));
         }
 
+        /// <summary>
+        /// Verifies primary weapons default capital ship has correct array sizes.
+        /// </summary>
         [Test]
         public void PrimaryWeapons_DefaultCapitalShip_HasCorrectArraySizes()
         {
@@ -505,6 +628,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(5, _capitalShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon].Length);
         }
 
+        /// <summary>
+        /// Verifies get primary weapon strength weapon range values ignores range.
+        /// </summary>
         [Test]
         public void GetPrimaryWeaponStrength_WeaponRangeValues_IgnoresRange()
         {
@@ -538,6 +664,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(115, strength);
         }
 
+        /// <summary>
+        /// Verifies get combat value imperial star destroyer and corvette values durability.
+        /// </summary>
         [Test]
         public void GetCombatValue_ImperialStarDestroyerAndCorvette_ValuesDurability()
         {
@@ -549,6 +678,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Greater(starDestroyer.GetCombatValue(), corvette.GetCombatValue() * 2);
         }
 
+        /// <summary>
+        /// Verifies get combat value with shield strength increases value.
+        /// </summary>
         [Test]
         public void GetCombatValue_WithShieldStrength_IncreasesValue()
         {
@@ -559,6 +691,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(141, shielded.GetCombatValue());
         }
 
+        /// <summary>
+        /// Verifies get combat value with hull damage uses remaining durability.
+        /// </summary>
         [Test]
         public void GetCombatValue_WithHullDamage_UsesRemainingDurability()
         {
@@ -568,6 +703,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(50, ship.GetCombatValue());
         }
 
+        /// <summary>
+        /// Verifies get combat value with no remaining hull returns zero.
+        /// </summary>
         [Test]
         public void GetCombatValue_WithNoRemainingHull_ReturnsZero()
         {
@@ -578,6 +716,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Zero(ship.GetProjectedCombatValue());
         }
 
+        /// <summary>
+        /// Verifies get projected combat value building ship uses maximum durability.
+        /// </summary>
         [Test]
         public void GetProjectedCombatValue_BuildingShip_UsesMaximumDurability()
         {
@@ -589,6 +730,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(100, ship.GetProjectedCombatValue());
         }
 
+        /// <summary>
+        /// Verifies configured capital ship preserves combat and movement statistics.
+        /// </summary>
         [Test]
         public void ConfiguredCapitalShip_PreservesCombatAndMovementStatistics()
         {

@@ -14,6 +14,9 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class RecoverySystemTests
     {
+        /// <summary>
+        /// Verifies process tick injured officer at friendly planet reduces injury.
+        /// </summary>
         [Test]
         public void ProcessTick_InjuredOfficerAtFriendlyPlanet_ReducesInjury()
         {
@@ -30,6 +33,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(9, officer.InjuryPoints, "Officer should heal 1 point per tick");
         }
 
+        /// <summary>
+        /// Verifies process tick injured high rank force sensitive officer heals more per tick.
+        /// </summary>
         [Test]
         public void ProcessTick_InjuredHighRankForceSensitiveOfficer_HealsMorePerTick()
         {
@@ -52,6 +58,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick injured low rank force sensitive officer heals normally.
+        /// </summary>
         [Test]
         public void ProcessTick_InjuredLowRankForceSensitiveOfficer_HealsNormally()
         {
@@ -70,6 +79,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(9, officer.InjuryPoints);
         }
 
+        /// <summary>
+        /// Verifies process tick injured officer at enemy planet does not heal.
+        /// </summary>
         [Test]
         public void ProcessTick_InjuredOfficerAtEnemyPlanet_DoesNotHeal()
         {
@@ -87,6 +99,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, officer.InjuryPoints, "Officer at enemy planet should not heal");
         }
 
+        /// <summary>
+        /// Verifies process tick injured officer aboard friendly fleet reduces injury.
+        /// </summary>
         [Test]
         public void ProcessTick_InjuredOfficerAboardFriendlyFleet_ReducesInjury()
         {
@@ -113,6 +128,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(9, officer.InjuryPoints, "Officer aboard friendly fleet should heal");
         }
 
+        /// <summary>
+        /// Verifies process tick captured officer does not heal.
+        /// </summary>
         [Test]
         public void ProcessTick_CapturedOfficer_DoesNotHeal()
         {
@@ -130,6 +148,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, officer.InjuryPoints, "Captured officer should not heal");
         }
 
+        /// <summary>
+        /// Verifies process tick officer in transit does not heal.
+        /// </summary>
         [Test]
         public void ProcessTick_OfficerInTransit_DoesNotHeal()
         {
@@ -147,6 +168,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, officer.InjuryPoints, "Officer in transit should not heal");
         }
 
+        /// <summary>
+        /// Verifies process tick officer aboard fleet in transit does not heal.
+        /// </summary>
         [Test]
         public void ProcessTick_OfficerAboardFleetInTransit_DoesNotHeal()
         {
@@ -170,6 +194,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, officer.InjuryPoints);
         }
 
+        /// <summary>
+        /// Verifies process tick officer on mission does not heal.
+        /// </summary>
         [Test]
         public void ProcessTick_OfficerOnMission_DoesNotHeal()
         {
@@ -188,6 +215,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, officer.InjuryPoints, "Officer on mission should not heal");
         }
 
+        /// <summary>
+        /// Verifies process tick officer fully healed emits result.
+        /// </summary>
         [Test]
         public void ProcessTick_OfficerFullyHealed_EmitsResult()
         {
@@ -207,6 +237,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick officer partially healed no result.
+        /// </summary>
         [Test]
         public void ProcessTick_OfficerPartiallyHealed_NoResult()
         {
@@ -226,6 +259,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick healing clamps to zero does not go negative.
+        /// </summary>
         [Test]
         public void ProcessTick_HealingClampsToZero_DoesNotGoNegative()
         {
@@ -243,6 +279,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, officer.InjuryPoints, "Injury should clamp to 0, not go negative");
         }
 
+        /// <summary>
+        /// Verifies process tick damaged ship at friendly shipyard repairs fast.
+        /// </summary>
         [Test]
         public void ProcessTick_DamagedShipAtFriendlyShipyard_RepairsFast()
         {
@@ -281,6 +320,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick damaged ship at friendly planet without shipyard repairs slowly.
+        /// </summary>
         [Test]
         public void ProcessTick_DamagedShipAtFriendlyPlanetWithoutShipyard_RepairsSlowly()
         {
@@ -302,6 +344,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(81, ship.CurrentHullStrength);
         }
 
+        /// <summary>
+        /// Verifies process tick damaged ship at incomplete friendly shipyard repairs slowly.
+        /// </summary>
         [Test]
         public void ProcessTick_DamagedShipAtIncompleteFriendlyShipyard_RepairsSlowly()
         {
@@ -333,6 +378,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(81, ship.CurrentHullStrength);
         }
 
+        /// <summary>
+        /// Verifies process tick damaged ship in transit does not repair.
+        /// </summary>
         [Test]
         public void ProcessTick_DamagedShipInTransit_DoesNotRepair()
         {
@@ -355,6 +403,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(80, ship.CurrentHullStrength);
         }
 
+        /// <summary>
+        /// Verifies process tick damaged ship with direct transit does not repair.
+        /// </summary>
         [Test]
         public void ProcessTick_DamagedShipWithDirectTransit_DoesNotRepair()
         {
@@ -377,6 +428,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(80, ship.CurrentHullStrength);
         }
 
+        /// <summary>
+        /// Verifies process tick damaged ship at enemy planet repairs slowly.
+        /// </summary>
         [Test]
         public void ProcessTick_DamagedShipAtEnemyPlanet_RepairsSlowly()
         {
@@ -406,6 +460,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick ship at max hull no change.
+        /// </summary>
         [Test]
         public void ProcessTick_ShipAtMaxHull_NoChange()
         {
@@ -430,6 +487,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(100, ship.CurrentHullStrength, "Undamaged ship should not change");
         }
 
+        /// <summary>
+        /// Verifies process tick repair clamps to max does not exceed hull.
+        /// </summary>
         [Test]
         public void ProcessTick_RepairClampsToMax_DoesNotExceedHull()
         {
@@ -468,6 +528,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick ship fully repaired emits result.
+        /// </summary>
         [Test]
         public void ProcessTick_ShipFullyRepaired_EmitsResult()
         {
@@ -495,6 +558,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick ship partially repaired no result.
+        /// </summary>
         [Test]
         public void ProcessTick_ShipPartiallyRepaired_NoResult()
         {
@@ -522,6 +588,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick depleted squadron at friendly planet replaces fast.
+        /// </summary>
         [Test]
         public void ProcessTick_DepletedSquadronAtFriendlyPlanet_ReplacesFast()
         {
@@ -548,6 +617,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick depleted squadron at enemy planet replaces slowly.
+        /// </summary>
         [Test]
         public void ProcessTick_DepletedSquadronAtEnemyPlanet_ReplacesSlowly()
         {
@@ -585,6 +657,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick full squadron no change.
+        /// </summary>
         [Test]
         public void ProcessTick_FullSquadron_NoChange()
         {
@@ -607,6 +682,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(12, squadron.CurrentSquadronSize, "Full squadron should not change");
         }
 
+        /// <summary>
+        /// Verifies process tick replacement clamps to max does not exceed squadron size.
+        /// </summary>
         [Test]
         public void ProcessTick_ReplacementClampsToMax_DoesNotExceedSquadronSize()
         {
@@ -633,6 +711,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick squadron fully replaced emits result.
+        /// </summary>
         [Test]
         public void ProcessTick_SquadronFullyReplaced_EmitsResult()
         {
@@ -658,6 +739,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick squadron partially replaced no result.
+        /// </summary>
         [Test]
         public void ProcessTick_SquadronPartiallyReplaced_NoResult()
         {
@@ -683,6 +767,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick ship under construction not repaired.
+        /// </summary>
         [Test]
         public void ProcessTick_ShipUnderConstruction_NotRepaired()
         {
@@ -711,6 +798,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick squadron under construction not replaced.
+        /// </summary>
         [Test]
         public void ProcessTick_SquadronUnderConstruction_NotReplaced()
         {

@@ -13,6 +13,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private const string _attackerId = "attacker";
         private const string _defenderId = "defender";
 
+        /// <summary>
+        /// Verifies get side for owner result owner i ds returns represented side.
+        /// </summary>
         [Test]
         public void GetSideForOwner_ResultOwnerIDs_ReturnsRepresentedSide()
         {
@@ -31,6 +34,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNull(unknown);
         }
 
+        /// <summary>
+        /// Verifies get outcome combat side returns configured outcome.
+        /// </summary>
+        /// <param name="side">The side.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(CombatSide.Attacker, SpaceCombatSideOutcome.Withdrawn)]
         [TestCase(CombatSide.Defender, SpaceCombatSideOutcome.Destroyed)]
         [TestCase(CombatSide.Draw, SpaceCombatSideOutcome.Unknown)]
@@ -50,6 +58,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(expected, outcome);
         }
 
+        /// <summary>
+        /// Verifies get opposing side combatant side returns other side.
+        /// </summary>
+        /// <param name="side">The side.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(CombatSide.Attacker, CombatSide.Defender)]
         [TestCase(CombatSide.Defender, CombatSide.Attacker)]
         public void GetOpposingSide_CombatantSide_ReturnsOtherSide(
@@ -62,6 +75,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(expected, opposingSide);
         }
 
+        /// <summary>
+        /// Verifies get opposing side draw returns null.
+        /// </summary>
         [Test]
         public void GetOpposingSide_Draw_ReturnsNull()
         {
@@ -70,6 +86,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNull(opposingSide);
         }
 
+        /// <summary>
+        /// Verifies get summary image path destroyed defender returns attacker victory artwork.
+        /// </summary>
         [Test]
         public void GetSummaryImagePath_DestroyedDefender_ReturnsAttackerVictoryArtwork()
         {
@@ -89,6 +108,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("attacker-victory", path);
         }
 
+        /// <summary>
+        /// Verifies get summary image path withdrawn defender returns defender defeat artwork.
+        /// </summary>
         [Test]
         public void GetSummaryImagePath_WithdrawnDefender_ReturnsDefenderDefeatArtwork()
         {
@@ -108,6 +130,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("defender-defeat", path);
         }
 
+        /// <summary>
+        /// Verifies get summary image path draw returns default summary artwork.
+        /// </summary>
         [Test]
         public void GetSummaryImagePath_Draw_ReturnsDefaultSummaryArtwork()
         {
@@ -127,6 +152,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("summary", path);
         }
 
+        /// <summary>
+        /// Verifies get summary image path missing preferred artwork uses ordered fallback.
+        /// </summary>
         [Test]
         public void GetSummaryImagePath_MissingPreferredArtwork_UsesOrderedFallback()
         {
@@ -144,6 +172,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("attacker-victory", path);
         }
 
+        /// <summary>
+        /// Verifies first non blank blank candidates returns first meaningful value.
+        /// </summary>
         [Test]
         public void FirstNonBlank_BlankCandidates_ReturnsFirstMeaningfulValue()
         {

@@ -39,12 +39,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render null layout throws missing reference exception.
+        /// </summary>
         [Test]
         public void Render_NullLayout_ThrowsMissingReferenceException()
         {
             Assert.Throws<MissingReferenceException>(() => _view.Render(null, null));
         }
 
+        /// <summary>
+        /// Verifies render active and inactive slots creates only required visible views.
+        /// </summary>
         [Test]
         public void Render_ActiveAndInactiveSlots_CreatesOnlyRequiredVisibleViews()
         {
@@ -70,6 +76,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsTrue(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render shorter snapshot reuses and hides surplus views.
+        /// </summary>
         [Test]
         public void Render_ShorterSnapshot_ReusesAndHidesSurplusViews()
         {
@@ -96,6 +105,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsFalse(slots[1].gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render null snapshot hides existing views.
+        /// </summary>
         [Test]
         public void Render_NullSnapshot_HidesExistingViews()
         {
@@ -109,6 +121,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsFalse(GetSlots()[0].gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies slot double click active slot raises bookmark index.
+        /// </summary>
         [Test]
         public void SlotDoubleClick_ActiveSlot_RaisesBookmarkIndex()
         {
@@ -133,6 +148,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreEqual(1, requestedIndex);
         }
 
+        /// <summary>
+        /// Verifies on destroy rendered slots detaches bookmark requests.
+        /// </summary>
         [Test]
         public void OnDestroy_RenderedSlots_DetachesBookmarkRequests()
         {

@@ -46,12 +46,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render index panel applies frame search tabs title and rows.
+        /// </summary>
         [Test]
         public void Render_IndexPanel_AppliesFrameSearchTabsTitleAndRows()
         {
@@ -92,6 +98,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(new Color32(128, 128, 128, 255), (Color32)FindRowText(rows[1]).color);
         }
 
+        /// <summary>
+        /// Verifies render upper button layout hides strip and uses upper slots.
+        /// </summary>
         [Test]
         public void Render_UpperButtonLayout_HidesStripAndUsesUpperSlots()
         {
@@ -111,6 +120,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsFalse(FindObject("LowerLayoutCloseButtonImage").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render command source rect applies configured bounds.
+        /// </summary>
         [Test]
         public void Render_CommandSourceRect_AppliesConfiguredBounds()
         {
@@ -145,6 +157,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             );
         }
 
+        /// <summary>
+        /// Verifies render too many commands throws missing reference exception.
+        /// </summary>
         [Test]
         public void Render_TooManyCommands_ThrowsMissingReferenceException()
         {
@@ -165,6 +180,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.Throws<MissingReferenceException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render too many tabs throws missing reference exception.
+        /// </summary>
         [Test]
         public void Render_TooManyTabs_ThrowsMissingReferenceException()
         {
@@ -193,6 +211,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.Throws<MissingReferenceException>(() => _view.Render(data));
         }
 
+        /// <summary>
+        /// Verifies render shorter index collection hides unused cached rows.
+        /// </summary>
         [Test]
         public void Render_ShorterIndexCollection_HidesUnusedCachedRows()
         {
@@ -226,6 +247,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual("Kessel", FindRowText(FindRows()[0]).text);
         }
 
+        /// <summary>
+        /// Verifies render detail panel applies card navigation title and structured text.
+        /// </summary>
         [Test]
         public void Render_DetailPanel_AppliesCardNavigationTitleAndStructuredText()
         {
@@ -272,6 +296,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             );
         }
 
+        /// <summary>
+        /// Verifies render shorter detail text hides unused cached text fields.
+        /// </summary>
         [Test]
         public void Render_ShorterDetailText_HidesUnusedCachedTextFields()
         {
@@ -310,6 +337,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual("Replacement", FindDetailLines().Single().text);
         }
 
+        /// <summary>
+        /// Verifies render switching to index hides cached detail text.
+        /// </summary>
         [Test]
         public void Render_SwitchingToIndex_HidesCachedDetailText()
         {
@@ -337,6 +367,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsTrue(FindObject("IndexPanel").activeSelf);
         }
 
+        /// <summary>
+        /// Verifies search input null value raises normalized search request.
+        /// </summary>
         [Test]
         public void SearchInput_NullValue_RaisesNormalizedSearchRequest()
         {
@@ -348,6 +381,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(string.Empty, search);
         }
 
+        /// <summary>
+        /// Verifies tab button clicked raises focus and semantic tab requests.
+        /// </summary>
         [Test]
         public void TabButton_Clicked_RaisesFocusAndSemanticTabRequests()
         {
@@ -362,6 +398,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(EncyclopediaWindowTab.Missions, selectedTab);
         }
 
+        /// <summary>
+        /// Verifies index row gestures rendered row raise focus selection activation and context.
+        /// </summary>
         [Test]
         public void IndexRowGestures_RenderedRow_RaiseFocusSelectionActivationAndContext()
         {
@@ -408,6 +447,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreSame(secondary, contextEvent);
         }
 
+        /// <summary>
+        /// Verifies detail navigation buttons click raise focus and previous next requests.
+        /// </summary>
         [Test]
         public void DetailNavigationButtons_Click_RaiseFocusAndPreviousNextRequests()
         {
@@ -426,6 +468,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(1, nextCount);
         }
 
+        /// <summary>
+        /// Verifies dialog button press then click raises control before rendered semantic command.
+        /// </summary>
         [Test]
         public void DialogButton_PressThenClick_RaisesControlBeforeRenderedSemanticCommand()
         {
@@ -461,6 +506,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(EncyclopediaWindowCommand.ShowTopic, command);
         }
 
+        /// <summary>
+        /// Verifies child panels null data throw argument null exception.
+        /// </summary>
         [Test]
         public void ChildPanels_NullData_ThrowArgumentNullException()
         {
@@ -468,6 +516,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.Throws<ArgumentNullException>(() => _detailPanel.Render(null, 0));
         }
 
+        /// <summary>
+        /// Verifies child panel on destroy initialized panels unbind their own controls.
+        /// </summary>
         [Test]
         public void ChildPanelOnDestroy_InitializedPanels_UnbindTheirOwnControls()
         {
@@ -493,6 +544,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(0, nextCount);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds parent controls and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsParentControlsAndRaisesDestroyedEvent()
         {

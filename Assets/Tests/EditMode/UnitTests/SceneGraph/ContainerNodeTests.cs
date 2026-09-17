@@ -73,6 +73,9 @@ namespace Rebellion.Tests.SceneGraph
             };
         }
 
+        /// <summary>
+        /// Verifies get children non recursive returns only immediate children.
+        /// </summary>
         [Test]
         public void GetChildren_NonRecursive_ReturnsOnlyImmediateChildren()
         {
@@ -88,6 +91,9 @@ namespace Rebellion.Tests.SceneGraph
             CollectionAssert.DoesNotContain(result, _nodeA1);
         }
 
+        /// <summary>
+        /// Verifies get children non recursive with predicate returns filtered immediate children.
+        /// </summary>
         [Test]
         public void GetChildren_NonRecursiveWithPredicate_ReturnsFilteredImmediateChildren()
         {
@@ -105,6 +111,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(_childNode1, result.First());
         }
 
+        /// <summary>
+        /// Verifies get children non recursive with type filter returns only matching types.
+        /// </summary>
         [Test]
         public void GetChildren_NonRecursiveWithTypeFilter_ReturnsOnlyMatchingTypes()
         {
@@ -120,6 +129,9 @@ namespace Rebellion.Tests.SceneGraph
             CollectionAssert.DoesNotContain(result, _nodeB1);
         }
 
+        /// <summary>
+        /// Verifies get children non recursive empty children returns empty collection.
+        /// </summary>
         [Test]
         public void GetChildren_NonRecursiveEmptyChildren_ReturnsEmptyCollection()
         {
@@ -128,6 +140,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, result.Count(), "Should return empty collection when no children");
         }
 
+        /// <summary>
+        /// Verifies get children non recursive single child returns single child.
+        /// </summary>
         [Test]
         public void GetChildren_NonRecursiveSingleChild_ReturnsSingleChild()
         {
@@ -139,6 +154,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(_childNode1, result.First());
         }
 
+        /// <summary>
+        /// Verifies get children recursive returns all descendants.
+        /// </summary>
         [Test]
         public void GetChildren_Recursive_ReturnsAllDescendants()
         {
@@ -158,6 +176,9 @@ namespace Rebellion.Tests.SceneGraph
             CollectionAssert.Contains(result, _nodeB1);
         }
 
+        /// <summary>
+        /// Verifies get children recursive with predicate returns filtered descendants.
+        /// </summary>
         [Test]
         public void GetChildren_RecursiveWithPredicate_ReturnsFilteredDescendants()
         {
@@ -180,6 +201,9 @@ namespace Rebellion.Tests.SceneGraph
             CollectionAssert.Contains(result, _nodeA1);
         }
 
+        /// <summary>
+        /// Verifies get children recursive with type filter returns only matching type descendants.
+        /// </summary>
         [Test]
         public void GetChildren_RecursiveWithTypeFilter_ReturnsOnlyMatchingTypeDescendants()
         {
@@ -197,6 +221,9 @@ namespace Rebellion.Tests.SceneGraph
             CollectionAssert.Contains(result, _nodeA2);
         }
 
+        /// <summary>
+        /// Verifies get children recursive multiple levels returns all levels.
+        /// </summary>
         [Test]
         public void GetChildren_RecursiveMultipleLevels_ReturnsAllLevels()
         {
@@ -217,6 +244,9 @@ namespace Rebellion.Tests.SceneGraph
             CollectionAssert.Contains(result, _nodeB1);
         }
 
+        /// <summary>
+        /// Verifies get children recursive large hierarchy returns all nodes.
+        /// </summary>
         [Test]
         public void GetChildren_RecursiveLargeHierarchy_ReturnsAllNodes()
         {
@@ -261,6 +291,9 @@ namespace Rebellion.Tests.SceneGraph
             }
         }
 
+        /// <summary>
+        /// Verifies get children recursive null predicate returns all descendants.
+        /// </summary>
         [Test]
         public void GetChildren_RecursiveNullPredicate_ReturnsAllDescendants()
         {
@@ -282,6 +315,9 @@ namespace Rebellion.Tests.SceneGraph
             CollectionAssert.Contains(result, _nodeA1);
         }
 
+        /// <summary>
+        /// Verifies get children non recursive null predicate returns all immediate children.
+        /// </summary>
         [Test]
         public void GetChildren_NonRecursiveNullPredicate_ReturnsAllImmediateChildren()
         {
@@ -301,6 +337,9 @@ namespace Rebellion.Tests.SceneGraph
             CollectionAssert.DoesNotContain(result, _nodeA1);
         }
 
+        /// <summary>
+        /// Verifies get children recursive does not include self.
+        /// </summary>
         [Test]
         public void GetChildren_Recursive_DoesNotIncludeSelf()
         {
@@ -317,6 +356,9 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
+        /// <summary>
+        /// Verifies get children recursive with matching self type does not include self.
+        /// </summary>
         [Test]
         public void GetChildren_RecursiveWithMatchingSelfType_DoesNotIncludeSelf()
         {
@@ -339,6 +381,9 @@ namespace Rebellion.Tests.SceneGraph
             CollectionAssert.DoesNotContain(result, rootA);
         }
 
+        /// <summary>
+        /// Verifies get children recursive with predicate matching self does not include self.
+        /// </summary>
         [Test]
         public void GetChildren_RecursiveWithPredicateMatchingSelf_DoesNotIncludeSelf()
         {
@@ -355,6 +400,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(_childNode1, result.First());
         }
 
+        /// <summary>
+        /// Verifies get children recursive empty hierarchy returns empty collection.
+        /// </summary>
         [Test]
         public void GetChildren_RecursiveEmptyHierarchy_ReturnsEmptyCollection()
         {
@@ -369,6 +417,9 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
+        /// <summary>
+        /// Verifies get children predicate rejects all returns empty collection.
+        /// </summary>
         [Test]
         public void GetChildren_PredicateRejectsAll_ReturnsEmptyCollection()
         {
@@ -382,6 +433,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, result.Count(), "Should return empty when predicate rejects all");
         }
 
+        /// <summary>
+        /// Verifies get children type mismatch returns empty collection.
+        /// </summary>
         [Test]
         public void GetChildren_TypeMismatch_ReturnsEmptyCollection()
         {
@@ -395,6 +449,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, result.Count(), "Should return empty when no children match type");
         }
 
+        /// <summary>
+        /// Verifies get children complex predicate with multiple conditions returns correct results.
+        /// </summary>
         [Test]
         public void GetChildren_ComplexPredicateWithMultipleConditions_ReturnsCorrectResults()
         {
@@ -423,6 +480,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(_childNode1, result.First());
         }
 
+        /// <summary>
+        /// Verifies get children wide hierarchy returns all children.
+        /// </summary>
         [Test]
         public void GetChildren_WideHierarchy_ReturnsAllChildren()
         {
@@ -448,6 +508,9 @@ namespace Rebellion.Tests.SceneGraph
             }
         }
 
+        /// <summary>
+        /// Verifies get children deep hierarchy handles multiple levels correctly.
+        /// </summary>
         [Test]
         public void GetChildren_DeepHierarchy_HandlesMultipleLevelsCorrectly()
         {
@@ -478,6 +541,9 @@ namespace Rebellion.Tests.SceneGraph
             }
         }
 
+        /// <summary>
+        /// Verifies get children mixed type hierarchy filters correctly.
+        /// </summary>
         [Test]
         public void GetChildren_MixedTypeHierarchy_FiltersCorrectly()
         {
@@ -503,6 +569,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(1, resultC.Count(), "Should find 1 type C node");
         }
 
+        /// <summary>
+        /// Verifies traverse simple hierarchy visits all nodes.
+        /// </summary>
         [Test]
         public void Traverse_SimpleHierarchy_VisitsAllNodes()
         {
@@ -518,6 +587,9 @@ namespace Rebellion.Tests.SceneGraph
             CollectionAssert.Contains(visitedNodes, _childNode2);
         }
 
+        /// <summary>
+        /// Verifies traverse tree with children visits root first.
+        /// </summary>
         [Test]
         public void Traverse_TreeWithChildren_VisitsRootFirst()
         {
@@ -530,6 +602,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(_rootNode, visitedNodes[0], "Root should be visited first");
         }
 
+        /// <summary>
+        /// Verifies traverse deep hierarchy visits in correct order.
+        /// </summary>
         [Test]
         public void Traverse_DeepHierarchy_VisitsInCorrectOrder()
         {
@@ -550,6 +625,9 @@ namespace Rebellion.Tests.SceneGraph
             CollectionAssert.Contains(visitedNodes, _nodeA1);
         }
 
+        /// <summary>
+        /// Verifies traverse empty children visits only root.
+        /// </summary>
         [Test]
         public void Traverse_EmptyChildren_VisitsOnlyRoot()
         {
@@ -560,6 +638,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(_rootNode, visitedNodes[0]);
         }
 
+        /// <summary>
+        /// Verifies traverse single child visits root and child.
+        /// </summary>
         [Test]
         public void Traverse_SingleChild_VisitsRootAndChild()
         {
@@ -573,6 +654,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(_childNode1, visitedNodes[1]);
         }
 
+        /// <summary>
+        /// Verifies traverse with action executes action on each node.
+        /// </summary>
         [Test]
         public void Traverse_WithAction_ExecutesActionOnEachNode()
         {
@@ -585,6 +669,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(3, actionCount, "Action should be executed on each node");
         }
 
+        /// <summary>
+        /// Verifies traverse large hierarchy visits all nodes.
+        /// </summary>
         [Test]
         public void Traverse_LargeHierarchy_VisitsAllNodes()
         {
@@ -616,6 +703,9 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(31, visitedNodes.Count, "Should visit all 31 nodes");
         }
 
+        /// <summary>
+        /// Verifies traverse modifying children during traversal handles modification safely.
+        /// </summary>
         [Test]
         public void Traverse_ModifyingChildrenDuringTraversal_HandlesModificationSafely()
         {
@@ -640,6 +730,9 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
+        /// <summary>
+        /// Verifies traverse child removed during traversal continues traversal.
+        /// </summary>
         [Test]
         public void Traverse_ChildRemovedDuringTraversal_ContinuesTraversal()
         {

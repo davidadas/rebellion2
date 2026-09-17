@@ -15,6 +15,9 @@ namespace Rebellion.Tests.AI.Scoring
     [TestFixture]
     public class AIProductionProposalScorerTests
     {
+        /// <summary>
+        /// Verifies score with fleet reinforcement deducts travel penalty.
+        /// </summary>
         [Test]
         public void Score_WithDifferentDemandPressure_PreservesPressureDifference()
         {

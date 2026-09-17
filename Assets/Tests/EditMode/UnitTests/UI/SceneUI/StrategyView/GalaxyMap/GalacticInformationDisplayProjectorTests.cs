@@ -34,6 +34,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _projector = new GalacticInformationDisplayProjector(() => _uiContext);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
@@ -42,6 +45,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies project hidden state returns empty presentation without context.
+        /// </summary>
         [Test]
         public void Project_HiddenState_ReturnsEmptyPresentationWithoutContext()
         {
@@ -60,6 +66,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(data.DisplayOffRow.Visible);
         }
 
+        /// <summary>
+        /// Verifies project visible state without context throws invalid operation exception.
+        /// </summary>
         [Test]
         public void Project_VisibleStateWithoutContext_ThrowsInvalidOperationException()
         {
@@ -78,6 +87,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.Throws<InvalidOperationException>(() => projector.Project(state));
         }
 
+        /// <summary>
+        /// Verifies project active category returns authored selector presentation.
+        /// </summary>
         [Test]
         public void Project_ActiveCategory_ReturnsAuthoredSelectorPresentation()
         {
@@ -140,6 +152,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(data.DisplayOffRow.CheckMark.Texture);
         }
 
+        /// <summary>
+        /// Verifies project display off hovered returns faction highlight.
+        /// </summary>
         [Test]
         public void Project_DisplayOffHovered_ReturnsFactionHighlight()
         {
@@ -162,6 +177,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             }
         }
 
+        /// <summary>
+        /// Verifies project legend configured filter returns authored legend presentation.
+        /// </summary>
         [Test]
         public void ProjectLegend_ConfiguredFilter_ReturnsAuthoredLegendPresentation()
         {
@@ -214,6 +232,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies project legend unconfigured filter returns null.
+        /// </summary>
         [Test]
         public void ProjectLegend_UnconfiguredFilter_ReturnsNull()
         {

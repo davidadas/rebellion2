@@ -44,6 +44,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render null presentation hides drag feedback.
+        /// </summary>
         [Test]
         public void Render_NullPresentation_HidesDragFeedback()
         {
@@ -64,6 +67,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.IsFalse(GetField<RawImage>("destinationCursorImage").gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render frame and image applies every overlay element.
+        /// </summary>
         [Test]
         public void Render_FrameAndImage_AppliesEveryOverlayElement()
         {
@@ -103,6 +109,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.IsFalse(image.raycastTarget);
         }
 
+        /// <summary>
+        /// Verifies render frame without image hides shared image when targeting inactive.
+        /// </summary>
         [Test]
         public void Render_FrameWithoutImage_HidesSharedImageWhenTargetingInactive()
         {
@@ -112,6 +121,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.IsFalse(GetField<RawImage>("destinationCursorImage").gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render multiple drag images translates every image without changing spacing.
+        /// </summary>
         [Test]
         public void Render_MultipleDragImages_TranslatesEveryImageWithoutChangingSpacing()
         {
@@ -140,6 +152,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), images[1].uvRect);
         }
 
+        /// <summary>
+        /// Verifies show target position displays generated cursor and owns cancellation selection.
+        /// </summary>
         [Test]
         public void Show_TargetPosition_DisplaysGeneratedCursorAndOwnsCancellationSelection()
         {
@@ -166,6 +181,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.IsFalse(input.raycastTarget);
         }
 
+        /// <summary>
+        /// Verifies move to visible target repositions existing cursor texture.
+        /// </summary>
         [Test]
         public void MoveTo_VisibleTarget_RepositionsExistingCursorTexture()
         {
@@ -183,6 +201,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             );
         }
 
+        /// <summary>
+        /// Verifies move to hidden target does not show cursor.
+        /// </summary>
         [Test]
         public void MoveTo_HiddenTarget_DoesNotShowCursor()
         {
@@ -191,6 +212,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.IsFalse(GetField<RawImage>("destinationCursorImage").gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies hide visible target hides cursor restores platform cursor and clears selection.
+        /// </summary>
         [Test]
         public void Hide_VisibleTarget_HidesCursorRestoresPlatformCursorAndClearsSelection()
         {
@@ -203,6 +227,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.IsTrue(Cursor.visible);
         }
 
+        /// <summary>
+        /// Verifies on cancel visible target raises cancellation request.
+        /// </summary>
         [Test]
         public void OnCancel_VisibleTarget_RaisesCancellationRequest()
         {
@@ -216,6 +243,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.AreEqual(1, requestCount);
         }
 
+        /// <summary>
+        /// Verifies on disable visible target releases transient state.
+        /// </summary>
         [Test]
         public void OnDisable_VisibleTarget_ReleasesTransientState()
         {

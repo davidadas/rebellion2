@@ -93,6 +93,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor missing provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_MissingProvider_ThrowsArgumentNullException()
         {
@@ -104,6 +107,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies build missing session or window throws argument null exception.
+        /// </summary>
         [Test]
         public void Build_MissingSessionOrWindow_ThrowsArgumentNullException()
         {
@@ -113,6 +119,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentNullException>(() => _projector.Build(session, null, true));
         }
 
+        /// <summary>
+        /// Verifies build unavailable context throws invalid operation exception.
+        /// </summary>
         [Test]
         public void Build_UnavailableContext_ThrowsInvalidOperationException()
         {
@@ -122,6 +131,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<InvalidOperationException>(() => projector.Build(session, _window, true));
         }
 
+        /// <summary>
+        /// Verifies build selected mission returns complete active presentation.
+        /// </summary>
         [Test]
         public void Build_SelectedMission_ReturnsCompleteActivePresentation()
         {
@@ -180,6 +192,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies build inactive window and decoy role returns inactive presentation.
+        /// </summary>
         [Test]
         public void Build_InactiveWindowAndDecoyRole_ReturnsInactivePresentation()
         {
@@ -206,6 +221,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies build participant carried by moving fleet uses transit presentation.
+        /// </summary>
         [Test]
         public void Build_ParticipantCarriedByMovingFleet_UsesTransitPresentation()
         {
@@ -225,6 +243,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies build no missions returns empty selection presentation.
+        /// </summary>
         [Test]
         public void Build_NoMissions_ReturnsEmptySelectionPresentation()
         {
@@ -241,6 +262,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(data.Participants);
         }
 
+        /// <summary>
+        /// Verifies build missing visible location falls back to planet presentation.
+        /// </summary>
         [Test]
         public void Build_MissingVisibleLocation_FallsBackToPlanetPresentation()
         {
@@ -253,6 +277,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(data.TargetTexture);
         }
 
+        /// <summary>
+        /// Verifies build recruitment mission uses planet as target.
+        /// </summary>
         [Test]
         public void Build_RecruitmentMission_UsesPlanetAsTarget()
         {

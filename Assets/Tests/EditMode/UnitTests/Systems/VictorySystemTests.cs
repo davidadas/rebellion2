@@ -14,6 +14,9 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class VictorySystemTests
     {
+        /// <summary>
+        /// Verifies process tick hq not configured returns empty.
+        /// </summary>
         [Test]
         public void ProcessTick_HQNotConfigured_ReturnsEmpty()
         {
@@ -25,6 +28,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count, "No HQ configured should return no results");
         }
 
+        /// <summary>
+        /// Verifies process tick hq still owned by defender returns empty.
+        /// </summary>
         [Test]
         public void ProcessTick_HQStillOwnedByDefender_ReturnsEmpty()
         {
@@ -35,6 +41,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count, "HQ held by defender should not trigger victory");
         }
 
+        /// <summary>
+        /// Verifies process tick hq captured headquarters mode returns victory result.
+        /// </summary>
         [Test]
         public void ProcessTick_HQCapturedHeadquartersMode_ReturnsVictoryResult()
         {
@@ -51,6 +60,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(empire, victory.Loser);
         }
 
+        /// <summary>
+        /// Verifies process tick after victory declared does not declare victory again.
+        /// </summary>
         [Test]
         public void ProcessTick_AfterVictoryDeclared_DoesNotDeclareVictoryAgain()
         {
@@ -63,6 +75,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(secondResults);
         }
 
+        /// <summary>
+        /// Verifies process tick hq captured conquest mode leaders free returns empty.
+        /// </summary>
         [Test]
         public void ProcessTick_HQCapturedConquestMode_LeadersFree_ReturnsEmpty()
         {
@@ -99,6 +114,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick hq captured conquest mode all leaders captured returns victory result.
+        /// </summary>
         [Test]
         public void ProcessTick_HQCapturedConquestMode_AllLeadersCaptured_ReturnsVictoryResult()
         {
@@ -124,6 +142,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(empire, victory.Loser);
         }
 
+        /// <summary>
+        /// Verifies process tick hq captured conquest mode no main characters returns victory result.
+        /// </summary>
         [Test]
         public void ProcessTick_HQCapturedConquestMode_NoMainCharacters_ReturnsVictoryResult()
         {
@@ -139,6 +160,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(rebels, victory.Winner);
         }
 
+        /// <summary>
+        /// Verifies process tick mobile headquarters in transit returns empty.
+        /// </summary>
         [Test]
         public void ProcessTick_MobileHeadquartersInTransit_ReturnsEmpty()
         {
@@ -170,6 +194,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick mobile headquarters missing returns empty.
+        /// </summary>
         [Test]
         public void ProcessTick_MobileHeadquartersMissing_ReturnsEmpty()
         {
@@ -190,6 +217,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, results.Count);
         }
 
+        /// <summary>
+        /// Verifies process tick mobile headquarters captured returns victory result.
+        /// </summary>
         [Test]
         public void ProcessTick_MobileHeadquartersCaptured_ReturnsVictoryResult()
         {
@@ -223,6 +253,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(empire, victory.Loser);
         }
 
+        /// <summary>
+        /// Verifies process tick multiple mobile headquarters uses defender headquarters.
+        /// </summary>
         [Test]
         public void ProcessTick_MultipleMobileHeadquarters_UsesDefenderHeadquarters()
         {
@@ -294,6 +327,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(empire, victory.Loser);
         }
 
+        /// <summary>
+        /// Verifies handle results headquarters captured returns victory.
+        /// </summary>
         [Test]
         public void HandleResults_HeadquartersCaptured_ReturnsVictory()
         {

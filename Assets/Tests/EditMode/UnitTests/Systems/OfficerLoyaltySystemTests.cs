@@ -14,6 +14,9 @@ namespace Rebellion.Tests.Sectors
     [TestFixture]
     public class OfficerLoyaltySystemTests
     {
+        /// <summary>
+        /// Verifies handle results faction gains planet shifts only free living officer loyalty.
+        /// </summary>
         [Test]
         public void HandleResults_FactionGainsPlanet_ShiftsOnlyFreeLivingOfficerLoyalty()
         {
@@ -69,6 +72,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(50, captive.Loyalty);
         }
 
+        /// <summary>
+        /// Verifies try resolve mission betrayal low loyalty officer foils without revealing identity.
+        /// </summary>
         [Test]
         public void TryResolveMissionBetrayal_LowLoyaltyOfficer_FoilsWithoutRevealingIdentity()
         {
@@ -87,6 +93,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(officer.IsTraitor);
         }
 
+        /// <summary>
+        /// Verifies try resolve mission betrayal force capable companion discovers traitor.
+        /// </summary>
         [Test]
         public void TryResolveMissionBetrayal_ForceCapableCompanion_DiscoversTraitor()
         {
@@ -116,6 +125,12 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(planet, result.Context);
         }
 
+        /// <summary>
+        /// Verifies try resolve mission betrayal boundary roll uses one hundred minus loyalty.
+        /// </summary>
+        /// <param name="loyalty">The loyalty.</param>
+        /// <param name="roll">The roll.</param>
+        /// <param name="expectedBetrayal">Whether expected betrayal.</param>
         [TestCase(80, 19, true)]
         [TestCase(80, 20, false)]
         public void TryResolveMissionBetrayal_BoundaryRoll_UsesOneHundredMinusLoyalty(
@@ -137,6 +152,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(expectedBetrayal, betrayed);
         }
 
+        /// <summary>
+        /// Verifies try resolve mission betrayal command officer does not betray.
+        /// </summary>
         [Test]
         public void TryResolveMissionBetrayal_CommandOfficer_DoesNotBetray()
         {

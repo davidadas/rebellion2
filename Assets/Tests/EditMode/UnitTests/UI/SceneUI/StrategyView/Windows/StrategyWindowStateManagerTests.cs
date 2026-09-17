@@ -32,6 +32,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 Object.DestroyImmediate(_root);
         }
 
+        /// <summary>
+        /// Verifies that capture replaces stale state with a complete supported window record.
+        /// </summary>
         [Test]
         public void Capture_RegisteredModelessWindow_ReplacesSavedState()
         {
@@ -57,6 +60,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(80, states[0].GetHeight());
         }
 
+        /// <summary>
+        /// Verifies that unsupported and modal windows are excluded from persisted state.
+        /// </summary>
         [Test]
         public void Capture_UnsupportedAndModalWindows_DoesNotPersistThem()
         {
@@ -74,6 +80,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             CollectionAssert.IsEmpty(states);
         }
 
+        /// <summary>
+        /// Verifies that supported windows restore in their persisted stacking order.
+        /// </summary>
         [Test]
         public void Restore_RegisteredStates_RestoresInSavedStackOrder()
         {
@@ -101,6 +110,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             CollectionAssert.AreEqual(new[] { "FIRST", "SECOND" }, restoredTargets);
         }
 
+        /// <summary>
+        /// Verifies that restoration skips null entries and reapplies saved dimensions and order.
+        /// </summary>
         [Test]
         public void Restore_NullAndSizedStates_RestoresValidWindowBoundsAndStackOrder()
         {

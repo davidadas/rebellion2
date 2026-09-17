@@ -46,6 +46,9 @@ namespace Rebellion.Tests.Game.Units
             };
         }
 
+        /// <summary>
+        /// Verifies add child with capital ship adds capital ship.
+        /// </summary>
         [Test]
         public void AddChild_WithCapitalShip_AddsCapitalShip()
         {
@@ -54,6 +57,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Contains(_capitalShip1, _fleet.GetChildren<CapitalShip>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add child with invalid owner throws exception.
+        /// </summary>
         [Test]
         public void AddChild_WithInvalidOwner_ThrowsException()
         {
@@ -62,6 +68,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Throws<SceneAccessException>(() => _fleet.AddChild(invalidShip));
         }
 
+        /// <summary>
+        /// Verifies add child with officer throws scene access exception.
+        /// </summary>
         [Test]
         public void AddChild_WithOfficer_ThrowsSceneAccessException()
         {
@@ -72,6 +81,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Throws<SceneAccessException>(() => _fleet.AddChild(officer));
         }
 
+        /// <summary>
+        /// Verifies add child with starfighter throws scene access exception.
+        /// </summary>
         [Test]
         public void AddChild_WithStarfighter_ThrowsSceneAccessException()
         {
@@ -82,6 +94,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Throws<SceneAccessException>(() => _fleet.AddChild(sf));
         }
 
+        /// <summary>
+        /// Verifies add child with regiment throws scene access exception.
+        /// </summary>
         [Test]
         public void AddChild_WithRegiment_ThrowsSceneAccessException()
         {
@@ -92,6 +107,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.Throws<SceneAccessException>(() => _fleet.AddChild(reg));
         }
 
+        /// <summary>
+        /// Verifies remove child existing capital ship removes it.
+        /// </summary>
         [Test]
         public void RemoveChild_ExistingCapitalShip_RemovesIt()
         {
@@ -102,6 +120,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_fleet.GetChildren<CapitalShip>().Contains(_capitalShip1));
         }
 
+        /// <summary>
+        /// Verifies get children fleet with capital ships returns all capital ships.
+        /// </summary>
         [Test]
         public void GetChildren_FleetWithCapitalShips_ReturnsAllCapitalShips()
         {
@@ -117,6 +138,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies get starfighter capacity multiple capital ships returns total sum.
+        /// </summary>
         [Test]
         public void GetStarfighterCapacity_MultipleCapitalShips_ReturnsTotalSum()
         {
@@ -132,6 +156,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies get regiment capacity multiple capital ships returns total sum.
+        /// </summary>
         [Test]
         public void GetRegimentCapacity_MultipleCapitalShips_ReturnsTotalSum()
         {
@@ -147,6 +174,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies get current starfighter count multiple capital ships returns total sum.
+        /// </summary>
         [Test]
         public void GetCurrentStarfighterCount_MultipleCapitalShips_ReturnsTotalSum()
         {
@@ -162,6 +192,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(2, count, "Should return total starfighters across all capital ships");
         }
 
+        /// <summary>
+        /// Verifies get excess starfighter capacity partially filled fleet returns remaining capacity.
+        /// </summary>
         [Test]
         public void GetExcessStarfighterCapacity_PartiallyFilledFleet_ReturnsRemainingCapacity()
         {
@@ -175,6 +208,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(4, excess, "Should return excess capacity (5 - 1 = 4)");
         }
 
+        /// <summary>
+        /// Verifies get current regiment count multiple capital ships returns total sum.
+        /// </summary>
         [Test]
         public void GetCurrentRegimentCount_MultipleCapitalShips_ReturnsTotalSum()
         {
@@ -190,6 +226,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(2, count, "Should return total regiments across all capital ships");
         }
 
+        /// <summary>
+        /// Verifies get excess regiment capacity partially filled fleet returns remaining capacity.
+        /// </summary>
         [Test]
         public void GetExcessRegimentCapacity_PartiallyFilledFleet_ReturnsRemainingCapacity()
         {
@@ -203,6 +242,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(2, excess, "Should return excess capacity (3 - 1 = 2)");
         }
 
+        /// <summary>
+        /// Verifies find ship for starfighter skips unavailable ships.
+        /// </summary>
         [Test]
         public void FindShipForStarfighter_SkipsUnavailableShips()
         {
@@ -216,6 +258,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreSame(_capitalShip2, result);
         }
 
+        /// <summary>
+        /// Verifies find ship for starfighter fleet in transit returns null.
+        /// </summary>
         [Test]
         public void FindShipForStarfighter_FleetInTransit_ReturnsNull()
         {
@@ -228,6 +273,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsNull(result);
         }
 
+        /// <summary>
+        /// Verifies find ship for regiment skips unavailable ships.
+        /// </summary>
         [Test]
         public void FindShipForRegiment_SkipsUnavailableShips()
         {
@@ -242,6 +290,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreSame(_capitalShip2, result);
         }
 
+        /// <summary>
+        /// Verifies is movable when idle returns true.
+        /// </summary>
         [Test]
         public void IsMovable_WhenIdle_ReturnsTrue()
         {
@@ -252,6 +303,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(isMovable, "Fleet should be movable when idle");
         }
 
+        /// <summary>
+        /// Verifies is movable when in transit returns false.
+        /// </summary>
         [Test]
         public void IsMovable_WhenInTransit_ReturnsFalse()
         {
@@ -262,6 +316,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(isMovable, "Fleet should not be movable when in transit");
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize fleet with capital ship maintains state.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_FleetWithCapitalShip_MaintainsState()
         {
@@ -304,6 +361,9 @@ namespace Rebellion.Tests.Game.Units
             CollectionAssert.AreEqual(_fleet.Waypoints, deserialized.Waypoints);
         }
 
+        /// <summary>
+        /// Verifies create copy fleet with waypoints copies independent route.
+        /// </summary>
         [Test]
         public void CreateCopy_FleetWithWaypoints_CopiesIndependentRoute()
         {
@@ -316,6 +376,9 @@ namespace Rebellion.Tests.Game.Units
             CollectionAssert.AreEqual(new[] { "PLANET1", "PLANET2" }, copy.Waypoints);
         }
 
+        /// <summary>
+        /// Verifies has waypoints waypoint added returns true.
+        /// </summary>
         [Test]
         public void HasWaypoints_WaypointAdded_ReturnsTrue()
         {
@@ -326,6 +389,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(hasWaypoints);
         }
 
+        /// <summary>
+        /// Verifies has waypoints no waypoints returns false.
+        /// </summary>
         [Test]
         public void HasWaypoints_NoWaypoints_ReturnsFalse()
         {
@@ -334,6 +400,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(hasWaypoints);
         }
 
+        /// <summary>
+        /// Verifies set combat state entering combat sets combat state and clears route.
+        /// </summary>
         [Test]
         public void SetCombatState_EnteringCombat_SetsCombatStateAndClearsRoute()
         {
@@ -345,6 +414,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsEmpty(_fleet.Waypoints);
         }
 
+        /// <summary>
+        /// Verifies set combat state leaving combat clears combat state.
+        /// </summary>
         [Test]
         public void SetCombatState_LeavingCombat_ClearsCombatState()
         {
@@ -355,6 +427,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(_fleet.IsInCombat);
         }
 
+        /// <summary>
+        /// Verifies get starfighters fleet with starfighters returns all starfighters across fleet.
+        /// </summary>
         [Test]
         public void GetStarfighters_FleetWithStarfighters_ReturnsAllStarfightersAcrossFleet()
         {
@@ -377,6 +452,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies get starfighters when no starfighters returns empty.
+        /// </summary>
         [Test]
         public void GetStarfighters_WhenNoStarfighters_ReturnsEmpty()
         {
@@ -387,6 +465,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsEmpty(starfighters, "Should return empty collection when no starfighters");
         }
 
+        /// <summary>
+        /// Verifies get regiments fleet with regiments returns all regiments across fleet.
+        /// </summary>
         [Test]
         public void GetRegiments_FleetWithRegiments_ReturnsAllRegimentsAcrossFleet()
         {
@@ -409,6 +490,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies get regiments when no regiments returns empty.
+        /// </summary>
         [Test]
         public void GetRegiments_WhenNoRegiments_ReturnsEmpty()
         {
@@ -419,6 +503,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsEmpty(regiments, "Should return empty collection when no regiments");
         }
 
+        /// <summary>
+        /// Verifies get special forces fleet with special forces returns all special forces across fleet.
+        /// </summary>
         [Test]
         public void GetSpecialForces_FleetWithSpecialForces_ReturnsAllSpecialForcesAcrossFleet()
         {
@@ -441,6 +528,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies get special forces when no special forces returns empty.
+        /// </summary>
         [Test]
         public void GetSpecialForces_WhenNoSpecialForces_ReturnsEmpty()
         {
@@ -451,6 +541,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsEmpty(specialForces, "Should return empty collection when no special forces");
         }
 
+        /// <summary>
+        /// Verifies get officers fleet with officers returns all officers across fleet.
+        /// </summary>
         [Test]
         public void GetOfficers_FleetWithOfficers_ReturnsAllOfficersAcrossFleet()
         {
@@ -473,6 +566,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies get officers when no officers returns empty.
+        /// </summary>
         [Test]
         public void GetOfficers_WhenNoOfficers_ReturnsEmpty()
         {
@@ -483,6 +579,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsEmpty(officers, "Should return empty collection when no officers");
         }
 
+        /// <summary>
+        /// Verifies get assault strength general commander with leadership applies personnel modifier.
+        /// </summary>
         [Test]
         public void GetAssaultStrength_GeneralCommanderWithLeadership_AppliesPersonnelModifier()
         {
@@ -509,6 +608,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(600, fleet.GetAssaultStrength(10));
         }
 
+        /// <summary>
+        /// Verifies get assault strength admiral commander only uses base multiplier.
+        /// </summary>
         [Test]
         public void GetAssaultStrength_AdmiralCommanderOnly_UsesBaseMultiplier()
         {
@@ -536,6 +638,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(100, fleet.GetAssaultStrength(10));
         }
 
+        /// <summary>
+        /// Verifies get assault strength no commander uses base multiplier.
+        /// </summary>
         [Test]
         public void GetAssaultStrength_NoCommander_UsesBaseMultiplier()
         {

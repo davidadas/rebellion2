@@ -9,6 +9,9 @@ namespace Rebellion.Tests.UI.Input
     [TestFixture]
     public class AppInputControllerTests
     {
+        /// <summary>
+        /// Verifies cancel or settings unhandled does not raise options menu request.
+        /// </summary>
         [Test]
         public void CancelOrSettings_Unhandled_DoesNotRaiseOptionsMenuRequest()
         {
@@ -40,6 +43,9 @@ namespace Rebellion.Tests.UI.Input
             }
         }
 
+        /// <summary>
+        /// Verifies open game menu shift escape raises options menu request.
+        /// </summary>
         [Test]
         public void OpenGameMenu_ShiftEscape_RaisesOptionsMenuRequest()
         {
@@ -71,6 +77,9 @@ namespace Rebellion.Tests.UI.Input
             }
         }
 
+        /// <summary>
+        /// Verifies get slower game speed supported speeds steps toward paused.
+        /// </summary>
         [Test]
         public void GetSlowerGameSpeed_SupportedSpeeds_StepsTowardPaused()
         {
@@ -96,6 +105,9 @@ namespace Rebellion.Tests.UI.Input
             );
         }
 
+        /// <summary>
+        /// Verifies get faster game speed supported speeds steps toward fast.
+        /// </summary>
         [Test]
         public void GetFasterGameSpeed_SupportedSpeeds_StepsTowardFast()
         {

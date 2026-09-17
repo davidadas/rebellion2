@@ -72,6 +72,9 @@ namespace Rebellion.Tests.UI.Components
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies properties configured hierarchy return authored geometry.
+        /// </summary>
         [Test]
         public void Properties_ConfiguredHierarchy_ReturnAuthoredGeometry()
         {
@@ -82,6 +85,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(50f, _scrollArea.ViewportHeight);
         }
 
+        /// <summary>
+        /// Verifies properties missing required reference throws missing reference exception.
+        /// </summary>
         [Test]
         public void Properties_MissingRequiredReference_ThrowsMissingReferenceException()
         {
@@ -90,6 +96,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.Throws<MissingReferenceException>(() => _ = _scrollArea.ContentRoot);
         }
 
+        /// <summary>
+        /// Verifies set layout bounds applies viewport scrollbar and child geometry.
+        /// </summary>
         [Test]
         public void SetLayout_Bounds_AppliesViewportScrollbarAndChildGeometry()
         {
@@ -124,6 +133,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(new RectInt(0, 8, 14, 80), UILayout.GetSourceRect(_slidingAreaRoot));
         }
 
+        /// <summary>
+        /// Verifies set content height content fits viewport hides scroll controls and resets offset.
+        /// </summary>
         [Test]
         public void SetContentHeight_ContentFitsViewport_HidesScrollControlsAndResetsOffset()
         {
@@ -139,6 +151,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(_scrollDownButton.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies set content height content overflows viewport shows controls and sizes scrollbar.
+        /// </summary>
         [Test]
         public void SetContentHeight_ContentOverflowsViewport_ShowsControlsAndSizesScrollbar()
         {
@@ -152,6 +167,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(_scrollDownButton.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies the initial content layout starts at the top and later layouts preserve position.
+        /// </summary>
         [Test]
         public void SetContentHeight_FirstLayoutStartsAtTopThenPreservesPosition()
         {
@@ -168,6 +186,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0.5f, _scrollbar.value, 0.01f);
         }
 
+        /// <summary>
+        /// Verifies relay scroll content overflows moves by configured step.
+        /// </summary>
         [Test]
         public void RelayScroll_ContentOverflows_MovesByConfiguredStep()
         {
@@ -183,6 +204,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(1f - 10f / 150f, _scrollbar.value, 0.01f);
         }
 
+        /// <summary>
+        /// Verifies relay scroll null event data preserves position.
+        /// </summary>
         [Test]
         public void RelayScroll_NullEventData_PreservesPosition()
         {
@@ -193,6 +217,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0f, _contentRoot.anchoredPosition.y, 0.01f);
         }
 
+        /// <summary>
+        /// Verifies reveal content rect content below viewport scrolls minimum required distance.
+        /// </summary>
         [Test]
         public void RevealContentRect_ContentBelowViewport_ScrollsMinimumRequiredDistance()
         {
@@ -204,6 +231,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(1f - 70f / 150f, _scrollbar.value, 0.01f);
         }
 
+        /// <summary>
+        /// Verifies reveal content rect already visible content preserves position.
+        /// </summary>
         [Test]
         public void RevealContentRect_AlreadyVisibleContent_PreservesPosition()
         {
@@ -214,6 +244,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0f, _contentRoot.anchoredPosition.y, 0.01f);
         }
 
+        /// <summary>
+        /// Verifies reveal content rect content fits viewport preserves position.
+        /// </summary>
         [Test]
         public void RevealContentRect_ContentFitsViewport_PreservesPosition()
         {
@@ -224,6 +257,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0f, _contentRoot.anchoredPosition.y, 0.01f);
         }
 
+        /// <summary>
+        /// Verifies relay drag events subscribed handlers receive pointer events.
+        /// </summary>
         [Test]
         public void RelayDragEvents_SubscribedHandlers_ReceivePointerEvents()
         {
@@ -244,6 +280,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreSame(eventData, dropped);
         }
 
+        /// <summary>
+        /// Verifies drag relay initialized owner forwards gesture lifecycle.
+        /// </summary>
         [Test]
         public void DragRelay_InitializedOwner_ForwardsGestureLifecycle()
         {
@@ -273,6 +312,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(10f, _contentRoot.anchoredPosition.y, 0.01f);
         }
 
+        /// <summary>
+        /// Verifies drag relay cleared owner does not forward gestures.
+        /// </summary>
         [Test]
         public void DragRelay_ClearedOwner_DoesNotForwardGestures()
         {

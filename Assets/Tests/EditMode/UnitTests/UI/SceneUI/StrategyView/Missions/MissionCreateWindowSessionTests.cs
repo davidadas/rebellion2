@@ -60,6 +60,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor missing required input throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_MissingRequiredInput_ThrowsArgumentNullException()
         {
@@ -77,6 +80,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies constructor choices and participants returns initial mission state.
+        /// </summary>
         [Test]
         public void Constructor_ChoicesAndParticipants_ReturnsInitialMissionState()
         {
@@ -96,6 +102,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(session.SelectedDecoys);
         }
 
+        /// <summary>
+        /// Verifies set show mission odds changed value updates visibility.
+        /// </summary>
         [Test]
         public void SetShowMissionOdds_ChangedValue_UpdatesVisibility()
         {
@@ -109,6 +118,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(session.ShowMissionOdds);
         }
 
+        /// <summary>
+        /// Verifies constructor empty choices returns no selected mission.
+        /// </summary>
         [Test]
         public void Constructor_EmptyChoices_ReturnsNoSelectedMission()
         {
@@ -123,6 +135,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(session.SelectedChoice);
         }
 
+        /// <summary>
+        /// Verifies dropdown toggle and dismiss updates visibility.
+        /// </summary>
         [Test]
         public void Dropdown_ToggleAndDismiss_UpdatesVisibility()
         {
@@ -137,6 +152,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(session.DropdownOpen);
         }
 
+        /// <summary>
+        /// Verifies select mission valid index selects choice and closes dropdown.
+        /// </summary>
         [Test]
         public void SelectMission_ValidIndex_SelectsChoiceAndClosesDropdown()
         {
@@ -154,6 +172,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(session.IsMissionIndexValid(2));
         }
 
+        /// <summary>
+        /// Verifies select mission invalid index preserves selection.
+        /// </summary>
         [Test]
         public void SelectMission_InvalidIndex_PreservesSelection()
         {
@@ -165,6 +186,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(0, session.SelectedMissionIndex);
         }
 
+        /// <summary>
+        /// Verifies select tab valid tab changes tab and closes dropdown.
+        /// </summary>
         [Test]
         public void SelectTab_ValidTab_ChangesTabAndClosesDropdown()
         {
@@ -181,6 +205,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(session.IsTabValid((MissionCreateWindowTab)10));
         }
 
+        /// <summary>
+        /// Verifies select tab invalid tab preserves active tab.
+        /// </summary>
         [Test]
         public void SelectTab_InvalidTab_PreservesActiveTab()
         {
@@ -192,6 +219,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(MissionCreateWindowTab.Mission, session.ActiveTab);
         }
 
+        /// <summary>
+        /// Verifies move selected participants agent selection moves participant in source order.
+        /// </summary>
         [Test]
         public void MoveSelectedParticipants_AgentSelection_MovesParticipantInSourceOrder()
         {
@@ -209,6 +239,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(session.SelectedAgents);
         }
 
+        /// <summary>
+        /// Verifies select participant double click moves participant to opposite role.
+        /// </summary>
         [Test]
         public void SelectParticipant_DoubleClick_MovesParticipantToOppositeRole()
         {
@@ -223,6 +256,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsEmpty(session.SelectedAgents);
         }
 
+        /// <summary>
+        /// Verifies participant operations invalid role or index return false.
+        /// </summary>
         [Test]
         public void ParticipantOperations_InvalidRoleOrIndex_ReturnFalse()
         {

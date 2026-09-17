@@ -33,6 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null window throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullWindow_ThrowsArgumentNullException()
         {
@@ -41,6 +44,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies constructor mode initializes default state.
+        /// </summary>
         [Test]
         public void Constructor_Mode_InitializesDefaultState()
         {
@@ -55,6 +61,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsEmpty(_session.ProjectedRows);
         }
 
+        /// <summary>
+        /// Verifies constructor fleet mode selects player faction tab.
+        /// </summary>
         [Test]
         public void Constructor_FleetMode_SelectsPlayerFactionTab()
         {
@@ -63,6 +72,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(1, session.ActiveTab);
         }
 
+        /// <summary>
+        /// Verifies reconcile tab count empty then populated selects first tab.
+        /// </summary>
         [Test]
         public void ReconcileTabCount_EmptyThenPopulated_SelectsFirstTab()
         {
@@ -72,6 +84,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(0, _session.ActiveTab);
         }
 
+        /// <summary>
+        /// Verifies reconcile tab count active tab beyond projection clamps to last tab.
+        /// </summary>
         [Test]
         public void ReconcileTabCount_ActiveTabBeyondProjection_ClampsToLastTab()
         {
@@ -82,6 +97,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(1, _session.ActiveTab);
         }
 
+        /// <summary>
+        /// Verifies set projection source collections change preserves session snapshots.
+        /// </summary>
         [Test]
         public void SetProjection_SourceCollectionsChange_PreservesSessionSnapshots()
         {
@@ -96,6 +114,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual("first", _session.ProjectedRows[0].Identity);
         }
 
+        /// <summary>
+        /// Verifies set projection selected identity moves preserves selection by identity.
+        /// </summary>
         [Test]
         public void SetProjection_SelectedIdentityMoves_PreservesSelectionByIdentity()
         {
@@ -110,6 +131,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(selected, _session.SelectedRow);
         }
 
+        /// <summary>
+        /// Verifies set projection selected identity removed clears selection.
+        /// </summary>
         [Test]
         public void SetProjection_SelectedIdentityRemoved_ClearsSelection()
         {
@@ -128,6 +152,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsNull(_session.SelectedRow);
         }
 
+        /// <summary>
+        /// Verifies set search text value clears selection and retains filter.
+        /// </summary>
         [Test]
         public void SetSearchText_Value_ClearsSelectionAndRetainsFilter()
         {
@@ -143,6 +170,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(-1, _session.SelectedIndex);
         }
 
+        /// <summary>
+        /// Verifies set search text null normalizes to empty string.
+        /// </summary>
         [Test]
         public void SetSearchText_Null_NormalizesToEmptyString()
         {
@@ -151,6 +181,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(string.Empty, _session.SearchText);
         }
 
+        /// <summary>
+        /// Verifies select panel value resets search and selection.
+        /// </summary>
         [Test]
         public void SelectPanel_Value_ResetsSearchAndSelection()
         {
@@ -172,6 +205,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(-1, _session.SelectedIndex);
         }
 
+        /// <summary>
+        /// Verifies select tab current tab preserves search and selection.
+        /// </summary>
         [Test]
         public void SelectTab_CurrentTab_PreservesSearchAndSelection()
         {
@@ -187,6 +223,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(selected, _session.SelectedRow);
         }
 
+        /// <summary>
+        /// Verifies select tab different tab resets search and selection.
+        /// </summary>
         [Test]
         public void SelectTab_DifferentTab_ResetsSearchAndSelection()
         {
@@ -208,6 +247,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(-1, _session.SelectedIndex);
         }
 
+        /// <summary>
+        /// Verifies select row unknown identity clears selection.
+        /// </summary>
         [Test]
         public void SelectRow_UnknownIdentity_ClearsSelection()
         {
@@ -223,6 +265,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsNull(_session.SelectedRow);
         }
 
+        /// <summary>
+        /// Verifies state current session returns complete snapshot.
+        /// </summary>
         [Test]
         public void State_CurrentSession_ReturnsCompleteSnapshot()
         {

@@ -80,6 +80,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
@@ -95,6 +98,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             );
         }
 
+        /// <summary>
+        /// Verifies open closed controller creates bound window at configured position.
+        /// </summary>
         [Test]
         public void Open_ClosedController_CreatesBoundWindowAtConfiguredPosition()
         {
@@ -114,6 +120,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies that repeating the Encyclopedia command closes its existing window.
+        /// </summary>
         [Test]
         public void Open_ExistingWindow_TogglesWindowClosed()
         {
@@ -126,6 +135,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies request entry fleet node opens matching catalog topic.
+        /// </summary>
         [Test]
         public void RequestEntry_FleetNode_OpensMatchingCatalogTopic()
         {
@@ -141,6 +153,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(2, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies get state unbound view throws invalid operation exception.
+        /// </summary>
         [Test]
         public void GetState_UnboundView_ThrowsInvalidOperationException()
         {
@@ -153,6 +168,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             UnityEngine.Object.DestroyImmediate(view.gameObject);
         }
 
+        /// <summary>
+        /// Verifies dialog control pointer down plays shared control sound before click.
+        /// </summary>
         [Test]
         public void DialogControl_PointerDown_PlaysSharedControlSoundBeforeClick()
         {
@@ -173,6 +191,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(1, _windowManager.Windows.Count);
         }
 
+        /// <summary>
+        /// Verifies find entry index entries returns exact match or negative one.
+        /// </summary>
         [Test]
         public void FindEntryIndex_Entries_ReturnsExactMatchOrNegativeOne()
         {
@@ -189,6 +210,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(-1, EncyclopediaWindowController.FindEntryIndex(null, "second"));
         }
 
+        /// <summary>
+        /// Verifies get entry type id known scene nodes returns catalog identity.
+        /// </summary>
         [Test]
         public void GetEntryTypeID_KnownSceneNodes_ReturnsCatalogIdentity()
         {
@@ -199,6 +223,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsNull(EncyclopediaWindowController.GetEntryTypeID(null));
         }
 
+        /// <summary>
+        /// Verifies get entry type id research mission returns discipline identity.
+        /// </summary>
+        /// <param name="discipline">The discipline.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(ResearchDiscipline.ShipDesign, MissionIconKeys.ResearchShipDesign)]
         [TestCase(ResearchDiscipline.FacilityDesign, MissionIconKeys.ResearchFacilityDesign)]
         [TestCase(ResearchDiscipline.TroopTraining, MissionIconKeys.ResearchTroopTraining)]

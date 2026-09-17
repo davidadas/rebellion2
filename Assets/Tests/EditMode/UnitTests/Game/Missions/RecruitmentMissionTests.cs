@@ -15,6 +15,9 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class RecruitmentMissionTests
     {
+        /// <summary>
+        /// Verifies resolve objective available candidate transfers officer to faction.
+        /// </summary>
         [Test]
         public void ResolveObjective_AvailableCandidate_TransfersOfficerToFaction()
         {
@@ -30,6 +33,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("empire", target.OwnerInstanceID);
         }
 
+        /// <summary>
+        /// Verifies resolve objective available candidate attaches officer to planet.
+        /// </summary>
         [Test]
         public void ResolveObjective_AvailableCandidate_AttachesOfficerToPlanet()
         {
@@ -45,6 +51,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(empirePlanet, target.GetParent());
         }
 
+        /// <summary>
+        /// Verifies resolve objective available candidate removes officer from unrecruited pool.
+        /// </summary>
         [Test]
         public void ResolveObjective_AvailableCandidate_RemovesOfficerFromUnrecruitedPool()
         {
@@ -60,6 +69,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(game.GetUnrecruitedOfficers().Contains(target));
         }
 
+        /// <summary>
+        /// Verifies resolve objective created before pool changes recruits current available officer.
+        /// </summary>
         [Test]
         public void ResolveObjective_CreatedBeforePoolChanges_RecruitsCurrentAvailableOfficer()
         {
@@ -89,6 +101,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies update mission no candidates remain does not roll or improve recruiter.
+        /// </summary>
         [Test]
         public void UpdateMission_NoCandidatesRemain_DoesNotRollOrImproveRecruiter()
         {
@@ -121,6 +136,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(originalLeadership, officer.GetBaseRating(OfficerRating.Leadership));
         }
 
+        /// <summary>
+        /// Verifies resolve objective success probability uses opposing support and leadership rating.
+        /// </summary>
         [Test]
         public void ResolveObjective_SuccessProbability_UsesOpposingSupportAndLeadershipRating()
         {
@@ -147,6 +165,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
         }
 
+        /// <summary>
+        /// Verifies resolve objective second success selects next officer from current pool.
+        /// </summary>
         [Test]
         public void ResolveObjective_SecondSuccess_SelectsNextOfficerFromCurrentPool()
         {
@@ -172,6 +193,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("second", ((RecruitmentMission)mission).RecruitedOfficerInstanceID);
         }
 
+        /// <summary>
+        /// Verifies resolve objective multiple recruiters succeed first success stops further attempts.
+        /// </summary>
         [Test]
         public void ResolveObjective_MultipleRecruitersSucceed_FirstSuccessStopsFurtherAttempts()
         {
@@ -229,6 +253,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion unrecruited officers available returns true.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_UnrecruitedOfficersAvailable_ReturnsTrue()
         {
@@ -243,6 +270,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(mission.ShouldRepeatAfterCompletion(game));
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion no unrecruited officers available returns false.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_NoUnrecruitedOfficersAvailable_ReturnsFalse()
         {
@@ -261,6 +291,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(mission.ShouldRepeatAfterCompletion(game));
         }
 
+        /// <summary>
+        /// Verifies try create non main participant returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NonMainParticipant_ReturnsNull()
         {
@@ -282,6 +315,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies try create mixed main and non main participants returns null.
+        /// </summary>
         [Test]
         public void TryCreate_MixedMainAndNonMainParticipants_ReturnsNull()
         {
@@ -305,6 +341,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies try create no available candidates returns null.
+        /// </summary>
         [Test]
         public void TryCreate_NoAvailableCandidates_ReturnsNull()
         {
@@ -325,6 +364,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize populated mission retains all properties.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_PopulatedMission_RetainsAllProperties()
         {

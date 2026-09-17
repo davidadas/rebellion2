@@ -11,6 +11,10 @@ namespace Rebellion.Analyzers.Tests
     [TestFixture]
     public sealed class DocumentationPlacementAnalyzerTests
     {
+        /// <summary>
+        /// Verifies an XML-documented field reports a diagnostic.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task Field_XmlDocumentation_ReportsDiagnosticAsync()
         {
@@ -27,6 +31,10 @@ class Example
             AssertDiagnostic(diagnostics);
         }
 
+        /// <summary>
+        /// Verifies an XML-documented enum member reports a diagnostic.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task EnumMember_XmlDocumentation_ReportsDiagnosticAsync()
         {
@@ -43,6 +51,10 @@ enum Example
             AssertDiagnostic(diagnostics);
         }
 
+        /// <summary>
+        /// Verifies an XML-documented property reports no placement diagnostic.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task Property_XmlDocumentation_DoesNotReportDiagnosticAsync()
         {
@@ -59,6 +71,10 @@ class Example
             Assert.IsEmpty(diagnostics);
         }
 
+        /// <summary>
+        /// Verifies an ordinary comment on a field reports no placement diagnostic.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task Field_OrdinaryComment_DoesNotReportDiagnosticAsync()
         {

@@ -24,6 +24,9 @@ public sealed class AudioManagerTests
         DestroyAudioManagers();
     }
 
+    /// <summary>
+    /// Verifies ensure exists when missing creates usable manager.
+    /// </summary>
     [Test]
     public void EnsureExists_WhenMissing_CreatesUsableManager()
     {
@@ -44,6 +47,9 @@ public sealed class AudioManagerTests
         Assert.DoesNotThrow(() => manager.SetVideoVolume(0.875f));
     }
 
+    /// <summary>
+    /// Verifies ensure exists when existing scene manager is parented moves it to persistent root.
+    /// </summary>
     [Test]
     public void EnsureExists_WhenExistingSceneManagerIsParented_MovesItToPersistentRoot()
     {
@@ -59,6 +65,9 @@ public sealed class AudioManagerTests
         Assert.IsNull(manager.transform.parent);
     }
 
+    /// <summary>
+    /// Verifies ensure exists when instance exists returns existing manager.
+    /// </summary>
     [Test]
     public void EnsureExists_WhenInstanceExists_ReturnsExistingManager()
     {
@@ -70,6 +79,9 @@ public sealed class AudioManagerTests
         Assert.AreSame(globalManager, AudioManager.Instance);
     }
 
+    /// <summary>
+    /// Verifies apply settings valid audio settings updates volume state.
+    /// </summary>
     [Test]
     public void ApplySettings_ValidAudioSettings_UpdatesVolumeState()
     {
@@ -95,6 +107,9 @@ public sealed class AudioManagerTests
         Assert.AreEqual(0.375f, GetAudioSource(manager, "sfxSource").volume);
     }
 
+    /// <summary>
+    /// Verifies apply settings null audio settings applies default volume state.
+    /// </summary>
     [Test]
     public void ApplySettings_NullAudioSettings_AppliesDefaultVolumeState()
     {
@@ -110,6 +125,9 @@ public sealed class AudioManagerTests
         Assert.AreEqual(1f, manager.VideoVolume);
     }
 
+    /// <summary>
+    /// Verifies set volume values outside range clamps snapshot.
+    /// </summary>
     [Test]
     public void SetVolume_ValuesOutsideRange_ClampsSnapshot()
     {
@@ -129,6 +147,9 @@ public sealed class AudioManagerTests
         Assert.AreEqual(1f, snapshot.VideoVolume);
     }
 
+    /// <summary>
+    /// Verifies preload sfx null paths does not throw.
+    /// </summary>
     [Test]
     public void PreloadSfx_NullPaths_DoesNotThrow()
     {
@@ -137,6 +158,9 @@ public sealed class AudioManagerTests
         Assert.DoesNotThrow(() => manager.PreloadSfx(null));
     }
 
+    /// <summary>
+    /// Verifies preload sfx missing required path throws.
+    /// </summary>
     [Test]
     public void PreloadSfx_MissingRequiredPath_Throws()
     {
@@ -148,6 +172,9 @@ public sealed class AudioManagerTests
         );
     }
 
+    /// <summary>
+    /// Verifies play sfx null clip does not throw.
+    /// </summary>
     [Test]
     public void PlaySfx_NullClip_DoesNotThrow()
     {
@@ -156,6 +183,9 @@ public sealed class AudioManagerTests
         Assert.DoesNotThrow(() => manager.PlaySfx((AudioClip)null));
     }
 
+    /// <summary>
+    /// Verifies play sfx preloaded path does not load resource again.
+    /// </summary>
     [Test]
     public void PlaySfx_PreloadedPath_DoesNotLoadResourceAgain()
     {
@@ -173,6 +203,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies play sfx retained on demand path reuses loaded clip.
+    /// </summary>
     [Test]
     public void PlaySfx_RetainedOnDemandPath_ReusesLoadedClip()
     {
@@ -190,6 +223,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies play sfx instance preloaded paths uses independent sources.
+    /// </summary>
     [Test]
     public void PlaySfxInstance_PreloadedPaths_UsesIndependentSources()
     {
@@ -221,6 +257,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies play sfx instance reused source applies current sfx volume.
+    /// </summary>
     [Test]
     public void PlaySfxInstance_ReusedSource_AppliesCurrentSfxVolume()
     {
@@ -247,6 +286,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies play sfx instance completed playback releases and reuses source.
+    /// </summary>
     [Test]
     public void PlaySfxInstance_CompletedPlayback_ReleasesAndReusesSource()
     {
@@ -274,6 +316,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies play sfx instance paused playback remains active until resumed or stopped.
+    /// </summary>
     [Test]
     public void PlaySfxInstance_PausedPlayback_RemainsActiveUntilResumedOrStopped()
     {
@@ -298,6 +343,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies play sfx instance missing clip or path returns null.
+    /// </summary>
     [Test]
     public void PlaySfxInstance_MissingClipOrPath_ReturnsNull()
     {
@@ -310,6 +358,9 @@ public sealed class AudioManagerTests
         Assert.IsNull(pathPlayback);
     }
 
+    /// <summary>
+    /// Verifies get loaded sfx duration preloaded path returns clip duration.
+    /// </summary>
     [Test]
     public void GetLoadedSfxDuration_PreloadedPath_ReturnsClipDuration()
     {
@@ -329,6 +380,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies get loaded sfx duration missing or blank path returns zero.
+    /// </summary>
     [Test]
     public void GetLoadedSfxDuration_MissingOrBlankPath_ReturnsZero()
     {
@@ -338,6 +392,9 @@ public sealed class AudioManagerTests
         Assert.AreEqual(0f, manager.GetLoadedSfxDuration(" "));
     }
 
+    /// <summary>
+    /// Verifies stop sfx active sfx instances stops every instance.
+    /// </summary>
     [Test]
     public void StopSfx_ActiveSfxInstances_StopsEveryInstance()
     {
@@ -360,6 +417,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies play track loaded clip assigns looping music until stopped.
+    /// </summary>
     [Test]
     public void PlayTrack_LoadedClip_AssignsLoopingMusicUntilStopped()
     {
@@ -384,6 +444,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies play track blank path does not replace loaded clip.
+    /// </summary>
     [Test]
     public void PlayTrack_BlankPath_DoesNotReplaceLoadedClip()
     {
@@ -404,6 +467,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies play playlist empty paths does not replace loaded clip.
+    /// </summary>
     [Test]
     public void PlayPlaylist_EmptyPaths_DoesNotReplaceLoadedClip()
     {
@@ -424,6 +490,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies play ambience loaded clip configures ambience channel.
+    /// </summary>
     [Test]
     public void PlayAmbience_LoadedClip_ConfiguresAmbienceChannel()
     {
@@ -447,6 +516,9 @@ public sealed class AudioManagerTests
         }
     }
 
+    /// <summary>
+    /// Verifies play dynamic playlist null provider throws argument null exception.
+    /// </summary>
     [Test]
     public void PlayDynamicPlaylist_NullProvider_ThrowsArgumentNullException()
     {

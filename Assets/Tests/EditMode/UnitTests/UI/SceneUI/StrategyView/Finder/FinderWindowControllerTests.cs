@@ -62,6 +62,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null context provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullContextProvider_ThrowsArgumentNullException()
         {
@@ -80,6 +83,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies open closed mode creates named bound window at configured position.
+        /// </summary>
         [Test]
         public void Open_ClosedMode_CreatesNamedBoundWindowAtConfiguredPosition()
         {
@@ -98,6 +104,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies that repeating a finder command closes its existing window.
+        /// </summary>
         [Test]
         public void Open_ExistingMode_TogglesWindowClosed()
         {
@@ -110,6 +119,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies that requesting another finder mode replaces the exclusive finder.
+        /// </summary>
         [Test]
         public void Open_DifferentModes_ReplacesExistingFinder()
         {
@@ -123,6 +135,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(2, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies bind window different mode for bound view throws invalid operation exception.
+        /// </summary>
         [Test]
         public void BindWindow_DifferentModeForBoundView_ThrowsInvalidOperationException()
         {
@@ -135,6 +150,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        /// <summary>
+        /// Verifies search input bound window updates controller session and marks dirty.
+        /// </summary>
         [Test]
         public void SearchInput_BoundWindow_UpdatesControllerSessionAndMarksDirty()
         {
@@ -151,6 +169,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(2, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies dialog control pointer down plays shared control sound before click.
+        /// </summary>
         [Test]
         public void DialogControl_PointerDown_PlaysSharedControlSoundBeforeClick()
         {
@@ -171,6 +192,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(1, _windowManager.Windows.Count);
         }
 
+        /// <summary>
+        /// Verifies reconcile windows unavailable sectors throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ReconcileWindows_UnavailableSectors_ThrowsInvalidOperationException()
         {
@@ -180,6 +204,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.Throws<InvalidOperationException>(() => _controller.ReconcileWindows());
         }
 
+        /// <summary>
+        /// Verifies get mode unbound view throws invalid operation exception.
+        /// </summary>
         [Test]
         public void GetMode_UnboundView_ThrowsInvalidOperationException()
         {

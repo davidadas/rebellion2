@@ -29,6 +29,9 @@ namespace Rebellion.Tests.Game.Galaxy
             };
         }
 
+        /// <summary>
+        /// Verifies add fleet valid fleet adds to planet.
+        /// </summary>
         [Test]
         public void AddFleet_ValidFleet_AddsToPlanet()
         {
@@ -42,6 +45,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies add building invalid owner throws exception.
+        /// </summary>
         [Test]
         public void AddBuilding_InvalidOwner_ThrowsException()
         {
@@ -53,6 +59,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies add building valid building adds to planet.
+        /// </summary>
         [Test]
         public void AddBuilding_ValidBuilding_AddsToPlanet()
         {
@@ -68,6 +77,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(building, buildings, "Building should be added to the _planet.");
         }
 
+        /// <summary>
+        /// Verifies add building completed building on uncolonized planet throws exception.
+        /// </summary>
         [Test]
         public void AddBuilding_CompletedBuildingOnUncolonizedPlanet_ThrowsException()
         {
@@ -81,6 +93,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Throws<SceneAccessException>(() => _planet.AddChild(building));
         }
 
+        /// <summary>
+        /// Verifies add building under construction on owned uncolonized planet adds to planet.
+        /// </summary>
         [Test]
         public void AddBuilding_UnderConstructionOnOwnedUncolonizedPlanet_AddsToPlanet()
         {
@@ -96,6 +111,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(building, _planet.GetChildren<Building>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add building exceeds capacity throws exception.
+        /// </summary>
         [Test]
         public void AddBuilding_ExceedsCapacity_ThrowsException()
         {
@@ -112,6 +130,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies add officer valid officer adds to planet.
+        /// </summary>
         [Test]
         public void AddOfficer_ValidOfficer_AddsToPlanet()
         {
@@ -125,6 +146,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies add officer invalid owner throws exception.
+        /// </summary>
         [Test]
         public void AddOfficer_InvalidOwner_ThrowsException()
         {
@@ -136,6 +160,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies add officer captured enemy adds to officers.
+        /// </summary>
         [Test]
         public void AddOfficer_CapturedEnemy_AddsToOfficers()
         {
@@ -150,6 +177,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies add officer uncolonized planet throws exception.
+        /// </summary>
         [Test]
         public void AddOfficer_UncolonizedPlanet_ThrowsException()
         {
@@ -159,6 +189,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Throws<SceneAccessException>(() => _planet.AddChild(officer));
         }
 
+        /// <summary>
+        /// Verifies add regiment uncolonized neutral planet adds to planet.
+        /// </summary>
         [Test]
         public void AddRegiment_UncolonizedNeutralPlanet_AddsToPlanet()
         {
@@ -171,6 +204,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(regiment, _planet.GetChildren<Regiment>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add regiment uncolonized owned planet with matching owner adds to planet.
+        /// </summary>
         [Test]
         public void AddRegiment_UncolonizedOwnedPlanetWithMatchingOwner_AddsToPlanet()
         {
@@ -182,6 +218,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(regiment, _planet.GetChildren<Regiment>().ToList());
         }
 
+        /// <summary>
+        /// Verifies add regiment uncolonized owned planet with different owner throws exception.
+        /// </summary>
         [Test]
         public void AddRegiment_UncolonizedOwnedPlanetWithDifferentOwner_ThrowsException()
         {
@@ -191,6 +230,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Throws<SceneAccessException>(() => _planet.AddChild(regiment));
         }
 
+        /// <summary>
+        /// Verifies remove fleet valid fleet removes from planet.
+        /// </summary>
         [Test]
         public void RemoveFleet_ValidFleet_RemovesFromPlanet()
         {
@@ -204,6 +246,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies remove officer valid officer removes from planet.
+        /// </summary>
         [Test]
         public void RemoveOfficer_ValidOfficer_RemovesFromPlanet()
         {
@@ -217,6 +262,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies remove building valid building removes from planet.
+        /// </summary>
         [Test]
         public void RemoveBuilding_ValidBuilding_RemovesFromPlanet()
         {
@@ -235,6 +283,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get children valid children returns all children.
+        /// </summary>
         [Test]
         public void GetChildren_ValidChildren_ReturnsAllChildren()
         {
@@ -256,6 +307,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get popular support existing faction returns support.
+        /// </summary>
         [Test]
         public void GetPopularSupport_ExistingFaction_ReturnsSupport()
         {
@@ -269,6 +323,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get popular support non existing faction returns zero.
+        /// </summary>
         [Test]
         public void GetPopularSupport_NonExistingFaction_ReturnsZero()
         {
@@ -280,6 +337,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies set popular support valid faction sets support.
+        /// </summary>
         [Test]
         public void SetPopularSupport_ValidFaction_SetsSupport()
         {
@@ -293,6 +353,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies set popular support increase exceeding total support reduces multiple other factions.
+        /// </summary>
         [Test]
         public void SetPopularSupport_IncreaseExceedingTotalSupport_ReducesMultipleOtherFactions()
         {
@@ -306,6 +369,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(0, _planet.GetPopularSupport("FNHUTT1"));
         }
 
+        /// <summary>
+        /// Verifies set full popular support with existing support clears other factions.
+        /// </summary>
         [Test]
         public void SetFullPopularSupport_WithExistingSupport_ClearsOtherFactions()
         {
@@ -319,6 +385,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(0, _planet.GetPopularSupport("FNHUTT1"));
         }
 
+        /// <summary>
+        /// Verifies add to manufacturing queue unit without parent throws exception.
+        /// </summary>
         [Test]
         public void AddToManufacturingQueue_UnitWithoutParent_ThrowsException()
         {
@@ -330,6 +399,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies add to manufacturing queue items in same lane assigns increasing sequences.
+        /// </summary>
         [Test]
         public void AddToManufacturingQueue_ItemsInSameLane_AssignsIncreasingSequences()
         {
@@ -347,6 +419,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(2, second.ManufacturingQueueSequence);
         }
 
+        /// <summary>
+        /// Verifies add to manufacturing queue items in different lanes assigns independent sequences.
+        /// </summary>
         [Test]
         public void AddToManufacturingQueue_ItemsInDifferentLanes_AssignsIndependentSequences()
         {
@@ -364,6 +439,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(1, regiment.ManufacturingQueueSequence);
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize planet retains properties.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_Planet_RetainsProperties()
         {
@@ -397,6 +475,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies set manufacturing reserved reserved then released updates selected lane only.
+        /// </summary>
         [Test]
         public void SetManufacturingReserved_ReservedThenReleased_UpdatesSelectedLaneOnly()
         {
@@ -411,6 +492,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsFalse(_planet.IsManufacturingReserved(ManufacturingType.Troop));
         }
 
+        /// <summary>
+        /// Verifies set manufacturing reserved none throws argument out of range exception.
+        /// </summary>
         [Test]
         public void SetManufacturingReserved_None_ThrowsArgumentOutOfRangeException()
         {
@@ -419,6 +503,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get production rate valid manufacturing type returns correct rate.
+        /// </summary>
         [Test]
         public void GetProductionRate_ValidManufacturingType_ReturnsCorrectRate()
         {
@@ -450,6 +537,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get raw resource nodes valid planet returns correct count.
+        /// </summary>
         [Test]
         public void GetRawResourceNodes_ValidPlanet_ReturnsCorrectCount()
         {
@@ -464,6 +554,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get available resource nodes not blockaded returns raw resource nodes.
+        /// </summary>
         [Test]
         public void GetAvailableResourceNodes_NotBlockaded_ReturnsRawResourceNodes()
         {
@@ -478,6 +571,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get available resource nodes blockaded returns zero.
+        /// </summary>
         [Test]
         public void GetAvailableResourceNodes_Blockaded_ReturnsZero()
         {
@@ -494,6 +590,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get building type count with specific type returns correct count.
+        /// </summary>
         [Test]
         public void GetBuildingTypeCount_WithSpecificType_ReturnsCorrectCount()
         {
@@ -529,6 +628,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get building type count under construction building excludes under construction.
+        /// </summary>
         [Test]
         public void GetBuildingTypeCount_UnderConstructionBuilding_ExcludesUnderConstruction()
         {
@@ -557,6 +659,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get total building type count under construction building includes under construction.
+        /// </summary>
         [Test]
         public void GetTotalBuildingTypeCount_UnderConstructionBuilding_IncludesUnderConstruction()
         {
@@ -585,6 +690,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get all buildings multiple slots returns all buildings.
+        /// </summary>
         [Test]
         public void GetAllBuildings_MultipleSlots_ReturnsAllBuildings()
         {
@@ -601,6 +709,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(orbitBuilding, allBuildings, "Should include orbit building.");
         }
 
+        /// <summary>
+        /// Verifies get all buildings three buildings added returns all three.
+        /// </summary>
         [Test]
         public void GetAllBuildings_ThreeBuildingsAdded_ReturnsAllThree()
         {
@@ -620,6 +731,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(building3, allBuildings, "Should include third building.");
         }
 
+        /// <summary>
+        /// Verifies get buildings by manufacturing type returns correct buildings.
+        /// </summary>
         [Test]
         public void GetBuildings_ByManufacturingType_ReturnsCorrectBuildings()
         {
@@ -654,6 +768,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(shipyard2, shipBuildings, "Should include second shipyard.");
         }
 
+        /// <summary>
+        /// Verifies get available energy with buildings returns remaining capacity.
+        /// </summary>
         [Test]
         public void GetAvailableEnergy_WithBuildings_ReturnsRemainingCapacity()
         {
@@ -669,6 +786,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(3, available, "Should return remaining energy capacity.");
         }
 
+        /// <summary>
+        /// Verifies get available energy with one building returns correct count.
+        /// </summary>
         [Test]
         public void GetAvailableEnergy_WithOneBuilding_ReturnsCorrectCount()
         {
@@ -686,6 +806,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get available energy inactive building returns full capacity.
+        /// </summary>
         [Test]
         public void GetAvailableEnergy_InactiveBuilding_ReturnsFullCapacity()
         {
@@ -698,6 +821,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(5, availableEnergy);
         }
 
+        /// <summary>
+        /// Verifies get available energy no buildings returns full capacity.
+        /// </summary>
         [Test]
         public void GetAvailableEnergy_NoBuildings_ReturnsFullCapacity()
         {
@@ -710,6 +836,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get manufacturing queue empty queue returns empty dictionary.
+        /// </summary>
         [Test]
         public void GetManufacturingQueue_EmptyQueue_ReturnsEmptyDictionary()
         {
@@ -720,6 +849,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(0, queue.Count, "Manufacturing queue should be empty initially.");
         }
 
+        /// <summary>
+        /// Verifies get manufacturing queue with items returns correct queue.
+        /// </summary>
         [Test]
         public void GetManufacturingQueue_WithItems_ReturnsCorrectQueue()
         {
@@ -750,6 +882,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get idle manufacturing facilities no queue returns all facilities.
+        /// </summary>
         [Test]
         public void GetIdleManufacturingFacilities_NoQueue_ReturnsAllFacilities()
         {
@@ -776,6 +911,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(2, idleFacilities, "Should return all facilities when queue is empty.");
         }
 
+        /// <summary>
+        /// Verifies get idle manufacturing facilities with queue returns zero.
+        /// </summary>
         [Test]
         public void GetIdleManufacturingFacilities_WithQueue_ReturnsZero()
         {
@@ -802,6 +940,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies add starfighter valid starfighter adds to planet.
+        /// </summary>
         [Test]
         public void AddStarfighter_ValidStarfighter_AddsToPlanet()
         {
@@ -815,6 +956,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies add starfighter invalid owner throws exception.
+        /// </summary>
         [Test]
         public void AddStarfighter_InvalidOwner_ThrowsException()
         {
@@ -826,6 +970,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies add starfighter uncolonized planet throws exception.
+        /// </summary>
         [Test]
         public void AddStarfighter_UncolonizedPlanet_ThrowsException()
         {
@@ -835,6 +982,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Throws<SceneAccessException>(() => _planet.AddChild(starfighter));
         }
 
+        /// <summary>
+        /// Verifies add special forces uncolonized planet throws exception.
+        /// </summary>
         [Test]
         public void AddSpecialForces_UncolonizedPlanet_ThrowsException()
         {
@@ -844,6 +994,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Throws<SceneAccessException>(() => _planet.AddChild(specialForces));
         }
 
+        /// <summary>
+        /// Verifies remove starfighter valid starfighter removes from planet.
+        /// </summary>
         [Test]
         public void RemoveStarfighter_ValidStarfighter_RemovesFromPlanet()
         {
@@ -857,6 +1010,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies get starfighter count after adding returns correct count.
+        /// </summary>
         [Test]
         public void GetStarfighterCount_AfterAdding_ReturnsCorrectCount()
         {
@@ -870,6 +1026,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies is blockaded no enemy fleets returns false.
+        /// </summary>
         [Test]
         public void IsBlockaded_NoEnemyFleets_ReturnsFalse()
         {
@@ -884,6 +1043,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies is blockaded enemy fleet without capital ships returns false.
+        /// </summary>
         [Test]
         public void IsBlockaded_EnemyFleetWithoutCapitalShips_ReturnsFalse()
         {
@@ -893,6 +1055,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsFalse(_planet.IsBlockaded());
         }
 
+        /// <summary>
+        /// Verifies is blockaded enemy fleet with operational capital ship returns true.
+        /// </summary>
         [Test]
         public void IsBlockaded_EnemyFleetWithOperationalCapitalShip_ReturnsTrue()
         {
@@ -907,6 +1072,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies is blockaded neutral planet with operational fleet returns true.
+        /// </summary>
         [Test]
         public void IsBlockaded_NeutralPlanetWithOperationalFleet_ReturnsTrue()
         {
@@ -916,6 +1084,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsTrue(_planet.IsBlockaded());
         }
 
+        /// <summary>
+        /// Verifies is blockaded for neutral planet blockading faction returns false.
+        /// </summary>
         [Test]
         public void IsBlockadedFor_NeutralPlanetBlockadingFaction_ReturnsFalse()
         {
@@ -925,6 +1096,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsFalse(_planet.IsBlockadedFor("FNALL1"));
         }
 
+        /// <summary>
+        /// Verifies is blockaded for neutral planet opposing faction returns true.
+        /// </summary>
         [Test]
         public void IsBlockadedFor_NeutralPlanetOpposingFaction_ReturnsTrue()
         {
@@ -934,6 +1108,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsTrue(_planet.IsBlockadedFor("ENEMY"));
         }
 
+        /// <summary>
+        /// Verifies is blockaded inactive enemy fleet returns false.
+        /// </summary>
         [Test]
         public void IsBlockaded_InactiveEnemyFleet_ReturnsFalse()
         {
@@ -944,6 +1121,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsFalse(_planet.IsBlockaded());
         }
 
+        /// <summary>
+        /// Verifies get blockade production modifier active ships and fighters reduces production.
+        /// </summary>
         [Test]
         public void GetBlockadeProductionModifier_ActiveShipsAndFighters_ReducesProduction()
         {
@@ -992,6 +1172,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(89, modifier);
         }
 
+        /// <summary>
+        /// Verifies get blockade production modifier operational kdy returns full production.
+        /// </summary>
         [Test]
         public void GetBlockadeProductionModifier_OperationalKdy_ReturnsFullProduction()
         {
@@ -1009,6 +1192,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(100, _planet.GetBlockadeProductionModifier(5, 2));
         }
 
+        /// <summary>
+        /// Verifies get blockade production modifier heavy blockade does not return negative production.
+        /// </summary>
         [Test]
         public void GetBlockadeProductionModifier_HeavyBlockade_DoesNotReturnNegativeProduction()
         {
@@ -1017,6 +1203,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(0, _planet.GetBlockadeProductionModifier(100, 2));
         }
 
+        /// <summary>
+        /// Verifies is blockaded enemy fleet in transit returns false.
+        /// </summary>
         [Test]
         public void IsBlockaded_EnemyFleetInTransit_ReturnsFalse()
         {
@@ -1029,6 +1218,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsFalse(isBlockaded);
         }
 
+        /// <summary>
+        /// Verifies is blockaded enemy capital ship in transit returns false.
+        /// </summary>
         [Test]
         public void IsBlockaded_EnemyCapitalShipInTransit_ReturnsFalse()
         {
@@ -1042,6 +1234,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsFalse(_planet.IsBlockaded());
         }
 
+        /// <summary>
+        /// Verifies is blockaded defending fleet present returns false.
+        /// </summary>
         [Test]
         public void IsBlockaded_DefendingFleetPresent_ReturnsFalse()
         {
@@ -1058,6 +1253,9 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies is blockaded defending fleet in transit returns true.
+        /// </summary>
         [Test]
         public void IsBlockaded_DefendingFleetInTransit_ReturnsTrue()
         {
@@ -1072,6 +1270,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsTrue(isBlockaded);
         }
 
+        /// <summary>
+        /// Verifies is blockaded for opposing faction returns true.
+        /// </summary>
         [Test]
         public void IsBlockadedFor_OpposingFaction_ReturnsTrue()
         {
@@ -1083,6 +1284,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsTrue(isBlockaded);
         }
 
+        /// <summary>
+        /// Verifies is blockaded for blockading faction returns false.
+        /// </summary>
         [Test]
         public void IsBlockadedFor_BlockadingFaction_ReturnsFalse()
         {
@@ -1094,6 +1298,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsFalse(isBlockaded);
         }
 
+        /// <summary>
+        /// Verifies begin uprising non uprising planet sets is in uprising flag.
+        /// </summary>
         [Test]
         public void BeginUprising_NonUprisingPlanet_SetsIsInUprisingFlag()
         {
@@ -1109,6 +1316,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsTrue(_planet.IsInUprising);
         }
 
+        /// <summary>
+        /// Verifies end uprising uprising planet clears is in uprising flag.
+        /// </summary>
         [Test]
         public void EndUprising_UprisingPlanet_ClearsIsInUprisingFlag()
         {
@@ -1119,6 +1329,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsFalse(_planet.IsInUprising);
         }
 
+        /// <summary>
+        /// Verifies is populated no support returns false.
+        /// </summary>
         [Test]
         public void IsPopulated_NoSupport_ReturnsFalse()
         {
@@ -1129,6 +1342,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsFalse(populated);
         }
 
+        /// <summary>
+        /// Verifies is populated with support returns true.
+        /// </summary>
         [Test]
         public void IsPopulated_WithSupport_ReturnsTrue()
         {
@@ -1142,6 +1358,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsTrue(populated);
         }
 
+        /// <summary>
+        /// Verifies get active mined resources one complete one building mine returns one.
+        /// </summary>
         [Test]
         public void GetActiveMinedResources_OneCompleteOneBuildingMine_ReturnsOne()
         {
@@ -1170,6 +1389,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(1, planet.GetActiveMinedResources());
         }
 
+        /// <summary>
+        /// Verifies get active mined resources more mines than nodes capped by nodes.
+        /// </summary>
         [Test]
         public void GetActiveMinedResources_MoreMinesThanNodes_CappedByNodes()
         {
@@ -1195,6 +1417,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(2, planet.GetActiveMinedResources());
         }
 
+        /// <summary>
+        /// Verifies get active refinement capacity one complete one building refinery returns one.
+        /// </summary>
         [Test]
         public void GetActiveRefinementCapacity_OneCompleteOneBuildingRefinery_ReturnsOne()
         {
@@ -1222,6 +1447,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(1, planet.GetActiveRefinementCapacity());
         }
 
+        /// <summary>
+        /// Verifies get raw distance to position returns euclidean distance.
+        /// </summary>
         [Test]
         public void GetRawDistanceTo_Position_ReturnsEuclideanDistance()
         {
@@ -1233,6 +1461,9 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.AreEqual(5, distance);
         }
 
+        /// <summary>
+        /// Verifies get raw distance to planet returns euclidean distance.
+        /// </summary>
         [Test]
         public void GetRawDistanceTo_Planet_ReturnsEuclideanDistance()
         {

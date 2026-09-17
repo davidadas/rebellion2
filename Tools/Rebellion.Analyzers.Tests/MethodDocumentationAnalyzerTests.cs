@@ -12,6 +12,10 @@ namespace Rebellion.Analyzers.Tests
     [TestFixture]
     public sealed class MethodDocumentationAnalyzerTests
     {
+        /// <summary>
+        /// Verifies an undocumented private method reports a missing-summary diagnostic.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task Method_PrivateAndUndocumented_ReportsMissingSummaryAsync()
         {
@@ -22,6 +26,10 @@ namespace Rebellion.Analyzers.Tests
             AssertDiagnostic(diagnostics, MethodDocumentationAnalyzer.MissingSummaryDiagnosticId);
         }
 
+        /// <summary>
+        /// Verifies an undocumented constructor reports a missing-summary diagnostic.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task Constructor_Undocumented_ReportsMissingSummaryAsync()
         {
@@ -32,6 +40,10 @@ namespace Rebellion.Analyzers.Tests
             AssertDiagnostic(diagnostics, MethodDocumentationAnalyzer.MissingSummaryDiagnosticId);
         }
 
+        /// <summary>
+        /// Verifies an undocumented parameter reports a parameter diagnostic.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task Method_ParameterUndocumented_ReportsMissingParameterAsync()
         {
@@ -48,6 +60,10 @@ class Example
             AssertDiagnostic(diagnostics, MethodDocumentationAnalyzer.MissingParameterDiagnosticId);
         }
 
+        /// <summary>
+        /// Verifies an undocumented generic parameter reports a type-parameter diagnostic.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task Method_TypeParameterUndocumented_ReportsMissingTypeParameterAsync()
         {
@@ -68,6 +84,10 @@ class Example
             );
         }
 
+        /// <summary>
+        /// Verifies a value-returning method without a returns entry reports a diagnostic.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task Method_ReturnValueUndocumented_ReportsMissingReturnsAsync()
         {
@@ -84,6 +104,10 @@ class Example
             AssertDiagnostic(diagnostics, MethodDocumentationAnalyzer.MissingReturnsDiagnosticId);
         }
 
+        /// <summary>
+        /// Verifies complete method documentation reports no diagnostics.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task Method_CompleteDocumentation_DoesNotReportDiagnosticAsync()
         {
@@ -103,6 +127,10 @@ class Example
             Assert.IsEmpty(diagnostics);
         }
 
+        /// <summary>
+        /// Verifies inheritdoc satisfies the complete-documentation requirement.
+        /// </summary>
+        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task Method_Inheritdoc_DoesNotReportDiagnosticAsync()
         {
@@ -112,75 +140,6 @@ class Example
 {
     /// <inheritdoc/>
     public override string ToString() { return ""Example""; }
-}";
-
-            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
-
-            Assert.IsEmpty(diagnostics);
-        }
-
-        [Test]
-        public async Task Method_UndocumentedNUnitTest_DoesNotReportDiagnosticAsync()
-        {
-            const string source =
-                @"
-class Example
-{
-    [NUnit.Framework.Test]
-    public int Run() { return 1; }
-}";
-
-            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
-
-            Assert.IsEmpty(diagnostics);
-        }
-
-        [Test]
-        public async Task Method_UndocumentedParameterizedNUnitTest_DoesNotReportDiagnosticAsync()
-        {
-            const string source =
-                @"
-class Example
-{
-    [NUnit.Framework.TestCase(1)]
-    public int Run(int value) { return value; }
-}";
-
-            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
-
-            Assert.IsEmpty(diagnostics);
-        }
-
-        [Test]
-        public async Task Method_UndocumentedSourceDrivenNUnitTest_DoesNotReportDiagnosticAsync()
-        {
-            const string source =
-                @"
-class Example
-{
-    [NUnit.Framework.TestCaseSource(""Cases"")]
-    public int Run(int value) { return value; }
-}";
-
-            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
-
-            Assert.IsEmpty(diagnostics);
-        }
-
-        [Test]
-        public async Task Method_UndocumentedUnityTest_DoesNotReportDiagnosticAsync()
-        {
-            const string source =
-                @"
-namespace UnityEngine.TestTools
-{
-    public sealed class UnityTestAttribute : System.Attribute { }
-}
-
-class Example
-{
-    [UnityEngine.TestTools.UnityTest]
-    public int Run() { return 1; }
 }";
 
             ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
@@ -199,13 +158,10 @@ class Example
             MetadataReference coreLibrary = MetadataReference.CreateFromFile(
                 typeof(object).Assembly.Location
             );
-            MetadataReference nunitLibrary = MetadataReference.CreateFromFile(
-                typeof(TestAttribute).Assembly.Location
-            );
             CSharpCompilation compilation = CSharpCompilation.Create(
                 "AnalyzerTests",
                 new[] { syntaxTree },
-                new[] { coreLibrary, nunitLibrary },
+                new[] { coreLibrary },
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             );
             ImmutableArray<DiagnosticAnalyzer> analyzers =

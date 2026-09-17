@@ -48,6 +48,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             _gameManager = TestContent.CreateGameManager(_game);
         }
 
+        /// <summary>
+        /// Verifies constructor null game provider throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullGameProvider_ThrowsArgumentNullException()
         {
@@ -61,6 +64,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
         }
 
+        /// <summary>
+        /// Verifies try create fleet from capital ships owned ship creates fleet.
+        /// </summary>
         [Test]
         public void TryCreateFleetFromCapitalShips_OwnedShip_CreatesFleet()
         {
@@ -78,6 +84,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreSame(_planet.GetChildren<GameFleet>()[0], ship.GetParent());
         }
 
+        /// <summary>
+        /// Verifies try create fleet from capital ships invalid selection returns false.
+        /// </summary>
         [Test]
         public void TryCreateFleetFromCapitalShips_InvalidSelection_ReturnsFalse()
         {
@@ -100,6 +109,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsFalse(mixedResult);
         }
 
+        /// <summary>
+        /// Verifies execute planetary combat bombardment snapshot uses live graph objects.
+        /// </summary>
         [Test]
         public void ExecutePlanetaryCombat_BombardmentSnapshot_UsesLiveGraphObjects()
         {
@@ -129,6 +141,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
         }
 
+        /// <summary>
+        /// Verifies execute planetary combat invalid bombardment input or null result returns null.
+        /// </summary>
         [Test]
         public void ExecutePlanetaryCombat_InvalidBombardmentInputOrNullResult_ReturnsNull()
         {
@@ -156,6 +171,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsNull(nullCommandResult);
         }
 
+        /// <summary>
+        /// Verifies execute planetary combat assault snapshot uses live graph objects.
+        /// </summary>
         [Test]
         public void ExecutePlanetaryCombat_AssaultSnapshot_UsesLiveGraphObjects()
         {
@@ -180,6 +198,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(1, assault.InitialAttackerRegimentCount);
         }
 
+        /// <summary>
+        /// Verifies execute planetary combat assault with multiple fleets uses full live selection.
+        /// </summary>
         [Test]
         public void ExecutePlanetaryCombat_AssaultWithMultipleFleets_UsesFullLiveSelection()
         {
@@ -216,6 +237,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(2, ((PlanetaryAssaultResult)result).InitialAttackerRegimentCount);
         }
 
+        /// <summary>
+        /// Verifies execute planetary combat invalid assault input or null result returns null.
+        /// </summary>
         [Test]
         public void ExecutePlanetaryCombat_InvalidAssaultInputOrNullResult_ReturnsNull()
         {
@@ -243,6 +267,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsNull(nullCommandResult);
         }
 
+        /// <summary>
+        /// Verifies can execute planetary commands neutral snapshot target uses live graph objects.
+        /// </summary>
         [Test]
         public void CanExecutePlanetaryCommands_NeutralSnapshotTarget_UsesLiveGraphObjects()
         {
@@ -270,6 +297,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsTrue(canAssault);
         }
 
+        /// <summary>
+        /// Verifies resolve planet snapshot identity returns live graph planet.
+        /// </summary>
         [Test]
         public void ResolvePlanet_SnapshotIdentity_ReturnsLiveGraphPlanet()
         {

@@ -15,6 +15,9 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public class AIAbortMissionPlannerTests
     {
+        /// <summary>
+        /// Verifies plan with unknown mission target adds abort proposal.
+        /// </summary>
         [Test]
         public void Plan_WithUnknownMissionTarget_AddsAbortProposal()
         {
@@ -39,6 +42,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(mission, proposal.Mission);
         }
 
+        /// <summary>
+        /// Verifies plan with safe special forces mission does not add abort proposal.
+        /// </summary>
         [Test]
         public void Plan_WithSafeSpecialForcesMission_DoesNotAddAbortProposal()
         {
@@ -67,6 +73,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(hasAbortProposal);
         }
 
+        /// <summary>
+        /// Verifies plan with traveling reconnaissance mission does not add abort proposal.
+        /// </summary>
         [Test]
         public void Plan_WithTravelingReconnaissanceMission_DoesNotAddAbortProposal()
         {

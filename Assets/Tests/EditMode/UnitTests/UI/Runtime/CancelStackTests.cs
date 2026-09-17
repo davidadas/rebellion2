@@ -5,6 +5,9 @@ namespace Rebellion.Tests.UI.Runtime
     [TestFixture]
     public class CancelStackTests
     {
+        /// <summary>
+        /// Verifies try cancel uses most recently registered cancelable first.
+        /// </summary>
         [Test]
         public void TryCancel_UsesMostRecentlyRegisteredCancelableFirst()
         {
@@ -20,6 +23,9 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreEqual(1, second.CancelCount);
         }
 
+        /// <summary>
+        /// Verifies try cancel falls through when cancelable does not consume.
+        /// </summary>
         [Test]
         public void TryCancel_FallsThroughWhenCancelableDoesNotConsume()
         {
@@ -35,6 +41,9 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreEqual(1, second.CancelCount);
         }
 
+        /// <summary>
+        /// Verifies reopening a cancelable promotes it ahead of previously registered handlers.
+        /// </summary>
         [Test]
         public void Register_ExistingCancelable_PromotesItToTop()
         {
@@ -51,6 +60,9 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreEqual(0, windowManager.CancelCount);
         }
 
+        /// <summary>
+        /// Verifies unregister removes cancelable from stack.
+        /// </summary>
         [Test]
         public void Unregister_RemovesCancelableFromStack()
         {

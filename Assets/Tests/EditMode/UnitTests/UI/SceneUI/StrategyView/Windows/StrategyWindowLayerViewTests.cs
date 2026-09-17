@@ -34,6 +34,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies prefab properties authored layer expose every required window prefab.
+        /// </summary>
         [Test]
         public void PrefabProperties_AuthoredLayer_ExposeEveryRequiredWindowPrefab()
         {
@@ -55,6 +58,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.Greater(_view.ItemDragStartDistance, 0);
         }
 
+        /// <summary>
+        /// Verifies get window parent known modality returns authored layer.
+        /// </summary>
         [Test]
         public void GetWindowParent_KnownModality_ReturnsAuthoredLayer()
         {
@@ -68,6 +74,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreSame(modal, modalParent);
         }
 
+        /// <summary>
+        /// Verifies get surface size authored layer returns fixed source dimensions.
+        /// </summary>
         [Test]
         public void GetSurfaceSize_AuthoredLayer_ReturnsFixedSourceDimensions()
         {
@@ -84,12 +93,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.Greater(size.y, 0);
         }
 
+        /// <summary>
+        /// Verifies get window size null view throws missing reference exception.
+        /// </summary>
         [Test]
         public void GetWindowSize_NullView_ThrowsMissingReferenceException()
         {
             Assert.Throws<MissingReferenceException>(() => _view.GetWindowSize(null));
         }
 
+        /// <summary>
+        /// Verifies get window size authored prefab returns fixed prefab dimensions.
+        /// </summary>
         [Test]
         public void GetWindowSize_AuthoredPrefab_ReturnsFixedPrefabDimensions()
         {
@@ -106,6 +121,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.Greater(size.y, 0);
         }
 
+        /// <summary>
+        /// Verifies render modal state active shows and orders input blocker and dimmer.
+        /// </summary>
         [Test]
         public void RenderModalState_Active_ShowsAndOrdersInputBlockerAndDimmer()
         {
@@ -121,6 +139,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(new Color(0f, 0f, 0f, 0.8f), dimmer.color);
         }
 
+        /// <summary>
+        /// Verifies render modal state inactive hides input blocker and dimmer.
+        /// </summary>
         [Test]
         public void RenderModalState_Inactive_HidesInputBlockerAndDimmer()
         {
@@ -134,6 +155,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsFalse(dimmer.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render modal state input blocked without modal hides dimmer.
+        /// </summary>
         [Test]
         public void RenderModalState_InputBlockedWithoutModal_HidesDimmer()
         {

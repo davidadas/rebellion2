@@ -43,6 +43,11 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             PrefabUtility.UnloadPrefabContents(_prefabRoot);
         }
 
+        /// <summary>
+        /// Verifies render victory condition known condition applies matching sprite and text.
+        /// </summary>
+        /// <param name="condition">The condition.</param>
+        /// <param name="expectedText">The expected text.</param>
         [TestCase(GameVictoryCondition.Conquest, "Standard Game")]
         [TestCase(GameVictoryCondition.Headquarters, "Headquarters Victory")]
         public void RenderVictoryCondition_KnownCondition_AppliesMatchingSpriteAndText(
@@ -71,6 +76,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
         }
 
+        /// <summary>
+        /// Verifies verify references authored prefab does not throw.
+        /// </summary>
         [Test]
         public void VerifyReferences_AuthoredPrefab_DoesNotThrow()
         {
@@ -79,6 +87,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
         }
 
+        /// <summary>
+        /// Verifies the generated Main Menu owns a complete full-screen Options overlay.
+        /// </summary>
         [Test]
         public void AuthoredPrefab_OptionsOverlay_IsFullScreenAndInitiallyHidden()
         {
@@ -98,6 +109,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(new Color(0f, 0f, 0f, 0.8f), dimmer.GetComponent<Image>().color);
         }
 
+        /// <summary>
+        /// Verifies exit confirmation blocks the entire menu independently of the Options overlay.
+        /// </summary>
         [Test]
         public void AuthoredPrefab_ExitConfirmation_BlockerFillsMainMenu()
         {
@@ -119,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(Vector3.one * 3f, dialogSurface.localScale);
         }
 
+        /// <summary>
+        /// Verifies authored prefab cockpit backdrop and controls share full canvas.
+        /// </summary>
         [Test]
         public void AuthoredPrefab_CockpitBackdropAndControlsShareFullCanvas()
         {
@@ -137,6 +154,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(7, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
         }
 
+        /// <summary>
+        /// Verifies the planet rig composites its authored day/night terminator after other layers.
+        /// </summary>
         [Test]
         public void AuthoredPrefab_PlanetRig_UsesDayNightShade()
         {
@@ -154,6 +174,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
         }
 
+        /// <summary>
+        /// Verifies the view exclusively controls Options overlay visibility.
+        /// </summary>
         [Test]
         public void RenderOptionsOverlay_ChangesAuthoredOverlayVisibility()
         {
@@ -166,6 +189,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsFalse(overlay.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render difficulty value selects mapped toggle without request.
+        /// </summary>
         [Test]
         public void RenderDifficulty_Value_SelectsMappedToggleWithoutRequest()
         {
@@ -188,6 +214,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(0, requestCount);
         }
 
+        /// <summary>
+        /// Verifies render galaxy size value selects mapped toggle without request.
+        /// </summary>
         [Test]
         public void RenderGalaxySize_Value_SelectsMappedToggleWithoutRequest()
         {
@@ -210,6 +239,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(0, requestCount);
         }
 
+        /// <summary>
+        /// Verifies command buttons click raise matching semantic requests.
+        /// </summary>
         [Test]
         public void CommandButtons_Click_RaiseMatchingSemanticRequests()
         {
@@ -242,6 +274,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(1, victoryCount);
         }
 
+        /// <summary>
+        /// Verifies galaxy size toggle selected raises mapped galaxy size.
+        /// </summary>
         [Test]
         public void GalaxySizeToggle_Selected_RaisesMappedGalaxySize()
         {
@@ -258,6 +293,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(expected, selected);
         }
 
+        /// <summary>
+        /// Verifies difficulty toggle selected raises mapped difficulty.
+        /// </summary>
         [Test]
         public void DifficultyToggle_Selected_RaisesMappedDifficulty()
         {
@@ -274,6 +312,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(expected, selected);
         }
 
+        /// <summary>
+        /// Verifies faction launch buttons click raise configured faction i ds.
+        /// </summary>
         [Test]
         public void FactionLaunchButtons_Click_RaiseConfiguredFactionIDs()
         {
@@ -302,6 +343,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
         }
 
+        /// <summary>
+        /// Verifies audio cue configured pointer event raises configured resource path.
+        /// </summary>
         [Test]
         public void AudioCue_ConfiguredPointerEvent_RaisesConfiguredResourcePath()
         {
@@ -317,6 +361,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(expectedPath, requestedPath);
         }
 
+        /// <summary>
+        /// Verifies Load Game sound is owned by its semantic command instead of a pointer binding.
+        /// </summary>
         [Test]
         public void AudioCue_LoadGameButton_HasNoGenericPointerBinding()
         {
@@ -333,6 +380,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsFalse(hasLoadBinding);
         }
 
+        /// <summary>
+        /// Verifies exit lever pointer press shows and restores pressed visual.
+        /// </summary>
         [Test]
         public void ExitLever_PointerPress_ShowsAndRestoresPressedVisual()
         {
@@ -350,6 +400,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsTrue(defaultImage.enabled);
         }
 
+        /// <summary>
+        /// Verifies exit lever pointer down raises exit audio cue.
+        /// </summary>
         [Test]
         public void ExitLever_PointerDown_RaisesExitAudioCue()
         {
@@ -364,6 +417,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual("Application/MainMenu/Audio/faction-select", requestedPath);
         }
 
+        /// <summary>
+        /// Verifies exit lever pointer up does not raise audio cue.
+        /// </summary>
         [Test]
         public void ExitLever_PointerUp_DoesNotRaiseAudioCue()
         {
@@ -378,6 +434,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(0, cueCount);
         }
 
+        /// <summary>
+        /// Verifies get audio cue paths authored bindings returns distinct configured paths.
+        /// </summary>
         [Test]
         public void GetAudioCuePaths_AuthoredBindings_ReturnsDistinctConfiguredPaths()
         {
@@ -392,6 +451,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
         }
 
+        /// <summary>
+        /// Verifies on enable already bound does not duplicate listeners.
+        /// </summary>
         [Test]
         public void OnEnable_AlreadyBound_DoesNotDuplicateListeners()
         {
@@ -404,6 +466,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(1, loadCount);
         }
 
+        /// <summary>
+        /// Verifies on disable bound view unbinds controls.
+        /// </summary>
         [Test]
         public void OnDisable_BoundView_UnbindsControls()
         {

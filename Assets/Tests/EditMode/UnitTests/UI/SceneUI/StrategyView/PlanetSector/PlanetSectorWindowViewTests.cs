@@ -48,12 +48,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render multiple planets applies title projection and stable view names.
+        /// </summary>
         [Test]
         public void Render_MultiplePlanets_AppliesTitleProjectionAndStableViewNames()
         {
@@ -84,6 +90,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsTrue(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render shorter snapshot reuses and hides surplus planet views.
+        /// </summary>
         [Test]
         public void Render_ShorterSnapshot_ReusesAndHidesSurplusPlanetViews()
         {
@@ -116,6 +125,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(planets[1].gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies try create element rendered fleet raycast returns semantic element.
+        /// </summary>
         [Test]
         public void TryCreateElement_RenderedFleetRaycast_ReturnsSemanticElement()
         {
@@ -141,6 +153,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(element.PlanetImage);
         }
 
+        /// <summary>
+        /// Verifies try get fleet drag preview rendered fleet returns pressed texture and icon geometry.
+        /// </summary>
         [Test]
         public void TryGetFleetDragPreview_RenderedFleet_ReturnsPressedTextureAndIconGeometry()
         {
@@ -170,6 +185,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(iconBounds.height, preview.Height);
         }
 
+        /// <summary>
+        /// Verifies try get fleet drag preview non fleet or missing planet returns false.
+        /// </summary>
         [Test]
         public void TryGetFleetDragPreview_NonFleetOrMissingPlanet_ReturnsFalse()
         {
@@ -203,6 +221,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(missingPreview);
         }
 
+        /// <summary>
+        /// Verifies planet interaction rendered child forwards all semantic events.
+        /// </summary>
         [Test]
         public void PlanetInteraction_RenderedChild_ForwardsAllSemanticEvents()
         {
@@ -242,6 +263,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1, releasedCount);
         }
 
+        /// <summary>
+        /// Verifies on destroy rendered children unbinds events and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_RenderedChildren_UnbindsEventsAndRaisesDestroyedEvent()
         {

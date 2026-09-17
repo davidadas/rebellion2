@@ -46,6 +46,9 @@ namespace Rebellion.Tests.Systems
             _system = new ResearchSystem(_game, new StubRNG());
         }
 
+        /// <summary>
+        /// Verifies process tick pulse not reached does not add capacity.
+        /// </summary>
         [Test]
         public void ProcessTick_PulseNotReached_DoesNotAddCapacity()
         {
@@ -60,6 +63,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick one core sector shipyard adds one capacity.
+        /// </summary>
         [Test]
         public void ProcessTick_OneCoreSectorShipyard_AddsOneCapacity()
         {
@@ -75,6 +81,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, after - before, "One core-sector shipyard should add 1 capacity");
         }
 
+        /// <summary>
+        /// Verifies process tick multiple core sector facilities adds all.
+        /// </summary>
         [Test]
         public void ProcessTick_MultipleCoreSectorFacilities_AddsAll()
         {
@@ -91,6 +100,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick busy facility still adds capacity.
+        /// </summary>
         [Test]
         public void ProcessTick_BusyFacility_StillAddsCapacity()
         {
@@ -116,6 +128,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick facility under construction does not add capacity.
+        /// </summary>
         [Test]
         public void ProcessTick_FacilityUnderConstruction_DoesNotAddCapacity()
         {
@@ -133,6 +148,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick facility in transit does not add capacity.
+        /// </summary>
         [Test]
         public void ProcessTick_FacilityInTransit_DoesNotAddCapacity()
         {
@@ -150,6 +168,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick no facilities no capacity.
+        /// </summary>
         [Test]
         public void ProcessTick_NoFacilities_NoCapacity()
         {
@@ -170,6 +191,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick outer rim facility does not add capacity.
+        /// </summary>
         [Test]
         public void ProcessTick_OuterRimFacility_DoesNotAddCapacity()
         {
@@ -199,6 +223,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick core sector facility across multiple pulses accumulates capacity.
+        /// </summary>
         [Test]
         public void ProcessTick_CoreSectorFacilityAcrossMultiplePulses_AccumulatesCapacity()
         {
@@ -218,6 +245,9 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        /// <summary>
+        /// Verifies process tick multiple factions independent capacity.
+        /// </summary>
         [Test]
         public void ProcessTick_MultipleFactions_IndependentCapacity()
         {

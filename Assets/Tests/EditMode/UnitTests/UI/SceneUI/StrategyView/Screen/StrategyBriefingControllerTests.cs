@@ -20,6 +20,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private const string _playerFactionID = "PLAYER";
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
+        /// <summary>
+        /// Verifies the briefing owner prepares its opening segment and skip response.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         [Test]
         public async Task PrepareAsync_Briefing_LoadsOpeningMediaAndRegistersAudioAsync()
         {
@@ -76,6 +80,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies that briefing segments preload and play sequentially before completion.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         [Test]
         public async Task Play_MultipleSegments_PlaysInOrderAndCompletesAsync()
         {
@@ -126,6 +134,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies the next segment starts loading only after the current segment completes.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         [Test]
         public async Task Play_OpeningSegment_DoesNotLoadOrPlayNextUntilReadyAsync()
         {
@@ -196,6 +208,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies play no segments completes without skipping.
+        /// </summary>
         [Test]
         public void Play_NoSegments_CompletesWithoutSkipping()
         {
@@ -224,6 +239,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies play invalid segment throws invalid operation exception.
+        /// </summary>
+        /// <param name="animation">The animation.</param>
+        /// <param name="frameCount">The frame count.</param>
         [TestCase(null, 0)]
         [TestCase("Missing", 1)]
         public void Play_InvalidSegment_ThrowsInvalidOperationException(
@@ -257,6 +277,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies skipping abandons a segment transition that is still loading.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         [Test]
         public async Task Skip_SegmentLoading_DoesNotStartAbandonedSegmentAsync()
         {
@@ -316,6 +340,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies skip configured response completes immediately and plays response.
+        /// </summary>
         [Test]
         public void Skip_ConfiguredResponse_CompletesImmediatelyAndPlaysResponse()
         {
@@ -360,6 +387,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies skip no active briefing does not throw.
+        /// </summary>
         [Test]
         public void Skip_NoActiveBriefing_DoesNotThrow()
         {
@@ -385,6 +415,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies pause and resume no active briefing do not throw.
+        /// </summary>
         [Test]
         public void PauseAndResume_NoActiveBriefing_DoNotThrow()
         {
@@ -411,6 +444,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies create map presentation target resolves planet and sector.
+        /// </summary>
         [Test]
         public void CreateMapPresentation_Target_ResolvesPlanetAndSector()
         {
@@ -434,6 +470,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsTrue(presentation.DimBackground);
         }
 
+        /// <summary>
+        /// Verifies create map presentation missing target throws invalid operation exception.
+        /// </summary>
         [Test]
         public void CreateMapPresentation_MissingTarget_ThrowsInvalidOperationException()
         {
@@ -449,6 +488,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies create map presentation null game throws argument null exception.
+        /// </summary>
         [Test]
         public void CreateMapPresentation_NullGame_ThrowsArgumentNullException()
         {
@@ -457,6 +499,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies create map presentation null segment throws argument null exception.
+        /// </summary>
         [Test]
         public void CreateMapPresentation_NullSegment_ThrowsArgumentNullException()
         {
@@ -465,6 +510,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies create map presentation headquarters without target throws invalid operation exception.
+        /// </summary>
+        /// <param name="focus">The focus.</param>
         [TestCase(StrategyBriefingFocus.PlayerHeadquarters)]
         [TestCase(StrategyBriefingFocus.OpponentHeadquarters)]
         public void CreateMapPresentation_HeadquartersWithoutTarget_ThrowsInvalidOperationException(
@@ -481,6 +530,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies create map presentation target outside planet sector throws invalid operation exception.
+        /// </summary>
         [Test]
         public void CreateMapPresentation_TargetOutsidePlanetSector_ThrowsInvalidOperationException()
         {

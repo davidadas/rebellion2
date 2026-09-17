@@ -16,9 +16,6 @@ namespace Rebellion.Analyzers
         public const string MissingTypeParameterDiagnosticId = "REB0004";
         public const string MissingReturnsDiagnosticId = "REB0005";
 
-        private static readonly ImmutableHashSet<string> _testAttributeNames =
-            ImmutableHashSet.Create("Test", "TestCase", "TestCaseSource", "UnityTest");
-
         private static readonly DiagnosticDescriptor _missingSummaryRule = new DiagnosticDescriptor(
             MissingSummaryDiagnosticId,
             "Method documentation requires a summary",
@@ -87,9 +84,6 @@ namespace Rebellion.Analyzers
         private static void AnalyzeDeclaration(SyntaxNodeAnalysisContext context)
         {
             BaseMethodDeclarationSyntax declaration = (BaseMethodDeclarationSyntax)context.Node;
-            if (declaration is MethodDeclarationSyntax testMethod && IsTestMethod(testMethod))
-                return;
-
             DocumentationCommentTriviaSyntax documentation = declaration
                 .GetLeadingTrivia()
                 .Select(trivia => trivia.GetStructure())
@@ -171,24 +165,6 @@ namespace Rebellion.Analyzers
                     }
                 }
             }
-        }
-
-        /// <summary>
-        /// Checks whether a method is a recognized test case whose name documents its behavior.
-        /// </summary>
-        /// <param name="method">The method declaration to inspect.</param>
-        /// <returns>True when the method carries a recognized test-case attribute.</returns>
-        private static bool IsTestMethod(MethodDeclarationSyntax method)
-        {
-            return method
-                .AttributeLists.SelectMany(list => list.Attributes)
-                .Select(attribute => attribute.Name.ToString().Split('.').Last())
-                .Select(name =>
-                    name.EndsWith("Attribute")
-                        ? name.Substring(0, name.Length - "Attribute".Length)
-                        : name
-                )
-                .Any(_testAttributeNames.Contains);
         }
 
         /// <summary>

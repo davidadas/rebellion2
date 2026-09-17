@@ -6,6 +6,9 @@ namespace Rebellion.Tests.UserSettings
     [TestFixture]
     public sealed class UserGameplaySettingsTests
     {
+        /// <summary>
+        /// Verifies json utility gameplay options round trip state.
+        /// </summary>
         [Test]
         public void JsonUtility_GameplayOptions_RoundTripState()
         {
@@ -29,6 +32,9 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsFalse(restored.Gameplay.ShowMissionOdds);
         }
 
+        /// <summary>
+        /// Verifies that briefings remain enabled until the user disables them.
+        /// </summary>
         [Test]
         public void DisableBriefings_DefaultAndRestore_RemainsDisabledOnlyWhenSelected()
         {
@@ -43,6 +49,9 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsFalse(settings.DisableBriefings);
         }
 
+        /// <summary>
+        /// Verifies gameplay pause options defaults are enabled.
+        /// </summary>
         [Test]
         public void GameplayPauseOptions_Defaults_AreEnabled()
         {
@@ -62,6 +71,9 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsTrue(settings.ShowMissionOdds);
         }
 
+        /// <summary>
+        /// Verifies json utility omitted mission odds preference defaults enabled.
+        /// </summary>
         [Test]
         public void JsonUtility_OmittedMissionOddsPreference_DefaultsEnabled()
         {
@@ -70,6 +82,9 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsTrue(settings.ShowMissionOdds);
         }
 
+        /// <summary>
+        /// Verifies json utility omitted idle bar preference defaults enabled.
+        /// </summary>
         [Test]
         public void UserInterfaceOptions_DefaultsAndRestore_AreApplied()
         {
@@ -85,6 +100,9 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsFalse(settings.KeepIdleBarOpen);
         }
 
+        /// <summary>
+        /// Verifies gameplay autosave options defaults and normalization are applied.
+        /// </summary>
         [Test]
         public void GameplayAutosaveOptions_DefaultsAndNormalization_AreApplied()
         {

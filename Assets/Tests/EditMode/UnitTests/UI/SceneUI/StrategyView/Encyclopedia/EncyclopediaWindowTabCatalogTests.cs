@@ -7,6 +7,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
     [TestFixture]
     public class EncyclopediaWindowTabCatalogTests
     {
+        /// <summary>
+        /// Verifies get tab authored index returns semantic tab.
+        /// </summary>
+        /// <param name="index">The index.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(0, EncyclopediaWindowTab.AllDatabases)]
         [TestCase(1, EncyclopediaWindowTab.Systems)]
         [TestCase(2, EncyclopediaWindowTab.Ships)]
@@ -26,6 +31,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(7, EncyclopediaWindowTabCatalog.Count);
         }
 
+        /// <summary>
+        /// Verifies get tab invalid index throws argument out of range exception.
+        /// </summary>
+        /// <param name="index">The index.</param>
         [TestCase(-1)]
         [TestCase(7)]
         public void GetTab_InvalidIndex_ThrowsArgumentOutOfRangeException(int index)
@@ -35,6 +44,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             );
         }
 
+        /// <summary>
+        /// Verifies get category semantic tab returns catalog category.
+        /// </summary>
+        /// <param name="tab">The tab.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(EncyclopediaWindowTab.AllDatabases, null)]
         [TestCase(EncyclopediaWindowTab.Systems, EncyclopediaEntryCategory.System)]
         [TestCase(EncyclopediaWindowTab.Ships, EncyclopediaEntryCategory.Ship)]
@@ -52,6 +66,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(expected, category);
         }
 
+        /// <summary>
+        /// Verifies get category unsupported tab returns null.
+        /// </summary>
         [Test]
         public void GetCategory_UnsupportedTab_ReturnsNull()
         {
@@ -60,6 +77,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.IsNull(EncyclopediaWindowTabCatalog.GetCategory(tab));
         }
 
+        /// <summary>
+        /// Verifies get title semantic tab returns displayed title.
+        /// </summary>
+        /// <param name="tab">The tab.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(EncyclopediaWindowTab.AllDatabases, "All Databases")]
         [TestCase(EncyclopediaWindowTab.Systems, "System Database")]
         [TestCase(EncyclopediaWindowTab.Ships, "Ship Database")]
@@ -77,6 +99,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(expected, title);
         }
 
+        /// <summary>
+        /// Verifies get title unsupported tab returns empty string.
+        /// </summary>
         [Test]
         public void GetTitle_UnsupportedTab_ReturnsEmptyString()
         {
@@ -85,6 +110,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             Assert.AreEqual(string.Empty, EncyclopediaWindowTabCatalog.GetTitle(tab));
         }
 
+        /// <summary>
+        /// Verifies get index unsupported tab returns negative one.
+        /// </summary>
         [Test]
         public void GetIndex_UnsupportedTab_ReturnsNegativeOne()
         {

@@ -34,6 +34,11 @@ namespace Rebellion.Tests.UI.Components
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies rendering clamps values and places the thumb consistently.
+        /// </summary>
+        /// <param name="value">The value.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(-1f, 0f)]
         [TestCase(0.5f, 0.5f)]
         [TestCase(2f, 1f)]
@@ -53,6 +58,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, thumbBounds.y);
         }
 
+        /// <summary>
+        /// Verifies slider input repositions the thumb and emits a normalized value.
+        /// </summary>
         [Test]
         public void Slider_ValueChanged_RepositionsThumbAndRaisesNormalizedValue()
         {
@@ -72,6 +80,9 @@ namespace Rebellion.Tests.UI.Components
             );
         }
 
+        /// <summary>
+        /// Verifies disabling the view removes its slider listener.
+        /// </summary>
         [Test]
         public void OnDisable_BoundSlider_UnbindsValueChanges()
         {

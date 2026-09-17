@@ -15,6 +15,9 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class SabotageMissionTests
     {
+        /// <summary>
+        /// Verifies try create target carried by moving fleet returns null.
+        /// </summary>
         [Test]
         public void TryCreate_TargetCarriedByMovingFleet_ReturnsNull()
         {
@@ -55,6 +58,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies try create officer target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_OfficerTarget_ReturnsNull()
         {
@@ -79,6 +85,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies try create friendly target returns null.
+        /// </summary>
         [Test]
         public void TryCreate_FriendlyTarget_ReturnsNull()
         {
@@ -98,6 +107,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies try create planet destroying capital ship returns null.
+        /// </summary>
         [Test]
         public void TryCreate_PlanetDestroyingCapitalShip_ReturnsNull()
         {
@@ -124,6 +136,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
+        /// <summary>
+        /// Verifies resolve objective building on enemy planet removes building.
+        /// </summary>
         [Test]
         public void ResolveObjective_BuildingOnEnemyPlanet_RemovesBuilding()
         {
@@ -163,6 +178,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective building on enemy planet returns building sabotaged result.
+        /// </summary>
         [Test]
         public void ResolveObjective_BuildingOnEnemyPlanet_ReturnsBuildingSabotagedResult()
         {
@@ -203,6 +221,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective building on enemy planet sets saboteur on result.
+        /// </summary>
         [Test]
         public void ResolveObjective_BuildingOnEnemyPlanet_SetsSaboteurOnResult()
         {
@@ -247,6 +268,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective surface regiment returns garrison change.
+        /// </summary>
         [Test]
         public void ResolveObjective_SurfaceRegiment_ReturnsGarrisonChange()
         {
@@ -287,6 +311,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies update mission building removed before execution returns failed.
+        /// </summary>
         [Test]
         public void UpdateMission_BuildingRemovedBeforeExecution_ReturnsFailed()
         {
@@ -336,6 +363,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective specific building target removes selected building.
+        /// </summary>
         [Test]
         public void ResolveObjective_SpecificBuildingTarget_RemovesSelectedBuilding()
         {
@@ -391,6 +421,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies roll participant success uses average of espionage and combat.
+        /// </summary>
         [Test]
         public void RollParticipantSuccess_UsesAverageOfEspionageAndCombat()
         {
@@ -425,6 +458,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(succeeded);
         }
 
+        /// <summary>
+        /// Verifies resolve objective successful officer improves espionage and combat ratings.
+        /// </summary>
         [Test]
         public void ResolveObjective_SuccessfulOfficer_ImprovesEspionageAndCombatRatings()
         {
@@ -464,6 +500,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(81, officer.GetBaseRating(OfficerRating.Combat));
         }
 
+        /// <summary>
+        /// Verifies serialize round trip preserves data.
+        /// </summary>
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {

@@ -28,6 +28,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _game.GetFactions().Add(new Faction { InstanceID = _opponentFactionId });
         }
 
+        /// <summary>
+        /// Verifies evaluate missing input returns lowest unowned marker.
+        /// </summary>
+        /// <param name="missingPlanet">Whether missing planet.</param>
         [TestCase(true)]
         [TestCase(false)]
         public void Evaluate_MissingInput_ReturnsLowestUnownedMarker(bool missingPlanet)
@@ -47,6 +51,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate popular support maps configured threshold boundaries.
+        /// </summary>
+        /// <param name="support">The support.</param>
+        /// <param name="expectedIndex">The expected index.</param>
         [TestCase(0, 0)]
         [TestCase(1, 1)]
         [TestCase(2, 2)]
@@ -75,6 +84,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate scalar mode with one matching value returns low marker.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
         [TestCase(GalacticInformationFilterMode.Uprisings)]
         [TestCase(GalacticInformationFilterMode.AvailableEnergy)]
         [TestCase(GalacticInformationFilterMode.AvailableRawMaterial)]
@@ -108,6 +121,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate idle manufacturing player owned empty queue returns low marker.
+        /// </summary>
+        /// <param name="mode">The mode.</param>
+        /// <param name="type">The type.</param>
         [TestCase(GalacticInformationFilterMode.IdleShipyards, ManufacturingType.Ship)]
         [TestCase(GalacticInformationFilterMode.IdleTrainingFacilities, ManufacturingType.Troop)]
         [TestCase(GalacticInformationFilterMode.IdleConstructionYards, ManufacturingType.Building)]
@@ -129,6 +147,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, marker.Index);
         }
 
+        /// <summary>
+        /// Verifies evaluate idle manufacturing foreign owner or queued work returns lowest marker.
+        /// </summary>
         [Test]
         public void Evaluate_IdleManufacturing_ForeignOwnerOrQueuedWorkReturnsLowestMarker()
         {
@@ -161,6 +182,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, busy.Index);
         }
 
+        /// <summary>
+        /// Verifies evaluate active units excludes building and moving entities.
+        /// </summary>
         [Test]
         public void Evaluate_ActiveUnits_ExcludesBuildingAndMovingEntities()
         {
@@ -192,6 +216,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, marker.Index);
         }
 
+        /// <summary>
+        /// Verifies evaluate idle fleets both factions returns highest mixed marker.
+        /// </summary>
         [Test]
         public void Evaluate_IdleFleets_BothFactionsReturnsHighestMixedMarker()
         {
@@ -211,6 +238,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsTrue(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate fleets enroute opposing fleets returns opponent intensity.
+        /// </summary>
         [Test]
         public void Evaluate_FleetsEnroute_OpposingFleetsReturnsOpponentIntensity()
         {
@@ -231,6 +261,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate fleet waypoints player route returns player intensity.
+        /// </summary>
         [Test]
         public void Evaluate_FleetWaypoints_PlayerRouteReturnsPlayerIntensity()
         {
@@ -252,6 +285,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate faction count without matches returns planet owner at lowest intensity.
+        /// </summary>
         [Test]
         public void Evaluate_FactionCountWithoutMatches_ReturnsPlanetOwnerAtLowestIntensity()
         {
@@ -269,6 +305,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate idle personnel excludes unavailable personnel and incomplete forces.
+        /// </summary>
         [Test]
         public void Evaluate_IdlePersonnel_ExcludesUnavailablePersonnelAndIncompleteForces()
         {
@@ -312,6 +351,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(_playerFactionId, marker.FactionInstanceId);
         }
 
+        /// <summary>
+        /// Verifies evaluate active personnel counts non idle opposing personnel.
+        /// </summary>
         [Test]
         public void Evaluate_ActivePersonnel_CountsNonIdleOpposingPersonnel()
         {
@@ -335,6 +377,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        /// <summary>
+        /// Verifies evaluate personnel carried by moving fleet counts as active.
+        /// </summary>
         [Test]
         public void Evaluate_PersonnelCarriedByMovingFleet_CountsAsActive()
         {

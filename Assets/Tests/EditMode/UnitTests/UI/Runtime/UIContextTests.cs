@@ -37,6 +37,9 @@ namespace Rebellion.Tests.UI.Runtime
             );
         }
 
+        /// <summary>
+        /// Verifies constructor null dependency throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullDependency_ThrowsArgumentNullException()
         {
@@ -59,6 +62,9 @@ namespace Rebellion.Tests.UI.Runtime
             );
         }
 
+        /// <summary>
+        /// Verifies properties configured context return supplied dependencies.
+        /// </summary>
         [Test]
         public void Properties_ConfiguredContext_ReturnSuppliedDependencies()
         {
@@ -71,6 +77,9 @@ namespace Rebellion.Tests.UI.Runtime
             );
         }
 
+        /// <summary>
+        /// Verifies replace game replacement game updates player context.
+        /// </summary>
         [Test]
         public void ReplaceGame_ReplacementGame_UpdatesPlayerContext()
         {
@@ -83,12 +92,18 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreSame(_themeLibrary.GetTheme("FNEMP1"), _context.GetPlayerFactionTheme());
         }
 
+        /// <summary>
+        /// Verifies replace game null game throws argument null exception.
+        /// </summary>
         [Test]
         public void ReplaceGame_NullGame_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _context.ReplaceGame(null));
         }
 
+        /// <summary>
+        /// Verifies resolve faction color known faction returns configured primary color.
+        /// </summary>
         [Test]
         public void ResolveFactionColor_KnownFaction_ReturnsConfiguredPrimaryColor()
         {
@@ -97,6 +112,9 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreEqual(_themeLibrary.GetTheme(_playerFactionId).GetPrimaryColor(), color);
         }
 
+        /// <summary>
+        /// Verifies get texture empty or missing path returns null.
+        /// </summary>
         [Test]
         public void GetTexture_EmptyOrMissingPath_ReturnsNull()
         {
@@ -106,6 +124,9 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.IsNull(_context.GetTexture("Pack/Shared/Strategy/UI/missing/test-asset"));
         }
 
+        /// <summary>
+        /// Verifies get texture configured path returns cached content texture.
+        /// </summary>
         [Test]
         public void GetTexture_ConfiguredPath_ReturnsCachedContentTexture()
         {
@@ -120,6 +141,9 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreEqual(TextureWrapMode.Clamp, first.wrapMode);
         }
 
+        /// <summary>
+        /// Verifies get entity texture null or unmapped entity returns null.
+        /// </summary>
         [Test]
         public void GetEntityTexture_NullOrUnmappedEntity_ReturnsNull()
         {
@@ -127,6 +151,9 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.IsNull(_context.GetEntityTexture(new Officer(), false));
         }
 
+        /// <summary>
+        /// Verifies get entity texture compact path prefers configured small artwork.
+        /// </summary>
         [Test]
         public void GetEntityTexture_CompactPath_PrefersConfiguredSmallArtwork()
         {
@@ -145,6 +172,9 @@ namespace Rebellion.Tests.UI.Runtime
             );
         }
 
+        /// <summary>
+        /// Verifies get entity status texture injured officer returns injury artwork.
+        /// </summary>
         [Test]
         public void GetEntityStatusTexture_InjuredOfficer_ReturnsInjuryArtwork()
         {
@@ -156,6 +186,9 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreSame(_context.GetTexture(path), texture);
         }
 
+        /// <summary>
+        /// Verifies get entity status texture ship carried by moving fleet returns transit artwork.
+        /// </summary>
         [Test]
         public void GetEntityStatusTexture_ShipCarriedByMovingFleet_ReturnsTransitArtwork()
         {
@@ -178,6 +211,9 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreSame(_context.GetTexture(path), texture);
         }
 
+        /// <summary>
+        /// Verifies get entity captured overlay texture captured officer returns configured overlay.
+        /// </summary>
         [Test]
         public void GetEntityCapturedOverlayTexture_CapturedOfficer_ReturnsConfiguredOverlay()
         {
@@ -191,6 +227,9 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.IsNull(_context.GetEntityCapturedOverlayTexture(new Fleet()));
         }
 
+        /// <summary>
+        /// Verifies get entity captured overlay texture officer catalog returns overlay for every officer.
+        /// </summary>
         [Test]
         public void GetEntityCapturedOverlayTexture_OfficerCatalog_ReturnsOverlayForEveryOfficer()
         {
@@ -211,6 +250,9 @@ namespace Rebellion.Tests.UI.Runtime
             }
         }
 
+        /// <summary>
+        /// Verifies get planet texture destroyed planet returns faction destroyed planet artwork.
+        /// </summary>
         [Test]
         public void GetPlanetTexture_DestroyedPlanet_ReturnsFactionDestroyedPlanetArtwork()
         {

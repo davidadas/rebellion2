@@ -56,12 +56,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render complete presentation applies counters images buttons and notifications.
+        /// </summary>
         [Test]
         public void Render_CompletePresentation_AppliesCountersImagesButtonsAndNotifications()
         {
@@ -119,6 +125,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(notifications[0], notificationButtons[0].targetGraphic);
         }
 
+        /// <summary>
+        /// Verifies render missing optional images hides images and disables notification.
+        /// </summary>
         [Test]
         public void Render_MissingOptionalImages_HidesImagesAndDisablesNotification()
         {
@@ -161,6 +170,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsFalse(GetField<Button[]>("messageNotificationButtons")[0].interactable);
         }
 
+        /// <summary>
+        /// Verifies button pointer press and release emits control cue and toggles pressed artwork.
+        /// </summary>
         [Test]
         public void ButtonPointer_PressAndRelease_EmitsControlCueAndTogglesPressedArtwork()
         {
@@ -186,6 +198,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsFalse(overlay.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies button pointer click inside hud emits action and source coordinates.
+        /// </summary>
         [Test]
         public void ButtonPointer_ClickInsideHud_EmitsActionAndSourceCoordinates()
         {
@@ -208,6 +223,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(240, requestedY);
         }
 
+        /// <summary>
+        /// Verifies button pointer click outside hud requests render instead of action.
+        /// </summary>
         [Test]
         public void ButtonPointer_ClickOutsideHud_RequestsRenderInsteadOfAction()
         {
@@ -225,6 +243,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(0, actionCount);
         }
 
+        /// <summary>
+        /// Verifies speed context right press inside hud emits source coordinates.
+        /// </summary>
         [Test]
         public void SpeedContext_RightPressInsideHud_EmitsSourceCoordinates()
         {
@@ -250,6 +271,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(240, requestedY);
         }
 
+        /// <summary>
+        /// Verifies notification button click emits tab assigned to rendered slot.
+        /// </summary>
         [Test]
         public void NotificationButton_Click_EmitsTabAssignedToRenderedSlot()
         {
@@ -262,6 +286,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(MessagesTab.Fleet, requestedTab);
         }
 
+        /// <summary>
+        /// Verifies unrendered and none buttons interact do not emit semantic requests.
+        /// </summary>
         [Test]
         public void UnrenderedAndNoneButtons_Interact_DoNotEmitSemanticRequests()
         {
@@ -289,6 +316,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(0, commandCount);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds controls and raises destroyed event.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsControlsAndRaisesDestroyedEvent()
         {

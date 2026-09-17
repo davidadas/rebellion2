@@ -15,6 +15,9 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class DiplomacyMissionTests
     {
+        /// <summary>
+        /// Verifies resolve objective support below threshold no ownership change.
+        /// </summary>
         [Test]
         public void ResolveObjective_SupportBelowThreshold_NoOwnershipChange()
         {
@@ -30,6 +33,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("empire", planet.OwnerInstanceID, "Owner should be unchanged");
         }
 
+        /// <summary>
+        /// Verifies resolve objective support crosses threshold no ownership change emitted.
+        /// </summary>
         [Test]
         public void ResolveObjective_SupportCrossesThreshold_NoOwnershipChangeEmitted()
         {
@@ -49,6 +55,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective planet already owned no ownership change emitted.
+        /// </summary>
         [Test]
         public void ResolveObjective_PlanetAlreadyOwned_NoOwnershipChangeEmitted()
         {
@@ -63,6 +72,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective planet already owned increments support without changing owner.
+        /// </summary>
         [Test]
         public void ResolveObjective_PlanetAlreadyOwned_IncrementsSupportWithoutChangingOwner()
         {
@@ -79,6 +91,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("empire", planet.OwnerInstanceID, "Owner should remain empire");
         }
 
+        /// <summary>
+        /// Verifies resolve objective success probability does not affect support gain.
+        /// </summary>
         [Test]
         public void ResolveObjective_SuccessProbability_DoesNotAffectSupportGain()
         {
@@ -105,6 +120,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(51, planet.GetPopularSupport("empire"));
         }
 
+        /// <summary>
+        /// Verifies resolve objective owned planet uses diplomacy support config.
+        /// </summary>
         [Test]
         public void ResolveObjective_OwnedPlanet_UsesDiplomacySupportConfig()
         {
@@ -118,6 +136,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(62, planet.GetPopularSupport("empire"));
         }
 
+        /// <summary>
+        /// Verifies resolve objective neutral planet uses neutral diplomacy support config.
+        /// </summary>
         [Test]
         public void ResolveObjective_NeutralPlanet_UsesNeutralDiplomacySupportConfig()
         {
@@ -131,6 +152,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(56, planet.GetPopularSupport("empire"));
         }
 
+        /// <summary>
+        /// Verifies resolve objective core sector weak support applies configured divisor.
+        /// </summary>
         [Test]
         public void ResolveObjective_CoreSectorWeakSupport_AppliesConfiguredDivisor()
         {
@@ -148,6 +172,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(53, planet.GetPopularSupport("empire"));
         }
 
+        /// <summary>
+        /// Verifies resolve objective success probability uses diplomacy rating minus opposing support.
+        /// </summary>
         [Test]
         public void ResolveObjective_SuccessProbability_UsesDiplomacyRatingMinusOpposingSupport()
         {
@@ -178,6 +205,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
         }
 
+        /// <summary>
+        /// Verifies resolve objective support already at max returns success.
+        /// </summary>
         [Test]
         public void ResolveObjective_SupportAlreadyAtMax_ReturnsSuccess()
         {
@@ -209,6 +239,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies get abort reason when uprising starts returns failure.
+        /// </summary>
         [Test]
         public void GetAbortReason_WhenUprisingStarts_ReturnsFailure()
         {
@@ -223,6 +256,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies get abort reason when planet taken by third faction returns failure.
+        /// </summary>
         [Test]
         public void GetAbortReason_WhenPlanetTakenByThirdFaction_ReturnsFailure()
         {
@@ -238,6 +274,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies get abort reason when planet taken by mission faction returns null.
+        /// </summary>
         [Test]
         public void GetAbortReason_WhenPlanetTakenByMissionFaction_ReturnsNull()
         {
@@ -259,6 +298,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion when planet taken by mission faction below max support returns true.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_WhenPlanetTakenByMissionFactionBelowMaxSupport_ReturnsTrue()
         {
@@ -273,6 +315,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion support reached max returns false.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_SupportReachedMax_ReturnsFalse()
         {
@@ -286,6 +331,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion support below max returns true.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_SupportBelowMax_ReturnsTrue()
         {
@@ -298,6 +346,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create uncolonized planet returns null.
+        /// </summary>
         [Test]
         public void TryCreate_UncolonizedPlanet_ReturnsNull()
         {
@@ -314,6 +365,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create planet support at max returns null.
+        /// </summary>
         [Test]
         public void TryCreate_PlanetSupportAtMax_ReturnsNull()
         {
@@ -329,6 +383,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create enemy owned planet returns null.
+        /// </summary>
         [Test]
         public void TryCreate_EnemyOwnedPlanet_ReturnsNull()
         {
@@ -344,6 +401,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies try create planet in uprising returns null.
+        /// </summary>
         [Test]
         public void TryCreate_PlanetInUprising_ReturnsNull()
         {
@@ -360,6 +420,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies serialize round trip preserves data.
+        /// </summary>
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {

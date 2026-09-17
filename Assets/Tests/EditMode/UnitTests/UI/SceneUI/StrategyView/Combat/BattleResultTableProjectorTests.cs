@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private const string _playerFactionId = "FNALL1";
         private const string _opponentFactionId = "FNEMP1";
 
+        /// <summary>
+        /// Verifies project capital ship damage separates survivors and destroyed ships.
+        /// </summary>
         [Test]
         public void Project_CapitalShipDamage_SeparatesSurvivorsAndDestroyedShips()
         {
@@ -83,6 +86,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotNull(table.Destroyed[0].DamagedOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies project duplicate capital ship damage keeps one operational row.
+        /// </summary>
         [Test]
         public void Project_DuplicateCapitalShipDamage_KeepsOneOperationalRow()
         {
@@ -119,6 +125,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project starfighter losses separates surviving and destroyed squadrons.
+        /// </summary>
         [Test]
         public void Project_StarfighterLosses_SeparatesSurvivingAndDestroyedSquadrons()
         {
@@ -181,6 +190,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotNull(table.Destroyed[0].DamagedOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies project planetary starfighter without fleet returns operational squadron.
+        /// </summary>
         [Test]
         public void Project_PlanetaryStarfighterWithoutFleet_ReturnsOperationalSquadron()
         {
@@ -216,6 +228,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project troops returns fleet regiments in carrier order.
+        /// </summary>
         [Test]
         public void Project_Troops_ReturnsFleetRegimentsInCarrierOrder()
         {
@@ -250,6 +265,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project personnel combines officers then special forces.
+        /// </summary>
         [Test]
         public void Project_Personnel_CombinesOfficersThenSpecialForces()
         {
@@ -287,6 +305,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project captured officer includes captured overlay.
+        /// </summary>
         [Test]
         public void Project_CapturedOfficer_IncludesCapturedOverlay()
         {
@@ -316,6 +337,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNotNull(table.Operational[0].CapturedOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies project bombardment manufacturing separates operational and destroyed facilities.
+        /// </summary>
         [Test]
         public void Project_BombardmentManufacturing_SeparatesOperationalAndDestroyedFacilities()
         {
@@ -359,6 +383,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNull(table.Destroyed[0].DamagedOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies project planetary assault troops separates surviving and destroyed regiments.
+        /// </summary>
         [Test]
         public void Project_PlanetaryAssaultTroops_SeparatesSurvivingAndDestroyedRegiments()
         {
@@ -402,6 +429,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsNull(table.Destroyed[0].DamagedOverlayTexture);
         }
 
+        /// <summary>
+        /// Verifies project unknown owner returns both empty state rows.
+        /// </summary>
         [Test]
         public void Project_UnknownOwner_ReturnsBothEmptyStateRows()
         {
@@ -420,6 +450,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
         }
 
+        /// <summary>
+        /// Verifies project live unit changes after capture do not rewrite result rows.
+        /// </summary>
         [Test]
         public void Project_LiveUnitChangesAfterCapture_DoNotRewriteResultRows()
         {

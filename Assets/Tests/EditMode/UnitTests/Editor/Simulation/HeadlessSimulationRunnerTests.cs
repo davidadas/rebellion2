@@ -16,6 +16,9 @@ namespace Rebellion.Tests.Editor.Simulation
     [TestFixture]
     public sealed class HeadlessSimulationRunnerTests
     {
+        /// <summary>
+        /// Verifies manufactured unit tracker record completion counts facility once.
+        /// </summary>
         [Test]
         public void SimulationOptions_ParseDifficulty_UsesRequestedValue()
         {

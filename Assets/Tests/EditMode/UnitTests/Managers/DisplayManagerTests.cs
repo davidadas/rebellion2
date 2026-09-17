@@ -7,6 +7,9 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public sealed class DisplayManagerTests
     {
+        /// <summary>
+        /// Verifies that display discovery filters aspect ratios, removes duplicates, and sorts modes.
+        /// </summary>
         [Test]
         public void GetSupportedResolutions_MixedModes_ReturnsDistinctSortedSixteenByNineModes()
         {
@@ -26,6 +29,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies discovery falls back to a fitting common 16:9 mode when none are reported.
+        /// </summary>
         [Test]
         public void GetSupportedResolutions_NoReportedModes_ReturnsNativeFittingFallback()
         {
@@ -40,6 +46,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies that an unavailable ultrawide request selects the largest fitting 16:9 mode.
+        /// </summary>
         [Test]
         public void ResolveResolution_UltrawideRequest_ReturnsLargestFittingMode()
         {
@@ -57,6 +66,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(new Vector2Int(2560, 1440), manager.ResolveResolution(3840, 1600));
         }
 
+        /// <summary>
+        /// Verifies an explicitly requested supported mode is selected exactly.
+        /// </summary>
         [Test]
         public void ResolveResolution_SupportedRequest_ReturnsExactMode()
         {
@@ -73,6 +85,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(new Vector2Int(1920, 1080), manager.ResolveResolution(1920, 1080));
         }
 
+        /// <summary>
+        /// Verifies that applying settings delegates exactly one resolved mode to the display API.
+        /// </summary>
         [Test]
         public void Apply_Settings_UpdatesSettingsAndDelegatesResolvedMode()
         {

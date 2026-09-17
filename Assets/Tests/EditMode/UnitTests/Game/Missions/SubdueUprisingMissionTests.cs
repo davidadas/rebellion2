@@ -13,6 +13,9 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class SubdueUprisingMissionTests
     {
+        /// <summary>
+        /// Verifies roll participant success garrisoned regiment does not affect score.
+        /// </summary>
         [Test]
         public void RollParticipantSuccess_GarrisonedRegimentDoesNotAffectScore()
         {
@@ -47,6 +50,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
         }
 
+        /// <summary>
+        /// Verifies display name is human readable.
+        /// </summary>
         [Test]
         public void DisplayName_IsHumanReadable()
         {
@@ -72,6 +78,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("Subdue Uprising", mission.DisplayName);
         }
 
+        /// <summary>
+        /// Verifies get abort reason uprising ended before execution returns failure.
+        /// </summary>
         [Test]
         public void GetAbortReason_UprisingEndedBeforeExecution_ReturnsFailure()
         {
@@ -103,6 +112,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies get abort reason target captured before execution returns failure.
+        /// </summary>
         [Test]
         public void GetAbortReason_TargetCapturedBeforeExecution_ReturnsFailure()
         {
@@ -134,6 +146,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies update mission successful roll with insufficient garrison leaves uprising and fails.
+        /// </summary>
         [Test]
         public void UpdateMission_SuccessfulRollWithInsufficientGarrison_LeavesUprisingAndFails()
         {
@@ -180,6 +195,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(leadershipBefore, officer.GetBaseRating(OfficerRating.Leadership));
         }
 
+        /// <summary>
+        /// Verifies update mission multiple participants succeed applies every attempt.
+        /// </summary>
         [Test]
         public void UpdateMission_MultipleParticipantsSucceed_AppliesEveryAttempt()
         {
@@ -226,6 +244,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(12, empirePlanet.GetPopularSupport("empire"));
         }
 
+        /// <summary>
+        /// Verifies update mission successful roll with sufficient garrison ends uprising and improves agent.
+        /// </summary>
         [Test]
         public void UpdateMission_SuccessfulRollWithSufficientGarrison_EndsUprisingAndImprovesAgent()
         {
@@ -274,6 +295,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(leadershipBefore + 1, officer.GetBaseRating(OfficerRating.Leadership));
         }
 
+        /// <summary>
+        /// Verifies try create planet not in uprising returns null.
+        /// </summary>
         [Test]
         public void TryCreate_PlanetNotInUprising_ReturnsNull()
         {
@@ -296,6 +320,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion uprising continues returns true.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_UprisingContinues_ReturnsTrue()
         {
@@ -312,6 +339,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(mission.ShouldRepeatAfterCompletion(game));
         }
 
+        /// <summary>
+        /// Verifies should repeat after completion uprising ended returns false.
+        /// </summary>
         [Test]
         public void ShouldRepeatAfterCompletion_UprisingEnded_ReturnsFalse()
         {
@@ -329,6 +359,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(mission.ShouldRepeatAfterCompletion(game));
         }
 
+        /// <summary>
+        /// Verifies try create enemy owned planet returns null.
+        /// </summary>
         [Test]
         public void TryCreate_EnemyOwnedPlanet_ReturnsNull()
         {
@@ -353,6 +386,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies serialize round trip preserves data.
+        /// </summary>
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {

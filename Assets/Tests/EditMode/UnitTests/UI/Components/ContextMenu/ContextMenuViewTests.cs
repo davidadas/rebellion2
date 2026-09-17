@@ -42,12 +42,18 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
+        /// <summary>
+        /// Verifies command item null command throws argument null exception.
+        /// </summary>
         [Test]
         public void CommandItem_NullCommand_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new ContextMenuCommandItem(null));
         }
 
+        /// <summary>
+        /// Verifies command item icons and submenu stores immutable presentation.
+        /// </summary>
         [Test]
         public void CommandItem_IconsAndSubmenu_StoresImmutablePresentation()
         {
@@ -78,6 +84,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreSame(_activeTexture, item.GetIconTexture());
         }
 
+        /// <summary>
+        /// Verifies metrics dimensions calculate panel width and height.
+        /// </summary>
         [Test]
         public void Metrics_Dimensions_CalculatePanelWidthAndHeight()
         {
@@ -91,6 +100,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreEqual(2, metrics.BorderSize);
         }
 
+        /// <summary>
+        /// Verifies open at and render current commands renders authored panel and rows.
+        /// </summary>
         [Test]
         public void OpenAtAndRenderCurrent_Commands_RendersAuthoredPanelAndRows()
         {
@@ -115,6 +127,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.IsTrue(FindDismissHitArea().gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies open at surface edges keeps panel within authored surface.
+        /// </summary>
         [Test]
         public void OpenAt_SurfaceEdges_KeepsPanelWithinAuthoredSurface()
         {
@@ -137,6 +152,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.LessOrEqual(panelRect.yMax, Mathf.RoundToInt(size.y));
         }
 
+        /// <summary>
+        /// Verifies get menu width icon column and long text expands authored width.
+        /// </summary>
         [Test]
         public void GetMenuWidth_IconColumnAndLongText_ExpandsAuthoredWidth()
         {
@@ -159,6 +177,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.Greater(iconWidth, plainWidth);
         }
 
+        /// <summary>
+        /// Verifies create visuals active color uses authored and provided colors.
+        /// </summary>
         [Test]
         public void CreateVisuals_ActiveColor_UsesAuthoredAndProvidedColors()
         {
@@ -173,6 +194,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreEqual(new Color32(128, 128, 128, 255), visuals.DisabledColor);
         }
 
+        /// <summary>
+        /// Verifies leaf command pointer lifecycle enabled command selects and clears active state.
+        /// </summary>
         [Test]
         public void LeafCommandPointerLifecycle_EnabledCommand_SelectsAndClearsActiveState()
         {
@@ -196,6 +220,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.IsFalse(item.Active);
         }
 
+        /// <summary>
+        /// Verifies leaf command pointer click disabled or secondary click does not select.
+        /// </summary>
         [Test]
         public void LeafCommandPointerClick_DisabledOrSecondaryClick_DoesNotSelect()
         {
@@ -225,6 +252,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.IsFalse(item.Active);
         }
 
+        /// <summary>
+        /// Verifies parent command pointer enter submenu renders child panel and selects child.
+        /// </summary>
         [Test]
         public void ParentCommandPointerEnter_Submenu_RendersChildPanelAndSelectsChild()
         {
@@ -256,6 +286,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreSame(childCommand, selected);
         }
 
+        /// <summary>
+        /// Verifies parent command pointer enter with left side available opens submenu to the left.
+        /// </summary>
         [Test]
         public void ParentCommandPointerEnter_WithLeftSideAvailable_OpensSubmenuToTheLeft()
         {
@@ -279,6 +312,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.Greater(submenuRect.xMax, parentRect.x);
         }
 
+        /// <summary>
+        /// Verifies render current shorter replacement menu hides unused rows and panels.
+        /// </summary>
         [Test]
         public void RenderCurrent_ShorterReplacementMenu_HidesUnusedRowsAndPanels()
         {
@@ -316,6 +352,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.IsFalse(originalSubmenu.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies dismiss boundary open and closed menu raises only while open.
+        /// </summary>
         [Test]
         public void DismissBoundary_OpenAndClosedMenu_RaisesOnlyWhileOpen()
         {
@@ -339,6 +378,9 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
             Assert.AreSame(eventData, received);
         }
 
+        /// <summary>
+        /// Verifies try cancel open then closed menu resets and reports state transition.
+        /// </summary>
         [Test]
         public void TryCancel_OpenThenClosedMenu_ResetsAndReportsStateTransition()
         {

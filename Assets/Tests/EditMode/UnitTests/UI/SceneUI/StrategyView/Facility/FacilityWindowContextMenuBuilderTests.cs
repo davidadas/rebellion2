@@ -9,6 +9,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
     [TestFixture]
     public class FacilityWindowContextMenuBuilderTests
     {
+        /// <summary>
+        /// Verifies build manufacturing lane with queued items enables stop.
+        /// </summary>
         [Test]
         public void Build_ManufacturingLaneWithQueuedItems_EnablesStop()
         {
@@ -28,6 +31,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsTrue(stop.Enabled);
         }
 
+        /// <summary>
+        /// Verifies build manufacturing lane without queued items disables stop.
+        /// </summary>
         [Test]
         public void Build_ManufacturingLaneWithoutQueuedItems_DisablesStop()
         {
@@ -47,6 +53,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(stop.Enabled);
         }
 
+        /// <summary>
+        /// Verifies build manufacturing lane owned by another faction disables stop.
+        /// </summary>
         [Test]
         public void Build_ManufacturingLaneOwnedByAnotherFaction_DisablesStop()
         {
@@ -66,6 +75,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(stop.Enabled);
         }
 
+        /// <summary>
+        /// Verifies build unreserved manufacturing lane returns unchecked reservation command.
+        /// </summary>
+        /// <param name="manufacturingTab">The manufacturing tab.</param>
         [TestCase(FacilityWindowTab.Shipyards)]
         [TestCase(FacilityWindowTab.Training)]
         [TestCase(FacilityWindowTab.Construction)]
@@ -91,6 +104,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(reserve.UsesIconColumn);
         }
 
+        /// <summary>
+        /// Verifies build reserved manufacturing lane returns checked reservation command.
+        /// </summary>
+        /// <param name="manufacturingTab">The manufacturing tab.</param>
+        /// <param name="manufacturingType">The manufacturing type.</param>
         [TestCase(FacilityWindowTab.Shipyards, ManufacturingType.Ship)]
         [TestCase(FacilityWindowTab.Training, ManufacturingType.Troop)]
         [TestCase(FacilityWindowTab.Construction, ManufacturingType.Building)]
@@ -117,6 +135,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsTrue(reserve.UsesIconColumn);
         }
 
+        /// <summary>
+        /// Verifies build inventory item under construction returns enabled stop command.
+        /// </summary>
         [Test]
         public void Build_InventoryItemUnderConstruction_ReturnsEnabledStopCommand()
         {
@@ -138,6 +159,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsTrue(command.Enabled);
         }
 
+        /// <summary>
+        /// Verifies build completed inventory item returns enabled scrap command.
+        /// </summary>
         [Test]
         public void Build_CompletedInventoryItem_ReturnsEnabledScrapCommand()
         {
@@ -159,6 +183,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsTrue(command.Enabled);
         }
 
+        /// <summary>
+        /// Verifies build inventory item owned by another faction disables destructive command.
+        /// </summary>
         [Test]
         public void Build_InventoryItemOwnedByAnotherFaction_DisablesDestructiveCommand()
         {
@@ -179,6 +206,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(command.Enabled);
         }
 
+        /// <summary>
+        /// Verifies build no target returns no commands.
+        /// </summary>
         [Test]
         public void Build_NoTarget_ReturnsNoCommands()
         {

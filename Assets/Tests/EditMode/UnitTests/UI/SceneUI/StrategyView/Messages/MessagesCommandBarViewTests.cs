@@ -41,12 +41,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies render null data throws argument null exception.
+        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
+        /// <summary>
+        /// Verifies render projected buttons applies textures visibility and interaction.
+        /// </summary>
         [Test]
         public void Render_ProjectedButtons_AppliesTexturesVisibilityAndInteraction()
         {
@@ -74,6 +80,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsFalse(FindComponent<Button>("SignalButtonImage").interactable);
         }
 
+        /// <summary>
+        /// Verifies render faction specific button bounds applies every command layout.
+        /// </summary>
         [Test]
         public void Render_FactionSpecificButtonBounds_AppliesEveryCommandLayout()
         {
@@ -103,6 +112,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             AssertSourceRect("ChatCommandButtonImage", chatBounds);
         }
 
+        /// <summary>
+        /// Verifies command buttons press then click raise control before semantic requests.
+        /// </summary>
         [Test]
         public void CommandButtons_PressThenClick_RaiseControlBeforeSemanticRequests()
         {
@@ -158,6 +170,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(1, chatCount);
         }
 
+        /// <summary>
+        /// Verifies on destroy initialized view unbinds command controls.
+        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsCommandControls()
         {

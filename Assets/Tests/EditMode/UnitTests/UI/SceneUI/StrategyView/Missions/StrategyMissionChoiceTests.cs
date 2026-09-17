@@ -8,12 +8,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
     [TestFixture]
     public class StrategyMissionChoiceTests
     {
+        /// <summary>
+        /// Verifies constructor null option throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullOption_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new StrategyMissionChoice(null));
         }
 
+        /// <summary>
+        /// Verifies constructor research option preserves mission presentation.
+        /// </summary>
         [Test]
         public void Constructor_ResearchOption_PreservesMissionPresentation()
         {

@@ -18,6 +18,9 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             _library = TestContent.CreateThemeLibrary();
         }
 
+        /// <summary>
+        /// Verifies get theme configured faction returns exact theme.
+        /// </summary>
         [Test]
         public void GetTheme_ConfiguredFaction_ReturnsExactTheme()
         {
@@ -26,6 +29,9 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual("FNALL1", theme.FactionInstanceID);
         }
 
+        /// <summary>
+        /// Verifies get theme empty faction returns default theme.
+        /// </summary>
         [Test]
         public void GetTheme_EmptyFaction_ReturnsDefaultTheme()
         {
@@ -36,12 +42,18 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreSame(nullTheme, emptyTheme);
         }
 
+        /// <summary>
+        /// Verifies get theme unknown faction throws key not found exception.
+        /// </summary>
         [Test]
         public void GetTheme_UnknownFaction_ThrowsKeyNotFoundException()
         {
             Assert.Throws<KeyNotFoundException>(() => _library.GetTheme("missing-faction"));
         }
 
+        /// <summary>
+        /// Verifies try get theme unknown faction returns false.
+        /// </summary>
         [Test]
         public void TryGetTheme_UnknownFaction_ReturnsFalse()
         {
@@ -55,6 +67,9 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.IsNull(theme);
         }
 
+        /// <summary>
+        /// Verifies get theme strategy music contains faction track mappings and cadence.
+        /// </summary>
         [Test]
         public void GetTheme_StrategyMusicContainsFactionTrackMappingsAndCadence()
         {
@@ -106,6 +121,9 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual(50, allianceMusic.DisadvantageMaximumRatio);
         }
 
+        /// <summary>
+        /// Verifies get all themes mutated result does not change library contents.
+        /// </summary>
         [Test]
         public void GetAllThemes_MutatedResult_DoesNotChangeLibraryContents()
         {

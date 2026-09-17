@@ -46,18 +46,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null planet throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullPlanet_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new DefenseWindowSession(null, _window));
         }
 
+        /// <summary>
+        /// Verifies constructor null window throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullWindow_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new DefenseWindowSession(_mapPlanet, null));
         }
 
+        /// <summary>
+        /// Verifies reconcile mixed planet units maps items to authored tabs.
+        /// </summary>
         [Test]
         public void Reconcile_MixedPlanetUnits_MapsItemsToAuthoredTabs()
         {
@@ -122,6 +131,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
         }
 
+        /// <summary>
+        /// Verifies reconcile removed items clears interaction state.
+        /// </summary>
         [Test]
         public void Reconcile_RemovedItems_ClearsInteractionState()
         {
@@ -139,6 +151,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(-1, _session.ContextItemIndex);
         }
 
+        /// <summary>
+        /// Verifies select tab different authored tab changes tab and clears selection.
+        /// </summary>
         [Test]
         public void SelectTab_DifferentAuthoredTab_ChangesTabAndClearsSelection()
         {
@@ -154,6 +169,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(-1, _session.ContextItemIndex);
         }
 
+        /// <summary>
+        /// Verifies select tab current or unknown tab returns false.
+        /// </summary>
         [Test]
         public void SelectTab_CurrentOrUnknownTab_ReturnsFalse()
         {
@@ -165,6 +183,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(DefenseWindowTab.Personnel, _session.ActiveTab);
         }
 
+        /// <summary>
+        /// Verifies select single item valid item selects requested tab item.
+        /// </summary>
         [Test]
         public void SelectSingleItem_ValidItem_SelectsRequestedTabItem()
         {
@@ -180,6 +201,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             CollectionAssert.AreEqual(new ISceneNode[] { regiment }, _session.GetSelectedItems());
         }
 
+        /// <summary>
+        /// Verifies select single item invalid item returns false with empty selection.
+        /// </summary>
         [Test]
         public void SelectSingleItem_InvalidItem_ReturnsFalseWithEmptySelection()
         {
@@ -191,6 +215,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsEmpty(_session.GetSelectedItems());
         }
 
+        /// <summary>
+        /// Verifies try get item valid and invalid indexes returns expected result.
+        /// </summary>
         [Test]
         public void TryGetItem_ValidAndInvalidIndexes_ReturnsExpectedResult()
         {
@@ -207,6 +234,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNull(missingItem);
         }
 
+        /// <summary>
+        /// Verifies capture context item unselected item selects and captures item.
+        /// </summary>
         [Test]
         public void CaptureContextItem_UnselectedItem_SelectsAndCapturesItem()
         {
@@ -225,6 +255,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             CollectionAssert.AreEqual(new ISceneNode[] { second }, _session.GetSelectedItems());
         }
 
+        /// <summary>
+        /// Verifies capture context item invalid item clears context only.
+        /// </summary>
         [Test]
         public void CaptureContextItem_InvalidItem_ClearsContextOnly()
         {
@@ -242,6 +275,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             CollectionAssert.AreEqual(new ISceneNode[] { officer }, _session.GetSelectedItems());
         }
 
+        /// <summary>
+        /// Verifies prepare item selection valid item captures context.
+        /// </summary>
         [Test]
         public void PrepareItemSelection_ValidItem_CapturesContext()
         {
@@ -255,6 +291,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(0, _session.ContextItemIndex);
         }
 
+        /// <summary>
+        /// Verifies select item stationary regiment produces draggable selection.
+        /// </summary>
         [Test]
         public void SelectItem_StationaryRegiment_ProducesDraggableSelection()
         {
@@ -273,6 +312,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsTrue(_session.CanDragSelectedItems());
         }
 
+        /// <summary>
+        /// Verifies select item moving regiment produces non draggable selection.
+        /// </summary>
         [Test]
         public void SelectItem_MovingRegiment_ProducesNonDraggableSelection()
         {
@@ -292,6 +334,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsFalse(_session.CanDragSelectedItems());
         }
 
+        /// <summary>
+        /// Verifies can drag item movable unit and building returns expected eligibility.
+        /// </summary>
         [Test]
         public void CanDragItem_MovableUnitAndBuilding_ReturnsExpectedEligibility()
         {
@@ -307,6 +352,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsFalse(nullCanDrag);
         }
 
+        /// <summary>
+        /// Verifies rebind planet replacement items with same i ds preserves interaction targets.
+        /// </summary>
         [Test]
         public void RebindPlanet_ReplacementItemsWithSameIDs_PreservesInteractionTargets()
         {
@@ -335,6 +383,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(0, _session.ContextItemIndex);
         }
 
+        /// <summary>
+        /// Verifies clear selection active selection clears all interaction state.
+        /// </summary>
         [Test]
         public void ClearSelection_ActiveSelection_ClearsAllInteractionState()
         {

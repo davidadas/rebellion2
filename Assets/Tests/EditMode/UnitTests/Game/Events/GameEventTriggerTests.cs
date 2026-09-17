@@ -14,6 +14,9 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public class GameEventTriggerTests
     {
+        /// <summary>
+        /// Verifies triggers authored contracts round trip concrete types and bindings.
+        /// </summary>
         [Test]
         public void Triggers_AuthoredContracts_RoundTripConcreteTypesAndBindings()
         {
@@ -56,6 +59,9 @@ namespace Rebellion.Tests.Game.Events
 
         #region Planet
 
+        /// <summary>
+        /// Verifies matches planet ownership changed trigger applies ownership filters.
+        /// </summary>
         [Test]
         public void Matches_PlanetOwnershipChangedTrigger_AppliesOwnershipFilters()
         {
@@ -77,6 +83,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(trigger.Matches(result));
         }
 
+        /// <summary>
+        /// Verifies matches intelligence revealed trigger applies recipient and observation filters.
+        /// </summary>
         [Test]
         public void Matches_IntelligenceRevealedTrigger_AppliesRecipientAndObservationFilters()
         {
@@ -96,6 +105,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(trigger.Matches(result));
         }
 
+        /// <summary>
+        /// Verifies matches maintenance required trigger applies faction filter.
+        /// </summary>
         [Test]
         public void Matches_MaintenanceRequiredTrigger_AppliesFactionFilter()
         {
@@ -117,6 +129,9 @@ namespace Rebellion.Tests.Game.Events
 
         #region Officer
 
+        /// <summary>
+        /// Verifies matches officer capture changed trigger applies officer and state filters.
+        /// </summary>
         [Test]
         public void Matches_OfficerCaptureChangedTrigger_AppliesOfficerAndStateFilters()
         {
@@ -136,6 +151,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(trigger.Matches(result));
         }
 
+        /// <summary>
+        /// Verifies matches force discovery changed trigger applies officer and event type filters.
+        /// </summary>
         [Test]
         public void Matches_ForceDiscoveryChangedTrigger_AppliesOfficerAndEventTypeFilters()
         {
@@ -159,6 +177,9 @@ namespace Rebellion.Tests.Game.Events
 
         #region Unit Lifecycle
 
+        /// <summary>
+        /// Verifies matches unit arrived trigger applies identity and destination filters.
+        /// </summary>
         [Test]
         public void Matches_UnitArrivedTrigger_AppliesIdentityAndDestinationFilters()
         {
@@ -178,6 +199,11 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(trigger.Matches(result));
         }
 
+        /// <summary>
+        /// Checks whether the value matches unit destroyed trigger covers every destruction path.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <param name="reason">The reason.</param>
         [TestCaseSource(nameof(UnitDestructionResults))]
         public void Matches_UnitDestroyedTrigger_CoversEveryDestructionPath(
             GameObjectDestroyedResult result,
@@ -226,6 +252,9 @@ namespace Rebellion.Tests.Game.Events
 
         #region Combat
 
+        /// <summary>
+        /// Verifies matches duel completed trigger applies officer and source filters.
+        /// </summary>
         [Test]
         public void Matches_DuelCompletedTrigger_AppliesOfficerAndSourceFilters()
         {
@@ -247,6 +276,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(trigger.Matches(result));
         }
 
+        /// <summary>
+        /// Verifies matches bombardment completed trigger applies outcome filters.
+        /// </summary>
         [Test]
         public void Matches_BombardmentCompletedTrigger_AppliesOutcomeFilters()
         {
@@ -270,6 +302,9 @@ namespace Rebellion.Tests.Game.Events
 
         #endregion
 
+        /// <summary>
+        /// Verifies bind trigger argument exposes only authored value.
+        /// </summary>
         [Test]
         public void Bind_TriggerArgument_ExposesOnlyAuthoredValue()
         {

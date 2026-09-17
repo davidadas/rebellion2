@@ -42,6 +42,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies render authored geometry applies slot icon label and input bounds.
+        /// </summary>
         [Test]
         public void Render_AuthoredGeometry_AppliesSlotIconLabelAndInputBounds()
         {
@@ -68,6 +71,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsTrue(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies render derived geometry uses texture dimensions and centers icon.
+        /// </summary>
         [Test]
         public void Render_DerivedGeometry_UsesTextureDimensionsAndCentersIcon()
         {
@@ -90,6 +96,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             );
         }
 
+        /// <summary>
+        /// Verifies on pointer click left double click raises view event.
+        /// </summary>
         [Test]
         public void OnPointerClick_LeftDoubleClick_RaisesViewEvent()
         {
@@ -106,6 +115,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreSame(_view, requestedView);
         }
 
+        /// <summary>
+        /// Verifies on pointer click non activation gesture does not raise event.
+        /// </summary>
+        /// <param name="button">The button.</param>
+        /// <param name="clickCount">The click count.</param>
         [TestCase(PointerEventData.InputButton.Left, 1)]
         [TestCase(PointerEventData.InputButton.Right, 2)]
         [TestCase(PointerEventData.InputButton.Middle, 2)]

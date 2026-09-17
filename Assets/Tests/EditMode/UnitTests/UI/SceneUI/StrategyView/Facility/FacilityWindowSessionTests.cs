@@ -48,12 +48,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null window throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullWindow_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new FacilityWindowSession(null, _mapPlanet));
         }
 
+        /// <summary>
+        /// Verifies constructor planet projection without planet throws argument exception.
+        /// </summary>
         [Test]
         public void Constructor_PlanetProjectionWithoutPlanet_ThrowsArgumentException()
         {
@@ -68,6 +74,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies reconcile mixed facilities orders inventory and calculates display counts.
+        /// </summary>
         [Test]
         public void Reconcile_MixedFacilities_OrdersInventoryAndCalculatesDisplayCounts()
         {
@@ -91,6 +100,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(4, _session.GetDisplayCount(FacilityWindowTab.Mines));
         }
 
+        /// <summary>
+        /// Verifies reconcile removed context building clears selection and context.
+        /// </summary>
         [Test]
         public void Reconcile_RemovedContextBuilding_ClearsSelectionAndContext()
         {
@@ -108,6 +120,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsNull(_session.GetStatusBuilding());
         }
 
+        /// <summary>
+        /// Verifies select manufacturing card valid card selects semantic lane.
+        /// </summary>
         [Test]
         public void SelectManufacturingCard_ValidCard_SelectsSemanticLane()
         {
@@ -118,6 +133,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedCards);
         }
 
+        /// <summary>
+        /// Verifies select manufacturing card invalid card does not change selection.
+        /// </summary>
         [Test]
         public void SelectManufacturingCard_InvalidCard_DoesNotChangeSelection()
         {
@@ -129,6 +147,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedCards);
         }
 
+        /// <summary>
+        /// Verifies select manufacturing card for context different lane replaces selection.
+        /// </summary>
         [Test]
         public void SelectManufacturingCardForContext_DifferentLane_ReplacesSelection()
         {
@@ -141,6 +162,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             CollectionAssert.AreEqual(new[] { 1 }, _session.SelectedCards);
         }
 
+        /// <summary>
+        /// Verifies set active tab different tab clears manufacturing selection and context.
+        /// </summary>
         [Test]
         public void SetActiveTab_DifferentTab_ClearsManufacturingSelectionAndContext()
         {
@@ -155,6 +179,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsNull(_session.GetContextManufacturingTab());
         }
 
+        /// <summary>
+        /// Verifies select building valid index selects building by identity.
+        /// </summary>
         [Test]
         public void SelectBuilding_ValidIndex_SelectsBuildingByIdentity()
         {
@@ -173,6 +200,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreSame(alpha, _session.GetInventoryBuilding(0));
         }
 
+        /// <summary>
+        /// Verifies select building invalid index preserves selection.
+        /// </summary>
         [Test]
         public void SelectBuilding_InvalidIndex_PreservesSelection()
         {
@@ -188,6 +218,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             CollectionAssert.AreEqual(new[] { building }, _session.GetSelectedBuildings());
         }
 
+        /// <summary>
+        /// Verifies select building known building navigates to inventory tab.
+        /// </summary>
         [Test]
         public void SelectBuilding_KnownBuilding_NavigatesToInventoryTab()
         {
@@ -203,6 +236,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             CollectionAssert.AreEqual(new[] { refinery }, _session.GetSelectedBuildings());
         }
 
+        /// <summary>
+        /// Verifies select building building outside tab returns false.
+        /// </summary>
         [Test]
         public void SelectBuilding_BuildingOutsideTab_ReturnsFalse()
         {
@@ -217,6 +253,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsEmpty(_session.SelectedBuildingIds);
         }
 
+        /// <summary>
+        /// Verifies select building for context unselected building replaces selection.
+        /// </summary>
         [Test]
         public void SelectBuildingForContext_UnselectedBuilding_ReplacesSelection()
         {
@@ -235,6 +274,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreSame(beta, _session.GetStatusBuilding());
         }
 
+        /// <summary>
+        /// Verifies rebind planet replacement building with same id preserves selection.
+        /// </summary>
         [Test]
         public void RebindPlanet_ReplacementBuildingWithSameID_PreservesSelection()
         {
@@ -262,6 +304,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             CollectionAssert.AreEqual(new[] { replacement }, _session.GetSelectedBuildings());
         }
 
+        /// <summary>
+        /// Verifies get destination without override returns represented planet.
+        /// </summary>
         [Test]
         public void GetDestination_WithoutOverride_ReturnsRepresentedPlanet()
         {
@@ -271,6 +316,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsNull(itemId);
         }
 
+        /// <summary>
+        /// Verifies set destination valid pair returns stored destination.
+        /// </summary>
         [Test]
         public void SetDestination_ValidPair_ReturnsStoredDestination()
         {
@@ -286,6 +334,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual("fleet", itemId);
         }
 
+        /// <summary>
+        /// Verifies set destination empty planet id throws argument exception.
+        /// </summary>
         [Test]
         public void SetDestination_EmptyPlanetID_ThrowsArgumentException()
         {
@@ -294,6 +345,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
+        /// <summary>
+        /// Verifies clear context selected building preserves selection.
+        /// </summary>
         [Test]
         public void ClearContext_SelectedBuilding_PreservesSelection()
         {
@@ -310,6 +364,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsNull(_session.GetContextBuilding());
         }
 
+        /// <summary>
+        /// Verifies clear selection selected building clears selection and context.
+        /// </summary>
         [Test]
         public void ClearSelection_SelectedBuilding_ClearsSelectionAndContext()
         {

@@ -34,6 +34,9 @@ namespace Rebellion.Tests.Game.Units
             };
         }
 
+        /// <summary>
+        /// Verifies get manufacturing type for regiment returns troop.
+        /// </summary>
         [Test]
         public void GetManufacturingType_ForRegiment_ReturnsTroop()
         {
@@ -46,6 +49,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies is movable when in transit returns false.
+        /// </summary>
         [Test]
         public void IsMovable_WhenInTransit_ReturnsFalse()
         {
@@ -56,6 +62,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(isMovable, "Regiment should not be movable when already in transit");
         }
 
+        /// <summary>
+        /// Verifies is movable when idle returns true.
+        /// </summary>
         [Test]
         public void IsMovable_WhenIdle_ReturnsTrue()
         {
@@ -66,6 +75,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(isMovable, "Regiment should be movable when idle");
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize with populated regiment maintains state.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_WithPopulatedRegiment_MaintainsState()
         {
@@ -150,6 +162,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies attack rating set and get returns expected value.
+        /// </summary>
         [Test]
         public void AttackRating_SetAndGet_ReturnsExpectedValue()
         {
@@ -158,6 +173,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(75, _regiment.AttackRating, "AttackRating should return the set value");
         }
 
+        /// <summary>
+        /// Verifies defense rating set and get returns expected value.
+        /// </summary>
         [Test]
         public void DefenseRating_SetAndGet_ReturnsExpectedValue()
         {
@@ -170,6 +188,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies detection rating set and get returns expected value.
+        /// </summary>
         [Test]
         public void DetectionRating_SetAndGet_ReturnsExpectedValue()
         {
@@ -182,6 +203,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies bombardment defense set and get returns expected value.
+        /// </summary>
         [Test]
         public void BombardmentDefense_SetAndGet_ReturnsExpectedValue()
         {
@@ -194,6 +218,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies manufacturing progress initial value is zero.
+        /// </summary>
         [Test]
         public void ManufacturingProgress_InitialValue_IsZero()
         {
@@ -206,6 +233,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies manufacturing progress increment increases value.
+        /// </summary>
         [Test]
         public void ManufacturingProgress_Increment_IncreasesValue()
         {
@@ -219,6 +249,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies manufacturing progress set to construction cost completes building.
+        /// </summary>
         [Test]
         public void ManufacturingProgress_SetToConstructionCost_CompletesBuilding()
         {
@@ -231,6 +264,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies manufacturing status default value is building.
+        /// </summary>
         [Test]
         public void ManufacturingStatus_DefaultValue_IsBuilding()
         {
@@ -243,6 +279,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies manufacturing status transition to built updates status.
+        /// </summary>
         [Test]
         public void ManufacturingStatus_TransitionToBuilt_UpdatesStatus()
         {
@@ -255,6 +294,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies manufacturing status transition from building to built is valid.
+        /// </summary>
         [Test]
         public void ManufacturingStatus_TransitionFromBuildingToBuilt_IsValid()
         {
@@ -268,6 +310,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies producer owner id set and get returns expected value.
+        /// </summary>
         [Test]
         public void ProducerOwnerID_SetAndGet_ReturnsExpectedValue()
         {
@@ -280,6 +325,9 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
+        /// <summary>
+        /// Verifies producer owner id different from owner can be set.
+        /// </summary>
         [Test]
         public void ProducerOwnerID_DifferentFromOwner_CanBeSet()
         {

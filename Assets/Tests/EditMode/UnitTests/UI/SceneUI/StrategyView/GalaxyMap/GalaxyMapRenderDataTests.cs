@@ -31,6 +31,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_secondTexture);
         }
 
+        /// <summary>
+        /// Verifies active filter label null text returns invisible empty label.
+        /// </summary>
         [Test]
         public void ActiveFilterLabel_NullText_ReturnsInvisibleEmptyLabel()
         {
@@ -45,6 +48,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(string.Empty, data.Text);
         }
 
+        /// <summary>
+        /// Verifies star null planet identifier normalizes to empty string.
+        /// </summary>
         [Test]
         public void Star_NullPlanetIdentifier_NormalizesToEmptyString()
         {
@@ -59,6 +65,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(string.Empty, data.PlanetInstanceId);
         }
 
+        /// <summary>
+        /// Verifies cluster missing sector identifier throws argument exception.
+        /// </summary>
         [Test]
         public void Cluster_MissingSectorIdentifier_ThrowsArgumentException()
         {
@@ -67,6 +76,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies cluster source changes preserves normalized snapshot.
+        /// </summary>
         [Test]
         public void Cluster_SourceChanges_PreservesNormalizedSnapshot()
         {
@@ -97,6 +109,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreSame(star, data.Stars[0]);
         }
 
+        /// <summary>
+        /// Verifies map source changes preserves complete snapshot.
+        /// </summary>
         [Test]
         public void Map_SourceChanges_PreservesCompleteSnapshot()
         {
@@ -136,6 +151,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
+        /// <summary>
+        /// Verifies map null clusters returns empty snapshot.
+        /// </summary>
         [Test]
         public void Map_NullClusters_ReturnsEmptySnapshot()
         {

@@ -6,6 +6,9 @@ namespace Rebellion.Tests.Game.Messages
     [TestFixture]
     public class StatusMessageTests
     {
+        /// <summary>
+        /// Verifies constructor with type and body initializes message.
+        /// </summary>
         [Test]
         public void Constructor_WithTypeAndBody_InitializesMessage()
         {
@@ -17,6 +20,9 @@ namespace Rebellion.Tests.Game.Messages
             Assert.IsFalse(message.Read);
         }
 
+        /// <summary>
+        /// Verifies serialize and deserialize status message maintains concrete type.
+        /// </summary>
         [Test]
         public void SerializeAndDeserialize_StatusMessage_MaintainsConcreteType()
         {

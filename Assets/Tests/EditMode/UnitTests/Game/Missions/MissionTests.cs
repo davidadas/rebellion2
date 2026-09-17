@@ -15,6 +15,9 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class MissionTests
     {
+        /// <summary>
+        /// Verifies get children participant assigned before mission initiates returns participant.
+        /// </summary>
         [Test]
         public void GetMissionOdds_AIControlledFaction_AppliesDifficultyModifier()
         {
@@ -87,6 +90,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(copy, copiedParticipant.GetParent());
         }
 
+        /// <summary>
+        /// Verifies constructor participant lists changed by caller preserves mission assignments.
+        /// </summary>
         [Test]
         public void Constructor_ParticipantListsChangedByCaller_PreservesMissionAssignments()
         {
@@ -116,6 +122,9 @@ namespace Rebellion.Tests.Game.Missions
             CollectionAssert.AreEqual(new[] { decoy }, mission.GetDecoyParticipants());
         }
 
+        /// <summary>
+        /// Verifies get abort reason main participant removed returns failure.
+        /// </summary>
         [Test]
         public void GetAbortReason_MainParticipantRemoved_ReturnsFailure()
         {
@@ -155,6 +164,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies get abort reason main participant unchanged returns null.
+        /// </summary>
         [Test]
         public void GetAbortReason_MainParticipantUnchanged_ReturnsNull()
         {
@@ -191,6 +203,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies get abort reason decoy participant removed returns null.
+        /// </summary>
         [Test]
         public void GetAbortReason_DecoyParticipantRemoved_ReturnsNull()
         {
@@ -221,6 +236,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission.GetAbortReason(game));
         }
 
+        /// <summary>
+        /// Verifies resolve objective success outcome includes mission completed result with mission instance id.
+        /// </summary>
         [Test]
         public void ResolveObjective_SuccessOutcome_IncludesMissionCompletedResultWithMissionInstanceID()
         {
@@ -251,6 +269,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(mission.InstanceID, completed.MissionInstanceID);
         }
 
+        /// <summary>
+        /// Verifies resolve objective fail outcome always includes mission completed result.
+        /// </summary>
         [Test]
         public void ResolveObjective_FailOutcome_AlwaysIncludesMissionCompletedResult()
         {
@@ -283,6 +304,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective successful mission improves only successful participant rating.
+        /// </summary>
         [Test]
         public void ResolveObjective_SuccessfulMission_ImprovesOnlySuccessfulParticipantRating()
         {
@@ -320,6 +344,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective failed success roll returns failed.
+        /// </summary>
         [Test]
         public void ResolveObjective_FailedSuccessRoll_ReturnsFailed()
         {
@@ -356,6 +383,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective officer attempt fails special forces can succeed.
+        /// </summary>
         [Test]
         public void ResolveObjective_OfficerAttemptFails_SpecialForcesCanSucceed()
         {
@@ -404,6 +434,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies resolve objective multiple officers tries stronger officer after weakest fails.
+        /// </summary>
         [Test]
         public void ResolveObjective_MultipleOfficers_TriesStrongerOfficerAfterWeakestFails()
         {
@@ -449,6 +482,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(target.InstanceID));
         }
 
+        /// <summary>
+        /// Verifies resolve objective officers on same probability plateau preserves selection order.
+        /// </summary>
         [Test]
         public void ResolveObjective_OfficersOnSameProbabilityPlateau_PreservesSelectionOrder()
         {
@@ -489,6 +525,9 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies can accept child with mission participant returns true.
+        /// </summary>
         [Test]
         public void CanAcceptChild_WithMissionParticipant_ReturnsTrue()
         {
@@ -515,6 +554,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(mission.CanAcceptChild(other));
         }
 
+        /// <summary>
+        /// Verifies can accept child non participant returns false.
+        /// </summary>
         [Test]
         public void CanAcceptChild_NonParticipant_ReturnsFalse()
         {
@@ -546,6 +588,9 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(mission.CanAcceptChild(building));
         }
 
+        /// <summary>
+        /// Verifies serialize round trip active mission preserves participant scene graph.
+        /// </summary>
         [Test]
         public void Serialize_RoundTripActiveMission_PreservesParticipantSceneGraph()
         {

@@ -12,6 +12,9 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public sealed class GameActionTests
     {
+        /// <summary>
+        /// Verifies execute all action throws executes remaining actions.
+        /// </summary>
         [Test]
         public void ExecuteAll_ActionThrows_ExecutesRemainingActions()
         {

@@ -67,6 +67,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies constructor null required dependency throws argument null exception.
+        /// </summary>
         [Test]
         public void Constructor_NullRequiredDependency_ThrowsArgumentNullException()
         {
@@ -94,12 +97,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
         }
 
+        /// <summary>
+        /// Verifies bind window null view throws argument null exception.
+        /// </summary>
         [Test]
         public void BindWindow_NullView_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _controller.BindWindow(null));
         }
 
+        /// <summary>
+        /// Verifies open scrap valid selection creates modal session plays prompt and marks dirty.
+        /// </summary>
         [Test]
         public void OpenScrap_ValidSelection_CreatesModalSessionPlaysPromptAndMarksDirty()
         {
@@ -119,6 +128,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
         }
 
+        /// <summary>
+        /// Verifies render windows open scrap renders prompt selection and configured artwork.
+        /// </summary>
         [Test]
         public void RenderWindows_OpenScrap_RendersPromptSelectionAndConfiguredArtwork()
         {
@@ -140,6 +152,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsTrue(view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies cancel button open scrap closes without invoking action.
+        /// </summary>
         [Test]
         public void CancelButton_OpenScrap_ClosesWithoutInvokingAction()
         {
@@ -151,6 +166,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(0, _confirmedCount);
         }
 
+        /// <summary>
+        /// Verifies confirm button open scrap invokes action and closes dialog.
+        /// </summary>
         [Test]
         public void ConfirmButton_OpenScrap_InvokesActionAndClosesDialog()
         {
@@ -162,6 +180,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreSame(window, _requestedCloseWindow);
         }
 
+        /// <summary>
+        /// Verifies confirm button repeated choice invokes action once.
+        /// </summary>
         [Test]
         public void ConfirmButton_RepeatedChoice_InvokesActionOnce()
         {
@@ -174,6 +195,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(1, _confirmedCount);
         }
 
+        /// <summary>
+        /// Verifies open stop construction null action does not keep window or play audio.
+        /// </summary>
         [Test]
         public void OpenStopConstruction_NullAction_DoesNotKeepWindowOrPlayAudio()
         {
@@ -183,6 +207,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsEmpty(_playedSounds);
         }
 
+        /// <summary>
+        /// Verifies open stop construction selection renders prompt and plays stop sound.
+        /// </summary>
         [Test]
         public void OpenStopConstruction_Selection_RendersPromptAndPlaysStopSound()
         {
@@ -212,6 +239,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open retire selection renders prompt and plays retire sound.
+        /// </summary>
         [Test]
         public void OpenRetire_Selection_RendersPromptAndPlaysRetireSound()
         {
@@ -237,6 +267,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open move selection renders provided transit time without prompt sound.
+        /// </summary>
         [Test]
         public void OpenMove_Selection_RendersProvidedTransitTimeWithoutPromptSound()
         {
@@ -254,6 +287,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies open mission abort mission renders original prompt without prompt sound.
+        /// </summary>
         [Test]
         public void OpenMissionAbort_Mission_RendersOriginalPromptWithoutPromptSound()
         {
@@ -273,6 +309,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        /// <summary>
+        /// Verifies view destroyed initialized session releases session state.
+        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesSessionState()
         {

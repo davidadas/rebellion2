@@ -58,6 +58,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Object.DestroyImmediate(_windowObject);
         }
 
+        /// <summary>
+        /// Verifies set items reordered templates preserves selection by type id.
+        /// </summary>
         [Test]
         public void SetItems_ReorderedTemplates_PreservesSelectionByTypeID()
         {
@@ -73,6 +76,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreSame(selectedReplacement, _session.SelectedItem);
         }
 
+        /// <summary>
+        /// Verifies reinitialize different manufacturing tab resets dialog state.
+        /// </summary>
         [Test]
         public void Reinitialize_DifferentManufacturingTab_ResetsDialogState()
         {
@@ -94,6 +100,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsEmpty(_session.Items);
         }
 
+        /// <summary>
+        /// Verifies try update destination matching source and manufacturing type updates destination.
+        /// </summary>
         [Test]
         public void TryUpdateDestination_MatchingSourceAndManufacturingType_UpdatesDestination()
         {
@@ -111,6 +120,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual("new-item", _session.DestinationItemId);
         }
 
+        /// <summary>
+        /// Verifies dismiss dropdown open dropdown closes and returns true.
+        /// </summary>
         [Test]
         public void DismissDropdown_OpenDropdown_ClosesAndReturnsTrue()
         {
@@ -122,6 +134,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsFalse(_session.DropdownOpen);
         }
 
+        /// <summary>
+        /// Verifies set build count value clamps to supported range.
+        /// </summary>
+        /// <param name="value">The value.</param>
+        /// <param name="expected">The expected.</param>
         [TestCase(0, 1)]
         [TestCase(17, 17)]
         [TestCase(256, byte.MaxValue)]

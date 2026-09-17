@@ -39,6 +39,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             UnityEngine.Object.DestroyImmediate(_gameObject);
         }
 
+        /// <summary>
+        /// Verifies awake missing serialized strategy controller throws missing reference exception.
+        /// </summary>
         [Test]
         public void Awake_MissingSerializedStrategyController_ThrowsMissingReferenceException()
         {
@@ -49,6 +52,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
+        /// <summary>
+        /// Verifies awake composed strategy controller does not throw.
+        /// </summary>
         [Test]
         public void Awake_ComposedStrategyController_DoesNotThrow()
         {
@@ -57,6 +63,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.DoesNotThrow(() => UIComponentTestHelper.InvokeLifecycle(_controller, "Awake"));
         }
 
+        /// <summary>
+        /// Verifies reset composed game object assigns strategy controller reference.
+        /// </summary>
         [Test]
         public void Reset_ComposedGameObject_AssignsStrategyControllerReference()
         {
@@ -65,6 +74,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreSame(_strategyController, GetField<StrategyController>("strategyController"));
         }
 
+        /// <summary>
+        /// Verifies advance active tick with remaining step retains tick until following frame.
+        /// </summary>
         [Test]
         public void AdvanceActiveTick_WithRemainingStep_RetainsTickUntilFollowingFrame()
         {
@@ -80,6 +92,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsNull(GetField<IEnumerator>("activeTick"));
         }
 
+        /// <summary>
+        /// Verifies get campaign ending cutscene path player won returns configured victory movie.
+        /// </summary>
         [Test]
         public void GetCampaignEndingCutscenePath_PlayerWon_ReturnsConfiguredVictoryMovie()
         {
@@ -100,6 +115,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual("alliance-victory", path);
         }
 
+        /// <summary>
+        /// Verifies get campaign ending cutscene path player lost returns configured defeat movie.
+        /// </summary>
         [Test]
         public void GetCampaignEndingCutscenePath_PlayerLost_ReturnsConfiguredDefeatMovie()
         {
@@ -120,6 +138,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual("alliance-defeat", path);
         }
 
+        /// <summary>
+        /// Verifies get headquarters destroyed cutscene path headquarters lost returns defender movie.
+        /// </summary>
         [Test]
         public void GetHeadquartersDestroyedCutscenePath_HeadquartersLost_ReturnsDefenderMovie()
         {
@@ -144,6 +165,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual("defender-headquarters-destroyed", path);
         }
 
+        /// <summary>
+        /// Verifies get headquarters destroyed cutscene path missing defender theme returns null.
+        /// </summary>
         [Test]
         public void GetHeadquartersDestroyedCutscenePath_MissingDefenderTheme_ReturnsNull()
         {
@@ -160,6 +184,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsNull(path);
         }
 
+        /// <summary>
+        /// Verifies handle victory declared missing player theme still schedules campaign finish.
+        /// </summary>
         [Test]
         public void HandleVictoryDeclared_MissingPlayerTheme_StillSchedulesCampaignFinish()
         {
@@ -190,12 +217,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsEmpty(GetField<Queue<string>>("cutsceneQueue"));
         }
 
+        /// <summary>
+        /// Verifies update no active game does not throw.
+        /// </summary>
         [Test]
         public void Update_NoActiveGame_DoesNotThrow()
         {
             Assert.DoesNotThrow(() => InvokePrivate("Update"));
         }
 
+        /// <summary>
+        /// Verifies that disabling briefings overrides an otherwise valid opening request.
+        /// </summary>
         [Test]
         public void ShouldPlayOpeningBriefing_BriefingsDisabled_ReturnsFalse()
         {
@@ -208,6 +241,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsFalse(shouldPlay);
         }
 
+        /// <summary>
+        /// Verifies that an enabled, uncompleted opening briefing still plays when requested.
+        /// </summary>
         [Test]
         public void ShouldPlayOpeningBriefing_BriefingsEnabledAndUncompleted_ReturnsTrue()
         {
@@ -220,6 +256,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsTrue(shouldPlay);
         }
 
+        /// <summary>
+        /// Verifies that new-game startup rejects a missing launch summary.
+        /// </summary>
         [Test]
         public void StartNewGameAsync_MissingSummary_ThrowsInvalidOperationException()
         {
@@ -242,6 +281,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies load game missing file name throws invalid operation exception.
+        /// </summary>
         [Test]
         public void LoadGame_MissingFileName_ThrowsInvalidOperationException()
         {
@@ -262,6 +304,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        /// <summary>
+        /// Verifies that faction introduction playback rejects a missing faction.
+        /// </summary>
         [Test]
         public void PlayFactionIntroAsync_NullFaction_ThrowsInvalidOperationException()
         {
@@ -272,6 +317,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
         }
 
+        /// <summary>
+        /// Verifies disabled introductions have no asynchronous presentation gate.
+        /// </summary>
         [Test]
         public void PlayFactionIntroAsync_IntroDisabled_ReturnsCompletedTask()
         {

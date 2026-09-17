@@ -32,6 +32,9 @@ namespace Rebellion.Tests.Sectors
             _system = new GameEventSystem(_game, new FixedRandomProvider(new[] { 0.5 }));
         }
 
+        /// <summary>
+        /// Verifies validate events multiple schedule modes throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ValidateEvents_MultipleScheduleModes_ThrowsInvalidOperationException()
         {
@@ -50,6 +53,9 @@ namespace Rebellion.Tests.Sectors
             Assert.Throws<InvalidOperationException>(validate);
         }
 
+        /// <summary>
+        /// Verifies validate events one shot schedule without maximum activations does not throw.
+        /// </summary>
         [Test]
         public void ValidateEvents_OneShotScheduleWithoutMaximumActivations_DoesNotThrow()
         {
@@ -62,6 +68,9 @@ namespace Rebellion.Tests.Sectors
             Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
         }
 
+        /// <summary>
+        /// Verifies validate events duplicate binding alias throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ValidateEvents_DuplicateBindingAlias_ThrowsInvalidOperationException()
         {
@@ -89,6 +98,9 @@ namespace Rebellion.Tests.Sectors
             StringAssert.Contains("duplicate binding alias 'target'", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies validate events binding without alias throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ValidateEvents_BindingWithoutAlias_ThrowsInvalidOperationException()
         {
@@ -112,6 +124,9 @@ namespace Rebellion.Tests.Sectors
             StringAssert.Contains("missing alias", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies validate events binding without source throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ValidateEvents_BindingWithoutSource_ThrowsInvalidOperationException()
         {
@@ -129,6 +144,9 @@ namespace Rebellion.Tests.Sectors
             StringAssert.Contains("requires exactly one source", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies validate events multiple triggers with different aliases throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ValidateEvents_MultipleTriggersWithDifferentAliases_ThrowsInvalidOperationException()
         {
@@ -148,6 +166,9 @@ namespace Rebellion.Tests.Sectors
             StringAssert.Contains("same trigger bindings and value types", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies validate events multiple filtered triggers with same alias does not throw.
+        /// </summary>
         [Test]
         public void ValidateEvents_MultipleFilteredTriggersWithSameAlias_DoesNotThrow()
         {
@@ -172,6 +193,9 @@ namespace Rebellion.Tests.Sectors
             Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
         }
 
+        /// <summary>
+        /// Verifies validate events dependency completed and removed from pool does not throw.
+        /// </summary>
         [Test]
         public void ValidateEvents_DependencyCompletedAndRemovedFromPool_DoesNotThrow()
         {
@@ -188,6 +212,9 @@ namespace Rebellion.Tests.Sectors
             Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
         }
 
+        /// <summary>
+        /// Verifies validate events dependency missing from pool and not completed throws invalid operation exception.
+        /// </summary>
         [Test]
         public void ValidateEvents_DependencyMissingFromPoolAndNotCompleted_ThrowsInvalidOperationException()
         {
@@ -207,6 +234,9 @@ namespace Rebellion.Tests.Sectors
             StringAssert.Contains("references unknown event 'UNKNOWN_EVENT'", exception.Message);
         }
 
+        /// <summary>
+        /// Verifies process events unmet one shot event remains pending.
+        /// </summary>
         [Test]
         public void ProcessEvents_UnmetOneShotEvent_RemainsPending()
         {
@@ -220,6 +250,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
+        /// <summary>
+        /// Verifies process events met one shot event completes and leaves pool.
+        /// </summary>
         [Test]
         public void ProcessEvents_MetOneShotEvent_CompletesAndLeavesPool()
         {
@@ -233,6 +266,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
+        /// <summary>
+        /// Verifies process events met repeatable event completes and remains active.
+        /// </summary>
         [Test]
         public void ProcessEvents_MetRepeatableEvent_CompletesAndRemainsActive()
         {
@@ -246,6 +282,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
+        /// <summary>
+        /// Verifies process events recurring schedule until met completes and removes event.
+        /// </summary>
         [Test]
         public void ProcessEvents_RecurringScheduleUntilMet_CompletesAndRemovesEvent()
         {
@@ -275,6 +314,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
         }
 
+        /// <summary>
+        /// Verifies process events recurring schedule until met uses evaluation binding.
+        /// </summary>
         [Test]
         public void ProcessEvents_RecurringScheduleUntilMet_UsesEvaluationBinding()
         {
@@ -334,6 +376,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
         }
 
+        /// <summary>
+        /// Verifies process events maximum activations five activates five times.
+        /// </summary>
         [Test]
         public void ProcessEvents_MaximumActivationsFive_ActivatesFiveTimes()
         {
@@ -348,6 +393,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(5, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
+        /// <summary>
+        /// Verifies process events maximum activations three activates three times.
+        /// </summary>
         [Test]
         public void ProcessEvents_MaximumActivationsThree_ActivatesThreeTimes()
         {
@@ -362,6 +410,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(3, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
+        /// <summary>
+        /// Verifies process events random delay waits until rolled absolute tick.
+        /// </summary>
         [Test]
         public void ProcessEvents_RandomDelay_WaitsUntilRolledAbsoluteTick()
         {
@@ -386,6 +437,9 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies process events repeat delay prevents activation until cooldown expires.
+        /// </summary>
         [Test]
         public void ProcessEvents_RepeatDelay_PreventsActivationUntilCooldownExpires()
         {
@@ -404,6 +458,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
+        /// <summary>
+        /// Verifies process events after schedule delays from predecessor activation.
+        /// </summary>
         [Test]
         public void ProcessEvents_AfterSchedule_DelaysFromPredecessorActivation()
         {
@@ -427,6 +484,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
+        /// <summary>
+        /// Verifies process events after all schedule before final delay keeps event pending.
+        /// </summary>
         [Test]
         public void ProcessEvents_AfterAllScheduleBeforeFinalDelay_KeepsEventPending()
         {
@@ -439,6 +499,9 @@ namespace Rebellion.Tests.Sectors
             Assert.Contains(pending, _game.GetEventPool());
         }
 
+        /// <summary>
+        /// Verifies process events after all schedule at final delay activates event.
+        /// </summary>
         [Test]
         public void ProcessEvents_AfterAllScheduleAtFinalDelay_ActivatesEvent()
         {
@@ -451,6 +514,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
+        /// <summary>
+        /// Verifies process events after any schedule before first delay keeps event pending.
+        /// </summary>
         [Test]
         public void ProcessEvents_AfterAnyScheduleBeforeFirstDelay_KeepsEventPending()
         {
@@ -463,6 +529,9 @@ namespace Rebellion.Tests.Sectors
             Assert.Contains(pending, _game.GetEventPool());
         }
 
+        /// <summary>
+        /// Verifies process events after any schedule at first delay activates event.
+        /// </summary>
         [Test]
         public void ProcessEvents_AfterAnyScheduleAtFirstDelay_ActivatesEvent()
         {
@@ -475,6 +544,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
+        /// <summary>
+        /// Verifies process events result triggered event does not run during scheduled polling.
+        /// </summary>
         [Test]
         public void ProcessEvents_ResultTriggeredEvent_DoesNotRunDuringScheduledPolling()
         {
@@ -495,6 +567,9 @@ namespace Rebellion.Tests.Sectors
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
         }
 
+        /// <summary>
+        /// Verifies process events targeted planet uses one persisted schedule.
+        /// </summary>
         [Test]
         public void ProcessEvents_TargetedPlanet_UsesOnePersistedSchedule()
         {
@@ -549,6 +624,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(30, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
         }
 
+        /// <summary>
+        /// Verifies process events each owned planet target arms when neutral planet becomes owned.
+        /// </summary>
         [Test]
         public void ProcessEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
         {
@@ -594,6 +672,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, state.ActivationCount);
         }
 
+        /// <summary>
+        /// Verifies process events each owned planet target rearms after neutral interval.
+        /// </summary>
         [Test]
         public void ProcessEvents_EachOwnedPlanetTarget_RearmsAfterNeutralInterval()
         {
@@ -642,6 +723,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, state.ActivationCount);
         }
 
+        /// <summary>
+        /// Verifies process events one shot target activates target once.
+        /// </summary>
         [Test]
         public void ProcessEvents_OneShotTarget_ActivatesTargetOnce()
         {
@@ -671,6 +755,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("scope.planet"));
         }
 
+        /// <summary>
+        /// Verifies process events random target before scheduled tick does not select target.
+        /// </summary>
         [Test]
         public void ProcessEvents_RandomTargetBeforeScheduledTick_DoesNotSelectTarget()
         {
@@ -715,6 +802,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(10, state.NextEligibleTick);
         }
 
+        /// <summary>
+        /// Verifies handle results matching encounter activates result triggered event once.
+        /// </summary>
         [Test]
         public void HandleResults_MatchingEncounter_ActivatesResultTriggeredEventOnce()
         {
@@ -749,6 +839,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
+        /// <summary>
+        /// Verifies handle results stable trigger id activates without clr type name.
+        /// </summary>
         [Test]
         public void HandleResults_StableTriggerId_ActivatesWithoutClrTypeName()
         {
@@ -785,6 +878,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("arrival.triggered"));
         }
 
+        /// <summary>
+        /// Verifies handle results second unit arrived alternative matches activates once.
+        /// </summary>
         [Test]
         public void HandleResults_SecondUnitArrivedAlternativeMatches_ActivatesOnce()
         {
@@ -811,6 +907,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
+        /// <summary>
+        /// Verifies handle results matching optional source binding activates event.
+        /// </summary>
         [Test]
         public void HandleResults_MatchingOptionalSourceBinding_ActivatesEvent()
         {
@@ -835,6 +934,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("source.arrival.triggered"));
         }
 
+        /// <summary>
+        /// Verifies handle results without suppression preserves trigger and sibling messages.
+        /// </summary>
         [Test]
         public void HandleResults_WithoutSuppression_PreservesTriggerAndSiblingMessages()
         {
@@ -860,6 +962,9 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(reactions);
         }
 
+        /// <summary>
+        /// Verifies handle results repeatable encounter effect activates for every encounter.
+        /// </summary>
         [Test]
         public void HandleResults_RepeatableEncounterEffect_ActivatesForEveryEncounter()
         {
@@ -900,6 +1005,9 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
+        /// <summary>
+        /// Verifies execute nested actions later action observes earlier result.
+        /// </summary>
         [Test]
         public void Execute_NestedActions_LaterActionObservesEarlierResult()
         {
