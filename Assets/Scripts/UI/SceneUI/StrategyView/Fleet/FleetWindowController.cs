@@ -902,7 +902,7 @@ public sealed class FleetWindowController
     }
 
     /// <summary>
-    /// Handles a drop over one detail card as a targeting selection.
+    /// Handles a drop over one detail card using the pane's selected fleet destination.
     /// </summary>
     /// <param name="view">The source fleet view.</param>
     /// <param name="itemIndex">The drop detail-card index.</param>
@@ -913,11 +913,8 @@ public sealed class FleetWindowController
         PointerEventData eventData
     )
     {
-        if (
-            TryGetSession(view, out FleetWindowSession session)
-            && session.TryGetDetailItem(itemIndex, out ISceneNode item)
-        )
-            HandleItemDropped(session, item);
+        if (TryGetSession(view, out FleetWindowSession session))
+            HandleItemDropped(session, session.SelectedFleet);
     }
 
     /// <summary>
