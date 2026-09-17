@@ -563,10 +563,10 @@ namespace Rebellion.Tests.Systems
         }
 
         /// <summary>
-        /// Verifies process tick production building removed stops progress.
+        /// Verifies process tick production building removed cancels queued work.
         /// </summary>
         [Test]
-        public void ProcessTick_ProductionBuildingRemoved_StopsProgress()
+        public void ProcessTick_ProductionBuildingRemoved_CancelsQueuedWork()
         {
             Building mine = new Building
             {
@@ -589,9 +589,13 @@ namespace Rebellion.Tests.Systems
             // Remove production building
             _game.DetachNode(_shipyard);
 
-            // Second tick should not advance progress (no production source)
-            _manager.ProcessTick();
-            Assert.AreEqual(progressAfterTick1, mine.ManufacturingProgress); // No change
+            List<GameResult> results = _manager.ProcessTick();
+
+            Assert.IsFalse(
+                _coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
+            Assert.IsNull(mine.GetParent());
+            Assert.AreEqual(1, results.OfType<ManufacturingIdleResult>().Count());
         }
 
         /// <summary>
@@ -617,6 +621,40 @@ namespace Rebellion.Tests.Systems
                     new GameObjectDestroyedResult
                     {
                         DestroyedObject = _shipyard,
+                        Context = _coruscant,
+                    },
+                }
+            );
+
+            Assert.IsFalse(
+                _coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
+            Assert.IsNull(mine.GetParent());
+        }
+
+        /// <summary>
+        /// Verifies handle results last production building scrapped cancels queued work.
+        /// </summary>
+        [Test]
+        public void HandleResults_LastProductionBuildingScrapped_CancelsQueuedWork()
+        {
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 10,
+                BuildingType = BuildingType.Mine,
+            };
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            _game.DetachNode(_shipyard);
+
+            _manager.HandleResults(
+                new List<GameObjectScrappedResult>
+                {
+                    new GameObjectScrappedResult
+                    {
+                        ScrappedObject = _shipyard,
                         Context = _coruscant,
                     },
                 }
