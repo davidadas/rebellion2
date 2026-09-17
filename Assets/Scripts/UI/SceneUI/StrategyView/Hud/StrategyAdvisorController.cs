@@ -570,6 +570,11 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
                 "Messages",
                 faction != null
             ),
+            new StrategyMenuCommand(
+                StrategyMenuAction.AdvisorMarkAllMessagesRead,
+                "Mark All Read",
+                HasUnreadMessages(faction)
+            ),
             new StrategyMenuCommand("Message Alerts", faction != null, alerts),
         };
     }
@@ -613,6 +618,13 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         Faction faction = getPlayerFaction();
         if (faction == null)
             return;
+
+        if (menuCommand.Action == StrategyMenuAction.AdvisorMarkAllMessagesRead)
+        {
+            faction.MarkAllMessagesRead();
+            actions.RequestHudRender();
+            return;
+        }
 
         if (TryGetMessageType(menuCommand.Action, out MessageType messageType))
         {
@@ -856,6 +868,18 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             enabled,
             selected ? StrategyContextMenuIconKeys.CheckMark : StrategyContextMenuIconKeys.None
         );
+    }
+
+    /// <summary>
+    /// Returns whether a faction has at least one unread message.
+    /// </summary>
+    /// <param name="faction">The faction whose messages should be inspected.</param>
+    /// <returns>True when an unread message exists.</returns>
+    private static bool HasUnreadMessages(Faction faction)
+    {
+        return faction?.Messages?.Values.Any(messages =>
+                messages?.Any(message => message?.Read == false) == true
+            ) == true;
     }
 
     /// <summary>

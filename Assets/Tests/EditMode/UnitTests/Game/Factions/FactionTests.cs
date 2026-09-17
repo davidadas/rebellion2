@@ -622,6 +622,29 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         /// <summary>
+        /// Verifies mark all messages read with mixed message state marks every message read.
+        /// </summary>
+        [Test]
+        public void MarkAllMessagesRead_MixedMessageState_MarksEveryMessageRead()
+        {
+            Message unreadFleet = new StatusMessage(MessageType.Fleet, "Fleet arrived");
+            Message readMission = new StatusMessage(MessageType.Mission, "Mission completed")
+            {
+                Read = true,
+            };
+            Message unreadResource = new StatusMessage(MessageType.Resource, "Resource report");
+            _faction.AddMessage(unreadFleet);
+            _faction.AddMessage(readMission);
+            _faction.AddMessage(unreadResource);
+
+            _faction.MarkAllMessagesRead();
+
+            Assert.IsTrue(unreadFleet.Read);
+            Assert.IsTrue(readMission.Read);
+            Assert.IsTrue(unreadResource.Read);
+        }
+
+        /// <summary>
         /// Verifies remove message existing message removes from list.
         /// </summary>
         [Test]

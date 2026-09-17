@@ -677,6 +677,27 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
+        /// Marks every message delivered to this faction as read.
+        /// </summary>
+        public void MarkAllMessagesRead()
+        {
+            if (Messages == null)
+                return;
+
+            foreach (List<Message> messages in Messages.Values)
+            {
+                if (messages == null)
+                    continue;
+
+                foreach (Message message in messages)
+                {
+                    if (message != null)
+                        message.Read = true;
+                }
+            }
+        }
+
+        /// <summary>
         /// Returns whether advisor notifications are enabled for one message category.
         /// </summary>
         /// <param name="messageType">The message category to inspect.</param>
