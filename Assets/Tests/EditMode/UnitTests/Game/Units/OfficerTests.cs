@@ -231,6 +231,7 @@ namespace Rebellion.Tests.Game.Units
                 ForceValue = 75,
                 ForceTrainingAdjustment = 10,
                 CanBetray = false,
+                NextEscapeAttemptTick = 725,
                 MissionReturnParentInstanceID = "return-parent",
                 MissionReturnLocationInstanceID = "return-location",
             };
@@ -258,6 +259,11 @@ namespace Rebellion.Tests.Game.Units
                 originalOfficer.IsForceEligible,
                 deserializedOfficer.IsForceEligible,
                 "IsForceEligible mismatch"
+            );
+            Assert.AreEqual(
+                originalOfficer.NextEscapeAttemptTick,
+                deserializedOfficer.NextEscapeAttemptTick,
+                "NextEscapeAttemptTick mismatch"
             );
             Assert.AreEqual(
                 originalOfficer.ForceValue,

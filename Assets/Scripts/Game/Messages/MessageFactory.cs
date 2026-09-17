@@ -54,8 +54,8 @@ namespace Rebellion.Game.Messages
             GameObjectSabotagedResult[] sabotageResults = batch
                 .OfType<GameObjectSabotagedResult>()
                 .ToArray();
-            PlanetSectorsRevealedResult[] sectorIntelligenceResults = batch
-                .OfType<PlanetSectorsRevealedResult>()
+            PlanetsRevealedResult[] planetIntelligenceResults = batch
+                .OfType<PlanetsRevealedResult>()
                 .ToArray();
             List<MessageDeliveryRequest> deliveries = new List<MessageDeliveryRequest>();
 
@@ -80,7 +80,7 @@ namespace Rebellion.Game.Messages
                 missionResults,
                 killedResults,
                 sabotageResults,
-                sectorIntelligenceResults,
+                planetIntelligenceResults,
                 game,
                 deliveries
             );
@@ -242,7 +242,7 @@ namespace Rebellion.Game.Messages
         /// <param name="killedOfficerIDs">Officer ids killed by results in the current batch.</param>
         /// <param name="killedResults">Officer death results in the current batch.</param>
         /// <param name="sabotageResults">Sabotage results in the current batch.</param>
-        /// <param name="sectorIntelligence">Additional sectors revealed by this mission.</param>
+        /// <param name="planetIntelligence">Additional planets revealed by this mission.</param>
         /// <returns>The mission report message, or null when no matching definition exists.</returns>
         private MessageDeliveryRequest CreateMissionReport(
             Faction faction,
@@ -252,7 +252,7 @@ namespace Rebellion.Game.Messages
             HashSet<string> killedOfficerIDs,
             IEnumerable<OfficerKilledResult> killedResults,
             IEnumerable<GameObjectSabotagedResult> sabotageResults,
-            PlanetSectorsRevealedResult sectorIntelligence
+            PlanetsRevealedResult planetIntelligence
         )
         {
             if (result == null)
@@ -282,7 +282,7 @@ namespace Rebellion.Game.Messages
             );
             string missionDetails = BuildMissionDetailList(
                 definition,
-                sectorIntelligence?.AdditionalSectors
+                planetIntelligence?.AdditionalPlanets
             );
 
             MessageDeliveryRequest message = WithEventLocation(
@@ -321,25 +321,25 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Builds a configured mission-detail list for sectors revealed beyond the primary target.
+        /// Builds a configured mission-detail list for planets revealed beyond the primary target.
         /// </summary>
         /// <param name="definition">The definition.</param>
-        /// <param name="sectors">The sectors.</param>
+        /// <param name="planets">The planets.</param>
         /// <returns>The constructed mission detail list.</returns>
         private static string BuildMissionDetailList(
             MessageDefinition definition,
-            IEnumerable<PlanetSector> sectors
+            IEnumerable<Planet> planets
         )
         {
-            PlanetSector[] sectorArray = sectors?.Where(sector => sector != null).ToArray();
-            if (definition == null || sectorArray == null || sectorArray.Length == 0)
+            Planet[] planetArray = planets?.Where(planet => planet != null).ToArray();
+            if (definition == null || planetArray == null || planetArray.Length == 0)
                 return string.Empty;
 
             string items = string.Concat(
-                sectorArray.Select(sector =>
+                planetArray.Select(planet =>
                     MessageTemplateBuilder.Interpolate(
                         definition.DetailListItemTemplate,
-                        new Dictionary<string, string> { { "sector", sector.GetDisplayName() } }
+                        new Dictionary<string, string> { { "system", planet.GetDisplayName() } }
                     )
                 )
             );
@@ -591,14 +591,14 @@ namespace Rebellion.Game.Messages
         /// <param name="results">The completed mission results to process.</param>
         /// <param name="killedResults">The officer death results in the current batch.</param>
         /// <param name="sabotageResults">The sabotage results in the current batch.</param>
-        /// <param name="sectorIntelligenceResults">Additional-sector intelligence results.</param>
+        /// <param name="planetIntelligenceResults">Additional-planet intelligence results.</param>
         /// <param name="game">The game state used to resolve recipient factions.</param>
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddMissionMessages(
             IEnumerable<MissionCompletedResult> results,
             IEnumerable<OfficerKilledResult> killedResults,
             IEnumerable<GameObjectSabotagedResult> sabotageResults,
-            IEnumerable<PlanetSectorsRevealedResult> sectorIntelligenceResults,
+            IEnumerable<PlanetsRevealedResult> planetIntelligenceResults,
             GameRoot game,
             List<MessageDeliveryRequest> deliveries
         )
@@ -609,8 +609,8 @@ namespace Rebellion.Game.Messages
                 .Select(result => result.TargetOfficer?.InstanceID)
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
-            Dictionary<string, PlanetSectorsRevealedResult> sectorIntelligenceByMission = (
-                sectorIntelligenceResults ?? Array.Empty<PlanetSectorsRevealedResult>()
+            Dictionary<string, PlanetsRevealedResult> planetIntelligenceByMission = (
+                planetIntelligenceResults ?? Array.Empty<PlanetsRevealedResult>()
             )
                 .Where(result => !string.IsNullOrEmpty(result.MissionInstanceID))
                 .GroupBy(result => result.MissionInstanceID)
@@ -620,9 +620,9 @@ namespace Rebellion.Game.Messages
             {
                 Planet target = GetMissionTarget(result);
                 Faction actorFaction = GetFaction(game, result.Mission?.OwnerInstanceID);
-                sectorIntelligenceByMission.TryGetValue(
+                planetIntelligenceByMission.TryGetValue(
                     result.MissionInstanceID ?? string.Empty,
-                    out PlanetSectorsRevealedResult sectorIntelligence
+                    out PlanetsRevealedResult planetIntelligence
                 );
                 AddDelivery(
                     deliveries,
@@ -635,7 +635,7 @@ namespace Rebellion.Game.Messages
                         killedOfficerIDs,
                         killedArray,
                         sabotageResults,
-                        sectorIntelligence
+                        planetIntelligence
                     )
                 );
 

@@ -444,9 +444,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "Agent - Alpha ( Captured )",
-                    "Han - Fleet Alpha ( Enroute ) ( Admiral )",
-                    "Leia - Alpha ( Injured ) ( General )",
+                    "Agent - Alpha (Captured)",
+                    "Han - Fleet Alpha (Enroute) (Admiral)",
+                    "Leia - Alpha (Injured) (General)",
                 },
                 rows.Select(row => row.Name)
             );
@@ -478,7 +478,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 FinderWindowTab.Faction(_playerFactionId, "Player")
             );
 
-            Assert.AreEqual("Retired Officer - Location Unknown ( Retired )", rows.Single().Name);
+            Assert.AreEqual("Retired Officer - Location Unknown (Retired)", rows.Single().Name);
         }
 
         /// <summary>
@@ -505,7 +505,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 )
                 .Single();
 
-            Assert.AreEqual("Killed Officer - Location Unknown ( Killed )", row.Name);
+            Assert.AreEqual("Killed Officer - Location Unknown (Killed)", row.Name);
             Assert.IsNull(row.Planet);
             Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
             Assert.IsNull(row.Fleet);
@@ -534,10 +534,70 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 FinderWindowTab.Faction(_playerFactionId, "Player")
             );
 
-            Assert.AreEqual(
-                "Inactive Officer - Location Unknown ( On Mission )",
-                rows.Single().Name
-            );
+            Assert.AreEqual("Inactive Officer - Away on an event", rows.Single().Name);
+        }
+
+        /// <summary>
+        /// Verifies get rows uses an inactive officer's authored status as its displayed location.
+        /// </summary>
+        [Test]
+        public void GetRows_DisabledPersonnelWithDisplayStatus_UsesStatusAsLocation()
+        {
+            Officer inactiveOfficer = new Officer
+            {
+                InstanceID = "inactive-officer",
+                DisplayName = "Luke Skywalker",
+                DisplayStatus = "On Mission (Dagobah)",
+                OwnerInstanceID = _playerFactionId,
+                IsEnabled = false,
+            };
+            _playerFaction.AddOwnedUnit(inactiveOfficer);
+
+            FinderWindowRow row = _builder
+                .GetRows(
+                    FinderMode.Personnel,
+                    false,
+                    FinderWindowTab.Faction(_playerFactionId, "Player")
+                )
+                .Single();
+
+            Assert.AreEqual("Luke Skywalker - On Mission (Dagobah)", row.Name);
+            Assert.IsNull(row.Planet);
+            Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
+            Assert.IsNull(row.Fleet);
+            Assert.IsNull(row.Mission);
+        }
+
+        /// <summary>
+        /// Verifies get rows combines an inactive captive's authored location with captured status.
+        /// </summary>
+        [Test]
+        public void GetRows_DisabledCapturedPersonnelWithDisplayStatus_ShowsKnownCaptivityLocation()
+        {
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "Han Solo",
+                DisplayStatus = "Jabba's Palace",
+                OwnerInstanceID = _playerFactionId,
+                IsCaptured = true,
+                IsEnabled = false,
+            };
+            _playerFaction.AddOwnedUnit(captive);
+
+            FinderWindowRow row = _builder
+                .GetRows(
+                    FinderMode.Personnel,
+                    false,
+                    FinderWindowTab.Faction(_playerFactionId, "Player")
+                )
+                .Single();
+
+            Assert.AreEqual("Han Solo - Jabba's Palace (Captured)", row.Name);
+            Assert.IsNull(row.Planet);
+            Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
+            Assert.IsNull(row.Fleet);
+            Assert.IsNull(row.Mission);
         }
 
         /// <summary>
@@ -565,7 +625,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 )
                 .Single();
 
-            Assert.AreEqual("Inactive Officer - Location Unknown ( On Mission )", row.Name);
+            Assert.AreEqual("Inactive Officer - On Mission", row.Name);
             Assert.IsNull(row.Planet);
             Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
             Assert.IsNull(row.Fleet);

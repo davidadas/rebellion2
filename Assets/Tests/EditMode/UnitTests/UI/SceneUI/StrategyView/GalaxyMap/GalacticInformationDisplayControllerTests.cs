@@ -160,6 +160,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         /// <summary>
+        /// Verifies selecting a different filter publishes the durable selection.
+        /// </summary>
+        [Test]
+        public void SelectFilter_ChangedVisibleFilter_RaisesFilterChanged()
+        {
+            GalacticInformationFilterMode? changedFilter = null;
+            _controller.FilterChanged += mode => changedFilter = mode;
+
+            _controller.SelectFilter(GalacticInformationFilterMode.IdleConstructionYards);
+
+            Assert.AreEqual(GalacticInformationFilterMode.IdleConstructionYards, changedFilter);
+        }
+
+        /// <summary>
+        /// Verifies restoring a filter updates selection without publishing a user change.
+        /// </summary>
+        [Test]
+        public void RestoreFilter_SavedFilter_RestoresWithoutRaisingFilterChanged()
+        {
+            int changeCount = 0;
+            _controller.FilterChanged += _ => changeCount++;
+
+            _controller.RestoreFilter(GalacticInformationFilterMode.IdleConstructionYards);
+
+            Assert.AreEqual(
+                GalacticInformationFilterMode.IdleConstructionYards,
+                _controller.FilterMode
+            );
+            Assert.AreEqual(0, changeCount);
+        }
+
+        /// <summary>
         /// Verifies select filter active filter requests render without repeating audio.
         /// </summary>
         [Test]

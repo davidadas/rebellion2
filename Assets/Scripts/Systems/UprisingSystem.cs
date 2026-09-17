@@ -1191,7 +1191,7 @@ namespace Rebellion.Systems
                 && faction.Settings.GarrisonEfficiency > 1
             )
             {
-                garrison /= faction.Settings.GarrisonEfficiency;
+                garrison = Math.Max(1, garrison / faction.Settings.GarrisonEfficiency);
             }
 
             if (planet.IsInUprising)

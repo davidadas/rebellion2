@@ -4967,6 +4967,33 @@ namespace Rebellion.Tests.Systems
         }
 
         /// <summary>
+        /// Verifies capital ship production at a planet uses its first stationary friendly fleet.
+        /// </summary>
+        [Test]
+        public void StartManufacturing_CapitalShipWithExistingFleets_AddsToFirstFleet()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            Fleet firstFleet = EntityFactory.CreateFleet("first", "empire");
+            Fleet secondFleet = EntityFactory.CreateFleet("second", "empire");
+            game.AttachNode(firstFleet, planet);
+            game.AttachNode(secondFleet, planet);
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                0
+            );
+
+            bool started = manager.StartManufacturing(planet, template, planet, 1, "empire");
+
+            Assert.IsTrue(started);
+            Assert.AreEqual(2, planet.GetChildren<Fleet>().Count);
+            Assert.AreEqual(1, firstFleet.GetChildren<CapitalShip>().Count);
+            Assert.AreEqual(0, secondFleet.GetChildren<CapitalShip>().Count);
+        }
+
+        /// <summary>
         /// Verifies start manufacturing same project appends requested copies.
         /// </summary>
         [Test]

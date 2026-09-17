@@ -1022,19 +1022,20 @@ namespace Rebellion.Tests.Systems
         }
 
         /// <summary>
-        /// Verifies calculate garrison requirement core world empire can be zero.
+        /// Verifies calculate garrison requirement keeps one troop required for an efficient core
+        /// faction when support is below the ownership threshold.
         /// </summary>
         [Test]
-        public void CalculateGarrisonRequirement_CoreWorldEmpire_CanBeZero()
+        public void CalculateGarrisonRequirement_EfficientCoreFactionBelowThreshold_RequiresOneTroop()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            Faction empire = new Faction
+            Faction faction = new Faction
             {
-                InstanceID = "empire",
+                InstanceID = "faction",
                 Settings = new FactionSettings { GarrisonEfficiency = 2 },
             };
-            game.GetFactions().Add(empire);
+            game.GetFactions().Add(faction);
 
             PlanetSector planetSector = new PlanetSector
             {
@@ -1046,23 +1047,24 @@ namespace Rebellion.Tests.Systems
             Planet planet = new Planet
             {
                 InstanceID = "p1",
-                OwnerInstanceID = "empire",
+                OwnerInstanceID = faction.InstanceID,
                 IsColonized = true,
-                PopularSupport = new Dictionary<string, int> { { "empire", 55 } },
+                PopularSupport = new Dictionary<string, int> { { faction.InstanceID, 55 } },
             };
             game.AttachNode(planet, planetSector);
 
-            // Base: ceil((60-55)/10) = 1. Halved: 1/2 = 0 (integer division).
+            // A zero requirement would allow the last regiment to leave even though support is
+            // below the threshold needed to retain control of the planet.
             int garrison = UprisingSystem.CalculateGarrisonRequirement(
                 planet,
-                empire,
+                faction,
                 config.AI.Garrison
             );
 
             Assert.AreEqual(
-                0,
+                1,
                 garrison,
-                "Empire core world garrison can be 0 via integer division (no min-1 floor)"
+                "A controlled planet below the support threshold must require one troop"
             );
         }
     }

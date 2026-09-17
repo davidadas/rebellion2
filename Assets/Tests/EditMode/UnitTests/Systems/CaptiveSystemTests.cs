@@ -11,6 +11,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
 
 namespace Rebellion.Tests.Systems
@@ -347,6 +348,94 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(captive.IsCaptured, "Officer should be freed on successful escape");
             Assert.IsNull(captive.CaptorInstanceID, "CaptorInstanceID should be cleared");
             Assert.IsFalse(captive.CanEscape, "CanEscape should be cleared after escape");
+        }
+
+        /// <summary>
+        /// Verifies an unscheduled captive receives a timer without an immediate escape roll.
+        /// </summary>
+        [Test]
+        public void ProcessTick_UnscheduledCaptive_SchedulesEscapeAttempt()
+        {
+            (GameRoot game, Planet _, Officer captive, MovementSystem movement) = BuildScene();
+            captive.NextEscapeAttemptTick = 0;
+            CaptiveSystem system = CreateSystem(game, new FixedRNG(0.0), movement);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.IsTrue(captive.IsCaptured);
+            Assert.AreEqual(101, captive.NextEscapeAttemptTick);
+            Assert.IsEmpty(results);
+        }
+
+        /// <summary>
+        /// Verifies the configured random spread is included in escape scheduling.
+        /// </summary>
+        [Test]
+        public void ProcessTick_UnscheduledCaptiveUsesMaximumRoll_SchedulesMaximumInterval()
+        {
+            (GameRoot game, Planet _, Officer captive, MovementSystem movement) = BuildScene();
+            captive.NextEscapeAttemptTick = 0;
+            CaptiveSystem system = CreateSystem(game, new MaximumRNG(), movement);
+
+            system.ProcessTick();
+
+            Assert.AreEqual(1101, captive.NextEscapeAttemptTick);
+        }
+
+        /// <summary>
+        /// Verifies a captive cannot attempt escape before the configured timer expires.
+        /// </summary>
+        [Test]
+        public void ProcessTick_EscapeAttemptNotDue_SkipsEscapeRoll()
+        {
+            (GameRoot game, Planet _, Officer captive, MovementSystem movement) = BuildScene();
+            captive.NextEscapeAttemptTick = 100;
+            CaptiveSystem system = CreateSystem(game, new ThrowingRNG(), movement);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.IsTrue(captive.IsCaptured);
+            Assert.IsEmpty(results);
+        }
+
+        /// <summary>
+        /// Verifies each captive's escape schedule is evaluated independently.
+        /// </summary>
+        [Test]
+        public void ProcessTick_CaptivesWithDifferentSchedules_EvaluatesOnlyDueCaptive()
+        {
+            (GameRoot game, Planet planet, Officer dueCaptive, MovementSystem movement) =
+                BuildScene();
+            Officer waitingCaptive = EntityFactory.CreateOfficer("waiting", "empire");
+            waitingCaptive.IsCaptured = true;
+            waitingCaptive.CaptorInstanceID = "rebels";
+            waitingCaptive.CanEscape = true;
+            waitingCaptive.NextEscapeAttemptTick = game.CurrentTick + 10;
+            game.AttachNode(waitingCaptive, planet);
+            dueCaptive.NextEscapeAttemptTick = game.CurrentTick;
+            CaptiveSystem system = CreateSystem(game, new FixedRNG(0.0), movement);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.IsFalse(dueCaptive.IsCaptured);
+            Assert.IsTrue(waitingCaptive.IsCaptured);
+            Assert.AreEqual(game.CurrentTick + 10, waitingCaptive.NextEscapeAttemptTick);
+            Assert.AreEqual(1, results.Count);
+        }
+
+        /// <summary>
+        /// Verifies a failed escape attempt schedules the next configured interval.
+        /// </summary>
+        [Test]
+        public void ProcessTick_EscapeRollFails_ReschedulesEscapeAttempt()
+        {
+            (GameRoot game, Planet _, Officer captive, MovementSystem movement) = BuildScene();
+            captive.NextEscapeAttemptTick = game.CurrentTick;
+            CaptiveSystem system = CreateSystem(game, new FixedRNG(0.99), movement);
+
+            system.ProcessTick();
+
+            Assert.AreEqual(101, captive.NextEscapeAttemptTick);
         }
 
         /// <summary>
@@ -711,7 +800,7 @@ namespace Rebellion.Tests.Systems
         /// <returns>The created system.</returns>
         private static CaptiveSystem CreateSystem(
             GameRoot game,
-            FixedRNG provider,
+            IRandomNumberProvider provider,
             MovementSystem movement
         )
         {
@@ -775,6 +864,11 @@ namespace Rebellion.Tests.Systems
             GameConfig config = new GameConfig();
             config.Captive = new GameConfig.CaptiveConfig
             {
+                EscapeAttemptInterval = new GameConfig.TickRangeConfig
+                {
+                    Minimum = 100,
+                    Maximum = 1100,
+                },
                 EscapeTable = new Dictionary<int, int>
                 {
                     { -50, 1 },
@@ -790,6 +884,7 @@ namespace Rebellion.Tests.Systems
                 EscapeLoyaltyShift = -10,
             };
             GameRoot game = new GameRoot(config);
+            game.CurrentTick = 1;
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -825,6 +920,7 @@ namespace Rebellion.Tests.Systems
             captive.IsCaptured = true;
             captive.CaptorInstanceID = "rebels";
             captive.CanEscape = true;
+            captive.NextEscapeAttemptTick = game.CurrentTick;
             captive.Loyalty = 80;
             game.AttachNode(captive, rebelPlanet);
 
