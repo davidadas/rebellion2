@@ -1747,6 +1747,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate withidleshipyardandcompletereserve addsfallbackfighterdemand.
+        /// </summary>
         [Test]
         public void Generate_WithIdleShipyardAndCompleteReserve_AddsFallbackFighterDemand()
         {
@@ -1826,6 +1829,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies generate withactiveshipqueueandcompletereserve doesnotaddfallbackdemand.
+        /// </summary>
         [Test]
         public void Generate_WithActiveShipQueueAndCompleteReserve_DoesNotAddFallbackDemand()
         {
@@ -3399,6 +3405,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(AICapitalShipProductionRole.TroopTransport, demand.CapitalShipRole);
         }
 
+        /// <summary>
+        /// Verifies generate withoneoftwocolonizationfleets addsoneseeddemand.
+        /// </summary>
         [Test]
         public void Generate_WithOneOfTwoColonizationFleets_AddsOneSeedDemand()
         {

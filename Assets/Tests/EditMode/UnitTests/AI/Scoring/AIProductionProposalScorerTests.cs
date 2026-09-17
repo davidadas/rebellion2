@@ -55,6 +55,9 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(highScore, Is.EqualTo(5.0 / 11).Within(0.0001));
         }
 
+        /// <summary>
+        /// Verifies score withfleetreinforcement deductstravelpenalty.
+        /// </summary>
         [Test]
         public void Score_WithFleetReinforcement_DeductsTravelPenalty()
         {
@@ -118,6 +121,8 @@ namespace Rebellion.Tests.AI.Scoring
         /// <summary>
         /// Verifies economy recovery remains selectable below the maintenance reserve.
         /// </summary>
+        /// <param name="kind">The recovery demand kind.</param>
+        /// <param name="buildingType">The recovery building type.</param>
         [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
         [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
         public void Score_WithEconomyRecoveryBelowMaintenanceReserve_ReturnsPositiveScore(
@@ -208,6 +213,13 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(score, 0);
         }
 
+        /// <summary>
+        /// Creates a building-production proposal for a test scenario.
+        /// </summary>
+        /// <param name="producer">The producer value.</param>
+        /// <param name="building">The building value.</param>
+        /// <param name="pressure">The pressure value.</param>
+        /// <returns>The operation result.</returns>
         private static AIManufactureProposal CreateBuildingProposal(
             Planet producer,
             Technology building,

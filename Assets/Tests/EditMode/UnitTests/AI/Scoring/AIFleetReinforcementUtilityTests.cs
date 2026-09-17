@@ -11,6 +11,9 @@ namespace Rebellion.Tests.AI.Scoring
     [TestFixture]
     public class AIFleetReinforcementUtilityTests
     {
+        /// <summary>
+        /// Verifies scoredefenseneed withstrengthgap evaluatesconfiguredcurve.
+        /// </summary>
         [Test]
         public void ScoreDefenseNeed_WithStrengthGap_EvaluatesConfiguredCurve()
         {

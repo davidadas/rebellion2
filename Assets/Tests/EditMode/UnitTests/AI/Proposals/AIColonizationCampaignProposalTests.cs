@@ -13,6 +13,9 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AIColonizationCampaignProposalTests
     {
+        /// <summary>
+        /// Verifies execute withunexploredplanets startsonlynearestsurveyleg.
+        /// </summary>
         [Test]
         public void Execute_WithUnexploredPlanets_StartsOnlyNearestSurveyLeg()
         {
@@ -53,6 +56,9 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNotNull(fleet.Movement);
         }
 
+        /// <summary>
+        /// Verifies execute withcompletedsurvey assignsselectedcolony.
+        /// </summary>
         [Test]
         public void Execute_WithCompletedSurvey_AssignsSelectedColony()
         {
@@ -85,6 +91,13 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(system.InstanceID, fleet.Order.TargetSystemId);
         }
 
+        /// <summary>
+        /// Adds a colonization fleet to the test game.
+        /// </summary>
+        /// <param name="game">The game value.</param>
+        /// <param name="planet">The planet value.</param>
+        /// <param name="ownerInstanceId">The ownerInstanceId value.</param>
+        /// <returns>The operation result.</returns>
         private static Fleet AddColonizationFleet(
             GameRoot game,
             Planet planet,

@@ -92,6 +92,12 @@ public static partial class HeadlessSimulationRunner
         }
     }
 
+    /// <summary>
+    /// Creates the game used by a commander simulation.
+    /// </summary>
+    /// <param name="contentPack">The contentPack value.</param>
+    /// <param name="seed">The seed value.</param>
+    /// <returns>The operation result.</returns>
     private static GameRoot CreateCommanderGame(ContentPack contentPack, int? seed)
     {
         GameSummary summary = new GameSummary
@@ -113,6 +119,14 @@ public static partial class HeadlessSimulationRunner
         return CreateGameBuilder(summary, contentPack.GameData, seed).BuildGame();
     }
 
+    /// <summary>
+    /// Applies the requested commander commands to the game.
+    /// </summary>
+    /// <param name="manager">The manager value.</param>
+    /// <param name="commander">The commander value.</param>
+    /// <param name="gameData">The gameData value.</param>
+    /// <param name="commandPath">The commandPath value.</param>
+    /// <returns>The operation result.</returns>
     private static List<CommanderCommandResult> ApplyCommanderCommands(
         GameManager manager,
         Faction commander,
@@ -132,6 +146,14 @@ public static partial class HeadlessSimulationRunner
         return results;
     }
 
+    /// <summary>
+    /// Applies one commander command to the game.
+    /// </summary>
+    /// <param name="manager">The manager value.</param>
+    /// <param name="commander">The commander value.</param>
+    /// <param name="gameData">The gameData value.</param>
+    /// <param name="command">The command value.</param>
+    /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyCommanderCommand(
         GameManager manager,
         Faction commander,
@@ -183,6 +205,13 @@ public static partial class HeadlessSimulationRunner
             : CommanderCommandResult.Rejected(command, "Movement system rejected the command.");
     }
 
+    /// <summary>
+    /// Applies a regiment-unloading command.
+    /// </summary>
+    /// <param name="manager">The manager value.</param>
+    /// <param name="commander">The commander value.</param>
+    /// <param name="command">The command value.</param>
+    /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyUnloadRegimentsCommand(
         GameManager manager,
         Faction commander,
@@ -221,6 +250,13 @@ public static partial class HeadlessSimulationRunner
             );
     }
 
+    /// <summary>
+    /// Applies a regiment-loading command.
+    /// </summary>
+    /// <param name="manager">The manager value.</param>
+    /// <param name="commander">The commander value.</param>
+    /// <param name="command">The command value.</param>
+    /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyLoadRegimentsCommand(
         GameManager manager,
         Faction commander,
@@ -260,6 +296,14 @@ public static partial class HeadlessSimulationRunner
             );
     }
 
+    /// <summary>
+    /// Applies a manufacturing command.
+    /// </summary>
+    /// <param name="manager">The manager value.</param>
+    /// <param name="commander">The commander value.</param>
+    /// <param name="gameData">The gameData value.</param>
+    /// <param name="command">The command value.</param>
+    /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyManufacturingCommand(
         GameManager manager,
         Faction commander,
@@ -287,6 +331,13 @@ public static partial class HeadlessSimulationRunner
             );
     }
 
+    /// <summary>
+    /// Applies a planetary-assault command.
+    /// </summary>
+    /// <param name="manager">The manager value.</param>
+    /// <param name="commander">The commander value.</param>
+    /// <param name="command">The command value.</param>
+    /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyAssaultCommand(
         GameManager manager,
         Faction commander,
@@ -308,6 +359,13 @@ public static partial class HeadlessSimulationRunner
             );
     }
 
+    /// <summary>
+    /// Applies a bombardment command.
+    /// </summary>
+    /// <param name="manager">The manager value.</param>
+    /// <param name="commander">The commander value.</param>
+    /// <param name="command">The command value.</param>
+    /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyBombardmentCommand(
         GameManager manager,
         Faction commander,
@@ -328,6 +386,14 @@ public static partial class HeadlessSimulationRunner
             : CommanderCommandResult.Rejected(command, "Bombardment system rejected the command.");
     }
 
+    /// <summary>
+    /// Resolves pending combat for a commander command.
+    /// </summary>
+    /// <param name="game">The game value.</param>
+    /// <param name="commander">The commander value.</param>
+    /// <param name="command">The command value.</param>
+    /// <param name="fleets">The fleets value.</param>
+    /// <param name="target">The target value.</param>
     private static void ResolveCombatCommand(
         GameRoot game,
         Faction commander,
@@ -343,6 +409,11 @@ public static partial class HeadlessSimulationRunner
         target = game.GetSceneNodeByInstanceID<Planet>(command.DestinationId);
     }
 
+    /// <summary>
+    /// Returns manufacturing templates indexed by identifier.
+    /// </summary>
+    /// <param name="gameData">The gameData value.</param>
+    /// <returns>The operation result.</returns>
     private static IEnumerable<IManufacturable> GetManufacturingTemplates(GameDataCatalog gameData)
     {
         return gameData
@@ -353,6 +424,14 @@ public static partial class HeadlessSimulationRunner
             .Concat(gameData.SpecialForces);
     }
 
+    /// <summary>
+    /// Writes the current commander simulation state.
+    /// </summary>
+    /// <param name="outputPath">The outputPath value.</param>
+    /// <param name="manager">The manager value.</param>
+    /// <param name="commander">The commander value.</param>
+    /// <param name="gameData">The gameData value.</param>
+    /// <param name="commandResults">The commandResults value.</param>
     private static void WriteCommanderState(
         string outputPath,
         GameManager manager,
@@ -454,6 +533,13 @@ public static partial class HeadlessSimulationRunner
         File.WriteAllText(outputPath, UnityEngine.JsonUtility.ToJson(state, true));
     }
 
+    /// <summary>
+    /// Returns a named command-line argument.
+    /// </summary>
+    /// <param name="args">The args value.</param>
+    /// <param name="flag">The flag value.</param>
+    /// <param name="defaultValue">The defaultValue value.</param>
+    /// <returns>The operation result.</returns>
     private static string GetArgument(IReadOnlyList<string> args, string flag, string defaultValue)
     {
         for (int index = 0; index < args.Count - 1; index++)
@@ -465,12 +551,25 @@ public static partial class HeadlessSimulationRunner
         return defaultValue;
     }
 
+    /// <summary>
+    /// Returns a required integer command-line argument.
+    /// </summary>
+    /// <param name="args">The args value.</param>
+    /// <param name="flag">The flag value.</param>
+    /// <param name="defaultValue">The defaultValue value.</param>
+    /// <returns>The operation result.</returns>
     private static int GetIntegerArgument(
         IReadOnlyList<string> args,
         string flag,
         int defaultValue
     ) => int.TryParse(GetArgument(args, flag, null), out int value) ? value : defaultValue;
 
+    /// <summary>
+    /// Returns an optional integer command-line argument.
+    /// </summary>
+    /// <param name="args">The args value.</param>
+    /// <param name="flag">The flag value.</param>
+    /// <returns>The operation result.</returns>
     private static int? GetNullableIntegerArgument(IReadOnlyList<string> args, string flag) =>
         int.TryParse(GetArgument(args, flag, null), out int value) ? value : null;
 
@@ -500,12 +599,30 @@ public static partial class HeadlessSimulationRunner
         public bool WasAccepted;
         public string Message = string.Empty;
 
+        /// <summary>
+        /// Creates an accepted commander-command result.
+        /// </summary>
+        /// <param name="command">The command value.</param>
+        /// <returns>The operation result.</returns>
         public static CommanderCommandResult Accepted(CommanderCommand command) =>
             Create(command, true, string.Empty);
 
+        /// <summary>
+        /// Creates a rejected commander-command result.
+        /// </summary>
+        /// <param name="command">The command value.</param>
+        /// <param name="message">The message value.</param>
+        /// <returns>The operation result.</returns>
         public static CommanderCommandResult Rejected(CommanderCommand command, string message) =>
             Create(command, false, message);
 
+        /// <summary>
+        /// Creates a commander-command result.
+        /// </summary>
+        /// <param name="command">The command value.</param>
+        /// <param name="wasAccepted">The wasAccepted value.</param>
+        /// <param name="message">The message value.</param>
+        /// <returns>The operation result.</returns>
         private static CommanderCommandResult Create(
             CommanderCommand command,
             bool wasAccepted,

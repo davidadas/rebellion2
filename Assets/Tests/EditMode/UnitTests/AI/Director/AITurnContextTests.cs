@@ -131,6 +131,9 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreSame(result, context.Results[0]);
         }
 
+        /// <summary>
+        /// Verifies developmentallocation reservesincompletehubenergyfrommines.
+        /// </summary>
         [Test]
         public void DevelopmentAllocation_ReservesIncompleteHubEnergyFromMines()
         {
@@ -168,6 +171,9 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(3, constructionEnergy);
         }
 
+        /// <summary>
+        /// Verifies developmentallocation usesdistinctprimaryplanetswheninvestmentsareequal.
+        /// </summary>
         [Test]
         public void DevelopmentAllocation_UsesDistinctPrimaryPlanetsWhenInvestmentsAreEqual()
         {
@@ -279,6 +285,9 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
+        /// <summary>
+        /// Verifies developmentallocation usesconfiguredhubutility.
+        /// </summary>
         [Test]
         public void DevelopmentAllocation_UsesConfiguredHubUtility()
         {

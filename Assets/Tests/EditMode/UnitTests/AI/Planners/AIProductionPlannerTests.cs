@@ -826,6 +826,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(stronger, proposal.Product.GetReference());
         }
 
+        /// <summary>
+        /// Verifies plan withplanetaryfighterbatchexactlyatdefensivebudget queuesplanningbatch.
+        /// </summary>
         [Test]
         public void Plan_WithPlanetaryFighterBatchExactlyAtDefensiveBudget_QueuesPlanningBatch()
         {

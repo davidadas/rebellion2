@@ -14,6 +14,9 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class UnitSeederTests
     {
+        /// <summary>
+        /// Verifies seed uprisingthresholdnotmet addsgarrisontroops.
+        /// </summary>
         [Test]
         public void Seed_UprisingThresholdNotMet_AddsGarrisonTroops()
         {
@@ -57,6 +60,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(3, planet.GetRegimentCount());
         }
 
+        /// <summary>
+        /// Verifies seed ownersupportatthreshold nogarrisontroops.
+        /// </summary>
         [Test]
         public void Seed_OwnerSupportAtThreshold_NoGarrisonTroops()
         {
@@ -99,6 +105,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(0, planet.GetRegimentCount());
         }
 
+        /// <summary>
+        /// Verifies seed fixedgarrison placesconfiguredtroopsonconfiguredplanettype.
+        /// </summary>
         [Test]
         public void Seed_FixedGarrison_PlacesConfiguredTroopsOnConfiguredPlanetType()
         {
@@ -154,6 +163,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(4, planet.GetRegimentCount());
         }
 
+        /// <summary>
+        /// Verifies seed fixedgarrisonwithfactionhqsentinel resolvestofactionhq.
+        /// </summary>
         [Test]
         public void Seed_FixedGarrisonWithFactionHqSentinel_ResolvesToFactionHq()
         {
@@ -207,6 +219,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(2, hq.GetRegimentCount());
         }
 
+        /// <summary>
+        /// Verifies seed fixedgarrisonwithunknownunitid throwsinvalidoperationexception.
+        /// </summary>
         [Test]
         public void Seed_FixedGarrisonWithUnknownUnitID_ThrowsInvalidOperationException()
         {
@@ -259,6 +274,9 @@ namespace Rebellion.Tests.Generation
             Assert.That(exception.Message, Does.Contain("UNKNOWN"));
         }
 
+        /// <summary>
+        /// Verifies seed fixedfleet placesconfiguredshipsonconfiguredplanettype.
+        /// </summary>
         [Test]
         public void Seed_FixedFleet_PlacesConfiguredShipsOnConfiguredPlanetType()
         {
@@ -317,6 +335,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(2, fleets[0].GetChildren<CapitalShip>().Count);
         }
 
+        /// <summary>
+        /// Verifies seed fixedfleetwithtargetplanets selectsonetargetbytypeid.
+        /// </summary>
         [Test]
         public void Seed_FixedFleetWithTargetPlanets_SelectsOneTargetByTypeID()
         {
@@ -360,6 +381,9 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(2, hq.GetChildren<Fleet>()[0].GetChildren<CapitalShip>().Count);
         }
 
+        /// <summary>
+        /// Verifies seed fixedfleetwithshipentries loadscargoontoconfiguredship.
+        /// </summary>
         [Test]
         public void Seed_FixedFleetWithShipEntries_LoadsCargoOntoConfiguredShip()
         {
@@ -410,6 +434,9 @@ namespace Rebellion.Tests.Generation
             Assert.IsTrue(transport.GetChildren<Regiment>().All(r => r.TypeID == "REAL001"));
         }
 
+        /// <summary>
+        /// Verifies seed budgetunittable usespreviousthresholdrow.
+        /// </summary>
         [Test]
         public void Seed_BudgetUnitTable_UsesPreviousThresholdRow()
         {
@@ -576,6 +603,19 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        /// <summary>
+        /// Builds a unit-seeding test context.
+        /// </summary>
+        /// <param name="sectors">The sectors value.</param>
+        /// <param name="factions">The factions value.</param>
+        /// <param name="config">The config value.</param>
+        /// <param name="classification">The classification value.</param>
+        /// <param name="regimentTemplates">The regimentTemplates value.</param>
+        /// <param name="shipTemplates">The shipTemplates value.</param>
+        /// <param name="fighterTemplates">The fighterTemplates value.</param>
+        /// <param name="specialForcesTemplates">The specialForcesTemplates value.</param>
+        /// <param name="rng">The rng value.</param>
+        /// <returns>The operation result.</returns>
         private static GenerationContext BuildContext(
             PlanetSector[] sectors,
             Faction[] factions,
@@ -607,6 +647,14 @@ namespace Rebellion.Tests.Generation
             return ctx;
         }
 
+        /// <summary>
+        /// Creates an owned planet for a unit-seeding test.
+        /// </summary>
+        /// <param name="id">The id value.</param>
+        /// <param name="owner">The owner value.</param>
+        /// <param name="ownerSupport">The ownerSupport value.</param>
+        /// <param name="typeId">The typeId value.</param>
+        /// <returns>The operation result.</returns>
         private static Planet OwnedPlanet(
             string id,
             string owner,
@@ -625,6 +673,11 @@ namespace Rebellion.Tests.Generation
             return planet;
         }
 
+        /// <summary>
+        /// Wraps a planet in a sector for a unit-seeding test.
+        /// </summary>
+        /// <param name="planet">The planet value.</param>
+        /// <returns>The operation result.</returns>
         private static PlanetSector WrapSector(Planet planet)
         {
             PlanetSector sector = new PlanetSector
@@ -636,6 +689,10 @@ namespace Rebellion.Tests.Generation
             return sector;
         }
 
+        /// <summary>
+        /// Creates fixed-fleet target configuration for a test.
+        /// </summary>
+        /// <returns>The operation result.</returns>
         private static GameGenerationConfig CreateFixedFleetTargetConfig()
         {
             return new GameGenerationConfig
@@ -679,6 +736,13 @@ namespace Rebellion.Tests.Generation
             };
         }
 
+        /// <summary>
+        /// Creates a completed building for a test.
+        /// </summary>
+        /// <param name="id">The id value.</param>
+        /// <param name="buildingType">The buildingType value.</param>
+        /// <param name="owner">The owner value.</param>
+        /// <returns>The operation result.</returns>
         private static Building CompleteBuilding(string id, BuildingType buildingType, string owner)
         {
             return new Building

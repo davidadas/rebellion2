@@ -58,6 +58,9 @@ namespace Rebellion.Tests.AI.Planners
             CollectionAssert.AreEqual(new[] { transport }, proposal.Ships);
         }
 
+        /// <summary>
+        /// Verifies plan withuntypedtroopcarryingwarship assignsbattlerole.
+        /// </summary>
         [Test]
         public void Plan_WithUntypedTroopCarryingWarship_AssignsBattleRole()
         {
@@ -86,6 +89,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsEmpty(proposal.Ships);
         }
 
+        /// <summary>
+        /// Verifies plan withidlebattlefleetandenemyplanet addsattackproposal.
+        /// </summary>
         [Test]
         public void Plan_WithIdleBattleFleetAndEnemyPlanet_AddsAttackProposal()
         {
@@ -1733,6 +1739,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan withcompletedsurvey selectshighestenergyplanet.
+        /// </summary>
         [Test]
         public void Plan_WithCompletedSurvey_SelectsHighestEnergyPlanet()
         {
@@ -1777,6 +1786,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsEmpty(proposal.UnexploredPlanets);
         }
 
+        /// <summary>
+        /// Verifies plan withcompletedsurvey usesconfiguredcolonytargetutility.
+        /// </summary>
         [Test]
         public void Plan_WithCompletedSurvey_UsesConfiguredColonyTargetUtility()
         {
@@ -1823,6 +1835,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(resourceWorld.InstanceID, proposal.ColonyTarget.InstanceID);
         }
 
+        /// <summary>
+        /// Verifies plan withunloadedbattlefleetanduncolonizedplanet doesnotaddcolonizationproposal.
+        /// </summary>
         [Test]
         public void Plan_WithUnloadedBattleFleetAndUncolonizedPlanet_DoesNotAddColonizationProposal()
         {
@@ -2297,6 +2312,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(proposals.Any(candidate => candidate.Fleet == reserveFleet));
         }
 
+        /// <summary>
+        /// Verifies plan withmultipleheadquartersdefenseorders clearsweakerorder.
+        /// </summary>
         [Test]
         public void Plan_WithMultipleHeadquartersDefenseOrders_ClearsWeakerOrder()
         {

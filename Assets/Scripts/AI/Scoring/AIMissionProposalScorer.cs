@@ -194,6 +194,13 @@ namespace Rebellion.AI.Scoring
             return score;
         }
 
+        /// <summary>
+        /// Adds sabotage-target utility to a mission score.
+        /// </summary>
+        /// <param name="score">The score value.</param>
+        /// <param name="context">The context value.</param>
+        /// <param name="planet">The planet value.</param>
+        /// <param name="target">The target value.</param>
         private static void AddSabotageTargetUtility(
             ref AIUtilityScore score,
             AITurnContext context,

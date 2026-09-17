@@ -108,6 +108,9 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
+        /// <summary>
+        /// Verifies plan withnonmainrecruiter doesnotaddrecruitmentproposal.
+        /// </summary>
         [Test]
         public void Plan_WithNonMainRecruiter_DoesNotAddRecruitmentProposal()
         {

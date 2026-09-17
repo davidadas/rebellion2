@@ -223,6 +223,12 @@ public sealed class GameManager
     /// <summary>
     /// Starts a manufacturing order through the same validated system used by player controls.
     /// </summary>
+    /// <param name="producer">The planet producing the unit.</param>
+    /// <param name="template">The unit template to manufacture.</param>
+    /// <param name="destination">The destination that receives the completed unit.</param>
+    /// <param name="count">The number of units to manufacture.</param>
+    /// <param name="factionInstanceId">The faction issuing the command.</param>
+    /// <returns>True when the manufacturing request was accepted.</returns>
     public bool TryStartManufacturing(
         Planet producer,
         IManufacturable template,
@@ -241,12 +247,19 @@ public sealed class GameManager
     /// <summary>
     /// Executes a validated planetary assault for the player-facing command boundary.
     /// </summary>
+    /// <param name="fleets">The fleets participating in the assault.</param>
+    /// <param name="target">The planet being assaulted.</param>
+    /// <returns>The planetary assault result.</returns>
     public PlanetaryAssaultResult TryPlanetaryAssault(IReadOnlyList<Fleet> fleets, Planet target) =>
         _planetaryAssaultSystem.TryExecute(fleets, target);
 
     /// <summary>
     /// Executes a validated bombardment for the player-facing command boundary.
     /// </summary>
+    /// <param name="fleets">The fleets participating in the bombardment.</param>
+    /// <param name="target">The planet being bombarded.</param>
+    /// <param name="type">The requested bombardment type.</param>
+    /// <returns>The bombardment result.</returns>
     public BombardmentResult TryBombard(
         IReadOnlyList<Fleet> fleets,
         Planet target,
@@ -256,6 +269,8 @@ public sealed class GameManager
     /// <summary>
     /// Resolves pending player combat when a decision is available.
     /// </summary>
+    /// <param name="autoResolve">Whether to resolve combat automatically.</param>
+    /// <returns>True when pending combat was resolved.</returns>
     public bool TryResolveCombat(bool autoResolve)
     {
         if (!_spaceCombatSystem.HasPendingDecision)

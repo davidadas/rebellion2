@@ -128,6 +128,9 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
+        /// <summary>
+        /// Verifies select withunscoredproposal doesnotselectproposal.
+        /// </summary>
         [Test]
         public void Select_WithUnscoredProposal_DoesNotSelectProposal()
         {
@@ -209,6 +212,8 @@ namespace Rebellion.Tests.AI.Phases
         /// <summary>
         /// Verifies economy recovery may consume maintenance below the strategic reserve.
         /// </summary>
+        /// <param name="kind">The recovery demand kind.</param>
+        /// <param name="buildingType">The recovery building type.</param>
         [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
         [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
         public void Select_WithEconomyRecoveryBelowMaintenanceReserve_SelectsProposal(
@@ -294,6 +299,9 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEquivalent(new[] { first, second }, selected);
         }
 
+        /// <summary>
+        /// Verifies select withpartiallyaffordablefacilitybatch selectsaffordableprefix.
+        /// </summary>
         [Test]
         public void Select_WithPartiallyAffordableFacilityBatch_SelectsAffordablePrefix()
         {
@@ -527,6 +535,9 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(0, selected.Count);
         }
 
+        /// <summary>
+        /// Verifies select withlowerscoredreplacement continuescurrentproduction.
+        /// </summary>
         [Test]
         public void Select_WithLowerScoredReplacement_ContinuesCurrentProduction()
         {
@@ -553,6 +564,9 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { continuation }, selected);
         }
 
+        /// <summary>
+        /// Verifies select withunavailablepreferredmanufacturingproducer selectsnextproducer.
+        /// </summary>
         [Test]
         public void Select_WithUnavailablePreferredManufacturingProducer_SelectsNextProducer()
         {

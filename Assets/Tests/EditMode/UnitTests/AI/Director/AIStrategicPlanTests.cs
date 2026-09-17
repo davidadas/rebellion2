@@ -45,6 +45,9 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(1750, tenPlanetPlan.AssemblyFleetCombatStrength);
         }
 
+        /// <summary>
+        /// Verifies mobilestrengthtarget coversminimumstrengthforeverytargetfleet.
+        /// </summary>
         [Test]
         public void MobileStrengthTarget_CoversMinimumStrengthForEveryTargetFleet()
         {

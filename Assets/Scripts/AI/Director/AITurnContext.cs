@@ -465,12 +465,26 @@ namespace Rebellion.AI.Director
             }
         }
 
+        /// <summary>
+        /// Returns the number of feasible facilities for the allocation.
+        /// </summary>
+        /// <param name="planet">The planet value.</param>
+        /// <param name="buildingType">The buildingType value.</param>
+        /// <returns>The operation result.</returns>
         private int GetFeasibleFacilityCount(Planet planet, BuildingType buildingType)
         {
             return planet.GetTotalBuildingTypeCount(buildingType)
                 + GetAvailableEnergy(planet, buildingType);
         }
 
+        /// <summary>
+        /// Ranks infrastructure candidates for allocation.
+        /// </summary>
+        /// <param name="context">The context value.</param>
+        /// <param name="buildingType">The buildingType value.</param>
+        /// <param name="assignedPrimaryPlanetIds">The assignedPrimaryPlanetIds value.</param>
+        /// <param name="candidates">The candidates value.</param>
+        /// <returns>The operation result.</returns>
         private static IOrderedEnumerable<InfrastructureCandidate> RankCandidates(
             AITurnContext context,
             BuildingType buildingType,
@@ -498,6 +512,12 @@ namespace Rebellion.AI.Director
                 .ThenBy(candidate => candidate.Planet.InstanceID, StringComparer.Ordinal);
         }
 
+        /// <summary>
+        /// Reserves planetary energy for an infrastructure candidate.
+        /// </summary>
+        /// <param name="planet">The planet value.</param>
+        /// <param name="buildingType">The buildingType value.</param>
+        /// <param name="energy">The energy value.</param>
         private void ReserveEnergy(Planet planet, BuildingType buildingType, int energy)
         {
             if (energy <= 0)
@@ -517,6 +537,14 @@ namespace Rebellion.AI.Director
             reservations[buildingType] = energy;
         }
 
+        /// <summary>
+        /// Returns an existing value or creates and caches one.
+        /// </summary>
+        /// <param name="values">The values value.</param>
+        /// <param name="key">The key value.</param>
+        /// <typeparam name="TKey">The dictionary key type.</typeparam>
+        /// <typeparam name="TValue">The dictionary value type.</typeparam>
+        /// <returns>The operation result.</returns>
         private static TValue GetOrAdd<TKey, TValue>(Dictionary<TKey, TValue> values, TKey key)
             where TValue : new()
         {
@@ -542,6 +570,11 @@ namespace Rebellion.AI.Director
             public int FeasibleCount { get; }
             public Planet Planet { get; }
 
+            /// <summary>
+            /// Creates an infrastructure allocation candidate.
+            /// </summary>
+            /// <param name="planet">The planet value.</param>
+            /// <param name="feasibleCount">The feasibleCount value.</param>
             public InfrastructureCandidate(Planet planet, int feasibleCount)
             {
                 Planet = planet;

@@ -98,6 +98,9 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(coreScore, outerRimScore);
         }
 
+        /// <summary>
+        /// Verifies score recruitmentproposal returnshigherscoreforhighersupportplanet.
+        /// </summary>
         [Test]
         public void Score_RecruitmentProposal_ReturnsHigherScoreForHigherSupportPlanet()
         {

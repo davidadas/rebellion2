@@ -25,6 +25,13 @@ namespace Rebellion.AI.Planners
             public int Total =>
                 ConstructionFacilities + Shipyards + TrainingFacilities + StaticDefenses;
 
+            /// <summary>
+            /// Creates a facility portfolio snapshot.
+            /// </summary>
+            /// <param name="constructionFacilities">The constructionFacilities value.</param>
+            /// <param name="shipyards">The shipyards value.</param>
+            /// <param name="trainingFacilities">The trainingFacilities value.</param>
+            /// <param name="staticDefenses">The staticDefenses value.</param>
             public FacilityPortfolio(
                 int constructionFacilities,
                 int shipyards,

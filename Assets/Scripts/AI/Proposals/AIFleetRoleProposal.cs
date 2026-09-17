@@ -111,6 +111,11 @@ namespace Rebellion.AI.Proposals
                 Fleet.RoleType = FleetRoleType.Battle;
         }
 
+        /// <summary>
+        /// Returns whether the ship can be assigned to the requested fleet role.
+        /// </summary>
+        /// <param name="context">The context value.</param>
+        /// <returns>The operation result.</returns>
         private bool CanAssign(AITurnContext context)
         {
             return context?.Faction != null
