@@ -15,9 +15,6 @@ namespace Rebellion.Tests.AI.Scoring
     [TestFixture]
     public class AIFleetProposalScorerTests
     {
-        /// <summary>
-        /// Verifies score returning attack fleet in hostile territory returns highest score.
-        /// </summary>
         [Test]
         public void Score_ReturningAttackFleetInHostileTerritory_ReturnsHighestScore()
         {
@@ -51,9 +48,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreEqual(AIProposalPriority.Mandatory, proposal.Priority);
         }
 
-        /// <summary>
-        /// Verifies score attack proposal for headquarters returns higher score.
-        /// </summary>
         [Test]
         public void Score_AttackProposalForHeadquarters_ReturnsHigherScore()
         {
@@ -115,9 +109,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(headquartersScore, normalScore);
         }
 
-        /// <summary>
-        /// Verifies score attack proposal with orbital advantage applies response bonus.
-        /// </summary>
         [Test]
         public void Score_AttackProposalWithOrbitalAdvantage_AppliesResponseBonus()
         {
@@ -156,9 +147,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.LessOrEqual(score, 1);
         }
 
-        /// <summary>
-        /// Verifies score exposed bombardment target with sector leverage prioritizes capable fleet.
-        /// </summary>
         [Test]
         public void Score_ExposedBombardmentTargetWithSectorLeverage_PrioritizesCapableFleet()
         {
@@ -208,9 +196,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.GreaterOrEqual(scorer.GetNewAttackScoreUpperBound(context, target), score);
         }
 
-        /// <summary>
-        /// Verifies get new attack score upper bound with attack proposal does not underestimate score.
-        /// </summary>
         [Test]
         public void GetNewAttackScoreUpperBound_WithAttackProposal_DoesNotUnderestimateScore()
         {
@@ -240,9 +225,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.GreaterOrEqual(upperBound, score);
         }
 
-        /// <summary>
-        /// Verifies score attack proposal with older intelligence returns lower score.
-        /// </summary>
         [Test]
         public void Score_AttackProposalWithOlderIntelligence_ReturnsLowerScore()
         {
@@ -307,9 +289,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(freshScore, olderScore);
         }
 
-        /// <summary>
-        /// Verifies score existing attack order with high opportunity cost retains order bonus.
-        /// </summary>
         [Test]
         public void Score_ExistingAttackOrderWithHighOpportunityCost_RetainsOrderBonus()
         {
@@ -348,9 +327,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.LessOrEqual(score, 1);
         }
 
-        /// <summary>
-        /// Verifies score attack proposal with split local defense applies opportunity cost.
-        /// </summary>
         [Test]
         public void Score_AttackProposalWithSplitLocalDefense_AppliesOpportunityCost()
         {
@@ -389,9 +365,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Less(score, 1);
         }
 
-        /// <summary>
-        /// Verifies score shielded attack proposal includes starfighter bombardment.
-        /// </summary>
         [Test]
         public void Score_ShieldedAttackProposal_IncludesStarfighterBombardment()
         {
@@ -450,9 +423,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(combinedArmsScore, capitalOnlyScore);
         }
 
-        /// <summary>
-        /// Verifies score attack with low readiness applies floor weight.
-        /// </summary>
         [Test]
         public void Score_AttackWithLowReadiness_AppliesFloorWeight()
         {
@@ -492,9 +462,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Less(bottleneckWeightedScore, averageOnlyScore);
         }
 
-        /// <summary>
-        /// Verifies score ready attack applies configured bonus.
-        /// </summary>
         [Test]
         public void Score_ReadyAttack_AppliesConfiguredBonus()
         {
@@ -534,9 +501,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(bonusedScore, unbonusedScore);
         }
 
-        /// <summary>
-        /// Verifies score attack transfer with carried starfighters includes squadron strength.
-        /// </summary>
         [Test]
         public void Score_AttackTransferWithCarriedStarfighters_IncludesSquadronStrength()
         {
@@ -617,9 +581,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(score, 0);
         }
 
-        /// <summary>
-        /// Verifies score attack transfer with projected requirements met returns zero.
-        /// </summary>
         [Test]
         public void Score_AttackTransferWithProjectedRequirementsMet_ReturnsZero()
         {
@@ -733,9 +694,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Zero(score);
         }
 
-        /// <summary>
-        /// Verifies score colonization proposal with loaded regiment adds readiness bonus.
-        /// </summary>
         [Test]
         public void Score_ColonizationProposalWithLoadedRegiment_AddsReadinessBonus()
         {
@@ -828,9 +786,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(nearScore, farScore);
         }
 
-        /// <summary>
-        /// Verifies score existing colonization order on colonization fleet adds continuation bonus.
-        /// </summary>
         [Test]
         public void Score_ExistingColonizationOrderOnColonizationFleet_AddsContinuationBonus()
         {
@@ -869,9 +824,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreEqual(2.0 / 3, score);
         }
 
-        /// <summary>
-        /// Verifies score fleet defense proposal returns configured score.
-        /// </summary>
         [Test]
         public void Score_FleetDefenseProposal_ReturnsConfiguredScore()
         {
@@ -907,9 +859,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.LessOrEqual(score, 1);
         }
 
-        /// <summary>
-        /// Verifies score headquarters defense transfer returns configured defense score.
-        /// </summary>
         [Test]
         public void Score_HeadquartersDefenseTransfer_ReturnsConfiguredDefenseScore()
         {
@@ -973,9 +922,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.AreEqual(0.5, score);
         }
 
-        /// <summary>
-        /// Verifies score headquarters defense transfer with projected requirement met returns zero.
-        /// </summary>
         [Test]
         public void Score_HeadquartersDefenseTransferWithProjectedRequirementMet_ReturnsZero()
         {

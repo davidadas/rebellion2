@@ -7,9 +7,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
     [TestFixture]
     public sealed class StrategyUISoundPathsTests
     {
-        /// <summary>
-        /// Verifies get preload paths null theme returns only shared cues.
-        /// </summary>
         [Test]
         public void GetPreloadPaths_NullTheme_ReturnsOnlySharedCues()
         {
@@ -21,15 +18,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                     StrategyUISoundPaths.SectorWindowClose,
                     StrategyUISoundPaths.GalacticInformationOpen,
                     StrategyUISoundPaths.GalacticInformationControl,
+                    StrategyUISoundPaths.OrbitalBombardment,
                     StrategyUISoundPaths.PlanetaryAssault,
                 },
                 StrategyUISoundPaths.GetPreloadPaths(null).ToArray()
             );
         }
 
-        /// <summary>
-        /// Verifies get preload paths configured theme returns shared and themed cues.
-        /// </summary>
         [Test]
         public void GetPreloadPaths_ConfiguredTheme_ReturnsSharedAndThemedCues()
         {
@@ -89,6 +84,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                     StrategyUISoundPaths.SectorWindowClose,
                     StrategyUISoundPaths.GalacticInformationOpen,
                     StrategyUISoundPaths.GalacticInformationControl,
+                    StrategyUISoundPaths.OrbitalBombardment,
                     StrategyUISoundPaths.PlanetaryAssault,
                     "advisor-audio/planetary-assault",
                     "advisor-audio/garrison-enabled-alternate",

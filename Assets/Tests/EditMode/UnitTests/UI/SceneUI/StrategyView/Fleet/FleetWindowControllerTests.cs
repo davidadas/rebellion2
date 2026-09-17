@@ -317,6 +317,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         /// <summary>
+        /// Verifies detail item drop during active targeting selects the current fleet.
+        /// </summary>
+        [Test]
+        public void DetailItemDrop_ActiveTargeting_SelectsCurrentFleet()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+            StrategyUnitCardView item = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(candidate => candidate.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(item, "Awake");
+
+            item.GetComponent<UIPointerGestureRelay>().OnDrop(new PointerEventData(null));
+
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(_fleet, target.Item);
+            Assert.AreSame(_fleet, target.GetMoveDestination());
+        }
+
+        /// <summary>
         /// Verifies fleet row press unselected fleet label starts drag on first gesture.
         /// </summary>
         [Test]

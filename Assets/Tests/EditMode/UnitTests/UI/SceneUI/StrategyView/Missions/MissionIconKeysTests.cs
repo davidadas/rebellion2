@@ -7,11 +7,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
     [TestFixture]
     public class MissionIconKeysTests
     {
-        /// <summary>
-        /// Verifies get mission icon key configured mission type returns matching icon key.
-        /// </summary>
-        /// <param name="missionTypeId">The mission type id.</param>
-        /// <param name="expected">The expected.</param>
         [TestCase(MissionTypeIDs.Diplomacy, MissionIconKeys.Diplomacy)]
         [TestCase(MissionTypeIDs.Rescue, MissionIconKeys.Rescue)]
         [TestCase(MissionTypeIDs.Sabotage, MissionIconKeys.Sabotage)]
@@ -33,11 +28,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(expected, iconKey);
         }
 
-        /// <summary>
-        /// Verifies get mission icon key research discipline returns matching research icon key.
-        /// </summary>
-        /// <param name="discipline">The discipline.</param>
-        /// <param name="expected">The expected.</param>
         [TestCase(ResearchDiscipline.ShipDesign, MissionIconKeys.ResearchShipDesign)]
         [TestCase(ResearchDiscipline.FacilityDesign, MissionIconKeys.ResearchFacilityDesign)]
         [TestCase(ResearchDiscipline.TroopTraining, MissionIconKeys.ResearchTroopTraining)]
@@ -51,9 +41,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(expected, iconKey);
         }
 
-        /// <summary>
-        /// Verifies get mission icon key missing research discipline returns ship design icon key.
-        /// </summary>
         [Test]
         public void GetMissionIconKey_MissingResearchDiscipline_ReturnsShipDesignIconKey()
         {
@@ -62,9 +49,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(MissionIconKeys.ResearchShipDesign, iconKey);
         }
 
-        /// <summary>
-        /// Verifies get mission icon key unsupported mission type returns null.
-        /// </summary>
         [Test]
         public void GetMissionIconKey_UnsupportedMissionType_ReturnsNull()
         {

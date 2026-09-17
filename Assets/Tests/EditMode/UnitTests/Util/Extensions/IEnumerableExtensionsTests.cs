@@ -9,9 +9,6 @@ namespace Rebellion.Tests.Util.Extensions
     [TestFixture]
     public class IEnumerableExtensionsTests
     {
-        /// <summary>
-        /// Verifies shuffle non empty collection returns collection with same count.
-        /// </summary>
         [Test]
         public void Shuffle_NonEmptyCollection_ReturnsCollectionWithSameCount()
         {
@@ -24,9 +21,6 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
-        /// <summary>
-        /// Verifies shuffle non empty collection contains all original elements.
-        /// </summary>
         [Test]
         public void Shuffle_NonEmptyCollection_ContainsAllOriginalElements()
         {
@@ -39,9 +33,6 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
-        /// <summary>
-        /// Verifies shuffle non empty collection does not modify original collection.
-        /// </summary>
         [Test]
         public void Shuffle_NonEmptyCollection_DoesNotModifyOriginalCollection()
         {
@@ -54,9 +45,6 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
-        /// <summary>
-        /// Verifies shuffle large collection returns shuffled order.
-        /// </summary>
         [Test]
         public void Shuffle_LargeCollection_ReturnsShuffledOrder()
         {
@@ -70,9 +58,6 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
-        /// <summary>
-        /// Verifies shuffle on empty collection returns empty.
-        /// </summary>
         [Test]
         public void Shuffle_OnEmptyCollection_ReturnsEmpty()
         {
@@ -84,9 +69,6 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
-        /// <summary>
-        /// Verifies shuffle on null collection throws argument null exception.
-        /// </summary>
         [Test]
         public void Shuffle_OnNullCollection_ThrowsArgumentNullException()
         {
@@ -97,9 +79,6 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
-        /// <summary>
-        /// Verifies random element non empty collection returns element from collection.
-        /// </summary>
         [Test]
         public void RandomElement_NonEmptyCollection_ReturnsElementFromCollection()
         {
@@ -112,9 +91,6 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
-        /// <summary>
-        /// Verifies random element from single element collection returns that element.
-        /// </summary>
         [Test]
         public void RandomElement_FromSingleElementCollection_ReturnsThatElement()
         {
@@ -127,9 +103,6 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
-        /// <summary>
-        /// Verifies random element from empty collection throws argument exception.
-        /// </summary>
         [Test]
         public void RandomElement_FromEmptyCollection_ThrowsArgumentException()
         {
@@ -140,9 +113,6 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
-        /// <summary>
-        /// Verifies random element from null collection throws argument exception.
-        /// </summary>
         [Test]
         public void RandomElement_FromNullCollection_ThrowsArgumentException()
         {
@@ -153,9 +123,6 @@ namespace Rebellion.Tests.Util.Extensions
             );
         }
 
-        /// <summary>
-        /// Verifies random element non empty collection varies over multiple calls.
-        /// </summary>
         [Test]
         public void RandomElement_NonEmptyCollection_VariesOverMultipleCalls()
         {

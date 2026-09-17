@@ -8,9 +8,6 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class FactionSeederTests
     {
-        /// <summary>
-        /// Verifies seed non zero starting level applies to each research discipline.
-        /// </summary>
         [Test]
         public void Seed_NonZeroStartingLevel_AppliesToEachResearchDiscipline()
         {
@@ -23,9 +20,6 @@ namespace Rebellion.Tests.Generation
             Assert.AreEqual(5, faction.GetHighestUnlockedOrder(ResearchDiscipline.TroopTraining));
         }
 
-        /// <summary>
-        /// Verifies seed multiple factions applies starting level to each faction.
-        /// </summary>
         [Test]
         public void Seed_MultipleFactions_AppliesStartingLevelToEachFaction()
         {

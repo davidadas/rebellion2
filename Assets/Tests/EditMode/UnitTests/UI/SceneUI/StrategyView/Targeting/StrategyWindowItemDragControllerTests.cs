@@ -59,9 +59,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                 UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
-        /// <summary>
-        /// Verifies constructor null dependency throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullDependency_ThrowsArgumentNullException()
         {
@@ -151,9 +148,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             );
         }
 
-        /// <summary>
-        /// Verifies start candidate null window does not create candidate.
-        /// </summary>
         [Test]
         public void StartCandidate_NullWindow_DoesNotCreateCandidate()
         {
@@ -165,9 +159,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(controller.SourceDragActive);
         }
 
-        /// <summary>
-        /// Verifies try start move drag from candidate below threshold preserves candidate.
-        /// </summary>
         [Test]
         public void TryStartMoveDragFromCandidate_BelowThreshold_PreservesCandidate()
         {
@@ -185,9 +176,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(controller.SourceDragActive);
         }
 
-        /// <summary>
-        /// Verifies try start move drag from candidate valid preview starts source drag.
-        /// </summary>
         [Test]
         public void TryStartMoveDragFromCandidate_ValidPreview_StartsSourceDrag()
         {
@@ -219,9 +207,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(officer, source.Items[0]);
         }
 
-        /// <summary>
-        /// Verifies direct candidate valid preview moves without source window.
-        /// </summary>
         [Test]
         public void DirectCandidate_ValidPreview_MovesWithoutSourceWindow()
         {
@@ -243,9 +228,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(officer, _commands.LastItems[0]);
         }
 
-        /// <summary>
-        /// Verifies direct candidate enemy planet opens mission creation.
-        /// </summary>
         [Test]
         public void DirectCandidate_EnemyPlanet_OpensMissionCreation()
         {
@@ -264,9 +246,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(0, _commands.MoveCount);
         }
 
-        /// <summary>
-        /// Verifies try start move drag from candidate items without preview starts targeting.
-        /// </summary>
         [Test]
         public void TryStartMoveDragFromCandidate_ItemsWithoutPreview_StartsTargeting()
         {
@@ -291,9 +270,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(officer, source.Items[0]);
         }
 
-        /// <summary>
-        /// Verifies try start move drag from candidate invalid preview with items starts targeting.
-        /// </summary>
         [Test]
         public void TryStartMoveDragFromCandidate_InvalidPreviewWithItems_StartsTargeting()
         {
@@ -313,9 +289,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(controller.SourceDragActive);
         }
 
-        /// <summary>
-        /// Verifies try start move drag from candidate no items or preview clears candidate.
-        /// </summary>
         [Test]
         public void TryStartMoveDragFromCandidate_NoItemsOrPreview_ClearsCandidate()
         {
@@ -332,9 +305,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(_targetingController.IsTargeting);
         }
 
-        /// <summary>
-        /// Verifies try move source drag active drag updates overlay.
-        /// </summary>
         [Test]
         public void TryMoveSourceDrag_ActiveDrag_UpdatesOverlay()
         {
@@ -360,9 +330,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(new RectInt(48, 57, 20, 30), bounds);
         }
 
-        /// <summary>
-        /// Verifies try handle source drag pointer up friendly planet executes move.
-        /// </summary>
         [Test]
         public void TryHandleSourceDragPointerUp_FriendlyPlanet_ExecutesMove()
         {
@@ -386,9 +353,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(0, _commands.MissionCount);
         }
 
-        /// <summary>
-        /// Verifies try handle source drag pointer up enemy planet and officer opens mission creation.
-        /// </summary>
         [Test]
         public void TryHandleSourceDragPointerUp_EnemyPlanetAndOfficer_OpensMissionCreation()
         {
@@ -408,9 +372,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(0, _commands.MoveCount);
         }
 
-        /// <summary>
-        /// Verifies try handle source drag pointer up missing drop target cancels targeting.
-        /// </summary>
         [Test]
         public void TryHandleSourceDragPointerUp_MissingDropTarget_CancelsTargeting()
         {
@@ -427,9 +388,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(0, _commands.MissionCount);
         }
 
-        /// <summary>
-        /// Verifies try handle source drag pointer up no source drag returns false.
-        /// </summary>
         [Test]
         public void TryHandleSourceDragPointerUp_NoSourceDrag_ReturnsFalse()
         {
@@ -440,9 +398,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(handled);
         }
 
-        /// <summary>
-        /// Verifies clear window owned candidate and source drag clears matching state.
-        /// </summary>
         [Test]
         public void ClearWindow_OwnedCandidateAndSourceDrag_ClearsMatchingState()
         {
@@ -463,9 +418,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(sourceController.SourceDragActive);
         }
 
-        /// <summary>
-        /// Verifies clear candidate and source drag clears all state.
-        /// </summary>
         [Test]
         public void Clear_CandidateAndSourceDrag_ClearsAllState()
         {
@@ -483,9 +435,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsFalse(controller.TryGetOverlay(out _, out _));
         }
 
-        /// <summary>
-        /// Verifies on target selected invalid request or target does not execute command.
-        /// </summary>
         [Test]
         public void OnTargetSelected_InvalidRequestOrTarget_DoesNotExecuteCommand()
         {

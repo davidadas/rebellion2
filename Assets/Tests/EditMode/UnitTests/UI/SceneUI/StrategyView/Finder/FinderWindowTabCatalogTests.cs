@@ -8,10 +8,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
     [TestFixture]
     public class FinderWindowTabCatalogTests
     {
-        /// <summary>
-        /// Verifies create faction only mode puts player faction first.
-        /// </summary>
-        /// <param name="mode">The mode.</param>
         [TestCase(FinderMode.Troops)]
         [TestCase(FinderMode.Personnel)]
         public void Create_FactionOnlyMode_PutsPlayerFactionFirst(FinderMode mode)
@@ -28,9 +24,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
-        /// <summary>
-        /// Verifies create systems mode preserves system tabs around player first faction tabs.
-        /// </summary>
         [Test]
         public void Create_SystemsMode_PreservesSystemTabsAroundPlayerFirstFactionTabs()
         {
@@ -49,9 +42,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsTrue(tabs[4].IsUnexplored);
         }
 
-        /// <summary>
-        /// Verifies create fleets mode preserves all tab before player first faction tabs.
-        /// </summary>
         [Test]
         public void Create_FleetsMode_PreservesAllTabBeforePlayerFirstFactionTabs()
         {
@@ -68,9 +58,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
-        /// <summary>
-        /// Verifies create null factions returns only mode specific tabs.
-        /// </summary>
         [Test]
         public void Create_NullFactions_ReturnsOnlyModeSpecificTabs()
         {
@@ -86,9 +73,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsTrue(tabs[2].IsUnexplored);
         }
 
-        /// <summary>
-        /// Verifies create invalid factions excludes null and missing identifiers.
-        /// </summary>
         [Test]
         public void Create_InvalidFactions_ExcludesNullAndMissingIdentifiers()
         {
@@ -109,9 +93,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual("player", tabs[0].FactionInstanceId);
         }
 
-        /// <summary>
-        /// Verifies create player faction missing preserves faction source order.
-        /// </summary>
         [Test]
         public void Create_PlayerFactionMissing_PreservesFactionSourceOrder()
         {

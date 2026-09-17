@@ -8,9 +8,6 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class OfficerTests
     {
-        /// <summary>
-        /// Verifies is movable on active mission returns false.
-        /// </summary>
         [Test]
         public void IsMovable_OnActiveMission_ReturnsFalse()
         {
@@ -26,9 +23,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies is movable on completed mission returns true.
-        /// </summary>
         [Test]
         public void IsMovable_OnCompletedMission_ReturnsTrue()
         {
@@ -41,9 +35,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(officer.IsMovable(), "Officer on a completed mission should be movable");
         }
 
-        /// <summary>
-        /// Verifies is movable when idle and not on mission returns true.
-        /// </summary>
         [Test]
         public void IsMovable_WhenIdleAndNotOnMission_ReturnsTrue()
         {
@@ -52,9 +43,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(isMovable);
         }
 
-        /// <summary>
-        /// Verifies is movable when on mission returns false.
-        /// </summary>
         [Test]
         public void IsMovable_WhenOnMission_ReturnsFalse()
         {
@@ -67,9 +55,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(isMovable);
         }
 
-        /// <summary>
-        /// Verifies get base rating valid rating returns correct value.
-        /// </summary>
         [Test]
         public void GetBaseRating_ValidRating_ReturnsCorrectValue()
         {
@@ -79,9 +64,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(10, ratingValue);
         }
 
-        /// <summary>
-        /// Verifies set base rating valid rating updates value.
-        /// </summary>
         [Test]
         public void SetBaseRating_ValidRating_UpdatesValue()
         {
@@ -91,9 +73,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(15, officer.GetBaseRating(OfficerRating.Combat));
         }
 
-        /// <summary>
-        /// Verifies get effective rating diplomacy applies force rank bonus.
-        /// </summary>
         [Test]
         public void GetEffectiveRating_Diplomacy_AppliesForceRankBonus()
         {
@@ -104,9 +83,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(50, officer.GetBaseRating(OfficerRating.Diplomacy));
         }
 
-        /// <summary>
-        /// Verifies get effective rating espionage applies force rank bonus.
-        /// </summary>
         [Test]
         public void GetEffectiveRating_Espionage_AppliesForceRankBonus()
         {
@@ -117,9 +93,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(40, officer.GetBaseRating(OfficerRating.Espionage));
         }
 
-        /// <summary>
-        /// Verifies get effective rating combat applies force rank bonus and injury.
-        /// </summary>
         [Test]
         public void GetEffectiveRating_Combat_AppliesForceRankBonusAndInjury()
         {
@@ -135,9 +108,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(50, officer.GetBaseRating(OfficerRating.Combat));
         }
 
-        /// <summary>
-        /// Verifies get effective rating combat injury cannot go below zero.
-        /// </summary>
         [Test]
         public void GetEffectiveRating_Combat_InjuryCannotGoBelowZero()
         {
@@ -147,9 +117,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, officer.GetEffectiveRating(OfficerRating.Combat));
         }
 
-        /// <summary>
-        /// Verifies get effective rating leadership does not apply force rank bonus.
-        /// </summary>
         [Test]
         public void GetEffectiveRating_Leadership_DoesNotApplyForceRankBonus()
         {
@@ -159,9 +126,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(40, officer.GetEffectiveRating(OfficerRating.Leadership));
         }
 
-        /// <summary>
-        /// Verifies get effective rating ship research does not apply force rank bonus.
-        /// </summary>
         [Test]
         public void GetEffectiveRating_ShipResearch_DoesNotApplyForceRankBonus()
         {
@@ -171,9 +135,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(40, officer.GetEffectiveRating(OfficerRating.ShipResearch));
         }
 
-        /// <summary>
-        /// Verifies increment base rating with force bonus increments base rating only.
-        /// </summary>
         [Test]
         public void IncrementBaseRating_WithForceBonus_IncrementsBaseRatingOnly()
         {
@@ -186,9 +147,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(61, officer.GetEffectiveRating(OfficerRating.Diplomacy));
         }
 
-        /// <summary>
-        /// Verifies is on mission when assigned to mission returns true.
-        /// </summary>
         [Test]
         public void IsOnMission_WhenAssignedToMission_ReturnsTrue()
         {
@@ -199,9 +157,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(isOnMission);
         }
 
-        /// <summary>
-        /// Verifies is on mission when not assigned to mission returns false.
-        /// </summary>
         [Test]
         public void IsOnMission_WhenNotAssignedToMission_ReturnsFalse()
         {
@@ -210,9 +165,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(isOnMission);
         }
 
-        /// <summary>
-        /// Verifies serialize deserialize officer preserves all data.
-        /// </summary>
         [Test]
         public void SerializeDeserialize_Officer_PreservesAllData()
         {
@@ -301,9 +253,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies ship research set and get returns correct value.
-        /// </summary>
         [Test]
         public void ShipResearch_SetAndGet_ReturnsCorrectValue()
         {
@@ -312,9 +261,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(50, officer.ShipResearch);
         }
 
-        /// <summary>
-        /// Verifies troop research set and get returns correct value.
-        /// </summary>
         [Test]
         public void TroopResearch_SetAndGet_ReturnsCorrectValue()
         {
@@ -323,9 +269,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(30, officer.TroopResearch);
         }
 
-        /// <summary>
-        /// Verifies facility research set and get returns correct value.
-        /// </summary>
         [Test]
         public void FacilityResearch_SetAndGet_ReturnsCorrectValue()
         {
@@ -334,9 +277,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(40, officer.FacilityResearch);
         }
 
-        /// <summary>
-        /// Verifies is recruitable set to true returns true.
-        /// </summary>
         [Test]
         public void IsRecruitable_SetToTrue_ReturnsTrue()
         {
@@ -345,9 +285,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(officer.IsRecruitable);
         }
 
-        /// <summary>
-        /// Verifies is recruitable set to false returns false.
-        /// </summary>
         [Test]
         public void IsRecruitable_SetToFalse_ReturnsFalse()
         {
@@ -356,9 +293,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(officer.IsRecruitable);
         }
 
-        /// <summary>
-        /// Verifies is captured set to true returns true.
-        /// </summary>
         [Test]
         public void IsCaptured_SetToTrue_ReturnsTrue()
         {
@@ -367,9 +301,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(officer.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies is captured set to false returns false.
-        /// </summary>
         [Test]
         public void IsCaptured_SetToFalse_ReturnsFalse()
         {
@@ -378,9 +309,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(officer.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies is traitor set to true returns true.
-        /// </summary>
         [Test]
         public void IsTraitor_SetToTrue_ReturnsTrue()
         {
@@ -389,9 +317,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(officer.IsTraitor);
         }
 
-        /// <summary>
-        /// Verifies is traitor set to false returns false.
-        /// </summary>
         [Test]
         public void IsTraitor_SetToFalse_ReturnsFalse()
         {
@@ -400,9 +325,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(officer.IsTraitor);
         }
 
-        /// <summary>
-        /// Verifies loyalty set and get returns correct value.
-        /// </summary>
         [Test]
         public void Loyalty_SetAndGet_ReturnsCorrectValue()
         {
@@ -411,9 +333,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(75, officer.Loyalty);
         }
 
-        /// <summary>
-        /// Verifies can perform mission any mission type id returns true.
-        /// </summary>
         [Test]
         public void CanPerformMission_AnyMissionTypeID_ReturnsTrue()
         {
@@ -424,9 +343,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(officer.CanPerformMission(MissionTypeIDs.Assassination));
         }
 
-        /// <summary>
-        /// Verifies get voice path configured event pool returns configured path.
-        /// </summary>
         [Test]
         public void GetVoicePath_ConfiguredEventPool_ReturnsConfiguredPath()
         {

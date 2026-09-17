@@ -52,18 +52,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render visible presentation applies idle frames and input bounds.
-        /// </summary>
         [Test]
         public void Render_VisiblePresentation_AppliesIdleFramesAndInputBounds()
         {
@@ -89,9 +83,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(droidInput.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render hidden presentation hides frames and inputs.
-        /// </summary>
         [Test]
         public void Render_HiddenPresentation_HidesFramesAndInputs()
         {
@@ -105,9 +96,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsFalse(GetField<UIRaycastArea>("droidInput").gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render during playback clears queue and applies new idle presentation.
-        /// </summary>
         [Test]
         public void Render_DuringPlayback_ClearsQueueAndAppliesNewIdlePresentation()
         {
@@ -143,9 +131,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             UnityEngine.Object.DestroyImmediate(replacementProtocol);
         }
 
-        /// <summary>
-        /// Verifies refresh idle frames during playback preserves playback and updates idle frames.
-        /// </summary>
         [Test]
         public void RefreshIdleFrames_DuringPlayback_PreservesPlaybackAndUpdatesIdleFrames()
         {
@@ -190,9 +175,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies enqueue playbacks ordered animations plays frames and restores idle images.
-        /// </summary>
         [Test]
         public void EnqueuePlaybacks_OrderedAnimations_PlaysFramesAndRestoresIdleImages()
         {
@@ -235,9 +217,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             CollectionAssert.AreEqual(new[] { protocolAnimation, droidAnimation }, started);
         }
 
-        /// <summary>
-        /// Verifies enqueue playbacks delayed animation waits before starting.
-        /// </summary>
         [Test]
         public void EnqueuePlaybacks_DelayedAnimation_WaitsBeforeStarting()
         {
@@ -263,9 +242,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(_protocolFirstTexture, GetField<RawImage>("protocolImage").texture);
         }
 
-        /// <summary>
-        /// Verifies enqueue playbacks audio outlasts frames holds final frame until audio duration.
-        /// </summary>
         [Test]
         public void EnqueuePlaybacks_AudioOutlastsFrames_HoldsFinalFrameUntilAudioDuration()
         {
@@ -296,9 +272,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(_protocolIdleTexture, GetField<RawImage>("protocolImage").texture);
         }
 
-        /// <summary>
-        /// Verifies enqueue playbacks null and empty animations does not start playback.
-        /// </summary>
         [Test]
         public void EnqueuePlaybacks_NullAndEmptyAnimations_DoesNotStartPlayback()
         {
@@ -321,9 +294,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(_droidIdleTexture, GetField<RawImage>("droidImage").texture);
         }
 
-        /// <summary>
-        /// Verifies pause playback active animation freezes and resumes at current frame.
-        /// </summary>
         [Test]
         public void PausePlayback_ActiveAnimation_FreezesAndResumesAtCurrentFrame()
         {
@@ -350,9 +320,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(_protocolSecondTexture, GetField<RawImage>("protocolImage").texture);
         }
 
-        /// <summary>
-        /// Verifies cancel playback paused animation allows subsequent playback to complete.
-        /// </summary>
         [Test]
         public void CancelPlayback_PausedAnimation_AllowsSubsequentPlaybackToComplete()
         {
@@ -385,9 +352,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(_droidIdleTexture, GetField<RawImage>("droidImage").texture);
         }
 
-        /// <summary>
-        /// Verifies droid input left click raises droid clicked.
-        /// </summary>
         [Test]
         public void DroidInput_LeftClick_RaisesDroidClicked()
         {
@@ -401,9 +365,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(1, clickCount);
         }
 
-        /// <summary>
-        /// Verifies advisor inputs right press raise source coordinates.
-        /// </summary>
         [Test]
         public void AdvisorInputs_RightPress_RaiseSourceCoordinates()
         {
@@ -426,9 +387,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(expectedPosition, droidPosition);
         }
 
-        /// <summary>
-        /// Verifies on destroy initialized view unbinds inputs and raises destroyed event.
-        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsInputsAndRaisesDestroyedEvent()
         {

@@ -6,9 +6,6 @@ namespace Rebellion.Tests.Game
     [TestFixture]
     public class GameSummaryTests
     {
-        /// <summary>
-        /// Verifies constructor default construction initializes with defaults.
-        /// </summary>
         [Test]
         public void Constructor_DefaultConstruction_InitializesWithDefaults()
         {
@@ -41,9 +38,6 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(0, summary.StartingResearchLevel, "StartingResearchLevel should be 0");
         }
 
-        /// <summary>
-        /// Verifies serialize and deserialize explicit seed round trips exactly.
-        /// </summary>
         [Test]
         public void SerializeAndDeserialize_ExplicitSeed_RoundTripsExactly()
         {
@@ -55,9 +49,6 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(12345, deserialized.Seed);
         }
 
-        /// <summary>
-        /// Verifies serialize and deserialize populated summary maintains state.
-        /// </summary>
         [Test]
         public void SerializeAndDeserialize_PopulatedSummary_MaintainsState()
         {

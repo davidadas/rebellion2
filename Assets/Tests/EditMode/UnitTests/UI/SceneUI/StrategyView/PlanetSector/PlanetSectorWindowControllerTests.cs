@@ -78,9 +78,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies constructor null dependency throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullDependency_ThrowsArgumentNullException()
         {
@@ -101,9 +98,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
-        /// <summary>
-        /// Verifies initialize null window actions throws argument null exception.
-        /// </summary>
         [Test]
         public void Initialize_NullWindowActions_ThrowsArgumentNullException()
         {
@@ -112,9 +106,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
-        /// <summary>
-        /// Verifies bind window before initialize throws invalid operation exception.
-        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -128,9 +119,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view, window));
         }
 
-        /// <summary>
-        /// Verifies try initialize window null input returns false.
-        /// </summary>
         [Test]
         public void TryInitializeWindow_NullInput_ReturnsFalse()
         {
@@ -139,9 +127,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(initialized);
         }
 
-        /// <summary>
-        /// Verifies open valid sector creates named window in first slot.
-        /// </summary>
         [Test]
         public void Open_ValidSector_CreatesNamedWindowInFirstSlot()
         {
@@ -157,9 +142,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies open existing sector returns false without additional window.
-        /// </summary>
         [Test]
         public void Open_ExistingSector_ReturnsFalseWithoutAdditionalWindow()
         {
@@ -173,9 +155,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies set sector position initialized window updates session slot.
-        /// </summary>
         [Test]
         public void TryOpenInAvailableSlot_AvailableSlot_OpensWithoutReplacingWindow()
         {
@@ -190,9 +169,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNotNull(_controller.FindWindow(secondSector));
         }
 
-        /// <summary>
-        /// Verifies that opening with every slot occupied does not replace a window.
-        /// </summary>
         [Test]
         public void TryOpenInAvailableSlot_AllSlotsOccupied_DoesNotReplaceWindow()
         {
@@ -213,9 +189,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(_controller.FindWindow(fourthSector));
         }
 
-        /// <summary>
-        /// Verifies that moving an initialized sector window updates its session slot.
-        /// </summary>
         [Test]
         public void TryOpenAtPosition_AvailableAuthoredSlot_RestoresRequestedSlot()
         {
@@ -230,9 +203,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
-        /// <summary>
-        /// Verifies opening an occupied authored slot leaves its existing window unchanged.
-        /// </summary>
         [Test]
         public void TryOpenAtPosition_OccupiedAuthoredSlot_DoesNotReplaceWindow()
         {
@@ -247,9 +217,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(_controller.FindWindow(secondSector));
         }
 
-        /// <summary>
-        /// Verifies assigning an initialized sector window updates its session slot.
-        /// </summary>
         [Test]
         public void SetSectorPosition_InitializedWindow_UpdatesSessionSlot()
         {
@@ -260,9 +227,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(SectorWindowPositions.Right, _controller.GetSectorPosition(view));
         }
 
-        /// <summary>
-        /// Verifies swap initialized window moves to next slot and marks dirty.
-        /// </summary>
         [Test]
         public void Swap_InitializedWindow_MovesToNextSlotAndNotifiesChange()
         {
@@ -279,9 +243,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(2, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies reconcile windows matching sector identity replaces sector snapshot.
-        /// </summary>
         [Test]
         public void ReconcileWindows_MatchingSectorIdentity_ReplacesSectorSnapshot()
         {
@@ -294,9 +255,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(window, _controller.FindWindow(freshSector));
         }
 
-        /// <summary>
-        /// Verifies try create context menu no element returns disabled planet commands.
-        /// </summary>
         [Test]
         public void TryCreateContextMenu_NoElement_ReturnsDisabledPlanetCommands()
         {
@@ -322,9 +280,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(((StrategyMenuCommand)request.Commands[1]).Enabled);
         }
 
-        /// <summary>
-        /// Verifies try create context menu fleet element selects fleet context and status.
-        /// </summary>
         [Test]
         public void TryCreateContextMenu_FleetElement_SelectsFleetContextAndStatus()
         {
@@ -361,9 +316,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(_fleet, target.Item);
         }
 
-        /// <summary>
-        /// Verifies try create context menu planet image offers planet tracking.
-        /// </summary>
         [Test]
         public void TryCreateContextMenu_PlanetImage_OffersPlanetTracking()
         {
@@ -393,9 +345,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(_planet.Planet, _actions.LastTrackedEntity);
         }
 
-        /// <summary>
-        /// Verifies create planet context menu planet uses normal planet commands.
-        /// </summary>
         [Test]
         public void CreatePlanetContextMenu_Planet_UsesNormalPlanetCommands()
         {
@@ -423,9 +372,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(_controller, request.Receiver);
         }
 
-        /// <summary>
-        /// Verifies try create context menu facility image does not offer planet tracking.
-        /// </summary>
         [Test]
         public void TryCreateContextMenu_FacilityImage_DoesNotOfferPlanetTracking()
         {
@@ -453,9 +399,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
-        /// <summary>
-        /// Verifies context menu planetary assault executes and routes battle result.
-        /// </summary>
         [Test]
         public void ContextMenu_PlanetaryAssault_ExecutesAndRoutesBattleResult()
         {
@@ -505,9 +448,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1, _actions.RefreshCount);
         }
 
-        /// <summary>
-        /// Verifies clear selection selected fleet clears context and status.
-        /// </summary>
         [Test]
         public void ClearSelection_SelectedFleet_ClearsContextAndStatus()
         {
@@ -521,9 +461,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(_controller.GetStatusTarget(view));
         }
 
-        /// <summary>
-        /// Verifies planet pressed fleet icon marks dirty.
-        /// </summary>
         [Test]
         public void PlanetPressed_FleetIcon_MarksDirty()
         {
@@ -542,9 +479,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(2, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies on target selected known actions route shared commands.
-        /// </summary>
         [Test]
         public void OnTargetSelected_KnownActions_RouteSharedCommands()
         {
@@ -567,9 +501,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(target, _actions.LastTarget);
         }
 
-        /// <summary>
-        /// Verifies view destroyed initialized session releases sector association.
-        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesSectorAssociation()
         {
@@ -581,9 +512,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(-1, _controller.GetSectorPosition(view));
         }
 
-        /// <summary>
-        /// Verifies create target for hit create mission on planet overlay icon targets planet.
-        /// </summary>
         [Test]
         public void CreateTargetForHit_CreateMissionOnPlanetOverlayIcon_TargetsPlanet()
         {
@@ -602,9 +530,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
         }
 
-        /// <summary>
-        /// Verifies create target for hit destination on fleet overlay icon targets planet.
-        /// </summary>
         [Test]
         public void CreateTargetForHit_DestinationOnFleetOverlayIcon_TargetsPlanet()
         {
@@ -623,9 +548,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
         }
 
-        /// <summary>
-        /// Verifies create target for hit move on fleet overlay icon targets fleet.
-        /// </summary>
         [Test]
         public void CreateTargetForHit_MoveOnFleetOverlayIcon_TargetsFleet()
         {
@@ -644,9 +566,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(fleet, target.Item);
         }
 
-        /// <summary>
-        /// Verifies create target for hit move confirm on fleet overlay icon targets fleet.
-        /// </summary>
         [Test]
         public void CreateTargetForHit_MoveConfirmOnFleetOverlayIcon_TargetsFleet()
         {
@@ -665,9 +584,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(fleet, target.Item);
         }
 
-        /// <summary>
-        /// Verifies create target for hit empty hit returns null.
-        /// </summary>
         [Test]
         public void CreateTargetForHit_EmptyHit_ReturnsNull()
         {

@@ -6,9 +6,6 @@ namespace Rebellion.Tests.Util.Common
     [TestFixture]
     public class SystemRandomProviderTests
     {
-        /// <summary>
-        /// Verifies call count starts at zero without advance to.
-        /// </summary>
         [Test]
         public void CallCount_StartsAtZero_WithoutAdvanceTo()
         {
@@ -17,9 +14,6 @@ namespace Rebellion.Tests.Util.Common
             Assert.AreEqual(0, rng.CallCount);
         }
 
-        /// <summary>
-        /// Verifies next int on each call increments call count.
-        /// </summary>
         [Test]
         public void NextInt_OnEachCall_IncrementsCallCount()
         {
@@ -32,9 +26,6 @@ namespace Rebellion.Tests.Util.Common
             Assert.AreEqual(3, rng.CallCount);
         }
 
-        /// <summary>
-        /// Verifies next double on each call increments call count.
-        /// </summary>
         [Test]
         public void NextDouble_OnEachCall_IncrementsCallCount()
         {
@@ -46,9 +37,6 @@ namespace Rebellion.Tests.Util.Common
             Assert.AreEqual(2, rng.CallCount);
         }
 
-        /// <summary>
-        /// Verifies constructor with advance to reproduces mid stream position.
-        /// </summary>
         [Test]
         public void Constructor_WithAdvanceTo_ReproducesMidStreamPosition()
         {
@@ -64,9 +52,6 @@ namespace Rebellion.Tests.Util.Common
             Assert.AreEqual(6, replayed.CallCount);
         }
 
-        /// <summary>
-        /// Verifies constructor with advance to zero behaves as fresh seed.
-        /// </summary>
         [Test]
         public void Constructor_WithAdvanceToZero_BehavesAsFreshSeed()
         {

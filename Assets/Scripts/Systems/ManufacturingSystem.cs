@@ -17,6 +17,7 @@ namespace Rebellion.Systems
     /// </summary>
     public class ManufacturingSystem
         : IGameResultHandler<GameObjectDestroyedResult>,
+            IGameResultHandler<GameObjectScrappedResult>,
             IGameResultHandler<BombardmentResult>,
             IGameResultHandler<PlanetaryAssaultResult>
     {
@@ -81,6 +82,31 @@ namespace Rebellion.Systems
                 CancelUnsupportedProduction(
                     planetResults.Key,
                     planetResults.Select(result => (Building)result.DestroyedObject)
+                );
+            }
+
+            return new List<GameResult>();
+        }
+
+        /// <summary>
+        /// Cancels affected production lanes after production buildings are intentionally scrapped.
+        /// </summary>
+        /// <param name="results">The scrapping results to inspect.</param>
+        /// <returns>No additional results.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameObjectScrappedResult> results)
+        {
+            if (results == null)
+                return new List<GameResult>();
+
+            foreach (
+                IGrouping<Planet, GameObjectScrappedResult> planetResults in results
+                    .Where(result => result?.ScrappedObject is Building && result.Context is Planet)
+                    .GroupBy(result => (Planet)result.Context)
+            )
+            {
+                CancelUnsupportedProduction(
+                    planetResults.Key,
+                    planetResults.Select(result => (Building)result.ScrappedObject)
                 );
             }
 
@@ -1054,6 +1080,14 @@ namespace Rebellion.Systems
                 items?.RemoveAll(item => !IsQueuedItemActive(item));
                 RemoveInvalidPlanetDestinationItems(planet, items);
                 bool hasQueuedItems = items?.Count > 0;
+                if (hasQueuedItems && planet.GetProductionFacilityCount(type) == 0)
+                {
+                    ClearQueueItems(planet, items);
+                    queue.Remove(type);
+                    results.Add(CreateQueueIdleResult(planet, type));
+                    continue;
+                }
+
                 List<Building> readyFacilities = AdvanceProductionFacilities(
                     planet,
                     type,

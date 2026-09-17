@@ -13,9 +13,6 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AIAbortMissionProposalTests
     {
-        /// <summary>
-        /// Verifies execute with active owned mission aborts mission.
-        /// </summary>
         [Test]
         public void Execute_WithActiveOwnedMission_AbortsMission()
         {
@@ -41,9 +38,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreSame(planet, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies can select with detached mission returns false.
-        /// </summary>
         [Test]
         public void CanSelect_WithDetachedMission_ReturnsFalse()
         {

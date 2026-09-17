@@ -108,7 +108,17 @@ namespace Rebellion.Systems
 
             List<GameResult> results = new List<GameResult>();
             foreach (IManufacturable item in liveItems)
+            {
+                results.Add(
+                    new GameObjectScrappedResult
+                    {
+                        ScrappedObject = item,
+                        Context = item.GetParentOfType<Planet>(),
+                        Tick = _game.CurrentTick,
+                    }
+                );
                 Scrap(item, results);
+            }
 
             ResultsProduced?.Invoke(results);
             return true;

@@ -17,9 +17,6 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class ReconnaissanceMissionTests
     {
-        /// <summary>
-        /// Verifies resolve objective unvisited planet captures snapshot without success roll.
-        /// </summary>
         [Test]
         public void ResolveObjective_UnvisitedPlanet_CapturesSnapshotWithoutSuccessRoll()
         {
@@ -66,9 +63,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(viewPlanet.IsUnexploredView);
         }
 
-        /// <summary>
-        /// Verifies update mission enemy detector succeeds foils reconnaissance.
-        /// </summary>
         [Test]
         public void UpdateMission_EnemyDetectorSucceeds_FoilsReconnaissance()
         {
@@ -126,9 +120,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(0, game.GetSceneNodesByType<SpecialForces>().Count);
         }
 
-        /// <summary>
-        /// Verifies try create no participants returns null.
-        /// </summary>
         [Test]
         public void TryCreate_NoParticipants_ReturnsNull()
         {
@@ -151,18 +142,12 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
-        /// <summary>
-        /// Verifies try create null context returns null.
-        /// </summary>
         [Test]
         public void TryCreate_NullContext_ReturnsNull()
         {
             Assert.IsNull(ReconnaissanceMission.TryCreate(null));
         }
 
-        /// <summary>
-        /// Verifies try create visited planet returns null.
-        /// </summary>
         [Test]
         public void TryCreate_VisitedPlanet_ReturnsNull()
         {
@@ -189,9 +174,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
-        /// <summary>
-        /// Verifies try create officer participant only returns null.
-        /// </summary>
         [Test]
         public void TryCreate_OfficerParticipantOnly_ReturnsNull()
         {
@@ -214,9 +196,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
-        /// <summary>
-        /// Verifies try create mixed primary participants returns null.
-        /// </summary>
         [Test]
         public void TryCreate_MixedPrimaryParticipants_ReturnsNull()
         {
@@ -242,9 +221,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
-        /// <summary>
-        /// Verifies serialize round trip preserves data.
-        /// </summary>
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {

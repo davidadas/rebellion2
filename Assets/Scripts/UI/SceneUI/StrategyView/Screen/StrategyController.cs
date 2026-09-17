@@ -1821,6 +1821,7 @@ public sealed class StrategyController
         )
             return;
 
+        PlaySfx(StrategyUISoundPaths.OrbitalBombardment);
         PauseForGameplayOption(UserGameplayOption.PauseAfterEnemyBombardment);
     }
 

@@ -31,9 +31,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             UnityEngine.Object.DestroyImmediate(_secondTexture);
         }
 
-        /// <summary>
-        /// Verifies ordered tabs default catalog returns authored immutable order.
-        /// </summary>
         [Test]
         public void OrderedTabs_DefaultCatalog_ReturnsAuthoredImmutableOrder()
         {
@@ -54,9 +51,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
         }
 
-        /// <summary>
-        /// Verifies fleet list row render data null name normalizes to empty string.
-        /// </summary>
         [Test]
         public void FleetListRowRenderData_NullName_NormalizesToEmptyString()
         {
@@ -74,10 +68,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(string.Empty, data.Name);
         }
 
-        /// <summary>
-        /// Verifies constructor null required collection throws argument null exception.
-        /// </summary>
-        /// <param name="index">The index.</param>
         [TestCase(0)]
         [TestCase(1)]
         [TestCase(2)]
@@ -93,9 +83,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.Throws<ArgumentNullException>(() => CreateRenderData(rows, tabs, items));
         }
 
-        /// <summary>
-        /// Verifies constructor source collections change preserves complete normalized snapshot.
-        /// </summary>
         [Test]
         public void Constructor_SourceCollectionsChange_PreservesCompleteNormalizedSnapshot()
         {

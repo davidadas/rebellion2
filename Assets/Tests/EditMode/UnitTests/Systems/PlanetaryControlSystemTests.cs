@@ -83,9 +83,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet valid transfer changes planet owner.
-        /// </summary>
         [Test]
         public void TransferPlanet_ValidTransfer_ChangesPlanetOwner()
         {
@@ -94,9 +91,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("rebels", _targetPlanet.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies transfer planet transfers buildings to new owner.
-        /// </summary>
         [Test]
         public void TransferPlanet_TransfersBuildings_ToNewOwner()
         {
@@ -111,9 +105,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("rebels", building.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies transfer planet inactive planet transfers retained buildings to new owner.
-        /// </summary>
         [Test]
         public void TransferPlanet_InactivePlanet_TransfersRetainedBuildingsToNewOwner()
         {
@@ -128,9 +119,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("rebels", building.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies transfer planet hidden observer snapshot not refreshed.
-        /// </summary>
         [Test]
         public void TransferPlanet_HiddenObserverSnapshot_NotRefreshed()
         {
@@ -151,9 +139,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, snapshot.Buildings.Count);
         }
 
-        /// <summary>
-        /// Verifies transfer planet core observer snapshot refreshes ownership only.
-        /// </summary>
         [Test]
         public void TransferPlanet_CoreObserverSnapshot_RefreshesOwnershipOnly()
         {
@@ -176,9 +161,6 @@ namespace Rebellion.Tests.Systems
             CollectionAssert.Contains(result.ObserverFactionInstanceIDs, observer.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies transfer planet outer rim visible observer snapshot refreshes ownership only.
-        /// </summary>
         [Test]
         public void TransferPlanet_OuterRimVisibleObserverSnapshot_RefreshesOwnershipOnly()
         {
@@ -211,9 +193,6 @@ namespace Rebellion.Tests.Systems
             CollectionAssert.Contains(result.ObserverFactionInstanceIDs, observer.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies transfer planet previous owner snapshot refreshed.
-        /// </summary>
         [Test]
         public void TransferPlanet_PreviousOwnerSnapshot_Refreshed()
         {
@@ -227,9 +206,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("rebels", snapshot.OwnerInstanceID);
         }
 
-        /// <summary>
-        /// Verifies transfer planet fleet at planet fleet not evicted.
-        /// </summary>
         [Test]
         public void TransferPlanet_FleetAtPlanet_FleetNotEvicted()
         {
@@ -246,9 +222,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet planet with new owner fleets does not evict new owner fleets.
-        /// </summary>
         [Test]
         public void TransferPlanet_PlanetWithNewOwnerFleets_DoesNotEvictNewOwnerFleets()
         {
@@ -260,9 +233,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(rebelFleet.Movement, "New owner fleet should not be evicted");
         }
 
-        /// <summary>
-        /// Verifies transfer planet planet with active missions preserves missions for lifecycle validation.
-        /// </summary>
         [Test]
         public void TransferPlanet_PlanetWithActiveMissions_PreservesMissionsForLifecycleValidation()
         {
@@ -278,9 +248,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(_targetPlanet, empireMission.GetParent());
         }
 
-        /// <summary>
-        /// Verifies transfer planet planet with active mission does not move mission participants.
-        /// </summary>
         [Test]
         public void TransferPlanet_PlanetWithActiveMission_DoesNotMoveMissionParticipants()
         {
@@ -303,9 +270,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(empireMission, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies transfer planet planet with new owner missions does not cancel them.
-        /// </summary>
         [Test]
         public void TransferPlanet_PlanetWithNewOwnerMissions_DoesNotCancelThem()
         {
@@ -324,9 +288,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet planet with new owner diplomacy mission does not cancel it.
-        /// </summary>
         [Test]
         public void TransferPlanet_PlanetWithNewOwnerDiplomacyMission_DoesNotCancelIt()
         {
@@ -350,9 +311,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(diplomacyMission.ShouldRepeatAfterCompletion(_game));
         }
 
-        /// <summary>
-        /// Verifies transfer planet planet with enemy officers evicts enemy officers.
-        /// </summary>
         [Test]
         public void TransferPlanet_PlanetWithEnemyOfficers_EvictsEnemyOfficers()
         {
@@ -366,9 +324,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(_empirePlanet, officer.GetParentOfType<Planet>());
         }
 
-        /// <summary>
-        /// Verifies transfer planet planet with enemy regiments evicts enemy regiments.
-        /// </summary>
         [Test]
         public void TransferPlanet_PlanetWithEnemyRegiments_EvictsEnemyRegiments()
         {
@@ -384,9 +339,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(_empirePlanet, regiment.GetParentOfType<Planet>());
         }
 
-        /// <summary>
-        /// Verifies transfer planet enemy regiment with no reachable destination destroys regiment.
-        /// </summary>
         [Test]
         public void TransferPlanet_EnemyRegimentWithNoReachableDestination_DestroysRegiment()
         {
@@ -405,9 +357,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet enemy officer with no reachable destination officer captured.
-        /// </summary>
         [Test]
         public void TransferPlanet_EnemyOfficerWithNoReachableDestination_OfficerCaptured()
         {
@@ -430,9 +379,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet planet with enemy starfighters destroys enemy starfighters.
-        /// </summary>
         [Test]
         public void TransferPlanet_PlanetWithEnemyStarfighters_DestroysEnemyStarfighters()
         {
@@ -456,9 +402,6 @@ namespace Rebellion.Tests.Systems
             CollectionAssert.DoesNotContain(_targetPlanet.GetChildren<Starfighter>(), fighter);
         }
 
-        /// <summary>
-        /// Verifies transfer planet in transit fleet at planet fleet not redirected.
-        /// </summary>
         [Test]
         public void TransferPlanet_InTransitFleetAtPlanet_FleetNotRedirected()
         {
@@ -482,9 +425,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet in transit officer destined for planet evicts officer.
-        /// </summary>
         [Test]
         public void TransferPlanet_InTransitOfficerDestinedForPlanet_EvictsOfficer()
         {
@@ -509,9 +449,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet redirects in transit officer origin is current position.
-        /// </summary>
         [Test]
         public void TransferPlanet_RedirectsInTransitOfficer_OriginIsCurrentPosition()
         {
@@ -546,9 +483,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet fleet at planet fleet ownership unchanged.
-        /// </summary>
         [Test]
         public void TransferPlanet_FleetAtPlanet_FleetOwnershipUnchanged()
         {
@@ -564,9 +498,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet evicted officer does not change officer owner.
-        /// </summary>
         [Test]
         public void TransferPlanet_EvictedOfficer_DoesNotChangeOfficerOwner()
         {
@@ -583,9 +514,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet building at planet building not evicted.
-        /// </summary>
         [Test]
         public void TransferPlanet_BuildingAtPlanet_BuildingNotEvicted()
         {
@@ -614,9 +542,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet planet with manufacturing queues clears queues.
-        /// </summary>
         [Test]
         public void TransferPlanet_PlanetWithManufacturingQueues_ClearsQueues()
         {
@@ -639,9 +564,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(anyItems, "Manufacturing queue must be empty after ownership transfer");
         }
 
-        /// <summary>
-        /// Verifies transfer planet planet with in progress building clears in progress building.
-        /// </summary>
         [Test]
         public void TransferPlanet_PlanetWithInProgressBuilding_ClearsInProgressBuilding()
         {
@@ -680,9 +602,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies transfer planet cancels remote orders for destination and preserves other orders.
-        /// </summary>
         [Test]
         public void TransferPlanet_CancelsRemoteOrdersForDestinationAndPreservesOtherOrders()
         {
@@ -727,9 +646,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(remoteMine.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies transfer planet preserves regiment order assigned to friendly fleet.
-        /// </summary>
         [Test]
         public void TransferPlanet_PreservesRegimentOrderAssignedToFriendlyFleet()
         {
@@ -767,9 +683,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(regiment, _game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies clear planet ownership active diplomacy mission preserves mission.
-        /// </summary>
         [Test]
         public void ClearPlanetOwnership_ActiveDiplomacyMission_PreservesMission()
         {
@@ -799,9 +712,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(diplomacyMission, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies clear planet ownership planet with manufacturing queue destroys queued unit.
-        /// </summary>
         [Test]
         public void ClearPlanetOwnership_PlanetWithManufacturingQueue_DestroysQueuedUnit()
         {
@@ -822,12 +732,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(regiment.Movement);
         }
 
-        /// <summary>
-        /// Verifies handle results last stationed regiment reconciles control.
-        /// </summary>
-        /// <param name="supportFactionId">The support faction id.</param>
-        /// <param name="support">The support.</param>
-        /// <param name="expectedOwnerId">The expected owner id.</param>
         [TestCase("empire", 60, "empire")]
         [TestCase("empire", 59, null)]
         [TestCase("rebels", 60, "rebels")]
@@ -892,9 +796,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies handle results last stationed regiment preserves mission for lifecycle validation.
-        /// </summary>
         [Test]
         public void HandleResults_LastStationedRegiment_PreservesMissionForLifecycleValidation()
         {
@@ -945,9 +846,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(diplomacyMission, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies process tick uncolonized neutral planet with regiment does not claim without fleet drop.
-        /// </summary>
         [Test]
         public void ProcessTick_UncolonizedNeutralPlanetWithRegiment_DoesNotClaimWithoutFleetDrop()
         {
@@ -962,9 +860,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies process tick uncolonized owned planet without regiments releases to neutral.
-        /// </summary>
         [Test]
         public void ProcessTick_UncolonizedOwnedPlanetWithoutRegiments_ReleasesToNeutral()
         {
@@ -988,9 +883,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies process tick release to neutral hidden observer snapshot not refreshed.
-        /// </summary>
         [Test]
         public void ProcessTick_ReleaseToNeutral_HiddenObserverSnapshot_NotRefreshed()
         {
@@ -1013,9 +905,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("empire", snapshot.OwnerInstanceID);
         }
 
-        /// <summary>
-        /// Verifies process tick release to neutral previous owner snapshot refreshed.
-        /// </summary>
         [Test]
         public void ProcessTick_ReleaseToNeutral_PreviousOwnerSnapshot_Refreshed()
         {
@@ -1034,9 +923,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(snapshot.OwnerInstanceID);
         }
 
-        /// <summary>
-        /// Verifies process tick popular support transfer sets ownership change reason.
-        /// </summary>
         [Test]
         public void ProcessTick_PopularSupportTransfer_SetsOwnershipChangeReason()
         {
@@ -1052,9 +938,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(PlanetOwnershipChangeReason.PopularSupport, result.Reason);
         }
 
-        /// <summary>
-        /// Verifies process tick owned planet with support does not shift popular support.
-        /// </summary>
         [Test]
         public void ProcessTick_OwnedPlanetWithSupport_DoesNotShiftPopularSupport()
         {
@@ -1065,9 +948,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(15, planet.GetPopularSupport("empire"));
         }
 
-        /// <summary>
-        /// Verifies process tick blockade fleet opposes favored side shifts toward favored side.
-        /// </summary>
         [Test]
         public void ProcessTick_BlockadeFleetOpposesFavoredSide_ShiftsTowardFavoredSide()
         {
@@ -1099,9 +979,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(39, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies process tick blockade fleet matches favored side increases fleet support.
-        /// </summary>
         [Test]
         public void ProcessTick_BlockadeFleetMatchesFavoredSide_IncreasesFleetSupport()
         {
@@ -1133,9 +1010,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(39, _targetPlanet.GetPopularSupport(_empire.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies process tick blockade at tied support applies opposing shift.
-        /// </summary>
         [Test]
         public void ProcessTick_BlockadeAtTiedSupport_AppliesOpposingShift()
         {
@@ -1166,9 +1040,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(51, _targetPlanet.GetPopularSupport(_empire.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies process tick blockade reinforces weak core alliance support does not shift.
-        /// </summary>
         [Test]
         public void ProcessTick_BlockadeReinforcesWeakCoreAllianceSupport_DoesNotShift()
         {
@@ -1201,9 +1072,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(40, _targetPlanet.GetPopularSupport(_empire.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies process tick neutral planet below threshold does not transfer ownership.
-        /// </summary>
         [Test]
         public void ProcessTick_NeutralPlanetBelowThreshold_DoesNotTransferOwnership()
         {
@@ -1217,9 +1085,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(planet.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies process tick neutral planet above threshold transfers ownership.
-        /// </summary>
         [Test]
         public void ProcessTick_NeutralPlanetAboveThreshold_TransfersOwnership()
         {
@@ -1233,9 +1098,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("empire", planet.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies process tick neutral planet with regiments does not transfer ownership.
-        /// </summary>
         [Test]
         public void ProcessTick_NeutralPlanetWithRegiments_DoesNotTransferOwnership()
         {
@@ -1252,9 +1114,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(planet.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies process tick uncolonized planet above threshold does not transfer ownership.
-        /// </summary>
         [Test]
         public void ProcessTick_UncolonizedPlanetAboveThreshold_DoesNotTransferOwnership()
         {
@@ -1269,9 +1128,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(planet.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies reconcile planet colonized planet loses last regiment becomes neutral without controlling support.
-        /// </summary>
         [Test]
         public void ReconcilePlanet_ColonizedPlanetLosesLastRegiment_BecomesNeutralWithoutControllingSupport()
         {
@@ -1291,9 +1147,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        /// <summary>
-        /// Verifies reconcile planet uncolonized neutral planet with regiment does not claim.
-        /// </summary>
         [Test]
         public void ReconcilePlanet_UncolonizedNeutralPlanetWithRegiment_DoesNotClaim()
         {
@@ -1306,9 +1159,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(results);
         }
 
-        /// <summary>
-        /// Verifies reconcile planet colonized planet without garrison transfers to support controller.
-        /// </summary>
         [Test]
         public void ReconcilePlanet_ColonizedPlanetWithoutGarrison_TransfersToSupportController()
         {
@@ -1331,9 +1181,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(PlanetOwnershipChangeReason.PopularSupport, result.Reason);
         }
 
-        /// <summary>
-        /// Verifies reconcile planet colonized neutral planet with regiment transfers to regiment owner.
-        /// </summary>
         [Test]
         public void ReconcilePlanet_ColonizedNeutralPlanetWithRegiment_TransfersToRegimentOwner()
         {

@@ -503,6 +503,15 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A game object was intentionally scrapped.
+    /// </summary>
+    public class GameObjectScrappedResult : GameResult
+    {
+        public IGameEntity ScrappedObject { get; set; }
+        public IGameEntity Context { get; set; }
+    }
+
+    /// <summary>
     /// A game object was destroyed on arrival at its destination.
     /// </summary>
     public class GameObjectDestroyedOnArrivalResult : GameObjectDestroyedResult

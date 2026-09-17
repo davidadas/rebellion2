@@ -13,9 +13,6 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public class SceneConditionsTests
     {
-        /// <summary>
-        /// Verifies roll against popular support roll below support returns true.
-        /// </summary>
         [Test]
         public void RollAgainstPopularSupport_RollBelowSupport_ReturnsTrue()
         {
@@ -39,9 +36,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(result);
         }
 
-        /// <summary>
-        /// Verifies share parent different immediate parents does not match.
-        /// </summary>
         [Test]
         public void ShareParent_DifferentImmediateParents_DoesNotMatch()
         {
@@ -65,9 +59,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(planet, fleet.GetParent());
         }
 
-        /// <summary>
-        /// Verifies share ancestor same planet with different immediate parents matches.
-        /// </summary>
         [Test]
         public void ShareAncestor_SamePlanetWithDifferentImmediateParents_Matches()
         {
@@ -87,9 +78,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(isMet);
         }
 
-        /// <summary>
-        /// Verifies is captured with captor uncaptured officer with stale captor does not match.
-        /// </summary>
         [Test]
         public void IsCaptured_WithCaptor_UncapturedOfficerWithStaleCaptorDoesNotMatch()
         {
@@ -109,9 +97,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(isMet);
         }
 
-        /// <summary>
-        /// Verifies is captured optional captor qualifies captured officer when provided.
-        /// </summary>
         [Test]
         public void IsCaptured_OptionalCaptor_QualifiesCapturedOfficerWhenProvided()
         {
@@ -133,9 +118,6 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
-        /// <summary>
-        /// Verifies is killed inactive killed officer matches by registered identity.
-        /// </summary>
         [Test]
         public void IsKilled_InactiveKilledOfficer_MatchesByRegisteredIdentity()
         {
@@ -153,9 +135,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(isMet);
         }
 
-        /// <summary>
-        /// Verifies is active inactive officer returns false without losing identity.
-        /// </summary>
         [Test]
         public void IsActive_InactiveOfficer_ReturnsFalseWithoutLosingIdentity()
         {
@@ -177,9 +156,6 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
-        /// <summary>
-        /// Verifies is active active officer returns true.
-        /// </summary>
         [Test]
         public void IsActive_ActiveOfficer_ReturnsTrue()
         {
@@ -196,9 +172,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(isMet);
         }
 
-        /// <summary>
-        /// Verifies has building type inactive planet with enabled building returns true.
-        /// </summary>
         [Test]
         public void HasBuildingType_InactivePlanetWithEnabledBuilding_ReturnsTrue()
         {
@@ -224,9 +197,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(isMet);
         }
 
-        /// <summary>
-        /// Verifies has building type disabled building returns false.
-        /// </summary>
         [Test]
         public void HasBuildingType_DisabledBuilding_ReturnsFalse()
         {
@@ -252,9 +222,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsFalse(isMet);
         }
 
-        /// <summary>
-        /// Verifies has force rank configured semantic rank uses configured minimum.
-        /// </summary>
         [Test]
         public void HasForceRank_ConfiguredSemanticRank_UsesConfiguredMinimum()
         {
@@ -274,9 +241,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(isMet);
         }
 
-        /// <summary>
-        /// Verifies has force rank inactive officer uses configured minimum.
-        /// </summary>
         [Test]
         public void HasForceRank_InactiveOfficer_UsesConfiguredMinimum()
         {

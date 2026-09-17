@@ -40,9 +40,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             UnityEngine.Object.DestroyImmediate(_root);
         }
 
-        /// <summary>
-        /// Verifies Options artwork is authored with stable content bindings and explicit borders.
-        /// </summary>
         [Test]
         public void Artwork_GeneratedPrefab_UsesContentPipelineBindings()
         {
@@ -118,9 +115,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
-        /// <summary>
-        /// Verifies save-list widget ownership belongs to an authored subview.
-        /// </summary>
         [Test]
         public void SaveLoadPage_UsesAuthoredSaveListSubview()
         {
@@ -129,9 +123,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual("SaveLoadPage", _saveListView.name);
         }
 
-        /// <summary>
-        /// Verifies Awake permits content-backed sprites to be restored after instantiation.
-        /// </summary>
         [Test]
         public void Awake_ContentNotInitialized_DoesNotThrow()
         {
@@ -158,9 +149,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             }
         }
 
-        /// <summary>
-        /// Verifies entering Save/Load starts at the top without pinning later renders there.
-        /// </summary>
         [Test]
         public void SaveLoadPage_Entered_ScrollsToTopOnce()
         {
@@ -192,9 +180,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(1f, scrollRect.verticalNormalizedPosition, 0.01f);
         }
 
-        /// <summary>
-        /// Verifies an unsettled simulation disables overwriting the selected save.
-        /// </summary>
         [Test]
         public void SaveLoadPage_UnsettledGame_DisablesSaveButton()
         {
@@ -224,9 +209,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(saveButton.interactable);
         }
 
-        /// <summary>
-        /// Verifies autosave numbers render in directly editable integer fields.
-        /// </summary>
         [Test]
         public void GameplayPage_AutosaveFields_RenderAndRaiseEnteredValues()
         {
@@ -285,9 +267,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(retainedField.interactable);
         }
 
-        /// <summary>
-        /// Verifies disabling autosave also disables and dims its dependent values.
-        /// </summary>
         [Test]
         public void GameplayPage_AutosaveDisabled_DisablesNumericFields()
         {
@@ -321,9 +300,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(0.6f, GetField<Image>("_autosaveIntervalBadgeImage").color.r, 0.001f);
         }
 
-        /// <summary>
-        /// Verifies the Gameplay sections and footer use the requested player-facing labels.
-        /// </summary>
         [Test]
         public void GeneratedLabels_UseGalaxyViewAndReturnWording()
         {
@@ -339,9 +315,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(fields.Any(field => field.text == "IDLE BAR"));
         }
 
-        /// <summary>
-        /// Verifies entering Controls starts at the top without pinning later renders there.
-        /// </summary>
         [Test]
         public void ControlsPage_Entered_ScrollsToTopOnce()
         {
@@ -368,9 +341,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(1f, scrollRect.verticalNormalizedPosition, 0.01f);
         }
 
-        /// <summary>
-        /// Verifies the reserved Escape badge is locked while its additional binding remains editable.
-        /// </summary>
         [Test]
         public void ControlsPage_OpenGameMenuRow_LocksPrimaryBadgeOnly()
         {
@@ -391,9 +361,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(secondary.interactable);
         }
 
-        /// <summary>
-        /// Verifies every interactive control-row button uses the standard Options feedback states.
-        /// </summary>
         [Test]
         public void ControlsPage_InteractiveButtons_UseOptionsFeedbackStates()
         {
@@ -430,9 +397,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             }
         }
 
-        /// <summary>
-        /// Verifies each controls row exposes its own restore-default request.
-        /// </summary>
         [Test]
         public void ControlsPage_RestoreButton_ClickRaisesBindingRowRequest()
         {
@@ -449,9 +413,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(0, restoredRow);
         }
 
-        /// <summary>
-        /// Verifies the per-binding restore control uses the authored reset icon rather than text.
-        /// </summary>
         [Test]
         public void ControlsPage_RestoreTemplate_UsesContentBoundResetIcon()
         {
@@ -467,9 +428,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsEmpty(template.GetComponentsInChildren<TextMeshProUGUI>(true));
         }
 
-        /// <summary>
-        /// Verifies Gameplay is first and Mods precedes Save / Load in selection routing.
-        /// </summary>
         [Test]
         public void Tabs_PresentModsBeforeSaveLoad_AndRouteSelections()
         {
@@ -490,9 +448,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(OptionsMenuTab.SaveLoad, selectedTab);
         }
 
-        /// <summary>
-        /// Verifies compatible mods render their identity, enablement, and restart state.
-        /// </summary>
         [Test]
         public void ModsPage_AvailableMods_RendersEnablementAndIdentity()
         {
@@ -542,9 +497,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(GetField<GameObject>("_settingsActions").activeSelf);
         }
 
-        /// <summary>
-        /// Verifies a large compatible-mod list creates every row.
-        /// </summary>
         [Test]
         public void ModsPage_ManyMods_RendersEveryMod()
         {
@@ -564,9 +516,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
-        /// <summary>
-        /// Verifies the settings-page defaults action uses the expected label.
-        /// </summary>
         [Test]
         public void SettingsPages_DefaultsAction_UsesApplyDefaultsLabel()
         {
@@ -578,9 +527,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
-        /// <summary>
-        /// Verifies display arrows emit their semantic direction requests.
-        /// </summary>
         [Test]
         public void DisplaySteppers_Click_RaiseSemanticRequests()
         {
@@ -596,9 +542,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(-1, fullScreenDelta);
         }
 
-        /// <summary>
-        /// Verifies display stepper hit targets cover the complete value badge.
-        /// </summary>
         [Test]
         public void DisplaySteppers_Awake_ExpandAcrossCompleteValueBadge()
         {
@@ -619,9 +562,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(272f, fullScreenNext.anchoredPosition.x);
         }
 
-        /// <summary>
-        /// Verifies presentation clips stored metadata without silently normalizing it.
-        /// </summary>
         [Test]
         public void SaveList_OverlongStoredName_TruncatesWithoutRewritingDomainData()
         {
@@ -649,9 +589,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.GreaterOrEqual(renderedName.rectTransform.rect.height, renderedLineHeight);
         }
 
-        /// <summary>
-        /// Verifies a long save label is clipped before the row's delete control.
-        /// </summary>
         [Test]
         public void SaveList_LongName_LabelEndsBeforeDeleteControl()
         {
@@ -681,9 +618,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.Less(nameRect.xMax, deleteRect.xMin);
         }
 
-        /// <summary>
-        /// Verifies inline editing hides the static save label beneath the input field.
-        /// </summary>
         [Test]
         public void SaveList_Renaming_HidesStaticNameUntilEditingCloses()
         {
@@ -715,9 +649,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(renderedName.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies pooled save rows reactivate faction icons when reused.
-        /// </summary>
         [Test]
         public void SaveList_AfterRowCountGrows_ReactivatesFactionIcon()
         {
@@ -756,9 +687,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             }
         }
 
-        /// <summary>
-        /// Verifies main-menu hosting replaces Back to Game with Back to Main Menu.
-        /// </summary>
         [Test]
         public void Render_MainMenuHost_ShowsMainMenuAndQuitActions()
         {
@@ -789,9 +717,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(quit.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies binding-row clicks retain their model index after section headers.
-        /// </summary>
         [Test]
         public void Controls_FirstActionAfterHeader_RaisesModelBindingIndex()
         {

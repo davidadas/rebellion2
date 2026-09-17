@@ -13,9 +13,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
     [TestFixture]
     public class StrategyMenuCommandTests
     {
-        /// <summary>
-        /// Verifies constructor complete command copies children and derives icon column.
-        /// </summary>
         [Test]
         public void Constructor_CompleteCommand_CopiesChildrenAndDerivesIconColumn()
         {
@@ -47,9 +44,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsTrue(command.UsesIconColumn);
         }
 
-        /// <summary>
-        /// Verifies submenu constructor command without children remains submenu.
-        /// </summary>
         [Test]
         public void SubmenuConstructor_CommandWithoutChildren_RemainsSubmenu()
         {
@@ -66,11 +60,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsTrue(command.UsesIconColumn);
         }
 
-        /// <summary>
-        /// Verifies try get game speed speed action returns mapped speed.
-        /// </summary>
-        /// <param name="action">The action.</param>
-        /// <param name="expected">The expected.</param>
         [TestCase(StrategyMenuAction.GameSpeedPause, TickSpeed.Paused)]
         [TestCase(StrategyMenuAction.GameSpeedVerySlow, TickSpeed.VerySlow)]
         [TestCase(StrategyMenuAction.GameSpeedSlow, TickSpeed.Slow)]
@@ -87,9 +76,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual(expected, speed);
         }
 
-        /// <summary>
-        /// Verifies try get game speed non speed action returns false.
-        /// </summary>
         [Test]
         public void TryGetGameSpeed_NonSpeedAction_ReturnsFalse()
         {
@@ -99,11 +85,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual(default(TickSpeed), speed);
         }
 
-        /// <summary>
-        /// Verifies get speed icon key source speed returns mapped icon.
-        /// </summary>
-        /// <param name="sourceSpeed">The source speed.</param>
-        /// <param name="expected">The expected.</param>
         [TestCase(-1, StrategyContextMenuIconKeys.PausedSpeed)]
         [TestCase(0, StrategyContextMenuIconKeys.PausedSpeed)]
         [TestCase(1, StrategyContextMenuIconKeys.VerySlowSpeed)]
@@ -118,11 +99,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual(expected, iconKey);
         }
 
-        /// <summary>
-        /// Verifies try get speed speed icon returns mapped source speed.
-        /// </summary>
-        /// <param name="iconKey">The icon key.</param>
-        /// <param name="expected">The expected.</param>
         [TestCase(StrategyContextMenuIconKeys.PausedSpeed, 0)]
         [TestCase(StrategyContextMenuIconKeys.VerySlowSpeed, 1)]
         [TestCase(StrategyContextMenuIconKeys.SlowSpeed, 2)]
@@ -136,9 +112,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual(expected, sourceSpeed);
         }
 
-        /// <summary>
-        /// Verifies try get speed non speed icon returns false.
-        /// </summary>
         [Test]
         public void TryGetSpeed_NonSpeedIcon_ReturnsFalse()
         {
@@ -151,9 +124,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual(-1, sourceSpeed);
         }
 
-        /// <summary>
-        /// Verifies can move items owned idle officer returns true.
-        /// </summary>
         [Test]
         public void CanMoveItems_OwnedIdleOfficer_ReturnsTrue()
         {
@@ -167,9 +137,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsTrue(canMove);
         }
 
-        /// <summary>
-        /// Verifies can move items moving or enemy item returns false.
-        /// </summary>
         [Test]
         public void CanMoveItems_MovingOrEnemyItem_ReturnsFalse()
         {
@@ -190,9 +157,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(enemyCanMove);
         }
 
-        /// <summary>
-        /// Verifies can move items item carried by moving fleet returns false.
-        /// </summary>
         [Test]
         public void CanMoveItems_ItemCarriedByMovingFleet_ReturnsFalse()
         {
@@ -210,9 +174,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(canMove);
         }
 
-        /// <summary>
-        /// Verifies can move items captured officer requires player escort.
-        /// </summary>
         [Test]
         public void CanMoveItems_CapturedOfficer_RequiresPlayerEscort()
         {
@@ -234,9 +195,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsTrue(withEscort);
         }
 
-        /// <summary>
-        /// Verifies can move items capital ship under construction returns true.
-        /// </summary>
         [Test]
         public void CanMoveItems_CapitalShipUnderConstruction_ReturnsTrue()
         {
@@ -254,9 +212,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsTrue(canMove);
         }
 
-        /// <summary>
-        /// Verifies can move items null or empty selection returns false.
-        /// </summary>
         [Test]
         public void CanMoveItems_NullOrEmptySelection_ReturnsFalse()
         {
@@ -270,9 +225,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(emptyResult);
         }
 
-        /// <summary>
-        /// Verifies can create mission owned officer and special forces returns true.
-        /// </summary>
         [Test]
         public void CanCreateMission_OwnedOfficerAndSpecialForces_ReturnsTrue()
         {
@@ -291,9 +243,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsTrue(canCreate);
         }
 
-        /// <summary>
-        /// Verifies can create mission officer carried by moving fleet returns false.
-        /// </summary>
         [Test]
         public void CanCreateMission_OfficerCarriedByMovingFleet_ReturnsFalse()
         {
@@ -311,9 +260,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(canCreate);
         }
 
-        /// <summary>
-        /// Verifies can create mission invalid participant state or type returns false.
-        /// </summary>
         [Test]
         public void CanCreateMission_InvalidParticipantStateOrType_ReturnsFalse()
         {
@@ -348,9 +294,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(invalidTypeResult);
         }
 
-        /// <summary>
-        /// Verifies player controls item captured officer uses captor identity.
-        /// </summary>
         [Test]
         public void PlayerControlsItem_CapturedOfficer_UsesCaptorIdentity()
         {
@@ -371,9 +314,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(ownerControls);
         }
 
-        /// <summary>
-        /// Verifies can toggle idle bar tracking enabled owned supported entities returns true.
-        /// </summary>
         [Test]
         public void CanToggleIdleBarTracking_EnabledOwnedSupportedEntities_ReturnsTrue()
         {
@@ -400,9 +340,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             );
         }
 
-        /// <summary>
-        /// Verifies can toggle idle bar tracking disabled enemy or unsupported entity returns false.
-        /// </summary>
         [Test]
         public void CanToggleIdleBarTracking_DisabledEnemyOrUnsupportedEntity_ReturnsFalse()
         {

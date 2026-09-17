@@ -47,18 +47,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render manufacturing mode applies lane presentation and progress.
-        /// </summary>
         [Test]
         public void Render_ManufacturingMode_AppliesLanePresentationAndProgress()
         {
@@ -132,9 +126,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual("No Troops", FindCardText(troopCard, "EmptyTextField").text);
         }
 
-        /// <summary>
-        /// Verifies render inventory mode applies grid selection and hides manufacturing cards.
-        /// </summary>
         [Test]
         public void Render_InventoryMode_AppliesGridSelectionAndHidesManufacturingCards()
         {
@@ -189,9 +180,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(FindCard("ShipyardsManufacturingLaneCard").gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render shorter inventory hides unused cached items.
-        /// </summary>
         [Test]
         public void Render_ShorterInventory_HidesUnusedCachedItems()
         {
@@ -219,9 +207,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(second.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render invalid tab count throws argument exception.
-        /// </summary>
         [Test]
         public void Render_InvalidTabCount_ThrowsArgumentException()
         {
@@ -243,9 +228,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
-        /// <summary>
-        /// Verifies render invalid tab order throws argument exception.
-        /// </summary>
         [Test]
         public void Render_InvalidTabOrder_ThrowsArgumentException()
         {
@@ -272,9 +254,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
-        /// <summary>
-        /// Verifies on pointer click primary then secondary click raises only primary background event.
-        /// </summary>
         [Test]
         public void OnPointerClick_PrimaryThenSecondaryClick_RaisesOnlyPrimaryBackgroundEvent()
         {
@@ -302,9 +281,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreSame(leftClick, received);
         }
 
-        /// <summary>
-        /// Verifies authored tab button click raises semantic tab selection.
-        /// </summary>
         [Test]
         public void AuthoredTabButton_Click_RaisesSemanticTabSelection()
         {
@@ -317,9 +293,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(FacilityWindowTab.Mines, selected);
         }
 
-        /// <summary>
-        /// Verifies manufacturing card gestures authored card raise indexed events.
-        /// </summary>
         [Test]
         public void ManufacturingCardGestures_AuthoredCard_RaiseIndexedEvents()
         {
@@ -348,9 +321,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(2, releasedCount);
         }
 
-        /// <summary>
-        /// Verifies inventory item gestures rendered item raise indexed events.
-        /// </summary>
         [Test]
         public void InventoryItemGestures_RenderedItem_RaiseIndexedEvents()
         {
@@ -385,9 +355,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(0, doubleClickedIndex);
         }
 
-        /// <summary>
-        /// Verifies pointer target queries rendered controls return semantic indexes.
-        /// </summary>
         [Test]
         public void PointerTargetQueries_RenderedControls_ReturnSemanticIndexes()
         {
@@ -436,9 +403,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(-1, missingIndex);
         }
 
-        /// <summary>
-        /// Verifies child views null render data throw argument null exception.
-        /// </summary>
         [Test]
         public void ChildViews_NullRenderData_ThrowArgumentNullException()
         {
@@ -453,9 +417,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
         }
 
-        /// <summary>
-        /// Verifies on destroy initialized view raises destroyed event.
-        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_RaisesDestroyedEvent()
         {

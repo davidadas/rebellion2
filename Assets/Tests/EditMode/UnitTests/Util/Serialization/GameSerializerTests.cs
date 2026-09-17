@@ -265,9 +265,6 @@ namespace Rebellion.Tests.Util.Serialization
     [TestFixture]
     public class GameSerializerTests
     {
-        /// <summary>
-        /// Verifies get persistable types repeated lookup returns cached types.
-        /// </summary>
         [Test]
         public void GetPersistableTypes_RepeatedLookup_ReturnsCachedTypes()
         {
@@ -278,9 +275,6 @@ namespace Rebellion.Tests.Util.Serialization
             CollectionAssert.Contains(first, typeof(SimpleItem));
         }
 
-        /// <summary>
-        /// Verifies serialize named scalar collection items round trips configured element name.
-        /// </summary>
         [Test]
         public void Serialize_NamedScalarCollectionItems_RoundTripsConfiguredElementName()
         {
@@ -299,9 +293,6 @@ namespace Rebellion.Tests.Util.Serialization
             CollectionAssert.AreEqual(item.Paths, restored.Paths);
         }
 
-        /// <summary>
-        /// Verifies serialize inline collection round trips without wrapper.
-        /// </summary>
         [Test]
         public void Serialize_InlineCollection_RoundTripsWithoutWrapper()
         {
@@ -331,9 +322,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("second", restored.Items[1].Name);
         }
 
-        /// <summary>
-        /// Verifies deserialize inline collection accepts legacy wrapper.
-        /// </summary>
         [Test]
         public void Deserialize_InlineCollectionWrapper_ThrowsInvalidOperationException()
         {
@@ -348,9 +336,6 @@ namespace Rebellion.Tests.Util.Serialization
             StringAssert.Contains("Unknown element 'Items'", exception.Message);
         }
 
-        /// <summary>
-        /// Verifies serialize inline collection allows empty collection.
-        /// </summary>
         [Test]
         public void Serialize_InlineCollection_AllowsEmptyCollection()
         {
@@ -365,9 +350,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(0, restored.Items.Count);
         }
 
-        /// <summary>
-        /// Verifies deserialize inline collection rejects unknown child type.
-        /// </summary>
         [Test]
         public void Deserialize_InlineCollection_RejectsUnknownChildType()
         {
@@ -377,9 +359,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.Throws<InvalidOperationException>(() => DeserializeFromString(serializer, xml));
         }
 
-        /// <summary>
-        /// Verifies serialize inline collection rejects null collection.
-        /// </summary>
         [Test]
         public void Serialize_InlineCollection_RejectsNullCollection()
         {
@@ -392,9 +371,6 @@ namespace Rebellion.Tests.Util.Serialization
             StringAssert.Contains("cannot be null", exception.Message);
         }
 
-        /// <summary>
-        /// Verifies deserialize inline collection rejects null collection.
-        /// </summary>
         [Test]
         public void Deserialize_InlineCollection_RejectsNullCollection()
         {
@@ -407,9 +383,6 @@ namespace Rebellion.Tests.Util.Serialization
             StringAssert.Contains("must be initialized", exception.Message);
         }
 
-        /// <summary>
-        /// Verifies deserialize overlay leaf replaces default value.
-        /// </summary>
         [Test]
         public void Deserialize_OverlayLeaf_ReplacesDefaultValue()
         {
@@ -425,9 +398,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(2, restored.Value);
         }
 
-        /// <summary>
-        /// Verifies deserialize overlay element missing from defaults appends to defaults.
-        /// </summary>
         [Test]
         public void Deserialize_OverlayElementMissingFromDefaults_AppendsToDefaults()
         {
@@ -441,9 +411,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(7, restored.Value);
         }
 
-        /// <summary>
-        /// Verifies deserialize overlay collection replaces collection wholesale.
-        /// </summary>
         [Test]
         public void Deserialize_OverlayCollection_ReplacesCollectionWholesale()
         {
@@ -465,9 +432,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("only", restored.Items[0].Name);
         }
 
-        /// <summary>
-        /// Verifies deserialize overlay attribute replaces default attribute.
-        /// </summary>
         [Test]
         public void Deserialize_OverlayAttribute_ReplacesDefaultAttribute()
         {
@@ -483,9 +447,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("kept", restored.Name);
         }
 
-        /// <summary>
-        /// Verifies deserialize layered documents does not modify inputs.
-        /// </summary>
         [Test]
         public void Deserialize_LayeredDocuments_DoesNotModifyInputs()
         {
@@ -503,9 +464,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(overlayXml, overlay.OuterXml);
         }
 
-        /// <summary>
-        /// Verifies deserialize overlay root mismatch throws invalid data exception.
-        /// </summary>
         [Test]
         public void Deserialize_OverlayRootMismatch_ThrowsInvalidDataException()
         {
@@ -518,9 +476,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.Throws<InvalidDataException>(() => serializer.Deserialize(defaults, overlay));
         }
 
-        /// <summary>
-        /// Verifies serialize inline collection rejects null item.
-        /// </summary>
         [Test]
         public void Serialize_InlineCollection_RejectsNullItem()
         {
@@ -535,9 +490,6 @@ namespace Rebellion.Tests.Util.Serialization
             StringAssert.Contains("cannot contain null items", exception.Message);
         }
 
-        /// <summary>
-        /// Verifies serialize inline collection rejects non list collection.
-        /// </summary>
         [Test]
         public void Serialize_InlineCollection_RejectsNonListCollection()
         {
@@ -550,9 +502,6 @@ namespace Rebellion.Tests.Util.Serialization
             StringAssert.Contains("must be a mutable generic IList", exception.Message);
         }
 
-        /// <summary>
-        /// Verifies serialize inline collection rejects multiple inline members.
-        /// </summary>
         [Test]
         public void Serialize_InlineCollection_RejectsMultipleInlineMembers()
         {
@@ -567,9 +516,6 @@ namespace Rebellion.Tests.Util.Serialization
             StringAssert.Contains("more than one inline collection", exception.Message);
         }
 
-        /// <summary>
-        /// Verifies serialize single object returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_SingleObject_ReturnsExpectedXml()
         {
@@ -600,9 +546,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize item with attributes returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_ItemWithAttributes_ReturnsExpectedXml()
         {
@@ -629,9 +572,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize mixed member and attribute returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_MixedMemberAndAttribute_ReturnsExpectedXml()
         {
@@ -662,9 +602,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize simple item returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_SimpleItem_ReturnsExpectedXml()
         {
@@ -699,9 +636,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize nested item ignores ignored public variables.
-        /// </summary>
         [Test]
         public void Serialize_NestedItem_IgnoresIgnoredPublicVariables()
         {
@@ -738,9 +672,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.IsFalse(serializedXml.Contains("SimpleIgnoredValue"));
         }
 
-        /// <summary>
-        /// Verifies serialize deeply nested item returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_DeeplyNestedItem_ReturnsExpectedXml()
         {
@@ -838,9 +769,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize interface collection returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_InterfaceCollection_ReturnsExpectedXml()
         {
@@ -895,9 +823,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize abstract collection with aliased element round trips concrete type.
-        /// </summary>
         [Test]
         public void Serialize_AbstractCollectionWithAliasedElement_RoundTripsConcreteType()
         {
@@ -921,9 +846,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("Concrete item", restored.Items.Single().Name);
         }
 
-        /// <summary>
-        /// Verifies serialize nested item with interface and deeply nested returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_NestedItem_WithInterfaceAndDeeplyNested_ReturnsExpectedXml()
         {
@@ -976,9 +898,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize public variable without attribute is included in xml.
-        /// </summary>
         [Test]
         public void Serialize_PublicVariableWithoutAttribute_IsIncludedInXml()
         {
@@ -1000,9 +919,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize simple item with dictionary returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_SimpleItemWithDictionary_ReturnsExpectedXml()
         {
@@ -1037,9 +953,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize complex item with dictionary returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_ComplexItemWithDictionary_ReturnsExpectedXml()
         {
@@ -1110,9 +1023,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize array of simple items returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_ArrayOfSimpleItems_ReturnsExpectedXml()
         {
@@ -1177,9 +1087,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize int array returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_IntArray_ReturnsExpectedXml()
         {
@@ -1205,9 +1112,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize string array returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_StringArray_ReturnsExpectedXml()
         {
@@ -1236,9 +1140,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize float array returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_FloatArray_ReturnsExpectedXml()
         {
@@ -1267,9 +1168,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize enum array returns expected xml.
-        /// </summary>
         [Test]
         public void Serialize_EnumArray_ReturnsExpectedXml()
         {
@@ -1293,9 +1191,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize item with custom name uses custom name.
-        /// </summary>
         [Test]
         public void Serialize_ItemWithCustomName_UsesCustomName()
         {
@@ -1320,9 +1215,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies serialize item with include uses actual type.
-        /// </summary>
         [Test]
         public void Serialize_ItemWithInclude_UsesActualType()
         {
@@ -1350,9 +1242,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies deserialize single object returns expected object.
-        /// </summary>
         [Test]
         public void Deserialize_SingleObject_ReturnsExpectedObject()
         {
@@ -1376,9 +1265,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("PublicValue", deserialized.PublicVariable);
         }
 
-        /// <summary>
-        /// Verifies deserialize item with attributes retains object properties.
-        /// </summary>
         [Test]
         public void Deserialize_ItemWithAttributes_RetainsObjectProperties()
         {
@@ -1400,9 +1286,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(TestEnum.Value2, deserialized.AttributeEnum);
         }
 
-        /// <summary>
-        /// Verifies deserialize mixed member and attribute retains object properties.
-        /// </summary>
         [Test]
         public void Deserialize_MixedMemberAndAttribute_RetainsObjectProperties()
         {
@@ -1425,9 +1308,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("PublicValue", deserialized.PublicVariable);
         }
 
-        /// <summary>
-        /// Verifies deserialize simple item does not ignore ignored public variable.
-        /// </summary>
         [Test]
         public void Deserialize_SimpleItem_DoesNotIgnoreIgnoredPublicVariable()
         {
@@ -1451,9 +1331,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("IgnoredValue", deserialized.IgnoredPublicVariable);
         }
 
-        /// <summary>
-        /// Verifies deserialize nested item does not ignore ignored public variables.
-        /// </summary>
         [Test]
         public void Deserialize_NestedItem_DoesNotIgnoreIgnoredPublicVariables()
         {
@@ -1486,9 +1363,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("SimpleIgnoredValue", deserialized.Items[0].IgnoredPublicVariable);
         }
 
-        /// <summary>
-        /// Verifies deserialize simple item retains object properties.
-        /// </summary>
         [Test]
         public void Deserialize_SimpleItem_RetainsObjectProperties()
         {
@@ -1510,9 +1384,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("PublicValue", deserialized.PublicVariable);
         }
 
-        /// <summary>
-        /// Verifies deserialize deeply nested item retains object properties.
-        /// </summary>
         [Test]
         public void Deserialize_DeeplyNestedItem_RetainsObjectProperties()
         {
@@ -1563,9 +1434,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies deserialize interface collection retains object properties.
-        /// </summary>
         [Test]
         public void Deserialize_InterfaceCollection_RetainsObjectProperties()
         {
@@ -1597,9 +1465,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("CollectionPublicValue", deserialized.PublicVariable);
         }
 
-        /// <summary>
-        /// Verifies deserialize public variable without attribute is deserialized.
-        /// </summary>
         [Test]
         public void Deserialize_PublicVariableWithoutAttribute_IsDeserialized()
         {
@@ -1625,9 +1490,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies deserialize simple item with dictionary retains object properties.
-        /// </summary>
         [Test]
         public void Deserialize_SimpleItemWithDictionary_RetainsObjectProperties()
         {
@@ -1659,9 +1521,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(20, deserialized.StringIntDict["Key2"]);
         }
 
-        /// <summary>
-        /// Verifies deserialize complex item with dictionary retains object properties.
-        /// </summary>
         [Test]
         public void Deserialize_ComplexItemWithDictionary_RetainsObjectProperties()
         {
@@ -1717,9 +1576,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies deserialize array of simple items retains object properties.
-        /// </summary>
         [Test]
         public void Deserialize_ArrayOfSimpleItems_RetainsObjectProperties()
         {
@@ -1769,9 +1625,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("Public3", deserialized[2].PublicVariable);
         }
 
-        /// <summary>
-        /// Verifies deserialize list subclass retains object properties.
-        /// </summary>
         [Test]
         public void Deserialize_ListSubclass_RetainsObjectProperties()
         {
@@ -1809,9 +1662,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("Public2", deserialized[1].PublicVariable);
         }
 
-        /// <summary>
-        /// Verifies deserialize int array retains values.
-        /// </summary>
         [Test]
         public void Deserialize_IntArray_RetainsValues()
         {
@@ -1837,9 +1687,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(5, deserialized[4]);
         }
 
-        /// <summary>
-        /// Verifies deserialize string array retains values.
-        /// </summary>
         [Test]
         public void Deserialize_StringArray_RetainsValues()
         {
@@ -1868,9 +1715,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("Five", deserialized[4]);
         }
 
-        /// <summary>
-        /// Verifies deserialize float array retains values.
-        /// </summary>
         [Test]
         public void Deserialize_FloatArray_RetainsValues()
         {
@@ -1899,9 +1743,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(5.5f, deserialized[4], 0.0001f);
         }
 
-        /// <summary>
-        /// Verifies deserialize enum array retains values.
-        /// </summary>
         [Test]
         public void Deserialize_EnumArray_RetainsValues()
         {
@@ -1923,9 +1764,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(TestEnum.Value3, deserialized[2]);
         }
 
-        /// <summary>
-        /// Verifies deserialize item with custom name uses custom name.
-        /// </summary>
         [Test]
         public void Deserialize_ItemWithCustomName_UsesCustomName()
         {
@@ -1953,9 +1791,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies deserialize item with include uses actual type.
-        /// </summary>
         [Test]
         public void Deserialize_ItemWithInclude_UsesActualType()
         {
@@ -1981,9 +1816,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(42, simpleItem.Value);
         }
 
-        /// <summary>
-        /// Verifies deserialize unknown element throws invalid operation exception.
-        /// </summary>
         [Test]
         public void Deserialize_UnknownElement_ThrowsInvalidOperationException()
         {
@@ -1994,9 +1826,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.Throws<InvalidOperationException>(() => DeserializeFromString(serializer, xml));
         }
 
-        /// <summary>
-        /// Verifies deserialize unknown element when ignored skips element and invokes callback.
-        /// </summary>
         [Test]
         public void Deserialize_UnknownElementWhenIgnored_SkipsElementAndInvokesCallback()
         {
@@ -2023,9 +1852,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("UnknownField", skippedElementName);
         }
 
-        /// <summary>
-        /// Verifies deserialize with schema valid xml succeeds.
-        /// </summary>
         [Test]
         public void Deserialize_WithSchema_ValidXml_Succeeds()
         {
@@ -2044,9 +1870,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.DoesNotThrow(() => DeserializeFromString(serializer, xml));
         }
 
-        /// <summary>
-        /// Verifies deserialize with schema invalid xml throws xml schema validation exception.
-        /// </summary>
         [Test]
         public void Deserialize_WithSchema_InvalidXml_ThrowsXmlSchemaValidationException()
         {
@@ -2067,9 +1890,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Verifies deserialize node stream containing matching element returns deserialized object.
-        /// </summary>
         [Test]
         public void DeserializeNode_StreamContainingMatchingElement_ReturnsDeserializedObject()
         {
@@ -2091,9 +1911,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(7, result.Value);
         }
 
-        /// <summary>
-        /// Verifies deserialize node element not found throws invalid data exception.
-        /// </summary>
         [Test]
         public void DeserializeNode_ElementNotFound_ThrowsInvalidDataException()
         {

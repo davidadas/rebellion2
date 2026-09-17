@@ -15,9 +15,6 @@ namespace Rebellion.Tests.AI.Director
     [TestFixture]
     public class AIAssessmentTests
     {
-        /// <summary>
-        /// Verifies constructor with mixed planet ownership builds ownership lists.
-        /// </summary>
         [Test]
         public void Constructor_WithMixedPlanetOwnership_BuildsOwnershipLists()
         {
@@ -42,9 +39,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies constructor with economic state caches turn values.
-        /// </summary>
         [Test]
         public void Constructor_WithEconomicState_CachesTurnValues()
         {
@@ -75,9 +69,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(cachedStockpile, assessment.RefinedMaterialStockpile);
         }
 
-        /// <summary>
-        /// Verifies get available production lane count with partially used stack returns free lanes.
-        /// </summary>
         [Test]
         public void GetAvailableProductionLaneCount_WithPartiallyUsedStack_ReturnsFreeLanes()
         {
@@ -116,9 +107,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies get diplomacy target strategic value with healthy maintenance ignores resources.
-        /// </summary>
         [Test]
         public void GetDiplomacyTargetStrategicValue_WithHealthyMaintenance_IgnoresResources()
         {
@@ -139,9 +127,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(0, value);
         }
 
-        /// <summary>
-        /// Verifies get diplomacy target strategic value with maintenance pressure values resources.
-        /// </summary>
         [Test]
         public void GetDiplomacyTargetStrategicValue_WithMaintenancePressure_ValuesResources()
         {
@@ -163,9 +148,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(2.0 / 9, value, 0.000001);
         }
 
-        /// <summary>
-        /// Verifies get offensive support leverage with favored target and exposed planet returns both.
-        /// </summary>
         [Test]
         public void GetOffensiveSupportLeverage_WithFavoredTargetAndExposedPlanet_ReturnsBoth()
         {
@@ -186,9 +168,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(2, assessment.GetOffensiveSupportLeverage(target));
         }
 
-        /// <summary>
-        /// Verifies get defensive support risk with favored enemy and exposed planet returns both.
-        /// </summary>
         [Test]
         public void GetDefensiveSupportRisk_WithFavoredEnemyAndExposedPlanet_ReturnsBoth()
         {
@@ -208,9 +187,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(2, assessment.GetDefensiveSupportRisk(target));
         }
 
-        /// <summary>
-        /// Verifies constructor with unobserved foreign planet does not expose planet.
-        /// </summary>
         [Test]
         public void Constructor_WithUnobservedForeignPlanet_DoesNotExposePlanet()
         {
@@ -229,9 +205,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.IsNull(assessment.GetKnownPlanet(hidden.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies constructor with observed uncolonized planet exposes colonization target.
-        /// </summary>
         [Test]
         public void Constructor_WithObservedUncolonizedPlanet_ExposesColonizationTarget()
         {
@@ -254,9 +227,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies constructor with stale uncolonized snapshot does not reveal current colonization.
-        /// </summary>
         [Test]
         public void Constructor_WithStaleUncolonizedSnapshot_DoesNotRevealCurrentColonization()
         {
@@ -280,9 +250,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies constructor with enemy officer builds targetable enemy officer targets.
-        /// </summary>
         [Test]
         public void Constructor_WithEnemyOfficer_BuildsTargetableEnemyOfficerTargets()
         {
@@ -311,9 +278,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies constructor with enemy officer aboard fleet builds targetable enemy officer targets.
-        /// </summary>
         [Test]
         public void Constructor_WithEnemyOfficerAboardFleet_BuildsTargetableEnemyOfficerTargets()
         {
@@ -338,9 +302,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreNotSame(target, candidate.TargetOfficer);
         }
 
-        /// <summary>
-        /// Verifies constructor with stale snapshot uses last observed enemy state.
-        /// </summary>
         [Test]
         public void Constructor_WithStaleSnapshot_UsesLastObservedEnemyState()
         {
@@ -371,9 +332,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(1, assessment.GetPlanetBuildingCount(knownEnemy));
         }
 
-        /// <summary>
-        /// Verifies constructor with stale snapshot uses detached recorded entity copies.
-        /// </summary>
         [Test]
         public void Constructor_WithStaleSnapshot_UsesDetachedRecordedEntityCopies()
         {
@@ -403,9 +361,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreSame(knownEnemy, knownBuilding.GetParentOfType<Planet>());
         }
 
-        /// <summary>
-        /// Verifies can fleet depart headquarters with only local fleet returns false.
-        /// </summary>
         [Test]
         public void CanFleetDepartHeadquarters_WithOnlyLocalFleet_ReturnsFalse()
         {
@@ -430,9 +385,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies can fleet depart headquarters with threat beyond remaining defense returns false.
-        /// </summary>
         [Test]
         public void CanFleetDepartHeadquarters_WithThreatBeyondRemainingDefense_ReturnsFalse()
         {
@@ -488,9 +440,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies get required headquarters defense strength with known hostile fleet uses affordable share.
-        /// </summary>
         [Test]
         public void GetRequiredHeadquartersDefenseStrength_WithKnownHostileFleet_UsesAffordableShare()
         {
@@ -539,9 +488,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(1400, assessment.GetRequiredHeadquartersDefenseStrength(headquarters));
         }
 
-        /// <summary>
-        /// Verifies get committed headquarters defense strength sums local and inbound fleets.
-        /// </summary>
         [Test]
         public void GetCommittedHeadquartersDefenseStrength_SumsLocalAndInboundFleets()
         {
@@ -593,9 +539,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(1300, assessment.GetCommittedHeadquartersDefenseStrength(headquarters));
         }
 
-        /// <summary>
-        /// Verifies get required headquarters defense strength with unknown remote attack order uses minimum strength.
-        /// </summary>
         [Test]
         public void GetRequiredHeadquartersDefenseStrength_WithUnknownRemoteAttackOrder_UsesMinimumStrength()
         {
@@ -639,9 +582,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(1000, assessment.GetRequiredHeadquartersDefenseStrength(headquarters));
         }
 
-        /// <summary>
-        /// Verifies can fleet depart headquarters at undefended captured enemy headquarters returns false.
-        /// </summary>
         [Test]
         public void CanFleetDepartHeadquarters_AtUndefendedCapturedEnemyHeadquarters_ReturnsFalse()
         {
@@ -666,9 +606,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies can fleet depart headquarters when either fleet leaves enough defense returns true.
-        /// </summary>
         [Test]
         public void CanFleetDepartHeadquarters_WhenEitherFleetLeavesEnoughDefense_ReturnsTrue()
         {
@@ -710,9 +647,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.IsTrue(plan.CanFleetDepart(other));
         }
 
-        /// <summary>
-        /// Verifies can fleet depart headquarters from unstable owned planet returns false until threshold.
-        /// </summary>
         [Test]
         public void CanFleetDepartHeadquarters_FromUnstableOwnedPlanet_ReturnsFalseUntilThreshold()
         {
@@ -751,9 +685,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies can fleet depart headquarters from low leverage enemy dominated system returns true.
-        /// </summary>
         [Test]
         public void CanFleetDepartHeadquarters_FromLowLeverageEnemyDominatedSystem_ReturnsTrue()
         {
@@ -782,9 +713,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies can fleet depart headquarters from low leverage friendly system returns true.
-        /// </summary>
         [Test]
         public void CanFleetDepartHeadquarters_FromLowLeverageFriendlySystem_ReturnsTrue()
         {
@@ -814,9 +742,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies can fleet depart headquarters from hostile planet allows immediate evacuation.
-        /// </summary>
         [Test]
         public void CanFleetDepartHeadquarters_FromHostilePlanet_AllowsImmediateEvacuation()
         {
@@ -834,9 +759,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies can fleet depart headquarters from unstable fully shielded planet returns true.
-        /// </summary>
         [Test]
         public void CanFleetDepartHeadquarters_FromUnstableFullyShieldedPlanet_ReturnsTrue()
         {
@@ -862,9 +784,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies get projected fleet combat value with committed units includes ready and pending combat.
-        /// </summary>
         [Test]
         public void GetProjectedFleetCombatValue_WithCommittedUnits_IncludesReadyAndPendingCombat()
         {
@@ -923,9 +842,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(750, assessment.GetProjectedFleetCombatValue(fleet));
         }
 
-        /// <summary>
-        /// Verifies get projected fleet regiment attack strength with committed regiments includes pending strength.
-        /// </summary>
         [Test]
         public void GetProjectedFleetRegimentAttackStrength_WithCommittedRegiments_IncludesPendingStrength()
         {
@@ -973,9 +889,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(60, assessment.GetProjectedFleetRegimentAttackStrength(fleet));
         }
 
-        /// <summary>
-        /// Verifies get fleet bombardment strength with damaged units and admiral matches combat rules.
-        /// </summary>
         [Test]
         public void GetFleetBombardmentStrength_WithDamagedUnitsAndAdmiral_MatchesCombatRules()
         {
@@ -1009,9 +922,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(45, assessment.GetFleetBombardmentStrength(fleet));
         }
 
-        /// <summary>
-        /// Verifies is fleet ready to attack shielded target requires shield penetration.
-        /// </summary>
         [Test]
         public void IsFleetReadyToAttack_ShieldedTarget_RequiresShieldPenetration()
         {
@@ -1046,9 +956,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.IsTrue(assessment.IsFleetReadyToAttack(readyFleet, target));
         }
 
-        /// <summary>
-        /// Verifies is fleet ready to attack bombardment can remove defenders requires occupation force.
-        /// </summary>
         [Test]
         public void IsFleetReadyToAttack_BombardmentCanRemoveDefenders_RequiresOccupationForce()
         {
@@ -1087,9 +994,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.IsTrue(assessment.IsFleetReadyToAttack(bombardmentFleet, target));
         }
 
-        /// <summary>
-        /// Verifies is fleet ready to attack transport only fleet returns false.
-        /// </summary>
         [Test]
         public void IsFleetReadyToAttack_TransportOnlyFleet_ReturnsFalse()
         {
@@ -1117,9 +1021,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.IsFalse(assessment.IsFleetReadyToAttack(fleet, target));
         }
 
-        /// <summary>
-        /// Verifies is fleet ready to attack single troop facing certain defense fire returns false.
-        /// </summary>
         [Test]
         public void IsFleetReadyToAttack_SingleTroopFacingCertainDefenseFire_ReturnsFalse()
         {
@@ -1147,9 +1048,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.IsFalse(assessment.IsFleetReadyToAttack(fleet, target));
         }
 
-        /// <summary>
-        /// Verifies is fleet ready to attack reserve troop survives certain defense fire returns true.
-        /// </summary>
         [Test]
         public void IsFleetReadyToAttack_ReserveTroopSurvivesCertainDefenseFire_ReturnsTrue()
         {
@@ -1182,9 +1080,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.IsTrue(assessment.IsFleetReadyToAttack(fleet, target));
         }
 
-        /// <summary>
-        /// Verifies get required attack regiment count bombardment can remove defenders requires stable occupation.
-        /// </summary>
         [Test]
         public void GetRequiredAttackRegimentCount_BombardmentCanRemoveDefenders_RequiresStableOccupation()
         {
@@ -1208,9 +1103,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(fleet, target));
         }
 
-        /// <summary>
-        /// Verifies get required attack regiment count stability exceeds landing capacity caps occupation.
-        /// </summary>
         [Test]
         public void GetRequiredAttackRegimentCount_StabilityExceedsLandingCapacity_CapsOccupation()
         {
@@ -1234,9 +1126,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(3, assessment.GetRequiredAttackRegimentCount(fleet, target));
         }
 
-        /// <summary>
-        /// Verifies get required attack regiment count without defenders requires stable occupation.
-        /// </summary>
         [Test]
         public void GetRequiredAttackRegimentCount_WithoutDefenders_RequiresStableOccupation()
         {
@@ -1256,9 +1145,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(fleet, target));
         }
 
-        /// <summary>
-        /// Verifies get defending regiment defense strength with different bombardment defense returns equal strength.
-        /// </summary>
         [Test]
         public void GetDefendingRegimentDefenseStrength_WithDifferentBombardmentDefense_ReturnsEqualStrength()
         {
@@ -1291,9 +1177,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies get required attack regiment count with defenders and low support adds occupation force.
-        /// </summary>
         [Test]
         public void GetRequiredAttackRegimentCount_WithDefendersAndLowSupport_AddsOccupationForce()
         {
@@ -1332,9 +1215,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(10, assessment.GetRequiredAttackRegimentCount(enemy));
         }
 
-        /// <summary>
-        /// Verifies get required attack package with multiple enemy planets uses strongest system fleet.
-        /// </summary>
         [Test]
         public void GetRequiredAttackPackage_WithMultipleEnemyPlanets_UsesStrongestSystemFleet()
         {
@@ -1427,9 +1307,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(0, assessment.GetRequiredBombardmentStrength(secondTarget));
         }
 
-        /// <summary>
-        /// Verifies get required attack combat strength without orbital defenders returns minimum strength.
-        /// </summary>
         [Test]
         public void GetRequiredAttackCombatStrength_WithoutOrbitalDefenders_ReturnsMinimumStrength()
         {
@@ -1448,9 +1325,6 @@ namespace Rebellion.Tests.AI.Director
             );
         }
 
-        /// <summary>
-        /// Verifies get sabotage target priority bonus mixed targets uses tactical priority order.
-        /// </summary>
         [Test]
         public void GetSabotageTargetPriorityBonus_MixedTargets_UsesTacticalPriorityOrder()
         {
@@ -1571,9 +1445,6 @@ namespace Rebellion.Tests.AI.Director
             return shield;
         }
 
-        /// <summary>
-        /// Verifies get attack target planet enemy attack order returns target.
-        /// </summary>
         [Test]
         public void GetAttackTargetPlanet_EnemyAttackOrder_ReturnsTarget()
         {
@@ -1597,9 +1468,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(rebels.InstanceID, target.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies get attack target planet stale enemy snapshot returns known target.
-        /// </summary>
         [Test]
         public void GetAttackTargetPlanet_StaleEnemySnapshot_ReturnsKnownTarget()
         {
@@ -1624,9 +1492,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(rebels.InstanceID, target.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies get attack target planet non enemy attack order returns null.
-        /// </summary>
         [Test]
         public void GetAttackTargetPlanet_NonEnemyAttackOrder_ReturnsNull()
         {

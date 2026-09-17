@@ -41,9 +41,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Object.DestroyImmediate(_eventSystemObject);
         }
 
-        /// <summary>
-        /// Verifies configure selectable row disabled row enables row and hit area.
-        /// </summary>
         [Test]
         public void ConfigureSelectableRow_DisabledRow_EnablesRowAndHitArea()
         {
@@ -61,18 +58,12 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsFalse(_hitArea.canvasRenderer.cullTransparentMesh);
         }
 
-        /// <summary>
-        /// Verifies configure selectable row null hit area throws missing reference exception.
-        /// </summary>
         [Test]
         public void ConfigureSelectableRow_NullHitArea_ThrowsMissingReferenceException()
         {
             Assert.Throws<MissingReferenceException>(() => _row.Configure(0, null));
         }
 
-        /// <summary>
-        /// Verifies on pointer click left double click raises activated.
-        /// </summary>
         [Test]
         public void OnPointerClick_LeftDoubleClick_RaisesActivated()
         {
@@ -95,9 +86,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.AreSame(eventData, receivedEvent);
         }
 
-        /// <summary>
-        /// Verifies on pointer click nonactivating clicks do not raise activated.
-        /// </summary>
         [Test]
         public void OnPointerClick_NonactivatingClicks_DoNotRaiseActivated()
         {
@@ -122,9 +110,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.AreEqual(0, activatedCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer down left button focuses and raises selected.
-        /// </summary>
         [Test]
         public void OnPointerDown_LeftButton_FocusesAndRaisesSelected()
         {
@@ -150,9 +135,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.AreEqual(0, contextCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer down right button raises context request only.
-        /// </summary>
         [Test]
         public void OnPointerDown_RightButton_RaisesContextRequestOnly()
         {
@@ -177,9 +159,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.AreEqual(0, selectedCount);
         }
 
-        /// <summary>
-        /// Verifies on move down selects and focuses next active sibling.
-        /// </summary>
         [Test]
         public void OnMove_Down_SelectsAndFocusesNextActiveSibling()
         {
@@ -204,9 +183,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsTrue(eventData.used);
         }
 
-        /// <summary>
-        /// Verifies on move disabled navigation does not select sibling.
-        /// </summary>
         [Test]
         public void OnMove_DisabledNavigation_DoesNotSelectSibling()
         {
@@ -225,9 +201,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsFalse(eventData.used);
         }
 
-        /// <summary>
-        /// Verifies on submit enabled navigation raises activated and uses event.
-        /// </summary>
         [Test]
         public void OnSubmit_EnabledNavigation_RaisesActivatedAndUsesEvent()
         {
@@ -247,9 +220,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsTrue(eventData.used);
         }
 
-        /// <summary>
-        /// Verifies on submit disabled navigation does not raise activated.
-        /// </summary>
         [Test]
         public void OnSubmit_DisabledNavigation_DoesNotRaiseActivated()
         {
@@ -264,9 +234,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.IsFalse(eventData.used);
         }
 
-        /// <summary>
-        /// Verifies focus row for navigation selection outside scope focuses requested row.
-        /// </summary>
         [Test]
         public void FocusRowForNavigation_SelectionOutsideScope_FocusesRequestedRow()
         {
@@ -277,9 +244,6 @@ namespace Rebellion.Tests.UI.Components.SelectableList
             Assert.AreSame(_rowObject, _eventSystem.currentSelectedGameObject);
         }
 
-        /// <summary>
-        /// Verifies focus row for navigation selection inside scope preserves current selection.
-        /// </summary>
         [Test]
         public void FocusRowForNavigation_SelectionInsideScope_PreservesCurrentSelection()
         {

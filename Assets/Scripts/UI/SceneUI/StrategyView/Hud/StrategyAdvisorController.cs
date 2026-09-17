@@ -570,6 +570,11 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
                 "Messages",
                 faction != null
             ),
+            new StrategyMenuCommand(
+                StrategyMenuAction.AdvisorMarkAllMessagesRead,
+                "Mark All Read",
+                faction?.HasUnreadMessages() == true
+            ),
             new StrategyMenuCommand("Message Alerts", faction != null, alerts),
         };
     }
@@ -613,6 +618,13 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         Faction faction = getPlayerFaction();
         if (faction == null)
             return;
+
+        if (menuCommand.Action == StrategyMenuAction.AdvisorMarkAllMessagesRead)
+        {
+            faction.MarkAllMessagesRead();
+            actions.RequestHudRender();
+            return;
+        }
 
         if (TryGetMessageType(menuCommand.Action, out MessageType messageType))
         {

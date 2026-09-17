@@ -46,9 +46,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies constructor null dependency or provider throws.
-        /// </summary>
         [Test]
         public void Constructor_NullDependencyOrProvider_Throws()
         {
@@ -89,9 +86,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             );
         }
 
-        /// <summary>
-        /// Verifies open context menu known window uses first handling provider.
-        /// </summary>
         [Test]
         public void OpenContextMenu_KnownWindow_UsesFirstHandlingProvider()
         {
@@ -120,9 +114,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsTrue(_router.IsOpen);
         }
 
-        /// <summary>
-        /// Verifies open context menu pointer window resolves registered window.
-        /// </summary>
         [Test]
         public void OpenContextMenu_PointerWindow_ResolvesRegisteredWindow()
         {
@@ -145,9 +136,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual(43, _provider.LastContext.Y);
         }
 
-        /// <summary>
-        /// Verifies open context menu no provider handles shows disabled fallback commands.
-        /// </summary>
         [Test]
         public void OpenContextMenu_NoProviderHandles_ShowsDisabledFallbackCommands()
         {
@@ -162,9 +150,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual("Status", FindCommandText(rows[1]).text);
         }
 
-        /// <summary>
-        /// Verifies open context menu null window cancels request and resets presenter.
-        /// </summary>
         [Test]
         public void OpenContextMenu_NullWindow_CancelsRequestAndResetsPresenter()
         {
@@ -184,9 +169,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(_router.IsOpen);
         }
 
-        /// <summary>
-        /// Verifies an enabled shortcut executes its matching command without opening a menu.
-        /// </summary>
         [Test]
         public void TryExecuteShortcut_EnabledMatchingCommand_ExecutesWithoutOpeningMenu()
         {
@@ -221,9 +203,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(_presenter.Open);
         }
 
-        /// <summary>
-        /// Verifies open runtime context menu strategy commands opens request and presentation.
-        /// </summary>
         [Test]
         public void OpenRuntimeContextMenu_StrategyCommands_OpensRequestAndPresentation()
         {
@@ -242,9 +221,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsTrue(_router.IsOpen);
         }
 
-        /// <summary>
-        /// Verifies open runtime context menu null or foreign command throws.
-        /// </summary>
         [Test]
         public void OpenRuntimeContextMenu_NullOrForeignCommand_Throws()
         {
@@ -264,9 +240,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(_presenter.Open);
         }
 
-        /// <summary>
-        /// Verifies select runtime context menu included command notifies and closes both layers.
-        /// </summary>
         [Test]
         public void SelectRuntimeContextMenu_IncludedCommand_NotifiesAndClosesBothLayers()
         {
@@ -288,9 +261,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(_presenter.Open);
         }
 
-        /// <summary>
-        /// Verifies select runtime context menu invalid command cancels and closes both layers.
-        /// </summary>
         [Test]
         public void SelectRuntimeContextMenu_InvalidCommand_CancelsAndClosesBothLayers()
         {
@@ -311,9 +281,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.IsFalse(_presenter.Open);
         }
 
-        /// <summary>
-        /// Verifies try cancel open then closed menu returns matching state.
-        /// </summary>
         [Test]
         public void TryCancel_OpenThenClosedMenu_ReturnsMatchingState()
         {

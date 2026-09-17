@@ -11,10 +11,6 @@ namespace Rebellion.Analyzers.Tests
     [TestFixture]
     public sealed class MemberDeclarationOrderAnalyzerTests
     {
-        /// <summary>
-        /// Verifies a field following a method reports a diagnostic.
-        /// </summary>
-        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task FieldAfterMethod_ReportsDiagnosticAsync()
         {
@@ -32,10 +28,6 @@ class Example
             Assert.AreEqual(MemberDeclarationOrderAnalyzer.DiagnosticId, diagnostics[0].Id);
         }
 
-        /// <summary>
-        /// Verifies a field preceding a method reports no diagnostic.
-        /// </summary>
-        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task FieldBeforeMethod_DoesNotReportDiagnosticAsync()
         {
@@ -52,10 +44,6 @@ class Example
             Assert.IsEmpty(diagnostics);
         }
 
-        /// <summary>
-        /// Verifies a property following a method reports a diagnostic.
-        /// </summary>
-        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task PropertyAfterMethod_ReportsDiagnosticAsync()
         {
@@ -73,10 +61,6 @@ class Example
             Assert.AreEqual(MemberDeclarationOrderAnalyzer.DiagnosticId, diagnostics[0].Id);
         }
 
-        /// <summary>
-        /// Verifies a property preceding a method reports no diagnostic.
-        /// </summary>
-        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task PropertyBeforeMethod_DoesNotReportDiagnosticAsync()
         {
@@ -93,10 +77,6 @@ class Example
             Assert.IsEmpty(diagnostics);
         }
 
-        /// <summary>
-        /// Verifies declaration ordering is checked inside nested types.
-        /// </summary>
-        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task FieldAfterNestedMethod_ReportsDiagnosticAsync()
         {
@@ -117,10 +97,6 @@ class Outer
             Assert.AreEqual(MemberDeclarationOrderAnalyzer.DiagnosticId, diagnostics[0].Id);
         }
 
-        /// <summary>
-        /// Verifies generated source is excluded from declaration-order analysis.
-        /// </summary>
-        /// <returns>A task representing the asynchronous test.</returns>
         [Test]
         public async Task GeneratedCode_DoesNotReportDiagnosticAsync()
         {

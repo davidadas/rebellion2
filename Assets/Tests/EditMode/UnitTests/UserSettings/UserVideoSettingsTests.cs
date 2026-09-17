@@ -6,10 +6,6 @@ namespace Rebellion.Tests.UserSettings
     [TestFixture]
     public sealed class UserVideoSettingsTests
     {
-        /// <summary>
-        /// Verifies set enabled option disabled updates requested option.
-        /// </summary>
-        /// <param name="option">The option.</param>
         [TestCase(UserTacticalOption.Starfield)]
         [TestCase(UserTacticalOption.Planet)]
         [TestCase(UserTacticalOption.Pyro)]
@@ -24,9 +20,6 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsFalse(settings.IsEnabled(option));
         }
 
-        /// <summary>
-        /// Verifies normalize invalid display values restores native exclusive defaults.
-        /// </summary>
         [Test]
         public void Normalize_InvalidDisplayValues_RestoresNativeExclusiveDefaults()
         {
@@ -44,9 +37,6 @@ namespace Rebellion.Tests.UserSettings
             Assert.AreEqual((int)FullScreenMode.ExclusiveFullScreen, settings.FullScreenMode);
         }
 
-        /// <summary>
-        /// Verifies normalize valid display values preserves selection.
-        /// </summary>
         [Test]
         public void Normalize_ValidDisplayValues_PreservesSelection()
         {
@@ -64,9 +54,6 @@ namespace Rebellion.Tests.UserSettings
             Assert.AreEqual((int)FullScreenMode.Windowed, settings.FullScreenMode);
         }
 
-        /// <summary>
-        /// Verifies normalization clears a persisted resolution outside the supported aspect ratio.
-        /// </summary>
         [Test]
         public void Normalize_NonSixteenByNineResolution_ClearsUnsupportedSelection()
         {
@@ -82,9 +69,6 @@ namespace Rebellion.Tests.UserSettings
             Assert.AreEqual(0, settings.ResolutionHeight);
         }
 
-        /// <summary>
-        /// Verifies an ultrawide target falls back to the largest fitting 16:9 mode.
-        /// </summary>
         [Test]
         public void Resolve_UltrawideTarget_SelectsLargestFittingSixteenByNineMode()
         {
@@ -108,18 +92,9 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsTrue(DisplayManager.IsSixteenByNine(selected.x, selected.y));
         }
 
-        /// <summary>
-        /// Verifies is sixteen by nine accepts only sixteen by nine modes.
-        /// </summary>
-        /// <param name="width">The width.</param>
-        /// <param name="height">The height.</param>
-        /// <param name="expected">Whether expected.</param>
         [TestCase(1920, 1080, true)]
         [TestCase(2560, 1440, true)]
         [TestCase(3840, 1600, false)]
-        /// <summary>
-        /// Verifies the aspect-ratio predicate accepts only 16:9 dimensions.
-        /// </summary>
         [TestCase(1366, 768, true)]
         [TestCase(1920, 1200, false)]
         public void IsSixteenByNine_AcceptsOnlySixteenByNineModes(
@@ -131,9 +106,6 @@ namespace Rebellion.Tests.UserSettings
             Assert.AreEqual(expected, DisplayManager.IsSixteenByNine(width, height));
         }
 
-        /// <summary>
-        /// Verifies json utility explicit tactical options round trips state.
-        /// </summary>
         [Test]
         public void JsonUtility_ExplicitTacticalOptions_RoundTripsState()
         {

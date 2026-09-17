@@ -38,9 +38,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             UnityEngine.Object.DestroyImmediate(_texture);
         }
 
-        /// <summary>
-        /// Verifies window source changes preserves read only planet snapshot.
-        /// </summary>
         [Test]
         public void Window_SourceChanges_PreservesReadOnlyPlanetSnapshot()
         {
@@ -57,9 +54,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
-        /// <summary>
-        /// Verifies window null planets returns empty snapshot.
-        /// </summary>
         [Test]
         public void Window_NullPlanets_ReturnsEmptySnapshot()
         {
@@ -69,10 +63,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsEmpty(data.Planets);
         }
 
-        /// <summary>
-        /// Verifies planet missing bar throws argument null exception.
-        /// </summary>
-        /// <param name="missingBarIndex">The missing bar index.</param>
         [TestCase(0)]
         [TestCase(1)]
         [TestCase(2)]
@@ -87,9 +77,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
         }
 
-        /// <summary>
-        /// Verifies planet null name returns empty name.
-        /// </summary>
         [Test]
         public void Planet_NullName_ReturnsEmptyName()
         {

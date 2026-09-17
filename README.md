@@ -32,9 +32,16 @@ Rebellion 2 is approximately **60% complete toward a feature-complete single-pla
 
 ## Playing the game
 
-Rebellion 2 is currently available through an early-access installer. Join the
-[Star Wars Rebellion Discord](https://discord.com/invite/rWP4vzw8Gg) and ask **@DavidAdas** for
-access.
+Rebellion 2 is currently available through early-access installers for Windows and macOS:
+
+- [Download the latest Windows installer](https://github.com/adasgames/rebellion2-installers/releases/latest/download/Rebellion2-Windows-Setup.exe)
+- [Download the latest macOS installer](https://github.com/adasgames/rebellion2-installers/releases/download/latest-macos/Rebellion2-macOS.zip)
+- [View release notes and all downloads](https://github.com/adasgames/rebellion2-installers/releases/latest)
+
+macOS builds are updated monthly because their development and release costs are higher.
+
+The [installer and launcher source code](https://github.com/adasgames/rebellion2-installers) is
+publicly available.
 
 The installer verifies ownership automatically. You must own either *Star Wars: Rebellion* or
 *Star Wars: Empire at War: Gold Pack* on **GOG** or **Steam**.

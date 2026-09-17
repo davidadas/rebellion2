@@ -7,9 +7,6 @@ namespace Rebellion.Tests.Game.Encyclopedia
     [TestFixture]
     public class EncyclopediaCatalogTests
     {
-        /// <summary>
-        /// Verifies get rows with null category returns visible entries sorted by name.
-        /// </summary>
         [Test]
         public void GetRows_WithNullCategory_ReturnsVisibleEntriesSortedByName()
         {
@@ -38,9 +35,6 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.AreEqual("Nebulon-B Frigate", rows[1].DisplayName);
         }
 
-        /// <summary>
-        /// Verifies get rows with category returns matching category rows.
-        /// </summary>
         [Test]
         public void GetRows_WithCategory_ReturnsMatchingCategoryRows()
         {
@@ -68,9 +62,6 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.AreEqual("SHIP1", rows[0].TypeID);
         }
 
-        /// <summary>
-        /// Verifies get rows with faction visibility excludes other faction entries.
-        /// </summary>
         [Test]
         public void GetRows_WithFactionVisibility_ExcludesOtherFactionEntries()
         {

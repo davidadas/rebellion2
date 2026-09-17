@@ -587,6 +587,48 @@ namespace Rebellion.Tests.Sectors
         }
 
         /// <summary>
+        /// Verifies scrapping an owned building reports the object and its original planet.
+        /// </summary>
+        [Test]
+        public void TryScrap_OwnedBuilding_ReportsScrappedObjectAndContext()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "s1" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            Building shipyard = new Building
+            {
+                InstanceID = "shipyard1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                BuildingType = BuildingType.Shipyard,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            game.AttachNode(shipyard, planet);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                new FixedRNG(),
+                new FleetSystem(game)
+            );
+            IReadOnlyList<GameResult> results = null;
+            maintenanceSystem.ResultsProduced += producedResults => results = producedResults;
+
+            bool scrapped = maintenanceSystem.TryScrap(
+                new List<IManufacturable> { shipyard },
+                "empire"
+            );
+
+            GameObjectScrappedResult scrappedResult = results
+                .OfType<GameObjectScrappedResult>()
+                .Single();
+            Assert.IsTrue(scrapped);
+            Assert.AreSame(shipyard, scrappedResult.ScrappedObject);
+            Assert.AreSame(planet, scrappedResult.Context);
+        }
+
+        /// <summary>
         /// Verifies try scrap unit under construction preserves unit and materials.
         /// </summary>
         [Test]

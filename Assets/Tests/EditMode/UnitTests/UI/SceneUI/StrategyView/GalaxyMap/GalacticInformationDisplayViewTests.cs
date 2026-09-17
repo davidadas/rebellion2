@@ -55,18 +55,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render visible display applies selector categories submenu and display off row.
-        /// </summary>
         [Test]
         public void Render_VisibleDisplay_AppliesSelectorCategoriesSubmenuAndDisplayOffRow()
         {
@@ -102,9 +96,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(Color.cyan, FindText("DisplayOffText").color);
         }
 
-        /// <summary>
-        /// Verifies render missing category icon hides icon but retains arrow slot.
-        /// </summary>
         [Test]
         public void Render_MissingCategoryIcon_HidesIconButRetainsArrowSlot()
         {
@@ -127,9 +118,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(FindComponent<RawImage>("LoyaltyCategoryArrowImage").enabled);
         }
 
-        /// <summary>
-        /// Verifies render invisible category and display off hides authored rows.
-        /// </summary>
         [Test]
         public void Render_InvisibleCategoryAndDisplayOff_HidesAuthoredRows()
         {
@@ -153,9 +141,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(FindTransform("DisplayOffText").gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render hidden display hides display and every submenu.
-        /// </summary>
         [Test]
         public void Render_HiddenDisplay_HidesDisplayAndEverySubmenu()
         {
@@ -174,9 +159,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             }
         }
 
-        /// <summary>
-        /// Verifies selector hit areas interact raise category display off and dismiss requests.
-        /// </summary>
         [Test]
         public void SelectorHitAreas_Interact_RaiseCategoryDisplayOffAndDismissRequests()
         {
@@ -215,9 +197,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, dismissCount);
         }
 
-        /// <summary>
-        /// Verifies submenu filter hit area interact forwards filter events.
-        /// </summary>
         [Test]
         public void SubmenuFilterHitArea_Interact_ForwardsFilterEvents()
         {
@@ -261,9 +240,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(GalacticInformationFilterMode.PopularSupport, selectedMode);
         }
 
-        /// <summary>
-        /// Verifies on destroy initialized view unbinds input and raises destroyed event.
-        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsInputAndRaisesDestroyedEvent()
         {

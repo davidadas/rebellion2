@@ -3942,6 +3942,42 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         /// <summary>
+        /// Verifies create messages observed planet neutrality without a support reason reports the observer.
+        /// </summary>
+        [Test]
+        public void CreateMessages_ObservedPlanetNeutralityWithoutSupportReason_ReportsObserver()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.PlanetDeclaredNeutralityBySupport,
+                            MessageType.PopularSupport,
+                            "{system} neutral",
+                            "neutral:{system}:{faction}"
+                        ),
+                    },
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = target,
+                        PreviousOwner = empire,
+                        NewOwner = null,
+                        ObserverFactionInstanceIDs = new List<string> { alliance.InstanceID },
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Yavin neutral", message.Title);
+            Assert.AreEqual("neutral:Yavin:Empire", message.Body);
+        }
+
+        /// <summary>
         /// Verifies create messages planet ownership change without support reason does not report join.
         /// </summary>
         [Test]
