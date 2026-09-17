@@ -21,6 +21,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                     StrategyUISoundPaths.SectorWindowClose,
                     StrategyUISoundPaths.GalacticInformationOpen,
                     StrategyUISoundPaths.GalacticInformationControl,
+                    StrategyUISoundPaths.OrbitalBombardment,
                     StrategyUISoundPaths.PlanetaryAssault,
                 },
                 StrategyUISoundPaths.GetPreloadPaths(null).ToArray()
@@ -89,6 +90,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                     StrategyUISoundPaths.SectorWindowClose,
                     StrategyUISoundPaths.GalacticInformationOpen,
                     StrategyUISoundPaths.GalacticInformationControl,
+                    StrategyUISoundPaths.OrbitalBombardment,
                     StrategyUISoundPaths.PlanetaryAssault,
                     "advisor-audio/planetary-assault",
                     "advisor-audio/garrison-enabled-alternate",
