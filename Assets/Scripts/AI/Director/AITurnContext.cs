@@ -450,8 +450,9 @@ namespace Rebellion.AI.Director
                     ? config.ShipyardSectorHubTargetCount
                     : config.FacilitySectorHubTargetCount;
             int currentCount = primary.GetTotalBuildingTypeCount(buildingType);
+            int completedCount = primary.GetBuildingTypeCount(buildingType);
             int feasibleTarget = Math.Max(
-                currentCount,
+                completedCount,
                 Math.Min(configuredTarget, GetFeasibleFacilityCount(primary, buildingType))
             );
             caps[primary.InstanceID] = feasibleTarget;
@@ -474,8 +475,9 @@ namespace Rebellion.AI.Director
             {
                 Planet secondary = ranked[index];
                 int secondaryCurrent = secondary.GetTotalBuildingTypeCount(buildingType);
+                int secondaryCompleted = secondary.GetBuildingTypeCount(buildingType);
                 int secondaryTarget = Math.Max(
-                    secondaryCurrent,
+                    secondaryCompleted,
                     Math.Min(
                         config.FacilitySectorSecondaryTargetCount,
                         GetFeasibleFacilityCount(secondary, buildingType)
