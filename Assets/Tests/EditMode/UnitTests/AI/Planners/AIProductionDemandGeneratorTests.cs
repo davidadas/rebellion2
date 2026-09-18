@@ -1015,6 +1015,59 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
+        /// Verifies facility balance favors the less-developed shipyard category.
+        /// </summary>
+        [Test]
+        public void Generate_WithConstructionHubAheadOfShipyard_PrioritizesShipyardBalance()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FacilitySectorHubTargetCount = 5;
+            game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount = 5;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet constructionHub = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "construction-hub",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            Planet shipyardHub = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "shipyard-hub",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            for (int index = 0; index < 4; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    constructionHub,
+                    $"construction-{index}",
+                    BuildingType.ConstructionFacility,
+                    ManufacturingType.Building
+                );
+            }
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                shipyardHub,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+
+            List<AIDemand> demands = new AIProductionDemandGenerator().Generate(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+            AIDemand construction = demands.Single(demand =>
+                demand.Kind == AIDemandKind.ConstructionFacility
+            );
+            AIDemand shipyard = demands.Single(demand => demand.Kind == AIDemandKind.Shipyard);
+
+            Assert.Greater(shipyard.Pressure, construction.Pressure);
+        }
+
+        /// <summary>
         /// Verifies generate with incomplete shipyard hub does not expand secondary in another sector.
         /// </summary>
         [Test]
