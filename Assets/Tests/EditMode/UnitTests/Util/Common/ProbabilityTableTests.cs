@@ -16,10 +16,10 @@ namespace Rebellion.Tests.Util.Common
             ProbabilityTable table = new ProbabilityTable(
                 new Dictionary<int, int>
                 {
+                    { 1, 94 },
+                    { -9, 96 },
                     { -20, 99 },
                     { -19, 98 },
-                    { -9, 96 },
-                    { 1, 94 },
                 }
             );
 

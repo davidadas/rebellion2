@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Rebellion.Util.Common
 {
@@ -26,19 +25,28 @@ namespace Rebellion.Util.Common
             if (_table.Count == 0)
                 return 0;
 
-            List<int> sortedKeys = _table.Keys.OrderBy(k => k).ToList();
-
-            if (value < sortedKeys[0])
-                return _table[sortedKeys[0]];
-
-            for (int i = sortedKeys.Count - 1; i >= 0; i--)
+            int lowestThreshold = int.MaxValue;
+            int lowestResult = 0;
+            int matchedThreshold = int.MinValue;
+            int matchedResult = 0;
+            bool hasMatch = false;
+            foreach (KeyValuePair<int, int> entry in _table)
             {
-                int threshold = sortedKeys[i];
-                if (value >= threshold)
-                    return _table[threshold];
+                if (entry.Key < lowestThreshold)
+                {
+                    lowestThreshold = entry.Key;
+                    lowestResult = entry.Value;
+                }
+
+                if (entry.Key <= value && (!hasMatch || entry.Key > matchedThreshold))
+                {
+                    matchedThreshold = entry.Key;
+                    matchedResult = entry.Value;
+                    hasMatch = true;
+                }
             }
 
-            return 0;
+            return hasMatch ? matchedResult : lowestResult;
         }
     }
 }
