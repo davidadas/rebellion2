@@ -173,6 +173,7 @@ namespace Rebellion.Tests.AI.Proposals
         public void Execute_WithFacilityBatch_QueuesExactlyCalculatedQuantity()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
