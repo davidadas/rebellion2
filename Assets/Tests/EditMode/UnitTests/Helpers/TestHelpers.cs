@@ -384,11 +384,13 @@ public static class TestConfig
     /// <returns>The created value.</returns>
     public static GameConfig Create()
     {
-        return ContentPackLoader.LoadGameConfig(
+        GameConfig config = ContentPackLoader.LoadGameConfig(
             TestContent.Pack.ContentRootPath,
             TestContent.Pack.PackRootPath,
             TestContent.Pack.Definition.GameConfigPath
         );
+        config.DifficultyModifiers.Clear();
+        return config;
     }
 
     /// <summary>
