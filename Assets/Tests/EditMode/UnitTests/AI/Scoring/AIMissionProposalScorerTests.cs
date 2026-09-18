@@ -202,7 +202,7 @@ namespace Rebellion.Tests.AI.Scoring
             {
                 { -1000, 19 },
             };
-            game.Config.AI.MissionPlanning.MinimumUprisingMissionSuccessPercent = 5;
+            game.Config.AI.MissionPlanning.MinimumUprisingMissionSuccessPercent = 20;
             game.Config.AI.MissionPlanning.Utility.Priority.SubdueUprising.Weight = 1;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
