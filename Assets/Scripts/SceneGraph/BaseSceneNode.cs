@@ -275,7 +275,7 @@ namespace Rebellion.SceneGraph
         /// <param name="copy">The destination node.</param>
         protected virtual void CopyStateTo(BaseSceneNode copy)
         {
-            copy.InstanceID = InstanceID;
+            copy.InstanceID = PeekInstanceID();
             copy.TypeID = TypeID;
             copy.DisplayName = DisplayName;
             copy.DisplayStatus = DisplayStatus;
