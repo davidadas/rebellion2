@@ -48,6 +48,11 @@ namespace Rebellion.AI.Proposals
 
         public Technology Product { get; }
 
+        /// <summary>
+        /// Gets the number of manufactured items represented by this proposal.
+        /// </summary>
+        public int ManufacturingCount => GetManufacturingCount();
+
         public ContainerNode Destination => Demand?.Destination;
 
         internal bool DistributesDemand { get; }

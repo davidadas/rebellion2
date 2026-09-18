@@ -170,6 +170,8 @@ public static partial class HeadlessSimulationRunner
                 int ExactScores,
                 string Breakdown
             )> slowMissionPlans = new();
+            List<(long Elapsed, int Tick, int Count, string ProductTypeId)> manufactureExecutions =
+                new();
             VictoryResult victory = null;
             manager.ResultsResolved += planetaryAssaultTracker.Record;
             manager.ResultsResolved += garrisonRemovalBombardmentTracker.Record;
@@ -231,6 +233,7 @@ public static partial class HeadlessSimulationRunner
                     gameProcessingStepSamples,
                     aiWorkUnitSamples,
                     slowMissionPlans,
+                    manufactureExecutions,
                     game.CurrentTick
                 );
                 long gameProcessingElapsed = Stopwatch.GetTimestamp() - startTimestamp;
@@ -306,6 +309,25 @@ public static partial class HeadlessSimulationRunner
                 LogToFile(
                     logPath,
                     $"[HeadlessSim] ai-slow-mission-plan tick={tick} elapsed={GetElapsedMilliseconds(elapsed):F3}ms candidates={candidates} exactScores={exactScores} scores={breakdown}"
+                );
+            }
+            foreach (
+                IGrouping<
+                    int,
+                    (long Elapsed, int Tick, int Count, string ProductTypeId)
+                > tickGroup in manufactureExecutions
+                    .GroupBy(sample => sample.Tick)
+                    .OrderByDescending(group => group.Sum(sample => sample.Elapsed))
+                    .Take(20)
+            )
+            {
+                string batches = string.Join(
+                    ",",
+                    tickGroup.Select(sample => $"{sample.ProductTypeId}x{sample.Count}")
+                );
+                LogToFile(
+                    logPath,
+                    $"[HeadlessSim] ai-slow-manufacturing tick={tickGroup.Key} elapsed={GetElapsedMilliseconds(tickGroup.Sum(sample => sample.Elapsed)):F3}ms proposals={tickGroup.Count()} items={tickGroup.Sum(sample => sample.Count)} batches={batches}"
                 );
             }
             foreach (
@@ -496,6 +518,7 @@ public static partial class HeadlessSimulationRunner
     /// The optional collection receiving AI planner and proposal durations keyed by runtime type.
     /// </param>
     /// <param name="slowMissionPlans">The collection receiving detailed mission-planner samples.</param>
+    /// <param name="manufactureExecutions">The collection receiving manufacturing execution samples.</param>
     /// <param name="currentTick">The tick being processed.</param>
     private static void ProcessTickIncrementally(
         GameManager manager,
@@ -508,6 +531,12 @@ public static partial class HeadlessSimulationRunner
             int ExactScores,
             string Breakdown
         )> slowMissionPlans = null,
+        ICollection<(
+            long Elapsed,
+            int Tick,
+            int Count,
+            string ProductTypeId
+        )> manufactureExecutions = null,
         int currentTick = 0
     )
     {
@@ -551,6 +580,18 @@ public static partial class HeadlessSimulationRunner
                                 missionPlanner.LastCandidateCount,
                                 missionPlanner.LastExactScoreCount,
                                 breakdown
+                            )
+                        );
+                    }
+                    else if (workUnit is AIManufactureProposal manufactureProposal)
+                    {
+                        manufactureExecutions?.Add(
+                            (
+                                elapsed,
+                                currentTick,
+                                manufactureProposal.ManufacturingCount,
+                                manufactureProposal.Product?.GetReference()?.GetTypeID()
+                                    ?? string.Empty
                             )
                         );
                     }
