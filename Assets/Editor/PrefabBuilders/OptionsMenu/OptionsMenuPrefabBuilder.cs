@@ -14,6 +14,11 @@ public static class OptionsMenuPrefabBuilder
     private const int _navigationRowHeight = 28;
     private const int _navigationRowSpacing = 4;
     private const int _navigationRowStride = _navigationRowHeight + _navigationRowSpacing;
+    private const int _footerNavigationRowSpacing = 8;
+    private const int _footerNavigationRowStride =
+        _navigationRowHeight + _footerNavigationRowSpacing;
+    private const int _footerNavigationHeight =
+        3 * _navigationRowHeight + 2 * _footerNavigationRowSpacing;
     private const int _tabNavigationStartY = 82;
     private const int _footerNavigationStartY = 318;
     private const string _optionsMenuWindowPrefabPath =
@@ -902,7 +907,7 @@ public static class OptionsMenuPrefabBuilder
     )
     {
         RectTransform footerNavigation = CreateChildLayer("FooterNavigation", contentRoot);
-        SetSourceRect(footerNavigation, 38, _footerNavigationStartY, 163, 102);
+        SetSourceRect(footerNavigation, 38, _footerNavigationStartY, 163, _footerNavigationHeight);
         Button backToGameButton = CreateOptionsNavRow(
             footerNavigation,
             "BackToGame",
@@ -914,14 +919,14 @@ public static class OptionsMenuPrefabBuilder
             footerNavigation,
             "MainMenu",
             "RETURN TO MAIN MENU",
-            _navigationRowStride,
+            _footerNavigationRowStride,
             textDim
         );
         Button quitButton = CreateOptionsNavRow(
             footerNavigation,
             "Quit",
             "QUIT",
-            2 * _navigationRowStride,
+            2 * _footerNavigationRowStride,
             textDim
         );
         RectTransform settingsActions = CreateChildLayer("SettingsActions", contentRoot);
@@ -1141,7 +1146,7 @@ public static class OptionsMenuPrefabBuilder
     {
         VerticalLayoutGroup layout = navigationRoot.gameObject.AddComponent<VerticalLayoutGroup>();
         layout.padding = new RectOffset(0, 0, 0, 0);
-        layout.spacing = _navigationRowSpacing;
+        layout.spacing = _footerNavigationRowSpacing;
         layout.childAlignment = TextAnchor.LowerLeft;
         layout.childControlWidth = false;
         layout.childControlHeight = false;
