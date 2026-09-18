@@ -46,6 +46,7 @@ namespace Rebellion.AI.Planners
             }
         }
 
+        private static readonly AIDemandSource _colonyDemandSource = new AIColonyDemandSource();
         private static readonly AIDemandSource _specialForcesDemandSource =
             new AISpecialForcesDemandSource();
 
@@ -62,6 +63,7 @@ namespace Rebellion.AI.Planners
                 return demands;
 
             FacilityPortfolio facilityPortfolio = BuildFacilityPortfolio(context);
+            _colonyDemandSource.AddDemands(context, demands);
             AddResourceBalanceDemand(context, demands);
             AddPlanetaryDefenseDemands(context, demands, facilityPortfolio);
             AddPlanetaryStarfighterDemands(context, demands);
