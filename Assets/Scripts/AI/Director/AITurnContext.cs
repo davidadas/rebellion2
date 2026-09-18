@@ -211,6 +211,9 @@ namespace Rebellion.AI.Director
             new();
         private readonly Dictionary<string, Dictionary<BuildingType, int>> _reservedEnergyByPlanet =
             new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _defenseEnergyByPlanet = new(
+            StringComparer.Ordinal
+        );
 
         /// <summary>
         /// Creates the turn-scoped planet development allocation.
@@ -235,7 +238,15 @@ namespace Rebellion.AI.Director
             if (planet == null)
                 return 0;
 
-            int reservedEnergy = 0;
+            if (buildingType is BuildingType.Defense or BuildingType.Weapon)
+                return planet.GetAvailableEnergy();
+
+            int reservedEnergy = _defenseEnergyByPlanet.TryGetValue(
+                planet.InstanceID,
+                out int defenseEnergy
+            )
+                ? defenseEnergy
+                : 0;
             if (
                 _reservedEnergyByPlanet.TryGetValue(
                     planet.InstanceID,
@@ -355,6 +366,12 @@ namespace Rebellion.AI.Director
                             == PlanetSectorType.OuterRim
                     )
                     .ToList();
+                foreach (Planet planet in sector)
+                {
+                    _defenseEnergyByPlanet[planet.InstanceID] =
+                        context.Assessment.GetPlanetaryDefenseEnergyDeficit(planet);
+                }
+
                 HashSet<string> assignedPrimaryPlanetIds = new(StringComparer.Ordinal);
                 AllocateType(
                     context,

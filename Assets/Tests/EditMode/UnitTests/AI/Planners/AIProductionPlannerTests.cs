@@ -2148,7 +2148,7 @@ namespace Rebellion.Tests.AI.Planners
             );
             queuedShip.ConstructionCost = 1000;
             queuedShip.ManufacturingStatus = ManufacturingStatus.Building;
-            game.AttachNode(queuedShip, nearbyProducer);
+            game.AttachNode(queuedShip, fleet);
             nearbyProducer.AddToManufacturingQueue(queuedShip);
 
             AIManufactureProposal proposal = new AIProductionPlanner()
