@@ -31,15 +31,15 @@ namespace Rebellion.Tests.Editor.Simulation
         }
 
         /// <summary>
-        /// Verifies parsing without a difficulty argument defaults to easy.
+        /// Verifies parsing without a difficulty argument defaults to medium.
         /// </summary>
         [Test]
-        public void SimulationOptions_ParseDifficulty_DefaultsToEasy()
+        public void SimulationOptions_ParseDifficulty_DefaultsToMedium()
         {
             object options = ParseSimulationOptions();
 
             Assert.AreEqual(
-                GameDifficulty.Easy,
+                GameDifficulty.Medium,
                 options.GetType().GetProperty("Difficulty").GetValue(options)
             );
         }
@@ -97,7 +97,7 @@ namespace Rebellion.Tests.Editor.Simulation
                     empire.InstanceID
                 )
             );
-            record.Invoke(tracker, new object[] { Array.Empty<GameResult>() });
+            record.Invoke(tracker, new object[] { game, Array.Empty<GameResult>() });
             Assert.AreEqual(
                 0,
                 getManufacturedBuildings.Invoke(
@@ -115,8 +115,8 @@ namespace Rebellion.Tests.Editor.Simulation
             {
                 new GameObjectDeployedResult { GameObject = queuedShipyard },
             };
-            record.Invoke(tracker, new object[] { completionResults });
-            record.Invoke(tracker, new object[] { completionResults });
+            record.Invoke(tracker, new object[] { game, completionResults });
+            record.Invoke(tracker, new object[] { game, completionResults });
 
             Assert.AreEqual(
                 1,
