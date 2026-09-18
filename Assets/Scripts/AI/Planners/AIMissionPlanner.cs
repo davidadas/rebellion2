@@ -146,14 +146,14 @@ namespace Rebellion.AI.Planners
             if (!participant.CanPerformMission(MissionTypeIDs.Reconnaissance))
                 return;
 
-            foreach (Planet target in GetReconnaissanceCandidatePlanets(context, participant))
-                TryAddMissionProposal(
-                    context,
-                    proposals,
-                    participant,
-                    MissionTypeIDs.Reconnaissance,
-                    target
-                );
+            TryAddMissionProposals(
+                context,
+                proposals,
+                GetReconnaissanceCandidatePlanets(context, participant)
+                    .Select(target =>
+                        CreateProposal(participant, MissionTypeIDs.Reconnaissance, target)
+                    )
+            );
         }
 
         /// <summary>
@@ -180,12 +180,14 @@ namespace Rebellion.AI.Planners
                 return false;
 
             int proposalCount = proposals.Count;
-            foreach (Planet target in GetRecruitmentCandidatePlanets(context))
-                TryAddProposal(
-                    context,
-                    proposals,
-                    CreateProposal(participant, MissionTypeIDs.Recruitment, target)
-                );
+            TryAddMissionProposals(
+                context,
+                proposals,
+                GetRecruitmentCandidatePlanets(context)
+                    .Select(target =>
+                        CreateProposal(participant, MissionTypeIDs.Recruitment, target)
+                    )
+            );
 
             return proposals.Count > proposalCount;
         }
@@ -226,17 +228,21 @@ namespace Rebellion.AI.Planners
             if (!participant.CanPerformMission(MissionTypeIDs.SubdueUprising))
                 return;
 
-            foreach (
-                Planet planet in context.Assessment.OwnedPlanets.Where(planet =>
-                    planet.IsInUprising
-                    && !HasActiveMissionAtPlanet(MissionTypeIDs.SubdueUprising, planet.InstanceID)
-                )
-            )
-                TryAddProposal(
-                    context,
-                    proposals,
-                    CreateProposal(participant, MissionTypeIDs.SubdueUprising, planet)
-                );
+            TryAddMissionProposals(
+                context,
+                proposals,
+                context
+                    .Assessment.OwnedPlanets.Where(planet =>
+                        planet.IsInUprising
+                        && !HasActiveMissionAtPlanet(
+                            MissionTypeIDs.SubdueUprising,
+                            planet.InstanceID
+                        )
+                    )
+                    .Select(planet =>
+                        CreateProposal(participant, MissionTypeIDs.SubdueUprising, planet)
+                    )
+            );
         }
 
         /// <summary>
@@ -260,12 +266,12 @@ namespace Rebellion.AI.Planners
                 return false;
 
             int proposalCount = proposals.Count;
-            foreach (Planet planet in GetDiplomacyCandidatePlanets(context))
-                TryAddProposal(
-                    context,
-                    proposals,
-                    CreateProposal(participant, MissionTypeIDs.Diplomacy, planet)
-                );
+            TryAddMissionProposals(
+                context,
+                proposals,
+                GetDiplomacyCandidatePlanets(context)
+                    .Select(planet => CreateProposal(participant, MissionTypeIDs.Diplomacy, planet))
+            );
 
             return proposals.Count > proposalCount;
         }
@@ -282,28 +288,20 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            foreach (Planet planet in GetResearchCandidatePlanets(context, officer))
-            {
-                foreach (
-                    ResearchDiscipline discipline in GetAvailableResearchDisciplines(
-                        context,
-                        officer,
-                        planet
+            TryAddMissionProposals(
+                context,
+                proposals,
+                GetResearchCandidatePlanets(context, officer)
+                    .SelectMany(planet =>
+                        GetAvailableResearchDisciplines(context, officer, planet)
+                            .Select(discipline => new AIMissionProposal(
+                                new[] { officer },
+                                MissionTypeIDs.Research,
+                                planet,
+                                discipline: discipline
+                            ))
                     )
-                )
-                {
-                    TryAddProposal(
-                        context,
-                        proposals,
-                        new AIMissionProposal(
-                            new[] { officer },
-                            MissionTypeIDs.Research,
-                            planet,
-                            discipline: discipline
-                        )
-                    );
-                }
-            }
+            );
         }
 
         /// <summary>
@@ -374,8 +372,10 @@ namespace Rebellion.AI.Planners
             )
                 return;
 
-            foreach (
-                (Planet planet, Officer target) in context
+            TryAddMissionProposals(
+                context,
+                proposals,
+                context
                     .Faction.GetOwnedUnitsByType<Officer>()
                     .Where(officer =>
                         officer.IsCaptured
@@ -388,18 +388,16 @@ namespace Rebellion.AI.Planners
                     .OrderByDescending(candidate => candidate.officer.IsMain)
                     .ThenBy(candidate => candidate.planet.InstanceID)
                     .ThenBy(candidate => candidate.officer.InstanceID)
-            )
-            {
-                TryAddMissionProposal(
-                    context,
-                    proposals,
-                    participant,
-                    MissionTypeIDs.Rescue,
-                    planet,
-                    selectedTarget: target,
-                    targetOfficer: target
-                );
-            }
+                    .Select(candidate =>
+                        CreateMissionProposal(
+                            participant,
+                            MissionTypeIDs.Rescue,
+                            candidate.planet,
+                            selectedTarget: candidate.officer,
+                            targetOfficer: candidate.officer
+                        )
+                    )
+            );
         }
 
         /// <summary>
@@ -417,14 +415,12 @@ namespace Rebellion.AI.Planners
             if (!participant.CanPerformMission(MissionTypeIDs.Espionage))
                 return;
 
-            foreach (Planet planet in GetEspionageCandidatePlanets(context))
-                TryAddMissionProposal(
-                    context,
-                    proposals,
-                    participant,
-                    MissionTypeIDs.Espionage,
-                    planet
-                );
+            TryAddMissionProposals(
+                context,
+                proposals,
+                GetEspionageCandidatePlanets(context)
+                    .Select(planet => CreateProposal(participant, MissionTypeIDs.Espionage, planet))
+            );
         }
 
         /// <summary>
@@ -442,8 +438,10 @@ namespace Rebellion.AI.Planners
             if (!participant.CanPerformMission(MissionTypeIDs.InciteUprising))
                 return;
 
-            foreach (
-                Planet planet in GetFreshEnemyPlanets(context)
+            TryAddMissionProposals(
+                context,
+                proposals,
+                GetFreshEnemyPlanets(context)
                     .Where(planet =>
                         !planet.IsInUprising
                         && !HasActiveMissionAtPlanet(
@@ -451,14 +449,10 @@ namespace Rebellion.AI.Planners
                             planet.InstanceID
                         )
                     )
-            )
-                TryAddMissionProposal(
-                    context,
-                    proposals,
-                    participant,
-                    MissionTypeIDs.InciteUprising,
-                    planet
-                );
+                    .Select(planet =>
+                        CreateProposal(participant, MissionTypeIDs.InciteUprising, planet)
+                    )
+            );
         }
 
         /// <summary>
@@ -476,20 +470,22 @@ namespace Rebellion.AI.Planners
             if (!participant.CanPerformMission(MissionTypeIDs.Sabotage))
                 return;
 
-            foreach (Planet planet in GetSabotageCandidatePlanets(context))
-            {
-                foreach (IManufacturable target in GetSabotageTargets(context, planet))
-                {
-                    TryAddMissionProposal(
-                        context,
-                        proposals,
-                        participant,
-                        MissionTypeIDs.Sabotage,
-                        planet,
-                        selectedTarget: target
-                    );
-                }
-            }
+            TryAddMissionProposals(
+                context,
+                proposals,
+                GetSabotageCandidatePlanets(context)
+                    .SelectMany(planet =>
+                        GetSabotageTargets(context, planet)
+                            .Select(target =>
+                                CreateMissionProposal(
+                                    participant,
+                                    MissionTypeIDs.Sabotage,
+                                    planet,
+                                    selectedTarget: target
+                                )
+                            )
+                    )
+            );
         }
 
         /// <summary>
@@ -504,29 +500,42 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            foreach ((Planet planet, Officer targetOfficer) in GetOfficerTargetCandidates(context))
+            bool canAbduct = participant.CanPerformMission(MissionTypeIDs.Abduction);
+            bool canAssassinate = participant.CanPerformMission(MissionTypeIDs.Assassination);
+            if (canAbduct)
             {
-                if (participant.CanPerformMission(MissionTypeIDs.Abduction))
-                    TryAddMissionProposal(
-                        context,
-                        proposals,
-                        participant,
-                        MissionTypeIDs.Abduction,
-                        planet,
-                        selectedTarget: targetOfficer,
-                        targetOfficer: targetOfficer
-                    );
+                TryAddMissionProposals(
+                    context,
+                    proposals,
+                    GetOfficerTargetCandidates(context)
+                        .Select(candidate =>
+                            CreateMissionProposal(
+                                participant,
+                                MissionTypeIDs.Abduction,
+                                candidate.Planet,
+                                selectedTarget: candidate.TargetOfficer,
+                                targetOfficer: candidate.TargetOfficer
+                            )
+                        )
+                );
+            }
 
-                if (participant.CanPerformMission(MissionTypeIDs.Assassination))
-                    TryAddMissionProposal(
-                        context,
-                        proposals,
-                        participant,
-                        MissionTypeIDs.Assassination,
-                        planet,
-                        selectedTarget: targetOfficer,
-                        targetOfficer: targetOfficer
-                    );
+            if (canAssassinate)
+            {
+                TryAddMissionProposals(
+                    context,
+                    proposals,
+                    GetOfficerTargetCandidates(context)
+                        .Select(candidate =>
+                            CreateMissionProposal(
+                                participant,
+                                MissionTypeIDs.Assassination,
+                                candidate.Planet,
+                                selectedTarget: candidate.TargetOfficer,
+                                targetOfficer: candidate.TargetOfficer
+                            )
+                        )
+                );
             }
         }
 
@@ -549,36 +558,18 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds a mission proposal for one primary participant.
+        /// Adds mission proposals in upper-bound order for exact branch-and-bound selection.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposals">The proposal list to append to.</param>
-        /// <param name="participant">The main mission participant.</param>
-        /// <param name="missionTypeId">The mission type identifier.</param>
-        /// <param name="targetPlanet">The mission target planet.</param>
-        /// <param name="selectedTarget">The optional selected mission target.</param>
-        /// <param name="targetOfficer">The optional target officer.</param>
-        private void TryAddMissionProposal(
+        /// <param name="proposals">The complete proposal collection being built.</param>
+        /// <param name="candidates">The mission candidates to evaluate.</param>
+        private void TryAddMissionProposals(
             AITurnContext context,
             List<AIProposal> proposals,
-            IMissionParticipant participant,
-            string missionTypeId,
-            Planet targetPlanet,
-            ISceneNode selectedTarget = null,
-            Officer targetOfficer = null
+            IEnumerable<AIMissionProposal> candidates
         )
         {
-            TryAddProposal(
-                context,
-                proposals,
-                new AIMissionProposal(
-                    new[] { participant },
-                    missionTypeId,
-                    targetPlanet,
-                    selectedTarget: selectedTarget,
-                    targetOfficer: targetOfficer
-                )
-            );
+            _candidateSelector.TryAddRange(context, proposals, candidates);
         }
 
         /// <summary>
@@ -594,7 +585,33 @@ namespace Rebellion.AI.Planners
             Planet target
         )
         {
-            return new AIMissionProposal(new[] { participant }, missionTypeId, target);
+            return CreateMissionProposal(participant, missionTypeId, target);
+        }
+
+        /// <summary>
+        /// Creates a single-participant mission proposal with optional specific targets.
+        /// </summary>
+        /// <param name="participant">The mission participant.</param>
+        /// <param name="missionTypeId">The mission type identifier.</param>
+        /// <param name="target">The mission target planet.</param>
+        /// <param name="selectedTarget">The optional selected mission target.</param>
+        /// <param name="targetOfficer">The optional target officer.</param>
+        /// <returns>The mission proposal.</returns>
+        private static AIMissionProposal CreateMissionProposal(
+            IMissionParticipant participant,
+            string missionTypeId,
+            Planet target,
+            ISceneNode selectedTarget = null,
+            Officer targetOfficer = null
+        )
+        {
+            return new AIMissionProposal(
+                new[] { participant },
+                missionTypeId,
+                target,
+                selectedTarget: selectedTarget,
+                targetOfficer: targetOfficer
+            );
         }
 
         /// <summary>
