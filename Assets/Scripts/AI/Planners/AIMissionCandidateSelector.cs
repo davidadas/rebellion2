@@ -67,19 +67,16 @@ namespace Rebellion.AI.Planners
             if (candidates == null)
                 return;
 
-            List<AIMissionProposal> originalCandidates = candidates
-                .Where(candidate => candidate != null)
-                .ToList();
             foreach (
                 IGrouping<
                     (string ParticipantId, string MissionTypeId),
                     AIMissionProposal
-                > candidateGroup in originalCandidates.GroupBy(GetKey)
+                > candidateGroup in candidates.Where(candidate => candidate != null).GroupBy(GetKey)
             )
             {
-                List<AIMissionProposal> groupedCandidates = candidateGroup.ToList();
+                List<AIMissionProposal> originalCandidates = candidateGroup.ToList();
                 List<(AIMissionProposal Proposal, double UpperBound)> orderedCandidates =
-                    groupedCandidates
+                    originalCandidates
                         .Select(candidate =>
                             (
                                 Proposal: candidate,
@@ -98,9 +95,9 @@ namespace Rebellion.AI.Planners
                     if (!TryAddWithUpperBound(context, proposals, proposal, upperBound))
                         break;
                 }
-            }
 
-            RestoreOriginalRetainedOrder(proposals, originalCandidates);
+                RestoreOriginalRetainedOrder(proposals, originalCandidates);
+            }
         }
 
         /// <summary>
@@ -117,10 +114,8 @@ namespace Rebellion.AI.Planners
             if (originalCandidates.Count == 0)
                 return;
 
-            HashSet<AIMissionProposal> originalCandidateSet = originalCandidates.ToHashSet();
-            HashSet<AIMissionProposal> retainedCandidates = _alternatives
-                .Values.SelectMany(alternatives => alternatives)
-                .Where(originalCandidateSet.Contains)
+            HashSet<AIMissionProposal> retainedCandidates = GetAlternatives(originalCandidates[0])
+                .Where(originalCandidates.Contains)
                 .ToHashSet();
             foreach (AIMissionProposal candidate in originalCandidates)
                 proposals.Remove(candidate);
