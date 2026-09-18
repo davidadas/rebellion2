@@ -1,4 +1,5 @@
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
@@ -44,7 +45,26 @@ namespace Rebellion.Game.Research
         /// <seealso cref="IManufacturable"/>
         public IManufacturable GetReferenceCopy()
         {
-            IManufacturable clonedManufacturable = Manufacturable.GetDeepCopy();
+            return CreateManufacturingCopy(Manufacturable);
+        }
+
+        /// <summary>
+        /// Creates a detached manufacturing copy through the scene node's typed copy contract.
+        /// </summary>
+        /// <param name="template">The immutable manufacturable template.</param>
+        /// <returns>A new manufacturing item with no identity, owner, parent, or movement.</returns>
+        internal static IManufacturable CreateManufacturingCopy(IManufacturable template)
+        {
+            if (template is not ISceneNode templateNode)
+                return template?.GetDeepCopy();
+
+            if (templateNode.CreateCopy() is not IManufacturable clonedManufacturable)
+                return null;
+
+            ISceneNode clonedNode = (ISceneNode)clonedManufacturable;
+            clonedNode.InstanceID = null;
+            clonedNode.SetParent(null);
+            clonedNode.SetOwnerInstanceID(null);
 
             // Set directly on the property to bypass the Complete->Building guard,
             // which is meant for live game objects, not freshly cloned templates.
