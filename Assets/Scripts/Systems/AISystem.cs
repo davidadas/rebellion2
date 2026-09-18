@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
@@ -17,6 +18,26 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
         private readonly AIDirector _director;
+
+        /// <summary>
+        /// Raised immediately before one faction's strategic AI turn begins.
+        /// </summary>
+        public event Action<Faction> FactionTurnStarted;
+
+        /// <summary>
+        /// Raised after one faction's strategic AI turn finishes or is interrupted.
+        /// </summary>
+        public event Action<Faction> FactionTurnCompleted;
+
+        /// <summary>
+        /// Raised immediately before one named unit of faction-turn work begins.
+        /// </summary>
+        public event Action<Faction, string> FactionTurnStepStarted;
+
+        /// <summary>
+        /// Raised after one named unit of faction-turn work finishes or is interrupted.
+        /// </summary>
+        public event Action<Faction, string> FactionTurnStepCompleted;
 
         /// <summary>
         /// Creates an AI system.
@@ -54,6 +75,10 @@ namespace Rebellion.Systems
                 randomProvider,
                 maintenanceSystem
             );
+            _director.FactionTurnStepStarted += (faction, stepName) =>
+                FactionTurnStepStarted?.Invoke(faction, stepName);
+            _director.FactionTurnStepCompleted += (faction, stepName) =>
+                FactionTurnStepCompleted?.Invoke(faction, stepName);
         }
 
         /// <summary>
@@ -81,15 +106,23 @@ namespace Rebellion.Systems
 
             foreach (Faction faction in _game.GetFactions().Where(_game.IsFactionAIControlled))
             {
-                GalaxyMap factionView = _fogOfWar.BuildFactionView(faction);
-                foreach (
-                    object step in _director.ProcessFactionIncrementally(
-                        faction,
-                        factionView,
-                        results
+                FactionTurnStarted?.Invoke(faction);
+                try
+                {
+                    GalaxyMap factionView = _fogOfWar.BuildFactionView(faction);
+                    foreach (
+                        object step in _director.ProcessFactionIncrementally(
+                            faction,
+                            factionView,
+                            results
+                        )
                     )
-                )
-                    yield return step;
+                        yield return step;
+                }
+                finally
+                {
+                    FactionTurnCompleted?.Invoke(faction);
+                }
             }
         }
     }

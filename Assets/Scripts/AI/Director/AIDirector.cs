@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.AI.Phases;
 using Rebellion.Game;
@@ -23,6 +24,16 @@ namespace Rebellion.AI.Director
         private readonly BombardmentSystem _bombardment;
         private readonly PlanetaryAssaultSystem _planetaryAssault;
         private readonly IReadOnlyList<IAITurnPhase> _turnPhases;
+
+        /// <summary>
+        /// Raised immediately before one named unit of faction-turn work begins.
+        /// </summary>
+        public event Action<Faction, string> FactionTurnStepStarted;
+
+        /// <summary>
+        /// Raised after one named unit of faction-turn work finishes or is interrupted.
+        /// </summary>
+        public event Action<Faction, string> FactionTurnStepCompleted;
 
         /// <summary>
         /// Creates an AI director using the current game systems.
@@ -92,29 +103,48 @@ namespace Rebellion.AI.Director
             ICollection<GameResult> results
         )
         {
-            AITurnContext context = new AITurnContext(
-                _game,
-                faction,
-                _missions,
-                _movement,
-                _manufacturing,
-                _bombardment,
-                _planetaryAssault,
-                _random,
-                factionView,
-                _maintenance
-            );
+            const string assessmentStep = "Assessment";
+            FactionTurnStepStarted?.Invoke(faction, assessmentStep);
+            AITurnContext context;
+            try
+            {
+                context = new AITurnContext(
+                    _game,
+                    faction,
+                    _missions,
+                    _movement,
+                    _manufacturing,
+                    _bombardment,
+                    _planetaryAssault,
+                    _random,
+                    factionView,
+                    _maintenance
+                );
+            }
+            finally
+            {
+                FactionTurnStepCompleted?.Invoke(faction, assessmentStep);
+            }
             yield return null;
 
             foreach (IAITurnPhase phase in _turnPhases)
             {
-                if (phase is IAIIncrementalTurnPhase incrementalPhase)
+                string stepName = phase.GetType().Name;
+                FactionTurnStepStarted?.Invoke(faction, stepName);
+                try
                 {
-                    foreach (object step in incrementalPhase.ExecuteIncrementally(context))
-                        yield return step;
+                    if (phase is IAIIncrementalTurnPhase incrementalPhase)
+                    {
+                        foreach (object step in incrementalPhase.ExecuteIncrementally(context))
+                            yield return step;
+                    }
+                    else
+                        phase.Execute(context);
                 }
-                else
-                    phase.Execute(context);
+                finally
+                {
+                    FactionTurnStepCompleted?.Invoke(faction, stepName);
+                }
 
                 yield return null;
             }

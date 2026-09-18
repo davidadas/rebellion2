@@ -67,7 +67,7 @@ namespace Rebellion.AI.Phases
             foreach (IAIProposalPlanner planner in _planners)
             {
                 context.AddProposals(planner.Plan(context));
-                yield return null;
+                yield return planner;
             }
         }
     }

@@ -92,6 +92,26 @@ public sealed class GameManager
     public event Action TickCompleted;
 
     /// <summary>
+    /// Raised immediately before one faction's strategic AI turn begins.
+    /// </summary>
+    public event Action<Faction> AIFactionTurnStarted;
+
+    /// <summary>
+    /// Raised after one faction's strategic AI turn finishes or is interrupted.
+    /// </summary>
+    public event Action<Faction> AIFactionTurnCompleted;
+
+    /// <summary>
+    /// Raised immediately before one named unit of faction-turn work begins.
+    /// </summary>
+    public event Action<Faction, string> AIFactionTurnStepStarted;
+
+    /// <summary>
+    /// Raised after one named unit of faction-turn work finishes or is interrupted.
+    /// </summary>
+    public event Action<Faction, string> AIFactionTurnStepCompleted;
+
+    /// <summary>
     /// Raised when tick processing pauses for a player-controlled space-combat decision.
     /// </summary>
     public event Action CombatDecisionRequired;
@@ -617,6 +637,12 @@ public sealed class GameManager
             _fogOfWarSystem,
             _maintenanceSystem
         );
+        _aiSystem.FactionTurnStarted += faction => AIFactionTurnStarted?.Invoke(faction);
+        _aiSystem.FactionTurnCompleted += faction => AIFactionTurnCompleted?.Invoke(faction);
+        _aiSystem.FactionTurnStepStarted += (faction, stepName) =>
+            AIFactionTurnStepStarted?.Invoke(faction, stepName);
+        _aiSystem.FactionTurnStepCompleted += (faction, stepName) =>
+            AIFactionTurnStepCompleted?.Invoke(faction, stepName);
 
         InitializeResultProcessing();
     }

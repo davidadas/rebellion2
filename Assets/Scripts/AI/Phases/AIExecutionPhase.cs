@@ -32,7 +32,7 @@ namespace Rebellion.AI.Phases
             {
                 if (proposal?.CanExecute(context) == true)
                     proposal.Execute(context);
-                yield return null;
+                yield return proposal;
             }
         }
     }

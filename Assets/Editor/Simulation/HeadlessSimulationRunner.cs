@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Rebellion.AI.Planners;
+using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
@@ -148,6 +150,18 @@ public static partial class HeadlessSimulationRunner
             SpaceCombatCalibrationTracker spaceCombatCalibrationTracker =
                 new SpaceCombatCalibrationTracker();
             AttackReadinessTracker attackReadinessTracker = new AttackReadinessTracker();
+            Dictionary<string, long> aiFactionTurnStarts = new Dictionary<string, long>(
+                StringComparer.Ordinal
+            );
+            List<long> aiFactionTurnSamples = new List<long>(
+                options.TickCount
+                    / Math.Max(1, game.Config.AI.TickInterval)
+                    * Math.Max(1, game.GetFactions().Count)
+            );
+            List<(long Elapsed, string FactionId, int Tick)> slowAiFactionTurns = new();
+            Dictionary<(string FactionId, string StepName), long> aiFactionStepStarts = new();
+            Dictionary<string, List<long>> aiFactionStepSamples = new(StringComparer.Ordinal);
+            Dictionary<string, List<long>> aiWorkUnitSamples = new(StringComparer.Ordinal);
             VictoryResult victory = null;
             manager.ResultsResolved += planetaryAssaultTracker.Record;
             manager.ResultsResolved += garrisonRemovalBombardmentTracker.Record;
@@ -156,6 +170,32 @@ public static partial class HeadlessSimulationRunner
             manager.ResultsResolved += missionOutcomeTracker.Record;
             manager.ResultsResolved += results => manufacturedUnitTracker.Record(game, results);
             manager.ResultsResolved += specialForcesLifecycleTracker.Record;
+            manager.AIFactionTurnStarted += faction =>
+                aiFactionTurnStarts[faction.InstanceID] = Stopwatch.GetTimestamp();
+            manager.AIFactionTurnCompleted += faction =>
+            {
+                if (!aiFactionTurnStarts.Remove(faction.InstanceID, out long startedAt))
+                    return;
+
+                long elapsed = Stopwatch.GetTimestamp() - startedAt;
+                aiFactionTurnSamples.Add(elapsed);
+                slowAiFactionTurns.Add((elapsed, faction.InstanceID, game.CurrentTick));
+            };
+            manager.AIFactionTurnStepStarted += (faction, stepName) =>
+                aiFactionStepStarts[(faction.InstanceID, stepName)] = Stopwatch.GetTimestamp();
+            manager.AIFactionTurnStepCompleted += (faction, stepName) =>
+            {
+                if (!aiFactionStepStarts.Remove((faction.InstanceID, stepName), out long startedAt))
+                    return;
+
+                if (!aiFactionStepSamples.TryGetValue(stepName, out List<long> samples))
+                {
+                    samples = new List<long>();
+                    aiFactionStepSamples.Add(stepName, samples);
+                }
+
+                samples.Add(Stopwatch.GetTimestamp() - startedAt);
+            };
             List<SpecialForces> initialSpecialForces = game.GetSceneNodesByType<SpecialForces>()
                 .ToList();
             manufacturedUnitTracker.RecordInitialState(game, initialSpecialForces);
@@ -178,7 +218,7 @@ public static partial class HeadlessSimulationRunner
                 if (i % 25 == 0)
                     LogToFile(logPath, $"[HeadlessSim] tick {i}");
                 long startTimestamp = Stopwatch.GetTimestamp();
-                ProcessTickIncrementally(manager, gameProcessingStepSamples);
+                ProcessTickIncrementally(manager, gameProcessingStepSamples, aiWorkUnitSamples);
                 long gameProcessingElapsed = Stopwatch.GetTimestamp() - startTimestamp;
                 gameProcessingTimestampCount += gameProcessingElapsed;
                 gameProcessingSamples.Add(gameProcessingElapsed);
@@ -221,6 +261,35 @@ public static partial class HeadlessSimulationRunner
                 logPath,
                 $"[HeadlessSim] game-step median={GetPercentileMilliseconds(gameProcessingStepSamples, 50):F3}ms p90={GetPercentileMilliseconds(gameProcessingStepSamples, 90):F3}ms p99={GetPercentileMilliseconds(gameProcessingStepSamples, 99):F3}ms max={GetPercentileMilliseconds(gameProcessingStepSamples, 100):F3}ms"
             );
+            LogToFile(
+                logPath,
+                $"[HeadlessSim] ai-faction-turn median={GetPercentileMilliseconds(aiFactionTurnSamples, 50):F3}ms p90={GetPercentileMilliseconds(aiFactionTurnSamples, 90):F3}ms p99={GetPercentileMilliseconds(aiFactionTurnSamples, 99):F3}ms max={GetPercentileMilliseconds(aiFactionTurnSamples, 100):F3}ms"
+            );
+            foreach (KeyValuePair<string, List<long>> phase in aiFactionStepSamples)
+            {
+                LogToFile(
+                    logPath,
+                    $"[HeadlessSim] ai-step name={phase.Key} median={GetPercentileMilliseconds(phase.Value, 50):F3}ms p90={GetPercentileMilliseconds(phase.Value, 90):F3}ms p99={GetPercentileMilliseconds(phase.Value, 99):F3}ms max={GetPercentileMilliseconds(phase.Value, 100):F3}ms"
+                );
+            }
+            foreach (KeyValuePair<string, List<long>> workUnit in aiWorkUnitSamples)
+            {
+                LogToFile(
+                    logPath,
+                    $"[HeadlessSim] ai-work-unit name={workUnit.Key} median={GetPercentileMilliseconds(workUnit.Value, 50):F3}ms p90={GetPercentileMilliseconds(workUnit.Value, 90):F3}ms p99={GetPercentileMilliseconds(workUnit.Value, 99):F3}ms max={GetPercentileMilliseconds(workUnit.Value, 100):F3}ms"
+                );
+            }
+            foreach (
+                (long elapsed, string factionId, int tick) in slowAiFactionTurns
+                    .OrderByDescending(sample => sample.Elapsed)
+                    .Take(10)
+            )
+            {
+                LogToFile(
+                    logPath,
+                    $"[HeadlessSim] ai-slow-turn tick={tick} faction={factionId} elapsed={GetElapsedMilliseconds(elapsed):F3}ms"
+                );
+            }
             string savePath = SaveSimulation(game, options);
             SimulationSummary report = BuildSimulationSummary(
                 game,
@@ -381,11 +450,26 @@ public static partial class HeadlessSimulationRunner
         timestampCount / (double)Stopwatch.Frequency;
 
     /// <summary>
+    /// Converts high-resolution timestamp counts to elapsed milliseconds.
+    /// </summary>
+    /// <param name="timestampCount">The elapsed timestamp count.</param>
+    /// <returns>The corresponding elapsed milliseconds.</returns>
+    private static double GetElapsedMilliseconds(long timestampCount) =>
+        timestampCount * 1000d / Stopwatch.Frequency;
+
+    /// <summary>
     /// Drains one incremental game tick while recording each scheduled step.
     /// </summary>
     /// <param name="manager">The game manager processing the tick.</param>
     /// <param name="stepSamples">The collection receiving step durations.</param>
-    private static void ProcessTickIncrementally(GameManager manager, ICollection<long> stepSamples)
+    /// <param name="aiWorkUnitSamples">
+    /// The optional collection receiving AI planner and proposal durations keyed by runtime type.
+    /// </param>
+    private static void ProcessTickIncrementally(
+        GameManager manager,
+        ICollection<long> stepSamples,
+        IDictionary<string, List<long>> aiWorkUnitSamples = null
+    )
     {
         IEnumerator tick = manager.ProcessTickIncrementally();
         try
@@ -395,7 +479,20 @@ public static partial class HeadlessSimulationRunner
             {
                 long startTimestamp = Stopwatch.GetTimestamp();
                 hasNext = tick.MoveNext();
-                stepSamples.Add(Stopwatch.GetTimestamp() - startTimestamp);
+                long elapsed = Stopwatch.GetTimestamp() - startTimestamp;
+                stepSamples.Add(elapsed);
+                object workUnit = tick.Current;
+                if (aiWorkUnitSamples != null && workUnit is AIProposal or IAIProposalPlanner)
+                {
+                    string workUnitName = workUnit.GetType().Name;
+                    if (!aiWorkUnitSamples.TryGetValue(workUnitName, out List<long> samples))
+                    {
+                        samples = new List<long>();
+                        aiWorkUnitSamples.Add(workUnitName, samples);
+                    }
+
+                    samples.Add(elapsed);
+                }
             } while (hasNext);
         }
         finally

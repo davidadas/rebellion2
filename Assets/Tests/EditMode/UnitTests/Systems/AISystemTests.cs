@@ -62,6 +62,28 @@ namespace Rebellion.Tests.Systems
         }
 
         /// <summary>
+        /// Verifies an eligible faction turn publishes matching lifecycle events.
+        /// </summary>
+        [Test]
+        public void ProcessTick_AtConfiguredInterval_PublishesFactionTurnLifecycle()
+        {
+            (GameRoot game, Fleet _, AISystem system) = BuildScene();
+            game.CurrentTick = game.Config.AI.TickInterval;
+            string factionId = game.GetFactions().Single(game.IsFactionAIControlled).InstanceID;
+            List<string> lifecycle = new List<string>();
+            system.FactionTurnStarted += faction => lifecycle.Add($"start:{faction.InstanceID}");
+            system.FactionTurnCompleted += faction =>
+                lifecycle.Add($"complete:{faction.InstanceID}");
+
+            system.ProcessTick();
+
+            CollectionAssert.AreEqual(
+                new[] { $"start:{factionId}", $"complete:{factionId}" },
+                lifecycle
+            );
+        }
+
+        /// <summary>
         /// Builds scene.
         /// </summary>
         /// <returns>The constructed scene.</returns>
