@@ -95,6 +95,8 @@ public static partial class HeadlessSimulationRunner
             string.IsNullOrWhiteSpace(options.InputSaveFileName) ? options.Seed : null
         );
         AIMissionPlanner.CaptureDiagnostics = true;
+        Faction.ResetProjectedMaintenanceDiagnostics();
+        Faction.CaptureProjectedMaintenanceDiagnostics = true;
 
         try
         {
@@ -296,6 +298,10 @@ public static partial class HeadlessSimulationRunner
                     $"[HeadlessSim] ai-work-unit name={workUnit.Key} median={GetPercentileMilliseconds(workUnit.Value, 50):F3}ms p90={GetPercentileMilliseconds(workUnit.Value, 90):F3}ms p99={GetPercentileMilliseconds(workUnit.Value, 99):F3}ms max={GetPercentileMilliseconds(workUnit.Value, 100):F3}ms"
                 );
             }
+            LogToFile(
+                logPath,
+                $"[HeadlessSim] projected-maintenance calculations={Faction.ProjectedMaintenanceCalculationCount} elapsed={GetElapsedMilliseconds(Faction.ProjectedMaintenanceElapsedTimestampCount):F3}ms"
+            );
             foreach (
                 (
                     long elapsed,
@@ -376,6 +382,7 @@ public static partial class HeadlessSimulationRunner
         finally
         {
             AIMissionPlanner.CaptureDiagnostics = false;
+            Faction.CaptureProjectedMaintenanceDiagnostics = false;
             BaseGameEntity.SetInstanceIdSeed(null);
             GameLogger.SetMinimumLevel(GameLogger.LogLevel.Debug);
             GameLogger.Configure(enableFileLogging: false);
