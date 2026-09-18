@@ -152,7 +152,8 @@ namespace Rebellion.AI.Proposals
             IEnumerable<Building> queued = planet
                 .GetManufacturingQueue()
                 .Values.SelectMany(items => items)
-                .OfType<Building>();
+                .OfType<Building>()
+                .Where(building => building.GetParentOfType<Planet>() == planet);
             return context
                 .Assessment.GetPlanetBuildings(planet)
                 .Concat(queued)

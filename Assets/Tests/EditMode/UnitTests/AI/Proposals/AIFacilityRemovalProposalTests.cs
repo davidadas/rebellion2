@@ -147,6 +147,63 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         /// <summary>
+        /// Verifies a facility queued at one planet for another planet is not treated as local
+        /// surplus at the producer.
+        /// </summary>
+        [Test]
+        public void Plan_WithRemoteQueuedShipyard_DoesNotRemoveDestinationFacilityFromProducer()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "producer",
+                empire.InstanceID,
+                energyCapacity: 20
+            );
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                empire.InstanceID,
+                energyCapacity: 20
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "construction-facility",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Building shipyard = AITestSceneBuilder.CreateBuildingTemplate(
+                "remote-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            shipyard.OwnerInstanceID = empire.InstanceID;
+            StubRNG random = new StubRNG();
+            MaintenanceSystem maintenance = new MaintenanceSystem(
+                game,
+                random,
+                new FleetSystem(game)
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: random,
+                maintenance: maintenance
+            );
+            Assert.IsTrue(
+                context.Manufacturing.Enqueue(producer, shipyard, destination, ignoreCost: true)
+            );
+
+            Assert.IsEmpty(new AIFacilityRemovalPlanner().Plan(context));
+            Assert.AreSame(shipyard, game.GetSceneNodeByInstanceID<Building>(shipyard.InstanceID));
+        }
+
+        /// <summary>
         /// Verifies plan and execute with facility outside allocation scraps facility.
         /// </summary>
         [Test]
