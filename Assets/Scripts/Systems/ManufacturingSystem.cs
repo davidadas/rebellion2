@@ -4,7 +4,6 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -179,7 +178,7 @@ namespace Rebellion.Systems
 
             for (int index = 0; index < count; index++)
             {
-                IManufacturable item = Technology.CreateManufacturingCopy(template);
+                IManufacturable item = template.GetDeepCopy();
                 if (item is not ISceneNode sceneNode)
                     return started;
 
