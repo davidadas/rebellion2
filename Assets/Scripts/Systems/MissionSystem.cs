@@ -271,11 +271,17 @@ namespace Rebellion.Systems
                 observedPlanet == null
                     ? Array.Empty<ISceneNode>()
                     : observedDetectors ?? GetDetectors(mission, observedPlanet);
-            double foilProbability = EstimateFoilProbability(mission, detectors);
+            Dictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders = new();
+            double foilProbability = EstimateFoilProbability(
+                mission,
+                detectors,
+                detectorCommanders
+            );
             double personnelLossProbability = EstimatePersonnelLossProbability(
                 mission,
                 detectors,
-                foilProbability
+                foilProbability,
+                detectorCommanders
             );
             return new MissionOdds(
                 objectiveSuccessProbability,
@@ -786,8 +792,13 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The unstarted or active mission to evaluate.</param>
         /// <param name="detectors">The observed units that can confront mission participants.</param>
+        /// <param name="detectorCommanders">Commanders cached by local scope and required rank.</param>
         /// <returns>The estimated foiling percentage.</returns>
-        private double EstimateFoilProbability(Mission mission, IReadOnlyList<ISceneNode> detectors)
+        private double EstimateFoilProbability(
+            Mission mission,
+            IReadOnlyList<ISceneNode> detectors,
+            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders
+        )
         {
             if (mission == null || detectors == null || detectors.Count == 0)
                 return 0;
@@ -799,7 +810,12 @@ namespace Rebellion.Systems
                 foreach (ISceneNode detector in detectors)
                 {
                     unfoiledProbability *=
-                        1d - Math.Clamp(GetFoilProbability(mission, detector) / 100d, 0, 1);
+                        1d
+                        - Math.Clamp(
+                            GetFoilProbability(mission, detector, detectorCommanders) / 100d,
+                            0,
+                            1
+                        );
                 }
 
                 return (1d - unfoiledProbability) * 100d;
@@ -833,7 +849,12 @@ namespace Rebellion.Systems
             foreach (ISceneNode detector in detectors)
             {
                 double noFoilProbability =
-                    1d - Math.Clamp(GetFoilProbability(mission, detector) / 100d, 0, 1);
+                    1d
+                    - Math.Clamp(
+                        GetFoilProbability(mission, detector, detectorCommanders) / 100d,
+                        0,
+                        1
+                    );
                 Dictionary<BigInteger, double> next = new Dictionary<BigInteger, double>();
                 foreach ((BigInteger availableDecoys, double probability) in unfoiledByDecoyPool)
                 {
@@ -871,7 +892,8 @@ namespace Rebellion.Systems
                         double evasionProbability = GetParticipantEvasionProbability(
                             mission,
                             decoy,
-                            detector
+                            detector,
+                            detectorCommanders
                         );
 
                         // A diversion or successful evasion leaves this decoy available.
@@ -913,11 +935,13 @@ namespace Rebellion.Systems
         /// <param name="mission">The mission whose officers are exposed to detection.</param>
         /// <param name="detectors">The observed units that can confront mission participants.</param>
         /// <param name="foilProbability">The estimated chance that detection foils the mission.</param>
+        /// <param name="detectorCommanders">Commanders cached by local scope and required rank.</param>
         /// <returns>The estimated personnel-loss percentage.</returns>
         private double EstimatePersonnelLossProbability(
             Mission mission,
             IReadOnlyList<ISceneNode> detectors,
-            double foilProbability
+            double foilProbability,
+            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders
         )
         {
             if (
@@ -932,7 +956,7 @@ namespace Rebellion.Systems
             foreach (Officer officer in mission.GetMainParticipants().OfType<Officer>())
             {
                 double averageEvasionProbability = detectors.Average(detector =>
-                    GetParticipantEvasionProbability(mission, officer, detector)
+                    GetParticipantEvasionProbability(mission, officer, detector, detectorCommanders)
                 );
                 noOfficerLossProbability *= averageEvasionProbability;
             }
@@ -963,17 +987,19 @@ namespace Rebellion.Systems
         /// <param name="mission">The mission whose evasion rules apply.</param>
         /// <param name="participant">The participant attempting to evade detection.</param>
         /// <param name="detector">The unit confronting the participant.</param>
+        /// <param name="detectorCommanders">Optional commanders cached by local scope and rank.</param>
         /// <returns>The evasion probability from zero to one.</returns>
         private double GetParticipantEvasionProbability(
             Mission mission,
             IMissionParticipant participant,
-            ISceneNode detector
+            ISceneNode detector,
+            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders = null
         )
         {
             if (participant is not Officer && participant is not SpecialForces)
                 return 1d;
 
-            Officer commander = mission.FindDetectorCommander(detector);
+            Officer commander = GetDetectorCommander(mission, detector, detectorCommanders);
             int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
             int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
             return Math.Clamp(GetEvasionProbability(score) / 100d, 0, 1);
@@ -984,13 +1010,18 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile detector.</param>
+        /// <param name="detectorCommanders">Optional commanders cached by local scope and rank.</param>
         /// <returns>The foiling percentage.</returns>
-        private int GetFoilProbability(Mission mission, ISceneNode detector)
+        private int GetFoilProbability(
+            Mission mission,
+            ISceneNode detector,
+            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders = null
+        )
         {
             if (mission == null || detector == null)
                 return 0;
 
-            int score = CalculateFoilScore(mission, detector);
+            int score = CalculateFoilScore(mission, detector, detectorCommanders);
             return LookupProbability(GetMissionTables().Foil, score);
         }
 
@@ -999,17 +1030,60 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile unit making the detection attempt.</param>
+        /// <param name="detectorCommanders">Optional commanders cached by local scope and rank.</param>
         /// <returns>The score used to look up the foiling probability.</returns>
-        private int CalculateFoilScore(Mission mission, ISceneNode detector)
+        private int CalculateFoilScore(
+            Mission mission,
+            ISceneNode detector,
+            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders = null
+        )
         {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
             IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
-            Officer commander = mission.FindDetectorCommander(detector);
+            Officer commander = GetDetectorCommander(mission, detector, detectorCommanders);
             return GetAverageEspionage(participants)
                 - GetScaledCommanderEspionage(commander, missionTables.FoilDefenderScalingPercent)
                 - GetDetectorRating(detector)
                 - participants.OfType<SpecialForces>().Count()
                 - missionTables.FoilFlatScoreAdjustment;
+        }
+
+        /// <summary>
+        /// Returns the commander paired with a detector, reusing one lookup for detectors that
+        /// share a local fleet or planet and require the same commander rank.
+        /// </summary>
+        /// <param name="mission">The mission whose detector rules identify the commander.</param>
+        /// <param name="detector">The hostile detector.</param>
+        /// <param name="detectorCommanders">Optional commanders cached by local scope and rank.</param>
+        /// <returns>The eligible commander, or null when none is assigned.</returns>
+        private static Officer GetDetectorCommander(
+            Mission mission,
+            ISceneNode detector,
+            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders
+        )
+        {
+            if (mission == null || detector == null || detectorCommanders == null)
+                return mission?.FindDetectorCommander(detector);
+
+            OfficerRank requiredRank = detector switch
+            {
+                Starfighter => OfficerRank.Commander,
+                CapitalShip => OfficerRank.Admiral,
+                Regiment => OfficerRank.General,
+                _ => OfficerRank.None,
+            };
+            ISceneNode scope = detector.GetParentOfType<Fleet>();
+            scope ??= detector.GetParentOfType<Planet>();
+            if (requiredRank == OfficerRank.None || string.IsNullOrEmpty(scope?.InstanceID))
+                return mission.FindDetectorCommander(detector);
+
+            (string ScopeId, OfficerRank Rank) key = (scope.InstanceID, requiredRank);
+            if (detectorCommanders.TryGetValue(key, out Officer commander))
+                return commander;
+
+            commander = mission.FindDetectorCommander(detector);
+            detectorCommanders.Add(key, commander);
+            return commander;
         }
 
         /// <summary>
