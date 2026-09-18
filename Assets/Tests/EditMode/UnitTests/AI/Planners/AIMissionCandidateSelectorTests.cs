@@ -179,5 +179,82 @@ namespace Rebellion.Tests.AI.Planners
                     .ToArray()
             );
         }
+
+        /// <summary>
+        /// Verifies range selection restores input order across distinct mission-type groups.
+        /// </summary>
+        [Test]
+        public void TryAddRange_InterleavedMissionTypes_PreservesInputOrderAcrossGroups()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet firstTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "first-target",
+                rebels.InstanceID,
+                positionX: 10
+            );
+            Planet secondTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "second-target",
+                rebels.InstanceID,
+                positionX: 10
+            );
+            firstTarget.AddVisitor(empire.InstanceID);
+            secondTarget.AddVisitor(empire.InstanceID);
+            Officer participant = EntityFactory.CreateOfficer("participant", empire.InstanceID);
+            participant.Ratings[OfficerRating.Combat] = 100;
+            Officer firstOfficer = EntityFactory.CreateOfficer("first-officer", rebels.InstanceID);
+            Officer secondOfficer = EntityFactory.CreateOfficer(
+                "second-officer",
+                rebels.InstanceID
+            );
+            game.AttachNode(participant, origin);
+            game.AttachNode(firstOfficer, firstTarget);
+            game.AttachNode(secondOfficer, secondTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, firstTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, secondTarget);
+            game.Config.AI.MissionPlanning.RetainedAlternativesPerMission = 2;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            List<AIProposal> proposals = new List<AIProposal>();
+            AIMissionProposal[] candidates =
+            {
+                new AIMissionProposal(
+                    new[] { participant },
+                    MissionTypeIDs.Abduction,
+                    firstTarget,
+                    selectedTarget: firstOfficer,
+                    targetOfficer: firstOfficer
+                ),
+                new AIMissionProposal(
+                    new[] { participant },
+                    MissionTypeIDs.Assassination,
+                    firstTarget,
+                    selectedTarget: firstOfficer,
+                    targetOfficer: firstOfficer
+                ),
+                new AIMissionProposal(
+                    new[] { participant },
+                    MissionTypeIDs.Abduction,
+                    secondTarget,
+                    selectedTarget: secondOfficer,
+                    targetOfficer: secondOfficer
+                ),
+                new AIMissionProposal(
+                    new[] { participant },
+                    MissionTypeIDs.Assassination,
+                    secondTarget,
+                    selectedTarget: secondOfficer,
+                    targetOfficer: secondOfficer
+                ),
+            };
+
+            new AIMissionCandidateSelector().TryAddRange(context, proposals, candidates);
+
+            CollectionAssert.AreEqual(candidates, proposals.OfType<AIMissionProposal>().ToArray());
+        }
     }
 }

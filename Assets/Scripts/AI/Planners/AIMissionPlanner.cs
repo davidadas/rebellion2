@@ -502,40 +502,51 @@ namespace Rebellion.AI.Planners
         {
             bool canAbduct = participant.CanPerformMission(MissionTypeIDs.Abduction);
             bool canAssassinate = participant.CanPerformMission(MissionTypeIDs.Assassination);
-            if (canAbduct)
-            {
-                TryAddMissionProposals(
-                    context,
-                    proposals,
-                    GetOfficerTargetCandidates(context)
-                        .Select(candidate =>
-                            CreateMissionProposal(
-                                participant,
-                                MissionTypeIDs.Abduction,
-                                candidate.Planet,
-                                selectedTarget: candidate.TargetOfficer,
-                                targetOfficer: candidate.TargetOfficer
-                            )
-                        )
-                );
-            }
+            TryAddMissionProposals(
+                context,
+                proposals,
+                CreateOfficerTargetMissionProposals(context, participant, canAbduct, canAssassinate)
+            );
+        }
 
-            if (canAssassinate)
+        /// <summary>
+        /// Creates targeted-officer mission candidates in the original target-first order.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="participant">The primary mission participant.</param>
+        /// <param name="canAbduct">Whether abduction candidates should be included.</param>
+        /// <param name="canAssassinate">Whether assassination candidates should be included.</param>
+        /// <returns>Targeted mission candidates ordered by target, then mission type.</returns>
+        private IEnumerable<AIMissionProposal> CreateOfficerTargetMissionProposals(
+            AITurnContext context,
+            IMissionParticipant participant,
+            bool canAbduct,
+            bool canAssassinate
+        )
+        {
+            foreach ((Planet planet, Officer targetOfficer) in GetOfficerTargetCandidates(context))
             {
-                TryAddMissionProposals(
-                    context,
-                    proposals,
-                    GetOfficerTargetCandidates(context)
-                        .Select(candidate =>
-                            CreateMissionProposal(
-                                participant,
-                                MissionTypeIDs.Assassination,
-                                candidate.Planet,
-                                selectedTarget: candidate.TargetOfficer,
-                                targetOfficer: candidate.TargetOfficer
-                            )
-                        )
-                );
+                if (canAbduct)
+                {
+                    yield return CreateMissionProposal(
+                        participant,
+                        MissionTypeIDs.Abduction,
+                        planet,
+                        selectedTarget: targetOfficer,
+                        targetOfficer: targetOfficer
+                    );
+                }
+
+                if (canAssassinate)
+                {
+                    yield return CreateMissionProposal(
+                        participant,
+                        MissionTypeIDs.Assassination,
+                        planet,
+                        selectedTarget: targetOfficer,
+                        targetOfficer: targetOfficer
+                    );
+                }
             }
         }
 
