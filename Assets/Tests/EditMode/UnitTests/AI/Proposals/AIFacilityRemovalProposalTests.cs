@@ -132,6 +132,12 @@ namespace Rebellion.Tests.AI.Proposals
                     ignoreCost: true
                 )
             );
+            context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: random,
+                maintenance: maintenance
+            );
             AIProposal proposal = new AIFacilityRemovalPlanner().Plan(context).Single();
 
             Assert.IsTrue(proposal.CanExecute(context));

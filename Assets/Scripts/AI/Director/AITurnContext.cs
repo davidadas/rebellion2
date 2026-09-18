@@ -464,7 +464,10 @@ namespace Rebellion.AI.Director
                     incompletePrimarySystems.Add(systemId);
             }
             assignedPrimaryPlanetIds.Add(primary.InstanceID);
-            if (buildingType != BuildingType.TrainingFacility)
+            if (
+                buildingType != BuildingType.TrainingFacility
+                && (buildingType != BuildingType.Shipyard || currentCount > 0)
+            )
                 ReserveEnergy(primary, buildingType, Math.Max(0, feasibleTarget - currentCount));
 
             for (int index = 1; index < ranked.Count; index++)

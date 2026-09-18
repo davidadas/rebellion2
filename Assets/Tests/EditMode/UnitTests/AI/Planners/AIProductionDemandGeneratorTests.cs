@@ -150,6 +150,7 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
             game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomTarget = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
