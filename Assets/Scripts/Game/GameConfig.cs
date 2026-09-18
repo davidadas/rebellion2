@@ -644,7 +644,7 @@ namespace Rebellion.Game
             public AIConsiderationConfig PrimaryHub { get; set; } = Weighted(0.5);
             public AIConsiderationConfig FacilityBalance { get; set; } = Weighted(1);
             public AIConsiderationConfig FacilityInvestment { get; set; } = Weighted(1);
-            public AIConsiderationConfig ColonyFoundation { get; set; } = Weighted(1);
+            public AIConsiderationConfig ColonyFoundation { get; set; } = Weighted(1.2);
             public AIConsiderationConfig FacilityPortfolio { get; set; } = Weighted(1);
             public AIConsiderationConfig UpgradeValue { get; set; } = Weighted(0.2);
             public AIConsiderationConfig UpgradeHeadquarters { get; set; } = Weighted(0.1);

@@ -30,8 +30,8 @@ namespace Rebellion.AI.Planners
             foreach (Planet planet in context.Assessment.OwnedPlanets)
             {
                 foreach (
-                    IGrouping<BuildingType, Building> facilities in context
-                        .Assessment.GetPlanetBuildings(planet)
+                    IGrouping<BuildingType, Building> facilities in AIFacilityRemovalProposal
+                        .GetFacilities(context, planet)
                         .Where(building =>
                             building.GetOwnerInstanceID() == context.Faction.InstanceID
                             && building.GetBuildingType() == BuildingType.Shipyard

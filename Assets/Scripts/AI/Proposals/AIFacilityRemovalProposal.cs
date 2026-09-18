@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
@@ -123,8 +124,7 @@ namespace Rebellion.AI.Proposals
                 return new List<Building>();
 
             int cap = context.DevelopmentAllocation.GetCap(planet, buildingType);
-            return context
-                .Assessment.GetPlanetBuildings(planet)
+            return GetFacilities(context, planet)
                 .Where(building =>
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
                     && building.GetBuildingType() == buildingType
@@ -135,6 +135,29 @@ namespace Rebellion.AI.Proposals
                 )
                 .ThenBy(building => building.InstanceID)
                 .Skip(cap)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns the turn snapshot plus facilities queued after the assessment was built.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The planet whose facilities are requested.</param>
+        /// <returns>The distinct completed and queued facilities.</returns>
+        internal static IReadOnlyList<Building> GetFacilities(AITurnContext context, Planet planet)
+        {
+            if (context?.Assessment == null || planet == null)
+                return new List<Building>();
+
+            IEnumerable<Building> queued = planet
+                .GetManufacturingQueue()
+                .Values.SelectMany(items => items)
+                .OfType<Building>();
+            return context
+                .Assessment.GetPlanetBuildings(planet)
+                .Concat(queued)
+                .GroupBy(building => building.InstanceID, StringComparer.Ordinal)
+                .Select(group => group.First())
                 .ToList();
         }
 
