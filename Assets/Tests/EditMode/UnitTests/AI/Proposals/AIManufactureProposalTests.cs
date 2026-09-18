@@ -127,6 +127,46 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         /// <summary>
+        /// Verifies an economy-recovery order can bridge a temporary maintenance deficit.
+        /// </summary>
+        [Test]
+        public void Execute_WithMaintenanceRecoveryAtZeroHeadroom_QueuesOrder()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "resource-world",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Building mine = AITestSceneBuilder.CreateBuildingTemplate(
+                "mine-template",
+                BuildingType.Mine
+            );
+            mine.MaintenanceCost = 10;
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                CreateBuildingDemand(planet),
+                planet,
+                new Technology(mine)
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            Assert.AreEqual(0, context.Faction.ProjectedMaintenanceHeadroom);
+
+            proposal.Execute(context);
+
+            Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Building].Count);
+        }
+
+        /// <summary>
         /// Verifies execute with facility batch queues exactly calculated quantity.
         /// </summary>
         [Test]

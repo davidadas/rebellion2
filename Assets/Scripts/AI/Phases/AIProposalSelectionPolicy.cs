@@ -355,6 +355,14 @@ namespace Rebellion.AI.Phases
         /// <returns>True when selecting the proposal would exceed the reserve.</returns>
         private bool WouldExceedMaintenanceHeadroom(AITurnContext context, AIProposal proposal)
         {
+            if (
+                proposal is AIManufactureProposal recoveryProposal
+                && recoveryProposal.Demand?.RestoresMaintenanceCapacity == true
+            )
+            {
+                return false;
+            }
+
             int maintenanceCost = GetMaintenanceCost(proposal);
             if (maintenanceCost <= 0)
                 return false;

@@ -681,7 +681,12 @@ namespace Rebellion.AI.Proposals
             IManufacturable manufacturable
         )
         {
-            return context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, destinationPlanet);
+            return context.Manufacturing.Enqueue(
+                ProducerPlanet,
+                manufacturable,
+                destinationPlanet,
+                Demand.RestoresMaintenanceCapacity
+            );
         }
 
         /// <summary>
@@ -831,6 +836,9 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if maintenance headroom is sufficient.</returns>
         private bool HasMaintenanceHeadroom(AITurnContext context)
         {
+            if (Demand?.RestoresMaintenanceCapacity == true)
+                return true;
+
             int maintenanceCost = GetMaintenanceCost();
             if (maintenanceCost <= 0)
                 return true;

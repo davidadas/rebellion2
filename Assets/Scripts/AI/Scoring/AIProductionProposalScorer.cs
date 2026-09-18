@@ -77,6 +77,7 @@ namespace Rebellion.AI.Scoring
                 context.Assessment.ProjectedMaintenanceHeadroom - maintenanceCost;
             if (
                 maintenanceCost > 0
+                && proposal.Demand.RestoresMaintenanceCapacity == false
                 && projectedHeadroom < proposal.GetMinimumMaintenanceHeadroom(context)
             )
                 return 0;

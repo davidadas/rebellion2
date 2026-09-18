@@ -221,7 +221,13 @@ namespace Rebellion.Tests.AI.Phases
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector1");
-            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "p1", empire.InstanceID);
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "p1",
+                empire.InstanceID,
+                rawResourceNodes: buildingType == BuildingType.Mine ? 1 : 0
+            );
             AITestSceneBuilder.AddProductionFacility(
                 game,
                 planet,
