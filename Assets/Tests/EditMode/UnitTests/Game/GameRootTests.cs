@@ -133,7 +133,7 @@ namespace Rebellion.Tests.Game
             _game.SetFactionController(
                 _faction1.InstanceID,
                 "PLAYER1",
-                PlayerControllerType.Automated
+                PlayerControllerType.AI
             );
             DifficultyModifiers expected = new DifficultyModifiers
             {
