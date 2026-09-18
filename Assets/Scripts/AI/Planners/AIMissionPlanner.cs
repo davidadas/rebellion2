@@ -20,6 +20,28 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIMissionPlanner : IAIProposalPlanner
     {
+        /// <summary>
+        /// Gets or sets whether planner instances capture candidate-count diagnostics.
+        /// </summary>
+        public static bool CaptureDiagnostics { get; set; }
+
+        /// <summary>
+        /// Gets the number of candidate proposals attempted by the most recent plan operation.
+        /// </summary>
+        public int LastCandidateCount => _candidateSelector.CandidateCount;
+
+        /// <summary>
+        /// Gets the number of candidates fully scored by the most recent plan operation.
+        /// </summary>
+        public int LastExactScoreCount => _candidateSelector.ExactScoreCount;
+
+        /// <summary>
+        /// Gets exact-score counts and elapsed timestamp units by mission type for the most recent
+        /// plan operation.
+        /// </summary>
+        public IReadOnlyDictionary<string, (int Count, long Elapsed)> LastScoreDiagnostics =>
+            _candidateSelector.ScoreDiagnostics;
+
         private const PlanetIntelligenceCategory _missionDefenseIntelligence =
             PlanetIntelligenceCategory.CapitalShips
             | PlanetIntelligenceCategory.Starfighters

@@ -94,6 +94,7 @@ public static partial class HeadlessSimulationRunner
         BaseGameEntity.SetInstanceIdSeed(
             string.IsNullOrWhiteSpace(options.InputSaveFileName) ? options.Seed : null
         );
+        AIMissionPlanner.CaptureDiagnostics = true;
 
         try
         {
@@ -162,6 +163,13 @@ public static partial class HeadlessSimulationRunner
             Dictionary<(string FactionId, string StepName), long> aiFactionStepStarts = new();
             Dictionary<string, List<long>> aiFactionStepSamples = new(StringComparer.Ordinal);
             Dictionary<string, List<long>> aiWorkUnitSamples = new(StringComparer.Ordinal);
+            List<(
+                long Elapsed,
+                int Tick,
+                int Candidates,
+                int ExactScores,
+                string Breakdown
+            )> slowMissionPlans = new();
             VictoryResult victory = null;
             manager.ResultsResolved += planetaryAssaultTracker.Record;
             manager.ResultsResolved += garrisonRemovalBombardmentTracker.Record;
@@ -218,7 +226,13 @@ public static partial class HeadlessSimulationRunner
                 if (i % 25 == 0)
                     LogToFile(logPath, $"[HeadlessSim] tick {i}");
                 long startTimestamp = Stopwatch.GetTimestamp();
-                ProcessTickIncrementally(manager, gameProcessingStepSamples, aiWorkUnitSamples);
+                ProcessTickIncrementally(
+                    manager,
+                    gameProcessingStepSamples,
+                    aiWorkUnitSamples,
+                    slowMissionPlans,
+                    game.CurrentTick
+                );
                 long gameProcessingElapsed = Stopwatch.GetTimestamp() - startTimestamp;
                 gameProcessingTimestampCount += gameProcessingElapsed;
                 gameProcessingSamples.Add(gameProcessingElapsed);
@@ -280,6 +294,21 @@ public static partial class HeadlessSimulationRunner
                 );
             }
             foreach (
+                (
+                    long elapsed,
+                    int tick,
+                    int candidates,
+                    int exactScores,
+                    string breakdown
+                ) in slowMissionPlans.OrderByDescending(sample => sample.Elapsed).Take(20)
+            )
+            {
+                LogToFile(
+                    logPath,
+                    $"[HeadlessSim] ai-slow-mission-plan tick={tick} elapsed={GetElapsedMilliseconds(elapsed):F3}ms candidates={candidates} exactScores={exactScores} scores={breakdown}"
+                );
+            }
+            foreach (
                 (long elapsed, string factionId, int tick) in slowAiFactionTurns
                     .OrderByDescending(sample => sample.Elapsed)
                     .Take(10)
@@ -324,6 +353,7 @@ public static partial class HeadlessSimulationRunner
         }
         finally
         {
+            AIMissionPlanner.CaptureDiagnostics = false;
             BaseGameEntity.SetInstanceIdSeed(null);
             GameLogger.SetMinimumLevel(GameLogger.LogLevel.Debug);
             GameLogger.Configure(enableFileLogging: false);
@@ -465,10 +495,20 @@ public static partial class HeadlessSimulationRunner
     /// <param name="aiWorkUnitSamples">
     /// The optional collection receiving AI planner and proposal durations keyed by runtime type.
     /// </param>
+    /// <param name="slowMissionPlans">The collection receiving detailed mission-planner samples.</param>
+    /// <param name="currentTick">The tick being processed.</param>
     private static void ProcessTickIncrementally(
         GameManager manager,
         ICollection<long> stepSamples,
-        IDictionary<string, List<long>> aiWorkUnitSamples = null
+        IDictionary<string, List<long>> aiWorkUnitSamples = null,
+        ICollection<(
+            long Elapsed,
+            int Tick,
+            int Candidates,
+            int ExactScores,
+            string Breakdown
+        )> slowMissionPlans = null,
+        int currentTick = 0
     )
     {
         IEnumerator tick = manager.ProcessTickIncrementally();
@@ -492,6 +532,28 @@ public static partial class HeadlessSimulationRunner
                     }
 
                     samples.Add(elapsed);
+                    if (workUnit is AIMissionPlanner missionPlanner)
+                    {
+                        string breakdown = string.Join(
+                            ",",
+                            missionPlanner
+                                .LastScoreDiagnostics.OrderByDescending(entry =>
+                                    entry.Value.Elapsed
+                                )
+                                .Select(entry =>
+                                    $"{entry.Key}:{entry.Value.Count}/{GetElapsedMilliseconds(entry.Value.Elapsed):F3}ms"
+                                )
+                        );
+                        slowMissionPlans?.Add(
+                            (
+                                elapsed,
+                                currentTick,
+                                missionPlanner.LastCandidateCount,
+                                missionPlanner.LastExactScoreCount,
+                                breakdown
+                            )
+                        );
+                    }
                 }
             } while (hasNext);
         }
