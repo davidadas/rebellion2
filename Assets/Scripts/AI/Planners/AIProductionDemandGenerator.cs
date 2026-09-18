@@ -907,20 +907,6 @@ namespace Rebellion.AI.Planners
                 );
                 desiredFacilityCount = Math.Max(desiredFacilityCount, demandCapacityTarget);
             }
-            int remainingFacilityCount = Math.Max(
-                0,
-                desiredFacilityCount - GetOwnedFacilityCount(context, buildingType)
-            );
-            if (buildingType == BuildingType.ConstructionFacility)
-            {
-                remainingFacilityCount = Math.Max(
-                    remainingFacilityCount,
-                    GetOuterRimConstructionDeficit(context, developmentAllocation)
-                );
-            }
-            if (remainingFacilityCount == 0)
-                return;
-
             int hubTarget =
                 buildingType == BuildingType.Shipyard
                     ? context.Game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount
@@ -937,6 +923,9 @@ namespace Rebellion.AI.Planners
                 )
                 .GroupBy(context.Assessment.GetPlanetSystemId)
                 .OrderByDescending(sector =>
+                    GetPrimaryHubDeficit(sector, buildingType, developmentAllocation, hubTarget)
+                )
+                .ThenByDescending(sector =>
                     GetOuterRimConstructionDeficit(
                         sector,
                         buildingType,
@@ -947,6 +936,23 @@ namespace Rebellion.AI.Planners
                 .ThenByDescending(sector => GetColonyFoundationInput(sector, buildingType))
                 .ThenBy(group => group.Key, StringComparer.Ordinal)
                 .ToList();
+            int primaryHubDeficit = sectors.Sum(sector =>
+                GetPrimaryHubDeficit(sector, buildingType, developmentAllocation, hubTarget)
+            );
+            int remainingFacilityCount = Math.Max(
+                Math.Max(0, desiredFacilityCount - GetOwnedFacilityCount(context, buildingType)),
+                primaryHubDeficit
+            );
+            if (buildingType == BuildingType.ConstructionFacility)
+            {
+                remainingFacilityCount = Math.Max(
+                    remainingFacilityCount,
+                    GetOuterRimConstructionDeficit(context, developmentAllocation)
+                );
+            }
+            if (remainingFacilityCount == 0)
+                return;
+
             double categoryBalancePressure = GetFacilityCategoryBalancePressure(
                 sectors,
                 buildingType,
@@ -1020,6 +1026,9 @@ namespace Rebellion.AI.Planners
                     continue;
                 }
 
+                if (primaryHubDeficit > 0)
+                    continue;
+
                 int secondaryTarget = context
                     .Game
                     .Config
@@ -1045,6 +1054,45 @@ namespace Rebellion.AI.Planners
                     remainingFacilityCount
                 );
             }
+        }
+
+        /// <summary>
+        /// Returns the unfilled capacity at a sector's designated primary facility hub.
+        /// </summary>
+        /// <param name="sector">Owned planets in one sector.</param>
+        /// <param name="buildingType">The facility category being considered.</param>
+        /// <param name="allocation">The turn-scoped development allocation.</param>
+        /// <param name="fallbackTarget">The configured primary-site target.</param>
+        /// <returns>The number of facilities required to complete the primary hub.</returns>
+        private static int GetPrimaryHubDeficit(
+            IEnumerable<Planet> sector,
+            BuildingType buildingType,
+            AIPlanetDevelopmentAllocation allocation,
+            int fallbackTarget
+        )
+        {
+            if (buildingType is not (BuildingType.ConstructionFacility or BuildingType.Shipyard))
+            {
+                return 0;
+            }
+
+            Planet primary = null;
+            int sectorFacilityCount = 0;
+            foreach (Planet planet in sector)
+            {
+                sectorFacilityCount += planet.GetTotalBuildingTypeCount(buildingType);
+                if (allocation.IsPrimaryHub(planet, buildingType))
+                    primary = planet;
+            }
+
+            if (buildingType == BuildingType.Shipyard && sectorFacilityCount == 0)
+                return 0;
+
+            if (primary == null)
+                return 0;
+
+            int target = allocation.GetPrimaryTarget(primary, buildingType, fallbackTarget);
+            return Math.Max(0, target - primary.GetTotalBuildingTypeCount(buildingType));
         }
 
         /// <summary>
