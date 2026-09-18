@@ -124,6 +124,22 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void FooterNavigation_GeneratedPrefab_UsesConsistentActionSpacing()
+        {
+            RectTransform footerNavigation = _root
+                .GetComponentsInChildren<RectTransform>(true)
+                .Single(transform => transform.name == "FooterNavigation");
+            RectTransform[] actions = footerNavigation
+                .Cast<RectTransform>()
+                .OrderByDescending(transform => transform.anchoredPosition.y)
+                .ToArray();
+
+            Assert.AreEqual(3, actions.Length);
+            Assert.AreEqual(8f, GetVerticalGap(actions[0], actions[1]));
+            Assert.AreEqual(8f, GetVerticalGap(actions[1], actions[2]));
+        }
+
+        [Test]
         public void Awake_ContentNotInitialized_DoesNotThrow()
         {
             GameObject root = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
@@ -777,6 +793,17 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     .GetType()
                     .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                     .GetValue(target);
+        }
+
+        /// <summary>
+        /// Calculates the vertical space separating two top-anchored rows.
+        /// </summary>
+        /// <param name="upper">The upper row.</param>
+        /// <param name="lower">The lower row.</param>
+        /// <returns>The vertical gap between the rows.</returns>
+        private static float GetVerticalGap(RectTransform upper, RectTransform lower)
+        {
+            return upper.anchoredPosition.y - lower.anchoredPosition.y - upper.rect.height;
         }
 
         /// <summary>
