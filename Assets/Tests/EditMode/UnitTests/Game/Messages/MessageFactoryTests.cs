@@ -1822,10 +1822,6 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(reporter.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
         }
 
-        /// <summary>
-        /// Verifies create messages mission report prefers main character reporter.
-        /// </summary>
-        /// <param name="mainCharacterIsDecoy">Whether main character is decoy.</param>
         [TestCase(
             false,
             TestName = "CreateMessages_MissionReport_MainCharacterLaterInMainTeam_UsesMatchingImageAndVoice"

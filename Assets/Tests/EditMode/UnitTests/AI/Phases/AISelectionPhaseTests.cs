@@ -212,8 +212,6 @@ namespace Rebellion.Tests.AI.Phases
         /// <summary>
         /// Verifies economy recovery may consume maintenance below the strategic reserve.
         /// </summary>
-        /// <param name="kind">The recovery demand kind.</param>
-        /// <param name="buildingType">The recovery building type.</param>
         [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
         [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
         public void Select_WithEconomyRecoveryBelowMaintenanceReserve_SelectsProposal(

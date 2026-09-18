@@ -62,11 +62,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsEmpty(source.Items);
         }
 
-        /// <summary>
-        /// Verifies get prompt action returns expected prompt.
-        /// </summary>
-        /// <param name="action">The action.</param>
-        /// <param name="expectedPrompt">The expected prompt.</param>
         [TestCase(StrategyMenuAction.CreateMission, "Select mission target")]
         [TestCase(StrategyMenuAction.Destination, "Select destination")]
         [TestCase(StrategyMenuAction.Move, "Select move destination")]

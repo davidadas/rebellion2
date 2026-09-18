@@ -121,8 +121,6 @@ namespace Rebellion.Tests.AI.Scoring
         /// <summary>
         /// Verifies economy recovery remains selectable below the maintenance reserve.
         /// </summary>
-        /// <param name="kind">The recovery demand kind.</param>
-        /// <param name="buildingType">The recovery building type.</param>
         [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
         [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
         public void Score_WithEconomyRecoveryBelowMaintenanceReserve_ReturnsPositiveScore(

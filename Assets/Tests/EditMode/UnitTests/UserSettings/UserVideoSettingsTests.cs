@@ -114,12 +114,12 @@ namespace Rebellion.Tests.UserSettings
         /// <param name="width">The width.</param>
         /// <param name="height">The height.</param>
         /// <param name="expected">Whether expected.</param>
-        [TestCase(1920, 1080, true)]
-        [TestCase(2560, 1440, true)]
-        [TestCase(3840, 1600, false)]
         /// <summary>
         /// Verifies the aspect-ratio predicate accepts only 16:9 dimensions.
         /// </summary>
+        [TestCase(1920, 1080, true)]
+        [TestCase(2560, 1440, true)]
+        [TestCase(3840, 1600, false)]
         [TestCase(1366, 768, true)]
         [TestCase(1920, 1200, false)]
         public void IsSixteenByNine_AcceptsOnlySixteenByNineModes(
