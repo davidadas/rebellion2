@@ -165,7 +165,72 @@ namespace Rebellion.Systems
             string ownerInstanceId
         )
         {
-            if (!CanStartManufacturing(producer, template, destination, count, ownerInstanceId))
+            return StartManufacturingCore(
+                producer,
+                template,
+                destination,
+                count,
+                ownerInstanceId,
+                maintenancePrevalidated: false
+            );
+        }
+
+        /// <summary>
+        /// Starts an AI-selected order whose turn-scoped maintenance budget is already reserved.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <returns>True when the complete order was queued.</returns>
+        internal bool StartPrevalidatedManufacturing(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            return StartManufacturingCore(
+                producer,
+                template,
+                destination,
+                count,
+                ownerInstanceId,
+                maintenancePrevalidated: true
+            );
+        }
+
+        /// <summary>
+        /// Creates and queues a manufacturing order with optional prevalidated maintenance.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <param name="maintenancePrevalidated">Whether a turn-scoped budget already authorized maintenance.</param>
+        /// <returns>True when the complete order was queued.</returns>
+        private bool StartManufacturingCore(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId,
+            bool maintenancePrevalidated
+        )
+        {
+            bool canStart = maintenancePrevalidated
+                ? CanAcceptManufacturingOrder(
+                    producer,
+                    template,
+                    destination,
+                    count,
+                    ownerInstanceId
+                )
+                : CanStartManufacturing(producer, template, destination, count, ownerInstanceId);
+            if (!canStart)
                 return false;
 
             CancelConflictingProject(producer, template);
@@ -191,11 +256,11 @@ namespace Rebellion.Systems
                 bool enqueued;
                 if (destinationFleet != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationFleet);
+                    enqueued = Enqueue(producer, item, destinationFleet, maintenancePrevalidated);
                 }
                 else if (destinationShip != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationShip);
+                    enqueued = Enqueue(producer, item, destinationShip, maintenancePrevalidated);
                 }
                 else if (destinationPlanet != null && item is CapitalShip)
                 {
@@ -206,11 +271,16 @@ namespace Rebellion.Systems
                     if (capitalShipDestination == null)
                         return started;
 
-                    enqueued = Enqueue(producer, item, capitalShipDestination);
+                    enqueued = Enqueue(
+                        producer,
+                        item,
+                        capitalShipDestination,
+                        maintenancePrevalidated
+                    );
                 }
                 else if (destinationPlanet != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationPlanet);
+                    enqueued = Enqueue(producer, item, destinationPlanet, maintenancePrevalidated);
                 }
                 else
                 {

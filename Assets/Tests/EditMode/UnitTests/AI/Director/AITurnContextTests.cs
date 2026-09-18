@@ -132,6 +132,29 @@ namespace Rebellion.Tests.AI.Director
         }
 
         /// <summary>
+        /// Verifies committed manufacturing maintenance reduces the turn-scoped available headroom.
+        /// </summary>
+        [Test]
+        public void CommitManufacturingMaintenance_WithPositiveCost_ReducesAvailableHeadroom()
+        {
+            AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
+            int initialHeadroom = context.AvailableProjectedMaintenanceHeadroom;
+
+            context.CommitManufacturingMaintenance(7);
+
+            Assert.AreEqual(initialHeadroom - 7, context.AvailableProjectedMaintenanceHeadroom);
+        }
+
+        /// <summary>
         /// Verifies developmentallocation reservesincompletehubenergyfrommines.
         /// </summary>
         [Test]

@@ -35,6 +35,16 @@ namespace Rebellion.AI.Director
             _developmentAllocation ??= new AIPlanetDevelopmentAllocation(this);
         public AIReinforcementArrivalForecast ReinforcementArrivalForecast =>
             _reinforcementArrivalForecast ??= new AIReinforcementArrivalForecast(this);
+        public int AvailableProjectedMaintenanceHeadroom
+        {
+            get
+            {
+                long available =
+                    (long)(Assessment?.ProjectedMaintenanceHeadroom ?? 0)
+                    - _committedManufacturingMaintenance;
+                return (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, available));
+            }
+        }
 
         // Turn Output.
         public IReadOnlyList<AIProposal> Proposals => _proposals;
@@ -49,6 +59,7 @@ namespace Rebellion.AI.Director
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
         private AIPlanetDevelopmentAllocation _developmentAllocation;
         private AIReinforcementArrivalForecast _reinforcementArrivalForecast;
+        private long _committedManufacturingMaintenance;
 
         /// <summary>
         /// Creates a turn context.
@@ -137,6 +148,15 @@ namespace Rebellion.AI.Director
                 if (proposal != null)
                     _selectedProposals.Add(proposal);
             }
+        }
+
+        /// <summary>
+        /// Records maintenance committed by a manufacturing order that executed this turn.
+        /// </summary>
+        /// <param name="maintenanceCost">The non-negative maintenance committed.</param>
+        public void CommitManufacturingMaintenance(int maintenanceCost)
+        {
+            _committedManufacturingMaintenance += Math.Max(0, maintenanceCost);
         }
 
         /// <summary>

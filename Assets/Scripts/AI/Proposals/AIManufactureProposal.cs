@@ -293,22 +293,24 @@ namespace Rebellion.AI.Proposals
 
             if (Demand.Kind == AIDemandKind.BuildingUpgrade)
             {
-                ExecuteBuildingUpgrade(context);
+                if (ExecuteBuildingUpgrade(context))
+                    CommitMaintenance(context);
                 return;
             }
 
             if (IsCountedManufacturingDemand())
             {
-                if (
-                    !context.Manufacturing.StartManufacturing(
-                        ProducerPlanet,
-                        Product.GetReference(),
-                        Destination,
-                        GetManufacturingCount(),
-                        context.Faction.InstanceID
-                    )
-                )
+                bool started = context.Manufacturing.StartPrevalidatedManufacturing(
+                    ProducerPlanet,
+                    Product.GetReference(),
+                    Destination,
+                    GetManufacturingCount(),
+                    context.Faction.InstanceID
+                );
+                if (!started)
                     LogEnqueueFailure();
+                else
+                    CommitMaintenance(context);
                 return;
             }
 
@@ -328,6 +330,8 @@ namespace Rebellion.AI.Proposals
             {
                 if (!EnqueueFleetSeed(context, capitalShip, fleetPlanet))
                     LogEnqueueFailure();
+                else
+                    CommitMaintenance(context);
                 return;
             }
 
@@ -335,14 +339,18 @@ namespace Rebellion.AI.Proposals
             {
                 if (!EnqueueAtPlanet(context, planet, manufacturable))
                     LogEnqueueFailure();
+                else
+                    CommitMaintenance(context);
                 return;
             }
 
-            if (
-                Destination is Fleet fleet
-                && !context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, fleet)
-            )
-                LogEnqueueFailure();
+            if (Destination is Fleet fleet)
+            {
+                if (!context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, fleet, true))
+                    LogEnqueueFailure();
+                else
+                    CommitMaintenance(context);
+            }
         }
 
         /// <summary>
@@ -526,7 +534,7 @@ namespace Rebellion.AI.Proposals
             Fleet fleet = context.Faction.CreateFleet(roleType: roleType);
             context.Game.AttachNode(fleet, destinationPlanet);
 
-            if (context.Manufacturing.Enqueue(ProducerPlanet, capitalShip, fleet))
+            if (context.Manufacturing.Enqueue(ProducerPlanet, capitalShip, fleet, true))
                 return true;
 
             context.Game.DetachNode(fleet);
@@ -646,7 +654,8 @@ namespace Rebellion.AI.Proposals
         /// Replaces the selected production facility with its planned upgrade.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        private void ExecuteBuildingUpgrade(AITurnContext context)
+        /// <returns>True when the replacement order was queued.</returns>
+        private bool ExecuteBuildingUpgrade(AITurnContext context)
         {
             Building replacement = Demand.BuildingToReplace;
             Planet destinationPlanet = Destination as Planet;
@@ -655,7 +664,7 @@ namespace Rebellion.AI.Proposals
             bool started = false;
             try
             {
-                started = context.Manufacturing.StartManufacturing(
+                started = context.Manufacturing.StartPrevalidatedManufacturing(
                     ProducerPlanet,
                     Product.GetReference(),
                     destinationPlanet,
@@ -671,6 +680,7 @@ namespace Rebellion.AI.Proposals
 
             if (!started)
                 LogEnqueueFailure();
+            return started;
         }
 
         /// <summary>
@@ -690,8 +700,18 @@ namespace Rebellion.AI.Proposals
                 ProducerPlanet,
                 manufacturable,
                 destinationPlanet,
-                Demand.RestoresMaintenanceCapacity
+                true
             );
+        }
+
+        /// <summary>
+        /// Commits this successfully queued order to the turn-scoped maintenance budget.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        private void CommitMaintenance(AITurnContext context)
+        {
+            if (Demand?.RestoresMaintenanceCapacity != true)
+                context.CommitManufacturingMaintenance(GetMaintenanceCost());
         }
 
         /// <summary>
@@ -849,7 +869,7 @@ namespace Rebellion.AI.Proposals
                 return true;
 
             int minimumHeadroom = GetMinimumMaintenanceHeadroom(context);
-            return context.Faction.ProjectedMaintenanceHeadroom - maintenanceCost
+            return context.AvailableProjectedMaintenanceHeadroom - maintenanceCost
                 >= minimumHeadroom;
         }
     }
