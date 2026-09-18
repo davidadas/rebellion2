@@ -18,10 +18,10 @@ namespace Rebellion.Tests.AI.Planners
     public class AIProductionPlannerTests
     {
         /// <summary>
-        /// Verifies a claimed planet does not bypass shared infrastructure demand.
+        /// Verifies a claimed planet receives a founding-facility production proposal.
         /// </summary>
         [Test]
-        public void Plan_WithClaimedUncolonizedPlanet_DoesNotAddColonyManufactureProposal()
+        public void Plan_WithClaimedUncolonizedPlanet_AddsColonyManufactureProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -61,13 +61,14 @@ namespace Rebellion.Tests.AI.Planners
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIProposal> proposals = new AIProductionPlanner().Plan(context).ToList();
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item => item.Demand.Kind == AIDemandKind.Colony);
 
-            Assert.IsFalse(
-                proposals
-                    .OfType<AIManufactureProposal>()
-                    .Any(item => item.Demand.Kind == AIDemandKind.Colony)
-            );
+            Assert.AreSame(producer, proposal.ProducerPlanet);
+            Assert.AreSame(colony, proposal.Destination);
+            Assert.AreSame(mine, proposal.Product.GetReference());
         }
 
         /// <summary>

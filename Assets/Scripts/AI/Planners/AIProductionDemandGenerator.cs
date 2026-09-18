@@ -65,7 +65,7 @@ namespace Rebellion.AI.Planners
             FacilityPortfolio facilityPortfolio = BuildFacilityPortfolio(context);
             _colonyDemandSource.AddDemands(context, demands);
             AddResourceBalanceDemand(context, demands);
-            AddPlanetaryDefenseDemands(context, demands, facilityPortfolio);
+            AddPlanetaryDefenseDemands(context, demands);
             AddPlanetaryStarfighterDemands(context, demands);
             AddFleetSeedDemand(context, demands);
             AddColonizationFleetSeedDemand(context, demands);
@@ -145,12 +145,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
-        /// <param name="facilityPortfolio">The turn-scoped facility portfolio.</param>
-        private void AddPlanetaryDefenseDemands(
-            AITurnContext context,
-            List<AIDemand> demands,
-            FacilityPortfolio facilityPortfolio
-        )
+        private void AddPlanetaryDefenseDemands(AITurnContext context, List<AIDemand> demands)
         {
             foreach (
                 Planet planet in context
@@ -158,7 +153,7 @@ namespace Rebellion.AI.Planners
                     .OrderByDescending(context.Assessment.GetPlanetValue)
                     .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
-                AddPlanetaryDefenseDemands(context, demands, planet, facilityPortfolio);
+                AddPlanetaryDefenseDemands(context, demands, planet);
         }
 
         /// <summary>
@@ -167,12 +162,10 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
         /// <param name="planet">The planet to evaluate.</param>
-        /// <param name="facilityPortfolio">The turn-scoped facility portfolio.</param>
         private void AddPlanetaryDefenseDemands(
             AITurnContext context,
             List<AIDemand> demands,
-            Planet planet,
-            FacilityPortfolio facilityPortfolio
+            Planet planet
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
@@ -200,8 +193,7 @@ namespace Rebellion.AI.Planners
                         shieldQuantity,
                         shieldTarget,
                         config.PlanetaryShieldDemandPercent,
-                        shieldCount == 0,
-                        facilityPortfolio
+                        shieldCount == 0
                     )
                 );
                 availableEnergy -= shieldQuantity;
@@ -229,8 +221,7 @@ namespace Rebellion.AI.Planners
                     Math.Min(weaponDeficit, availableEnergy),
                     weaponTarget,
                     config.PlanetaryWeaponDemandPercent,
-                    false,
-                    facilityPortfolio
+                    false
                 )
             );
         }
@@ -275,7 +266,6 @@ namespace Rebellion.AI.Planners
         /// <param name="targetCount">The desired unit count.</param>
         /// <param name="baseDemandPercent">The base demand pressure.</param>
         /// <param name="isInitialShield">Whether this establishes the first shield.</param>
-        /// <param name="facilityPortfolio">The turn-scoped facility portfolio.</param>
         /// <returns>The defense demand.</returns>
         private AIDemand CreatePlanetaryDefenseBuildingDemand(
             AITurnContext context,
@@ -284,8 +274,7 @@ namespace Rebellion.AI.Planners
             int deficit,
             int targetCount,
             int baseDemandPercent,
-            bool isInitialShield,
-            FacilityPortfolio facilityPortfolio
+            bool isInitialShield
         )
         {
             return new AIDemand(
@@ -306,8 +295,7 @@ namespace Rebellion.AI.Planners
                     baseDemandPercent,
                     deficit,
                     targetCount,
-                    isInitialShield,
-                    facilityPortfolio
+                    isInitialShield
                 )
             );
         }
@@ -2457,7 +2445,6 @@ namespace Rebellion.AI.Planners
         /// <param name="deficit">Current defense deficit.</param>
         /// <param name="targetCount">Target defense count.</param>
         /// <param name="isInitialShield">Whether the demand establishes the first shield.</param>
-        /// <param name="facilityPortfolio">The faction's current strategic-facility mix.</param>
         /// <returns>The defense pressure.</returns>
         private double GetPlanetaryDefensePressure(
             AITurnContext context,
@@ -2465,8 +2452,7 @@ namespace Rebellion.AI.Planners
             int baseDemandPercent,
             int deficit,
             int targetCount,
-            bool isInitialShield = false,
-            FacilityPortfolio facilityPortfolio = default
+            bool isInitialShield = false
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
@@ -2495,13 +2481,6 @@ namespace Rebellion.AI.Planners
                 context.Assessment.GetPlanetDefenseThreatStrength(planet) > 0 ? 1 : 0,
                 utility.DefenseThreat
             );
-            if (facilityPortfolio.Total > 0)
-                pressure += GetFacilityPortfolioPressure(
-                    context,
-                    AIDemandKind.PlanetaryDefense,
-                    facilityPortfolio
-                );
-
             double boundedPressure = ClampPressure(pressure);
             return isInitialShield
                 ? boundedPressure
