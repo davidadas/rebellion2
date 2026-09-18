@@ -130,11 +130,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetDifficultyModifier_AutomatedPlayerFaction_ReturnsSelectedDifficultyModifier()
         {
-            _game.SetFactionController(
-                _faction1.InstanceID,
-                "PLAYER1",
-                PlayerControllerType.AI
-            );
+            _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.AI);
             DifficultyModifiers expected = new DifficultyModifiers
             {
                 MissionSuccessChancePoints = 15,
