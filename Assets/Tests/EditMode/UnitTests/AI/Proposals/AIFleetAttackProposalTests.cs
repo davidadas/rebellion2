@@ -72,7 +72,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             staging.PositionX = 0;
             target.PositionX = 10000;
-            Fleet fleet = AddBattleFleet(game, staging, empire.InstanceID);
+            Fleet fleet = AddBattleFleet(game, staging, empire.InstanceID, regimentCount: 6);
             CapitalShip inbound = AITestSceneBuilder.CreateCapitalShip(
                 "inbound",
                 empire.InstanceID,
@@ -116,7 +116,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             staging.PositionX = 0;
             target.PositionX = 10000;
-            Fleet fleet = AddBattleFleet(game, staging, empire.InstanceID);
+            Fleet fleet = AddBattleFleet(game, staging, empire.InstanceID, regimentCount: 6);
             CapitalShip inbound = AITestSceneBuilder.CreateCapitalShip(
                 "inbound",
                 empire.InstanceID,
@@ -162,7 +162,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             staging.PositionX = 0;
             target.PositionX = 10000;
-            Fleet fleet = AddBattleFleet(game, staging, empire.InstanceID);
+            Fleet fleet = AddBattleFleet(game, staging, empire.InstanceID, regimentCount: 6);
             CapitalShip inbound = AITestSceneBuilder.CreateCapitalShip(
                 "inbound",
                 empire.InstanceID,
@@ -459,14 +459,33 @@ namespace Rebellion.Tests.AI.Proposals
         /// <param name="game">The game.</param>
         /// <param name="planet">The planet.</param>
         /// <param name="ownerInstanceId">The owner instance id.</param>
+        /// <param name="regimentCount">The number of ready regiments to load.</param>
         /// <returns>The result of add battle fleet.</returns>
-        private static Fleet AddBattleFleet(GameRoot game, Planet planet, string ownerInstanceId)
+        private static Fleet AddBattleFleet(
+            GameRoot game,
+            Planet planet,
+            string ownerInstanceId,
+            int regimentCount = 0
+        )
         {
             Fleet fleet = EntityFactory.CreateFleet("fleet", ownerInstanceId);
             fleet.RoleType = FleetRoleType.Battle;
-            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", ownerInstanceId);
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
+                "ship",
+                ownerInstanceId,
+                regimentCapacity: System.Math.Max(1, regimentCount)
+            );
             fleet.AddChild(ship);
             ship.SetParent(fleet);
+            for (int index = 0; index < regimentCount; index++)
+            {
+                Regiment regiment = AITestSceneBuilder.CreateRegiment(
+                    $"regiment-{index}",
+                    ownerInstanceId
+                );
+                ship.AddChild(regiment);
+                regiment.SetParent(ship);
+            }
             game.AttachNode(fleet, planet);
             return fleet;
         }
