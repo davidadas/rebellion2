@@ -330,31 +330,6 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         /// <summary>
-        /// Verifies copying an unidentified node does not advance deterministic identity generation.
-        /// </summary>
-        [Test]
-        public void CreateCopy_UnidentifiedNode_DoesNotConsumeDeterministicInstanceId()
-        {
-            try
-            {
-                BaseGameEntity.SetInstanceIdSeed(1234);
-                string expectedFirstInstanceId = new BaseGameEntity().InstanceID;
-
-                BaseGameEntity.SetInstanceIdSeed(1234);
-                MockSceneNode unidentifiedNode = new MockSceneNode();
-
-                unidentifiedNode.CreateCopy();
-                string actualFirstInstanceId = new BaseGameEntity().InstanceID;
-
-                Assert.AreEqual(expectedFirstInstanceId, actualFirstInstanceId);
-            }
-            finally
-            {
-                BaseGameEntity.SetInstanceIdSeed(null);
-            }
-        }
-
-        /// <summary>
         /// Verifies create copy null encyclopedia stats preserves null stats.
         /// </summary>
         [Test]

@@ -75,7 +75,7 @@ namespace Rebellion.SceneGraph
         /// <returns>The current identifier, or null.</returns>
         internal string PeekInstanceID()
         {
-            return _instanceId;
+            return _instanceId ?? string.Empty;
         }
 
         /// <summary>
