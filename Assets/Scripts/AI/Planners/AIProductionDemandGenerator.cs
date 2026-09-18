@@ -921,6 +921,8 @@ namespace Rebellion.AI.Planners
                 int hubCount = hub.GetTotalBuildingTypeCount(buildingType);
                 if (hubCount < currentTarget)
                 {
+                    FacilityPortfolio pressurePortfolio =
+                        colonyFoundationInput > 0 ? default : facilityPortfolio;
                     double colonyFoundationPressure = AIUtility.EvaluatePressure(
                         colonyFoundationInput,
                         config.DemandUtility.ColonyFoundation
@@ -938,7 +940,7 @@ namespace Rebellion.AI.Planners
                             + AIUtility.EvaluatePressure(1, config.DemandUtility.PrimaryHub)
                             + colonyFoundationPressure
                             + categoryBalancePressure,
-                        facilityPortfolio,
+                        pressurePortfolio,
                         colonyFoundationInput > 0 ? 1 : remainingFacilityCount
                     );
                     continue;
