@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -31,42 +30,6 @@ namespace Rebellion.Util.Extensions
     /// </summary>
     public static class ObjectExtensions
     {
-        private static readonly ConcurrentDictionary<Type, ObjectCopyMetadata> _objectCopyMetadata =
-            new ConcurrentDictionary<Type, ObjectCopyMetadata>();
-
-        /// <summary>
-        /// Caches the reflection members and clone-ignore decisions used to copy one object type.
-        /// </summary>
-        private sealed class ObjectCopyMetadata
-        {
-            internal bool HasParameterlessConstructor { get; }
-
-            internal IReadOnlyList<(FieldInfo Member, bool IsIgnored)> Fields { get; }
-
-            internal IReadOnlyList<(PropertyInfo Member, bool IsIgnored)> Properties { get; }
-
-            /// <summary>
-            /// Creates cached copy metadata for one object type.
-            /// </summary>
-            /// <param name="type">The object type to inspect.</param>
-            internal ObjectCopyMetadata(Type type)
-            {
-                HasParameterlessConstructor = type.GetConstructors()
-                    .Any(constructor => constructor.GetParameters().Length == 0);
-                Fields = GetAllFields(type)
-                    .Select(field => (field, IsCloneIgnored(field, type)))
-                    .ToArray();
-                Properties = type.GetProperties(
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                    )
-                    .Where(property => property.CanRead && property.CanWrite)
-                    .Select(property =>
-                        (property, Attribute.IsDefined(property, typeof(CloneIgnoreAttribute)))
-                    )
-                    .ToArray();
-            }
-        }
-
         /// <summary>
         /// Creates a deep copy of the given object, respecting CloneIgnore attributes.
         /// </summary>
@@ -286,12 +249,8 @@ namespace Rebellion.Util.Extensions
         private static object CopyObject(object source, bool shallow, CloneMode mode)
         {
             Type type = source.GetType();
-            ObjectCopyMetadata metadata = _objectCopyMetadata.GetOrAdd(
-                type,
-                static objectType => new ObjectCopyMetadata(objectType)
-            );
 
-            if (!metadata.HasParameterlessConstructor)
+            if (!type.GetConstructors().Any(c => c.GetParameters().Length == 0))
             {
                 throw new InvalidOperationException(
                     $"Cannot copy object of type {type.FullName} as it does not have a parameterless constructor."
@@ -300,9 +259,9 @@ namespace Rebellion.Util.Extensions
 
             object result = Activator.CreateInstance(type);
 
-            foreach ((FieldInfo field, bool isIgnored) in metadata.Fields)
+            foreach (FieldInfo field in GetAllFields(type))
             {
-                if (mode == CloneMode.Normal && isIgnored)
+                if (mode == CloneMode.Normal && IsCloneIgnored(field, type))
                 {
                     SetDefaultFieldValue(result, field);
                     continue;
@@ -312,7 +271,7 @@ namespace Rebellion.Util.Extensions
                 field.SetValue(result, shallow ? fieldValue : CopyValue(fieldValue, shallow, mode));
             }
 
-            CopyProperties(metadata, source, result, shallow, mode);
+            CopyProperties(type, source, result, shallow, mode);
 
             return result;
         }
@@ -320,22 +279,34 @@ namespace Rebellion.Util.Extensions
         /// <summary>
         /// Copies properties from the source object to the target object, respecting CloneIgnore attributes.
         /// </summary>
-        /// <param name="metadata">The cached reflection metadata for the objects.</param>
+        /// <param name="type">The type of the objects.</param>
         /// <param name="source">The source object.</param>
         /// <param name="target">The target object.</param>
         /// <param name="shallow">Whether to perform a shallow copy.</param>
         /// <param name="mode">The mode of cloning to be used.</param>
         private static void CopyProperties(
-            ObjectCopyMetadata metadata,
+            Type type,
             object source,
             object target,
             bool shallow,
             CloneMode mode
         )
         {
-            foreach ((PropertyInfo property, bool isIgnored) in metadata.Properties)
+            foreach (
+                PropertyInfo property in type.GetProperties(
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                )
+            )
             {
-                if (mode == CloneMode.Normal && isIgnored)
+                if (!property.CanRead || !property.CanWrite)
+                {
+                    continue;
+                }
+
+                if (
+                    mode == CloneMode.Normal
+                    && Attribute.IsDefined(property, typeof(CloneIgnoreAttribute))
+                )
                 {
                     object defaultValue = property.PropertyType.IsValueType
                         ? Activator.CreateInstance(property.PropertyType)
