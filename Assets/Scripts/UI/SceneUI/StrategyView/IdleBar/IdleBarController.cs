@@ -119,7 +119,9 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     private string highlightedEntityId;
     private IdleBarView view;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets whether the idle bar is currently enabled.
+    /// </summary>
     public bool IsIdleBarEnabled => getVisibility();
 
     /// <summary>
@@ -267,7 +269,11 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
         actions = null;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Reports whether an entity appears in the idle bar.
+    /// </summary>
+    /// <param name="entity">The entity whose tracking state is requested.</param>
+    /// <returns><see langword="true"/> when the entity is tracked.</returns>
     public bool IsIdleBarTracked(ISceneNode entity)
     {
         if (string.IsNullOrEmpty(entity?.InstanceID))
@@ -277,7 +283,10 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
             .Any(type => !ContainsIgnoredItem(ignoredItems, entity.InstanceID, type));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Changes whether an entity appears in the idle bar.
+    /// </summary>
+    /// <param name="entity">The entity whose tracking state should change.</param>
     public void ToggleIdleBarTracking(ISceneNode entity)
     {
         if (string.IsNullOrEmpty(entity?.InstanceID))

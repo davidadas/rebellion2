@@ -1144,7 +1144,12 @@ namespace Rebellion.Game.Galaxy
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns whether the planet can accept a child alongside other planned additions.
+        /// </summary>
+        /// <param name="child">The candidate child node.</param>
+        /// <param name="plannedChildren">The children already planned for addition.</param>
+        /// <returns>True when the child can be accepted without exceeding capacity.</returns>
         internal override bool CanAcceptChild(
             ISceneNode child,
             IReadOnlyCollection<ISceneNode> plannedChildren

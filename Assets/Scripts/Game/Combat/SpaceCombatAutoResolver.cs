@@ -1041,7 +1041,13 @@ namespace Rebellion.Game.Combat
                 }
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Updates this capital ship's target and queues attacks from charged weapon arcs.
+            /// </summary>
+            /// <param name="targets">The surviving opposing units.</param>
+            /// <param name="scansForTarget">Whether the ship performs its periodic target scan.</param>
+            /// <param name="engagementDistance">The abstract distance between combat forces.</param>
+            /// <param name="pendingDamage">Damage grouped by tactical target.</param>
             internal override void QueueAvailableAttacks(
                 IReadOnlyList<TacticalUnit> targets,
                 bool scansForTarget,
@@ -1227,14 +1233,24 @@ namespace Rebellion.Game.Combat
                     DischargeArc(arc, consumedCharge);
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Calculates the capital ship's remaining tactical strength.
+            /// </summary>
+            /// <param name="targetsFighters">Whether the opposing target is a fighter squadron.</param>
+            /// <returns>The remaining tactical strength.</returns>
             internal override double GetEffectiveness(bool targetsFighters)
             {
                 double condition = CurrentHull / _maximumHull;
                 return GetStrongestArcStrength(targetsFighters) * condition;
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Applies simultaneous conventional and ion damage to the capital ship.
+            /// </summary>
+            /// <param name="conventionalDamage">The non-negative hull-damaging attack strength.</param>
+            /// <param name="ionDamage">The non-negative shield and subsystem attack strength.</param>
+            /// <param name="config">The automatic combat parameters.</param>
+            /// <param name="random">The combat random-number stream.</param>
             internal override void ApplyDamage(
                 double conventionalDamage,
                 double ionDamage,
@@ -1251,7 +1267,11 @@ namespace Rebellion.Game.Combat
                 ApplyComponentDamage(ionOverflowDamage, config, random);
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Advances capital-ship component recovery and weapon recharge state.
+            /// </summary>
+            /// <param name="config">The automatic combat parameters.</param>
+            /// <param name="random">The combat random-number stream.</param>
             protected override void AdvanceUnitState(
                 GameConfig.SpaceCombatConfig config,
                 IRandomNumberProvider random
@@ -1264,7 +1284,9 @@ namespace Rebellion.Game.Combat
                 RechargeWeapons();
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Destroys the capital ship by removing its hull and shields.
+            /// </summary>
             internal override void Destroy()
             {
                 CurrentHull = 0;
@@ -1590,7 +1612,13 @@ namespace Rebellion.Game.Combat
                     * Math.Max(config.AutoResolveFighterWeaponRechargeMultiplier, 0);
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Updates this fighter squadron's target and queues an available attack.
+            /// </summary>
+            /// <param name="targets">The surviving opposing units.</param>
+            /// <param name="scansForTarget">Whether the squadron performs its periodic target scan.</param>
+            /// <param name="engagementDistance">The abstract distance between combat forces.</param>
+            /// <param name="pendingDamage">Damage grouped by tactical target.</param>
             internal override void QueueAvailableAttacks(
                 IReadOnlyList<TacticalUnit> targets,
                 bool scansForTarget,
@@ -1669,7 +1697,11 @@ namespace Rebellion.Game.Combat
                 }
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Calculates the fighter squadron's remaining tactical strength.
+            /// </summary>
+            /// <param name="targetsFighters">Whether the opposing target is a fighter squadron.</param>
+            /// <returns>The remaining tactical strength.</returns>
             internal override double GetEffectiveness(bool targetsFighters)
             {
                 return GetCombinedWeaponStrength(
@@ -1679,7 +1711,13 @@ namespace Rebellion.Game.Combat
                     ) * GetRemainingSquadronStrength();
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Applies simultaneous conventional and ion damage to the fighter squadron.
+            /// </summary>
+            /// <param name="conventionalDamage">The non-negative conventional attack strength.</param>
+            /// <param name="ionDamage">The non-negative ion attack strength.</param>
+            /// <param name="config">The automatic combat parameters.</param>
+            /// <param name="random">The combat random-number stream.</param>
             internal override void ApplyDamage(
                 double conventionalDamage,
                 double ionDamage,
@@ -1693,7 +1731,11 @@ namespace Rebellion.Game.Combat
                 );
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Advances fighter weapon recharge state.
+            /// </summary>
+            /// <param name="config">The automatic combat parameters.</param>
+            /// <param name="random">The combat random-number stream.</param>
             protected override void AdvanceUnitState(
                 GameConfig.SpaceCombatConfig config,
                 IRandomNumberProvider random
@@ -1705,7 +1747,9 @@ namespace Rebellion.Game.Combat
                 );
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Destroys the fighter squadron by removing its remaining durability.
+            /// </summary>
             internal override void Destroy()
             {
                 _currentDurability = 0;
