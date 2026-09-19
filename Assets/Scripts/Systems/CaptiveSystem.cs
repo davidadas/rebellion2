@@ -18,7 +18,9 @@ namespace Rebellion.Systems
     /// Escape probability is based on the officer's skills and the forces guarding
     /// the planet, fleet, or ship where the officer is held.
     /// </summary>
-    public class CaptiveSystem : IGameResultHandler<OfficerCaptureStateResult>
+    public class CaptiveSystem
+        : IGameResultHandler<OfficerCaptureStateResult>,
+            IGameResultHandler<PlanetOwnershipChangedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -114,6 +116,55 @@ namespace Rebellion.Systems
                 _fogOfWarSystem.RecordObservations(originalFaction, new[] { officer }, result.Tick);
                 if (officer.CanEscape && officer.NextEscapeAttemptTick <= 0)
                     ScheduleEscapeAttempt(officer);
+            }
+
+            return reactions;
+        }
+
+        /// <summary>
+        /// Releases captured officers when their faction takes control of the planet holding them.
+        /// </summary>
+        /// <param name="results">The planet ownership changes to process.</param>
+        /// <returns>Capture-state changes for the officers released by the ownership changes.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<PlanetOwnershipChangedResult> results)
+        {
+            List<GameResult> reactions = new List<GameResult>();
+            foreach (
+                PlanetOwnershipChangedResult result in results
+                    ?? Array.Empty<PlanetOwnershipChangedResult>()
+            )
+            {
+                Planet planet = result?.Planet;
+                string newOwnerInstanceID = result?.NewOwner?.InstanceID;
+                if (planet == null || string.IsNullOrEmpty(newOwnerInstanceID))
+                    continue;
+
+                foreach (
+                    Officer officer in planet
+                        .GetAllOfficers()
+                        .Where(officer =>
+                            officer.IsCaptured
+                            && !officer.IsKilled
+                            && officer.GetOwnerInstanceID() == newOwnerInstanceID
+                        )
+                )
+                {
+                    string captorInstanceID = officer.CaptorInstanceID;
+                    officer.IsCaptured = false;
+                    officer.CaptorInstanceID = null;
+                    officer.CanEscape = false;
+                    officer.NextEscapeAttemptTick = 0;
+                    reactions.Add(
+                        new OfficerCaptureStateResult
+                        {
+                            TargetOfficer = officer,
+                            IsCaptured = false,
+                            CaptorInstanceID = captorInstanceID,
+                            Context = planet,
+                            Tick = result.Tick,
+                        }
+                    );
+                }
             }
 
             return reactions;
