@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
+using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -32,6 +33,10 @@ namespace Rebellion.AI.Phases
         private readonly Dictionary<string, string> _currentProducerProducts = new Dictionary<
             string,
             string
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _reservedDestinationEnergy = new Dictionary<
+            string,
+            int
         >(StringComparer.Ordinal);
         private readonly HashSet<string> _drainingProducerStreams = new HashSet<string>(
             StringComparer.Ordinal
@@ -81,6 +86,7 @@ namespace Rebellion.AI.Phases
                 _claimedKeys.Add(claimKey);
 
             ReserveProducerCapacity(proposal);
+            ReserveDestinationEnergy(proposal);
             int maintenanceCost = GetMaintenanceCost(proposal);
             _selectedMaintenanceCost += maintenanceCost;
             return true;
@@ -174,6 +180,8 @@ namespace Rebellion.AI.Phases
                 );
             }
 
+            availableCount = Math.Min(availableCount, GetAvailableDestinationEnergy(proposal));
+
             int unitMaintenanceCost = proposal.GetUnitMaintenanceCost();
             if (unitMaintenanceCost <= 0)
                 return availableCount;
@@ -202,6 +210,7 @@ namespace Rebellion.AI.Phases
         {
             return CanSelect(context, proposal)
                 && HasProducerCapacity(proposal)
+                && GetAvailableDestinationEnergy(proposal) >= proposal.GetManufacturingCount()
                 && ContinuesProductionStream(proposal);
         }
 
@@ -345,6 +354,57 @@ namespace Rebellion.AI.Phases
                 (long)reservedCapacity + Math.Max(1, manufactureProposal.GetManufacturingCount());
             _reservedProducerCapacity[capacityKey] =
                 updatedCapacity > int.MaxValue ? int.MaxValue : (int)updatedCapacity;
+        }
+
+        /// <summary>
+        /// Returns destination energy remaining after previously selected building proposals.
+        /// </summary>
+        /// <param name="proposal">The manufacturing proposal to inspect.</param>
+        /// <returns>Available destination energy, or an unbounded value for non-building work.</returns>
+        private int GetAvailableDestinationEnergy(AIManufactureProposal proposal)
+        {
+            if (
+                proposal?.Product?.GetReference() is not Building
+                || proposal.Demand?.Kind == AIDemandKind.BuildingUpgrade
+                || proposal.Destination is not Planet destination
+            )
+            {
+                return int.MaxValue;
+            }
+
+            int reserved = _reservedDestinationEnergy.TryGetValue(
+                destination.InstanceID,
+                out int reservedEnergy
+            )
+                ? reservedEnergy
+                : 0;
+            return Math.Max(0, destination.GetAvailableEnergy() - reserved);
+        }
+
+        /// <summary>
+        /// Reserves destination energy consumed by a selected building proposal.
+        /// </summary>
+        /// <param name="proposal">The selected proposal.</param>
+        private void ReserveDestinationEnergy(AIProposal proposal)
+        {
+            if (
+                proposal is not AIManufactureProposal manufactureProposal
+                || manufactureProposal.Product?.GetReference() is not Building
+                || manufactureProposal.Demand?.Kind == AIDemandKind.BuildingUpgrade
+                || manufactureProposal.Destination is not Planet destination
+            )
+            {
+                return;
+            }
+
+            int reserved = _reservedDestinationEnergy.TryGetValue(
+                destination.InstanceID,
+                out int reservedEnergy
+            )
+                ? reservedEnergy
+                : 0;
+            _reservedDestinationEnergy[destination.InstanceID] =
+                reserved + manufactureProposal.GetManufacturingCount();
         }
 
         /// <summary>

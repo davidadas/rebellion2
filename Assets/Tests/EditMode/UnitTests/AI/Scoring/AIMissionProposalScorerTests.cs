@@ -8,6 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Systems;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Scoring
@@ -710,14 +711,13 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         /// <summary>
-        /// Verifies score sabotage proposal favors regiment where opposition has majority support.
+        /// Verifies score sabotage proposal favors a regiment whose loss destabilizes a planet.
         /// </summary>
         [Test]
-        public void Score_SabotageProposal_FavorsRegimentWhereOppositionHasMajoritySupport()
+        public void Score_SabotageProposal_WithDestabilizingRegiment_PrioritizesTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
             Planet favored = AITestSceneBuilder.AddPlanet(
                 game,
                 system,
@@ -730,8 +730,8 @@ namespace Rebellion.Tests.AI.Scoring
                 "unfavored",
                 rebels.InstanceID
             );
-            favored.SetPopularSupport(rebels.InstanceID, 40);
-            favored.SetPopularSupport(empire.InstanceID, 60);
+            favored.SetPopularSupport(rebels.InstanceID, 0);
+            favored.SetPopularSupport(empire.InstanceID, 100);
             unfavored.SetPopularSupport(rebels.InstanceID, 60);
             unfavored.SetPopularSupport(empire.InstanceID, 40);
             Regiment favoredRegiment = AITestSceneBuilder.CreateRegiment(
@@ -742,34 +742,53 @@ namespace Rebellion.Tests.AI.Scoring
                 "unfavored-regiment",
                 rebels.InstanceID
             );
-            game.AttachNode(favoredRegiment, favored);
-            game.AttachNode(unfavoredRegiment, unfavored);
-            SpecialForces participant = AITestSceneBuilder.CreateSpecialForces(
-                "saboteur",
-                empire.InstanceID
+            Regiment favoredReserve = AITestSceneBuilder.CreateRegiment(
+                "favored-reserve",
+                rebels.InstanceID
             );
-            participant.Ratings[OfficerRating.Combat] = 60;
-            game.AttachNode(participant, origin);
+            game.AttachNode(favoredRegiment, favored);
+            game.Config.AI.Garrison.GarrisonDivisor = 5;
+            int favoredRequirement = UprisingSystem.CalculateGarrisonRequirement(
+                favored,
+                rebels,
+                game.Config.AI.Garrison
+            );
+            Assert.AreEqual(12, favoredRequirement);
+            for (int index = 1; index < favoredRequirement; index++)
+            {
+                game.AttachNode(
+                    AITestSceneBuilder.CreateRegiment(
+                        $"favored-regiment-{index}",
+                        rebels.InstanceID
+                    ),
+                    favored
+                );
+            }
+            game.AttachNode(unfavoredRegiment, unfavored);
             game.Config.AI.MissionPlanning.Utility.Sabotage.FavoredSupportRegiment.Weight = 1;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
-
-            double favoredScore = ScoreSabotage(
-                scorer,
+            double favoredScore = AIMissionProposalScorer.GetSabotageTargetValue(
                 context,
-                participant,
                 favored,
                 favoredRegiment
             );
-            double unfavoredScore = ScoreSabotage(
-                scorer,
+            double unfavoredScore = AIMissionProposalScorer.GetSabotageTargetValue(
                 context,
-                participant,
                 unfavored,
                 unfavoredRegiment
             );
 
             Assert.Greater(favoredScore, unfavoredScore);
+
+            game.AttachNode(favoredReserve, favored);
+            context = AITestSceneBuilder.CreateContext(game, empire);
+            double reinforcedScore = AIMissionProposalScorer.GetSabotageTargetValue(
+                context,
+                favored,
+                favoredRegiment
+            );
+
+            Assert.AreEqual(unfavoredScore, reinforcedScore, 0.000001);
         }
 
         /// <summary>
@@ -915,6 +934,64 @@ namespace Rebellion.Tests.AI.Scoring
             );
 
             Assert.Greater(specialForcesScore, officerScore);
+        }
+
+        /// <summary>
+        /// Verifies score gives stale attack-target espionage priority over equally stale intel.
+        /// </summary>
+        [Test]
+        public void Score_StaleAttackTargetEspionage_PrioritizesAttackTarget()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet attackTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "attack-target",
+                rebels.InstanceID
+            );
+            Planet otherTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "other-target",
+                rebels.InstanceID
+            );
+            Officer spy = EntityFactory.CreateOfficer("spy", empire.InstanceID);
+            spy.Ratings[OfficerRating.Espionage] = 100;
+            game.AttachNode(spy, origin);
+            Fleet fleet = EntityFactory.CreateFleet("attack-fleet", empire.InstanceID);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = attackTarget.InstanceID,
+            };
+            game.AttachNode(fleet, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, attackTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, otherTarget);
+            game.CurrentTick = game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double attackTargetScore = scorer.Score(
+                context,
+                new AIMissionProposal(
+                    new[] { spy },
+                    MissionTypeIDs.Espionage,
+                    context.Assessment.GetKnownPlanet(attackTarget.InstanceID)
+                )
+            );
+            double otherTargetScore = scorer.Score(
+                context,
+                new AIMissionProposal(
+                    new[] { spy },
+                    MissionTypeIDs.Espionage,
+                    context.Assessment.GetKnownPlanet(otherTarget.InstanceID)
+                )
+            );
+
+            Assert.Greater(attackTargetScore, otherTargetScore);
         }
 
         /// <summary>

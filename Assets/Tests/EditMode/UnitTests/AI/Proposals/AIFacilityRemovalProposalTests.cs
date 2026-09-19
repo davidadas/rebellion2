@@ -16,46 +16,30 @@ namespace Rebellion.Tests.AI.Proposals
     public sealed class AIFacilityRemovalProposalTests
     {
         /// <summary>
-        /// Verifies plan with one facility planet per sector removes facility from second planet.
+        /// Verifies healthy maintenance does not trigger strategic shipyard removal.
         /// </summary>
         [Test]
-        public void Plan_WithOneFacilityPlanetPerSector_RemovesFacilityFromSecondPlanet()
+        public void Plan_WithHealthyMaintenance_DoesNotRemoveShipyards()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 1;
-            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
-            AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "primary",
-                empire.InstanceID,
-                energyCapacity: 20
+            AITurnContext context = CreateContextWithSurplusShipyards(
+                out _,
+                out _,
+                maintenanceCost: 0
             );
-            Planet second = AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "second",
-                empire.InstanceID,
-                energyCapacity: 1
-            );
-            AITestSceneBuilder.AddProductionFacility(
-                game,
-                second,
-                "second-shipyard",
-                BuildingType.Shipyard,
-                ManufacturingType.Ship
-            );
-            StubRNG random = new StubRNG();
-            MaintenanceSystem maintenance = new MaintenanceSystem(
-                game,
-                random,
-                new FleetSystem(game)
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(
-                game,
-                empire,
-                random: random,
-                maintenance: maintenance
+
+            Assert.IsEmpty(new AIFacilityRemovalPlanner().Plan(context));
+        }
+
+        /// <summary>
+        /// Verifies maintenance distress removes only faction-wide shipyard surplus.
+        /// </summary>
+        [Test]
+        public void Plan_WithMaintenanceDistressAndSurplus_AddsRemovalProposal()
+        {
+            AITurnContext context = CreateContextWithSurplusShipyards(
+                out Planet lowerValue,
+                out _,
+                maintenanceCost: 10
             );
 
             AIFacilityRemovalProposal proposal = new AIFacilityRemovalPlanner()
@@ -63,247 +47,85 @@ namespace Rebellion.Tests.AI.Proposals
                 .Cast<AIFacilityRemovalProposal>()
                 .Single();
 
-            Assert.AreSame(second, proposal.Planet);
+            Assert.AreSame(lowerValue, proposal.Planet);
+            Assert.AreEqual(1, proposal.MaximumRemovalCount);
+            Assert.AreEqual(1, proposal.MinimumFactionFacilityCount);
         }
 
         /// <summary>
-        /// Verifies execute with equal facility rates removes unfinished facility.
+        /// Verifies executing removal preserves the faction-wide strategic shipyard floor.
         /// </summary>
         [Test]
-        public void Execute_WithEqualFacilityRates_RemovesUnfinishedFacility()
+        public void Execute_WithMaintenanceDistressAndSurplus_PreservesStrategicFloor()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
-            AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "primary",
-                empire.InstanceID,
-                energyCapacity: 100
-            );
-            AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "secondary",
-                empire.InstanceID,
-                energyCapacity: 50
-            );
-            Planet surplusPlanet = AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "surplus",
-                empire.InstanceID,
-                energyCapacity: 4
-            );
-            for (int index = 0; index < 3; index++)
-            {
-                AITestSceneBuilder.AddProductionFacility(
-                    game,
-                    surplusPlanet,
-                    $"complete-{index}",
-                    BuildingType.Shipyard,
-                    ManufacturingType.Ship
-                );
-            }
-
-            Building unfinished = AITestSceneBuilder.CreateBuildingTemplate(
-                "unfinished",
-                BuildingType.Shipyard,
-                ManufacturingType.Ship
-            );
-            unfinished.OwnerInstanceID = empire.InstanceID;
-            StubRNG random = new StubRNG();
-            MaintenanceSystem maintenance = new MaintenanceSystem(
-                game,
-                random,
-                new FleetSystem(game)
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(
-                game,
-                empire,
-                random: random,
-                maintenance: maintenance
-            );
-            Assert.IsTrue(
-                context.Manufacturing.Enqueue(
-                    surplusPlanet,
-                    unfinished,
-                    surplusPlanet,
-                    ignoreCost: true
-                )
+            AITurnContext context = CreateContextWithSurplusShipyards(
+                out _,
+                out _,
+                maintenanceCost: 10
             );
             AIProposal proposal = new AIFacilityRemovalPlanner().Plan(context).Single();
 
             Assert.IsTrue(proposal.CanExecute(context));
             proposal.Execute(context);
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(unfinished.InstanceID));
-            Assert.AreEqual(
-                3,
-                surplusPlanet
-                    .GetChildren<Building>()
-                    .Count(building => building.ManufacturingStatus == ManufacturingStatus.Complete)
-            );
+            int remaining = context
+                .Assessment.OwnedPlanets.SelectMany(planet => planet.GetChildren<Building>())
+                .Count(building => building.GetBuildingType() == BuildingType.Shipyard);
+            Assert.AreEqual(1, remaining);
         }
 
         /// <summary>
-        /// Verifies a facility queued at one planet for another planet is not treated as local
-        /// surplus at the producer.
+        /// Creates a faction with two shipyards and a strategic requirement for one.
         /// </summary>
-        [Test]
-        public void Plan_WithRemoteQueuedShipyard_DoesNotRemoveDestinationFacilityFromProducer()
+        /// <param name="lowerValue">The lower-value shipyard planet.</param>
+        /// <param name="higherValue">The higher-value shipyard planet.</param>
+        /// <param name="maintenanceCost">Maintenance cost assigned to each shipyard.</param>
+        /// <returns>The configured AI turn context.</returns>
+        private static AITurnContext CreateContextWithSurplusShipyards(
+            out Planet lowerValue,
+            out Planet higherValue,
+            int maintenanceCost
+        )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 1;
+            game.Config.AI.Infrastructure.PlanetsPerShipyard = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
-            Planet producer = AITestSceneBuilder.AddPlanet(
+            lowerValue = AITestSceneBuilder.AddPlanet(
                 game,
                 sector,
-                "producer",
-                empire.InstanceID,
-                energyCapacity: 20
-            );
-            Planet destination = AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "destination",
-                empire.InstanceID,
-                energyCapacity: 20
-            );
-            AITestSceneBuilder.AddProductionFacility(
-                game,
-                producer,
-                "construction-facility",
-                BuildingType.ConstructionFacility,
-                ManufacturingType.Building
-            );
-            Building shipyard = AITestSceneBuilder.CreateBuildingTemplate(
-                "remote-shipyard",
-                BuildingType.Shipyard,
-                ManufacturingType.Ship
-            );
-            shipyard.OwnerInstanceID = empire.InstanceID;
-            StubRNG random = new StubRNG();
-            MaintenanceSystem maintenance = new MaintenanceSystem(
-                game,
-                random,
-                new FleetSystem(game)
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(
-                game,
-                empire,
-                random: random,
-                maintenance: maintenance
-            );
-            Assert.IsTrue(
-                context.Manufacturing.Enqueue(producer, shipyard, destination, ignoreCost: true)
-            );
-
-            Assert.IsEmpty(new AIFacilityRemovalPlanner().Plan(context));
-            Assert.AreSame(shipyard, game.GetSceneNodeByInstanceID<Building>(shipyard.InstanceID));
-        }
-
-        /// <summary>
-        /// Verifies plan and execute with facility outside allocation scraps facility.
-        /// </summary>
-        [Test]
-        public void PlanAndExecute_WithFacilityOutsideAllocation_ScrapsFacility()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
-            for (int index = 0; index < 3; index++)
-            {
-                AITestSceneBuilder.AddPlanet(
-                    game,
-                    sector,
-                    $"preferred-{index}",
-                    empire.InstanceID,
-                    energyCapacity: 20
-                );
-            }
-
-            Planet surplusPlanet = AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "surplus",
+                "a-lower-value",
                 empire.InstanceID,
                 energyCapacity: 1
             );
-            Building surplusFacility = AITestSceneBuilder.AddProductionFacility(
+            higherValue = AITestSceneBuilder.AddPlanet(
                 game,
-                surplusPlanet,
-                "surplus-shipyard",
+                sector,
+                "z-higher-value",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            Building lowerShipyard = AITestSceneBuilder.AddProductionFacility(
+                game,
+                lowerValue,
+                "lower-shipyard",
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
-            StubRNG random = new StubRNG();
-            MaintenanceSystem maintenance = new MaintenanceSystem(
+            Building higherShipyard = AITestSceneBuilder.AddProductionFacility(
                 game,
-                random,
-                new FleetSystem(game)
+                higherValue,
+                "higher-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
             );
-            AITurnContext context = AITestSceneBuilder.CreateContext(
+            lowerShipyard.MaintenanceCost = maintenanceCost;
+            higherShipyard.MaintenanceCost = maintenanceCost;
+            StubRNG random = new StubRNG();
+            return AITestSceneBuilder.CreateContext(
                 game,
                 empire,
                 random: random,
-                maintenance: maintenance
-            );
-            AIProposal proposal = new AIFacilityRemovalPlanner().Plan(context).Single();
-
-            Assert.IsTrue(proposal.CanSelect(context));
-            Assert.IsTrue(proposal.CanExecute(context));
-            proposal.Execute(context);
-
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(surplusFacility.InstanceID));
-        }
-
-        /// <summary>
-        /// Verifies construction facilities outside the current allocation remain available.
-        /// </summary>
-        [Test]
-        public void Plan_WithConstructionFacilityOutsideAllocation_DoesNotRemoveFacility()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 1;
-            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
-            AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "primary",
-                empire.InstanceID,
-                energyCapacity: 20
-            );
-            Planet second = AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "second",
-                empire.InstanceID,
-                energyCapacity: 1
-            );
-            Building constructionFacility = AITestSceneBuilder.AddProductionFacility(
-                game,
-                second,
-                "construction-facility",
-                BuildingType.ConstructionFacility,
-                ManufacturingType.Building
-            );
-            StubRNG random = new StubRNG();
-            MaintenanceSystem maintenance = new MaintenanceSystem(
-                game,
-                random,
-                new FleetSystem(game)
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(
-                game,
-                empire,
-                random: random,
-                maintenance: maintenance
-            );
-
-            Assert.IsEmpty(new AIFacilityRemovalPlanner().Plan(context));
-            Assert.AreSame(
-                constructionFacility,
-                game.GetSceneNodeByInstanceID<Building>(constructionFacility.InstanceID)
+                maintenance: new MaintenanceSystem(game, random, new FleetSystem(game))
             );
         }
     }

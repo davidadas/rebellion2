@@ -54,6 +54,41 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         /// <summary>
+        /// Verifies execute applies an uncertainty reserve when target intelligence is stale.
+        /// </summary>
+        [Test]
+        public void Execute_WithStaleTargetIntelligence_AppliesUncertaintyReserve()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            ConfigureMinimalAttackRequirements(game);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "staging",
+                empire.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Fleet fleet = AddBattleFleet(game, staging, empire.InstanceID);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = fleet.GetCombatValue();
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.CurrentTick =
+                game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks + 1;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                context.Assessment.GetKnownPlanet(target.InstanceID)
+            );
+
+            proposal.Execute(context);
+
+            Assert.IsNull(fleet.Movement);
+            Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
+        }
+
+        /// <summary>
         /// Verifies a ready fleet waits when an inbound ship cannot reach the target by the fleet's
         /// arrival tick.
         /// </summary>
@@ -84,6 +119,7 @@ namespace Rebellion.Tests.AI.Proposals
                 CurrentPosition = new Point(-10000, 0),
             };
             game.AttachNode(inbound, fleet);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIFleetAttackProposal proposal = new AIFleetAttackProposal(
                 fleet,
@@ -128,6 +164,7 @@ namespace Rebellion.Tests.AI.Proposals
                 CurrentPosition = new Point(9000, 0),
             };
             game.AttachNode(inbound, fleet);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIFleetAttackProposal proposal = new AIFleetAttackProposal(
                 fleet,
@@ -174,6 +211,7 @@ namespace Rebellion.Tests.AI.Proposals
                 CurrentPosition = new Point(0, 0),
             };
             game.AttachNode(inbound, fleet);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIFleetAttackProposal proposal = new AIFleetAttackProposal(
                 fleet,

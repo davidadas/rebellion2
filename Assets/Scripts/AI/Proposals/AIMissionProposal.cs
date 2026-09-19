@@ -189,11 +189,11 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Creates an equivalent proposal with one decoy assigned.
+        /// Creates an equivalent proposal with an additional decoy assigned.
         /// </summary>
         /// <param name="decoy">The participant assigned as the decoy.</param>
-        /// <returns>A copy of this proposal containing the decoy assignment.</returns>
-        internal AIMissionProposal WithDecoy(IMissionParticipant decoy)
+        /// <returns>A copy of this proposal containing the additional decoy assignment.</returns>
+        internal AIMissionProposal WithAdditionalDecoy(IMissionParticipant decoy)
         {
             AIMissionProposal proposal = new AIMissionProposal(
                 MainParticipants,
@@ -202,7 +202,7 @@ namespace Rebellion.AI.Proposals
                 SelectedTarget,
                 TargetOfficer,
                 Discipline,
-                new[] { decoy }
+                DecoyParticipants.Concat(new[] { decoy })
             );
             if (HasScore)
                 proposal.SetScore(Score);

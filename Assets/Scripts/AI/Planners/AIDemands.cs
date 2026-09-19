@@ -115,22 +115,13 @@ namespace Rebellion.AI.Planners
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             List<SpecialForces> existingUnits =
                 context.Faction.GetOwnedUnitsByType<SpecialForces>();
-            Dictionary<string, int> decoySupplyByRole = new Dictionary<string, int>(
+            Dictionary<string, int> existingSupplyByRole = new Dictionary<string, int>(
                 StringComparer.Ordinal
             );
             Dictionary<string, int> activeOfficerMissionsByType =
                 GetActiveHostileOfficerMissionCounts(context);
             foreach (SpecialForces unit in existingUnits)
-            {
-                if (
-                    context.Faction.IsAvailableMissionParticipant(unit)
-                    || unit.ManufacturingStatus != ManufacturingStatus.Complete
-                    || IsAssignedAsDecoy(unit)
-                )
-                {
-                    IncrementCount(decoySupplyByRole, GetRoleId(unit));
-                }
-            }
+                IncrementCount(existingSupplyByRole, GetRoleId(unit));
 
             foreach (
                 IGrouping<string, SpecialForces> role in context
@@ -163,7 +154,7 @@ namespace Rebellion.AI.Planners
                     .ThenBy(candidate => candidate.MaintenanceCost)
                     .ThenBy(candidate => candidate.GetTypeID(), StringComparer.Ordinal)
                     .First();
-                decoySupplyByRole.TryGetValue(role.Key, out int decoySupply);
+                existingSupplyByRole.TryGetValue(role.Key, out int existingSupply);
                 int activeMissionDemand = template.AllowedMissionTypeIDs.Sum(missionTypeId =>
                     activeOfficerMissionsByType.TryGetValue(missionTypeId, out int count)
                         ? count
@@ -173,7 +164,7 @@ namespace Rebellion.AI.Planners
                     activeMissionDemand,
                     config.SpecialForcesMissionCoveragePercent
                 );
-                int deficit = desiredSupply - decoySupply;
+                int deficit = desiredSupply - existingSupply;
                 if (deficit <= 0)
                     continue;
 
@@ -215,17 +206,6 @@ namespace Rebellion.AI.Planners
         {
             int boundedCoveragePercent = Math.Max(0, Math.Min(100, coveragePercent));
             return (activeMissionCount * boundedCoveragePercent + 99) / 100;
-        }
-
-        /// <summary>
-        /// Returns whether a special-forces unit is currently assigned as a mission decoy.
-        /// </summary>
-        /// <param name="unit">The special-forces unit to inspect.</param>
-        /// <returns>True when the unit belongs to a mission's decoy team.</returns>
-        private static bool IsAssignedAsDecoy(SpecialForces unit)
-        {
-            Mission mission = unit?.GetParentOfType<Mission>();
-            return mission?.GetDecoyParticipants().Contains(unit) == true;
         }
 
         /// <summary>

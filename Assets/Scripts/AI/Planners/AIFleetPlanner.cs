@@ -34,7 +34,7 @@ namespace Rebellion.AI.Planners
 
             proposals.AddRange(_defensePlanner.Plan(context));
 
-            HashSet<string> activeAttackSystemIds = GetActiveAttackSystemIds(context);
+            HashSet<string> activeAttackTargetIds = GetActiveAttackTargetIds(context);
             HashSet<string> activeColonizationSystemIds = context
                 .Assessment.OwnedFleets.Where(fleet =>
                     fleet.Order?.OrderType == FleetOrderType.Colonize
@@ -76,7 +76,7 @@ namespace Rebellion.AI.Planners
                 );
             }
 
-            AddAttackOrderProposal(context, activeAttackSystemIds, proposals);
+            AddAttackOrderProposal(context, activeAttackTargetIds, proposals);
 
             AddCapitalShipTransferProposals(context, proposals);
             AddPlanetRegimentTransferProposals(context, proposals);
@@ -525,16 +525,16 @@ namespace Rebellion.AI.Planners
         /// Adds the strongest new attack order proposal for the faction.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="activeAttackSystemIds">Systems already assigned to attack fleets.</param>
+        /// <param name="activeAttackTargetIds">Planets already assigned to attack fleets.</param>
         /// <param name="proposals">The proposal list to update.</param>
         private void AddAttackOrderProposal(
             AITurnContext context,
-            HashSet<string> activeAttackSystemIds,
+            HashSet<string> activeAttackTargetIds,
             List<AIProposal> proposals
         )
         {
             IEnumerable<Planet> targets = context.Assessment.EnemyPlanets.Where(target =>
-                !activeAttackSystemIds.Contains(context.Assessment.GetPlanetSystemId(target))
+                !activeAttackTargetIds.Contains(target.InstanceID)
             );
             AIFleetAttackProposal proposal = _attackCandidateSelector.Select(
                 context,
@@ -548,18 +548,15 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns systems already assigned to an attack fleet.
+        /// Returns planets already assigned to an attack fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>System identifiers with active attack campaigns.</returns>
-        private HashSet<string> GetActiveAttackSystemIds(AITurnContext context)
+        /// <returns>Planet identifiers with active attack orders.</returns>
+        private HashSet<string> GetActiveAttackTargetIds(AITurnContext context)
         {
             return context
-                .Assessment.AttackOrderedFleets.Select(fleet =>
-                    context.Assessment.GetKnownPlanet(fleet.Order?.TargetPlanetId)
-                )
-                .Select(context.Assessment.GetPlanetSystemId)
-                .Where(systemId => !string.IsNullOrEmpty(systemId))
+                .Assessment.AttackOrderedFleets.Select(fleet => fleet.Order?.TargetPlanetId)
+                .Where(targetPlanetId => !string.IsNullOrEmpty(targetPlanetId))
                 .ToHashSet(StringComparer.Ordinal);
         }
 

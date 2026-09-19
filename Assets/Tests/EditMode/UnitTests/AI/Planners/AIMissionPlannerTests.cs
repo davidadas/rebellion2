@@ -63,24 +63,24 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
-        /// Verifies plan with non main recruiter does not add recruitment proposal.
+        /// Verifies a reconnaissance team can target the nearest unexplored Outer Rim planet.
         /// </summary>
         [Test]
-        public void Plan_WithReconnaissanceTeam_DoesNotTargetOuterRimPlanet()
+        public void Plan_WithUnexploredOuterRimPlanet_AddsReconnaissanceProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
             PlanetSector outerRim = AITestSceneBuilder.AddSector(game, "outer-rim");
             outerRim.SectorType = PlanetSectorType.OuterRim;
             Planet origin = AITestSceneBuilder.AddPlanet(game, core, "origin", empire.InstanceID);
-            Planet coreTarget = AITestSceneBuilder.AddPlanet(
+            AITestSceneBuilder.AddPlanet(
                 game,
                 core,
                 "core-target",
                 rebels.InstanceID,
                 positionX: 100
             );
-            AITestSceneBuilder.AddPlanet(
+            Planet outerRimTarget = AITestSceneBuilder.AddPlanet(
                 game,
                 outerRim,
                 "outer-rim-target",
@@ -104,7 +104,9 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.IsTrue(proposals.Count > 0);
             Assert.IsTrue(
-                proposals.All(proposal => proposal.TargetPlanet.InstanceID == coreTarget.InstanceID)
+                proposals.Any(proposal =>
+                    proposal.TargetPlanet.InstanceID == outerRimTarget.InstanceID
+                )
             );
         }
 
@@ -805,7 +807,10 @@ namespace Rebellion.Tests.AI.Planners
 
             EspionageMission mission = game.GetSceneNodesByType<EspionageMission>().Single();
             CollectionAssert.AreEqual(new[] { leadSpy }, mission.GetMainParticipants());
-            CollectionAssert.AreEqual(new[] { decoy }, mission.GetDecoyParticipants());
+            CollectionAssert.AreEquivalent(
+                new SpecialForces[] { decoy, primaryAgent },
+                mission.GetDecoyParticipants()
+            );
         }
 
         /// <summary>

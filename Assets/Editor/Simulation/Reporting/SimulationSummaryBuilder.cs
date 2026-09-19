@@ -334,12 +334,10 @@ public static partial class HeadlessSimulationRunner
             planet.IsColonized
             && !planet.IsDestroyed
             && planet.GetUnminedResourceNodeCount() > 0
-            && context.DevelopmentAllocation.GetAvailableEnergy(planet, BuildingType.Mine) > 0
+            && planet.GetAvailableEnergy() > 0
         );
         summary.RefineryDestinationCount = context.Assessment.OwnedPlanets.Count(planet =>
-            planet.IsColonized
-            && !planet.IsDestroyed
-            && context.DevelopmentAllocation.GetAvailableEnergy(planet, BuildingType.Refinery) > 0
+            planet.IsColonized && !planet.IsDestroyed && planet.GetAvailableEnergy() > 0
         );
         summary.AvailableBuildingProducerCount = context.Assessment.OwnedPlanets.Count(planet =>
             planet.GetAvailableManufacturingCapacity(ManufacturingType.Building) > 0

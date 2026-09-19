@@ -6,6 +6,7 @@ namespace Rebellion.AI.Proposals
 {
     internal enum AIProposalPriority
     {
+        DeferredPlanetaryDefense,
         Optional,
         Mandatory,
     }

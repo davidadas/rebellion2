@@ -1449,6 +1449,52 @@ namespace Rebellion.Tests.AI.Director
         }
 
         /// <summary>
+        /// Verifies stale target intelligence increases the required attack combat strength.
+        /// </summary>
+        [Test]
+        public void GetRequiredAttackCombatStrength_WithStaleIntelligence_IncreasesRequirement()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1000;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.CurrentTick =
+                game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks * 3;
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.Greater(
+                assessment.GetRequiredAttackCombatStrength(
+                    assessment.GetKnownPlanet(target.InstanceID)
+                ),
+                1000
+            );
+        }
+
+        /// <summary>
+        /// Verifies extremely stale target intelligence uses the configured bounded reserve.
+        /// </summary>
+        [Test]
+        public void GetRequiredAttackCombatStrength_WithExtremelyStaleIntelligence_CapsRequirement()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1000;
+            game.Config.AI.FleetDeployment.StaleIntelMaximumAttackStrengthPercent = 250;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.CurrentTick = 10000;
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(
+                2500,
+                assessment.GetRequiredAttackCombatStrength(
+                    assessment.GetKnownPlanet(target.InstanceID)
+                )
+            );
+        }
+
+        /// <summary>
         /// Verifies get sabotage target priority bonus mixed targets uses tactical priority order.
         /// </summary>
         [Test]

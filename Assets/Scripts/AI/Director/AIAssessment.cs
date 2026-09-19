@@ -43,8 +43,15 @@ namespace Rebellion.AI.Director
             new Dictionary<string, IReadOnlyList<Building>>(StringComparer.Ordinal);
         private readonly Dictionary<string, IReadOnlyList<Regiment>> _planetRegiments =
             new Dictionary<string, IReadOnlyList<Regiment>>(StringComparer.Ordinal);
+        private readonly Dictionary<
+            (string PlanetId, string FactionId),
+            int
+        > _activeGarrisonCounts = new Dictionary<(string PlanetId, string FactionId), int>();
         private readonly Dictionary<string, IReadOnlyList<Starfighter>> _planetStarfighters =
             new Dictionary<string, IReadOnlyList<Starfighter>>(StringComparer.Ordinal);
+        private readonly HashSet<string> _attackPreparationTargetIds = new HashSet<string>(
+            StringComparer.Ordinal
+        );
         private readonly Dictionary<string, IReadOnlyList<ISceneNode>> _planetMissionDetectors =
             new Dictionary<string, IReadOnlyList<ISceneNode>>(StringComparer.Ordinal);
         private readonly Dictionary<
@@ -296,6 +303,11 @@ namespace Rebellion.AI.Director
             TargetableEnemyOfficerMissionTargets = BuildTargetableEnemyOfficerMissionTargets();
             OwnedFleets = BuildOwnedFleets();
             AttackOrderedFleets = BuildAttackOrderedFleets();
+            foreach (Fleet fleet in AttackOrderedFleets)
+            {
+                if (!string.IsNullOrEmpty(fleet.Order?.TargetPlanetId))
+                    _attackPreparationTargetIds.Add(fleet.Order.TargetPlanetId);
+            }
             EngagementOrderedFleets = BuildEngagementOrderedFleets();
             ColonizationOrderedFleets = BuildColonizationOrderedFleets();
         }
@@ -948,6 +960,99 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns the completed, stationary regiments directly controlling a planet for a faction.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="factionInstanceId">The controlling faction identifier.</param>
+        /// <returns>The active garrison regiment count.</returns>
+        public int GetActiveGarrisonCount(Planet planet, string factionInstanceId)
+        {
+            if (planet == null || string.IsNullOrEmpty(factionInstanceId))
+                return 0;
+
+            return GetOrAdd(
+                _activeGarrisonCounts,
+                (planet.InstanceID, factionInstanceId),
+                () =>
+                    GetPlanetRegiments(planet)
+                        .Count(regiment =>
+                            regiment.GetParent() == planet
+                            && regiment.GetOwnerInstanceID() == factionInstanceId
+                            && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                            && regiment.Movement == null
+                        )
+            );
+        }
+
+        /// <summary>
+        /// Returns whether the AI faction would control a planet if no active regiment did.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when faction support wins the configured ownership threshold.</returns>
+        public bool HasFactionControlSupport(Planet planet)
+        {
+            if (planet == null || _context?.Faction == null)
+                return false;
+
+            int factionSupport = GetFactionPopularSupport(planet);
+            int highestOtherSupport = _opposingFactionIds
+                .Select(planet.GetPopularSupport)
+                .DefaultIfEmpty()
+                .Max();
+            return factionSupport >= _context.Game.Config.SupportShift.OwnershipTransferThreshold
+                && factionSupport > highestOtherSupport;
+        }
+
+        /// <summary>
+        /// Returns whether another faction would control an AI-owned planet without its garrison.
+        /// </summary>
+        /// <param name="planet">The AI-owned planet to inspect.</param>
+        /// <returns>True when opposing support wins the configured ownership threshold.</returns>
+        public bool HasEnemyControlSupport(Planet planet)
+        {
+            if (planet == null || _context?.Faction == null)
+                return false;
+
+            int factionSupport = GetFactionPopularSupport(planet);
+            int threshold = _context.Game.Config.SupportShift.OwnershipTransferThreshold;
+            return _opposingFactionIds.Any(factionId =>
+                planet.GetPopularSupport(factionId) >= threshold
+                && planet.GetPopularSupport(factionId) > factionSupport
+            );
+        }
+
+        /// <summary>
+        /// Returns whether destroying one enemy garrison regiment would destabilize the planet.
+        /// </summary>
+        /// <param name="planet">The hostile planet to inspect.</param>
+        /// <returns>True when one loss starts an uprising or transfers control to the AI faction.</returns>
+        public bool IsGarrisonSabotageCritical(Planet planet)
+        {
+            string ownerInstanceId = planet?.GetOwnerInstanceID();
+            if (
+                string.IsNullOrEmpty(ownerInstanceId)
+                || ownerInstanceId == _context?.Faction?.InstanceID
+            )
+                return false;
+
+            int activeGarrisonCount = GetActiveGarrisonCount(planet, ownerInstanceId);
+            if (activeGarrisonCount <= 0)
+                return false;
+
+            Faction owner = _context.Game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            int stabilityRequirement =
+                owner == null
+                    ? 0
+                    : UprisingSystem.CalculateGarrisonRequirement(
+                        planet,
+                        owner,
+                        _context.Game.Config.AI.Garrison
+                    );
+            return activeGarrisonCount - 1 < stabilityRequirement
+                || activeGarrisonCount == 1 && HasFactionControlSupport(planet);
+        }
+
+        /// <summary>
         /// Returns the starfighters attached to a planet during this AI turn.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -1349,11 +1454,41 @@ namespace Rebellion.AI.Director
                 _planetRequiredAttackCombatStrengths,
                 planet.InstanceID,
                 () =>
-                    Math.Max(
-                        _context.Game.Config.AI.FleetDeployment.MinimumAttackStrength,
-                        GetRequiredSystemOrbitalStrength(planet)
+                    IntegerMath.ScaleByPercent(
+                        Math.Max(
+                            _context.Game.Config.AI.FleetDeployment.MinimumAttackStrength,
+                            GetRequiredSystemOrbitalStrength(planet)
+                        ),
+                        GetAttackIntelReservePercent(planet)
                     )
             );
+        }
+
+        /// <summary>
+        /// Returns the bounded combat reserve applied as attack-target intelligence ages.
+        /// </summary>
+        /// <param name="planet">Attack target whose intelligence age is evaluated.</param>
+        /// <returns>Required combat percentage, where one hundred means no stale-intel reserve.</returns>
+        public int GetAttackIntelReservePercent(Planet planet)
+        {
+            if (planet == null || _context?.Game?.Config == null)
+                return 100;
+
+            int maximumAge = Math.Max(
+                1,
+                _context.Game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks
+            );
+            int age = GetPlanetIntelAge(planet);
+            if (age <= maximumAge)
+                return 100;
+
+            GameConfig.AIFleetDeploymentConfig config = _context.Game.Config.AI.FleetDeployment;
+            int maximumPercent = Math.Max(100, config.StaleIntelMaximumAttackStrengthPercent);
+            int saturationAge =
+                maximumAge * Math.Max(1, config.StaleIntelReserveSaturationIntervals);
+            int staleAge = Math.Min(age - maximumAge, saturationAge - maximumAge);
+            int staleRange = Math.Max(1, saturationAge - maximumAge);
+            return 100 + (maximumPercent - 100) * staleAge / staleRange;
         }
 
         /// <summary>
@@ -1740,10 +1875,7 @@ namespace Rebellion.AI.Director
         /// <returns>True when the planet is an attack-preparation target.</returns>
         public bool IsAttackPreparationTarget(Planet planet)
         {
-            return planet != null
-                && AttackOrderedFleets.Any(fleet =>
-                    fleet.Order.TargetPlanetId == planet.InstanceID
-                );
+            return planet != null && _attackPreparationTargetIds.Contains(planet.InstanceID);
         }
 
         /// <summary>

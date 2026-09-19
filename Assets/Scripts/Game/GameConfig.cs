@@ -204,6 +204,8 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig IntelAge { get; set; } = Weighted(1);
 
+            public AIConsiderationConfig AttackPreparationIntel { get; set; } = Weighted(1);
+
             public AIConsiderationConfig TrainingValue { get; set; } = Weighted(0.3);
         }
 
@@ -318,6 +320,10 @@ namespace Rebellion.Game
             public int AttackStrengthPercentOfDefense { get; set; }
 
             public int AttackStrengthPercentOfStrongestHostileFleet { get; set; }
+
+            public int StaleIntelMaximumAttackStrengthPercent { get; set; } = 250;
+
+            public int StaleIntelReserveSaturationIntervals { get; set; } = 5;
 
             public double AttackReadinessFloorWeight { get; set; } = 4;
 
@@ -554,6 +560,7 @@ namespace Rebellion.Game
             public int MinimumConstructionFacilityLanes { get; set; } = 1;
             public int ConstructionFacilityTargetClearTicks { get; set; } = 80;
             public int ShipyardTargetClearTicks { get; set; } = 80;
+            public int FleetProductionMinimumShipyardCount { get; set; } = 2;
             public int TrainingFacilityTargetClearTicks { get; set; } = 1;
             public int PlanetsPerShipyard { get; set; }
             public int PlanetsPerTrainingFacility { get; set; }
@@ -690,7 +697,8 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Utility considerations used to assign sector production hubs.
+        /// Legacy serialized hub-allocation tuning retained for configuration compatibility.
+        /// Infrastructure planning no longer consumes these values.
         /// </summary>
         [PersistableObject]
         public class AIInfrastructureAllocationUtilityConfig

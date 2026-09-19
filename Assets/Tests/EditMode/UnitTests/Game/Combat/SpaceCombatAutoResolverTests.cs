@@ -911,6 +911,41 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         /// <summary>
+        /// Verifies resolve fast withdrawing ship exits without waiting for slower fleet members.
+        /// </summary>
+        [Test]
+        public void Resolve_FastWithdrawingShipReachesBoundary_ExitsBeforeSlowerFleetMember()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 1);
+            CapitalShip fastDefender = CreateShip("fast-defender", hull: 1000, weaponStrength: 1);
+            fastDefender.SublightSpeed = 10;
+            CapitalShip slowDefender = CreateShip("slow-defender", hull: 1000, weaponStrength: 1);
+            slowDefender.SublightSpeed = 1;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveRetreatStrengthRatio = double.MaxValue;
+            config.AutoResolveWithdrawalDistance = 5;
+            IReadOnlyList<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups =
+                new IReadOnlyCollection<ISceneNode>[]
+                {
+                    new ISceneNode[] { fastDefender, slowDefender },
+                };
+
+            SpaceCombatAutoResult result = CreateResolver(config, new ArcDamageRNG())
+                .Resolve(
+                    new[] { attacker },
+                    new List<Starfighter>(),
+                    new[] { fastDefender, slowDefender },
+                    new List<Starfighter>(),
+                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
+                    defenderWithdrawalGroups
+                );
+
+            Assert.IsTrue(GetShipOutcome(result, fastDefender).Withdrew);
+            Assert.IsFalse(GetShipOutcome(result, slowDefender).Withdrew);
+        }
+
+        /// <summary>
         /// Verifies resolve withdrawal required without hyperdrive continues fighting.
         /// </summary>
         [Test]

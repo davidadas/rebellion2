@@ -103,8 +103,36 @@ namespace Rebellion.AI.Scoring
             Func<Planet, int> availableEnergy
         )
         {
+            return ScoreDestinations(
+                    candidates,
+                    demandPlanet,
+                    manufacturingType,
+                    buildingType,
+                    availableEnergy
+                )
+                .Select(candidate => candidate.Planet)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns production-facility destinations and their normalized strategic utility.
+        /// </summary>
+        /// <param name="candidates">Eligible destination planets.</param>
+        /// <param name="demandPlanet">The planet whose demand prompted expansion.</param>
+        /// <param name="manufacturingType">The manufacturing category being expanded.</param>
+        /// <param name="buildingType">The production-facility type being expanded.</param>
+        /// <param name="availableEnergy">Returns currently available planetary energy.</param>
+        /// <returns>Destination scores ordered from strongest to weakest.</returns>
+        public IReadOnlyList<(Planet Planet, double Score)> ScoreDestinations(
+            IReadOnlyList<Planet> candidates,
+            Planet demandPlanet,
+            ManufacturingType manufacturingType,
+            BuildingType buildingType,
+            Func<Planet, int> availableEnergy
+        )
+        {
             if (candidates == null || candidates.Count == 0)
-                return Array.Empty<Planet>();
+                return Array.Empty<(Planet Planet, double Score)>();
 
             double highestProductionRate = 0;
             double highestPlanetValue = 0;
@@ -137,25 +165,25 @@ namespace Rebellion.AI.Scoring
             }
 
             return candidates
-                .Select(candidate => new
-                {
-                    Planet = candidate,
-                    Score = Score(
-                        candidate,
-                        demandPlanet,
-                        manufacturingType,
-                        buildingType,
-                        availableEnergyByPlanet[candidate.InstanceID],
-                        highestProductionRate,
-                        highestPlanetValue,
-                        highestAvailableEnergy,
-                        highestUnminedResourceCount,
-                        greatestDistance
-                    ),
-                })
+                .Select(candidate =>
+                    (
+                        Planet: candidate,
+                        Score: Score(
+                            candidate,
+                            demandPlanet,
+                            manufacturingType,
+                            buildingType,
+                            availableEnergyByPlanet[candidate.InstanceID],
+                            highestProductionRate,
+                            highestPlanetValue,
+                            highestAvailableEnergy,
+                            highestUnminedResourceCount,
+                            greatestDistance
+                        )
+                    )
+                )
                 .OrderByDescending(candidate => candidate.Score)
                 .ThenBy(candidate => candidate.Planet.InstanceID, StringComparer.Ordinal)
-                .Select(candidate => candidate.Planet)
                 .ToList();
         }
 

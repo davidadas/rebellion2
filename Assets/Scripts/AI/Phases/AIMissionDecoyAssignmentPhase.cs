@@ -15,6 +15,8 @@ namespace Rebellion.AI.Phases
     /// </summary>
     public sealed class AIMissionDecoyAssignmentPhase : IAITurnPhase
     {
+        private const int _maximumDecoysPerMission = 2;
+
         /// <summary>
         /// Assigns distinct decoys by priority.
         /// </summary>
@@ -62,16 +64,78 @@ namespace Rebellion.AI.Phases
                     continue;
                 }
 
-                selected[selectedIndexes[mission]] = mission.WithDecoy(decoy);
+                selected[selectedIndexes[mission]] = mission.WithAdditionalDecoy(decoy);
                 decoys.Remove(decoy);
             }
 
             PairRiskyOfficerMissions(selected, selectedIndexes, unprotectedRiskyMissions);
+            AssignAdditionalDecoys(
+                context,
+                selected,
+                orderedMissions,
+                selectedIndexes,
+                decoys,
+                origins
+            );
             RemoveUnsafeOfficerMissions(context, selected);
 
             foreach (SpecialForces unusedDecoy in decoys.OfType<SpecialForces>())
                 context.SetSpecialForcesIntent(unusedDecoy, SpecialForcesIntent.Reserve);
             context.SetSelectedProposals(selected);
+        }
+
+        /// <summary>
+        /// Assigns a second decoy after every eligible selected mission has had an opportunity to
+        /// receive its first.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="selected">The selected proposals being finalized.</param>
+        /// <param name="orderedMissions">Hostile officer missions in protection priority order.</param>
+        /// <param name="selectedIndexes">Selected indexes keyed by original mission proposal.</param>
+        /// <param name="decoys">Unclaimed decoys remaining after first-pass assignment.</param>
+        /// <param name="origins">Cached origin planets for available decoys.</param>
+        private static void AssignAdditionalDecoys(
+            AITurnContext context,
+            IList<AIProposal> selected,
+            IReadOnlyList<AIMissionProposal> orderedMissions,
+            IReadOnlyDictionary<AIMissionProposal, int> selectedIndexes,
+            IList<IMissionParticipant> decoys,
+            IReadOnlyDictionary<IMissionParticipant, Planet> origins
+        )
+        {
+            foreach (AIMissionProposal originalMission in orderedMissions)
+            {
+                int selectedIndex = selectedIndexes[originalMission];
+                if (
+                    selected[selectedIndex] is not AIMissionProposal mission
+                    || !CanAssignAdditionalDecoy(context, mission)
+                )
+                    continue;
+
+                IMissionParticipant decoy = SelectDecoy(mission, decoys, origins);
+                if (decoy == null)
+                    continue;
+
+                selected[selectedIndex] = mission.WithAdditionalDecoy(decoy);
+                decoys.Remove(decoy);
+            }
+        }
+
+        /// <summary>
+        /// Returns whether a hostile officer mission can accept another decoy.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The mission proposal to inspect.</param>
+        /// <returns>True when the mission has room for another decoy.</returns>
+        private static bool CanAssignAdditionalDecoy(
+            AITurnContext context,
+            AIMissionProposal proposal
+        )
+        {
+            return proposal.DecoyParticipants.Count > 0
+                && proposal.DecoyParticipants.Count < _maximumDecoysPerMission
+                && proposal.Participant is Officer
+                && context.Assessment.IsEnemyPlanet(proposal.TargetPlanet);
         }
 
         /// <summary>
@@ -126,7 +190,7 @@ namespace Rebellion.AI.Phases
             {
                 AIMissionProposal protectedMission = missions[index];
                 AIMissionProposal decoyMission = missions[index + 1];
-                selected[selectedIndexes[protectedMission]] = protectedMission.WithDecoy(
+                selected[selectedIndexes[protectedMission]] = protectedMission.WithAdditionalDecoy(
                     decoyMission.Participant
                 );
                 selected[selectedIndexes[decoyMission]] = null;

@@ -61,9 +61,6 @@ namespace Rebellion.Game.Combat
                 defenderWithdrawalGroups,
                 _config
             );
-            attacker.InitialStrength = GetTacticalStrength(attacker, defender);
-            defender.InitialStrength = GetTacticalStrength(defender, attacker);
-
             double previousAttackerDurability = GetTacticalDurability(attacker);
             double previousDefenderDurability = GetTacticalDurability(defender);
             int stagnantIterations = 0;
@@ -147,7 +144,7 @@ namespace Rebellion.Game.Combat
         }
 
         /// <summary>
-        /// Begins per-unit withdrawal after a force falls below the original strength threshold.
+        /// Begins per-unit withdrawal after a force falls below the opposing-strength threshold.
         /// </summary>
         /// <param name="force">The force whose withdrawal state is evaluated.</param>
         /// <param name="opposingForce">The force providing the available target types.</param>
@@ -162,18 +159,21 @@ namespace Rebellion.Game.Combat
         }
 
         /// <summary>
-        /// Determines whether a force has fallen below one third of its initial tactical strength.
+        /// Determines whether a force has fallen below the configured share of opposing tactical
+        /// strength.
         /// </summary>
         /// <param name="force">The force to inspect.</param>
         /// <param name="opposingForce">The force providing the available target types.</param>
         /// <returns>True when the withdrawal threshold has been reached.</returns>
         private bool HasReachedWithdrawalThreshold(CombatForce force, CombatForce opposingForce)
         {
-            if (!force.HasCombatants || force.InitialStrength <= 0)
+            if (!force.HasCombatants)
                 return false;
 
-            return GetTacticalStrength(force, opposingForce) / force.InitialStrength
-                < _config.AutoResolveRetreatStrengthRatio;
+            double opposingStrength = GetTacticalStrength(opposingForce, force);
+            return opposingStrength > 0
+                && GetTacticalStrength(force, opposingForce) / opposingStrength
+                    < _config.AutoResolveRetreatStrengthRatio;
         }
 
         /// <summary>
@@ -431,7 +431,6 @@ namespace Rebellion.Game.Combat
             internal bool HasTargetableShips => HasTargetableUnits(Ships);
             internal bool HasTargetableFighters => HasTargetableUnits(Fighters);
             internal bool HasWithdrawnUnits => HasWithdrawnUnit(Units);
-            internal double InitialStrength { get; set; }
             internal SpaceCombatSideOutcome Outcome { get; set; }
             internal bool WithdrawalOrdered { get; set; }
 
@@ -597,15 +596,24 @@ namespace Rebellion.Game.Combat
             /// <param name="withdrawalDistance">The distance required to leave combat.</param>
             internal void CompleteWithdrawalWhenReady(double withdrawalDistance)
             {
-                if (
-                    !IsWithdrawing
-                    || _units.Any(unit =>
-                        unit.IsAlive && unit.WithdrawalDistance < withdrawalDistance
-                    )
-                )
+                if (!IsWithdrawing)
                     return;
 
-                CompleteWithdrawal();
+                List<TacticalUnit> readyIndependentUnits = _units
+                    .Where(unit =>
+                        unit.IsTargetable
+                        && unit.CanWithdrawIndependently
+                        && unit.WithdrawalDistance >= withdrawalDistance
+                    )
+                    .ToList();
+                HashSet<TacticalUnit> recoverableUnits = GetRecoverableUnits(
+                    readyIndependentUnits.OfType<CapitalShipState>().ToList()
+                );
+                foreach (TacticalUnit unit in readyIndependentUnits.Concat(recoverableUnits))
+                    unit.FinishWithdrawal();
+
+                if (!_units.Any(unit => unit.IsTargetable && unit.IsWithdrawing))
+                    IsWithdrawing = false;
             }
 
             /// <summary>
@@ -613,7 +621,12 @@ namespace Rebellion.Game.Combat
             /// </summary>
             internal void CompleteWithdrawal()
             {
-                HashSet<TacticalUnit> recoverableUnits = GetRecoverableUnits();
+                HashSet<TacticalUnit> recoverableUnits = GetRecoverableUnits(
+                    _units
+                        .OfType<CapitalShipState>()
+                        .Where(carrier => carrier.IsTargetable)
+                        .ToList()
+                );
                 foreach (TacticalUnit unit in _units.Where(unit => unit.IsTargetable))
                 {
                     if (unit.CanWithdrawIndependently || recoverableUnits.Contains(unit))
@@ -629,14 +642,18 @@ namespace Rebellion.Game.Combat
             /// Existing mother-ship assignments are honored first, followed by deterministic
             /// reassignment to another carrier that is still able to leave the battle.
             /// </summary>
+            /// <param name="eligibleCarriers">The carriers currently able to complete withdrawal.</param>
             /// <returns>The carrier-dependent fighters that can leave with the group.</returns>
-            private HashSet<TacticalUnit> GetRecoverableUnits()
+            private HashSet<TacticalUnit> GetRecoverableUnits(
+                IReadOnlyCollection<CapitalShipState> eligibleCarriers
+            )
             {
                 List<CapitalShipState> carriers = _units
                     .OfType<CapitalShipState>()
                     .Where(carrier =>
                         carrier.IsTargetable
                         && carrier.CanWithdrawIndependently
+                        && eligibleCarriers.Contains(carrier)
                         && carrier.Ship.StarfighterCapacity > 0
                     )
                     .ToList();

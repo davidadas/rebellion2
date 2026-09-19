@@ -16,10 +16,10 @@ namespace Rebellion.Tests.AI.Phases
     public class AISpecialForcesIntentPhaseTests
     {
         /// <summary>
-        /// Verifies execute with officer replacement reserves special forces as decoy.
+        /// Verifies execute with one replaceable unit retains it as a primary agent.
         /// </summary>
         [Test]
-        public void Execute_WithOfficerReplacement_ReservesSpecialForcesAsDecoy()
+        public void Execute_WithOneOfficerReplaceableUnit_RetainsPrimaryAgent()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -37,7 +37,7 @@ namespace Rebellion.Tests.AI.Phases
             new AISpecialForcesIntentPhase().Execute(context);
 
             Assert.AreEqual(
-                SpecialForcesIntent.Decoy,
+                SpecialForcesIntent.PrimaryAgent,
                 context.GetSpecialForcesIntent(specialForces)
             );
         }
@@ -70,10 +70,10 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         /// <summary>
-        /// Verifies execute with multiple replaceable units assigns all as decoys.
+        /// Verifies execute with multiple replaceable units retains one primary agent.
         /// </summary>
         [Test]
-        public void Execute_WithMultipleReplaceableUnits_AssignsAllAsDecoys()
+        public void Execute_WithMultipleReplaceableUnits_RetainsOnePrimaryAgent()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -102,7 +102,10 @@ namespace Rebellion.Tests.AI.Phases
 
             new AISpecialForcesIntentPhase().Execute(context);
 
-            Assert.AreEqual(SpecialForcesIntent.Decoy, context.GetSpecialForcesIntent(first));
+            Assert.AreEqual(
+                SpecialForcesIntent.PrimaryAgent,
+                context.GetSpecialForcesIntent(first)
+            );
             Assert.AreEqual(SpecialForcesIntent.Decoy, context.GetSpecialForcesIntent(second));
             Assert.AreEqual(SpecialForcesIntent.Decoy, context.GetSpecialForcesIntent(third));
         }

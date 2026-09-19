@@ -50,6 +50,44 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         /// <summary>
+        /// Verifies execute assigns two available decoys to an officer-led hostile mission.
+        /// </summary>
+        [Test]
+        public void Execute_WithTwoAvailableDecoys_AssignsBothDecoys()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            SpecialForces firstDecoy = CreateSpecialForces("first-decoy", empire.InstanceID);
+            SpecialForces secondDecoy = CreateSpecialForces("second-decoy", empire.InstanceID);
+            game.AttachNode(officer, origin);
+            game.AttachNode(firstDecoy, origin);
+            game.AttachNode(secondDecoy, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.SetSpecialForcesIntent(firstDecoy, SpecialForcesIntent.Decoy);
+            context.SetSpecialForcesIntent(secondDecoy, SpecialForcesIntent.Decoy);
+            AIMissionProposal mission = new AIMissionProposal(
+                new[] { officer },
+                MissionTypeIDs.Espionage,
+                target
+            );
+            mission.SetScore(50);
+            context.SetSelectedProposals(new[] { mission });
+
+            new AIMissionDecoyAssignmentPhase().Execute(context);
+
+            AIMissionProposal selected = context
+                .SelectedProposals.OfType<AIMissionProposal>()
+                .Single();
+            CollectionAssert.AreEquivalent(
+                new[] { firstDecoy, secondDecoy },
+                selected.DecoyParticipants
+            );
+        }
+
+        /// <summary>
         /// Verifies execute with decoy reducing officer loss below limit keeps mission.
         /// </summary>
         [Test]

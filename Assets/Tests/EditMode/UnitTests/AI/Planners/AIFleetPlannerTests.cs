@@ -856,6 +856,77 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
+        /// Verifies an attack order reserves its planet without reserving every target in the
+        /// containing system.
+        /// </summary>
+        [Test]
+        public void Plan_WithAnotherAttackOrderInSameSystem_AddsAttackProposalForDifferentPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet assignedTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "assigned-target",
+                rebels.InstanceID
+            );
+            Planet availableTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "available-target",
+                rebels.InstanceID
+            );
+            availableTarget.SetPopularSupport(empire.InstanceID, 100);
+            availableTarget.SetPopularSupport(rebels.InstanceID, 0);
+            AddBattleFleet(
+                game,
+                availableTarget,
+                rebels.InstanceID,
+                "weak-defender",
+                combatStrength: 100
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, assignedTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, availableTarget);
+            Fleet assignedFleet = AddBattleFleet(game, owned, empire.InstanceID, "assigned");
+            assignedFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = assignedTarget.InstanceID,
+            };
+            Fleet idleFleet = AddBattleFleet(
+                game,
+                owned,
+                empire.InstanceID,
+                "idle",
+                combatStrength: 1000
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProposal> proposals = new AIFleetPlanner().Plan(context);
+
+            AIFleetAttackProposal recapture = proposals
+                .OfType<AIFleetAttackProposal>()
+                .Single(proposal =>
+                    proposal.Fleet == idleFleet
+                    && proposal.TargetPlanet.InstanceID == availableTarget.InstanceID
+                );
+            recapture.Execute(context);
+
+            Assert.AreEqual(FleetOrderType.Attack, idleFleet.Order?.OrderType);
+            Assert.AreEqual(availableTarget.InstanceID, idleFleet.Order?.TargetPlanetId);
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIFleetAttackProposal>()
+                    .Any(proposal =>
+                        proposal.Fleet == idleFleet
+                        && proposal.TargetPlanet.InstanceID == assignedTarget.InstanceID
+                    )
+            );
+        }
+
+        /// <summary>
         /// Verifies plan with another attack order and favorable orbital target adds response proposal.
         /// </summary>
         [Test]

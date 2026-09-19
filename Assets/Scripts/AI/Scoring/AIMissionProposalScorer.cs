@@ -182,6 +182,10 @@ namespace Rebellion.AI.Scoring
                 utility.IntelAge
             );
             score.Add(
+                GetAttackPreparationIntelPriority(context, proposal),
+                utility.AttackPreparationIntel
+            );
+            score.Add(
                 AIUtility.Fulfillment(
                     proposal.MissionTypeID == MissionTypeIDs.JediTraining
                         ? GetJediTrainingValue(proposal)
@@ -192,6 +196,40 @@ namespace Rebellion.AI.Scoring
             );
 
             return score;
+        }
+
+        /// <summary>
+        /// Returns the urgency of refreshing intelligence for an active attack target.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The mission proposal to inspect.</param>
+        /// <returns>Normalized campaign-intelligence urgency.</returns>
+        private static double GetAttackPreparationIntelPriority(
+            AITurnContext context,
+            AIMissionProposal proposal
+        )
+        {
+            if (
+                proposal.MissionTypeID != MissionTypeIDs.Espionage
+                || !context.Assessment.IsAttackPreparationTarget(proposal.TargetPlanet)
+            )
+                return 0;
+
+            int age = context.Assessment.GetPlanetIntelAge(proposal.TargetPlanet);
+            int refreshInterval = Math.Max(
+                1,
+                context.Game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks
+            );
+            if (age < refreshInterval)
+                return 0;
+
+            return AIUtility.Fulfillment(
+                age,
+                Math.Max(
+                    1,
+                    context.Game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks
+                )
+            );
         }
 
         /// <summary>
@@ -233,7 +271,7 @@ namespace Rebellion.AI.Scoring
             score.Add(isAttackTarget ? 1 : 0, utility.AttackTarget);
             score.Add(isAttackTarget && isPlanetaryDefense ? 1 : 0, utility.AttackDefense);
             score.Add(
-                isGarrisonRegiment && HasOppositionSupportMajority(context, planet) ? 1 : 0,
+                isGarrisonRegiment && context.Assessment.IsGarrisonSabotageCritical(planet) ? 1 : 0,
                 utility.FavoredSupportRegiment
             );
             score.Add(isGarrisonRegiment ? 1 : 0, utility.GarrisonRegiment);
@@ -260,20 +298,6 @@ namespace Rebellion.AI.Scoring
             AIUtilityScore score = new AIUtilityScore();
             AddSabotageTargetUtility(ref score, context, planet, target);
             return score.Value;
-        }
-
-        /// <summary>
-        /// Returns whether the AI faction has more support than the planet's owner.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>True when opposition support exceeds owner support.</returns>
-        private static bool HasOppositionSupportMajority(AITurnContext context, Planet planet)
-        {
-            string ownerInstanceId = planet?.GetOwnerInstanceID();
-            return !string.IsNullOrEmpty(ownerInstanceId)
-                && context.Assessment.GetFactionPopularSupport(planet)
-                    > planet.GetPopularSupport(ownerInstanceId);
         }
 
         /// <summary>

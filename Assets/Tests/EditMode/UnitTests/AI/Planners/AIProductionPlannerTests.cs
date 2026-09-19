@@ -122,71 +122,6 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
-        /// Verifies non-hub Outer Rim construction remains available while the primary hub expands.
-        /// </summary>
-        [Test]
-        public void Plan_WithIncompleteOuterRimHub_UsesNonHubProducerForMine()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
-            game.Config.AI.Infrastructure.FacilitySectorHubTargetCount = 5;
-            PlanetSector sector = AITestSceneBuilder.AddSector(game, "outer-rim");
-            sector.SectorType = PlanetSectorType.OuterRim;
-            Planet primary = AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "primary",
-                empire.InstanceID,
-                energyCapacity: 6
-            );
-            AITestSceneBuilder.AddProductionFacility(
-                game,
-                primary,
-                "primary-yard",
-                BuildingType.ConstructionFacility,
-                ManufacturingType.Building
-            );
-            Planet secondary = AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "secondary",
-                empire.InstanceID,
-                energyCapacity: 2
-            );
-            AITestSceneBuilder.AddProductionFacility(
-                game,
-                secondary,
-                "secondary-yard",
-                BuildingType.ConstructionFacility,
-                ManufacturingType.Building
-            );
-            AITestSceneBuilder.AddPlanet(
-                game,
-                sector,
-                "resource-world",
-                empire.InstanceID,
-                energyCapacity: 4,
-                rawResourceNodes: 4
-            );
-            empire.PendingRawMaterialFacilityIDs.Add("primary-yard");
-            Building mine = AITestSceneBuilder.CreateBuildingTemplate(
-                "mine-template",
-                BuildingType.Mine
-            );
-            empire.ResearchQueue[ManufacturingType.Building] = new List<Technology>
-            {
-                new Technology(mine),
-            };
-
-            AIManufactureProposal proposal = new AIProductionPlanner()
-                .Plan(AITestSceneBuilder.CreateContext(game, empire))
-                .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIDemandKind.Mine);
-
-            Assert.AreSame(secondary, proposal.ProducerPlanet);
-        }
-
-        /// <summary>
         /// Verifies plan with advanced shipyard unlocked selects faster facility.
         /// </summary>
         [Test]
@@ -390,39 +325,6 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
-        /// Verifies plan with remaining shared facility budget adds proposal.
-        /// </summary>
-        [Test]
-        public void Plan_WithRemainingSharedFacilityBudget_AddsProposal()
-        {
-            (GameRoot game, Faction empire, Planet _, Building _) = CreateShipyardBatchScene(
-                constructionFacilityCount: 2,
-                energyCapacity: 20,
-                shipyardMaintenance: 1
-            );
-            Planet committedPlanet = AITestSceneBuilder.AddPlanet(
-                game,
-                game.GetSceneNodesByType<PlanetSector>().Single(),
-                "committed-world",
-                empire.InstanceID,
-                energyCapacity: 4
-            );
-            Building committedShipyard = AITestSceneBuilder.CreateBuildingTemplate(
-                "committed-shipyard",
-                BuildingType.Shipyard,
-                ManufacturingType.None
-            );
-            committedShipyard.OwnerInstanceID = empire.InstanceID;
-            committedShipyard.MaintenanceCost = 1;
-            game.AttachNode(committedShipyard, committedPlanet);
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-
-            AIManufactureProposal proposal = GetShipyardProposal(context);
-
-            Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
-        }
-
-        /// <summary>
         /// Verifies plan with headroom below facility allocation but enough for primary hub adds proposal.
         /// </summary>
         [Test]
@@ -504,150 +406,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(first.GetSortKey(), second.GetSortKey());
             Assert.AreEqual(first.Demand.QuantityNeeded, second.Demand.QuantityNeeded);
             Assert.AreSame(first.Product.GetReference(), second.Product.GetReference());
-        }
-
-        /// <summary>
-        /// Verifies plan with construction facility exactly at maintenance allocation adds proposal.
-        /// </summary>
-        [Test]
-        public void Plan_WithConstructionFacilityDemand_IgnoresLegacyMaintenanceAllocation()
-        {
-            (GameRoot game, Faction empire, Building _) = CreateConstructionFacilityBatchScene(
-                constructionFacilityCount: 2,
-                constructionFacilityMaintenance: 4
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-
-            AIManufactureProposal proposal = new AIProductionPlanner()
-                .Plan(context)
-                .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIDemandKind.ConstructionFacility);
-
-            Assert.AreEqual(2, proposal.Demand.QuantityNeeded);
-        }
-
-        /// <summary>
-        /// Verifies plan with construction facility one over maintenance allocation does not add proposal.
-        /// </summary>
-        [Test]
-        public void Plan_WithConstructionFacilityAboveLegacyAllocation_AddsProposal()
-        {
-            (GameRoot game, Faction empire, Building _) = CreateConstructionFacilityBatchScene(
-                constructionFacilityCount: 2,
-                constructionFacilityMaintenance: 5
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-
-            List<AIProposal> proposals = new AIProductionPlanner().Plan(context);
-
-            Assert.IsTrue(
-                proposals
-                    .OfType<AIManufactureProposal>()
-                    .Any(item => item.Demand.Kind == AIDemandKind.ConstructionFacility)
-            );
-        }
-
-        /// <summary>
-        /// Verifies plan with construction facility demand uses every construction lane.
-        /// </summary>
-        [Test]
-        public void Plan_WithConstructionFacilityDemand_UsesEveryConstructionLane()
-        {
-            (GameRoot game, Faction empire, Building _) = CreateConstructionFacilityBatchScene(
-                constructionFacilityCount: 2,
-                constructionFacilityMaintenance: 1
-            );
-            game.Config.AI.Infrastructure.ProductionFacilityMaintenanceAllocationPercent = 100;
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-
-            AIManufactureProposal proposal = new AIProductionPlanner()
-                .Plan(context)
-                .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIDemandKind.ConstructionFacility);
-
-            Assert.AreEqual(2, proposal.Demand.QuantityNeeded);
-        }
-
-        /// <summary>
-        /// Verifies established sectors compound facility expansion from local construction capacity.
-        /// </summary>
-        [Test]
-        public void Plan_WithEstablishedDestinationSector_UsesAllLocalFacilityProducers()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
-            game.Config.AI.Infrastructure.PlanetsPerConstructionFacility = 100;
-            game.Config.AI.Infrastructure.FacilitySectorHubTargetCount = 5;
-            PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
-            Planet coreProducer = AITestSceneBuilder.AddPlanet(
-                game,
-                core,
-                "core-producer",
-                empire.InstanceID,
-                energyCapacity: 20
-            );
-            AITestSceneBuilder.AddProductionFacility(
-                game,
-                coreProducer,
-                "core-yard",
-                BuildingType.ConstructionFacility,
-                ManufacturingType.Building
-            );
-            AddMaintenanceCapacity(game, coreProducer, 1);
-
-            PlanetSector outerRim = AITestSceneBuilder.AddSector(game, "outer-rim");
-            outerRim.SectorType = PlanetSectorType.OuterRim;
-            Planet localProducer = AITestSceneBuilder.AddPlanet(
-                game,
-                outerRim,
-                "flive",
-                empire.InstanceID,
-                energyCapacity: 6
-            );
-            AITestSceneBuilder.AddProductionFacility(
-                game,
-                localProducer,
-                "flive-yard",
-                BuildingType.ConstructionFacility,
-                ManufacturingType.Building
-            );
-            Planet siblingProducer = AITestSceneBuilder.AddPlanet(
-                game,
-                outerRim,
-                "gamorr",
-                empire.InstanceID,
-                energyCapacity: 1
-            );
-            AITestSceneBuilder.AddProductionFacility(
-                game,
-                siblingProducer,
-                "gamorr-yard",
-                BuildingType.ConstructionFacility,
-                ManufacturingType.Building
-            );
-            Building constructionFacility = AITestSceneBuilder.CreateBuildingTemplate(
-                "construction-yard-template",
-                BuildingType.ConstructionFacility,
-                ManufacturingType.Building
-            );
-            constructionFacility.MaintenanceCost = 0;
-            empire.ResearchQueue[ManufacturingType.Building] = new List<Technology>
-            {
-                new Technology(constructionFacility),
-            };
-
-            AIManufactureProposal proposal = new AIProductionPlanner()
-                .Plan(AITestSceneBuilder.CreateContext(game, empire))
-                .OfType<AIManufactureProposal>()
-                .Single(item =>
-                    item.Demand.Kind == AIDemandKind.ConstructionFacility
-                    && item.Demand.DestinationPlanet == localProducer
-                );
-
-            CollectionAssert.AreEquivalent(
-                new[] { localProducer, siblingProducer },
-                proposal.ProducerOptions.Select(option => option.ProducerPlanet).ToArray()
-            );
         }
 
         /// <summary>
@@ -843,8 +601,8 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIManufactureProposal>()
                 .Single(item => item.Demand.Kind == AIDemandKind.PlanetaryStarfighterReserve);
 
-            Assert.AreEqual(3, proposal.Demand.QuantityNeeded);
-            Assert.AreEqual(30, proposal.GetMaintenanceCost());
+            Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
+            Assert.AreEqual(10, proposal.GetMaintenanceCost());
         }
 
         /// <summary>
@@ -862,8 +620,8 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIManufactureProposal>()
                 .Single(item => item.Demand.Kind == AIDemandKind.PlanetaryStarfighterReserve);
 
-            Assert.AreEqual(3, proposal.Demand.QuantityNeeded);
-            Assert.AreEqual(30, proposal.GetMaintenanceCost());
+            Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
+            Assert.AreEqual(10, proposal.GetMaintenanceCost());
         }
 
         /// <summary>
@@ -969,6 +727,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithFleetDeficit_AddsFleetSeedCapitalShipProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1012,6 +771,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithFleetDeficit_SelectsHighestGeneralRoleMetric()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1073,6 +833,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithFleetDeficit_UsesConfiguredLaserCannonDamageMultiplier()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.Combat.SpaceCombat.LaserCannonCapitalDamageMultiplier = 0.75;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -1133,6 +894,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithGeneralDeficit_DoesNotSelectPlanetDestroyingCapitalShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -1187,6 +949,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithCombatAndTransportDeficits_SelectsEfficientTransport()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1000;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
@@ -1281,6 +1044,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithRegimentStrengthGapAndFullCapacity_SelectsTransport()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
@@ -1373,6 +1137,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithUnderstrengthHeadquartersDefenseFleet_SelectsCombatShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
@@ -1457,6 +1222,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_GeneralRoleSelectionSelectsEligibleWarship(bool hasCommittedCombatShip)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1500;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -1548,6 +1314,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_GeneralCombatSelectionFillsMissingCarrierRole(bool hasCarrier)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1500;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
@@ -1625,6 +1392,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithBombardmentDeficit_SelectsEfficientBombardmentShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
@@ -1730,6 +1498,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithInterdictionDemand_SelectsEligibleInterdictionShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
@@ -1822,6 +1591,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithOnlyBombardmentDeficit_IgnoresCarrierCapacity()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
@@ -1915,6 +1685,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithMultipleGeneralCandidatesAndFirstRoll_SelectsFirstCandidate()
         {
             (GameRoot game, Faction empire, Fleet fleet) = CreateCapitalSelectionScene();
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
 
             CapitalShip strongTemplate = AITestSceneBuilder.CreateCapitalShip(
                 "strong-template",
@@ -1962,6 +1733,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithMultipleGeneralCandidatesAndSecondRoll_SelectsSecondCandidate()
         {
             (GameRoot game, Faction empire, Fleet fleet) = CreateCapitalSelectionScene();
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
 
             CapitalShip firstTemplate = AITestSceneBuilder.CreateCapitalShip(
                 "first-template",
@@ -2007,6 +1779,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithRepeatedStarfighterType_SelectsDifferentCompetitiveType()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
             game.Config.AI.Selection.PreferredStarfighterTypeCountPerFleet = 10;
@@ -2086,6 +1859,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             (GameRoot game, Faction empire, Fleet fleet, Planet firstProducer, Planet _) =
                 CreateDistributedStarfighterScene(includeSecondProducer: false);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             AIManufactureProposal proposal = new AIProductionPlanner()
@@ -2112,6 +1886,7 @@ namespace Rebellion.Tests.AI.Planners
                 Planet firstProducer,
                 Planet secondProducer
             ) = CreateDistributedStarfighterScene(includeSecondProducer: true);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             Dictionary<string, int> quantities = new AIProductionPlanner()
@@ -2143,6 +1918,7 @@ namespace Rebellion.Tests.AI.Planners
                 Planet nearbyProducer,
                 Planet distantProducer
             ) = CreateDistributedStarfighterScene(includeSecondProducer: true);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.Selection.PreferredStarfighterTypeCountPerFleet = 1;
             CapitalShip queuedShip = AITestSceneBuilder.CreateCapitalShip(
                 "queued-ship",
@@ -2171,6 +1947,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             (GameRoot game, Faction empire, Fleet fleet, Planet _, Planet _) =
                 CreateDistributedStarfighterScene(includeSecondProducer: true);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.Selection.PreferredStarfighterTypeCountPerFleet = 4;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 

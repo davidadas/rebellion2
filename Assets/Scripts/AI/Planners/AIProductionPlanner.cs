@@ -527,6 +527,11 @@ namespace Rebellion.AI.Planners
             IManufacturable product
         )
         {
+            if (demand.Kind == AIDemandKind.PlanetaryStarfighterReserve)
+            {
+                return Math.Min(1, Math.Max(0, demand.QuantityNeeded));
+            }
+
             if (!IsDistributedProductionDemand(demand))
                 return Math.Max(0, demand.QuantityNeeded);
 
@@ -1371,7 +1376,7 @@ namespace Rebellion.AI.Planners
                 : CanProduce(planet, demand.ManufacturingType)
             );
             eligibleProducers = eligibleProducers.Where(producer =>
-                CanAllocateProducerToDemand(context, producer, demand, destinationPlanet)
+                CanAllocateProducerToDemand(context, producer, demand)
             );
             if (mode == ProducerMode.FacilityExpansion && destinationPlanet != null)
             {
@@ -1410,12 +1415,6 @@ namespace Rebellion.AI.Planners
                         .ToList()
                     : eligibleProducers
                         .OrderBy(planet =>
-                            demand.RestoresMaintenanceCapacity
-                            && IsReservedConstructionHub(context, planet)
-                                ? 1
-                                : 0
-                        )
-                        .ThenBy(planet =>
                             GetProducerFulfillmentTicks(
                                 context,
                                 demand,
@@ -1471,54 +1470,50 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Reserves an Outer Rim primary hub's construction capacity until the hub is complete.
+        /// Returns whether a producer may serve the requested demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="producer">The prospective producing planet.</param>
         /// <param name="demand">The demand seeking production capacity.</param>
-        /// <param name="destination">The demand destination, if planetary.</param>
         /// <returns>True when the producer may serve the demand.</returns>
         private static bool CanAllocateProducerToDemand(
             AITurnContext context,
             Planet producer,
-            AIDemand demand,
-            Planet destination
+            AIDemand demand
         )
         {
-            if (!IsReservedConstructionHub(context, producer))
-                return true;
-
-            if (demand?.RestoresMaintenanceCapacity == true)
-                return true;
-
-            string producerSystemId = context.Assessment.GetPlanetSystemId(producer);
-            return demand?.Kind == AIDemandKind.ConstructionFacility
-                && destination != null
-                && context.Assessment.GetPlanetSystemId(destination) == producerSystemId;
+            return CanUseShipProducerForDemand(context, producer, demand);
         }
 
         /// <summary>
-        /// Returns whether an Outer Rim producer is the reserved primary construction hub.
+        /// Returns whether a ship-producing planet is dedicated to the requested strategic role.
+        /// Single-shipyard planets defend planets with starfighters, while larger shipyard groups
+        /// manufacture fleet units.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="producer">The prospective producing planet.</param>
-        /// <returns>True when the producer's primary construction hub is incomplete.</returns>
-        private static bool IsReservedConstructionHub(AITurnContext context, Planet producer)
+        /// <param name="demand">The demand seeking production capacity.</param>
+        /// <returns>True when the producer may manufacture the requested demand.</returns>
+        private static bool CanUseShipProducerForDemand(
+            AITurnContext context,
+            Planet producer,
+            AIDemand demand
+        )
         {
-            if (producer?.GetParentOfType<PlanetSector>()?.SectorType != PlanetSectorType.OuterRim)
-            {
-                return false;
-            }
+            if (demand?.ManufacturingType != ManufacturingType.Ship)
+                return true;
 
-            string systemId = context.Assessment.GetPlanetSystemId(producer);
-            return context.DevelopmentAllocation.IsPrimaryHub(
-                    producer,
-                    BuildingType.ConstructionFacility
-                )
-                && context.DevelopmentAllocation.HasIncompletePrimaryHub(
-                    systemId,
-                    BuildingType.ConstructionFacility
-                );
+            int shipyardCount = context.Assessment.GetPlanetProductionFacilityCount(
+                producer,
+                ManufacturingType.Ship
+            );
+            int fleetProductionMinimum = Math.Max(
+                1,
+                context.Game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount
+            );
+            return demand.Kind == AIDemandKind.PlanetaryStarfighterReserve
+                ? shipyardCount == 1
+                : shipyardCount >= fleetProductionMinimum;
         }
 
         /// <summary>

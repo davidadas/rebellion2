@@ -41,8 +41,7 @@ namespace Rebellion.AI.Phases
         }
 
         /// <summary>
-        /// Reserves every special-forces role whose mission capabilities are fully covered by
-        /// available officers.
+        /// Reserves replaceable special forces as decoys while retaining one primary unit per role.
         /// </summary>
         /// <param name="context">The context.</param>
         /// <param name="specialForces">The special forces.</param>
@@ -61,7 +60,9 @@ namespace Rebellion.AI.Phases
             )
             {
                 if (OfficersCoverEveryMissionCapability(officers, roleUnits.First()))
-                    AssignIntent(context, roleUnits, SpecialForcesIntent.Decoy);
+                {
+                    AssignIntent(context, roleUnits.Skip(1), SpecialForcesIntent.Decoy);
+                }
             }
         }
 

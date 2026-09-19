@@ -38,10 +38,10 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         /// <summary>
-        /// Verifies get claim keys with building demand claims demand and destination.
+        /// Verifies building demand claims its strategic demand without claiming all destination energy.
         /// </summary>
         [Test]
-        public void GetClaimKeys_WithBuildingDemand_ClaimsDemandAndDestination()
+        public void GetClaimKeys_WithBuildingDemand_DoesNotClaimDestination()
         {
             Planet producer = new Planet { InstanceID = "producer" };
             Planet destination = new Planet { InstanceID = "destination" };
@@ -56,7 +56,10 @@ namespace Rebellion.Tests.AI.Proposals
 
             CollectionAssert.Contains(claimKeys, "production:demand:mine-demand");
             CollectionAssert.DoesNotContain(claimKeys, "production:building:producer");
-            CollectionAssert.Contains(claimKeys, "production:building-destination:destination");
+            CollectionAssert.DoesNotContain(
+                claimKeys,
+                "production:building-destination:destination"
+            );
         }
 
         /// <summary>

@@ -8,7 +8,7 @@ using Rebellion.Game.Units;
 namespace Rebellion.AI.Proposals
 {
     /// <summary>
-    /// Removes production facilities outside a planet's sector allocation.
+    /// Removes an explicitly planned quantity of faction-wide surplus production facilities.
     /// </summary>
     public sealed class AIFacilityRemovalProposal : AIProposal
     {
@@ -20,15 +20,28 @@ namespace Rebellion.AI.Proposals
 
         public BuildingType BuildingType { get; }
 
+        public int MaximumRemovalCount { get; }
+
+        public int MinimumFactionFacilityCount { get; }
+
         /// <summary>
         /// Creates a facility-removal proposal.
         /// </summary>
         /// <param name="planet">The planet whose surplus facilities should be removed.</param>
         /// <param name="buildingType">The production-facility type to evaluate.</param>
-        public AIFacilityRemovalProposal(Planet planet, BuildingType buildingType)
+        /// <param name="maximumRemovalCount">Maximum facilities this proposal may remove.</param>
+        /// <param name="minimumFactionFacilityCount">Minimum faction-wide facilities to preserve.</param>
+        public AIFacilityRemovalProposal(
+            Planet planet,
+            BuildingType buildingType,
+            int maximumRemovalCount,
+            int minimumFactionFacilityCount
+        )
         {
             Planet = planet;
             BuildingType = buildingType;
+            MaximumRemovalCount = Math.Max(0, maximumRemovalCount);
+            MinimumFactionFacilityCount = Math.Max(0, minimumFactionFacilityCount);
         }
 
         /// <summary>
@@ -114,7 +127,7 @@ namespace Rebellion.AI.Proposals
         /// <param name="planet">The planet.</param>
         /// <param name="buildingType">The building type.</param>
         /// <returns>The requested surplus.</returns>
-        private static List<Building> GetSurplus(
+        private List<Building> GetSurplus(
             AITurnContext context,
             Planet planet,
             BuildingType buildingType
@@ -123,7 +136,6 @@ namespace Rebellion.AI.Proposals
             if (context?.Assessment == null || planet == null)
                 return new List<Building>();
 
-            int cap = context.DevelopmentAllocation.GetCap(planet, buildingType);
             return GetFacilities(context, planet)
                 .Where(building =>
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
@@ -134,7 +146,7 @@ namespace Rebellion.AI.Proposals
                     building.ManufacturingStatus == ManufacturingStatus.Complete
                 )
                 .ThenBy(building => building.InstanceID)
-                .Skip(cap)
+                .Take(MaximumRemovalCount)
                 .ToList();
         }
 

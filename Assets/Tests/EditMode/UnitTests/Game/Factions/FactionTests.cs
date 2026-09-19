@@ -1484,6 +1484,34 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         /// <summary>
+        /// Verifies projected maintenance includes every committed manufacturing state.
+        /// </summary>
+        [Test]
+        public void GetTotalProjectedMaintenanceCost_AllCommittedStatuses_SumsEveryUnit()
+        {
+            foreach (
+                (ManufacturingStatus status, int maintenanceCost) in new[]
+                {
+                    (ManufacturingStatus.Building, 7),
+                    (ManufacturingStatus.Delivering, 11),
+                    (ManufacturingStatus.Complete, 13),
+                }
+            )
+            {
+                _faction.AddOwnedUnit(
+                    new Regiment
+                    {
+                        OwnerInstanceID = "FACTION1",
+                        MaintenanceCost = maintenanceCost,
+                        ManufacturingStatus = status,
+                    }
+                );
+            }
+
+            Assert.AreEqual(31, _faction.GetTotalProjectedMaintenanceCost());
+        }
+
+        /// <summary>
         /// Verifies get total in progress construction cost mixed complete and building sums building only.
         /// </summary>
         [Test]

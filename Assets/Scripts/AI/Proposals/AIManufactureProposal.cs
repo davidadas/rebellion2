@@ -66,7 +66,9 @@ namespace Rebellion.AI.Proposals
             Demand?.Kind == AIDemandKind.ColonizationFleetSeedCapitalShip
             || Demand?.DestinationFleet?.RoleType == FleetRoleType.Colonization
                 ? AIProposalPriority.Mandatory
-                : AIProposalPriority.Optional;
+            : Demand?.Kind == AIDemandKind.PlanetaryDefense
+                ? AIProposalPriority.DeferredPlanetaryDefense
+            : AIProposalPriority.Optional;
 
         /// <summary>
         /// Creates a manufacture proposal.
@@ -171,9 +173,6 @@ namespace Rebellion.AI.Proposals
                 && Destination is Planet destinationPlanet
             )
             {
-                claimKeys.Add(
-                    AIClaimKeys.ProductionBuildingDestination(destinationPlanet.InstanceID)
-                );
                 if (
                     building.GetBuildingType()
                     is BuildingType.Shipyard

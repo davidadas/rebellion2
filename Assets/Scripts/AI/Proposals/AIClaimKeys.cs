@@ -185,14 +185,6 @@ namespace Rebellion.AI.Proposals
         internal static string ProductionDemand(string demandId) => $"production:demand:{demandId}";
 
         /// <summary>
-        /// Creates a claim for constructing a building at a planet.
-        /// </summary>
-        /// <param name="planetId">The destination planet instance ID.</param>
-        /// <returns>The building-destination claim.</returns>
-        internal static string ProductionBuildingDestination(string planetId) =>
-            $"production:building-destination:{planetId}";
-
-        /// <summary>
         /// Creates a claim for changing one facility allocation at a planet.
         /// </summary>
         /// <param name="planetId">The planet instance ID.</param>
