@@ -149,20 +149,8 @@ namespace Rebellion.Systems
                         )
                 )
                 {
-                    string captorInstanceID = officer.CaptorInstanceID;
-                    officer.IsCaptured = false;
-                    officer.CaptorInstanceID = null;
-                    officer.CanEscape = false;
-                    officer.NextEscapeAttemptTick = 0;
                     reactions.Add(
-                        new OfficerCaptureStateResult
-                        {
-                            TargetOfficer = officer,
-                            IsCaptured = false,
-                            CaptorInstanceID = captorInstanceID,
-                            Context = planet,
-                            Tick = result.Tick,
-                        }
+                        ReleaseOfficer(officer, planet, result.Tick, officer.CaptorInstanceID)
                     );
                 }
             }
@@ -437,17 +425,38 @@ namespace Rebellion.Systems
                 return null;
             }
 
+            officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + _loyaltyShift));
+
+            return ReleaseOfficer(officer, planet, _game.CurrentTick, captorInstanceID);
+        }
+
+        /// <summary>
+        /// Clears an officer's custody state and describes the release.
+        /// </summary>
+        /// <param name="officer">The officer being released.</param>
+        /// <param name="context">The planet where the release occurred.</param>
+        /// <param name="tick">The tick when the release occurred.</param>
+        /// <param name="captorInstanceID">The faction that held the officer.</param>
+        /// <returns>The resulting capture-state change.</returns>
+        private static OfficerCaptureStateResult ReleaseOfficer(
+            Officer officer,
+            Planet context,
+            int tick,
+            string captorInstanceID
+        )
+        {
+            officer.IsCaptured = false;
+            officer.CaptorInstanceID = null;
             officer.CanEscape = false;
             officer.NextEscapeAttemptTick = 0;
-            officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + _loyaltyShift));
 
             return new OfficerCaptureStateResult
             {
                 TargetOfficer = officer,
                 IsCaptured = false,
                 CaptorInstanceID = captorInstanceID,
-                Context = planet,
-                Tick = _game.CurrentTick,
+                Context = context,
+                Tick = tick,
             };
         }
 
