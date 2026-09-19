@@ -251,6 +251,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void CreateRenderData_PlanetHasRawResourceNodesButNoMines_DisablesMinesTab()
+        {
+            FacilityWindowRenderData data = _projector.CreateRenderData(_window, _session, null);
+
+            Assert.AreEqual(
+                FacilityWindowTabState.Disabled,
+                data.Tabs.Single(tab => tab.Tab == FacilityWindowTab.Mines).State
+            );
+        }
+
+        [Test]
         public void CreateRenderData_MovingBuilding_UsesTransitTexture()
         {
             Building refinery = CreateBuilding(
