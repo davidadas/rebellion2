@@ -96,12 +96,15 @@ internal sealed class FacilityWindowProjector
         List<FacilityWindowTabRenderData> tabs = new List<FacilityWindowTabRenderData>();
         foreach (FacilityWindowTab tab in FacilityWindowRenderData.OrderedTabs)
         {
-            int count = session.GetDisplayCount(tab);
+            bool hasContent =
+                tab == FacilityWindowTab.Mines
+                    ? session.GetItems(tab).Count > 0
+                    : session.GetDisplayCount(tab) > 0;
             tabs.Add(
                 new FacilityWindowTabRenderData(
                     tab,
                     tab == session.ActiveTab ? FacilityWindowTabState.Active
-                        : count > 0 ? FacilityWindowTabState.Inactive
+                        : hasContent ? FacilityWindowTabState.Inactive
                         : FacilityWindowTabState.Disabled
                 )
             );

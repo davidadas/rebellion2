@@ -55,6 +55,7 @@ public sealed class FacilityWindowController
     private readonly UIWindowManager windowManager;
 
     private IFacilityWindowActions actions;
+    private IIdleBarManufacturingTrackingActions idleBarTrackingActions;
     private IStrategyConfirmationActions confirmationActions;
 
     /// <summary>
@@ -107,15 +108,19 @@ public sealed class FacilityWindowController
     /// </summary>
     /// <param name="windowActions">The feature-specific facility actions.</param>
     /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
+    /// <param name="trackingActions">Reads and changes manufacturing-lane idle-bar tracking.</param>
     public void Initialize(
         IFacilityWindowActions windowActions,
-        IStrategyConfirmationActions windowConfirmationActions
+        IStrategyConfirmationActions windowConfirmationActions,
+        IIdleBarManufacturingTrackingActions trackingActions
     )
     {
         actions = windowActions ?? throw new ArgumentNullException(nameof(windowActions));
         confirmationActions =
             windowConfirmationActions
             ?? throw new ArgumentNullException(nameof(windowConfirmationActions));
+        idleBarTrackingActions =
+            trackingActions ?? throw new ArgumentNullException(nameof(trackingActions));
     }
 
     /// <summary>
@@ -338,6 +343,9 @@ public sealed class FacilityWindowController
             case StrategyMenuAction.Reserve:
                 ToggleManufacturingReservation(view);
                 break;
+            case StrategyMenuAction.ToggleIdleBarTracking:
+                ToggleManufacturingTracking(view);
+                break;
             case StrategyMenuAction.Encyclopedia:
                 actions.OpenFacilityInfo(GetStatusTarget(view));
                 break;
@@ -386,6 +394,25 @@ public sealed class FacilityWindowController
             !planet.IsManufacturingReserved(manufacturingType.Value)
         );
         actions.RefreshFacilityState();
+    }
+
+    /// <summary>
+    /// Toggles idle-bar tracking for the represented planetary manufacturing lane.
+    /// </summary>
+    /// <param name="view">The facility view whose manufacturing lane was selected.</param>
+    private void ToggleManufacturingTracking(FacilityWindowView view)
+    {
+        if (
+            !TryGetSession(view, out FacilityWindowSession session)
+            || !TryGetContextManufacturingType(view, out ManufacturingType type)
+        )
+            return;
+
+        Planet planet = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
+        if (planet == null)
+            return;
+
+        idleBarTrackingActions.ToggleIdleBarTracking(planet, type);
     }
 
     /// <summary>
@@ -654,18 +681,27 @@ public sealed class FacilityWindowController
     /// <param name="session">The active facility session.</param>
     /// <param name="playerFactionId">The player faction identifier.</param>
     /// <returns>The available context commands.</returns>
-    private static List<StrategyMenuCommand> CreateContextCommands(
+    private List<StrategyMenuCommand> CreateContextCommands(
         Planet planet,
         FacilityWindowSession session,
         string playerFactionId
     )
     {
+        FacilityWindowTab? manufacturingTab = session.GetContextManufacturingTab();
+        ManufacturingType? manufacturingType = manufacturingTab.HasValue
+            ? FacilityManufacturingLaneCatalog.GetManufacturingType(manufacturingTab.Value)
+            : null;
+        bool manufacturingTracked =
+            manufacturingType.HasValue
+            && idleBarTrackingActions.IsIdleBarTracked(planet, manufacturingType.Value);
         return FacilityWindowContextMenuBuilder.Build(
             planet,
             session.ActiveTab,
             session.GetContextManufacturingTab(),
             session.GetContextBuilding(),
-            playerFactionId
+            playerFactionId,
+            idleBarTrackingActions.IsIdleBarEnabled,
+            manufacturingTracked
         );
     }
 
@@ -1102,7 +1138,7 @@ public sealed class FacilityWindowController
     /// </summary>
     private void EnsureInitialized()
     {
-        if (actions == null || confirmationActions == null)
+        if (actions == null || confirmationActions == null || idleBarTrackingActions == null)
             throw new InvalidOperationException(
                 $"{nameof(FacilityWindowController)} must be initialized before use."
             );
