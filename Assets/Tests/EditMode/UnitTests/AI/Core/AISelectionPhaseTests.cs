@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.AI.Director;
@@ -310,7 +311,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithPartiallyAffordableFacilityBatch_SelectsAffordablePrefix()
+        public void Select_WithPartiallyAffordableFacilityBatch_PreservesFullBatchOrdering()
         {
             AITurnContext context = CreateFacilityExpansionContext(
                 allocationPercent: 100,
@@ -320,13 +321,18 @@ namespace Rebellion.Tests.AI.Phases
             );
             context.Game.Config.AI.Selection.MaintenanceHeadroomReserve =
                 context.Assessment.ProjectedMaintenanceHeadroom - 25;
+            TestAIProposal independent = new TestAIProposal("independent", Array.Empty<string>());
+            independent.SetScore(90);
             context.AddProposal(proposal);
+            context.AddProposal(independent);
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            Assert.AreEqual(1, selected.Count);
+            Assert.AreEqual(2, selected.Count);
             Assert.AreEqual(2, ((AIManufactureProposal)selected[0]).GetManufacturingCount());
             Assert.AreEqual(4, proposal.GetManufacturingCount());
+            Assert.Less(selected[0].Score, independent.Score);
+            Assert.AreSame(independent, selected[1]);
         }
 
         [Test]
@@ -570,7 +576,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithUnavailablePreferredManufacturingProducer_SelectsNextProducer()
+        public void Select_WithUnavailablePreferredManufacturingProducer_PreservesPrimaryOrdering()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "producer-system");
@@ -640,13 +646,16 @@ namespace Rebellion.Tests.AI.Phases
             );
             preferredProposal.SetScore(100);
             flexibleProposal.SetScore(90);
+            TestAIProposal independent = new TestAIProposal("independent", Array.Empty<string>());
+            independent.SetScore(80);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             context.AddProposal(preferredProposal);
             context.AddProposal(flexibleProposal);
+            context.AddProposal(independent);
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            Assert.AreEqual(2, selected.Count);
+            Assert.AreEqual(3, selected.Count);
             Assert.AreSame(preferredProposal, selected[0]);
             AIManufactureProposal selectedFallback = (AIManufactureProposal)selected[1];
             Assert.AreSame(fallbackProducer, selectedFallback.ProducerPlanet);
@@ -654,6 +663,8 @@ namespace Rebellion.Tests.AI.Phases
                 new AIProductionProposalScorer().Score(context, selectedFallback),
                 selectedFallback.Score
             );
+            Assert.Less(selectedFallback.Score, independent.Score);
+            Assert.AreSame(independent, selected[2]);
             Assert.AreSame(preferredProducer, flexibleProposal.ProducerPlanet);
         }
 
