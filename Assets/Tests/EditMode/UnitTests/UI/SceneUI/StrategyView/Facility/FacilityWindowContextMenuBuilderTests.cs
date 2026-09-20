@@ -118,6 +118,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void Build_TrackedManufacturingLane_ReturnsCheckedTrackingCommand()
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Manufacturing,
+                FacilityWindowTab.Training,
+                null,
+                "owner",
+                trackingEnabled: true,
+                manufacturingTracked: true
+            );
+
+            StrategyMenuCommand tracked = commands.Single(command =>
+                command.Action == StrategyMenuAction.ToggleIdleBarTracking
+            );
+            Assert.AreEqual("Tracked", tracked.Text);
+            Assert.IsTrue(tracked.Enabled);
+            Assert.AreEqual(StrategyContextMenuIconKeys.CheckMark, tracked.IconKey);
+        }
+
+        [Test]
+        public void Build_TrackingDisabled_ReturnsDisabledTrackingCommand()
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Manufacturing,
+                FacilityWindowTab.Training,
+                null,
+                "owner"
+            );
+
+            StrategyMenuCommand tracked = commands.Single(command =>
+                command.Action == StrategyMenuAction.ToggleIdleBarTracking
+            );
+            Assert.IsFalse(tracked.Enabled);
+        }
+
+        [Test]
         public void Build_InventoryItemUnderConstruction_ReturnsEnabledStopCommand()
         {
             Planet planet = CreatePlanet(withBuildingQueue: false);

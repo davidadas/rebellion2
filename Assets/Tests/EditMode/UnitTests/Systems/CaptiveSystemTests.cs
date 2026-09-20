@@ -302,6 +302,38 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_OwnerRecapturesCaptivePlanet_ReleasesOfficer()
+        {
+            (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
+            Faction owner = game.GetFactionByOwnerInstanceID(captive.OwnerInstanceID);
+            CaptiveSystem system = CreateSystem(game, new FixedRNG(0.0), movement);
+
+            List<GameResult> results = system.HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = planet,
+                        NewOwner = owner,
+                        Tick = game.CurrentTick,
+                    },
+                }
+            );
+
+            OfficerCaptureStateResult release = results
+                .OfType<OfficerCaptureStateResult>()
+                .Single();
+            Assert.IsFalse(captive.IsCaptured);
+            Assert.IsNull(captive.CaptorInstanceID);
+            Assert.IsFalse(captive.CanEscape);
+            Assert.AreEqual(0, captive.NextEscapeAttemptTick);
+            Assert.AreSame(captive, release.TargetOfficer);
+            Assert.IsFalse(release.IsCaptured);
+            Assert.AreEqual("rebels", release.CaptorInstanceID);
+            Assert.AreSame(planet, release.Context);
+        }
+
+        [Test]
         public void ProcessTick_EscapeRollSucceeds_FreesOfficer()
         {
             (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
