@@ -77,6 +77,7 @@ namespace Rebellion.Generation
     public class FactionSetup
     {
         public string FactionID;
+        public string GarrisonTroopTypeID;
         public List<StartingPlanet> StartingPlanets;
     }
 
