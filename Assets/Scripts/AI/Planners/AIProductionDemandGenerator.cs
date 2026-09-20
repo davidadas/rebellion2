@@ -66,7 +66,7 @@ namespace Rebellion.AI.Planners
             _economyRequirements.AddColonyRequirements(context, demands);
             _economyRequirements.AddResourceRequirements(context, demands);
             AddPlanetaryDefenseDemands(context, demands, facilityPortfolio);
-            AddPlanetaryStarfighterDemands(context, demands);
+            _infrastructureRequirements.AddPlanetaryStarfighterRequirements(context, demands);
             AddFleetSeedDemand(context, demands);
             AddColonizationFleetSeedDemand(context, demands);
             AddFleetReinforcementDemands(context, demands);
@@ -79,68 +79,9 @@ namespace Rebellion.AI.Planners
                 facilityPortfolio
             );
             AddProductionFacilityUpgradeDemands(context, demands);
-            AddIdleShipyardFighterDemands(context, demands);
+            _infrastructureRequirements.AddIdleShipyardRequirements(context, demands);
 
             return demands;
-        }
-
-        /// <summary>
-        /// Adds local fighter work for shipyards left without strategic production demand.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        private void AddIdleShipyardFighterDemands(
-            AITurnContext context,
-            List<AIProductionRequirement> demands
-        )
-        {
-            HashSet<string> planetsWithFighterDemand = demands
-                .Where(demand =>
-                    demand.Kind == AIProductionRequirementKind.PlanetaryStarfighterReserve
-                )
-                .Select(demand => demand.DestinationPlanet?.InstanceID)
-                .Where(planetId => !string.IsNullOrEmpty(planetId))
-                .ToHashSet(StringComparer.Ordinal);
-
-            foreach (Planet planet in context.Assessment.OwnedPlanets)
-            {
-                if (
-                    !IsOwnedUsablePlanet(planet)
-                    || planetsWithFighterDemand.Contains(planet.InstanceID)
-                    || context.Assessment.GetPlanetProductionFacilityCount(
-                        planet,
-                        ManufacturingType.Ship
-                    ) <= 0
-                    || planet
-                        .GetManufacturingQueue()
-                        .TryGetValue(ManufacturingType.Ship, out List<IManufacturable> queue)
-                        && queue.Any(item => item?.IsManufacturingComplete() == false)
-                )
-                    continue;
-
-                int reserveTarget =
-                    GetPlanetaryStarfighterRequirement(context, planet)
-                    + context.Game.Config.AI.Infrastructure.IdleShipyardFighterReserveCount;
-                if (GetOwnedStarfighterCount(context, planet) >= reserveTarget)
-                    continue;
-
-                demands.Add(
-                    new AIProductionRequirement(
-                        AIProductionRequirement.CreateId(
-                            context.Faction.InstanceID,
-                            AIProductionRequirementKind.PlanetaryStarfighterReserve,
-                            "idle-shipyard",
-                            planet.InstanceID
-                        ),
-                        AIProductionRequirementKind.PlanetaryStarfighterReserve,
-                        ManufacturingType.Ship,
-                        BuildingType.None,
-                        planet,
-                        1,
-                        context.Game.Config.AI.Infrastructure.IdleShipyardFighterDemandPercent
-                    )
-                );
-            }
         }
 
         /// <summary>
@@ -237,37 +178,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether a planet has finished its static defense minimums: the shield
-        /// generator limit and the baseline weapon emplacement target.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>True when the planet's static defense minimums are complete.</returns>
-        private bool HasCompletedStaticDefense(AITurnContext context, Planet planet)
-        {
-            int shieldTarget = _infrastructureRequirements.GetPlanetaryShieldCount(context, planet);
-            int shieldCount = 0;
-            int weaponCount = 0;
-            foreach (Building building in context.Assessment.GetPlanetBuildings(planet))
-            {
-                if (building.GetOwnerInstanceID() != context.Faction.InstanceID)
-                    continue;
-
-                if (building.IsPlanetaryShieldGenerator())
-                    shieldCount++;
-                else if (building.GetBuildingType() == BuildingType.Weapon)
-                    weaponCount++;
-            }
-
-            int weaponTarget = _infrastructureRequirements.GetPlanetaryWeaponCount(
-                context,
-                planet,
-                weaponCount
-            );
-            return shieldCount >= shieldTarget && weaponCount >= weaponTarget;
-        }
-
-        /// <summary>
         /// Creates one planetary-defense building demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -312,137 +222,6 @@ namespace Rebellion.AI.Planners
                     facilityPortfolio
                 )
             );
-        }
-
-        /// <summary>
-        /// Adds planetary starfighter reserve demands.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        private void AddPlanetaryStarfighterDemands(
-            AITurnContext context,
-            List<AIProductionRequirement> demands
-        )
-        {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            foreach (
-                Planet planet in context
-                    .Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet)
-                    .OrderByDescending(context.Assessment.GetPlanetValue)
-                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
-            )
-            {
-                if (
-                    context.Game.Config.AI.NonCapitalSummary.RequireStaticDefenseBeforeStarfighters
-                    && !HasProductionInfrastructure(context, planet)
-                    && !HasCompletedStaticDefense(context, planet)
-                )
-                    continue;
-
-                int committedCount = GetOwnedStarfighterCount(context, planet);
-                int targetCount = GetPlanetaryStarfighterRequirement(context, planet);
-                int deficit = targetCount - committedCount;
-                if (deficit <= 0)
-                    continue;
-
-                demands.Add(
-                    new AIProductionRequirement(
-                        AIProductionRequirement.CreateId(
-                            context.Faction.InstanceID,
-                            AIProductionRequirementKind.PlanetaryStarfighterReserve,
-                            planet.InstanceID
-                        ),
-                        AIProductionRequirementKind.PlanetaryStarfighterReserve,
-                        ManufacturingType.Ship,
-                        BuildingType.None,
-                        planet,
-                        deficit,
-                        GetPlanetaryDefensePressure(
-                            context,
-                            planet,
-                            config.PlanetaryStarfighterDemandPercent,
-                            deficit,
-                            targetCount
-                        )
-                    )
-                );
-            }
-        }
-
-        /// <summary>
-        /// Returns the strategic and threat-responsive starfighter requirement for a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The planet to assess.</param>
-        /// <returns>The number of starfighters required at the planet.</returns>
-        private static int GetPlanetaryStarfighterRequirement(AITurnContext context, Planet planet)
-        {
-            GameConfig.AINonCapitalSummaryConfig config = context.Game.Config.AI.NonCapitalSummary;
-            bool hasShipProduction =
-                context.Assessment.GetPlanetProductionFacilityCount(planet, ManufacturingType.Ship)
-                > 0;
-            int baseline =
-                planet.IsHeadquarters ? config.StarfighterRequirementHeadquarters
-                : hasShipProduction ? config.StarfighterRequirementInfrastructure
-                : config.StarfighterRequirementDefault;
-            if (!planet.IsHeadquarters && !context.Assessment.IsPlanetThreatened(planet))
-            {
-                if (!hasShipProduction)
-                    baseline = IntegerMath.ScaleByPercent(
-                        baseline,
-                        config.InteriorStarfighterBaselinePercent
-                    );
-            }
-            int requiredDefenseStrength = context.StrategicPlan.GetPlanetDefenseStrength(planet);
-            int fighterStrength = GetStrongestAvailableStarfighterStrength(context);
-            int threatReinforcement =
-                fighterStrength > 0
-                    ? IntegerMath.DivideRoundedUp(requiredDefenseStrength, fighterStrength)
-                    : 0;
-            return baseline + threatReinforcement;
-        }
-
-        /// <summary>
-        /// Returns whether the planet contains strategic production infrastructure.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>True when the planet has at least one production facility.</returns>
-        private bool HasProductionInfrastructure(AITurnContext context, Planet planet) =>
-            _infrastructureRequirements.HasProductionInfrastructure(context, planet);
-
-        /// <summary>
-        /// Returns the strongest planetary fighter the faction can currently manufacture.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The fighter's combat strength, or zero when none is available.</returns>
-        private static int GetStrongestAvailableStarfighterStrength(AITurnContext context)
-        {
-            return context
-                .Faction.GetUnlockedTechnologies(ManufacturingType.Ship)
-                .Select(technology => technology.GetReference())
-                .OfType<Starfighter>()
-                .Where(starfighter =>
-                    IManufacturable.CanBeManufacturedBy(starfighter, context.Faction.InstanceID)
-                )
-                .Select(starfighter => starfighter.GetWeaponStrength())
-                .DefaultIfEmpty()
-                .Max();
-        }
-
-        /// <summary>
-        /// Counts starfighters committed to defending one planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>The number of owned starfighters assigned to the planet.</returns>
-        private static int GetOwnedStarfighterCount(AITurnContext context, Planet planet)
-        {
-            return context
-                .Assessment.GetPlanetStarfighters(planet)
-                .Count(starfighter =>
-                    starfighter.GetOwnerInstanceID() == context.Faction.InstanceID
-                );
         }
 
         /// <summary>
