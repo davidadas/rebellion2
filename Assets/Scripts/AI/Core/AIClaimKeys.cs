@@ -1,8 +1,8 @@
-using Rebellion.AI.Planners;
+using Rebellion.AI.Production;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Proposals
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Creates stable selection claims shared by AI proposals.

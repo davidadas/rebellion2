@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Core;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
-namespace Rebellion.AI.Planners
+namespace Rebellion.AI.Fleets
 {
     /// <summary>
     /// Builds fleet proposals for attack orders and fleet reinforcement.

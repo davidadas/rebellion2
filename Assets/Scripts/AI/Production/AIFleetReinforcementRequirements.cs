@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Core;
+using Rebellion.AI.Fleets;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 
-namespace Rebellion.AI.Planners
+namespace Rebellion.AI.Production
 {
     /// <summary>
     /// Generates reinforcement requirements for existing fleets.

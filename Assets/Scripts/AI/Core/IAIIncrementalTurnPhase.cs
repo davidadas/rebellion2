@@ -1,7 +1,6 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
 
-namespace Rebellion.AI.Phases
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// AI phase that exposes explicit scheduling boundaries within its work.

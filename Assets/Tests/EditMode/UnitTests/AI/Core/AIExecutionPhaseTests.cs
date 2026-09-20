@@ -1,11 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.AI.Director;
-using Rebellion.AI.Phases;
-using Rebellion.AI.Proposals;
-using Rebellion.Tests.AI.Helpers;
+using Rebellion.AI.Core;
+using Rebellion.Tests.AI.Core.Helpers;
 
-namespace Rebellion.Tests.AI.Phases
+namespace Rebellion.Tests.AI.Core
 {
     [TestFixture]
     public class AIExecutionPhaseTests

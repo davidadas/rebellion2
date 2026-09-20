@@ -1,8 +1,8 @@
 using System;
-using Rebellion.AI.Director;
+using Rebellion.AI.Core;
 using Rebellion.Game.Galaxy;
 
-namespace Rebellion.AI.Scoring
+namespace Rebellion.AI.Fleets
 {
     /// <summary>
     /// Evaluates fleet reinforcement needs shared by production and unit transfer planning.

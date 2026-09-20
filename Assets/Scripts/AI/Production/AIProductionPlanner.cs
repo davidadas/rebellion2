@@ -1,18 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Core;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
-using FacilityPortfolio = Rebellion.AI.Planners.AIProductionCapacityRequirements.FacilityPortfolio;
+using FacilityPortfolio = Rebellion.AI.Production.AIProductionCapacityRequirements.FacilityPortfolio;
 
-namespace Rebellion.AI.Planners
+namespace Rebellion.AI.Production
 {
     /// <summary>
     /// Builds production proposals from current demand.

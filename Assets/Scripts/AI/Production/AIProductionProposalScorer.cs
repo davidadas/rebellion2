@@ -1,10 +1,9 @@
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
+using Rebellion.AI.Core;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Scoring
+namespace Rebellion.AI.Production
 {
     /// <summary>
     /// Scores production proposals.

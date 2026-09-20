@@ -1,12 +1,12 @@
 using NUnit.Framework;
-using Rebellion.AI.Director;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Core;
+using Rebellion.AI.Fleets;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Tests.AI.Helpers;
+using Rebellion.Tests.AI.Core.Helpers;
 
-namespace Rebellion.Tests.AI.Scoring
+namespace Rebellion.Tests.AI.Fleets
 {
     [TestFixture]
     public class AIFleetReinforcementUtilityTests

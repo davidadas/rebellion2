@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
-using Rebellion.AI.Planners;
+using Rebellion.AI.Core;
+using Rebellion.AI.Production;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.AI.Proposals
+namespace Rebellion.AI.Fleets
 {
     /// <summary>
     /// Proposal to transfer a unit between containers.

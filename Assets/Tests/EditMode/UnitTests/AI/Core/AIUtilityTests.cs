@@ -1,9 +1,9 @@
 using System;
 using NUnit.Framework;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Core;
 using Rebellion.Game;
 
-namespace Rebellion.Tests.AI.Scoring
+namespace Rebellion.Tests.AI.Core
 {
     [TestFixture]
     public class AIUtilityTests

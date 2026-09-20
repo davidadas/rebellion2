@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
+using Rebellion.AI.Core;
 using Rebellion.Game.Missions;
 
-namespace Rebellion.AI.Proposals
+namespace Rebellion.AI.Missions
 {
     /// <summary>
     /// Proposal to abort an active mission.

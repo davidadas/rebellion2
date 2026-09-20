@@ -1,18 +1,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.AI.Director;
-using Rebellion.AI.Phases;
-using Rebellion.AI.Planners;
-using Rebellion.AI.Proposals;
+using Rebellion.AI.Core;
+using Rebellion.AI.Missions;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Tests.AI.Helpers;
+using Rebellion.Tests.AI.Core.Helpers;
 
-namespace Rebellion.Tests.AI.Phases
+namespace Rebellion.Tests.AI.Core
 {
     [TestFixture]
     public class AIPlanningPhaseTests

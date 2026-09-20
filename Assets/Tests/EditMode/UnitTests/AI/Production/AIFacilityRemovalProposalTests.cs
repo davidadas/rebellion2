@@ -1,16 +1,15 @@
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.AI.Director;
-using Rebellion.AI.Planners;
-using Rebellion.AI.Proposals;
+using Rebellion.AI.Core;
+using Rebellion.AI.Production;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Tests.AI.Helpers;
+using Rebellion.Tests.AI.Core.Helpers;
 
-namespace Rebellion.Tests.AI.Proposals
+namespace Rebellion.Tests.AI.Production
 {
     [TestFixture]
     public sealed class AIFacilityRemovalProposalTests

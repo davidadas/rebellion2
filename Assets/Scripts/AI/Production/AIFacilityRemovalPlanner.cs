@@ -1,12 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
+using Rebellion.AI.Core;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Planners
+namespace Rebellion.AI.Production
 {
     /// <summary>
     /// Builds proposals for genuinely surplus shipyards during maintenance distress.

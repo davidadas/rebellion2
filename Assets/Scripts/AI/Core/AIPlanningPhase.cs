@@ -1,9 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
-using Rebellion.AI.Planners;
+using Rebellion.AI.Fleets;
+using Rebellion.AI.Missions;
+using Rebellion.AI.Production;
 
-namespace Rebellion.AI.Phases
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Generates proposals for the current faction turn.

@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Core;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 
-namespace Rebellion.AI.Planners
+namespace Rebellion.AI.Production
 {
     /// <summary>
     /// Defines production-capacity requirements shared by construction and retirement.

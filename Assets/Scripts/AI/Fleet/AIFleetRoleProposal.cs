@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
+using Rebellion.AI.Core;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
-namespace Rebellion.AI.Proposals
+namespace Rebellion.AI.Fleets
 {
     /// <summary>
     /// Assigns the initial strategic role of an untyped fleet.

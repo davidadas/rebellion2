@@ -1,10 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
+using Rebellion.AI.Production;
 using Rebellion.Game;
 
-namespace Rebellion.AI.Phases
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Selects non-conflicting proposals for execution.

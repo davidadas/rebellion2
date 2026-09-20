@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Rebellion.Tests.AI.Helpers;
+using Rebellion.Tests.AI.Core.Helpers;
 
-namespace Rebellion.Tests.AI.Proposals
+namespace Rebellion.Tests.AI.Core
 {
     [TestFixture]
     public class AIProposalTests

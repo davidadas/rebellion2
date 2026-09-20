@@ -1,13 +1,10 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.AI.Director;
-using Rebellion.AI.Planners;
-using Rebellion.AI.Proposals;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Core;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Phases
+namespace Rebellion.AI.Production
 {
     /// <summary>
     /// Resolves one globally ranked production decision to an exact executable action.

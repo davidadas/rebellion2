@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Core;
 
-namespace Rebellion.AI.Planners
+namespace Rebellion.AI.Missions
 {
     /// <summary>
     /// Retains the strongest bounded set of mission alternatives for each participant and mission.

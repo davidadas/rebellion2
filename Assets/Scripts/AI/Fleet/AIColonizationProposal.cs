@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
+using Rebellion.AI.Core;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Proposals
+namespace Rebellion.AI.Fleets
 {
     /// <summary>
     /// Proposal to start or advance a fleet colonization order.

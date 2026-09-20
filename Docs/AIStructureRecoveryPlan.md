@@ -24,12 +24,13 @@ Folder and namespace boundaries are domain-first and identical:
 
 ```text
 AI/Core        -> Rebellion.AI.Core
-AI/Fleet       -> Rebellion.AI.Fleet
+AI/Fleet       -> Rebellion.AI.Fleets
 AI/Missions    -> Rebellion.AI.Missions
 AI/Production -> Rebellion.AI.Production
 ```
 
-The current domain-first folders with legacy layer-first namespaces (`Director`, `Phases`,
+The fleet namespace is plural because `Rebellion.AI.Fleet` shadows the game's `Fleet` entity type
+inside that namespace. The current domain-first folders with legacy layer-first namespaces (`Director`, `Phases`,
 `Planners`, `Proposals`, and `Scoring`) are an incomplete migration and are not the target.
 
 ## Evidence

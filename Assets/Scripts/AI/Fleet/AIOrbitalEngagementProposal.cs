@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
+using Rebellion.AI.Core;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Proposals
+namespace Rebellion.AI.Fleets
 {
     /// <summary>
     /// Sends a battle fleet to destroy a known hostile fleet without committing to an invasion.

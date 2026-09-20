@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
+using Rebellion.AI.Core;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Proposals
+namespace Rebellion.AI.Production
 {
     /// <summary>
     /// Removes an explicitly planned quantity of faction-wide surplus production facilities.

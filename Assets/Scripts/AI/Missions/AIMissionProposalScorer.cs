@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
+using Rebellion.AI.Core;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -10,7 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
-namespace Rebellion.AI.Scoring
+namespace Rebellion.AI.Missions
 {
     /// <summary>
     /// Scores mission proposals.

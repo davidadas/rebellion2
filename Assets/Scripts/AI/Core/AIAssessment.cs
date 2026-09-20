@@ -10,7 +10,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
-namespace Rebellion.AI.Director
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Derived faction view used during one AI turn.

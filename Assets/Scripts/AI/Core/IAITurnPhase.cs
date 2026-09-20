@@ -1,6 +1,4 @@
-using Rebellion.AI.Director;
-
-namespace Rebellion.AI.Phases
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Phase that runs once during a faction AI turn.

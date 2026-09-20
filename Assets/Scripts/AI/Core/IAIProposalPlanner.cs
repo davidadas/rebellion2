@@ -1,8 +1,6 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
 
-namespace Rebellion.AI.Planners
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Generates AI proposals for a faction turn.

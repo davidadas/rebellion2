@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
+using Rebellion.AI.Core;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Proposals
+namespace Rebellion.AI.Fleets
 {
     /// <summary>
     /// Proposal to assign a fleet to defend a planet.

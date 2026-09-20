@@ -1,8 +1,6 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
 
-namespace Rebellion.AI.Phases
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Executes proposals selected for the turn.

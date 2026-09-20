@@ -1,15 +1,14 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
+using Rebellion.AI.Core;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Tests.AI.Helpers;
+using Rebellion.Tests.AI.Core.Helpers;
 
-namespace Rebellion.Tests.AI.Director
+namespace Rebellion.Tests.AI.Core
 {
     [TestFixture]
     public class AITurnContextTests

@@ -1,8 +1,7 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.AI.Proposals
+namespace Rebellion.AI.Core
 {
     internal enum AIProposalPriority
     {

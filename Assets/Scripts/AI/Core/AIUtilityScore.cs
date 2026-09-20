@@ -1,6 +1,6 @@
 using Rebellion.Game;
 
-namespace Rebellion.AI.Scoring
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Accumulates normalized considerations into a weighted average.

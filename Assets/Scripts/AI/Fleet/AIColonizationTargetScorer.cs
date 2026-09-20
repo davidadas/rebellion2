@@ -1,8 +1,8 @@
-using Rebellion.AI.Director;
+using Rebellion.AI.Core;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 
-namespace Rebellion.AI.Scoring
+namespace Rebellion.AI.Fleets
 {
     /// <summary>
     /// Scores colony targets within an assigned system.

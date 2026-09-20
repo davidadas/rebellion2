@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
+using Rebellion.AI.Core;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
@@ -8,7 +8,7 @@ using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
-namespace Rebellion.Tests.AI.Helpers
+namespace Rebellion.Tests.AI.Core.Helpers
 {
     public static class AITestSceneBuilder
     {

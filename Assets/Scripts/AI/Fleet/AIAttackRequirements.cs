@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.AI.Core;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Galaxy;
@@ -8,7 +9,7 @@ using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
-namespace Rebellion.AI.Director
+namespace Rebellion.AI.Fleets
 {
     /// <summary>
     /// Defines the force required for strategic attacks from turn-scoped assessed facts.

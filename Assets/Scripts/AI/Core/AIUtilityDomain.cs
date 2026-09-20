@@ -1,4 +1,4 @@
-namespace Rebellion.AI.Scoring
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Owns the named game-unit scales used to produce normalized strategic-AI utility inputs.

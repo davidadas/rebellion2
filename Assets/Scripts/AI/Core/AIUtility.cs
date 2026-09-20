@@ -1,7 +1,7 @@
 using System;
 using Rebellion.Game;
 
-namespace Rebellion.AI.Scoring
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Evaluates normalized AI considerations on a common utility scale.

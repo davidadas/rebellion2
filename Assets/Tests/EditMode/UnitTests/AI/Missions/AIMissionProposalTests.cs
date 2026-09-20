@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.AI.Proposals;
+using Rebellion.AI.Missions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 
-namespace Rebellion.Tests.AI.Proposals
+namespace Rebellion.Tests.AI.Missions
 {
     [TestFixture]
     public class AIMissionProposalTests

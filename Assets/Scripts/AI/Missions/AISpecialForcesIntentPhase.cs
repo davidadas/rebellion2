@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
+using Rebellion.AI.Core;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Phases
+namespace Rebellion.AI.Missions
 {
     /// <summary>
     /// Assigns turn-scoped primary and decoy roles to available special-forces units.

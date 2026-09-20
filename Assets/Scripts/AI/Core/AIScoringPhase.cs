@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Fleets;
+using Rebellion.AI.Missions;
+using Rebellion.AI.Production;
 
-namespace Rebellion.AI.Phases
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Applies proposal scores before selection.

@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
+using Rebellion.AI.Core;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
-namespace Rebellion.AI.Scoring
+namespace Rebellion.AI.Production
 {
     /// <summary>
     /// Selects production-facility destinations from strategic and local infrastructure value.

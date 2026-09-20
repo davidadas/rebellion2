@@ -1,8 +1,7 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
+using Rebellion.AI.Core;
 
-namespace Rebellion.Tests.AI.Helpers
+namespace Rebellion.Tests.AI.Core.Helpers
 {
     public class TestAIProposal : AIProposal
     {

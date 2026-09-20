@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.AI.Phases;
+using Rebellion.AI.Missions;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -8,7 +8,7 @@ using Rebellion.Game.Results;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
-namespace Rebellion.AI.Director
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Coordinates the AI turn phases for each faction.

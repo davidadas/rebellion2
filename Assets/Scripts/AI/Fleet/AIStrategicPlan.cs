@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.AI.Core;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 
-namespace Rebellion.AI.Director
+namespace Rebellion.AI.Fleets
 {
     /// <summary>
     /// Turn-scoped allocation decisions shared by strategic planners and proposals.

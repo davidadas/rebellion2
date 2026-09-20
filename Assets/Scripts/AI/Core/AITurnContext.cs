@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Proposals;
+using Rebellion.AI.Fleets;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -10,7 +10,7 @@ using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
-namespace Rebellion.AI.Director
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Shared state for one faction AI turn.

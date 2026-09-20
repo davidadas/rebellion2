@@ -1,17 +1,16 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Core;
+using Rebellion.AI.Missions;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Tests.AI.Helpers;
+using Rebellion.Tests.AI.Core.Helpers;
 
-namespace Rebellion.Tests.AI.Scoring
+namespace Rebellion.Tests.AI.Missions
 {
     [TestFixture]
     public class AIMissionProposalScorerTests

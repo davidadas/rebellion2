@@ -1,10 +1,9 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
+using Rebellion.AI.Core;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 
-namespace Rebellion.AI.Planners
+namespace Rebellion.AI.Missions
 {
     /// <summary>
     /// Builds abort proposals for active missions whose known target no longer exists.

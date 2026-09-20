@@ -2,15 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using Rebellion.AI.Director;
-using Rebellion.AI.Planners;
+using Rebellion.AI.Core;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
-namespace Rebellion.AI.Proposals
+namespace Rebellion.AI.Production
 {
     /// <summary>
     /// Proposal to enqueue a manufacturable item.

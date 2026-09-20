@@ -1,7 +1,4 @@
-using Rebellion.AI.Director;
-using Rebellion.AI.Proposals;
-
-namespace Rebellion.AI.Scoring
+namespace Rebellion.AI.Core
 {
     /// <summary>
     /// Scores AI proposals during the scoring phase.
