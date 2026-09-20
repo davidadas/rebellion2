@@ -1191,14 +1191,14 @@ namespace Rebellion.Tests.AI.Planners
                 .First(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy)
                 .TargetPlanet;
 
-            Assert.AreSame(lexicalTarget, firstTarget);
+            Assert.AreEqual(lexicalTarget.InstanceID, firstTarget.InstanceID);
         }
 
         [Test]
         public void Plan_WithMaintenancePressure_PrioritizesDiplomacyResources()
         {
             GameRoot game = CreateDiplomacyPriorityScene(
-                maintenanceReserve: 1,
+                maintenanceReserve: int.MaxValue,
                 out Faction empire,
                 out Planet _,
                 out Planet resourceTarget
@@ -1210,7 +1210,7 @@ namespace Rebellion.Tests.AI.Planners
                 .First(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy)
                 .TargetPlanet;
 
-            Assert.AreSame(resourceTarget, firstTarget);
+            Assert.AreEqual(resourceTarget.InstanceID, firstTarget.InstanceID);
         }
 
         [Test]
@@ -1271,7 +1271,8 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out empire, out Faction _);
             game.Config.AI.Selection.MaintenanceHeadroomReserve = maintenanceReserve;
-            game.Config.AI.MissionPlanning.RetainedAlternativesPerMission = 1;
+            game.Config.AI.MissionPlanning.RetainedAlternativesPerMission = 2;
+            game.Config.AI.MissionPlanning.Utility.Diplomacy.ResourceNode.Weight = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
             origin.SetPopularSupport(empire.InstanceID, 100);

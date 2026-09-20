@@ -592,6 +592,8 @@ namespace Rebellion.AI.Planners
         /// <param name="basePercent">The configured base pressure.</param>
         /// <param name="deficit">The current deficit.</param>
         /// <param name="targetCount">The desired count.</param>
+        /// <param name="isInitialShield">Whether the requirement establishes the first shield.</param>
+        /// <param name="portfolio">The current facility portfolio.</param>
         /// <returns>The bounded defense pressure.</returns>
         private static double GetDefensePressure(
             AITurnContext context,
