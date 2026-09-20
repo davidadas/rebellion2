@@ -64,7 +64,7 @@ namespace Rebellion.AI.Planners
 
             FacilityPortfolio facilityPortfolio = BuildFacilityPortfolio(context);
             _economyRequirements.AddColonyRequirements(context, demands);
-            AddResourceBalanceDemand(context, demands);
+            _economyRequirements.AddResourceRequirements(context, demands);
             AddPlanetaryDefenseDemands(context, demands, facilityPortfolio);
             AddPlanetaryStarfighterDemands(context, demands);
             AddFleetSeedDemand(context, demands);
@@ -479,12 +479,11 @@ namespace Rebellion.AI.Planners
                     BuildingType.None,
                     destination,
                     quantityNeeded,
-                    GetDemandPressure(
+                    GetBasePressure(
                         context,
-                        AIProductionRequirementKind.FleetSeedCapitalShip,
+                        context.Game.Config.AI.Infrastructure.FleetSeedCapitalShipDemandPercent,
                         quantityNeeded,
-                        Math.Max(1, targetCount),
-                        context.Game.Config.AI.Infrastructure.FleetSeedCapitalShipDemandPercent
+                        Math.Max(1, targetCount)
                     ),
                     capitalShipRole: AICapitalShipProductionRole.General
                 )
@@ -1764,228 +1763,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds mine and refinery demands.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        private void AddResourceBalanceDemand(
-            AITurnContext context,
-            List<AIProductionRequirement> demands
-        )
-        {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            if (!NeedsEconomyExpansion(context))
-                return;
-
-            int economyBatchSize = GetEconomyBatchSize(context, config);
-            int rawResourceNodes = context.Faction.GetTotalRawResourceNodes();
-            int plannedMines = context.Faction.GetTotalRawMinedResources();
-            int plannedRefineries = context.Faction.GetTotalRawRefinementCapacity();
-            int mineDeficit = GetMineDeficit(
-                rawResourceNodes,
-                plannedMines,
-                plannedRefineries,
-                economyBatchSize
-            );
-            int refineryDeficit = GetRefineryDeficit(
-                plannedMines,
-                plannedRefineries,
-                mineDeficit,
-                economyBatchSize
-            );
-            int economyDemandPercent = GetEconomyDemandPercent(
-                rawResourceNodes,
-                plannedMines,
-                config
-            );
-            List<Planet> mineTargets = FindMineTargetPlanets(context, mineDeficit).ToList();
-            HashSet<string> mineTargetIds = new HashSet<string>(
-                mineTargets.Select(planet => planet.InstanceID),
-                StringComparer.Ordinal
-            );
-            List<Planet> refineryTargets = FindRefineryTargetPlanets(
-                    context,
-                    refineryDeficit,
-                    mineTargetIds
-                )
-                .ToList();
-
-            foreach (Planet target in mineTargets)
-            {
-                demands.Add(
-                    CreateBuildingDemand(
-                        context,
-                        AIProductionRequirementKind.Mine,
-                        BuildingType.Mine,
-                        target,
-                        1,
-                        plannedMines + mineDeficit,
-                        economyDemandPercent
-                    )
-                );
-            }
-
-            foreach (Planet target in refineryTargets)
-            {
-                demands.Add(
-                    CreateBuildingDemand(
-                        context,
-                        AIProductionRequirementKind.Refinery,
-                        BuildingType.Refinery,
-                        target,
-                        1,
-                        plannedRefineries + refineryDeficit,
-                        economyDemandPercent
-                    )
-                );
-            }
-        }
-
-        /// <summary>
-        /// Returns whether resource production is constraining manufacturing or maintenance.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when the faction has unmet material requests or insufficient headroom.</returns>
-        private bool NeedsEconomyExpansion(AITurnContext context)
-        {
-            return context.Assessment.PendingRawMaterialRequestCount > 0
-                || context.Assessment.PendingRefinedMaterialRequestCount > 0
-                || GetProjectedRefinedMaterialPercent(context)
-                    <= context.Game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
-                || context.Assessment.ProjectedEconomyMaintenanceHeadroom
-                    < context.Game.Config.AI.Selection.MaintenanceHeadroomTarget;
-        }
-
-        /// <summary>
-        /// Returns how many mine demands should be generated.
-        /// </summary>
-        /// <param name="rawResourceNodes">Known raw resource nodes.</param>
-        /// <param name="plannedMines">Current and queued mine capacity.</param>
-        /// <param name="plannedRefineries">Current and queued refinery capacity.</param>
-        /// <param name="economyBatchSize">Maximum economy batch size.</param>
-        /// <returns>The mine deficit.</returns>
-        private int GetMineDeficit(
-            int rawResourceNodes,
-            int plannedMines,
-            int plannedRefineries,
-            int economyBatchSize
-        )
-        {
-            if (rawResourceNodes <= plannedMines)
-                return 0;
-
-            if (plannedRefineries > plannedMines)
-                return Math.Min(
-                    economyBatchSize,
-                    Math.Min(plannedRefineries - plannedMines, rawResourceNodes - plannedMines)
-                );
-
-            if (plannedRefineries == plannedMines)
-                return Math.Min(economyBatchSize, rawResourceNodes - plannedMines);
-
-            return 0;
-        }
-
-        /// <summary>
-        /// Returns how many refinery demands should be generated.
-        /// </summary>
-        /// <param name="plannedMines">Current and queued mine capacity.</param>
-        /// <param name="plannedRefineries">Current and queued refinery capacity.</param>
-        /// <param name="selectedMineDeficit">Mine demand selected for this pass.</param>
-        /// <param name="economyBatchSize">Maximum economy batch size.</param>
-        /// <returns>The refinery deficit.</returns>
-        private int GetRefineryDeficit(
-            int plannedMines,
-            int plannedRefineries,
-            int selectedMineDeficit,
-            int economyBatchSize
-        )
-        {
-            int desiredRefineries = plannedMines + selectedMineDeficit;
-            if (desiredRefineries <= plannedRefineries)
-                return 0;
-
-            return Math.Min(economyBatchSize, desiredRefineries - plannedRefineries);
-        }
-
-        /// <summary>
-        /// Returns the demand pressure for economy buildings.
-        /// </summary>
-        /// <param name="rawResourceNodes">Known raw resource nodes.</param>
-        /// <param name="plannedMines">Current and queued mine capacity.</param>
-        /// <param name="config">AI infrastructure configuration.</param>
-        /// <returns>The economy demand pressure.</returns>
-        private int GetEconomyDemandPercent(
-            int rawResourceNodes,
-            int plannedMines,
-            GameConfig.AIInfrastructureConfig config
-        )
-        {
-            if (rawResourceNodes <= 0)
-                return config.EconomyDemandPercent;
-
-            int minedCoveragePercent = plannedMines * 100 / rawResourceNodes;
-            if (minedCoveragePercent <= config.EconomySevereDeficitPercent)
-                return config.EconomySevereDemandPercent;
-
-            return config.EconomyDemandPercent;
-        }
-
-        /// <summary>
-        /// Returns how many economy demands may be generated this turn.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="config">AI infrastructure configuration.</param>
-        /// <returns>The economy batch size.</returns>
-        private int GetEconomyBatchSize(
-            AITurnContext context,
-            GameConfig.AIInfrastructureConfig config
-        )
-        {
-            int availableBuildingLanes = context.Assessment.GetAvailableProductionLaneCount(
-                ManufacturingType.Building
-            );
-            int economyLaneBudget = availableBuildingLanes - config.EconomyCompetingNeedSlotReserve;
-            return Math.Max(config.EconomyDefaultBatchSize, Math.Max(0, economyLaneBudget));
-        }
-
-        /// <summary>
-        /// Creates a building production demand.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="kind">Demand kind.</param>
-        /// <param name="buildingType">Building type requested.</param>
-        /// <param name="target">Planet receiving the building.</param>
-        /// <param name="deficit">Current deficit.</param>
-        /// <param name="targetCount">Target count.</param>
-        /// <param name="baseDemandPercent">Base pressure for the demand.</param>
-        /// <returns>The production demand.</returns>
-        private AIProductionRequirement CreateBuildingDemand(
-            AITurnContext context,
-            AIProductionRequirementKind kind,
-            BuildingType buildingType,
-            Planet target,
-            int deficit,
-            int targetCount,
-            int baseDemandPercent
-        )
-        {
-            return new AIProductionRequirement(
-                AIProductionRequirement.CreateId(
-                    context.Faction.InstanceID,
-                    kind,
-                    target.InstanceID
-                ),
-                kind,
-                ManufacturingType.Building,
-                buildingType,
-                target,
-                deficit,
-                GetDemandPressure(context, kind, deficit, targetCount, baseDemandPercent)
-            );
-        }
-
-        /// <summary>
         /// Creates a fleet unit production demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -2032,64 +1809,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns mine destination planets.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="count">Maximum number of planets to return.</param>
-        /// <returns>Mine destination planets.</returns>
-        private IEnumerable<Planet> FindMineTargetPlanets(AITurnContext context, int count)
-        {
-            if (count <= 0)
-                return Enumerable.Empty<Planet>();
-
-            return GetBuildingDestinationPlanets(context)
-                .Where(planet => planet.GetUnminedResourceNodeCount() > 0)
-                .OrderByDescending(planet => planet.GetUnminedResourceNodeCount())
-                .ThenByDescending(planet => planet.GetAvailableEnergy())
-                .ThenBy(planet => planet.InstanceID)
-                .Take(count);
-        }
-
-        /// <summary>
-        /// Returns refinery destination planets.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="count">Maximum number of planets to return.</param>
-        /// <param name="excludedPlanetIds">Planet ids already selected for mine demand.</param>
-        /// <returns>Refinery destination planets.</returns>
-        private IEnumerable<Planet> FindRefineryTargetPlanets(
-            AITurnContext context,
-            int count,
-            HashSet<string> excludedPlanetIds
-        )
-        {
-            if (count <= 0)
-                return Enumerable.Empty<Planet>();
-
-            List<Planet> preferredTargets = GetBuildingDestinationPlanets(context)
-                .Where(planet => !excludedPlanetIds.Contains(planet.InstanceID))
-                .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
-                .ThenByDescending(planet => planet.GetAvailableEnergy())
-                .ThenBy(planet => planet.InstanceID)
-                .Take(count)
-                .ToList();
-
-            if (preferredTargets.Count >= count)
-                return preferredTargets;
-
-            preferredTargets.AddRange(
-                GetBuildingDestinationPlanets(context)
-                    .Where(planet => excludedPlanetIds.Contains(planet.InstanceID))
-                    .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
-                    .ThenByDescending(planet => planet.GetAvailableEnergy())
-                    .ThenBy(planet => planet.InstanceID)
-                    .Take(count - preferredTargets.Count)
-            );
-
-            return preferredTargets;
-        }
-
-        /// <summary>
         /// Returns energy available for additional production facilities.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -2112,26 +1831,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns planets that can receive buildings.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>Building destination planets.</returns>
-        private IEnumerable<Planet> GetBuildingDestinationPlanets(AITurnContext context)
-        {
-            return context.Assessment.OwnedPlanets.Where(planet =>
-                IsOwnedBuildingDestination(planet) && planet.GetAvailableEnergy() > 0
-            );
-        }
-
-        /// <summary>
-        /// Returns whether an owned planet can receive a manufactured building.
-        /// </summary>
-        /// <param name="planet">The prospective destination.</param>
-        /// <returns>True when the planet exists and has not been destroyed.</returns>
-        private static bool IsOwnedBuildingDestination(Planet planet) =>
-            planet?.IsDestroyed == false;
-
-        /// <summary>
         /// Returns whether a planet is an owned usable colony.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -2152,82 +1851,6 @@ namespace Rebellion.AI.Planners
             return context.Assessment.OwnedPlanets.Sum(planet =>
                 planet.GetTotalBuildingTypeCount(buildingType)
             );
-        }
-
-        /// <summary>
-        /// Returns pressure for non-fleet production demand.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="kind">Demand kind.</param>
-        /// <param name="deficit">Current deficit.</param>
-        /// <param name="targetCount">Target count.</param>
-        /// <param name="baseDemandPercent">Base pressure for the demand.</param>
-        /// <returns>The demand pressure.</returns>
-        private double GetDemandPressure(
-            AITurnContext context,
-            AIProductionRequirementKind kind,
-            int deficit,
-            int targetCount,
-            int baseDemandPercent
-        )
-        {
-            double pressure = GetBasePressure(context, baseDemandPercent, deficit, targetCount);
-
-            if (kind is AIProductionRequirementKind.Mine or AIProductionRequirementKind.Refinery)
-            {
-                pressure += GetEconomyMaintenancePressure(context);
-                pressure += GetEconomyRefinedMaterialPressure(context);
-                return pressure;
-            }
-
-            return ClampPressure(pressure);
-        }
-
-        /// <summary>
-        /// Returns extra economy pressure as uncommitted refined materials approach the reserve.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The refined-material economy pressure.</returns>
-        private double GetEconomyRefinedMaterialPressure(AITurnContext context)
-        {
-            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
-            int reservePercent = Math.Max(0, config.RefinedMaterialReservePercent);
-            int warningPercent = Math.Max(
-                reservePercent,
-                config.RefinedMaterialEconomyWarningPercent
-            );
-            int projectedPercent = GetProjectedRefinedMaterialPercent(context);
-            if (projectedPercent >= warningPercent)
-                return 0;
-
-            int pressureRange = Math.Max(1, warningPercent - reservePercent);
-            double urgency = Math.Min(
-                1,
-                Math.Max(0, warningPercent - projectedPercent) / (double)pressureRange
-            );
-            return AIUtility.EvaluatePressure(
-                urgency,
-                context.Game.Config.AI.Infrastructure.DemandUtility.ResourceShortage
-            );
-        }
-
-        /// <summary>
-        /// Returns projected uncommitted refined materials as a percentage of supply.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The projected refined-material percentage.</returns>
-        private int GetProjectedRefinedMaterialPercent(AITurnContext context)
-        {
-            long projectedStockpile = Math.Max(
-                0,
-                (long)context.Assessment.RefinedMaterialStockpile
-                    - context.Assessment.NearTermRefinedMaterialCommitment
-            );
-            int supply = context.Assessment.RefinedMaterialSupply;
-            if (supply <= 0)
-                return projectedStockpile > 0 ? 100 : 0;
-
-            return (int)Math.Min(100, projectedStockpile * 100 / supply);
         }
 
         /// <summary>
@@ -2372,38 +1995,6 @@ namespace Rebellion.AI.Planners
                         deficitRatio,
                         context.Game.Config.AI.Infrastructure.DemandUtility.Deficit
                     )
-            );
-        }
-
-        /// <summary>
-        /// Returns extra economy pressure from maintenance headroom.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The economy maintenance pressure.</returns>
-        private double GetEconomyMaintenancePressure(AITurnContext context)
-        {
-            GameConfig.AIProductionDemandUtilityConfig utility = context
-                .Game
-                .Config
-                .AI
-                .Infrastructure
-                .DemandUtility;
-            int headroom = context.Assessment.ProjectedEconomyMaintenanceHeadroom;
-            int floor = context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
-            int target = Math.Max(
-                floor,
-                context.Game.Config.AI.Selection.MaintenanceHeadroomTarget
-            );
-
-            if (headroom < floor)
-                return AIUtility.EvaluatePressure(1, utility.MaintenanceShortfall);
-
-            if (headroom >= target)
-                return 0;
-
-            return AIUtility.EvaluateDiscretePressure(
-                (target - headroom) / (double)Math.Max(1, target - floor),
-                utility.MaintenanceReserve
             );
         }
 
