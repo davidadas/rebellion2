@@ -223,6 +223,205 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns whether a fleet can defeat current orbital defenders.
+        /// </summary>
+        /// <param name="fleet">Attacking fleet.</param>
+        /// <param name="planet">Target planet.</param>
+        /// <returns>True when ready fleet strength is sufficient.</returns>
+        public bool CanWinOrbitalCombat(Fleet fleet, Planet planet)
+        {
+            int required = GetOrbitalStrength(planet);
+            return required > 0
+                && fleet?.HasOperationalCapitalShips() == true
+                && _context.Assessment.GetReadyFleetCombatValue(fleet) >= required;
+        }
+
+        /// <summary>
+        /// Returns whether projected fleet strength can defeat current orbital defenders.
+        /// </summary>
+        /// <param name="fleet">Attacking fleet.</param>
+        /// <param name="planet">Target planet.</param>
+        /// <returns>True when projected fleet strength is sufficient.</returns>
+        public bool CanWinProjectedOrbitalCombat(Fleet fleet, Planet planet)
+        {
+            int required = GetOrbitalStrength(planet);
+            return required > 0
+                && _context.Assessment.GetProjectedFleetCombatValue(fleet) >= required;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet has enough ready force to attack a planet.
+        /// </summary>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <param name="targetPlanet">Attack target.</param>
+        /// <returns>True when every immediate attack requirement is satisfied.</returns>
+        public bool IsReady(Fleet fleet, Planet targetPlanet)
+        {
+            int requiredCombat = GetCombatStrength(targetPlanet);
+            int availableCombat = _context.Assessment.GetReadyFleetCombatValue(fleet);
+            int requiredRegiments = GetRegimentCount(fleet, targetPlanet);
+            int requiredRegimentStrength = GetRegimentStrength(fleet, targetPlanet);
+            int requiredBombardment = GetBombardmentStrength(targetPlanet);
+            return fleet?.HasOperationalCapitalShips() == true
+                && availableCombat > 0
+                && availableCombat >= requiredCombat
+                && _context.Assessment.GetReadyFleetRegimentCount(fleet) >= requiredRegiments
+                && _context.Assessment.GetReadyFleetRegimentCapacity(fleet) >= requiredRegiments
+                && _context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
+                    >= requiredRegimentStrength
+                && _context.Assessment.GetFleetBombardmentStrength(fleet) >= requiredBombardment
+                && (
+                    CanBombardMilitaryTargets(fleet, targetPlanet)
+                    || _context.Assessment.GetPlanetaryAssaultSuccessPercent(fleet, targetPlanet)
+                        >= _context
+                            .Game
+                            .Config
+                            .AI
+                            .FleetDeployment
+                            .MinimumPlanetaryAssaultSuccessPercent
+                );
+        }
+
+        /// <summary>
+        /// Returns whether a fleet can immediately bombard or assault its target.
+        /// </summary>
+        /// <param name="fleet">Fleet assigned to the attack.</param>
+        /// <param name="targetPlanet">Planet being attacked.</param>
+        /// <returns>True when the fleet can make immediate progress.</returns>
+        public bool CanAdvance(Fleet fleet, Planet targetPlanet)
+        {
+            if (CanBombardMilitaryTargets(fleet, targetPlanet))
+                return true;
+            if (IsAssaultBlockedByShields(targetPlanet))
+                return false;
+
+            return _context.Assessment.GetReadyFleetRegimentCount(fleet)
+                    >= GetRegimentCount(fleet, targetPlanet)
+                && _context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
+                    >= GetRegimentStrength(fleet, targetPlanet)
+                && _context.Assessment.GetPlanetaryAssaultSuccessPercent(fleet, targetPlanet)
+                    >= _context
+                        .Game
+                        .Config
+                        .AI
+                        .FleetDeployment
+                        .MinimumPlanetaryAssaultSuccessPercent;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet can make progress at its current hostile planet.
+        /// </summary>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <param name="planet">Hostile planet containing the fleet.</param>
+        /// <returns>True when the fleet has a viable immediate action.</returns>
+        public bool CanAct(Fleet fleet, Planet planet)
+        {
+            if (fleet == null || planet == null)
+                return false;
+            return _context.Assessment.GetStrongestHostileFleetStrength(planet) > 0
+                ? CanWinProjectedOrbitalCombat(fleet, planet)
+                : CanAdvance(fleet, planet);
+        }
+
+        /// <summary>
+        /// Returns whether a fleet can immediately bombard military targets.
+        /// </summary>
+        /// <param name="fleet">Fleet being evaluated.</param>
+        /// <param name="targetPlanet">Prospective bombardment target.</param>
+        /// <returns>True when hostile military targets remain below the bombardment limit.</returns>
+        public bool CanBombardMilitaryTargets(Fleet fleet, Planet targetPlanet)
+        {
+            return fleet != null
+                && targetPlanet != null
+                && _context.Assessment.GetFleetBombardmentStrength(fleet)
+                    > _context.Assessment.GetBombardmentShieldResistance(targetPlanet)
+                && _context.Assessment.HasBombardmentTargets(targetPlanet);
+        }
+
+        /// <summary>
+        /// Returns whether committed fleet strength will satisfy an attack target.
+        /// </summary>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <param name="targetPlanet">Next attack target.</param>
+        /// <returns>True when projected strength is sufficient.</returns>
+        public bool WillMeet(Fleet fleet, Planet targetPlanet)
+        {
+            int requiredCombat = GetCombatStrength(targetPlanet);
+            int availableCombat = _context.Assessment.GetProjectedFleetCombatValue(fleet);
+            int requiredRegiments = GetRegimentCount(targetPlanet);
+            int requiredRegimentStrength = GetRegimentStrength(targetPlanet);
+            int requiredBombardment = GetBombardmentStrength(targetPlanet);
+            return fleet?.GetChildren<CapitalShip>().Any(capitalShip => capitalShip != null) == true
+                && availableCombat > 0
+                && availableCombat >= requiredCombat
+                && _context.Assessment.GetFleetLoadedRegimentCount(fleet) >= requiredRegiments
+                && _context.Assessment.GetFleetRegimentCapacity(fleet) >= requiredRegiments
+                && _context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
+                    >= requiredRegimentStrength
+                && _context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
+                    >= requiredBombardment;
+        }
+
+        /// <summary>
+        /// Returns the number of current attack requirements a fleet satisfies.
+        /// </summary>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <param name="targetPlanet">Attack target.</param>
+        /// <returns>The satisfied requirement count.</returns>
+        public int CountCurrentMet(Fleet fleet, Planet targetPlanet)
+        {
+            return CountMet(fleet, targetPlanet, projectedTarget: false);
+        }
+
+        /// <summary>
+        /// Returns the number of projected target requirements a fleet currently satisfies.
+        /// </summary>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <param name="targetPlanet">Attack target.</param>
+        /// <returns>The satisfied requirement count.</returns>
+        public int CountTargetMet(Fleet fleet, Planet targetPlanet)
+        {
+            return CountMet(fleet, targetPlanet, projectedTarget: true);
+        }
+
+        /// <summary>
+        /// Counts satisfied attack requirements using current or projected target requirements.
+        /// </summary>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <param name="targetPlanet">Attack target.</param>
+        /// <param name="projectedTarget">Whether bombardment-independent target requirements are used.</param>
+        /// <returns>The satisfied requirement count.</returns>
+        private int CountMet(Fleet fleet, Planet targetPlanet, bool projectedTarget)
+        {
+            int requiredCombat = GetCombatStrength(targetPlanet);
+            int requiredRegiments = projectedTarget
+                ? GetRegimentCount(targetPlanet)
+                : GetRegimentCount(fleet, targetPlanet);
+            int requiredRegimentStrength = projectedTarget
+                ? GetRegimentStrength(targetPlanet)
+                : GetRegimentStrength(fleet, targetPlanet);
+            int requiredBombardment = GetBombardmentStrength(targetPlanet);
+            int count = 0;
+            if (fleet?.HasOperationalCapitalShips() == true)
+                count++;
+            int combat = _context.Assessment.GetReadyFleetCombatValue(fleet);
+            if (combat > 0 && combat >= requiredCombat)
+                count++;
+            if (_context.Assessment.GetReadyFleetRegimentCount(fleet) >= requiredRegiments)
+                count++;
+            if (_context.Assessment.GetReadyFleetRegimentCapacity(fleet) >= requiredRegiments)
+                count++;
+            if (
+                _context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
+                >= requiredRegimentStrength
+            )
+                count++;
+            if (_context.Assessment.GetFleetBombardmentStrength(fleet) >= requiredBombardment)
+                count++;
+            return count;
+        }
+
+        /// <summary>
         /// Returns the largest orbital requirement among known planets in a target's system.
         /// </summary>
         /// <param name="targetPlanet">Planet identifying the target system.</param>

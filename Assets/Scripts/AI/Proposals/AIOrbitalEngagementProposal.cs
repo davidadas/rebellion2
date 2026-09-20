@@ -98,7 +98,7 @@ namespace Rebellion.AI.Proposals
             Planet knownTarget = context.Assessment.GetKnownPlanet(TargetPlanet.InstanceID);
             if (
                 context.Assessment.GetStrongestHostileFleetStrength(knownTarget) > 0
-                && !context.Assessment.CanWinProjectedOrbitalCombat(Fleet, knownTarget)
+                && !context.AttackRequirements.CanWinProjectedOrbitalCombat(Fleet, knownTarget)
             )
             {
                 if (currentPlanet?.GetOwnerInstanceID() == context.Faction.InstanceID)
@@ -144,7 +144,7 @@ namespace Rebellion.AI.Proposals
 
             if (
                 !string.IsNullOrEmpty(liveTarget?.GetOwnerInstanceID())
-                && context.Assessment.IsFleetReadyToAttack(Fleet, knownTarget)
+                && context.AttackRequirements.IsReady(Fleet, knownTarget)
             )
             {
                 Fleet.Order = new FleetOrder
@@ -219,7 +219,7 @@ namespace Rebellion.AI.Proposals
             Planet knownTarget = context.Assessment.GetKnownPlanet(TargetPlanet.InstanceID);
             return context.Assessment.IsEnemyPlanet(knownTarget)
                 && context.Assessment.GetStrongestHostileFleetStrength(knownTarget) > 0
-                && context.Assessment.CanWinOrbitalCombat(Fleet, knownTarget);
+                && context.AttackRequirements.CanWinOrbitalCombat(Fleet, knownTarget);
         }
     }
 }

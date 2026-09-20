@@ -205,7 +205,7 @@ namespace Rebellion.AI.Planners
                 && currentPlanet.InstanceID != targetPlanet.InstanceID
                 && !string.IsNullOrEmpty(currentPlanet.GetOwnerInstanceID())
                 && currentPlanet.GetOwnerInstanceID() != context.Faction.InstanceID
-                && !context.Assessment.CanAdvanceAttack(fleet, currentPlanet);
+                && !context.AttackRequirements.CanAdvance(fleet, currentPlanet);
             if (strandedAtHostileNonTarget)
             {
                 proposals.Add(
@@ -221,7 +221,7 @@ namespace Rebellion.AI.Planners
 
             bool targetCannotBeAttacked =
                 currentPlanet?.InstanceID == targetPlanet.InstanceID
-                && !context.Assessment.CanAdvanceAttack(fleet, targetPlanet);
+                && !context.AttackRequirements.CanAdvance(fleet, targetPlanet);
             if (targetCannotBeAttacked)
             {
                 proposals.Add(
@@ -287,7 +287,7 @@ namespace Rebellion.AI.Planners
             )
                 return false;
 
-            return !context.Assessment.CanFleetActAtPlanet(fleet, currentPlanet);
+            return !context.AttackRequirements.CanAct(fleet, currentPlanet);
         }
 
         /// <summary>
@@ -752,7 +752,7 @@ namespace Rebellion.AI.Planners
                     CanReceivePlanetRegimentTransfer(context, fleet)
                 )
                 .OrderByDescending(fleet =>
-                    context.Assessment.CountTargetAttackRequirementsMet(
+                    context.AttackRequirements.CountTargetMet(
                         fleet,
                         GetReinforcementTargetPlanet(context, fleet)
                     )
@@ -1037,7 +1037,7 @@ namespace Rebellion.AI.Planners
             }
 
             return targetFleet.Order?.OrderType == FleetOrderType.Attack
-                && !context.Assessment.WillMeetAttackRequirements(targetFleet, targetPlanet);
+                && !context.AttackRequirements.WillMeet(targetFleet, targetPlanet);
         }
 
         /// <summary>
@@ -1082,7 +1082,7 @@ namespace Rebellion.AI.Planners
                     CanReceiveCapitalShipTransfer(context, candidate.Fleet, candidate.TargetPlanet)
                 )
                 .OrderByDescending(candidate =>
-                    context.Assessment.CountTargetAttackRequirementsMet(
+                    context.AttackRequirements.CountTargetMet(
                         candidate.Fleet,
                         candidate.TargetPlanet
                     )

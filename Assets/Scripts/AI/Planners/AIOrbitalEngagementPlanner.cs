@@ -88,7 +88,7 @@ namespace Rebellion.AI.Planners
             return context.Assessment.EnemyPlanets.Where(target =>
                 target.InstanceID != origin.InstanceID
                 && context.Assessment.GetStrongestHostileFleetStrength(target) > 0
-                && context.Assessment.CanWinOrbitalCombat(fleet, target)
+                && context.AttackRequirements.CanWinOrbitalCombat(fleet, target)
             );
         }
     }

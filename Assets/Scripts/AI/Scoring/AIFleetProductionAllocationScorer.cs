@@ -31,7 +31,7 @@ namespace Rebellion.AI.Scoring
             score.Add(readiness, utility.AttackReadiness);
             score.Add(
                 AIUtility.Fulfillment(
-                    assessment.CountCurrentAttackRequirementsMet(fleet, target),
+                    context.AttackRequirements.CountCurrentMet(fleet, target),
                     AIUtilityDomain.AttackRequirementCount
                 ),
                 utility.AttackRequirements

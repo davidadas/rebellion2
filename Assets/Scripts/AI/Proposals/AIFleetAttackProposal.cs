@@ -367,7 +367,7 @@ namespace Rebellion.AI.Proposals
         private bool IsReadyToLaunch(AITurnContext context)
         {
             return context.StrategicPlan.CanFleetDepart(Fleet)
-                && context.Assessment.IsFleetReadyToAttack(Fleet, TargetPlanet)
+                && context.AttackRequirements.IsReady(Fleet, TargetPlanet)
                 && !HasInboundUnitThatWouldArriveAfterFleet(context);
         }
 

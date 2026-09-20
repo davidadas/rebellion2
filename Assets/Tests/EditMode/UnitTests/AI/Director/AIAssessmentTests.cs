@@ -911,10 +911,10 @@ namespace Rebellion.Tests.AI.Director
             };
             game.AttachNode(bomber, readyFleet.GetChildren<CapitalShip>().Single());
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.IsFalse(assessment.IsFleetReadyToAttack(blockedFleet, target));
-            Assert.IsTrue(assessment.IsFleetReadyToAttack(readyFleet, target));
+            Assert.IsFalse(context.AttackRequirements.IsReady(blockedFleet, target));
+            Assert.IsTrue(context.AttackRequirements.IsReady(readyFleet, target));
         }
 
         [Test]
@@ -949,10 +949,10 @@ namespace Rebellion.Tests.AI.Director
                 1
             );
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.IsFalse(assessment.IsFleetReadyToAttack(groundFleet, target));
-            Assert.IsTrue(assessment.IsFleetReadyToAttack(bombardmentFleet, target));
+            Assert.IsFalse(context.AttackRequirements.IsReady(groundFleet, target));
+            Assert.IsTrue(context.AttackRequirements.IsReady(bombardmentFleet, target));
         }
 
         [Test]
@@ -977,9 +977,9 @@ namespace Rebellion.Tests.AI.Director
                 transport
             );
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.IsFalse(assessment.IsFleetReadyToAttack(fleet, target));
+            Assert.IsFalse(context.AttackRequirements.IsReady(fleet, target));
         }
 
         [Test]
@@ -1004,9 +1004,9 @@ namespace Rebellion.Tests.AI.Director
             game.AttachNode(battery, target);
             Fleet fleet = CreateAssaultFleet(game, origin, "attacker", empire.InstanceID, 0);
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.IsFalse(assessment.IsFleetReadyToAttack(fleet, target));
+            Assert.IsFalse(context.AttackRequirements.IsReady(fleet, target));
         }
 
         [Test]
@@ -1036,9 +1036,9 @@ namespace Rebellion.Tests.AI.Director
                 fleet.GetChildren<CapitalShip>().Single()
             );
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.IsTrue(assessment.IsFleetReadyToAttack(fleet, target));
+            Assert.IsTrue(context.AttackRequirements.IsReady(fleet, target));
         }
 
         [Test]

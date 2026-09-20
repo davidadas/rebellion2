@@ -100,7 +100,7 @@ namespace Rebellion.AI.Proposals
                 && Fleet.GetParentOfType<Planet>()?.InstanceID == HostilePlanet.InstanceID
                 && !string.IsNullOrEmpty(HostilePlanet.GetOwnerInstanceID())
                 && HostilePlanet.GetOwnerInstanceID() != context.Faction.InstanceID
-                && !context.Assessment.CanFleetActAtPlanet(Fleet, HostilePlanet);
+                && !context.AttackRequirements.CanAct(Fleet, HostilePlanet);
         }
     }
 }

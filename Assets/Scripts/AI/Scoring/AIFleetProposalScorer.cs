@@ -393,12 +393,12 @@ namespace Rebellion.AI.Scoring
             score.AddCost(ScoreIntelAgeRisk(context, targetPlanet), utility.IntelAgeRisk);
             score.Add(targetPlanet.IsHeadquarters ? 1 : 0, utility.Headquarters);
             score.Add(
-                assessment.CanWinOrbitalCombat(fleet, targetPlanet) ? 1 : 0,
+                context.AttackRequirements.CanWinOrbitalCombat(fleet, targetPlanet) ? 1 : 0,
                 utility.OrbitalAdvantage
             );
             score.Add(
                 IsExposedSectorBombardmentTarget(context, targetPlanet)
-                && assessment.CanBombardMilitaryTargets(fleet, targetPlanet)
+                && context.AttackRequirements.CanBombardMilitaryTargets(fleet, targetPlanet)
                     ? 1
                     : 0,
                 utility.ExposedBombardment
@@ -1075,7 +1075,7 @@ namespace Rebellion.AI.Scoring
                 return false;
 
             return context.Assessment.GetStrongestHostileFleetStrength(targetPlanet) > 0
-                && context.Assessment.CanWinOrbitalCombat(fleet, targetPlanet);
+                && context.AttackRequirements.CanWinOrbitalCombat(fleet, targetPlanet);
         }
 
         /// <summary>
