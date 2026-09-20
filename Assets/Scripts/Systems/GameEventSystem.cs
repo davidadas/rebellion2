@@ -18,6 +18,7 @@ namespace Rebellion.Systems
         private readonly IRandomNumberProvider _provider;
         private readonly UnitFactory _unitFactory;
         private readonly GameRequestDispatcher _requestDispatcher;
+        private readonly Func<IReadOnlyList<GameResult>, List<GameResult>> _resultResolver;
 
         /// <summary>
         /// Creates a new GameEventSystem.
@@ -26,17 +27,20 @@ namespace Rebellion.Systems
         /// <param name="provider">Random number provider for stochastic event actions.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
         /// <param name="requestDispatcher">Routes action requests to authoritative systems.</param>
+        /// <param name="resultResolver">Completes immediate action-result reactions.</param>
         public GameEventSystem(
             GameRoot game,
             IRandomNumberProvider provider,
             UnitFactory unitFactory = null,
-            GameRequestDispatcher requestDispatcher = null
+            GameRequestDispatcher requestDispatcher = null,
+            Func<IReadOnlyList<GameResult>, List<GameResult>> resultResolver = null
         )
         {
             _game = game;
             _provider = provider;
             _unitFactory = unitFactory;
             _requestDispatcher = requestDispatcher;
+            _resultResolver = resultResolver;
         }
 
         /// <summary>
@@ -431,7 +435,8 @@ namespace Rebellion.Systems
                 _game,
                 _provider,
                 context,
-                _unitFactory
+                _unitFactory,
+                _resultResolver
             );
             results = new List<GameResult>(actionContext.Results);
             if (actionContext.Requests.Count > 0)

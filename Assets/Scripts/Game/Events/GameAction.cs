@@ -59,6 +59,7 @@ namespace Rebellion.Game.Events
         public UnitFactory UnitFactory { get; }
         internal List<GameRequest> Requests { get; } = new List<GameRequest>();
         internal List<GameResult> Results { get; } = new List<GameResult>();
+        private readonly Func<IReadOnlyList<GameResult>, List<GameResult>> _resultResolver;
 
         /// <summary>
         /// Initializes a new instance of the GameActionContext class.
@@ -67,17 +68,20 @@ namespace Rebellion.Game.Events
         /// <param name="random">The random.</param>
         /// <param name="evaluation">The evaluation.</param>
         /// <param name="unitFactory">The unit factory.</param>
+        /// <param name="resultResolver">Completes result reactions before execution continues.</param>
         public GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
             GameEventEvaluationContext evaluation = null,
-            UnitFactory unitFactory = null
+            UnitFactory unitFactory = null,
+            Func<IReadOnlyList<GameResult>, List<GameResult>> resultResolver = null
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
             Random = random ?? throw new ArgumentNullException(nameof(random));
             Evaluation = evaluation;
             UnitFactory = unitFactory;
+            _resultResolver = resultResolver;
         }
 
         /// <summary>
@@ -115,6 +119,27 @@ namespace Rebellion.Game.Events
         {
             foreach (GameResult result in results ?? Enumerable.Empty<GameResult>())
                 Record(result);
+        }
+
+        /// <summary>
+        /// Records factual results and completes their domain reactions before returning to the
+        /// executing action.
+        /// </summary>
+        /// <param name="results">The results whose reactions must complete immediately.</param>
+        internal void Resolve(IEnumerable<GameResult> results)
+        {
+            List<GameResult> directResults =
+                results?.Where(result => result != null).ToList() ?? new List<GameResult>();
+            foreach (GameResult result in directResults)
+            {
+                if (string.IsNullOrEmpty(result.SourceEventInstanceID) && Evaluation?.Event != null)
+                    result.SourceEventInstanceID = Evaluation.Event.InstanceID;
+                Evaluation?.AddResult(result);
+            }
+
+            List<GameResult> resolvedResults =
+                _resultResolver?.Invoke(directResults) ?? directResults;
+            Results.AddRange(resolvedResults.Where(result => result != null));
         }
     }
 }

@@ -59,12 +59,33 @@ namespace Rebellion.Systems
         /// <returns>The initial results followed by all ordered reaction waves.</returns>
         public List<GameResult> Process(IEnumerable<GameResult> results)
         {
-            List<GameResult> pendingResults =
+            List<GameResult> resolvedResults = ResolveReactions(results);
+
+            foreach (Action<IReadOnlyList<GameResult>> observer in _observers)
+                observer(resolvedResults);
+
+            return resolvedResults;
+        }
+
+        /// <summary>
+        /// Drains result reactions without notifying observers, allowing a caller to finish an
+        /// operation before publishing its completed result batch.
+        /// </summary>
+        /// <param name="results">The initial results to resolve.</param>
+        /// <returns>The initial results followed by all ordered reaction waves.</returns>
+        public List<GameResult> ResolveReactions(IEnumerable<GameResult> results)
+        {
+            List<GameResult> resolvedResults =
                 results?.Where(result => result != null).ToList() ?? new List<GameResult>();
-            List<GameResult> resolvedResults = new List<GameResult>(pendingResults);
+            List<GameResult> pendingResults = resolvedResults
+                .Where(result => !result.ReactionsResolved)
+                .ToList();
 
             while (pendingResults.Count > 0)
             {
+                foreach (GameResult pendingResult in pendingResults)
+                    pendingResult.ReactionsResolved = true;
+
                 List<GameResult> reactionResults = new List<GameResult>();
                 foreach (
                     Func<IReadOnlyList<GameResult>, List<GameResult>> subscription in _subscriptions
@@ -80,11 +101,10 @@ namespace Rebellion.Systems
                 }
 
                 resolvedResults.AddRange(reactionResults);
-                pendingResults = reactionResults;
+                pendingResults = reactionResults
+                    .Where(result => !result.ReactionsResolved)
+                    .ToList();
             }
-
-            foreach (Action<IReadOnlyList<GameResult>> observer in _observers)
-                observer(resolvedResults);
 
             return resolvedResults;
         }

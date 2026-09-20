@@ -574,9 +574,6 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public bool CanEscape { get; set; } = true;
 
-        [PersistableAttribute]
-        public bool DeactivateAfterCapture { get; set; }
-
         [PersistableMember(Name = "Officers")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
@@ -594,10 +591,6 @@ namespace Rebellion.Game.Events
             if (!IsCaptured && !string.IsNullOrWhiteSpace(CaptorFactionInstanceID))
                 throw new InvalidOperationException(
                     "SetCaptureStatus cannot specify CaptorFactionInstanceID when releasing officers."
-                );
-            if (!IsCaptured && DeactivateAfterCapture)
-                throw new InvalidOperationException(
-                    "SetCaptureStatus cannot deactivate officers after release."
                 );
             IEnumerable<ISceneNode> selectedNodes = Selectors.SelectMany(selector =>
                 selector.Select(game, context.Random, context.Evaluation)
@@ -635,13 +628,12 @@ namespace Rebellion.Game.Events
                     {
                         TargetOfficer = officer,
                         IsCaptured = IsCaptured,
-                        DeactivateAfterCapture = DeactivateAfterCapture,
                         Context = officer.GetParentOfType<Planet>(),
                         Tick = game.CurrentTick,
                     }
                 );
             }
-            context.Record(results);
+            context.Resolve(results);
         }
     }
 

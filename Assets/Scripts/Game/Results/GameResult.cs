@@ -8,5 +8,6 @@ namespace Rebellion.Game.Results
         public int Tick { get; set; }
         public string SourceEventInstanceID { get; set; }
         public string MissionInstanceID { get; set; }
+        internal bool ReactionsResolved { get; set; }
     }
 }

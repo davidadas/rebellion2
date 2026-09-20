@@ -510,15 +510,12 @@ Captures or releases one or more officers without moving them.
 
 - `CanEscape` **[Optional]:** Whether captured officers may escape; defaults to `true`. Releasing always resets it
   to `true`.
-- `DeactivateAfterCapture` **[Optional]:** Whether to make an officer inactive after the capture interrupts any
-  active mission and establishes custody; defaults to `false` and cannot be used when releasing.
 
 ```xml
 <SetCaptureStatus OfficerInstanceID="HAN_SOLO"
                   IsCaptured="true"
                   CaptorFactionInstanceID="FNEMP1"
-                  CanEscape="true"
-                  DeactivateAfterCapture="true"/>
+                  CanEscape="true"/>
 ```
 
 ### ChangeOfficerRating

@@ -1079,18 +1079,6 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SetCaptureStatus_Attributes_DeserializePostCaptureState()
-        {
-            SetCaptureStatusAction action = (SetCaptureStatusAction)
-                SerializationHelper.Deserialize<GameAction>(
-                    "<SetCaptureStatus OfficerInstanceID=\"officer\" IsCaptured=\"true\" "
-                        + "CaptorFactionInstanceID=\"captor\" DeactivateAfterCapture=\"true\"/>"
-                );
-
-            Assert.IsTrue(action.DeactivateAfterCapture);
-        }
-
-        [Test]
         public void SetCaptureStatus_IncompatibleSelector_ThrowsPreciseError()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
@@ -1152,47 +1140,6 @@ namespace Rebellion.Tests.Game.Events
             action.Execute(game);
 
             Assert.IsFalse(officer.CanEscape);
-        }
-
-        [Test]
-        public void SetCaptureStatus_DeactivateAfterCapture_DefersDeactivationToResultHandler()
-        {
-            GameRoot game = BuildGame(out Planet planet, out _);
-            Officer officer = EntityFactory.CreateOfficer("officer", planet.OwnerInstanceID);
-            game.AttachNode(officer, planet);
-            SetCaptureStatusAction action = new SetCaptureStatusAction
-            {
-                OfficerInstanceID = officer.InstanceID,
-                IsCaptured = true,
-                CaptorFactionInstanceID = "empire",
-                DeactivateAfterCapture = true,
-            };
-
-            OfficerCaptureStateResult result = action
-                .Execute(game)
-                .OfType<OfficerCaptureStateResult>()
-                .Single();
-
-            Assert.IsTrue(officer.IsEnabled);
-            Assert.IsTrue(result.DeactivateAfterCapture);
-        }
-
-        [Test]
-        public void SetCaptureStatus_DeactivateAfterRelease_ThrowsInvalidOperationException()
-        {
-            GameRoot game = BuildGame(out _, out _);
-            SetCaptureStatusAction action = new SetCaptureStatusAction
-            {
-                OfficerInstanceID = "officer",
-                IsCaptured = false,
-                DeactivateAfterCapture = true,
-            };
-
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                action.Execute(game)
-            );
-
-            StringAssert.Contains("after release", exception.Message);
         }
 
         [Test]

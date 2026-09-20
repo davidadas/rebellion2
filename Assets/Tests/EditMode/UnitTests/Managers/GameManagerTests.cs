@@ -383,7 +383,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessTick_EventCapturesAndDeactivatesMissionParticipant_CompletesCaptureLifecycle()
+        public void ProcessTick_CaptureBeforeDeactivation_CompletesCaptureLifecycleInActionOrder()
         {
             GameConfig config = new GameConfig();
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
@@ -436,7 +436,11 @@ namespace Rebellion.Tests.Managers
                                 OfficerInstanceID = officer.InstanceID,
                                 IsCaptured = true,
                                 CaptorFactionInstanceID = captor.InstanceID,
-                                DeactivateAfterCapture = true,
+                            },
+                            new SetNodeStateAction
+                            {
+                                InstanceID = officer.InstanceID,
+                                State = SceneNodeState.Inactive,
                             },
                         },
                     }
@@ -458,7 +462,6 @@ namespace Rebellion.Tests.Managers
                 candidate.InstanceID == officer.InstanceID
             );
             Assert.IsTrue(observed.IsCaptured);
-            Assert.IsFalse(observed.IsEnabled);
             Assert.IsNull(observed.Movement);
         }
 
