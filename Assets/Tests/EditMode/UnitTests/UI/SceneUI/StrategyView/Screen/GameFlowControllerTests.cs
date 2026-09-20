@@ -7,6 +7,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
+using Rebellion.Simulation;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
@@ -172,8 +173,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             game.GetFactions().Add(opponent);
             game.Summary.PlayerFactionID = player.InstanceID;
             game.SetFactionController(player.InstanceID, "PLAYER1", PlayerControllerType.Human);
-            GameManager manager = new GameManager(game, TestGameData.Create(config));
-            SetField("activeGameManager", manager);
+            GameSession manager = GameSessionFactory.Create(game, TestGameData.Create(config));
+            SetField("activeGameSession", manager);
             SetField("themeLibrary", CreateDefaultOnlyThemeLibrary());
             SetField("cutscenePlaying", true);
 

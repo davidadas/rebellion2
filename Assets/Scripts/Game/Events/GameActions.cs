@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -462,8 +462,8 @@ namespace Rebellion.Game.Events
             string backgroundAudioPath = MessageMediaResolver.Resolve(BackgroundAudio, context);
             string imagePath = MessageMediaResolver.Resolve(BackgroundImage, context);
 
-            context.Request(
-                new MessageDeliveryRequest
+            context.Command(
+                new DeliverMessageCommand
                 {
                     Recipient = recipient,
                     SubjectNode = subject,
@@ -556,7 +556,7 @@ namespace Rebellion.Game.Events
 
     #region OfficerActions
     /// <summary>
-    /// Sets one officer's captivity state and emits the standard state-change result.
+    /// Requests an authored change to one or more officers' captivity state.
     /// </summary>
     [PersistableObject(Name = "SetCaptureStatus")]
     public sealed class SetCaptureStatusAction : GameAction
@@ -616,23 +616,16 @@ namespace Rebellion.Game.Events
                     "SetCaptureStatus selectors may return only officers."
                 );
 
-            List<GameResult> results = new List<GameResult>();
-            foreach (Officer officer in selected.Cast<Officer>())
-            {
-                officer.IsCaptured = IsCaptured;
-                officer.CaptorInstanceID = IsCaptured ? CaptorFactionInstanceID : null;
-                officer.CanEscape = IsCaptured ? CanEscape : true;
-                results.Add(
-                    new OfficerCaptureStateResult
-                    {
-                        TargetOfficer = officer,
-                        IsCaptured = IsCaptured,
-                        Context = officer.GetParentOfType<Planet>(),
-                        Tick = game.CurrentTick,
-                    }
-                );
-            }
-            context.Record(results);
+            context.Command(
+                new SetCaptureStatusCommand
+                {
+                    Officers = selected.Cast<Officer>().ToList(),
+                    IsCaptured = IsCaptured,
+                    CaptorFactionInstanceID = CaptorFactionInstanceID,
+                    CanEscape = CanEscape,
+                    Tick = game.CurrentTick,
+                }
+            );
         }
     }
 
@@ -1206,7 +1199,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Requests resolution of a duel between two officers.
+    /// Commands resolution of a duel between two officers.
     /// </summary>
     [PersistableObject(Name = "TriggerDuel")]
     public sealed class TriggerDuelAction : GameAction
@@ -1221,7 +1214,7 @@ namespace Rebellion.Game.Events
         public string AudioPath { get; set; }
 
         /// <summary>
-        /// Requests a duel between the two authored officers.
+        /// Commands a duel between the two authored officers.
         /// </summary>
         /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
@@ -1246,8 +1239,8 @@ namespace Rebellion.Game.Events
                     (first, second) = (second, first);
             }
 
-            context.Request(
-                new DuelRequest
+            context.Command(
+                new DuelCommand
                 {
                     EncounteredOfficer = first,
                     OpposingOfficer = second,
@@ -1625,7 +1618,7 @@ namespace Rebellion.Game.Events
                         "Amount"
                     )
                     : checked(oldValue * PercentOfCurrent.Value / 100);
-                PopularSupportChange.Apply(
+                PopularSupportChange.Queue(
                     context,
                     planet,
                     faction,
@@ -1689,12 +1682,12 @@ namespace Rebellion.Game.Events
                     "SetPopularSupport"
                 )
             )
-                PopularSupportChange.Apply(context, planet, faction, support);
+                PopularSupportChange.Queue(context, planet, faction, support);
         }
     }
 
     /// <summary>
-    /// Applies faction support changes and records every value affected by rebalancing.
+    /// Resolves and queues authored faction support changes.
     /// </summary>
     internal static class PopularSupportChange
     {
@@ -1716,41 +1709,28 @@ namespace Rebellion.Game.Events
             );
 
         /// <summary>
-        /// Applies support while recording every faction value changed by rebalancing.
+        /// Queues an absolute support change for authoritative simulation processing.
         /// </summary>
         /// <param name="context">The current action execution context.</param>
         /// <param name="planet">The planet whose support is changing.</param>
         /// <param name="targetFaction">The faction receiving the authored support value.</param>
         /// <param name="support">The requested support value.</param>
-        internal static void Apply(
+        internal static void Queue(
             GameActionContext context,
             Planet planet,
             Faction targetFaction,
             int support
         )
         {
-            Dictionary<string, int> previous = context
-                .Game.GetFactions()
-                .ToDictionary(
-                    faction => faction.InstanceID,
-                    faction => planet.GetPopularSupport(faction.InstanceID)
-                );
-            planet.SetPopularSupport(targetFaction.InstanceID, support);
-            foreach (Faction faction in context.Game.GetFactions())
-            {
-                int oldValue = previous[faction.InstanceID];
-                int newValue = planet.GetPopularSupport(faction.InstanceID);
-                context.Record(
-                    PlanetActionResults.Create(
-                        context.Game,
-                        planet,
-                        PlanetChangeCategory.Loyalty,
-                        oldValue,
-                        newValue,
-                        faction
-                    )
-                );
-            }
+            context.Command(
+                new SetPopularSupportCommand
+                {
+                    Planet = planet,
+                    Faction = targetFaction,
+                    Support = support,
+                    Tick = context.Game.CurrentTick,
+                }
+            );
         }
     }
 
@@ -2075,8 +2055,8 @@ namespace Rebellion.Game.Events
                     "ChangeOwner Units selectors may only return officers, ships, regiments, special forces, or buildings."
                 );
 
-            context.Request(
-                new OwnershipChangeRequest
+            context.Command(
+                new OwnershipChangeCommand
                 {
                     NewOwner = faction,
                     Planets = selected.OfType<Planet>().ToList(),
@@ -2286,7 +2266,7 @@ namespace Rebellion.Game.Events
     public sealed class PlaceUnitsAction : UnitTransferAction
     {
         /// <summary>
-        /// Requests immediate placement of the resolved units at the resolved destination.
+        /// Commands immediate placement of the resolved units at the resolved destination.
         /// </summary>
         /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
@@ -2313,8 +2293,8 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     "PlaceUnits requires existing units to be active."
                 );
-            context.Request(
-                new UnitPlacementRequest
+            context.Command(
+                new PlaceUnitsCommand
                 {
                     Units = units,
                     Destinations = destinations,
@@ -2390,7 +2370,7 @@ namespace Rebellion.Game.Events
     public sealed class SendUnitsAction : UnitTransferAction
     {
         /// <summary>
-        /// Requests normal transit for the resolved units to the resolved destination.
+        /// Commands normal transit for the resolved units to the resolved destination.
         /// </summary>
         /// <param name="context">The context.</param>
         internal override void Execute(GameActionContext context)
@@ -2407,8 +2387,8 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     "SendUnits requires active units at a valid scene location."
                 );
-            context.Request(
-                new UnitMovementRequest
+            context.Command(
+                new MoveUnitsCommand
                 {
                     Units = units,
                     Destinations = destinations,

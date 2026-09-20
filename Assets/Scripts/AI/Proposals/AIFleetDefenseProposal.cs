@@ -94,9 +94,6 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (context.Movement == null)
-                return;
-
             if (!context.StrategicPlan.CanFleetDepart(Fleet))
             {
                 Fleet.Order.Status = FleetOrderStatus.Staging;
@@ -104,7 +101,7 @@ namespace Rebellion.AI.Proposals
             }
 
             Fleet.Order.Status = FleetOrderStatus.Readying;
-            context.Movement.RequestMove(Fleet, TargetPlanet);
+            context.Move(Fleet, TargetPlanet);
         }
 
         /// <summary>

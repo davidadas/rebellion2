@@ -7,7 +7,6 @@ using Rebellion.AI.Scoring;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Planners
@@ -2289,11 +2288,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The target garrison regiment reserve count.</returns>
         private int GetTargetGarrisonRegimentReserveCount(AITurnContext context, Planet planet)
         {
-            int stabilityTarget = UprisingSystem.CalculateGarrisonRequirement(
-                planet,
-                context.Faction,
-                context.Game.Config.AI.Garrison
-            );
+            int stabilityTarget = context.Queries.GetGarrisonRequirement(planet, context.Faction);
 
             int captureFloor = context.Game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount;
             if (!planet.IsHeadquarters && !context.Assessment.IsPlanetThreatened(planet))

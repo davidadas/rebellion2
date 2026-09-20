@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Simulation;
 using UnityEngine;
 
 /// <summary>
@@ -1007,13 +1008,13 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void PauseGame()
     {
-        GameManager gameManager = _bootstrap.GetRuntime()?.GetActiveGameManager();
-        if (gameManager == null || _gamePaused)
+        GameSession gameSession = _bootstrap.GetRuntime()?.GetActiveGameSession();
+        if (gameSession == null || _gamePaused)
             return;
 
         _bootstrap.GetInputController()?.PushContext(InputContext.Menu);
-        _speedBeforeOptions = gameManager.GetGameSpeed();
-        gameManager.SetGameSpeed(TickSpeed.Paused);
+        _speedBeforeOptions = gameSession.GetGameSpeed();
+        gameSession.SetGameSpeed(TickSpeed.Paused);
         _gamePaused = true;
     }
 
@@ -1026,7 +1027,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return;
 
         _bootstrap.GetInputController()?.PopContext();
-        _bootstrap.GetRuntime()?.GetActiveGameManager()?.SetGameSpeed(_speedBeforeOptions);
+        _bootstrap.GetRuntime()?.GetActiveGameSession()?.SetGameSpeed(_speedBeforeOptions);
         _gamePaused = false;
     }
 

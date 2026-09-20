@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 public static partial class HeadlessSimulationRunner
 {
@@ -113,6 +114,7 @@ public static partial class HeadlessSimulationRunner
     private sealed class PlanetaryAssaultTracker
     {
         private readonly GameRoot _game;
+        private readonly IGameQueries _queries;
         private readonly Dictionary<string, List<PlanetaryAssaultSimulationResult>> _results = new(
             StringComparer.Ordinal
         );
@@ -120,10 +122,11 @@ public static partial class HeadlessSimulationRunner
         /// <summary>
         /// Creates an assault tracker for the simulated game.
         /// </summary>
-        /// <param name="game">The simulated game.</param>
-        public PlanetaryAssaultTracker(GameRoot game)
+        /// <param name="session">The simulated game session.</param>
+        public PlanetaryAssaultTracker(GameSession session)
         {
-            _game = game;
+            _game = session.GetGame();
+            _queries = session.Queries;
         }
 
         /// <summary>
@@ -191,10 +194,9 @@ public static partial class HeadlessSimulationRunner
             if (!result.Success || result.Planet == null || result.AttackingFaction == null)
                 return 0;
 
-            int requirement = UprisingSystem.CalculateGarrisonRequirement(
+            int requirement = _queries.GetGarrisonRequirement(
                 result.Planet,
-                result.AttackingFaction,
-                _game.Config.AI.Garrison
+                result.AttackingFaction
             );
             int uprisingMultiplier = _game.Config.AI.Garrison.UprisingMultiplier;
             return result.Planet.IsInUprising && uprisingMultiplier > 1

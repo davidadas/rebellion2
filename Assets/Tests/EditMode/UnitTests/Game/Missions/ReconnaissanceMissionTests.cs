@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Game.Missions
@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             SpecialForces reconTeam = CreateReconTeam("empire");
@@ -71,7 +71,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Regiment detector = EntityFactory.CreateRegiment("detector", "rebels");
@@ -98,12 +98,12 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            Movement movement = new Movement(game, fog, new Fleets(game));
             movement.SendToMission(reconTeam, mission);
             reconTeam.Movement = null;
             mission.Initiate(1);
 
-            MissionSystem system = TestSystems.CreateMissionSystem(
+            Rebellion.Simulation.Missions system = TestSystems.CreateMissionSystem(
                 game,
                 new FixedRNG(0.01),
                 movement
@@ -128,7 +128,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Mission mission = CreateMission(
@@ -156,7 +156,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.AddVisitor("empire");
@@ -182,7 +182,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Mission mission = CreateMission(
@@ -204,7 +204,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             SpecialForces reconTeam = CreateReconTeam("empire");

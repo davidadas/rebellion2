@@ -758,7 +758,7 @@ namespace Rebellion.Tests.AI.Phases
         /// <returns>The created empty context.</returns>
         private static AITurnContext CreateEmptyContext()
         {
-            return new AITurnContext(null, null, null, null, null, null, null, null);
+            return AITestSceneBuilder.CreateContext();
         }
     }
 }

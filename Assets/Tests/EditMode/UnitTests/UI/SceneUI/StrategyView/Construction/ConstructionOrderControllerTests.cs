@@ -5,7 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
@@ -46,17 +46,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             game.AttachNode(producer, sector);
             game.AttachNode(destination, sector);
             game.AttachNode(CreateConstructionFacility(ownerId), producer);
-            FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
-            ManufacturingSystem manufacturing = new ManufacturingSystem(
-                game,
-                new FleetSystem(game),
-                movement
-            );
+            FogOfWar fogOfWar = new FogOfWar(game);
+            Movement movement = new Movement(game, fogOfWar, new Fleets(game));
+            Manufacturing manufacturing = new Manufacturing(game, new Fleets(game), movement);
             ConstructionOrderController controller = new ConstructionOrderController(
                 () => game,
-                () => manufacturing,
-                () => movement
+                GameSessionFactory.Compose(game, TestContent.Data)
             );
 
             bool started = controller.TryStartConstruction(
@@ -102,17 +97,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             owner.SetHighestUnlockedOrder(ManufacturingType.Ship, unlockedOrder);
             owner.RebuildResearchCatalog(templates.ToArray());
             game.GetFactions().Add(owner);
-            FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
-            ManufacturingSystem manufacturing = new ManufacturingSystem(
-                game,
-                new FleetSystem(game),
-                movement
-            );
+            FogOfWar fogOfWar = new FogOfWar(game);
+            Movement movement = new Movement(game, fogOfWar, new Fleets(game));
+            Manufacturing manufacturing = new Manufacturing(game, new Fleets(game), movement);
             ConstructionOrderController controller = new ConstructionOrderController(
                 () => game,
-                () => manufacturing,
-                () => movement
+                GameSessionFactory.Compose(game, TestContent.Data)
             );
 
             IReadOnlyList<IManufacturable> selection = controller.GetBuildSelection(
@@ -161,16 +151,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
             owner.RebuildResearchCatalog(applicableTemplates);
             game.GetFactions().Add(owner);
-            FleetSystem fleetSystem = new FleetSystem(game);
-            MovementSystem movement = new MovementSystem(
-                game,
-                new FogOfWarSystem(game),
-                fleetSystem
-            );
+            Fleets fleetSystem = new Fleets(game);
+            Movement movement = new Movement(game, new FogOfWar(game), fleetSystem);
             ConstructionOrderController controller = new ConstructionOrderController(
                 () => game,
-                () => new ManufacturingSystem(game, fleetSystem, movement),
-                () => movement
+                GameSessionFactory.Compose(game, TestContent.Data)
             );
 
             IReadOnlyList<IManufacturable> selection = controller.GetBuildSelection(
@@ -202,16 +187,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Planet producer = CreatePlanet("producer", ownerId, 10);
             game.AttachNode(producer, sector);
             game.AttachNode(CreateConstructionFacility(ownerId), producer);
-            FleetSystem fleetSystem = new FleetSystem(game);
-            MovementSystem movement = new MovementSystem(
-                game,
-                new FogOfWarSystem(game),
-                fleetSystem
-            );
+            Fleets fleetSystem = new Fleets(game);
+            Movement movement = new Movement(game, new FogOfWar(game), fleetSystem);
             ConstructionOrderController controller = new ConstructionOrderController(
                 () => game,
-                () => new ManufacturingSystem(game, fleetSystem, movement),
-                () => movement
+                GameSessionFactory.Compose(game, TestContent.Data)
             );
             Building template = new Building
             {

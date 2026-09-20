@@ -10,6 +10,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
@@ -121,7 +122,7 @@ public static partial class HeadlessSimulationRunner
                 );
             }
 
-            GameManager manager = new GameManager(game, contentPack.GameData);
+            GameSession session = GameSessionFactory.Create(game, contentPack.GameData);
             ManufacturingIdleTracker idleTracker = new ManufacturingIdleTracker();
             ManufacturedUnitTracker manufacturedUnitTracker = new ManufacturedUnitTracker();
             FleetHistoryTracker fleetHistoryTracker = new FleetHistoryTracker();
@@ -130,17 +131,17 @@ public static partial class HeadlessSimulationRunner
             PersonnelOutcomeTracker personnelOutcomeTracker = new PersonnelOutcomeTracker();
             SpecialForcesLifecycleTracker specialForcesLifecycleTracker =
                 new SpecialForcesLifecycleTracker();
-            PlanetaryAssaultTracker planetaryAssaultTracker = new PlanetaryAssaultTracker(game);
+            PlanetaryAssaultTracker planetaryAssaultTracker = new PlanetaryAssaultTracker(session);
             GarrisonRemovalBombardmentTracker garrisonRemovalBombardmentTracker =
                 new GarrisonRemovalBombardmentTracker(game);
             AttackReadinessTracker attackReadinessTracker = new AttackReadinessTracker();
             VictoryResult victory = null;
-            manager.ResultsResolved += planetaryAssaultTracker.Record;
-            manager.ResultsResolved += garrisonRemovalBombardmentTracker.Record;
-            manager.VictoriesResolved += results => victory ??= results.FirstOrDefault();
-            manager.ResultsResolved += missionOutcomeTracker.Record;
-            manager.ResultsResolved += manufacturedUnitTracker.Record;
-            manager.ResultsResolved += specialForcesLifecycleTracker.Record;
+            session.Results.Resolved += planetaryAssaultTracker.Record;
+            session.Results.Resolved += garrisonRemovalBombardmentTracker.Record;
+            session.Results.VictoriesResolved += results => victory ??= results.FirstOrDefault();
+            session.Results.Resolved += missionOutcomeTracker.Record;
+            session.Results.Resolved += manufacturedUnitTracker.Record;
+            session.Results.Resolved += specialForcesLifecycleTracker.Record;
             List<SpecialForces> initialSpecialForces = game.GetSceneNodesByType<SpecialForces>()
                 .ToList();
             manufacturedUnitTracker.RecordInitialState(game, initialSpecialForces);
@@ -163,7 +164,7 @@ public static partial class HeadlessSimulationRunner
                 if (i % 25 == 0)
                     LogToFile(logPath, $"[HeadlessSim] tick {i}");
                 long startTimestamp = Stopwatch.GetTimestamp();
-                ProcessTickIncrementally(manager, gameProcessingStepSamples);
+                ProcessTickIncrementally(session, gameProcessingStepSamples);
                 long gameProcessingElapsed = Stopwatch.GetTimestamp() - startTimestamp;
                 gameProcessingTimestampCount += gameProcessingElapsed;
                 gameProcessingSamples.Add(gameProcessingElapsed);
@@ -189,7 +190,7 @@ public static partial class HeadlessSimulationRunner
                     specialForcesTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
                 }
                 startTimestamp = Stopwatch.GetTimestamp();
-                attackReadinessTracker.RecordTick(game);
+                attackReadinessTracker.RecordTick(session);
                 attackReadinessTimestampCount += Stopwatch.GetTimestamp() - startTimestamp;
             }
 
@@ -208,7 +209,7 @@ public static partial class HeadlessSimulationRunner
             );
             string savePath = SaveSimulation(game, options);
             SimulationSummary report = BuildSimulationSummary(
-                game,
+                session,
                 summary,
                 options,
                 idleTracker,
@@ -367,11 +368,11 @@ public static partial class HeadlessSimulationRunner
     /// <summary>
     /// Drains one incremental game tick while recording each scheduled step.
     /// </summary>
-    /// <param name="manager">The game manager processing the tick.</param>
+    /// <param name="session">The game session processing the tick.</param>
     /// <param name="stepSamples">The collection receiving step durations.</param>
-    private static void ProcessTickIncrementally(GameManager manager, ICollection<long> stepSamples)
+    private static void ProcessTickIncrementally(GameSession session, ICollection<long> stepSamples)
     {
-        IEnumerator tick = manager.ProcessTickIncrementally();
+        IEnumerator tick = session.Tick.ExecuteIncrementally();
         try
         {
             bool hasNext;

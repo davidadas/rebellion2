@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Requests;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -17,10 +17,10 @@ namespace Rebellion.Tests.Game.Messages
     [TestFixture]
     public class MessageFactoryTests
     {
-        private static readonly Dictionary<Message, MessageDeliveryRequest> _deliveriesByMessage =
-            new Dictionary<Message, MessageDeliveryRequest>();
-        private static readonly Dictionary<MessageDeliveryRequest, Message> _messagesByDelivery =
-            new Dictionary<MessageDeliveryRequest, Message>();
+        private static readonly Dictionary<Message, DeliverMessageCommand> _deliveriesByMessage =
+            new Dictionary<Message, DeliverMessageCommand>();
+        private static readonly Dictionary<DeliverMessageCommand, Message> _messagesByDelivery =
+            new Dictionary<DeliverMessageCommand, Message>();
 
         [Test]
         public void CreateMessages_RequestedMessage_UsesDataDefinedPresentation()
@@ -33,11 +33,11 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(luke, destination);
 
             MessageFactory factory = new MessageFactory(new MessageDefinition[0]);
-            MessageDeliveryRequest delivery = factory
+            DeliverMessageCommand delivery = factory
                 .CreateAuthoredMessages(
                     new[]
                     {
-                        new MessageDeliveryRequest
+                        new DeliverMessageCommand
                         {
                             Recipient = alliance,
                             SubjectNode = luke,
@@ -80,7 +80,7 @@ namespace Rebellion.Tests.Game.Messages
             Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
             game.AttachNode(officer, origin);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -109,7 +109,7 @@ namespace Rebellion.Tests.Game.Messages
             Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
             game.AttachNode(officer, origin);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -458,7 +458,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(firstOfficer, destination);
             game.AttachNode(secondOfficer, destination);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -508,7 +508,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(captive, destination);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -593,7 +593,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
             };
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -681,7 +681,7 @@ namespace Rebellion.Tests.Game.Messages
                 BuildingType = BuildingType.Headquarters,
             };
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[] { allianceHeadquarters },
                 new UnitArrivedResult { Unit = imperialHeadquarters, Destination = destination }
@@ -761,7 +761,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(firstShip, fleet);
             game.AttachNode(secondShip, fleet);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -817,7 +817,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(firstShip, fleet);
             game.AttachNode(secondShip, fleet);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1052,7 +1052,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(regiment, destination);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1089,7 +1089,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(shipyard, origin);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1152,7 +1152,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(regiment, origin);
             game.AttachNode(secondRegiment, origin);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1280,7 +1280,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
             };
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1307,7 +1307,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 SmugglingDefinitions(),
                 new SmugglingChangedResult
@@ -1346,7 +1346,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 SmugglingDefinitions(),
                 new SmugglingChangedResult
@@ -1910,7 +1910,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(mission, target);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2373,7 +2373,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(mission, target);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2528,7 +2528,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(target, origin);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2585,7 +2585,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(target, origin);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2683,7 +2683,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(officer, origin);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2897,7 +2897,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(officer, origin);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2928,7 +2928,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(officer, origin);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3049,7 +3049,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(discoverer, origin);
             game.AttachNode(traitor, origin);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3207,7 +3207,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = empire.InstanceID,
             };
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3259,7 +3259,7 @@ namespace Rebellion.Tests.Game.Messages
             );
             specific.GameObjectTypeID = deathStar.TypeID;
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[] { generic, specific },
                 new GameObjectSabotagedResult { DestroyedObject = deathStar, Context = target },
@@ -3392,7 +3392,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3417,7 +3417,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3687,7 +3687,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             target.OwnerInstanceID = null;
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3725,7 +3725,7 @@ namespace Rebellion.Tests.Game.Messages
             definition.PreviousOwnerInstanceID = empire.InstanceID;
             definition.NewOwnerInstanceID = alliance.InstanceID;
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[] { definition },
                 new PlanetOwnershipChangedResult
@@ -3762,7 +3762,7 @@ namespace Rebellion.Tests.Game.Messages
             );
             definition.FactionInstanceID = alliance.InstanceID;
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[] { definition },
                 new HeadquartersDestroyedResult
@@ -3834,7 +3834,7 @@ namespace Rebellion.Tests.Game.Messages
             target.OwnerInstanceID = null;
             Fleet fleet = new Fleet { OwnerInstanceID = alliance.InstanceID };
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3920,7 +3920,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(shipyard, origin);
             game.AttachNode(regiment, origin);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3969,7 +3969,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(firstShipyard, origin);
             game.AttachNode(secondShipyard, second);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -4005,7 +4005,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 SpaceBattleDefinitions(),
                 new SpaceCombatResult
@@ -4041,7 +4041,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 SpaceBattleOutcomeDefinitions(),
                 new SpaceCombatResult
@@ -4076,7 +4076,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             CombatUnitSnapshot snapshot = new CombatUnitSnapshot(ship) { Damaged = true };
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 SpaceBattleDefinitions(),
                 new SpaceCombatResult
@@ -4116,7 +4116,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(attacker, retreat);
             game.AttachNode(defender, target);
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 SpaceBattleOutcomeDefinitions(),
                 new SpaceCombatResult
@@ -4159,7 +4159,7 @@ namespace Rebellion.Tests.Game.Messages
                 target
             );
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 SpaceBattleDefinitions(),
                 new SpaceCombatResult
@@ -4188,7 +4188,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 BombardmentDefinitions(),
                 new BombardmentResult
@@ -4266,7 +4266,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 AssaultDefinitions(),
                 new PlanetaryAssaultResult
@@ -4306,7 +4306,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             (GameRoot game, _, _, _, Planet target) = BuildTwoFactionMessageScene();
 
-            List<MessageDeliveryRequest> deliveries = CreateMessages(
+            List<DeliverMessageCommand> deliveries = CreateMessages(
                 game,
                 BombardmentDefinitions().Concat(AssaultDefinitions()).ToArray(),
                 new BombardmentResult { Planet = target },
@@ -4325,15 +4325,15 @@ namespace Rebellion.Tests.Game.Messages
         /// <param name="definitions">The definitions.</param>
         /// <param name="results">The results.</param>
         /// <returns>The created messages.</returns>
-        private static List<MessageDeliveryRequest> CreateMessages(
+        private static List<DeliverMessageCommand> CreateMessages(
             GameRoot game,
             MessageDefinition[] definitions,
             params GameResult[] results
         )
         {
             MessageFactory factory = new MessageFactory(definitions);
-            List<MessageDeliveryRequest> deliveries = factory.CreateMessages(results, game);
-            foreach (MessageDeliveryRequest delivery in deliveries)
+            List<DeliverMessageCommand> deliveries = factory.CreateMessages(results, game);
+            foreach (DeliverMessageCommand delivery in deliveries)
                 _deliveriesByMessage[AsMessage(delivery)] = delivery;
             return deliveries;
         }
@@ -4345,7 +4345,7 @@ namespace Rebellion.Tests.Game.Messages
         /// <param name="faction">The faction.</param>
         /// <returns>The result of first message for.</returns>
         private static Message FirstMessageFor(
-            IEnumerable<MessageDeliveryRequest> deliveries,
+            IEnumerable<DeliverMessageCommand> deliveries,
             Faction faction
         )
         {
@@ -4358,8 +4358,8 @@ namespace Rebellion.Tests.Game.Messages
         /// <param name="deliveries">The deliveries.</param>
         /// <param name="faction">The faction.</param>
         /// <returns>The result of first delivery for.</returns>
-        private static MessageDeliveryRequest FirstDeliveryFor(
-            IEnumerable<MessageDeliveryRequest> deliveries,
+        private static DeliverMessageCommand FirstDeliveryFor(
+            IEnumerable<DeliverMessageCommand> deliveries,
             Faction faction
         ) => deliveries.First(delivery => delivery.Recipient == faction);
 
@@ -4368,7 +4368,7 @@ namespace Rebellion.Tests.Game.Messages
         /// </summary>
         /// <param name="message">The message.</param>
         /// <returns>The result of delivery for.</returns>
-        private static MessageDeliveryRequest DeliveryFor(Message message) =>
+        private static DeliverMessageCommand DeliveryFor(Message message) =>
             _deliveriesByMessage[message];
 
         /// <summary>
@@ -4376,7 +4376,7 @@ namespace Rebellion.Tests.Game.Messages
         /// </summary>
         /// <param name="request">The request.</param>
         /// <returns>The result of as message.</returns>
-        private static Message AsMessage(MessageDeliveryRequest request)
+        private static Message AsMessage(DeliverMessageCommand request)
         {
             if (_messagesByDelivery.TryGetValue(request, out Message existing))
                 return existing;

@@ -756,7 +756,7 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// Emitted when a combat encounter requires player input before the tick can continue.
-    /// GameManager holds this as the pending combat decision until the player resolves it.
+    /// GameSession holds this as the pending combat decision until the player resolves it.
     /// </summary>
     public class PendingCombatResult : GameResult
     {

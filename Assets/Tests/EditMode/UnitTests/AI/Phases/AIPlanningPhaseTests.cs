@@ -51,16 +51,7 @@ namespace Rebellion.Tests.AI.Phases
             AIPlanningPhase phase = new AIPlanningPhase(
                 new IAIProposalPlanner[] { new TestPlanner(proposal) }
             );
-            AITurnContext context = new AITurnContext(
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-            );
+            AITurnContext context = AITestSceneBuilder.CreateContext();
 
             phase.Execute(context);
 
@@ -75,16 +66,7 @@ namespace Rebellion.Tests.AI.Phases
             AIPlanningPhase phase = new AIPlanningPhase(
                 new IAIProposalPlanner[] { new TestPlanner(first), new TestPlanner(second) }
             );
-            AITurnContext context = new AITurnContext(
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-            );
+            AITurnContext context = AITestSceneBuilder.CreateContext();
             IEnumerator<object> planning = phase.ExecuteIncrementally(context).GetEnumerator();
 
             Assert.IsTrue(planning.MoveNext());

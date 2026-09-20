@@ -5,7 +5,6 @@ using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
 
 namespace Rebellion.AI.Planners
 {
@@ -584,11 +583,7 @@ namespace Rebellion.AI.Planners
                     && regiment.ManufacturingStatus == ManufacturingStatus.Complete
                     && regiment.Movement == null
                 );
-            int requiredGarrison = UprisingSystem.CalculateGarrisonRequirement(
-                planet,
-                context.Faction,
-                context.Game.Config.AI.Garrison
-            );
+            int requiredGarrison = context.Queries.GetGarrisonRequirement(planet, context.Faction);
             return Math.Max(0, readyRegimentCount - requiredGarrison);
         }
 

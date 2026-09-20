@@ -57,15 +57,7 @@ namespace Rebellion.Tests.Editor.Simulation
             List<SpecialForces> specialForces = game.GetSceneNodesByType<SpecialForces>();
             recordInitialState.Invoke(tracker, new object[] { game, specialForces });
 
-            Assert.IsTrue(
-                context.Manufacturing.StartManufacturing(
-                    planet,
-                    shipyard,
-                    planet,
-                    1,
-                    empire.InstanceID
-                )
-            );
+            Assert.IsTrue(context.StartManufacturing(planet, shipyard, planet, 1));
             record.Invoke(tracker, new object[] { Array.Empty<GameResult>() });
             Assert.AreEqual(
                 0,

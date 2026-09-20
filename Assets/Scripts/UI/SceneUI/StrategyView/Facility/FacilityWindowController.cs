@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -43,7 +44,7 @@ public sealed class FacilityWindowController
     private readonly HashSet<FacilityWindowView> boundViews = new HashSet<FacilityWindowView>();
     private readonly ConstructionWindowController constructionWindowController;
     private readonly Func<GameRoot> getGame;
-    private readonly Func<ManufacturingSystem> getManufacturingSystem;
+    private readonly GameSession gameSession;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
     private readonly Action markDirty;
@@ -62,7 +63,7 @@ public sealed class FacilityWindowController
     /// Creates a facility feature controller.
     /// </summary>
     /// <param name="getGame">Returns the active game.</param>
-    /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
+    /// <param name="gameSession">The active simulation session.</param>
     /// <param name="constructionWindowController">The construction sessions affected by destination changes.</param>
     /// <param name="getUIContext">Returns the active strategy presentation context.</param>
     /// <param name="targetingController">The strategy targeting controller.</param>
@@ -73,7 +74,7 @@ public sealed class FacilityWindowController
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public FacilityWindowController(
         Func<GameRoot> getGame,
-        Func<ManufacturingSystem> getManufacturingSystem,
+        GameSession gameSession,
         ConstructionWindowController constructionWindowController,
         Func<UIContext> getUIContext,
         TargetingController targetingController,
@@ -85,9 +86,7 @@ public sealed class FacilityWindowController
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getManufacturingSystem =
-            getManufacturingSystem
-            ?? throw new ArgumentNullException(nameof(getManufacturingSystem));
+        this.gameSession = gameSession ?? throw new ArgumentNullException(nameof(gameSession));
         this.constructionWindowController =
             constructionWindowController
             ?? throw new ArgumentNullException(nameof(constructionWindowController));
@@ -767,16 +766,20 @@ public sealed class FacilityWindowController
 
         Planet producer = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
         string playerFactionId = getGame()?.GetPlayerFaction()?.InstanceID;
-        ManufacturingSystem manufacturingSystem = getManufacturingSystem();
         if (
             destination == null
             || producer == null
-            || manufacturingSystem?.RetargetManufacturingDestination(
-                producer,
-                type.Value,
-                destination,
-                playerFactionId
-            ) != true
+            || !gameSession
+                .Execute(
+                    new RetargetManufacturingCommand
+                    {
+                        Producer = producer,
+                        Type = type.Value,
+                        Destination = destination,
+                        OwnerInstanceID = playerFactionId,
+                    }
+                )
+                .Accepted
         )
         {
             return;

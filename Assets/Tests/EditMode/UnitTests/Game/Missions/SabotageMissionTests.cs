@@ -7,7 +7,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -22,7 +22,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
             Regiment target = EntityFactory.CreateRegiment("target", "rebels");
             target.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -62,7 +62,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
             Officer targetOfficer = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(targetOfficer, enemyPlanet);
@@ -131,7 +131,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Building building = new Building
@@ -170,7 +170,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Building building = new Building
@@ -210,7 +210,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Building building = new Building
@@ -254,7 +254,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Regiment regiment = new Regiment
@@ -294,7 +294,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Building building = new Building
@@ -318,8 +318,8 @@ namespace Rebellion.Tests.Game.Missions
 
             game.DetachNode(building);
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            Movement movement = new Movement(game, fog, new Fleets(game));
+            Rebellion.Simulation.Missions missionSystem = TestSystems.CreateMissionSystem(
                 game,
                 new FixedRNG(0.0),
                 movement
@@ -343,7 +343,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Building firstBuilding = new Building
@@ -398,7 +398,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
             Regiment target = EntityFactory.CreateRegiment("target", "rebels");
             target.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -432,7 +432,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
             Regiment target = EntityFactory.CreateRegiment("target", "rebels");
             target.ManufacturingStatus = ManufacturingStatus.Complete;

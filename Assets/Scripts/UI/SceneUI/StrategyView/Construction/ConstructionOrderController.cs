@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Evaluates and starts construction orders against the current game state.
@@ -14,27 +15,17 @@ using Rebellion.Systems;
 public sealed class ConstructionOrderController
 {
     private readonly Func<GameRoot> getGame;
-    private readonly Func<ManufacturingSystem> getManufacturingSystem;
-    private readonly Func<MovementSystem> getMovementSystem;
+    private readonly GameSession gameSession;
 
     /// <summary>
     /// Creates a construction order controller.
     /// </summary>
     /// <param name="getGame">Returns the active game.</param>
-    /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
-    /// <param name="getMovementSystem">Returns the active movement system.</param>
-    public ConstructionOrderController(
-        Func<GameRoot> getGame,
-        Func<ManufacturingSystem> getManufacturingSystem,
-        Func<MovementSystem> getMovementSystem
-    )
+    /// <param name="gameSession">The active simulation session.</param>
+    public ConstructionOrderController(Func<GameRoot> getGame, GameSession gameSession)
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getManufacturingSystem =
-            getManufacturingSystem
-            ?? throw new ArgumentNullException(nameof(getManufacturingSystem));
-        this.getMovementSystem =
-            getMovementSystem ?? throw new ArgumentNullException(nameof(getMovementSystem));
+        this.gameSession = gameSession ?? throw new ArgumentNullException(nameof(gameSession));
     }
 
     /// <summary>
@@ -89,14 +80,13 @@ public sealed class ConstructionOrderController
         for (int index = 0; index < items.Count; index++)
         {
             if (
-                getManufacturingSystem()
-                    .CanStartManufacturing(
-                        producer,
-                        items[index],
-                        destination,
-                        buildCount,
-                        playerFactionId
-                    )
+                gameSession.Queries.CanStartManufacturing(
+                    producer,
+                    items[index],
+                    destination,
+                    buildCount,
+                    playerFactionId
+                )
             )
                 selections.Add(index);
         }
@@ -156,8 +146,18 @@ public sealed class ConstructionOrderController
         string playerFactionId
     )
     {
-        return getManufacturingSystem()
-            .StartManufacturing(producer, selected, destination, buildCount, playerFactionId);
+        return gameSession
+            .Execute(
+                new StartManufacturingCommand
+                {
+                    Producer = producer,
+                    Template = selected,
+                    Destination = destination,
+                    Count = buildCount,
+                    OwnerInstanceID = playerFactionId,
+                }
+            )
+            .Accepted;
     }
 
     /// <summary>
@@ -189,13 +189,9 @@ public sealed class ConstructionOrderController
     /// <param name="selected">The selected build template.</param>
     /// <param name="buildCount">The requested quantity.</param>
     /// <returns>The completion duration, or null when no facility can manufacture the item.</returns>
-    private static int? CalculateCompletionTicks(
-        Planet producer,
-        IManufacturable selected,
-        int buildCount
-    )
+    private int? CalculateCompletionTicks(Planet producer, IManufacturable selected, int buildCount)
     {
-        return ManufacturingSystem.EstimateManufacturingTicks(producer, selected, buildCount);
+        return gameSession.Queries.EstimateManufacturingTicks(producer, selected, buildCount);
     }
 
     /// <summary>
@@ -217,13 +213,12 @@ public sealed class ConstructionOrderController
         if (destination is not ContainerNode destinationContainer)
             return null;
 
-        return getMovementSystem()
-            .TryEstimateManufacturedTransitTicks(
-                movable,
-                producer,
-                destinationContainer,
-                out int transitTicks
-            )
+        return gameSession.Queries.TryEstimateManufacturedTransitTicks(
+            movable,
+            producer,
+            destinationContainer,
+            out int transitTicks
+        )
             ? transitTicks
             : null;
     }

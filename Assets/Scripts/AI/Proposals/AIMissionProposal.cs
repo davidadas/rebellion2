@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
@@ -169,10 +170,10 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission can still be created.</returns>
         public override bool CanExecute(AITurnContext context)
         {
-            if (context?.Missions == null || !IsStillValid())
+            if (context == null || !IsStillValid())
                 return false;
 
-            return context.Missions.CanCreateMission(CreateContext());
+            return context.Queries.CanCreateMission(CreateContext());
         }
 
         /// <summary>
@@ -184,7 +185,7 @@ namespace Rebellion.AI.Proposals
             if (!CanExecute(context))
                 return;
 
-            context.Missions.InitiateMission(CreateContext());
+            context.Execute(new InitiateMissionCommand { Context = CreateContext() });
         }
 
         /// <summary>

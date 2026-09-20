@@ -1,0 +1,995 @@
+using System.Collections.Generic;
+using System.Linq;
+using Rebellion.Game;
+using Rebellion.Game.Commands;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
+
+namespace Rebellion.Simulation
+{
+    /// <summary>
+    /// Manages planetary ownership and popular support.
+    /// </summary>
+    internal class PlanetaryControl
+        : IGameCommandHandler<SetPopularSupportCommand>,
+            IGameResultHandler<PlanetGarrisonChangedResult>,
+            IGameResultHandler<PopularSupportShiftResult>,
+            IGameCommandHandler<OwnershipChangeCommand>
+    {
+        private readonly GameRoot _game;
+        private readonly Movement _movementSystem;
+        private readonly Manufacturing _manufacturingSystem;
+        private readonly FogOfWar _fogOfWarSystem;
+        private readonly HashSet<string> _controlShiftedOwners = new HashSet<string>();
+        private readonly HashSet<string> _controlChangesInProgress = new HashSet<string>();
+        private int _controlShiftTick = -1;
+
+        /// <summary>
+        /// Creates a new PlanetaryControl.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="movementSystem">Used to evacuate enemy units on ownership change.</param>
+        /// <param name="manufacturingSystem">Used to clear queues on ownership change.</param>
+        /// <param name="fogOfWarSystem">Used to refresh faction snapshots on ownership change.</param>
+        public PlanetaryControl(
+            GameRoot game,
+            Movement movementSystem,
+            Manufacturing manufacturingSystem,
+            FogOfWar fogOfWarSystem
+        )
+        {
+            _game = game;
+            _movementSystem = movementSystem;
+            _manufacturingSystem = manufacturingSystem;
+            _fogOfWarSystem = fogOfWarSystem;
+        }
+
+        /// <summary>
+        /// Checks for support-driven ownership transfers.
+        /// </summary>
+        /// <returns>Any ownership change results generated this tick.</returns>
+        public List<GameResult> ProcessTick()
+        {
+            List<GameResult> results = new List<GameResult>();
+            UpdateBlockadeSupport();
+            UpdateUncolonizedPlanets(results);
+            CheckOwnershipTransfers(results);
+
+            return results;
+        }
+
+        /// <summary>
+        /// Updates timed popular-support changes caused by blockades.
+        /// </summary>
+        private void UpdateBlockadeSupport()
+        {
+            GameConfig.SupportShiftConfig config = _game.Config.SupportShift;
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
+            {
+                UpdateBlockadeSupport(planet, config);
+            }
+        }
+
+        /// <summary>
+        /// Moves support toward the side already favored while a fleet blockades the planet.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="config">The config.</param>
+        private void UpdateBlockadeSupport(Planet planet, GameConfig.SupportShiftConfig config)
+        {
+            if (!planet.IsBlockaded())
+            {
+                ResetBlockadeSupportTimer(planet);
+                return;
+            }
+
+            Faction blockadingFaction = GetBlockadingFaction(planet);
+            if (blockadingFaction == null)
+                return;
+
+            bool blockadeSupportsFavoredFaction =
+                TryGetFavoredFaction(planet, out Faction supportLeader)
+                && blockadingFaction == supportLeader;
+            int interval = GetBlockadeSupportInterval(config, blockadeSupportsFavoredFaction);
+            if (interval <= 0)
+                return;
+
+            if (
+                planet.NextBlockadeSupportShiftTick <= 0
+                || planet.BlockadeSupportShiftIntervalTicks != interval
+            )
+            {
+                ScheduleBlockadeSupport(planet, interval);
+                return;
+            }
+
+            if (_game.CurrentTick < planet.NextBlockadeSupportShiftTick)
+                return;
+
+            int shift = blockadeSupportsFavoredFaction
+                ? config.BlockadeMatchShift
+                : config.BlockadeOpposeShift;
+            shift = ApplyCoreSupportResistance(
+                planet,
+                blockadingFaction,
+                shift,
+                config.WeakSupportPenaltyDivisor
+            );
+            ShiftPopularSupport(planet, blockadingFaction, shift);
+            ScheduleBlockadeSupport(planet, interval);
+        }
+
+        /// <summary>
+        /// Returns the faction operating the fleet that currently blockades a planet.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <returns>The requested blockading faction.</returns>
+        private Faction GetBlockadingFaction(Planet planet)
+        {
+            Fleet blockadingFleet = planet
+                .GetChildren<Fleet>()
+                .FirstOrDefault(fleet =>
+                    fleet.Movement == null
+                    && fleet.HasOperationalCapitalShips()
+                    && fleet.OwnerInstanceID != planet.OwnerInstanceID
+                );
+            return _game.GetFactionByOwnerInstanceID(blockadingFleet?.OwnerInstanceID);
+        }
+
+        /// <summary>
+        /// Finds the faction with strictly more popular support than every other faction.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="supportLeader">Receives the support leader.</param>
+        /// <returns>True when the operation succeeds; otherwise false.</returns>
+        private bool TryGetFavoredFaction(Planet planet, out Faction supportLeader)
+        {
+            List<Faction> factions = _game.GetFactions();
+            Faction candidate = factions
+                .OrderByDescending(faction => planet.GetPopularSupport(faction.InstanceID))
+                .FirstOrDefault();
+            if (candidate == null)
+            {
+                supportLeader = null;
+                return false;
+            }
+
+            int leadingSupport = planet.GetPopularSupport(candidate.InstanceID);
+            bool supportIsTied = factions.Any(faction =>
+                faction != candidate
+                && planet.GetPopularSupport(faction.InstanceID) == leadingSupport
+            );
+            supportLeader = supportIsTied ? null : candidate;
+            return supportLeader != null;
+        }
+
+        /// <summary>
+        /// Returns the blockade shift interval for the planet's current support alignment.
+        /// </summary>
+        /// <param name="config">The config.</param>
+        /// <param name="blockadeSupportsFavoredFaction">Whether blockade supports favored faction.</param>
+        /// <returns>The requested blockade support interval.</returns>
+        private static int GetBlockadeSupportInterval(
+            GameConfig.SupportShiftConfig config,
+            bool blockadeSupportsFavoredFaction
+        )
+        {
+            return blockadeSupportsFavoredFaction
+                ? config.BlockadeMatchShiftIntervalTicks
+                : config.BlockadeOpposeShiftIntervalTicks;
+        }
+
+        /// <summary>
+        /// Clears a planet's blockade support-shift schedule.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        private static void ResetBlockadeSupportTimer(Planet planet)
+        {
+            planet.NextBlockadeSupportShiftTick = 0;
+            planet.BlockadeSupportShiftIntervalTicks = 0;
+        }
+
+        /// <summary>
+        /// Schedules the planet's next blockade support shift.
+        /// </summary>
+        /// <param name="planet">The planet.</param>
+        /// <param name="interval">The interval.</param>
+        private void ScheduleBlockadeSupport(Planet planet, int interval)
+        {
+            planet.NextBlockadeSupportShiftTick = _game.CurrentTick + interval;
+            planet.BlockadeSupportShiftIntervalTicks = interval;
+        }
+
+        /// <summary>
+        /// Reconciles planets whose active garrisons changed.
+        /// </summary>
+        /// <param name="results">The result batch to inspect.</param>
+        /// <returns>Any ownership changes caused by the garrison changes.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<PlanetGarrisonChangedResult> results)
+        {
+            List<GameResult> controlResults = new List<GameResult>();
+            if (results == null)
+                return controlResults;
+
+            IEnumerable<Planet> affectedPlanets = results
+                .Select(result => result.Planet)
+                .Where(planet => planet != null)
+                .Distinct();
+            foreach (Planet planet in affectedPlanets)
+                controlResults.AddRange(ReconcilePlanet(planet));
+
+            return controlResults;
+        }
+
+        /// <summary>
+        /// Sets absolute popular support and reports every faction value changed by rebalancing.
+        /// </summary>
+        /// <param name="commands">The support commands.</param>
+        /// <returns>The resulting support-change facts.</returns>
+        public List<GameResult> HandleCommands(IReadOnlyList<SetPopularSupportCommand> commands)
+        {
+            List<GameResult> results = new List<GameResult>();
+            foreach (
+                SetPopularSupportCommand command in commands
+                    ?? System.Array.Empty<SetPopularSupportCommand>()
+            )
+            {
+                if (command?.Planet == null || command.Faction == null)
+                    continue;
+
+                Dictionary<string, int> previous = _game
+                    .GetFactions()
+                    .ToDictionary(
+                        faction => faction.InstanceID,
+                        faction => command.Planet.GetPopularSupport(faction.InstanceID)
+                    );
+                command.Planet.SetPopularSupport(command.Faction.InstanceID, command.Support);
+                foreach (Faction faction in _game.GetFactions())
+                {
+                    int oldValue = previous[faction.InstanceID];
+                    int newValue = command.Planet.GetPopularSupport(faction.InstanceID);
+                    if (oldValue == newValue)
+                        continue;
+
+                    results.Add(
+                        new PlanetStatChangedResult
+                        {
+                            Planet = command.Planet,
+                            Faction = faction,
+                            Category = PlanetChangeCategory.Loyalty,
+                            OldValue = oldValue,
+                            NewValue = newValue,
+                            Tick = command.Tick,
+                            SourceEventInstanceID = command.SourceEventInstanceID,
+                        }
+                    );
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Applies requested popular-support shifts and reports their resulting state changes.
+        /// </summary>
+        /// <param name="results">The requested popular-support shifts.</param>
+        /// <returns>The completed stat and ownership changes.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<PopularSupportShiftResult> results)
+        {
+            List<GameResult> reactions = new List<GameResult>();
+            if (results == null)
+                return reactions;
+
+            foreach (PopularSupportShiftResult result in results)
+            {
+                Planet planet = result?.Planet;
+                Faction faction = result?.Faction;
+                if (planet == null || faction == null || result.Shift == 0)
+                    continue;
+
+                int shift = ApplyCoreSupportResistance(
+                    planet,
+                    faction,
+                    result.Shift,
+                    _game.Config.SupportShift.WeakSupportPenaltyDivisor
+                );
+                int oldSupport = planet.GetPopularSupport(faction.InstanceID);
+                ShiftPopularSupport(planet, faction, shift);
+                int newSupport = planet.GetPopularSupport(faction.InstanceID);
+                if (oldSupport == newSupport)
+                    continue;
+
+                reactions.Add(
+                    new PlanetStatChangedResult
+                    {
+                        Planet = planet,
+                        Faction = faction,
+                        Category = PlanetChangeCategory.Loyalty,
+                        OldValue = oldSupport,
+                        NewValue = newSupport,
+                        Tick = result.Tick,
+                    }
+                );
+
+                Faction newController = GetPlanetController(planet);
+                if (planet.OwnerInstanceID == newController?.InstanceID)
+                    continue;
+
+                PlanetOwnershipChangedResult ownershipChange = ChangePlanetControl(
+                    planet,
+                    newController
+                );
+                if (ownershipChange == null)
+                    continue;
+
+                ownershipChange.Reason = PlanetOwnershipChangeReason.PopularSupport;
+                ownershipChange.Tick = result.Tick;
+                reactions.Add(ownershipChange);
+            }
+
+            return reactions;
+        }
+
+        /// <summary>
+        /// Applies event-requested ownership changes through the authoritative rules.
+        /// </summary>
+        /// <param name="requests">The requests.</param>
+        /// <returns>The result of handle requests.</returns>
+        List<GameResult> IGameCommandHandler<OwnershipChangeCommand>.HandleCommands(
+            IReadOnlyList<OwnershipChangeCommand> requests
+        )
+        {
+            List<GameResult> results = new List<GameResult>();
+            foreach (OwnershipChangeCommand request in requests)
+            {
+                foreach (Planet planet in request.Planets)
+                {
+                    if (planet.OwnerInstanceID != request.NewOwner.InstanceID)
+                        results.Add(TransferPlanet(planet, request.NewOwner));
+                }
+
+                foreach (ISceneNode unit in request.Units)
+                {
+                    Faction previousOwner = _game.GetFactionByOwnerInstanceID(unit.OwnerInstanceID);
+                    if (previousOwner == request.NewOwner)
+                        continue;
+                    _game.ChangeOwnership(unit, request.NewOwner.InstanceID);
+                    results.Add(
+                        new UnitOwnershipChangedResult
+                        {
+                            Unit = unit,
+                            PreviousOwner = previousOwner,
+                            NewOwner = request.NewOwner,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                }
+            }
+            return results;
+        }
+
+        /// <summary>
+        /// Re-evaluates one planet's control state.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>Any ownership-change results produced.</returns>
+        public List<GameResult> ReconcilePlanet(Planet planet)
+        {
+            List<GameResult> results = new List<GameResult>();
+            if (planet == null || !_controlChangesInProgress.Add(planet.InstanceID))
+                return results;
+
+            try
+            {
+                if (!planet.IsColonized)
+                {
+                    UpdateUncolonizedPlanet(planet, results);
+                    return results;
+                }
+
+                List<string> regimentOwners = GetActiveRegimentOwners(planet);
+                Faction controller = GetPlanetController(planet, regimentOwners);
+                PlanetOwnershipChangedResult result = ChangePlanetControl(planet, controller);
+                if (result != null)
+                {
+                    if (regimentOwners.Count == 0)
+                        result.Reason = PlanetOwnershipChangeReason.PopularSupport;
+
+                    results.Add(result);
+                }
+            }
+            finally
+            {
+                _controlChangesInProgress.Remove(planet.InstanceID);
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Reconciles every planet against its current regiment presence.
+        /// </summary>
+        /// <param name="results">Collection to append any ownership-change results to.</param>
+        private void UpdateUncolonizedPlanets(List<GameResult> results)
+        {
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
+                UpdateUncolonizedPlanet(planet, results);
+        }
+
+        /// <summary>
+        /// Releases abandoned uncolonized owned planets back to neutral control.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <param name="results">Collection to append any ownership-change results to.</param>
+        private void UpdateUncolonizedPlanet(Planet planet, List<GameResult> results)
+        {
+            if (planet == null)
+                return;
+
+            List<Regiment> regiments = planet.GetAllRegiments();
+            string currentOwner = planet.GetOwnerInstanceID();
+
+            if (!planet.IsColonized && !string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
+            {
+                results.Add(ClearPlanetOwnership(planet));
+            }
+        }
+
+        /// <summary>
+        /// Transfers a planet to a new owner.
+        /// </summary>
+        /// <param name="planet">The planet to transfer.</param>
+        /// <param name="newOwner">The faction receiving ownership.</param>
+        /// <returns>The ownership-change result.</returns>
+        public PlanetOwnershipChangedResult TransferPlanet(Planet planet, Faction newOwner)
+        {
+            return ApplyPlanetOwnershipChange(planet, newOwner);
+        }
+
+        /// <summary>
+        /// Clears the planet's owner, returning it to neutral control. Cancels competing
+        /// missions, evicts non-owner units, clears manufacturing queues, and zeroes
+        /// popular support for every faction. Buildings are left in place — they remain
+        /// where they were built and only transfer when a new faction claims the planet.
+        /// </summary>
+        /// <param name="planet">The planet whose ownership is being cleared.</param>
+        /// <returns>The ownership-change result.</returns>
+        public PlanetOwnershipChangedResult ClearPlanetOwnership(Planet planet)
+        {
+            PlanetOwnershipChangedResult result = ApplyPlanetOwnershipChange(
+                planet,
+                newOwner: null
+            );
+
+            foreach (Faction faction in _game.GetFactions())
+                planet.SetPopularSupport(faction.InstanceID, 0);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Reconciles control after bombardment changes the defending garrison.
+        /// </summary>
+        /// <param name="planet">The bombarded planet.</param>
+        /// <param name="previousOwnerId">The faction instance ID that controlled the planet before bombardment.</param>
+        /// <returns>The ownership changes caused by control reconciliation and support propagation.</returns>
+        internal List<PlanetOwnershipChangedResult> ResolveBombardmentControl(
+            Planet planet,
+            string previousOwnerId
+        )
+        {
+            List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
+            Faction provisionalOwner = GetPlanetController(planet);
+            if (provisionalOwner?.InstanceID == previousOwnerId)
+                return results;
+
+            PlanetOwnershipChangedResult controlChange = ChangePlanetControl(
+                planet,
+                provisionalOwner
+            );
+            if (controlChange != null)
+                results.Add(controlChange);
+
+            Faction supportBeneficiary =
+                provisionalOwner
+                ?? _game
+                    .GetFactions()
+                    .FirstOrDefault(faction => faction.InstanceID != previousOwnerId);
+            results.AddRange(
+                ShiftBombardmentSupport(
+                    GetAffectedPlanets(planet.GetParentOfType<PlanetSector>()),
+                    supportBeneficiary,
+                    _game.Config.SupportShift.GarrisonRemovalSupportShift
+                )
+            );
+
+            return results;
+        }
+
+        /// <summary>
+        /// Applies bombardment-related support shifts and resolves resulting control changes.
+        /// </summary>
+        /// <param name="planets">The planets receiving the support shift.</param>
+        /// <param name="faction">The faction whose support changes.</param>
+        /// <param name="shift">The signed support adjustment.</param>
+        /// <returns>The ownership changes caused by the support shifts.</returns>
+        internal List<PlanetOwnershipChangedResult> ShiftBombardmentSupport(
+            IEnumerable<Planet> planets,
+            Faction faction,
+            int shift
+        )
+        {
+            List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
+            Queue<(Planet planet, Faction faction, int shift)> pending =
+                new Queue<(Planet planet, Faction faction, int shift)>();
+            EnqueueSupportShifts(pending, planets, faction, shift);
+
+            while (pending.Count > 0)
+            {
+                (Planet planet, Faction shiftFaction, int supportShift) = pending.Dequeue();
+                Faction previousController = GetPlanetController(planet);
+                ShiftPopularSupport(planet, shiftFaction, supportShift);
+                Faction newController = GetPlanetController(planet);
+                if (previousController?.InstanceID == newController?.InstanceID)
+                    continue;
+
+                PlanetOwnershipChangedResult controlChange = ChangePlanetControl(
+                    planet,
+                    newController
+                );
+                if (controlChange != null)
+                {
+                    controlChange.Reason = PlanetOwnershipChangeReason.PopularSupport;
+                    results.Add(controlChange);
+                }
+
+                if (!CanApplyControlSupportShift(previousController))
+                    continue;
+
+                Faction beneficiary =
+                    newController
+                    ?? _game
+                        .GetFactions()
+                        .FirstOrDefault(candidate =>
+                            candidate.InstanceID != previousController?.InstanceID
+                        );
+                EnqueueSupportShifts(
+                    pending,
+                    GetAffectedPlanets(planet.GetParentOfType<PlanetSector>()),
+                    beneficiary,
+                    _game.Config.SupportShift.ControlChangeSupportShift
+                );
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Adjusts one faction's popular support on a populated planet.
+        /// </summary>
+        /// <param name="planet">The planet whose support changes.</param>
+        /// <param name="faction">The faction whose support is adjusted.</param>
+        /// <param name="shift">The signed support adjustment.</param>
+        internal void ShiftPopularSupport(Planet planet, Faction faction, int shift)
+        {
+            if (planet == null || faction == null || shift == 0 || !planet.IsPopulated())
+                return;
+
+            int currentSupport = planet.GetPopularSupport(faction.InstanceID);
+            int newSupport = System.Math.Clamp(currentSupport + shift, 0, 100);
+            if (newSupport == currentSupport)
+                return;
+
+            if (shift > 0)
+            {
+                planet.SetPopularSupport(faction.InstanceID, newSupport);
+                return;
+            }
+
+            Faction opposingFaction = _game
+                .GetFactions()
+                .FirstOrDefault(candidate => candidate.InstanceID != faction.InstanceID);
+            if (opposingFaction == null)
+            {
+                planet.SetPopularSupport(faction.InstanceID, newSupport);
+                return;
+            }
+
+            planet.SetPopularSupport(opposingFaction.InstanceID, 100 - newSupport);
+        }
+
+        /// <summary>
+        /// Applies the original weak-support reduction to a shift on a core sector.
+        /// </summary>
+        /// <param name="planet">The planet receiving the support shift.</param>
+        /// <param name="faction">The faction whose support is changing.</param>
+        /// <param name="shift">The unadjusted signed support shift.</param>
+        /// <param name="divisor">The configured weak-support divisor.</param>
+        /// <returns>The support shift after any core-sector reduction.</returns>
+        internal static int ApplyCoreSupportResistance(
+            Planet planet,
+            Faction faction,
+            int shift,
+            int divisor
+        )
+        {
+            if (
+                shift == 0
+                || divisor <= 0
+                || planet?.GetParentOfType<PlanetSector>()?.SectorType != PlanetSectorType.Core
+            )
+                return shift;
+
+            bool penaltyApplies = faction?.Settings?.SupportResistance switch
+            {
+                SupportChange.Increase => shift > 0,
+                SupportChange.Decrease => shift < 0,
+                _ => false,
+            };
+            return penaltyApplies ? shift / divisor : shift;
+        }
+
+        /// <summary>
+        /// Transfers or clears planet ownership when the resolved controller changes.
+        /// </summary>
+        /// <param name="planet">The planet whose control is changing.</param>
+        /// <param name="newOwner">The resolved owner, or null for neutral control.</param>
+        /// <returns>The ownership-change result, or null when ownership is unchanged.</returns>
+        private PlanetOwnershipChangedResult ChangePlanetControl(Planet planet, Faction newOwner)
+        {
+            if (planet.GetOwnerInstanceID() == newOwner?.InstanceID)
+                return null;
+
+            return ApplyPlanetOwnershipChange(planet, newOwner);
+        }
+
+        /// <summary>
+        /// Applies the shared state transition for transferring or clearing planet ownership.
+        /// </summary>
+        /// <param name="planet">The planet whose ownership is changing.</param>
+        /// <param name="newOwner">The receiving faction, or null for neutral control.</param>
+        /// <returns>The completed ownership-change result.</returns>
+        private PlanetOwnershipChangedResult ApplyPlanetOwnershipChange(
+            Planet planet,
+            Faction newOwner
+        )
+        {
+            bool ownsControlChange = _controlChangesInProgress.Add(planet.InstanceID);
+            try
+            {
+                string previousOwnerId = planet.GetOwnerInstanceID();
+                string newOwnerId = newOwner?.InstanceID;
+                Faction previousOwner = string.IsNullOrEmpty(previousOwnerId)
+                    ? null
+                    : _game.GetFactionByOwnerInstanceID(previousOwnerId);
+                List<Faction> observers = GetOwnershipChangeObservers(
+                    planet,
+                    previousOwner,
+                    newOwner
+                );
+
+                _manufacturingSystem.InvalidatePlanetDestinationOrders(planet, newOwnerId);
+
+                if (newOwner != null)
+                    TransferBuildings(planet, newOwner);
+
+                _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
+                EvictEnemyUnits(planet, newOwnerId);
+                planet.EndUprising();
+                if (newOwner == null)
+                {
+                    _game.DeregsiterOwnedUnit(planet);
+                    planet.SetOwnerInstanceID(null);
+                }
+                else
+                {
+                    _game.ChangeOwnership(planet, newOwnerId);
+                }
+
+                if (previousOwner?.InstanceID != newOwnerId)
+                    CaptureSnapshotForFaction(planet, previousOwner);
+                CaptureOwnershipChange(planet, observers);
+
+                return CreateOwnershipChangedResult(planet, previousOwner, newOwner, observers);
+            }
+            finally
+            {
+                if (ownsControlChange)
+                    _controlChangesInProgress.Remove(planet.InstanceID);
+            }
+        }
+
+        /// <summary>
+        /// Finds the faction whose support qualifies it to control a planet.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The qualifying faction with the greatest support, or null when none qualifies.</returns>
+        private Faction GetSupportController(Planet planet)
+        {
+            int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
+            return _game
+                .GetFactions()
+                .Where(faction => planet.GetPopularSupport(faction.InstanceID) >= threshold)
+                .OrderByDescending(faction => planet.GetPopularSupport(faction.InstanceID))
+                .FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Resolves control from active regiments before falling back to popular support.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
+        private Faction GetPlanetController(Planet planet)
+        {
+            return GetPlanetController(planet, GetActiveRegimentOwners(planet));
+        }
+
+        /// <summary>
+        /// Gets the distinct owners of completed, stationary regiments on a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The active regiment owner identifiers.</returns>
+        private List<string> GetActiveRegimentOwners(Planet planet)
+        {
+            return planet
+                .GetAllRegiments()
+                .Where(regiment =>
+                    regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                )
+                .Select(regiment => regiment.GetOwnerInstanceID())
+                .Where(ownerId => !string.IsNullOrEmpty(ownerId))
+                .Distinct()
+                .ToList();
+        }
+
+        /// <summary>
+        /// Resolves planetary control from active regiment owners and popular support.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <param name="regimentOwners">The distinct active regiment owner identifiers.</param>
+        /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
+        private Faction GetPlanetController(Planet planet, List<string> regimentOwners)
+        {
+            if (regimentOwners.Count == 1)
+                return _game.GetFactionByOwnerInstanceID(regimentOwners[0]);
+
+            if (regimentOwners.Count > 1)
+                return null;
+
+            return GetSupportController(planet);
+        }
+
+        /// <summary>
+        /// Limits propagated control-change support shifts to one per displaced faction each tick.
+        /// </summary>
+        /// <param name="previousController">The faction displaced by the control change.</param>
+        /// <returns>True when the support shift may be propagated.</returns>
+        private bool CanApplyControlSupportShift(Faction previousController)
+        {
+            if (previousController == null)
+                return true;
+
+            if (_controlShiftTick != _game.CurrentTick)
+            {
+                _controlShiftTick = _game.CurrentTick;
+                _controlShiftedOwners.Clear();
+            }
+
+            return _controlShiftedOwners.Add(previousController.InstanceID);
+        }
+
+        /// <summary>
+        /// Adds valid support-shift work items to the pending queue.
+        /// </summary>
+        /// <param name="pending">The queue receiving support shifts.</param>
+        /// <param name="planets">The planets to enqueue.</param>
+        /// <param name="faction">The faction whose support changes.</param>
+        /// <param name="shift">The signed support adjustment.</param>
+        private static void EnqueueSupportShifts(
+            Queue<(Planet planet, Faction faction, int shift)> pending,
+            IEnumerable<Planet> planets,
+            Faction faction,
+            int shift
+        )
+        {
+            if (planets == null || faction == null || shift == 0)
+                return;
+
+            foreach (Planet planet in planets)
+                pending.Enqueue((planet, faction, shift));
+        }
+
+        /// <summary>
+        /// Gets populated, intact planets affected by a sector-level support shift.
+        /// </summary>
+        /// <param name="sector">The planet sector to inspect.</param>
+        /// <returns>The planets eligible for the support shift.</returns>
+        private static IEnumerable<Planet> GetAffectedPlanets(PlanetSector sector)
+        {
+            return sector
+                    ?.GetChildren<Planet>()
+                    .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
+                ?? Enumerable.Empty<Planet>();
+        }
+
+        /// <summary>
+        /// Checks all planets for support above the ownership threshold and transfers if needed.
+        /// </summary>
+        /// <param name="results">Collection to append any ownership change results to.</param>
+        private void CheckOwnershipTransfers(List<GameResult> results)
+        {
+            int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
+
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
+            {
+                if (!CanTransferByPopularSupport(planet))
+                    continue;
+
+                foreach (Faction faction in _game.GetFactions())
+                {
+                    int support = planet.GetPopularSupport(faction.InstanceID);
+                    if (support < threshold)
+                        continue;
+
+                    PlanetOwnershipChangedResult result = TransferPlanet(planet, faction);
+                    result.Reason = PlanetOwnershipChangeReason.PopularSupport;
+                    results.Add(result);
+
+                    GameLogger.Log(
+                        $"Planet {planet.GetDisplayName()} transferred to {faction.DisplayName} (support {support} > {threshold})"
+                    );
+
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns true when popular support may transfer this planet to a faction.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>True when the planet can transfer by popular support.</returns>
+        private static bool CanTransferByPopularSupport(Planet planet)
+        {
+            return planet.IsColonized
+                && string.IsNullOrEmpty(planet.GetOwnerInstanceID())
+                && planet.GetAllRegiments().Count == 0;
+        }
+
+        /// <summary>
+        /// Creates the result describing a completed planet ownership change.
+        /// </summary>
+        /// <param name="planet">The planet whose ownership changed.</param>
+        /// <param name="previousOwner">The faction that previously controlled the planet.</param>
+        /// <param name="newOwner">The faction that now controls the planet.</param>
+        /// <param name="observers">The factions that observed the ownership change.</param>
+        /// <returns>The populated ownership-change result.</returns>
+        private PlanetOwnershipChangedResult CreateOwnershipChangedResult(
+            Planet planet,
+            Faction previousOwner,
+            Faction newOwner,
+            IEnumerable<Faction> observers
+        )
+        {
+            return new PlanetOwnershipChangedResult
+            {
+                Planet = planet,
+                PreviousOwner = previousOwner,
+                NewOwner = newOwner,
+                Tick = _game.CurrentTick,
+                ObserverFactionInstanceIDs = observers
+                    .Select(faction => faction.InstanceID)
+                    .Distinct()
+                    .ToList(),
+            };
+        }
+
+        /// <summary>
+        /// Finds factions that can observe an ownership change at a planet.
+        /// </summary>
+        /// <param name="planet">The planet changing ownership.</param>
+        /// <param name="previousOwner">The previous owner, when present.</param>
+        /// <param name="newOwner">The new owner, when present.</param>
+        /// <returns>The observing factions, including both affected owners.</returns>
+        private List<Faction> GetOwnershipChangeObservers(
+            Planet planet,
+            Faction previousOwner,
+            Faction newOwner
+        )
+        {
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            List<Faction> observers = _game
+                .GetFactions()
+                .Where(faction =>
+                    sector?.SectorType == PlanetSectorType.Core
+                    || (_fogOfWarSystem?.IsPlanetVisible(planet, faction) ?? false)
+                )
+                .ToList();
+
+            if (previousOwner != null && !observers.Contains(previousOwner))
+                observers.Add(previousOwner);
+            if (newOwner != null && !observers.Contains(newOwner))
+                observers.Add(newOwner);
+
+            return observers;
+        }
+
+        /// <summary>
+        /// Records the new owner for every faction that observed a control change.
+        /// </summary>
+        /// <param name="planet">The planet whose owner changed.</param>
+        /// <param name="observers">The factions that observed the change.</param>
+        private void CaptureOwnershipChange(Planet planet, IEnumerable<Faction> observers)
+        {
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            if (_fogOfWarSystem == null || sector == null)
+                return;
+
+            _fogOfWarSystem.CaptureOwnershipChange(observers, planet, sector, _game.CurrentTick);
+        }
+
+        /// <summary>
+        /// Captures the current planet state for one faction when that faction loses direct ownership.
+        /// </summary>
+        /// <param name="planet">The planet being snapshotted.</param>
+        /// <param name="faction">The faction receiving the snapshot.</param>
+        private void CaptureSnapshotForFaction(Planet planet, Faction faction)
+        {
+            if (_fogOfWarSystem == null || faction == null)
+                return;
+
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            if (sector == null)
+                return;
+
+            _fogOfWarSystem.CaptureSnapshot(faction, planet, sector, _game.CurrentTick);
+        }
+
+        /// <summary>
+        /// Transfers all buildings on the planet to the new owner.
+        /// </summary>
+        /// <param name="planet">The planet whose buildings are transferred.</param>
+        /// <param name="newOwner">The faction receiving ownership of the buildings.</param>
+        private void TransferBuildings(Planet planet, Faction newOwner)
+        {
+            foreach (Building building in planet.GetChildren<Building>(includeDisabled: true))
+            {
+                _game.ChangeOwnership(building, newOwner.InstanceID);
+            }
+        }
+
+        /// <summary>
+        /// Removes non-owner units from the planet: starfighters stationed on the surface are
+        /// destroyed with the change of control, while all other units evacuate to the nearest
+        /// friendly planet that accepts them. Regiments with no reachable destination are
+        /// destroyed; officers with no reachable destination are captured by the new owner.
+        /// </summary>
+        /// <param name="planet">The planet to evict enemy units from.</param>
+        /// <param name="newOwnerID">The instance ID of the new owning faction.</param>
+        private void EvictEnemyUnits(Planet planet, string newOwnerID)
+        {
+            List<IMovable> enemies = planet
+                .GetChildren<IMovable>()
+                .Where(m =>
+                    m.GetOwnerInstanceID() != newOwnerID && m is not Fleet && m is not Building
+                )
+                .ToList();
+
+            foreach (IMovable unit in enemies)
+            {
+                if (unit is Starfighter)
+                    _movementSystem.DestroyEvictedUnit(unit, planet);
+                else
+                    _movementSystem.EvacuateToNearestFriendlyPlanet(
+                        unit,
+                        evictingOwnerInstanceID: newOwnerID
+                    );
+            }
+        }
+    }
+}

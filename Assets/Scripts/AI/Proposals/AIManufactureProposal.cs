@@ -296,12 +296,11 @@ namespace Rebellion.AI.Proposals
             if (IsCountedManufacturingDemand())
             {
                 if (
-                    !context.Manufacturing.StartManufacturing(
+                    !context.StartManufacturing(
                         ProducerPlanet,
                         Product.GetReference(),
                         Destination,
-                        GetManufacturingCount(),
-                        context.Faction.InstanceID
+                        GetManufacturingCount()
                     )
                 )
                     LogEnqueueFailure();
@@ -336,7 +335,7 @@ namespace Rebellion.AI.Proposals
 
             if (
                 Destination is Fleet fleet
-                && !context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, fleet)
+                && !context.EnqueueManufacturing(ProducerPlanet, manufacturable, fleet)
             )
                 LogEnqueueFailure();
         }
@@ -410,7 +409,6 @@ namespace Rebellion.AI.Proposals
         {
             if (
                 context?.Faction == null
-                || context.Manufacturing == null
                 || Demand == null
                 || Destination == null
                 || Product?.GetReference() == null
@@ -454,7 +452,7 @@ namespace Rebellion.AI.Proposals
                 Demand.Kind != AIDemandKind.BuildingUpgrade
                 && IsCountedManufacturingDemand()
                 && validateOrderAcceptance
-                && !context.Manufacturing.CanAcceptManufacturingOrder(
+                && !context.Queries.CanAcceptManufacturingOrder(
                     ProducerPlanet,
                     Product.GetReference(),
                     Destination,
@@ -509,7 +507,7 @@ namespace Rebellion.AI.Proposals
             Fleet fleet = context.Faction.CreateFleet(roleType: roleType);
             context.Game.AttachNode(fleet, destinationPlanet);
 
-            if (context.Manufacturing.Enqueue(ProducerPlanet, capitalShip, fleet))
+            if (context.EnqueueManufacturing(ProducerPlanet, capitalShip, fleet))
                 return true;
 
             context.Game.DetachNode(fleet);
@@ -638,12 +636,11 @@ namespace Rebellion.AI.Proposals
             bool started = false;
             try
             {
-                started = context.Manufacturing.StartManufacturing(
+                started = context.StartManufacturing(
                     ProducerPlanet,
                     Product.GetReference(),
                     destinationPlanet,
-                    1,
-                    context.Faction.InstanceID
+                    1
                 );
             }
             finally
@@ -669,7 +666,7 @@ namespace Rebellion.AI.Proposals
             IManufacturable manufacturable
         )
         {
-            return context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, destinationPlanet);
+            return context.EnqueueManufacturing(ProducerPlanet, manufacturable, destinationPlanet);
         }
 
         /// <summary>

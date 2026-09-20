@@ -38,12 +38,11 @@ namespace Rebellion.AI.Scoring
             if (
                 context?.Faction == null
                 || context.Game?.Config == null
-                || context.Missions == null
                 || proposal is not AIMissionProposal missionProposal
             )
                 return 0;
 
-            MissionOdds odds = context.Missions.GetMissionOdds(
+            MissionOdds odds = context.Queries.GetMissionOdds(
                 missionProposal.CreateContext(),
                 context.Assessment.GetMissionDetectorCandidates(missionProposal.TargetPlanet)
             );

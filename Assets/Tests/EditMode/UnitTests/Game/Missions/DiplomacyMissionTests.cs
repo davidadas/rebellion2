@@ -41,7 +41,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
-                "Mission should not emit ownership change; PlanetaryControlSystem handles transfers"
+                "Mission should not emit ownership change; PlanetaryControl handles transfers"
             );
             Assert.AreEqual(60, planet.GetPopularSupport("empire"));
             Assert.AreEqual(1, GetSupportShift(results).Shift);

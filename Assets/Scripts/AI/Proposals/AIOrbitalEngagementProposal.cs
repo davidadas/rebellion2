@@ -123,7 +123,7 @@ namespace Rebellion.AI.Proposals
                 }
 
                 Fleet.Order.Status = FleetOrderStatus.Readying;
-                context.Movement?.RequestMove(Fleet, TargetPlanet);
+                context.Move(Fleet, TargetPlanet);
                 return;
             }
 
@@ -188,11 +188,11 @@ namespace Rebellion.AI.Proposals
             );
             if (origin?.GetOwnerInstanceID() == context.Faction.InstanceID)
             {
-                context.Movement?.RequestMove(Fleet, origin);
+                context.Move(Fleet, origin);
                 return;
             }
 
-            context.Movement?.EvacuateToNearestFriendlyPlanet(Fleet);
+            context.Evacuate(Fleet);
         }
 
         /// <summary>

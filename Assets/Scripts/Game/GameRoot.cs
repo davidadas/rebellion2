@@ -177,11 +177,11 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Gets the current game speed.
-        /// Used by GameManager to determine how quickly to process game ticks and events.
+        /// Used by GameSession to determine how quickly to process game ticks and events.
         /// Affects the pacing of the game and how quickly the game state updates.
         /// For example, Fast speed may process multiple ticks per second, while Slow may process one tick every few seconds.
         /// Paused means no ticks are processed until the speed is changed.
-        /// The actual tick processing logic in GameManager should reference this value to adjust its timing accordingly.
+        /// The actual tick processing logic in GameSession should reference this value to adjust its timing accordingly.
         /// </summary>
         /// <returns>The current game speed.</returns>
         public TickSpeed GetGameSpeed()

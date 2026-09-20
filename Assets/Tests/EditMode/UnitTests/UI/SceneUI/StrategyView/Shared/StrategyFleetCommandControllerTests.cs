@@ -7,7 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
@@ -20,7 +20,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         private const string _playerFactionId = "player";
 
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _gameSession;
         private Planet _planet;
 
         /// <summary>
@@ -45,19 +45,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 NumRawResourceNodes = 10,
             };
             _game.AttachNode(_planet, planetSector);
-            _gameManager = TestContent.CreateGameManager(_game);
+            _gameSession = TestContent.CreateGameSession(_game);
         }
 
         [Test]
         public void Constructor_NullGameProvider_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyFleetCommandController(
-                    null,
-                    () => _gameManager.FleetSystem,
-                    () => _gameManager.BombardmentSystem,
-                    () => _gameManager.PlanetaryAssaultSystem
-                )
+                new StrategyFleetCommandController(null, _gameSession)
             );
         }
 
@@ -294,12 +289,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         /// <returns>The created controller.</returns>
         private StrategyFleetCommandController CreateController()
         {
-            return new StrategyFleetCommandController(
-                () => _gameManager.GetGame(),
-                () => _gameManager.FleetSystem,
-                () => _gameManager.BombardmentSystem,
-                () => _gameManager.PlanetaryAssaultSystem
-            );
+            return new StrategyFleetCommandController(() => _gameSession.GetGame(), _gameSession);
         }
 
         /// <summary>

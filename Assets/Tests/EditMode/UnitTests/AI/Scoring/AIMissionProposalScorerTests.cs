@@ -172,7 +172,7 @@ namespace Rebellion.Tests.AI.Scoring
             );
 
             Assert.IsTrue(proposal.CanExecute(context));
-            MissionOdds odds = context.Missions.GetMissionOdds(proposal.CreateContext());
+            MissionOdds odds = context.Queries.GetMissionOdds(proposal.CreateContext());
             Assert.IsNotNull(odds);
             Assert.AreEqual(19, odds.ObjectiveSuccessProbability, 0.0001);
             double score = new AIMissionProposalScorer().Score(context, proposal);

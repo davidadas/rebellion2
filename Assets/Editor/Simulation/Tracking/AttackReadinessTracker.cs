@@ -6,7 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 public static partial class HeadlessSimulationRunner
@@ -21,13 +21,14 @@ public static partial class HeadlessSimulationRunner
         /// <summary>
         /// Records failed readiness gates for attack fleets waiting to launch.
         /// </summary>
-        /// <param name="game">The game state to inspect.</param>
+        /// <param name="session">The game session to inspect.</param>
         /// <remarks>
         /// Readiness blockers persist across construction and travel, so sampling every 25th AI
         /// turn captures their duration without scanning every planet and fleet on every turn.
         /// </remarks>
-        public void RecordTick(GameRoot game)
+        public void RecordTick(GameSession session)
         {
+            GameRoot game = session?.GetGame();
             if (
                 game?.Config?.AI == null
                 || game.Config.AI.TickInterval <= 0
@@ -58,13 +59,10 @@ public static partial class HeadlessSimulationRunner
                 AITurnContext context = new AITurnContext(
                     game,
                     faction,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    session.Commands,
+                    session.Queries,
                     new SystemRandomProvider(0),
-                    new FogOfWarSystem(game).BuildFactionView(faction)
+                    session.Queries.BuildGalaxyView(faction)
                 );
                 AIAssessment assessment = context.Assessment;
                 AttackReadinessFactionCounters counters = GetCounters(faction.InstanceID);

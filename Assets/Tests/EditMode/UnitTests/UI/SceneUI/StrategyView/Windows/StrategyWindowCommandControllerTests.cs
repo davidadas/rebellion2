@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -29,7 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private int _dirtyCount;
         private GalaxyMapPlanet _destination;
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _gameSession;
         private int _invalidOrderRejectionCount;
         private GalaxyMapPlanet _missionTarget;
         private MissionCreateWindowController _missionCreateController;
@@ -75,7 +75,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             };
             _game.AttachNode(_officer, origin);
             _game.AttachNode(_specialForces, origin);
-            _gameManager = TestContent.CreateGameManager(_game);
+            _gameSession = TestContent.CreateGameSession(_game);
             _uiContext = TestContent.CreateUIContext(
                 _game,
                 TestContent.CreateThemeLibrary(),
@@ -87,7 +87,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _sourceWindow = CreateSourceWindow();
             _missionCreateController = new MissionCreateWindowController(
                 () => _game,
-                () => _gameManager.MissionSystem,
+                _gameSession,
                 () => _uiContext,
                 _ => { },
                 _windowLayer,
@@ -109,16 +109,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _controller = new StrategyWindowCommandController(
                 _missionCreateController,
                 confirmController,
-                () => _gameManager.GetGame(),
-                () => _gameManager.MovementSystem,
-                () => _gameManager.MaintenanceSystem,
-                () => _gameManager.ManufacturingSystem,
-                () => _gameManager.PersonnelSystem,
+                () => _gameSession.GetGame(),
+                _gameSession,
                 _ => _playedSfxCount++,
                 window => _clearedWindow = window,
                 () => _rebuildCount++,
                 () => _dirtyCount++,
-                null,
                 () => _invalidOrderRejectionCount++,
                 () => _transitRejectionCount++,
                 () => _underConstructionRejectionCount++
@@ -151,11 +147,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 new StrategyWindowCommandController(
                     null,
                     confirmController,
-                    () => _gameManager.GetGame(),
-                    () => _gameManager.MovementSystem,
-                    () => _gameManager.MaintenanceSystem,
-                    () => _gameManager.ManufacturingSystem,
-                    () => _gameManager.PersonnelSystem,
+                    () => _gameSession.GetGame(),
+                    _gameSession,
                     _ => { },
                     _ => { },
                     () => { },
@@ -218,7 +211,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void TryExecuteMove_UnitInTransit_PlaysAdvisorRejection()
         {
-            _officer.Movement = new Rebellion.Game.Units.MovementState { TransitTicks = 10 };
+            _officer.Movement = new MovementState { TransitTicks = 10 };
 
             bool moved = _controller.TryExecuteMove(
                 _sourceWindow,

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Simulation;
 using Rebellion.Util.Logging;
 using UnityEngine;
 
@@ -13,7 +14,12 @@ public sealed class GameRuntime
     private readonly ContentPack _contentPack;
     private readonly SaveGameManager _saveGameManager;
     private readonly Func<UserGameplaySettings> _getGameplaySettings;
-    private GameManager _activeGameSession;
+    private GameSession _activeGameSession;
+
+    /// <summary>
+    /// Raised after the active simulation session is replaced.
+    /// </summary>
+    public event Action<GameSession> SessionReplaced;
 
     /// <summary>
     /// Gets whether a game session is currently active.
@@ -55,18 +61,18 @@ public sealed class GameRuntime
     /// Gets the active game manager.
     /// </summary>
     /// <returns>The active game manager, or null when no game session is active.</returns>
-    public GameManager GetActiveGameManager()
+    public GameSession GetActiveGameSession()
     {
         return _activeGameSession;
     }
 
     /// <summary>
     /// Start a new game session.
-    /// Creates and owns the GameManager for this session.
+    /// Creates and owns the GameSession for this session.
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
-    /// <returns>The created GameManager.</returns>
-    public GameManager StartGame(GameRoot game)
+    /// <returns>The created GameSession.</returns>
+    public GameSession StartGame(GameRoot game)
     {
         return ReplaceSession(game);
     }
@@ -76,11 +82,11 @@ public sealed class GameRuntime
     /// </summary>
     /// <param name="game">The loaded game instance to manage.</param>
     /// <returns>The created game manager.</returns>
-    public GameManager StartLoadedGame(GameRoot game)
+    public GameSession StartLoadedGame(GameRoot game)
     {
-        GameManager gameManager = ReplaceSession(game);
-        gameManager.ReconcileLoadedState();
-        return gameManager;
+        GameSession gameSession = ReplaceSession(game);
+        gameSession.ReconcileLoadedState();
+        return gameSession;
     }
 
     /// <summary>
@@ -88,7 +94,7 @@ public sealed class GameRuntime
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
     /// <returns>The created game manager.</returns>
-    private GameManager ReplaceSession(GameRoot game)
+    private GameSession ReplaceSession(GameRoot game)
     {
         if (_activeGameSession != null)
         {
@@ -96,7 +102,7 @@ public sealed class GameRuntime
         }
 
         ValidateGameContent(game);
-        _activeGameSession = new GameManager(game, _contentPack.GameData);
+        _activeGameSession = GameSessionFactory.Create(game, _contentPack.GameData);
         _activeGameSession.TickCompleted += HandleTickCompleted;
         return _activeGameSession;
     }
@@ -216,8 +222,9 @@ public sealed class GameRuntime
     {
         GameRoot loadedGame = _saveGameManager.LoadGameData(fileName);
         ValidateGameContent(loadedGame);
-        _activeGameSession.ReplaceGame(loadedGame);
-        _activeGameSession.ReconcileLoadedState();
+        GameSession gameSession = ReplaceSession(loadedGame);
+        gameSession.ReconcileLoadedState();
+        SessionReplaced?.Invoke(gameSession);
     }
 
     /// <summary>

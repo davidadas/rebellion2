@@ -15,6 +15,21 @@ namespace Rebellion.Architecture.Tests
             .Build();
 
         /// <summary>
+        /// Verifies that simulation feature packages do not form circular dependencies.
+        /// </summary>
+        [Test]
+        public void SimulationFeatures_Dependencies_AreAcyclic()
+        {
+            IArchRule rule = ArchUnitNET
+                .Fluent.Slices.SliceRuleDefinition.Slices()
+                .Matching("Rebellion.Simulation.(*)")
+                .Should()
+                .BeFreeOfCycles();
+
+            rule.Check(_architecture);
+        }
+
+        /// <summary>
         /// Verifies that game-domain code is fully contained within the game namespace.
         /// </summary>
         [Test]
@@ -41,14 +56,31 @@ namespace Rebellion.Architecture.Tests
         /// Verifies that gameplay systems do not depend on presentation code.
         /// </summary>
         [Test]
-        public void GameplaySystems_Dependencies_DoNotReferenceUserInterface()
+        public void Simulation_Dependencies_DoNotReferenceUserInterface()
         {
             IArchRule rule = Types()
                 .That()
-                .ResideInNamespaceMatching("^Rebellion\\.Systems(?:\\.|$)")
+                .ResideInNamespaceMatching("^Rebellion\\.Simulation(?:\\.|$)")
                 .Should()
                 .NotDependOnAny(
                     Types().That().ResideInNamespaceMatching("^Rebellion\\.UI(?:\\.|$)")
+                );
+
+            rule.Check(_architecture);
+        }
+
+        /// <summary>
+        /// Verifies that AI planning depends on game contracts rather than simulation internals.
+        /// </summary>
+        [Test]
+        public void ArtificialIntelligence_Dependencies_DoNotReferenceSimulation()
+        {
+            IArchRule rule = Types()
+                .That()
+                .ResideInNamespaceMatching("^Rebellion\\.AI(?:\\.|$)")
+                .Should()
+                .NotDependOnAny(
+                    Types().That().ResideInNamespaceMatching("^Rebellion\\.Simulation(?:\\.|$)")
                 );
 
             rule.Check(_architecture);

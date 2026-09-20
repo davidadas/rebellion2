@@ -7,6 +7,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Simulation;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -296,15 +297,15 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void ActiveGame_OpenAndBackToGame_PausesAndRestoresSpeed()
         {
-            GameManager gameManager = _bootstrap.GetRuntime().StartGame(CreateGame());
-            gameManager.SetGameSpeed(TickSpeed.Fast);
+            GameSession gameSession = _bootstrap.GetRuntime().StartGame(CreateGame());
+            gameSession.SetGameSpeed(TickSpeed.Fast);
 
             OptionsMenuView view = OpenAndRender();
 
-            Assert.AreEqual(TickSpeed.Paused, gameManager.GetGameSpeed());
+            Assert.AreEqual(TickSpeed.Paused, gameSession.GetGameSpeed());
             GetField<Button>(view, "_backToGameButton").onClick.Invoke();
             Assert.IsFalse(_controller.IsOpen);
-            Assert.AreEqual(TickSpeed.Fast, gameManager.GetGameSpeed());
+            Assert.AreEqual(TickSpeed.Fast, gameSession.GetGameSpeed());
         }
 
         [Test]

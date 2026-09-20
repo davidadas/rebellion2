@@ -7,7 +7,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -22,7 +22,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
             Officer target = EntityFactory.CreateOfficer("target", "empire");
             target.IsCaptured = true;
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Mission mission = CreateRescueMission(
@@ -72,7 +72,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Mission mission = CreateRescueMission(
@@ -95,7 +95,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
             Mission mission = CreateRescueMission(
                 game,
@@ -120,7 +120,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Officer enemy = EntityFactory.CreateOfficer("enemy", "rebels");
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -176,7 +176,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -206,7 +206,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -237,7 +237,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -268,7 +268,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -305,7 +305,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -343,7 +343,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             // Set up a captured officer so TryCreate succeeds
@@ -365,8 +365,8 @@ namespace Rebellion.Tests.Game.Missions
             // Officer is freed after mission creation but before execution
             captive.IsCaptured = false;
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            Movement movement = new Movement(game, fog, new Fleets(game));
+            Rebellion.Simulation.Missions missionSystem = TestSystems.CreateMissionSystem(
                 game,
                 new FixedRNG(0.0),
                 movement
@@ -390,7 +390,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -411,8 +411,8 @@ namespace Rebellion.Tests.Game.Missions
             // Captive is freed before mission executes
             captive.IsCaptured = false;
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            Movement movement = new Movement(game, fog, new Fleets(game));
+            Rebellion.Simulation.Missions missionSystem = TestSystems.CreateMissionSystem(
                 game,
                 new FixedRNG(0.0),
                 movement
@@ -436,7 +436,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -457,8 +457,8 @@ namespace Rebellion.Tests.Game.Missions
             // Captive is moved to a different planet before mission executes
             game.MoveNode(captive, empirePlanet);
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            Movement movement = new Movement(game, fog, new Fleets(game));
+            Rebellion.Simulation.Missions missionSystem = TestSystems.CreateMissionSystem(
                 game,
                 new FixedRNG(0.0),
                 movement
@@ -482,7 +482,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -503,8 +503,8 @@ namespace Rebellion.Tests.Game.Missions
             // Captive removed from scene before mission executes
             game.DetachNode(captive);
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            Movement movement = new Movement(game, fog, new Fleets(game));
+            Rebellion.Simulation.Missions missionSystem = TestSystems.CreateMissionSystem(
                 game,
                 new FixedRNG(0.0),
                 movement
@@ -528,7 +528,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -551,8 +551,8 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            Movement movement = new Movement(game, fog, new Fleets(game));
+            Rebellion.Simulation.Missions missionSystem = TestSystems.CreateMissionSystem(
                 game,
                 new FixedRNG(0.0),
                 movement
@@ -571,13 +571,8 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void UpdateMission_RescuedOfficerAlreadyInTransit_ReturnsRescuerOnly()
         {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
+            (GameRoot game, Planet empPlanet, Planet enemyPlanet, Officer officer, FogOfWar fog) =
+                MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
             captive.IsCaptured = true;
@@ -597,10 +592,10 @@ namespace Rebellion.Tests.Game.Missions
             mission.Initiate(0);
             captive.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
 
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            Rebellion.Simulation.Missions missionSystem = TestSystems.CreateMissionSystem(
                 game,
                 new FixedRNG(0.0),
-                new MovementSystem(game, fog, new FleetSystem(game))
+                new Movement(game, fog, new Fleets(game))
             );
             missionSystem.UpdateMission(mission);
 

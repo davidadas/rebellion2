@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Input;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -185,8 +186,8 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         if (!CanUseGameplayShortcuts())
             return;
 
-        GameManager gameManager = _runtime?.GetActiveGameManager();
-        gameManager?.SetGameSpeed(GetSlowerGameSpeed(gameManager.GetGameSpeed()));
+        GameSession gameSession = _runtime?.GetActiveGameSession();
+        gameSession?.SetGameSpeed(GetSlowerGameSpeed(gameSession.GetGameSpeed()));
     }
 
     /// <summary>
@@ -201,8 +202,8 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         if (!CanUseGameplayShortcuts())
             return;
 
-        GameManager gameManager = _runtime?.GetActiveGameManager();
-        gameManager?.SetGameSpeed(GetFasterGameSpeed(gameManager.GetGameSpeed()));
+        GameSession gameSession = _runtime?.GetActiveGameSession();
+        gameSession?.SetGameSpeed(GetFasterGameSpeed(gameSession.GetGameSpeed()));
     }
 
     /// <summary>

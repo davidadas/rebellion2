@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Executes fleet mutations shared by fleet and planet-sector UI features.
@@ -14,32 +15,17 @@ using Rebellion.Systems;
 public sealed class StrategyFleetCommandController
 {
     private readonly Func<GameRoot> getGame;
-    private readonly Func<FleetSystem> getFleetSystem;
-    private readonly Func<BombardmentSystem> getBombardmentSystem;
-    private readonly Func<PlanetaryAssaultSystem> getPlanetaryAssaultSystem;
+    private readonly GameSession gameSession;
 
     /// <summary>
     /// Creates a fleet command controller for the active game.
     /// </summary>
     /// <param name="getGame">Returns the active game state.</param>
-    /// <param name="getFleetSystem">Returns the active fleet system.</param>
-    /// <param name="getBombardmentSystem">Returns the active bombardment system.</param>
-    /// <param name="getPlanetaryAssaultSystem">Returns the active planetary-assault system.</param>
-    public StrategyFleetCommandController(
-        Func<GameRoot> getGame,
-        Func<FleetSystem> getFleetSystem,
-        Func<BombardmentSystem> getBombardmentSystem,
-        Func<PlanetaryAssaultSystem> getPlanetaryAssaultSystem
-    )
+    /// <param name="gameSession">The active simulation session.</param>
+    public StrategyFleetCommandController(Func<GameRoot> getGame, GameSession gameSession)
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getFleetSystem =
-            getFleetSystem ?? throw new ArgumentNullException(nameof(getFleetSystem));
-        this.getBombardmentSystem =
-            getBombardmentSystem ?? throw new ArgumentNullException(nameof(getBombardmentSystem));
-        this.getPlanetaryAssaultSystem =
-            getPlanetaryAssaultSystem
-            ?? throw new ArgumentNullException(nameof(getPlanetaryAssaultSystem));
+        this.gameSession = gameSession ?? throw new ArgumentNullException(nameof(gameSession));
     }
 
     /// <summary>
@@ -53,13 +39,15 @@ public sealed class StrategyFleetCommandController
             items?.Where(item => item != null).ToList() ?? new List<ISceneNode>();
         List<CapitalShip> ships = sourceItems.OfType<CapitalShip>().ToList();
         GameRoot game = getGame();
-        FleetSystem fleetSystem = getFleetSystem();
         string playerFactionId = game?.GetPlayerFaction()?.InstanceID;
         return game != null
-            && fleetSystem != null
             && ships.Count > 0
             && ships.Count == sourceItems.Count
-            && fleetSystem.CreateFromCapitalShips(ships, playerFactionId) != null;
+            && gameSession
+                .Execute(
+                    new CreateFleetCommand { Ships = ships, OwnerInstanceID = playerFactionId }
+                )
+                .Accepted;
     }
 
     /// <summary>
@@ -79,10 +67,10 @@ public sealed class StrategyFleetCommandController
             return false;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return getBombardmentSystem()?.CanExecute(fleets, liveTarget, type) == true;
+            return gameSession.Queries.CanBombard(fleets, liveTarget, type);
 
         return action == StrategyMenuAction.PlanetaryAssault
-            && getPlanetaryAssaultSystem()?.CanExecute(fleets, liveTarget) == true;
+            && gameSession.Queries.CanAssault(fleets, liveTarget);
     }
 
     /// <summary>
@@ -102,11 +90,24 @@ public sealed class StrategyFleetCommandController
             return null;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return getBombardmentSystem()?.TryExecute(fleets, liveTarget, type);
+        {
+            GameCommandResult outcome = gameSession.Execute(
+                new BombardCommand
+                {
+                    Fleets = fleets,
+                    Planet = liveTarget,
+                    Type = type,
+                }
+            );
+            return outcome.Results.OfType<BombardmentResult>().FirstOrDefault();
+        }
 
-        return action == StrategyMenuAction.PlanetaryAssault
-            ? getPlanetaryAssaultSystem()?.TryExecute(fleets, liveTarget)
-            : null;
+        if (action != StrategyMenuAction.PlanetaryAssault)
+            return null;
+        GameCommandResult assault = gameSession.Execute(
+            new AssaultPlanetCommand { Fleets = fleets, Planet = liveTarget }
+        );
+        return assault.Results.OfType<PlanetaryAssaultResult>().FirstOrDefault();
     }
 
     /// <summary>

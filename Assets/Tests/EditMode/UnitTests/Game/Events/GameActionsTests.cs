@@ -3,17 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Game.Events
@@ -90,27 +90,27 @@ namespace Rebellion.Tests.Game.Events
         }
 
         /// <summary>
-        /// Executes requests.
+        /// Executes the action and returns its queued commands.
         /// </summary>
         /// <param name="action">The action.</param>
         /// <param name="game">The game.</param>
-        /// <returns>The result of execute requests.</returns>
-        internal static List<GameRequest> ExecuteRequests(this GameAction action, GameRoot game)
+        /// <returns>The queued commands.</returns>
+        internal static List<GameCommand> ExecuteCommands(this GameAction action, GameRoot game)
         {
             GameActionContext context = new GameActionContext(game, game.Random);
             action.Execute(context);
-            return context.Requests;
+            return context.Commands;
         }
 
         /// <summary>
-        /// Executes requests.
+        /// Executes the action and returns its queued commands.
         /// </summary>
         /// <param name="action">The action.</param>
         /// <param name="game">The game.</param>
         /// <param name="random">The random.</param>
         /// <param name="evaluation">The evaluation.</param>
-        /// <returns>The result of execute requests.</returns>
-        internal static List<GameRequest> ExecuteRequests(
+        /// <returns>The queued commands.</returns>
+        internal static List<GameCommand> ExecuteCommands(
             this GameAction action,
             GameRoot game,
             IRandomNumberProvider random,
@@ -119,17 +119,17 @@ namespace Rebellion.Tests.Game.Events
         {
             GameActionContext context = new GameActionContext(game, random, evaluation);
             action.Execute(context);
-            return context.Requests;
+            return context.Commands;
         }
 
         /// <summary>
-        /// Executes requests.
+        /// Executes the action and returns its queued commands.
         /// </summary>
         /// <param name="action">The action.</param>
         /// <param name="game">The game.</param>
         /// <param name="unitFactory">The unit factory.</param>
-        /// <returns>The result of execute requests.</returns>
-        internal static List<GameRequest> ExecuteRequests(
+        /// <returns>The queued commands.</returns>
+        internal static List<GameCommand> ExecuteCommands(
             this GameAction action,
             GameRoot game,
             UnitFactory unitFactory
@@ -137,7 +137,7 @@ namespace Rebellion.Tests.Game.Events
         {
             GameActionContext context = new GameActionContext(game, game.Random, null, unitFactory);
             action.Execute(context);
-            return context.Requests;
+            return context.Commands;
         }
     }
 
@@ -191,9 +191,9 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
 
-            UnitPlacementRequest result = action
-                .ExecuteRequests(game, factory)
-                .OfType<UnitPlacementRequest>()
+            PlaceUnitsCommand result = action
+                .ExecuteCommands(game, factory)
+                .OfType<PlaceUnitsCommand>()
                 .Single();
 
             Assert.AreEqual(4, result.Units.Count);
@@ -339,7 +339,7 @@ namespace Rebellion.Tests.Game.Events
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                action.ExecuteRequests(game)
+                action.ExecuteCommands(game)
             );
 
             StringAssert.Contains("requires existing units to be active", exception.Message);
@@ -401,9 +401,9 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
 
-            OwnershipChangeRequest result = action
-                .ExecuteRequests(game)
-                .OfType<OwnershipChangeRequest>()
+            OwnershipChangeCommand result = action
+                .ExecuteCommands(game)
+                .OfType<OwnershipChangeCommand>()
                 .Single();
 
             Assert.AreEqual("rebels", result.NewOwner.InstanceID);
@@ -635,9 +635,9 @@ namespace Rebellion.Tests.Game.Events
                 SecondOfficerInstanceID = "d1",
             };
 
-            List<GameRequest> requests = action.ExecuteRequests(game);
+            List<GameCommand> requests = action.ExecuteCommands(game);
 
-            DuelRequest request = requests.OfType<DuelRequest>().Single();
+            DuelCommand request = requests.OfType<DuelCommand>().Single();
             Assert.AreSame(attacker, request.EncounteredOfficer);
             Assert.AreSame(defender, request.OpposingOfficer);
         }
@@ -670,9 +670,9 @@ namespace Rebellion.Tests.Game.Events
                 completion
             );
 
-            DuelRequest request = action
-                .ExecuteRequests(game, game.Random, context)
-                .OfType<DuelRequest>()
+            DuelCommand request = action
+                .ExecuteCommands(game, game.Random, context)
+                .OfType<DuelCommand>()
                 .Single();
 
             Assert.AreSame(vader, request.EncounteredOfficer);
@@ -698,13 +698,13 @@ namespace Rebellion.Tests.Game.Events
                 SecondOfficerInstanceID = vader.InstanceID,
             };
 
-            IEnumerable<GameRequest> requests = action.ExecuteRequests(
+            IEnumerable<GameCommand> requests = action.ExecuteCommands(
                 game,
                 new SequenceRNG(new[] { 20 }),
                 null
             );
 
-            Assert.AreEqual(1, requests.OfType<DuelRequest>().Count());
+            Assert.AreEqual(1, requests.OfType<DuelCommand>().Count());
         }
 
         [Test]
@@ -764,9 +764,9 @@ namespace Rebellion.Tests.Game.Events
                 BackgroundAudio = new MessageAudio { Path = "Audio/Luke/dialogue" },
             };
 
-            MessageDeliveryRequest result = action
-                .ExecuteRequests(game)
-                .OfType<MessageDeliveryRequest>()
+            DeliverMessageCommand result = action
+                .ExecuteCommands(game)
+                .OfType<DeliverMessageCommand>()
                 .Single();
 
             Assert.AreEqual("rebels", result.Recipient.InstanceID);
@@ -788,9 +788,9 @@ namespace Rebellion.Tests.Game.Events
                 SubjectInstanceID = luke.InstanceID,
             };
 
-            MessageDeliveryRequest result = action
-                .ExecuteRequests(game)
-                .OfType<MessageDeliveryRequest>()
+            DeliverMessageCommand result = action
+                .ExecuteCommands(game)
+                .OfType<DeliverMessageCommand>()
                 .Single();
 
             Assert.IsNull(result.OverlayImagePath);
@@ -810,9 +810,9 @@ namespace Rebellion.Tests.Game.Events
                 ShowSubjectImage = true,
             };
 
-            MessageDeliveryRequest result = action
-                .ExecuteRequests(game)
-                .OfType<MessageDeliveryRequest>()
+            DeliverMessageCommand result = action
+                .ExecuteCommands(game)
+                .OfType<DeliverMessageCommand>()
                 .Single();
 
             Assert.AreEqual("Officers/Luke/message", result.OverlayImagePath);
@@ -832,9 +832,9 @@ namespace Rebellion.Tests.Game.Events
                 OverlayImage = new MessageImage { Path = "Story/portrait" },
             };
 
-            MessageDeliveryRequest result = action
-                .ExecuteRequests(game)
-                .OfType<MessageDeliveryRequest>()
+            DeliverMessageCommand result = action
+                .ExecuteCommands(game)
+                .OfType<DeliverMessageCommand>()
                 .Single();
 
             Assert.AreEqual("Story/portrait", result.OverlayImagePath);
@@ -868,9 +868,9 @@ namespace Rebellion.Tests.Game.Events
                 Body = "Luke remains captured.",
             };
 
-            MessageDeliveryRequest result = action
-                .ExecuteRequests(game)
-                .OfType<MessageDeliveryRequest>()
+            DeliverMessageCommand result = action
+                .ExecuteCommands(game)
+                .OfType<DeliverMessageCommand>()
                 .Single();
 
             Assert.AreEqual("rebels", result.Recipient.InstanceID);
@@ -908,9 +908,9 @@ namespace Rebellion.Tests.Game.Events
                 }
             );
 
-            MessageDeliveryRequest result = action
-                .ExecuteRequests(game, game.Random, context)
-                .OfType<MessageDeliveryRequest>()
+            DeliverMessageCommand result = action
+                .ExecuteCommands(game, game.Random, context)
+                .OfType<DeliverMessageCommand>()
                 .Single();
 
             Assert.AreEqual("selected-encounter-voice", result.BackgroundAudioPath);
@@ -933,9 +933,9 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
 
-            MessageDeliveryRequest result = action
-                .ExecuteRequests(game, new FixedRNG(0), null)
-                .OfType<MessageDeliveryRequest>()
+            DeliverMessageCommand result = action
+                .ExecuteCommands(game, new FixedRNG(0), null)
+                .OfType<DeliverMessageCommand>()
                 .Single();
 
             Assert.AreEqual("luke-success", result.OfficerVoicePath);
@@ -1011,9 +1011,9 @@ namespace Rebellion.Tests.Game.Events
                 DestinationInstanceID = destination.InstanceID,
             };
 
-            UnitMovementRequest result = action
-                .ExecuteRequests(game)
-                .OfType<UnitMovementRequest>()
+            MoveUnitsCommand result = action
+                .ExecuteCommands(game)
+                .OfType<MoveUnitsCommand>()
                 .Single();
 
             CollectionAssert.AreEqual(new[] { officer }, result.Units);
@@ -1070,9 +1070,9 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
 
-            UnitMovementRequest result = action
-                .ExecuteRequests(game)
-                .OfType<UnitMovementRequest>()
+            MoveUnitsCommand result = action
+                .ExecuteCommands(game)
+                .OfType<MoveUnitsCommand>()
                 .Single();
 
             CollectionAssert.AreEqual(new[] { first, second }, result.Destinations);
@@ -1112,15 +1112,15 @@ namespace Rebellion.Tests.Game.Events
                 CaptorFactionInstanceID = "empire",
             };
 
-            OfficerCaptureStateResult result = action
-                .Execute(game)
-                .OfType<OfficerCaptureStateResult>()
+            SetCaptureStatusCommand command = action
+                .ExecuteCommands(game)
+                .OfType<SetCaptureStatusCommand>()
                 .Single();
 
-            Assert.IsTrue(officer.IsCaptured);
-            Assert.AreEqual("empire", officer.CaptorInstanceID);
-            Assert.IsTrue(officer.CanEscape);
-            Assert.AreSame(officer, result.TargetOfficer);
+            CollectionAssert.AreEqual(new[] { officer }, command.Officers);
+            Assert.IsTrue(command.IsCaptured);
+            Assert.AreEqual("empire", command.CaptorFactionInstanceID);
+            Assert.IsTrue(command.CanEscape);
         }
 
         [Test]
@@ -1137,9 +1137,12 @@ namespace Rebellion.Tests.Game.Events
                 CanEscape = false,
             };
 
-            action.Execute(game);
+            SetCaptureStatusCommand command = action
+                .ExecuteCommands(game)
+                .OfType<SetCaptureStatusCommand>()
+                .Single();
 
-            Assert.IsFalse(officer.CanEscape);
+            Assert.IsFalse(command.CanEscape);
         }
 
         [Test]
@@ -1158,15 +1161,18 @@ namespace Rebellion.Tests.Game.Events
                 IsCaptured = false,
             };
 
-            action.Execute(game);
+            SetCaptureStatusCommand command = action
+                .ExecuteCommands(game)
+                .OfType<SetCaptureStatusCommand>()
+                .Single();
 
-            Assert.IsFalse(officer.IsCaptured);
-            Assert.IsNull(officer.CaptorInstanceID);
-            Assert.IsTrue(officer.CanEscape);
+            Assert.IsFalse(command.IsCaptured);
+            Assert.IsNull(command.CaptorFactionInstanceID);
+            Assert.IsTrue(command.CanEscape);
         }
 
         [Test]
-        public void SetCaptureStatus_RecaptureAfterRelease_RestoresDefaultEscapeState()
+        public void SetCaptureStatus_RecaptureAfterRelease_QueuesIndependentCommands()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             Officer officer = EntityFactory.CreateOfficer("officer", planet.OwnerInstanceID);
@@ -1174,21 +1180,28 @@ namespace Rebellion.Tests.Game.Events
             officer.CaptorInstanceID = "empire";
             officer.CanEscape = false;
             game.AttachNode(officer, planet);
-            new SetCaptureStatusAction
+            SetCaptureStatusCommand release = new SetCaptureStatusAction
             {
                 OfficerInstanceID = officer.InstanceID,
                 IsCaptured = false,
-            }.Execute(game);
+            }
+                .ExecuteCommands(game)
+                .OfType<SetCaptureStatusCommand>()
+                .Single();
 
-            new SetCaptureStatusAction
+            SetCaptureStatusCommand recapture = new SetCaptureStatusAction
             {
                 OfficerInstanceID = officer.InstanceID,
                 IsCaptured = true,
                 CaptorFactionInstanceID = "empire",
-            }.Execute(game);
+            }
+                .ExecuteCommands(game)
+                .OfType<SetCaptureStatusCommand>()
+                .Single();
 
-            Assert.IsTrue(officer.IsCaptured);
-            Assert.IsTrue(officer.CanEscape);
+            Assert.IsFalse(release.IsCaptured);
+            Assert.IsTrue(recapture.IsCaptured);
+            Assert.IsTrue(recapture.CanEscape);
         }
 
         [Test]
@@ -1664,16 +1677,14 @@ namespace Rebellion.Tests.Game.Events
                 Amount = 10,
             };
 
-            List<GameResult> results = action.Execute(game);
+            SetPopularSupportCommand command = action
+                .ExecuteCommands(game)
+                .OfType<SetPopularSupportCommand>()
+                .Single();
 
-            Assert.AreEqual(70, planet.GetPopularSupport("empire"));
-            Assert.AreEqual(30, planet.GetPopularSupport("rebels"));
-            Assert.AreEqual(2, results.OfType<PlanetStatChangedResult>().Count());
-            Assert.IsTrue(
-                results
-                    .OfType<PlanetStatChangedResult>()
-                    .All(result => result.Category == PlanetChangeCategory.Loyalty)
-            );
+            Assert.AreSame(planet, command.Planet);
+            Assert.AreEqual("empire", command.Faction.InstanceID);
+            Assert.AreEqual(70, command.Support);
         }
 
         [Test]
@@ -1689,10 +1700,14 @@ namespace Rebellion.Tests.Game.Events
                 Support = 20,
             };
 
-            action.Execute(game);
+            SetPopularSupportCommand command = action
+                .ExecuteCommands(game)
+                .OfType<SetPopularSupportCommand>()
+                .Single();
 
-            Assert.AreEqual(60, planet.GetPopularSupport("empire"));
-            Assert.AreEqual(20, planet.GetPopularSupport("rebels"));
+            Assert.AreSame(planet, command.Planet);
+            Assert.AreEqual("rebels", command.Faction.InstanceID);
+            Assert.AreEqual(20, command.Support);
         }
 
         [Test]

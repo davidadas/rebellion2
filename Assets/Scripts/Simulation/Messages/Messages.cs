@@ -1,0 +1,145 @@
+using System.Collections.Generic;
+using System.Linq;
+using Rebellion.Game;
+using Rebellion.Game.Commands;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Messages;
+using Rebellion.Game.Results;
+
+namespace Rebellion.Simulation
+{
+    /// <summary>
+    /// Converts game results into faction messages and delivers them to each faction.
+    /// </summary>
+    internal class Messages : IGameCommandHandler<DeliverMessageCommand>
+    {
+        private readonly GameRoot _game;
+        private readonly MessageFactory _messageFactory;
+
+        /// <summary>
+        /// Initializes a message system for the supplied game state and message definitions.
+        /// </summary>
+        /// <param name="game">The game state used to resolve message context.</param>
+        /// <param name="definitions">The message definitions used to build messages.</param>
+        public Messages(GameRoot game, IEnumerable<MessageDefinition> definitions)
+        {
+            _game = game;
+            _messageFactory = new MessageFactory(definitions);
+        }
+
+        /// <summary>
+        /// Creates and delivers faction messages for the supplied game results.
+        /// </summary>
+        /// <param name="results">The game results to process.</param>
+        /// <returns>The result of process results.</returns>
+        public List<GameResult> ProcessResults(IEnumerable<GameResult> results)
+        {
+            GameResult[] resultBatch =
+                results?.Where(result => result != null).ToArray()
+                ?? System.Array.Empty<GameResult>();
+            IEnumerable<GameResult> automaticResults = resultBatch.Where(result =>
+                string.IsNullOrWhiteSpace(result.SourceEventInstanceID)
+            );
+            return Deliver(_messageFactory.CreateMessages(automaticResults, _game));
+        }
+
+        /// <summary>
+        /// Delivers event-authored messages through the same durable message path as automatic messages.
+        /// </summary>
+        /// <param name="requests">The authored delivery requests.</param>
+        /// <returns>The factual delivery results.</returns>
+        public List<GameResult> HandleCommands(IReadOnlyList<DeliverMessageCommand> requests)
+        {
+            return Deliver(_messageFactory.CreateAuthoredMessages(requests));
+        }
+
+        /// <summary>
+        /// Persists resolved messages on their recipients and reports each successful delivery.
+        /// </summary>
+        /// <param name="requests">The resolved messages to deliver.</param>
+        /// <returns>The factual delivery results.</returns>
+        private List<GameResult> Deliver(IEnumerable<DeliverMessageCommand> requests)
+        {
+            List<GameResult> deliveredResults = new List<GameResult>();
+            foreach (DeliverMessageCommand request in requests)
+            {
+                if (request?.Recipient == null)
+                    continue;
+
+                Message message = CreateMessage(request);
+                request.Recipient.AddMessage(message);
+                MessageDeliveredResult delivered = new MessageDeliveredResult
+                {
+                    Recipient = request.Recipient,
+                    Message = message,
+                    NotificationType = request.NotificationType,
+                    AdvisorSubjectNotification = request.AdvisorSubjectNotification,
+                    AdvisorSubjectTypeID = request.AdvisorSubjectTypeID,
+                    AdvisorNotification = request.AdvisorNotification,
+                    SourceEventInstanceID = request.SourceEventInstanceID,
+                    Tick = _game.CurrentTick,
+                };
+                deliveredResults.Add(delivered);
+            }
+            return deliveredResults;
+        }
+
+        /// <summary>
+        /// Constructs the durable message represented by one resolved delivery request.
+        /// </summary>
+        /// <param name="request">The semantic and presentation data to persist.</param>
+        /// <returns>The message ready to attach to the recipient faction.</returns>
+        private Message CreateMessage(DeliverMessageCommand request)
+        {
+            Message message =
+                request.Message
+                ?? new StatusMessage(request.MessageType, request.Subject, request.Body);
+            message.Type = request.MessageType;
+            message.ResultType = request.ResultType;
+            message.Title = request.Subject;
+            message.Body = request.Body;
+            message.DisplayName = request.Subject;
+            message.BackgroundImageKey = request.BackgroundImageKey;
+            message.DisplayImagePath = request.BackgroundImagePath;
+            message.OverlayImagePath = request.OverlayImagePath;
+            message.BackgroundAudioPath = request.BackgroundAudioPath;
+            message.OfficerVoicePath = request.OfficerVoicePath;
+            message.EventLocationInstanceID = request.EventLocationInstanceID;
+            message.NavigationTargetInstanceID = request.NavigationTargetInstanceID;
+            message.NavigationSecondaryTargetInstanceID =
+                request.NavigationSecondaryTargetInstanceID;
+            message.MissionInstanceID = request.MissionInstanceID;
+            message.CreatedTick = _game.CurrentTick;
+            return message;
+        }
+
+        /// <summary>
+        /// Advances time-based message lifecycle state for the current game tick.
+        /// </summary>
+        public void ProcessTick()
+        {
+            RemoveExpiredMessages();
+        }
+
+        /// <summary>
+        /// Removes faction messages older than the configured retention period.
+        /// </summary>
+        private void RemoveExpiredMessages()
+        {
+            int retentionTicks = _game.Config.Messages.RetentionTicks;
+            foreach (Faction faction in _game.GetFactions())
+            {
+                if (faction?.Messages == null)
+                    continue;
+
+                foreach (List<Message> messages in faction.Messages.Values)
+                {
+                    messages?.RemoveAll(message =>
+                        message != null
+                        && (long)message.CreatedTick + retentionTicks < _game.CurrentTick
+                    );
+                }
+            }
+        }
+    }
+}

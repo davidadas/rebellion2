@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Executes and finalizes commands shared by strategy feature windows.
@@ -17,11 +18,7 @@ public sealed class StrategyWindowCommandController
     private readonly MissionCreateWindowController missionCreateWindowController;
     private readonly ConfirmDialogWindowController confirmDialogWindowController;
     private readonly Func<GameRoot> getGame;
-    private readonly Func<MovementSystem> getMovementSystem;
-    private readonly Func<HeadquartersSystem> getHeadquartersSystem;
-    private readonly Func<MaintenanceSystem> getMaintenanceSystem;
-    private readonly Func<ManufacturingSystem> getManufacturingSystem;
-    private readonly Func<PersonnelSystem> getPersonnelSystem;
+    private readonly GameSession gameSession;
     private readonly Action<string> playSfx;
     private readonly Action<UIWindow> clearWindowSelection;
     private readonly Action rebuildSnapshot;
@@ -36,15 +33,11 @@ public sealed class StrategyWindowCommandController
     /// <param name="missionCreateWindowController">Owns mission-creation windows.</param>
     /// <param name="confirmDialogWindowController">Owns confirmation windows.</param>
     /// <param name="getGame">Returns the active game state.</param>
-    /// <param name="getMovementSystem">Returns the active movement system.</param>
-    /// <param name="getMaintenanceSystem">Returns the active maintenance system.</param>
-    /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
-    /// <param name="getPersonnelSystem">Returns the active personnel system.</param>
+    /// <param name="gameSession">The active simulation session.</param>
     /// <param name="playSfx">Plays an optional officer response.</param>
     /// <param name="clearWindowSelection">Clears selection owned by a source window.</param>
     /// <param name="rebuildSnapshot">Rebuilds the visible strategy snapshot.</param>
     /// <param name="markDirty">Invalidates the strategy presentation.</param>
-    /// <param name="getHeadquartersSystem">Returns the mobile-headquarters system.</param>
     /// <param name="playInvalidOrderRejected">Plays the advisor's invalid-order rejection.</param>
     /// <param name="playInTransitOrderRejected">Plays the advisor's in-transit rejection.</param>
     /// <param name="playUnitUnderConstructionOrderRejected">Plays the advisor's under-construction rejection.</param>
@@ -52,15 +45,11 @@ public sealed class StrategyWindowCommandController
         MissionCreateWindowController missionCreateWindowController,
         ConfirmDialogWindowController confirmDialogWindowController,
         Func<GameRoot> getGame,
-        Func<MovementSystem> getMovementSystem,
-        Func<MaintenanceSystem> getMaintenanceSystem,
-        Func<ManufacturingSystem> getManufacturingSystem,
-        Func<PersonnelSystem> getPersonnelSystem,
+        GameSession gameSession,
         Action<string> playSfx,
         Action<UIWindow> clearWindowSelection,
         Action rebuildSnapshot,
         Action markDirty,
-        Func<HeadquartersSystem> getHeadquartersSystem = null,
         Action playInvalidOrderRejected = null,
         Action playInTransitOrderRejected = null,
         Action playUnitUnderConstructionOrderRejected = null
@@ -73,16 +62,7 @@ public sealed class StrategyWindowCommandController
             confirmDialogWindowController
             ?? throw new ArgumentNullException(nameof(confirmDialogWindowController));
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getMovementSystem =
-            getMovementSystem ?? throw new ArgumentNullException(nameof(getMovementSystem));
-        this.getHeadquartersSystem = getHeadquartersSystem;
-        this.getMaintenanceSystem =
-            getMaintenanceSystem ?? throw new ArgumentNullException(nameof(getMaintenanceSystem));
-        this.getManufacturingSystem =
-            getManufacturingSystem
-            ?? throw new ArgumentNullException(nameof(getManufacturingSystem));
-        this.getPersonnelSystem =
-            getPersonnelSystem ?? throw new ArgumentNullException(nameof(getPersonnelSystem));
+        this.gameSession = gameSession ?? throw new ArgumentNullException(nameof(gameSession));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.clearWindowSelection =
             clearWindowSelection ?? throw new ArgumentNullException(nameof(clearWindowSelection));
@@ -177,17 +157,14 @@ public sealed class StrategyWindowCommandController
     {
         List<ISceneNode> sourceItems = CopyItems(items);
         ContainerNode destination = target?.GetMoveDestination() as ContainerNode;
-        MovementSystem movementSystem = getMovementSystem();
-        int transitTimeInDays =
-            movementSystem != null
-            && movementSystem.TryGetSelectionTransitTicks(
-                sourceItems,
-                destination,
-                GetPlayerFactionID(),
-                out int transitTicks
-            )
-                ? transitTicks
-                : -1;
+        int transitTimeInDays = gameSession.Queries.TryGetSelectionTransitTicks(
+            sourceItems,
+            destination,
+            GetPlayerFactionID(),
+            out int transitTicks
+        )
+            ? transitTicks
+            : -1;
         confirmDialogWindowController.OpenMove(
             sourceItems,
             transitTimeInDays,
@@ -217,9 +194,11 @@ public sealed class StrategyWindowCommandController
         List<string> proposedWaypoints = source.WaypointPlanetIds.ToList();
         proposedWaypoints.Add(destination.InstanceID);
         if (
-            getMovementSystem()
-                ?.CanSetFleetWaypointRoute(source.Items, proposedWaypoints, GetPlayerFactionID())
-            != true
+            !gameSession.Queries.CanSetFleetWaypoints(
+                source.Items,
+                proposedWaypoints,
+                GetPlayerFactionID()
+            )
         )
             return false;
 
@@ -238,12 +217,16 @@ public sealed class StrategyWindowCommandController
     {
         if (
             source?.Action != StrategyMenuAction.WaypointMove
-            || getMovementSystem()
-                ?.TrySetFleetWaypointRoute(
-                    source.Items,
-                    source.WaypointPlanetIds,
-                    GetPlayerFactionID()
-                ) != true
+            || !gameSession
+                .Execute(
+                    new SetFleetWaypointsCommand
+                    {
+                        Items = source.Items.ToList(),
+                        PlanetInstanceIDs = source.WaypointPlanetIds.ToList(),
+                        OwnerInstanceID = GetPlayerFactionID(),
+                    }
+                )
+                .Accepted
         )
             return false;
 
@@ -272,7 +255,17 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when at least one waypoint was cleared.</returns>
     public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items)
     {
-        if (getMovementSystem()?.ClearFleetWaypoints(items, GetPlayerFactionID()) != true)
+        if (
+            !gameSession
+                .Execute(
+                    new ClearFleetWaypointsCommand
+                    {
+                        Items = CopyItems(items),
+                        OwnerInstanceID = GetPlayerFactionID(),
+                    }
+                )
+                .Accepted
+        )
             return false;
 
         RefreshAfterWaypointMutation();
@@ -296,8 +289,15 @@ public sealed class StrategyWindowCommandController
                     .ToList();
                 if (
                     manufacturables.Count == sourceItems.Count
-                    && getMaintenanceSystem()?.TryScrap(manufacturables, GetPlayerFactionID())
-                        == true
+                    && gameSession
+                        .Execute(
+                            new ScrapUnitsCommand
+                            {
+                                Items = manufacturables,
+                                OwnerInstanceID = GetPlayerFactionID(),
+                            }
+                        )
+                        .Accepted
                 )
                 {
                     RefreshAfterMutation(sourceWindow);
@@ -326,8 +326,15 @@ public sealed class StrategyWindowCommandController
                     .ToList();
                 if (
                     manufacturables.Count == sourceItems.Count
-                    && getManufacturingSystem()
-                        ?.CancelManufacturing(manufacturables, GetPlayerFactionID()) == true
+                    && gameSession
+                        .Execute(
+                            new CancelManufacturingCommand
+                            {
+                                Items = manufacturables,
+                                OwnerInstanceID = GetPlayerFactionID(),
+                            }
+                        )
+                        .Accepted
                 )
                 {
                     RefreshAfterMutation(sourceWindow);
@@ -351,7 +358,17 @@ public sealed class StrategyWindowCommandController
             sourceItems,
             () =>
             {
-                if (getPersonnelSystem()?.Retire(sourceItems, GetPlayerFactionID()) == true)
+                if (
+                    gameSession
+                        .Execute(
+                            new RetirePersonnelCommand
+                            {
+                                Personnel = sourceItems,
+                                OwnerInstanceID = GetPlayerFactionID(),
+                            }
+                        )
+                        .Accepted
+                )
                     RefreshAfterMutation(sourceWindow);
             }
         );
@@ -364,7 +381,7 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when every selected person may be retired.</returns>
     public bool CanRetire(IReadOnlyList<ISceneNode> items)
     {
-        return getPersonnelSystem()?.CanRetire(items, GetPlayerFactionID()) == true;
+        return gameSession.Queries.CanRetire(items, GetPlayerFactionID());
     }
 
     /// <summary>
@@ -394,10 +411,25 @@ public sealed class StrategyWindowCommandController
         Building headquarters = items?.Count == 1 ? items[0] as Building : null;
         bool moved =
             headquarters?.BuildingType == BuildingType.Headquarters
-                ? getHeadquartersSystem?.Invoke()?.TryRelocate(headquarters, target?.Planet?.Planet)
-                    == true
-                : getMovementSystem()?.TryRequestMove(items, destination, GetPlayerFactionID())
-                    == true;
+                ? gameSession
+                    .Execute(
+                        new RelocateHeadquartersCommand
+                        {
+                            Headquarters = headquarters,
+                            Destination = target?.Planet?.Planet,
+                        }
+                    )
+                    .Accepted
+                : gameSession
+                    .Execute(
+                        new MoveSelectionCommand
+                        {
+                            Items = CopyItems(items),
+                            Destination = destination,
+                            OwnerInstanceID = GetPlayerFactionID(),
+                        }
+                    )
+                    .Accepted;
         if (moved)
             PlayMoveVoice(items);
 

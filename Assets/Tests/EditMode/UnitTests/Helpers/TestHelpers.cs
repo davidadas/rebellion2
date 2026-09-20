@@ -16,7 +16,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
@@ -490,7 +490,7 @@ public static class MapPositionTestHelper
     }
 }
 
-public static class MissionSceneBuilder
+internal static class MissionSceneBuilder
 {
     /// <summary>
     /// Builds the requested operation.
@@ -502,7 +502,7 @@ public static class MissionSceneBuilder
         Planet empirePlanet,
         Planet enemyPlanet,
         Officer officer,
-        FogOfWarSystem fog
+        FogOfWar fog
     ) Build(GameConfig config = null)
     {
         GameRoot game = new GameRoot(config ?? TestConfig.Create());
@@ -548,7 +548,7 @@ public static class MissionSceneBuilder
         officer.MissionReturnParentInstanceID = empirePlanet.InstanceID;
         officer.MissionReturnLocationInstanceID = empirePlanet.InstanceID;
 
-        FogOfWarSystem fog = new FogOfWarSystem(game);
+        FogOfWar fog = new FogOfWar(game);
         return (game, empirePlanet, enemyPlanet, officer, fog);
     }
 
@@ -568,7 +568,7 @@ public static class MissionSceneBuilder
 /// <summary>
 /// Builds complete system dependency graphs used by focused system tests.
 /// </summary>
-public static class TestSystems
+internal static class TestSystems
 {
     /// <summary>
     /// Creates a mission system with the uprising resolution path available.
@@ -577,23 +577,18 @@ public static class TestSystems
     /// <param name="provider">The random number provider used by missions and uprisings.</param>
     /// <param name="movement">The movement system used by mission and control behavior.</param>
     /// <returns>A mission system with all required dependencies.</returns>
-    public static MissionSystem CreateMissionSystem(
+    public static Missions CreateMissionSystem(
         GameRoot game,
         IRandomNumberProvider provider,
-        MovementSystem movement
+        Movement movement
     )
     {
-        FogOfWarSystem fog = new FogOfWarSystem(game);
-        FleetSystem fleet = new FleetSystem(game);
-        ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleet, movement);
-        PlanetaryControlSystem control = new PlanetaryControlSystem(
-            game,
-            movement,
-            manufacturing,
-            fog
-        );
-        UprisingSystem uprising = new UprisingSystem(game, provider, control);
-        return new MissionSystem(game, provider, movement, uprising);
+        FogOfWar fog = new FogOfWar(game);
+        Fleets fleet = new Fleets(game);
+        Manufacturing manufacturing = new Manufacturing(game, fleet, movement);
+        PlanetaryControl control = new PlanetaryControl(game, movement, manufacturing, fog);
+        Uprisings uprising = new Uprisings(game, provider, control);
+        return new Missions(game, provider, movement, uprising);
     }
 }
 

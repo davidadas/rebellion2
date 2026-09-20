@@ -20,11 +20,7 @@ namespace Rebellion.AI.Planners
         public List<AIProposal> Plan(AITurnContext context)
         {
             List<AIProposal> proposals = new List<AIProposal>();
-            if (
-                context?.Assessment == null
-                || context.Maintenance == null
-                || context.Manufacturing == null
-            )
+            if (context?.Assessment == null)
                 return proposals;
 
             foreach (Planet planet in context.Assessment.OwnedPlanets)

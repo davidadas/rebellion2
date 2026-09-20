@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using Rebellion.AI.Director;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
 
 namespace Rebellion.AI.Proposals
 {
@@ -205,19 +205,18 @@ namespace Rebellion.AI.Proposals
             }
 
             List<Fleet> attackingFleets = new List<Fleet> { Fleet };
-            bool canBombard =
-                context.Bombardment?.CanExecute(
-                    attackingFleets,
-                    liveTarget,
-                    BombardmentType.Military
-                ) == true;
+            bool canBombard = context.Queries.CanBombard(
+                attackingFleets,
+                liveTarget,
+                BombardmentType.Military
+            );
             bool canDamageMilitaryTargets =
                 canBombard
                 && context.Assessment.GetFleetBombardmentStrength(Fleet)
                     > context.Assessment.GetBombardmentShieldResistance(liveTarget);
             bool shouldBombardMilitaryTargets =
                 canDamageMilitaryTargets
-                && BombardmentSystem.HasActiveMilitaryTargets(
+                && context.Queries.HasActiveMilitaryTargets(
                     liveTarget,
                     liveTarget.GetOwnerInstanceID()
                 );
@@ -234,14 +233,14 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            BombardmentResult bombardmentResult = context.Bombardment.Execute(
-                attackingFleets,
-                liveTarget,
-                BombardmentType.Military
+            context.Execute(
+                new BombardCommand
+                {
+                    Fleets = attackingFleets,
+                    Planet = liveTarget,
+                    Type = BombardmentType.Military,
+                }
             );
-            context.AddResult(bombardmentResult);
-            context.AddResults(bombardmentResult.Events);
-            context.AddResult(bombardmentResult.OwnershipChange);
 
             if (!TryClearCompletedAttackOrder(context, liveTarget))
             {
@@ -257,16 +256,13 @@ namespace Rebellion.AI.Proposals
         /// <param name="liveTarget">The current scene-graph target.</param>
         private void ExecuteAssault(AITurnContext context, Planet liveTarget)
         {
-            if (context.PlanetaryAssault == null)
-                return;
-
-            PlanetaryAssaultResult assaultResult = context.PlanetaryAssault.Execute(
-                new List<Fleet> { Fleet },
-                liveTarget
+            context.Execute(
+                new AssaultPlanetCommand
+                {
+                    Fleets = new List<Fleet> { Fleet },
+                    Planet = liveTarget,
+                }
             );
-            context.AddResult(assaultResult);
-            context.AddResults(assaultResult.Events);
-            context.AddResult(assaultResult.OwnershipChange);
             TryClearCompletedAttackOrder(context, liveTarget);
         }
 
@@ -316,11 +312,8 @@ namespace Rebellion.AI.Proposals
         /// <param name="liveTarget">The current scene-graph target.</param>
         private void MoveToTarget(AITurnContext context, Planet liveTarget)
         {
-            if (context.Movement == null)
-                return;
-
             Fleet.Order.Status = FleetOrderStatus.Readying;
-            context.Movement.RequestMove(Fleet, liveTarget);
+            context.Move(Fleet, liveTarget);
         }
 
         /// <summary>
@@ -331,10 +324,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the fleet should assault.</returns>
         private bool ShouldAssault(AITurnContext context, Planet liveTarget)
         {
-            if (
-                context.Game?.Config?.AI.EnablePlanetaryAssaults != true
-                || context.PlanetaryAssault == null
-            )
+            if (context.Game?.Config?.AI.EnablePlanetaryAssaults != true)
                 return false;
 
             if (context.Assessment.IsAssaultBlockedByShields(liveTarget))
@@ -349,8 +339,7 @@ namespace Rebellion.AI.Proposals
                     >= context.Assessment.GetRequiredAttackRegimentStrength(Fleet, liveTarget)
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, liveTarget)
                     >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent
-                && context.PlanetaryAssault.CanExecute(new List<Fleet> { Fleet }, liveTarget)
-                    == true;
+                && context.Queries.CanAssault(new List<Fleet> { Fleet }, liveTarget) == true;
         }
 
         /// <summary>
@@ -377,7 +366,7 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            context.Movement?.EvacuateToNearestFriendlyPlanet(Fleet);
+            context.Evacuate(Fleet);
         }
 
         /// <summary>

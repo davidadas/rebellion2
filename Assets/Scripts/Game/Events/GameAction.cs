@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Requests;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Logging;
@@ -58,7 +58,7 @@ namespace Rebellion.Game.Events
         public IRandomNumberProvider Random { get; }
         public GameEventEvaluationContext Evaluation { get; }
         public UnitFactory UnitFactory { get; }
-        internal List<GameRequest> Requests { get; } = new List<GameRequest>();
+        internal List<GameCommand> Commands { get; } = new List<GameCommand>();
         internal List<GameResult> Results { get; } = new List<GameResult>();
 
         /// <summary>
@@ -82,16 +82,16 @@ namespace Rebellion.Game.Events
         }
 
         /// <summary>
-        /// Adds authoritative work requested by the current action.
+        /// Adds authoritative work produced by the current action.
         /// </summary>
-        /// <param name="request">The request.</param>
-        internal void Request(GameRequest request)
+        /// <param name="command">The command.</param>
+        internal void Command(GameCommand command)
         {
-            if (request == null)
+            if (command == null)
                 return;
-            if (string.IsNullOrEmpty(request.SourceEventInstanceID) && Evaluation?.Event != null)
-                request.SourceEventInstanceID = Evaluation.Event.InstanceID;
-            Requests.Add(request);
+            if (string.IsNullOrEmpty(command.SourceEventInstanceID) && Evaluation?.Event != null)
+                command.SourceEventInstanceID = Evaluation.Event.InstanceID;
+            Commands.Add(command);
         }
 
         /// <summary>

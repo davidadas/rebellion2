@@ -64,7 +64,7 @@ namespace Rebellion.AI.Planners
         /// <returns>Mission proposals generated for this faction.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
-            if (context?.Game == null || context.Faction == null || context.Missions == null)
+            if (context?.Game == null || context.Faction == null)
                 return new List<AIProposal>();
 
             _candidateSelector.Reset();

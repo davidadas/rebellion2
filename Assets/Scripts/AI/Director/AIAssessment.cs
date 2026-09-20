@@ -8,8 +8,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
-using Rebellion.Systems.Combat;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Director
@@ -1033,11 +1031,10 @@ namespace Rebellion.AI.Director
             if (planet == null || _context?.Game?.Config == null)
                 return 0;
 
-            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+            int leadershipBonus = _context.Queries.GetAssaultLeadershipBonus(
                 planet.GetAllOfficers(),
                 OfficerRank.General,
-                planet.GetOwnerInstanceID(),
-                _context.Game.Config.Combat.PlanetaryAssault
+                planet.GetOwnerInstanceID()
             );
             return planet
                 .GetAllRegiments()
@@ -1600,10 +1597,7 @@ namespace Rebellion.AI.Director
             if (planet == null || _context?.Game?.Config == null)
                 return false;
 
-            return PlanetaryAssaultResolver.IsBlockedByShields(
-                planet,
-                _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
-            );
+            return _context.Queries.IsAssaultBlockedByShields(planet);
         }
 
         /// <summary>
@@ -1711,10 +1705,9 @@ namespace Rebellion.AI.Director
                 1,
                 _context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount
             );
-            int stabilityRequirement = UprisingSystem.CalculateGarrisonRequirement(
+            int stabilityRequirement = _context.Queries.GetGarrisonRequirement(
                 planet,
-                _context.Faction,
-                _context.Game.Config.AI.Garrison
+                _context.Faction
             );
             int landingCapacity = _context.Game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount;
             return Math.Max(minimum, Math.Min(stabilityRequirement, landingCapacity));
@@ -1860,11 +1853,7 @@ namespace Rebellion.AI.Director
             if (fleet == null || targetPlanet == null || _context?.Game?.Config == null)
                 return 0;
 
-            return PlanetaryAssaultResolver.EstimateSuccessPercent(
-                new List<Fleet> { fleet },
-                targetPlanet,
-                _context.Game.Config.Combat.PlanetaryAssault
-            );
+            return _context.Queries.EstimateAssaultSuccess(new List<Fleet> { fleet }, targetPlanet);
         }
 
         /// <summary>
@@ -1915,10 +1904,7 @@ namespace Rebellion.AI.Director
         /// <returns>The bombardment strength absorbed by the shields.</returns>
         public int GetBombardmentShieldResistance(Planet planet)
         {
-            return BombardmentSystem.GetBombardmentShieldResistance(
-                BombardmentSystem.GetBombardmentShieldStrength(planet),
-                _context.Game.Config.Combat.Bombardment
-            );
+            return _context.Queries.GetBombardmentShieldResistance(planet);
         }
 
         /// <summary>
@@ -1935,7 +1921,7 @@ namespace Rebellion.AI.Director
                 _activeHostileMilitaryTargets,
                 targetPlanet.InstanceID,
                 () =>
-                    BombardmentSystem.HasActiveMilitaryTargets(
+                    _context.Queries.HasActiveMilitaryTargets(
                         targetPlanet,
                         targetPlanet.GetOwnerInstanceID()
                     )
@@ -2102,11 +2088,10 @@ namespace Rebellion.AI.Director
             if (fleet == null || _context?.Game?.Config == null)
                 return 0;
 
-            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+            int leadershipBonus = _context.Queries.GetAssaultLeadershipBonus(
                 fleet.GetOfficers(),
                 OfficerRank.General,
-                fleet.GetOwnerInstanceID(),
-                _context.Game.Config.Combat.PlanetaryAssault
+                fleet.GetOwnerInstanceID()
             );
             return fleet
                 .GetChildren<CapitalShip>()
@@ -2126,11 +2111,10 @@ namespace Rebellion.AI.Director
             if (fleet == null || _context?.Game?.Config == null)
                 return 0;
 
-            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+            int leadershipBonus = _context.Queries.GetAssaultLeadershipBonus(
                 fleet.GetOfficers(),
                 OfficerRank.General,
-                fleet.GetOwnerInstanceID(),
-                _context.Game.Config.Combat.PlanetaryAssault
+                fleet.GetOwnerInstanceID()
             );
             return fleet
                 .GetRegiments()
@@ -2182,11 +2166,10 @@ namespace Rebellion.AI.Director
             )
                 return 0;
 
-            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+            int leadershipBonus = _context.Queries.GetAssaultLeadershipBonus(
                 targetFleet.GetOfficers(),
                 OfficerRank.General,
-                targetFleet.GetOwnerInstanceID(),
-                _context.Game.Config.Combat.PlanetaryAssault
+                targetFleet.GetOwnerInstanceID()
             );
             return capitalShip
                 .GetChildren<Regiment>()
@@ -2207,11 +2190,7 @@ namespace Rebellion.AI.Director
             return GetOrAdd(
                 _fleetBombardmentStrengths,
                 fleet.InstanceID,
-                () =>
-                    BombardmentSystem.GetBombardmentStrength(
-                        new[] { fleet },
-                        _context.Game.Config.Combat.Bombardment
-                    )
+                () => _context.Queries.GetBombardmentStrength(new[] { fleet })
             );
         }
 
@@ -2228,11 +2207,7 @@ namespace Rebellion.AI.Director
             return GetOrAdd(
                 _projectedFleetBombardmentStrengths,
                 fleet.InstanceID,
-                () =>
-                    BombardmentSystem.GetProjectedBombardmentStrength(
-                        fleet,
-                        _context.Game.Config.Combat.Bombardment
-                    )
+                () => _context.Queries.GetProjectedBombardmentStrength(fleet)
             );
         }
 
@@ -2247,11 +2222,7 @@ namespace Rebellion.AI.Director
             if (fleet == null || capitalShip == null || _context?.Game?.Config == null)
                 return 0;
 
-            return BombardmentSystem.GetProjectedCapitalShipBombardmentStrength(
-                fleet,
-                capitalShip,
-                _context.Game.Config.Combat.Bombardment
-            );
+            return _context.Queries.GetProjectedCapitalShipBombardmentStrength(fleet, capitalShip);
         }
 
         /// <summary>

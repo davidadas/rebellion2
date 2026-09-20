@@ -121,7 +121,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this proposal may execute.</returns>
         public override bool CanExecute(AITurnContext context)
         {
-            return IsStillValid(context) && context.Movement != null;
+            return IsStillValid(context);
         }
 
         /// <summary>
@@ -133,7 +133,7 @@ namespace Rebellion.AI.Proposals
             if (!CanExecute(context))
                 return;
 
-            context.Movement.RequestMove(Unit, Destination);
+            context.Move(Unit, Destination);
         }
 
         /// <summary>

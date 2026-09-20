@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -35,7 +36,7 @@ public sealed class MissionCreateWindowController
         new HashSet<MissionCreateWindowView>();
     private readonly Action<UIWindow> closeWindow;
     private readonly Func<GameRoot> getGame;
-    private readonly Func<MissionSystem> getMissionSystem;
+    private readonly GameSession gameSession;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<bool> getShowMissionOdds;
     private readonly Func<Vector2Int> getWindowPosition;
@@ -53,7 +54,7 @@ public sealed class MissionCreateWindowController
     /// Creates the Mission Create feature controller.
     /// </summary>
     /// <param name="getGame">Returns the active game.</param>
-    /// <param name="getMissionSystem">Returns the active mission system.</param>
+    /// <param name="gameSession">The active simulation session.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="playSfx">Plays a resolved mission acknowledgment sound.</param>
     /// <param name="windowLayer">Provides the authored Mission Create prefab and modal layer.</param>
@@ -67,7 +68,7 @@ public sealed class MissionCreateWindowController
     /// <param name="setShowMissionOdds">Persists mission-odds visibility.</param>
     public MissionCreateWindowController(
         Func<GameRoot> getGame,
-        Func<MissionSystem> getMissionSystem,
+        GameSession gameSession,
         Func<UIContext> getUIContext,
         Action<string> playSfx,
         StrategyWindowLayerView windowLayer,
@@ -82,8 +83,7 @@ public sealed class MissionCreateWindowController
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getMissionSystem =
-            getMissionSystem ?? throw new ArgumentNullException(nameof(getMissionSystem));
+        this.gameSession = gameSession ?? throw new ArgumentNullException(nameof(gameSession));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));
         this.windowManager =
@@ -97,7 +97,7 @@ public sealed class MissionCreateWindowController
         this.setShowMissionOdds = setShowMissionOdds ?? (_ => { });
         projector = new MissionCreateWindowProjector(
             getUIContext,
-            request => this.getMissionSystem().GetMissionOdds(request),
+            request => this.gameSession.Queries.GetMissionOdds(request),
             getObservedPlanet
         );
     }
@@ -567,7 +567,7 @@ public sealed class MissionCreateWindowController
             MainParticipants = participants.ToList(),
             DecoyParticipants = new List<IMissionParticipant>(),
         };
-        foreach (MissionOption option in getMissionSystem().GetAvailableMissionOptions(context))
+        foreach (MissionOption option in gameSession.Queries.GetMissionOptions(context))
             choices.Add(new StrategyMissionChoice(option));
 
         return choices;
@@ -590,8 +590,10 @@ public sealed class MissionCreateWindowController
             missionPlanet,
             session.Target.Item
         );
-        MissionSystem missionSystem = getMissionSystem();
-        if (!missionSystem.CanCreateMission(context) || !missionSystem.InitiateMission(context))
+        if (
+            !gameSession.Queries.CanCreateMission(context)
+            || !gameSession.Execute(new InitiateMissionCommand { Context = context }).Accepted
+        )
             return false;
 
         PlayMissionStartVoice(session.Agents, session.Decoys);

@@ -1,0 +1,102 @@
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.AI.Director;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Simulation;
+using Rebellion.Tests.AI.Helpers;
+
+namespace Rebellion.Tests.Simulation.AITests
+{
+    [TestFixture]
+    public class AITests
+    {
+        [Test]
+        public void ProcessTick_BeforeConfiguredInterval_DoesNotProcessFaction()
+        {
+            (GameRoot game, Fleet fleet, Rebellion.Simulation.AI system) = BuildScene();
+            game.CurrentTick = game.Config.AI.TickInterval - 1;
+
+            system.ProcessTick();
+
+            Assert.IsNull(fleet.Order);
+        }
+
+        [Test]
+        public void ProcessTick_AtConfiguredInterval_ProcessesFaction()
+        {
+            (GameRoot game, Fleet fleet, Rebellion.Simulation.AI system) = BuildScene();
+            game.CurrentTick = game.Config.AI.TickInterval;
+
+            system.ProcessTick();
+
+            Assert.IsNotNull(fleet.Order);
+            Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
+        }
+
+        [Test]
+        public void ProcessTickIncrementally_AtConfiguredInterval_YieldsBetweenWorkUnits()
+        {
+            (GameRoot game, Fleet fleet, Rebellion.Simulation.AI system) = BuildScene();
+            game.CurrentTick = game.Config.AI.TickInterval;
+            List<GameResult> results = new List<GameResult>();
+
+            int completedSteps = system.ProcessTickIncrementally(results).Count();
+
+            Assert.AreEqual(14, completedSteps);
+            Assert.IsNotNull(fleet.Order);
+            Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
+        }
+
+        /// <summary>
+        /// Builds scene.
+        /// </summary>
+        /// <returns>The constructed scene.</returns>
+        private static (GameRoot Game, Fleet Fleet, Rebellion.Simulation.AI System) BuildScene()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.GetPlayers()
+                .Add(
+                    new Player
+                    {
+                        PlayerID = "player",
+                        FactionID = rebels.InstanceID,
+                        ControllerType = PlayerControllerType.Human,
+                    }
+                );
+            game.Config.AI.TickInterval = 7;
+            game.Config.AI.FleetDeployment.AttackOpportunityCostPenaltyWeight = 0;
+            PlanetSector planetSystem = AITestSceneBuilder.AddSector(game, "system");
+            Planet owned = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSystem,
+                "owned",
+                empire.InstanceID
+            );
+            Planet enemy = AITestSceneBuilder.AddPlanet(
+                game,
+                planetSystem,
+                "enemy",
+                rebels.InstanceID
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
+
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", empire.InstanceID);
+            fleet.AddChild(ship);
+            ship.SetParent(fleet);
+            game.AttachNode(fleet, owned);
+
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            GameSession session = GameSessionFactory.Create(game, TestContent.Data);
+            Rebellion.Simulation.AI system = session.Features.AI;
+
+            return (game, fleet, system);
+        }
+    }
+}

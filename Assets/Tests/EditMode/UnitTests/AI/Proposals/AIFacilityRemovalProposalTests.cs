@@ -7,7 +7,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Proposals
@@ -43,17 +42,7 @@ namespace Rebellion.Tests.AI.Proposals
                 ManufacturingType.Ship
             );
             StubRNG random = new StubRNG();
-            MaintenanceSystem maintenance = new MaintenanceSystem(
-                game,
-                random,
-                new FleetSystem(game)
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(
-                game,
-                empire,
-                random: random,
-                maintenance: maintenance
-            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire, random);
 
             AIFacilityRemovalProposal proposal = new AIFacilityRemovalPlanner()
                 .Plan(context)
@@ -107,24 +96,9 @@ namespace Rebellion.Tests.AI.Proposals
             );
             unfinished.OwnerInstanceID = empire.InstanceID;
             StubRNG random = new StubRNG();
-            MaintenanceSystem maintenance = new MaintenanceSystem(
-                game,
-                random,
-                new FleetSystem(game)
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(
-                game,
-                empire,
-                random: random,
-                maintenance: maintenance
-            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire, random);
             Assert.IsTrue(
-                context.Manufacturing.Enqueue(
-                    surplusPlanet,
-                    unfinished,
-                    surplusPlanet,
-                    ignoreCost: true
-                )
+                context.EnqueueManufacturing(surplusPlanet, unfinished, surplusPlanet, true)
             );
             AIProposal proposal = new AIFacilityRemovalPlanner().Plan(context).Single();
 
@@ -171,17 +145,7 @@ namespace Rebellion.Tests.AI.Proposals
                 ManufacturingType.Ship
             );
             StubRNG random = new StubRNG();
-            MaintenanceSystem maintenance = new MaintenanceSystem(
-                game,
-                random,
-                new FleetSystem(game)
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(
-                game,
-                empire,
-                random: random,
-                maintenance: maintenance
-            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire, random);
             AIProposal proposal = new AIFacilityRemovalPlanner().Plan(context).Single();
 
             Assert.IsTrue(proposal.CanSelect(context));

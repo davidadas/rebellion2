@@ -6,7 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Events
 {
@@ -124,7 +124,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
             game.AttachNode(officer, planet);
-            new PersonnelSystem(game).KillOfficer(officer);
+            new Personnel(game).KillOfficer(officer);
             IsKilledConditional condition = new IsKilledConditional
             {
                 OfficerInstanceID = officer.InstanceID,

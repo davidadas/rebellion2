@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 
 namespace Rebellion.AI.Director
@@ -21,12 +22,8 @@ namespace Rebellion.AI.Director
         public GameRoot Game { get; }
         public Faction Faction { get; }
         public IRandomNumberProvider Random { get; }
-        public MissionSystem Missions { get; }
-        public MovementSystem Movement { get; }
-        public ManufacturingSystem Manufacturing { get; }
-        public MaintenanceSystem Maintenance { get; }
-        public BombardmentSystem Bombardment { get; }
-        public PlanetaryAssaultSystem PlanetaryAssault { get; }
+        public IGameCommandExecutor Commands { get; }
+        public IGameQueries Queries { get; }
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
         public AIStrategicPlan StrategicPlan { get; }
@@ -51,35 +48,23 @@ namespace Rebellion.AI.Director
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="faction">The faction being processed.</param>
-        /// <param name="missions">Mission system used by mission proposals.</param>
-        /// <param name="movement">Movement system used by movement proposals.</param>
-        /// <param name="manufacturing">Manufacturing system used by production proposals.</param>
-        /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
-        /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
+        /// <param name="commands">Executes authoritative AI decisions.</param>
+        /// <param name="queries">Answers simulation questions without exposing feature implementations.</param>
         /// <param name="random">RNG provider used by probabilistic decisions.</param>
         /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
-        /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         public AITurnContext(
             GameRoot game,
             Faction faction,
-            MissionSystem missions,
-            MovementSystem movement,
-            ManufacturingSystem manufacturing,
-            BombardmentSystem bombardment,
-            PlanetaryAssaultSystem planetaryAssault,
+            IGameCommandExecutor commands,
+            IGameQueries queries,
             IRandomNumberProvider random,
-            GalaxyMap factionView = null,
-            MaintenanceSystem maintenance = null
+            GalaxyMap factionView = null
         )
         {
             Game = game;
             Faction = faction;
-            Missions = missions;
-            Movement = movement;
-            Manufacturing = manufacturing;
-            Maintenance = maintenance;
-            Bombardment = bombardment;
-            PlanetaryAssault = planetaryAssault;
+            Commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            Queries = queries ?? throw new ArgumentNullException(nameof(queries));
             Random = random;
             FactionView = factionView;
             _unlockedSpecialForcesMissionTypes =
@@ -191,6 +176,90 @@ namespace Rebellion.AI.Director
             foreach (GameResult result in results)
                 AddResult(result);
         }
+
+        /// <summary>
+        /// Executes one AI command and records its factual results.
+        /// </summary>
+        /// <param name="command">The command to execute.</param>
+        /// <returns>True when the command was accepted.</returns>
+        public bool Execute(GameCommand command)
+        {
+            GameCommandResult outcome = Commands.ExecuteRaw(command);
+            AddResults(outcome.Results);
+            return outcome.Accepted;
+        }
+
+        /// <summary>
+        /// Starts a manufacturing order for this faction.
+        /// </summary>
+        /// <param name="producer">The producing planet.</param>
+        /// <param name="template">The unit template.</param>
+        /// <param name="destination">The delivery destination.</param>
+        /// <param name="count">The requested quantity.</param>
+        /// <returns>True when the order was accepted.</returns>
+        public bool StartManufacturing(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count
+        ) =>
+            Execute(
+                new StartManufacturingCommand
+                {
+                    Producer = producer,
+                    Template = template,
+                    Destination = destination,
+                    Count = count,
+                    OwnerInstanceID = Faction.InstanceID,
+                }
+            );
+
+        /// <summary>
+        /// Enqueues one created unit for manufacturing.
+        /// </summary>
+        /// <param name="producer">The producing planet.</param>
+        /// <param name="unit">The created unit.</param>
+        /// <param name="destination">The delivery destination.</param>
+        /// <param name="ignoreCost">Whether to bypass the normal resource charge.</param>
+        /// <returns>True when the unit was enqueued.</returns>
+        public bool EnqueueManufacturing(
+            Planet producer,
+            IManufacturable unit,
+            ISceneNode destination,
+            bool ignoreCost = false
+        ) =>
+            Execute(
+                new EnqueueManufacturingCommand
+                {
+                    Producer = producer,
+                    Unit = unit,
+                    Destination = destination,
+                    IgnoreCost = ignoreCost,
+                }
+            );
+
+        /// <summary>
+        /// Moves one unit to a destination.
+        /// </summary>
+        /// <param name="unit">The unit to move.</param>
+        /// <param name="destination">The movement destination.</param>
+        /// <returns>True when movement was accepted.</returns>
+        public bool Move(ISceneNode unit, ContainerNode destination) =>
+            Execute(
+                new MoveSelectionCommand
+                {
+                    Items = new List<ISceneNode> { unit },
+                    Destination = destination,
+                    OwnerInstanceID = Faction.InstanceID,
+                }
+            );
+
+        /// <summary>
+        /// Evacuates one unit to its nearest valid friendly planet.
+        /// </summary>
+        /// <param name="unit">The unit to evacuate.</param>
+        /// <returns>True when evacuation was accepted.</returns>
+        public bool Evacuate(IMovable unit) => Execute(new EvacuateUnitCommand { Unit = unit });
     }
 
     /// <summary>

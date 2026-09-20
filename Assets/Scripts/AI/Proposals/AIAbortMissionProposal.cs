@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.AI.Director;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Missions;
 
 namespace Rebellion.AI.Proposals
@@ -69,7 +70,7 @@ namespace Rebellion.AI.Proposals
         public override void Execute(AITurnContext context)
         {
             if (CanExecute(context))
-                context.Missions.AbortMission(Mission.InstanceID);
+                context.Execute(new AbortMissionCommand { MissionInstanceID = Mission.InstanceID });
         }
 
         /// <summary>
@@ -80,7 +81,6 @@ namespace Rebellion.AI.Proposals
         private bool IsStillValid(AITurnContext context)
         {
             return context?.Game != null
-                && context.Missions != null
                 && Mission != null
                 && Mission.GetOwnerInstanceID() == context.Faction?.InstanceID
                 && context.Game.GetSceneNodeByInstanceID<Mission>(Mission.InstanceID) == Mission;

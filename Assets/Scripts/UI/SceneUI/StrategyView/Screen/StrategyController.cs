@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -11,6 +12,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -93,7 +95,7 @@ public sealed class StrategyController
     private ConfirmationDialogView briefingSkipConfirmation;
 
     private CancelStack cancelStack;
-    private GameManager gameManager;
+    private GameSession gameSession;
     private StrategyBriefingController briefingController;
     private bool briefingActive;
     private EventSystem briefingEventSystem;
@@ -156,11 +158,11 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="manager">The active game manager.</param>
     /// <param name="context">The active strategy UI context.</param>
-    public void Initialize(GameManager manager, UIContext context)
+    public void Initialize(GameSession manager, UIContext context)
     {
         if (manager == null)
             throw new InvalidOperationException(
-                "StrategyController.Initialize received null GameManager."
+                "StrategyController.Initialize received null GameSession."
             );
 
         if (context == null)
@@ -168,22 +170,21 @@ public sealed class StrategyController
                 "StrategyController.Initialize received null UIContext."
             );
 
-        if (gameManager != null)
+        if (gameSession != null)
             throw new InvalidOperationException("StrategyController.Initialize called twice.");
 
         ValidateAuthoredViews();
-        gameManager = manager;
+        gameSession = manager;
         uiContext = context;
         PreloadStrategySfx();
         cancelStack = AppBootstrap.Instance?.GetCancelStack();
         strategyContextMenu.Initialize(uiContext);
-        gameManager.GameSpeedChanged += MarkDirty;
-        gameManager.GameReplaced += HandleGameReplaced;
-        gameManager.CombatDecisionRequired += RefreshStrategyState;
-        gameManager.TickCompleted += RefreshStrategyState;
-        gameManager.MessageDelivered += HandleMessageDelivered;
-        gameManager.BombardmentCompleted += HandleBombardmentCompleted;
-        gameManager.PlanetaryAssaultsResolved += HandlePlanetaryAssaultsResolved;
+        gameSession.GameSpeedChanged += MarkDirty;
+        gameSession.CombatDecisionRequired += RefreshStrategyState;
+        gameSession.TickCompleted += RefreshStrategyState;
+        gameSession.Results.MessageDelivered += HandleMessageDelivered;
+        gameSession.Results.BombardmentCompleted += HandleBombardmentCompleted;
+        gameSession.Results.PlanetaryAssaultsResolved += HandlePlanetaryAssaultsResolved;
 
         InitializeScreenControllers();
         IContentAssetSource contentAssets = AppBootstrap.Instance.GetContentAssets();
@@ -249,14 +250,14 @@ public sealed class StrategyController
         ContentAssets contentAssets = AppBootstrap.Instance.GetContentAssets();
         System.Random musicRandom = new System.Random();
         strategyMusicController = new StrategyMusicController(
-            () => gameManager.GetGame(),
+            () => gameSession.GetGame(),
             () => uiContext?.GetPlayerFactionTheme()?.StrategyMusic,
             musicRandom.Next,
             audioManager.PlayDynamicPlaylist,
             audioManager.StopMusic
         );
         strategyHudController = new StrategyHudController(
-            () => gameManager?.GetPlayerFaction(),
+            () => gameSession?.GetPlayerFaction(),
             () => uiContext?.GetPlayerFactionTheme(),
             path => uiContext?.GetTexture(path),
             PlaySfx,
@@ -271,7 +272,7 @@ public sealed class StrategyController
         galaxyMapController.BindView(galaxyMap);
         contextMenuController = new ContextMenuController();
         idleBarController = new IdleBarController(
-            () => gameManager?.GetPlayerFaction(),
+            () => gameSession?.GetPlayerFaction(),
             uiState.IgnoredItems,
             contextMenuController,
             () => uiContext,
@@ -280,7 +281,7 @@ public sealed class StrategyController
                     .Instance?.GetUserSettingsManager()
                     ?.Settings?.UserInterface?.ShowIdleBar
                 ?? false,
-            instanceId => gameManager?.GetGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId),
+            instanceId => gameSession?.GetGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId),
             () =>
                 AppBootstrap
                     .Instance?.GetUserSettingsManager()
@@ -290,7 +291,7 @@ public sealed class StrategyController
         idleBarController.Initialize(this);
         idleBarController.BindView(idleBar);
         briefingController = new StrategyBriefingController(
-            gameManager.GetGame(),
+            gameSession.GetGame(),
             path => uiContext?.GetTexture(path),
             path => contentAssets.GetPreloadedAudio(path).length,
             contentAssets.PreloadAsync,
@@ -318,7 +319,7 @@ public sealed class StrategyController
     /// <returns>The strategy UI state section.</returns>
     private UIStateSection GetStrategyUIState()
     {
-        return gameManager.GetPlayerUIState().GetOrCreateSection(_uiStateSectionID);
+        return gameSession.GetPlayerUIState().GetOrCreateSection(_uiStateSectionID);
     }
 
     /// <summary>
@@ -352,10 +353,8 @@ public sealed class StrategyController
     {
         InitializeWindowInfrastructure();
         StrategyFleetCommandController fleetCommandController = new StrategyFleetCommandController(
-            () => gameManager.GetGame(),
-            () => gameManager.FleetSystem,
-            () => gameManager.BombardmentSystem,
-            () => gameManager.PlanetaryAssaultSystem
+            () => gameSession.GetGame(),
+            gameSession
         );
         InitializeFeatureWindowControllers(fleetCommandController);
         InitializeSharedCommandControllers();
@@ -502,9 +501,8 @@ public sealed class StrategyController
             RenderFleetSelectionRoutes
         );
         constructionWindowController = new ConstructionWindowController(
-            () => gameManager.GetGame(),
-            () => gameManager.ManufacturingSystem,
-            () => gameManager.MovementSystem,
+            () => gameSession.GetGame(),
+            gameSession,
             () => uiContext,
             strategyWindowLayerView,
             strategyWindowManager,
@@ -514,8 +512,8 @@ public sealed class StrategyController
             MarkDirty
         );
         facilityWindowController = new FacilityWindowController(
-            () => gameManager.GetGame(),
-            () => gameManager.ManufacturingSystem,
+            () => gameSession.GetGame(),
+            gameSession,
             constructionWindowController,
             () => uiContext,
             targetingController,
@@ -629,11 +627,11 @@ public sealed class StrategyController
         WireStrategyInputActions();
         battleAlertWindowController = new BattleAlertWindowController(
             () =>
-                gameManager.SpaceCombatSystem.TryGetPendingCombat(out PendingCombatResult pending)
+                gameSession.Queries.TryGetPendingCombat(out PendingCombatResult pending)
                     ? pending
                     : null,
-            () => gameManager.ResolveCombatRetreat(PlayerFactionId),
-            () => gameManager.ResolveCombat(true),
+            () => gameSession.ResolveCombatRetreat(PlayerFactionId),
+            () => gameSession.ResolveCombat(true),
             () => uiContext,
             PlaySfx,
             PlayTrack,
@@ -645,8 +643,8 @@ public sealed class StrategyController
             MarkDirty
         );
         missionCreateWindowController = new MissionCreateWindowController(
-            () => gameManager.GetGame(),
-            () => gameManager.MissionSystem,
+            () => gameSession.GetGame(),
+            gameSession,
             () => uiContext,
             PlaySfx,
             strategyWindowLayerView,
@@ -676,7 +674,7 @@ public sealed class StrategyController
     private void InitializeSharedCommandControllers()
     {
         advisorCommandController = new AdvisorCommandController(
-            gameManager,
+            gameSession,
             targetingController,
             () => Sectors,
             constructionWindowController.OpenFromAdvisor
@@ -684,16 +682,12 @@ public sealed class StrategyController
         windowCommandController = new StrategyWindowCommandController(
             missionCreateWindowController,
             confirmDialogWindowController,
-            () => gameManager.GetGame(),
-            () => gameManager.MovementSystem,
-            () => gameManager.MaintenanceSystem,
-            () => gameManager.ManufacturingSystem,
-            () => gameManager.PersonnelSystem,
+            () => gameSession.GetGame(),
+            gameSession,
             PlaySfx,
             ClearWindowSelection,
             RebuildSnapshot,
             MarkDirty,
-            () => gameManager.HeadquartersSystem,
             strategyHudController.PlayInvalidOrderRejected,
             strategyHudController.PlayInTransitOrderRejected,
             strategyHudController.PlayUnitUnderConstructionOrderRejected
@@ -949,15 +943,14 @@ public sealed class StrategyController
             _appInputController.OptionsMenuRequested -= HandleToggleOptions;
             _appInputController = null;
         }
-        if (gameManager != null)
+        if (gameSession != null)
         {
-            gameManager.GameSpeedChanged -= MarkDirty;
-            gameManager.GameReplaced -= HandleGameReplaced;
-            gameManager.CombatDecisionRequired -= RefreshStrategyState;
-            gameManager.TickCompleted -= RefreshStrategyState;
-            gameManager.MessageDelivered -= HandleMessageDelivered;
-            gameManager.BombardmentCompleted -= HandleBombardmentCompleted;
-            gameManager.PlanetaryAssaultsResolved -= HandlePlanetaryAssaultsResolved;
+            gameSession.GameSpeedChanged -= MarkDirty;
+            gameSession.CombatDecisionRequired -= RefreshStrategyState;
+            gameSession.TickCompleted -= RefreshStrategyState;
+            gameSession.Results.MessageDelivered -= HandleMessageDelivered;
+            gameSession.Results.BombardmentCompleted -= HandleBombardmentCompleted;
+            gameSession.Results.PlanetaryAssaultsResolved -= HandlePlanetaryAssaultsResolved;
         }
     }
 
@@ -966,7 +959,7 @@ public sealed class StrategyController
     /// </summary>
     private void Update()
     {
-        if (gameManager == null || !contentReady)
+        if (gameSession == null || !contentReady)
             return;
 
         CaptureChangedWindows();
@@ -998,16 +991,14 @@ public sealed class StrategyController
         {
             dirty = true;
             if (
-                gameManager.SpaceCombatSystem.TryGetPendingCombat(
-                    out PendingCombatResult pendingCombat
-                )
+                gameSession.Queries.TryGetPendingCombat(out PendingCombatResult pendingCombat)
                 && pendingCombat != null
             )
                 PauseForGameplayOption(UserGameplayOption.PauseWhenSpaceBattleBegins);
         }
 
-        int currentTick = gameManager.GetCurrentTick();
-        Faction playerFaction = gameManager.GetPlayerFaction();
+        int currentTick = gameSession.GetCurrentTick();
+        Faction playerFaction = gameSession.GetPlayerFaction();
         strategyHudController.ProcessAdvisor(
             currentTick,
             messagesWindowController?.IsOpen != true && playerFaction?.TranslateCounterpart == true
@@ -1312,7 +1303,7 @@ public sealed class StrategyController
     /// </summary>
     private void RebuildSnapshot()
     {
-        galaxyMapController.RebuildSnapshot(gameManager);
+        galaxyMapController.RebuildSnapshot(gameSession);
         bookmarkController.ReconcilePlanets(Sectors);
         statusWindowController.ReconcileWindows(Sectors);
         ReconcilePlanetWindows();
@@ -1450,14 +1441,14 @@ public sealed class StrategyController
         if (strategyHud == null)
             return;
 
-        Faction faction = gameManager.GetPlayerFaction();
+        Faction faction = gameSession.GetPlayerFaction();
         strategyHudController.Render(
             new StrategyHudRenderData(
-                gameManager.GetCurrentTick().ToString(),
+                gameSession.GetCurrentTick().ToString(),
                 faction?.RawMaterials.ToString() ?? "0",
                 faction?.RefinedMaterials.ToString() ?? "0",
                 faction?.MaintenanceHeadroom.ToString() ?? "0",
-                gameManager.GetGameSpeed(),
+                gameSession.GetGameSpeed(),
                 StrategyHudController.GetUnreadMessageTypes(faction)
             )
         );
@@ -1800,7 +1791,7 @@ public sealed class StrategyController
         messagesWindowController.ReconcileWindows();
         strategyHudController.NotifyAdvisor(
             delivery,
-            gameManager.GetCurrentTick(),
+            gameSession.GetCurrentTick(),
             delivery.Recipient.IsAdvisorMessageNotificationEnabled(delivery.Message.Type)
         );
         MarkDirty();
@@ -1812,7 +1803,7 @@ public sealed class StrategyController
     /// <param name="result">The result.</param>
     private void HandleBombardmentCompleted(BombardmentResult result)
     {
-        string playerFactionId = gameManager?.GetPlayerFaction()?.InstanceID;
+        string playerFactionId = gameSession?.GetPlayerFaction()?.InstanceID;
         if (
             result == null
             || string.IsNullOrEmpty(playerFactionId)
@@ -1831,7 +1822,7 @@ public sealed class StrategyController
     /// <param name="results">The planetary assaults resolved in the current result batch.</param>
     private void HandlePlanetaryAssaultsResolved(IReadOnlyList<PlanetaryAssaultResult> results)
     {
-        string playerFactionId = gameManager?.GetPlayerFaction()?.InstanceID;
+        string playerFactionId = gameSession?.GetPlayerFaction()?.InstanceID;
         if (
             string.IsNullOrEmpty(playerFactionId)
             || results?.Any(result =>
@@ -1856,7 +1847,7 @@ public sealed class StrategyController
             .Instance?.GetUserSettingsManager()
             ?.Settings?.Gameplay;
         if (settings?.IsEnabled(option) == true)
-            gameManager?.SetGameSpeed(TickSpeed.Paused);
+            gameSession?.SetGameSpeed(TickSpeed.Paused);
     }
 
     /// <summary>
@@ -1885,11 +1876,29 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Rebinds strategy presentation and message delivery after a hot-loaded game replacement.
+    /// Rebinds strategy presentation and message delivery to a replacement simulation session.
     /// </summary>
-    /// <param name="game">The replacement active game.</param>
-    private void HandleGameReplaced(GameRoot game)
+    /// <param name="replacement">The replacement simulation session.</param>
+    public void ReplaceSession(GameSession replacement)
     {
+        if (replacement == null)
+            throw new ArgumentNullException(nameof(replacement));
+
+        gameSession.GameSpeedChanged -= MarkDirty;
+        gameSession.CombatDecisionRequired -= RefreshStrategyState;
+        gameSession.TickCompleted -= RefreshStrategyState;
+        gameSession.Results.MessageDelivered -= HandleMessageDelivered;
+        gameSession.Results.BombardmentCompleted -= HandleBombardmentCompleted;
+        gameSession.Results.PlanetaryAssaultsResolved -= HandlePlanetaryAssaultsResolved;
+        gameSession = replacement;
+        gameSession.GameSpeedChanged += MarkDirty;
+        gameSession.CombatDecisionRequired += RefreshStrategyState;
+        gameSession.TickCompleted += RefreshStrategyState;
+        gameSession.Results.MessageDelivered += HandleMessageDelivered;
+        gameSession.Results.BombardmentCompleted += HandleBombardmentCompleted;
+        gameSession.Results.PlanetaryAssaultsResolved += HandlePlanetaryAssaultsResolved;
+
+        GameRoot game = replacement.GetGame();
         UIStateSection uiState = GetStrategyUIState();
         idleBarController.ResetSession(uiState.IgnoredItems);
         bookmarkController.ResetSession(uiState.BookmarkedItems);
@@ -2069,7 +2078,7 @@ public sealed class StrategyController
     /// <param name="speed">The selected simulation speed.</param>
     void IStrategyHudActions.SetGameSpeed(TickSpeed speed)
     {
-        gameManager.SetGameSpeed(speed);
+        gameSession.SetGameSpeed(speed);
         dirty = true;
     }
 
@@ -2087,7 +2096,7 @@ public sealed class StrategyController
     /// <param name="faction">The faction whose automation should be processed.</param>
     void IStrategyHudActions.ProcessAdvisorAutomation(Faction faction)
     {
-        gameManager?.ProcessFactionAutomation(faction);
+        gameSession?.ProcessFactionAutomation(faction);
         dirty = true;
     }
 
@@ -2316,7 +2325,7 @@ public sealed class StrategyController
         string missionInstanceId
     )
     {
-        GameRoot game = gameManager.GetGame();
+        GameRoot game = gameSession.GetGame();
         Mission mission = game?.GetSceneNodeByInstanceID<Mission>(missionInstanceId);
         if (mission?.IsWaitingForParticipants() != false)
             return;
@@ -2340,7 +2349,11 @@ public sealed class StrategyController
                     OfficerVoiceLineType.MissionAbort,
                     game.Random
                 );
-                if (!gameManager.MissionSystem.AbortMission(missionInstanceId))
+                if (
+                    !gameSession
+                        .Execute(new AbortMissionCommand { MissionInstanceID = missionInstanceId })
+                        .Accepted
+                )
                     return;
 
                 if (!string.IsNullOrEmpty(voicePath))
@@ -2659,8 +2672,8 @@ public sealed class StrategyController
         string secondaryTargetInstanceId
     )
     {
-        return gameManager.GetGame()?.GetSceneNodeByInstanceID<ISceneNode>(targetInstanceId)
-            ?? gameManager
+        return gameSession.GetGame()?.GetSceneNodeByInstanceID<ISceneNode>(targetInstanceId)
+            ?? gameSession
                 .GetGame()
                 ?.GetSceneNodeByInstanceID<ISceneNode>(secondaryTargetInstanceId);
     }
@@ -3639,11 +3652,11 @@ public sealed class StrategyController
     /// <param name="faster">Whether to speed up.</param>
     private void StepGameSpeed(bool faster)
     {
-        if (gameManager == null)
+        if (gameSession == null)
             return;
 
-        TickSpeed current = gameManager.GetGameSpeed();
-        gameManager.SetGameSpeed(
+        TickSpeed current = gameSession.GetGameSpeed();
+        gameSession.SetGameSpeed(
             faster
                 ? AppInputController.GetFasterGameSpeed(current)
                 : AppInputController.GetSlowerGameSpeed(current)

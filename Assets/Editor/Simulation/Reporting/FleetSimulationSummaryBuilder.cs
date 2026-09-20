@@ -2,39 +2,38 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
-using Rebellion.Systems.Combat;
+using Rebellion.Simulation;
 
 public static partial class HeadlessSimulationRunner
 {
     /// <summary>
     /// Builds the current summary for a fleet.
     /// </summary>
-    /// <param name="game">The game state to inspect.</param>
+    /// <param name="session">The game session to inspect.</param>
     /// <param name="faction">The fleet owner faction.</param>
     /// <param name="fleet">The fleet to summarize.</param>
     /// <returns>The fleet simulation summary.</returns>
     private static FleetSimulationSummary BuildFleetSummary(
-        GameRoot game,
+        GameSession session,
         Faction faction,
         Fleet fleet
     )
     {
+        GameRoot game = session.GetGame();
+        IGameQueries queries = session.Queries;
         Planet location = fleet.GetParentOfType<Planet>();
         Planet targetPlanet = string.IsNullOrEmpty(fleet.Order?.TargetPlanetId)
             ? null
             : game.GetSceneNodeByInstanceID<Planet>(fleet.Order.TargetPlanetId);
-        int groundAttackStrength = GetFleetRegimentAttackStrength(game, fleet);
-        int bombardmentStrength = BombardmentSystem.GetBombardmentStrength(
-            new[] { fleet },
-            game.Config.Combat.Bombardment
-        );
-        int targetRegimentDefenseStrength = GetTargetRegimentDefenseStrength(game, targetPlanet);
-        int targetShieldStrength = BombardmentSystem.GetBombardmentShieldStrength(targetPlanet);
+        int groundAttackStrength = GetFleetRegimentAttackStrength(queries, fleet);
+        int bombardmentStrength = queries.GetBombardmentStrength(new[] { fleet });
+        int targetRegimentDefenseStrength = GetTargetRegimentDefenseStrength(queries, targetPlanet);
+        int targetShieldStrength = queries.GetBombardmentShieldStrength(targetPlanet);
         string targetOwnerId = targetPlanet?.GetOwnerInstanceID();
         int targetRegimentCount =
             targetPlanet
@@ -55,6 +54,7 @@ public static partial class HeadlessSimulationRunner
         );
         int requiredAttackRegimentCount = GetRequiredAttackRegimentCount(
             game,
+            queries,
             faction,
             targetPlanet,
             targetRegimentCount
@@ -65,10 +65,7 @@ public static partial class HeadlessSimulationRunner
             + _percentScale
             - 1;
         requiredAttackRegimentStrength /= _percentScale;
-        int requiredBombardmentStrength = PlanetaryAssaultResolver.IsBlockedByShields(
-            targetPlanet,
-            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
-        )
+        int requiredBombardmentStrength = queries.IsAssaultBlockedByShields(targetPlanet)
             ? targetShieldStrength + 1
             : 0;
 
@@ -157,19 +154,18 @@ public static partial class HeadlessSimulationRunner
     /// <summary>
     /// Gets the combined attack strength of ready regiments aboard a fleet.
     /// </summary>
-    /// <param name="game">The simulated game state.</param>
+    /// <param name="queries">The simulation queries.</param>
     /// <param name="fleet">The fleet to inspect.</param>
     /// <returns>The regiment attack strength including leadership bonuses.</returns>
-    private static int GetFleetRegimentAttackStrength(GameRoot game, Fleet fleet)
+    private static int GetFleetRegimentAttackStrength(IGameQueries queries, Fleet fleet)
     {
-        if (game == null || fleet == null)
+        if (queries == null || fleet == null)
             return 0;
 
-        int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+        int leadershipBonus = queries.GetAssaultLeadershipBonus(
             fleet.GetOfficers(),
             OfficerRank.General,
-            fleet.GetOwnerInstanceID(),
-            game.Config.Combat.PlanetaryAssault
+            fleet.GetOwnerInstanceID()
         );
         return fleet
             .GetChildren<CapitalShip>()
@@ -187,20 +183,19 @@ public static partial class HeadlessSimulationRunner
     /// <summary>
     /// Gets the combined defense strength of ready regiments at a planet.
     /// </summary>
-    /// <param name="game">The simulated game state.</param>
+    /// <param name="queries">The simulation queries.</param>
     /// <param name="planet">The target planet.</param>
     /// <returns>The regiment defense strength including leadership bonuses.</returns>
-    private static int GetTargetRegimentDefenseStrength(GameRoot game, Planet planet)
+    private static int GetTargetRegimentDefenseStrength(IGameQueries queries, Planet planet)
     {
-        if (game == null || planet == null)
+        if (queries == null || planet == null)
             return 0;
 
         string ownerId = planet.GetOwnerInstanceID();
-        int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+        int leadershipBonus = queries.GetAssaultLeadershipBonus(
             planet.GetAllOfficers(),
             OfficerRank.General,
-            ownerId,
-            game.Config.Combat.PlanetaryAssault
+            ownerId
         );
         return planet
             .GetAllRegiments()
@@ -216,12 +211,14 @@ public static partial class HeadlessSimulationRunner
     /// Gets the regiment count required to attack a target.
     /// </summary>
     /// <param name="game">The game state to inspect.</param>
+    /// <param name="queries">The simulation queries.</param>
     /// <param name="faction">The faction evaluating the target.</param>
     /// <param name="targetPlanet">The target planet.</param>
     /// <param name="targetRegimentCount">The target regiment count.</param>
     /// <returns>The required attack regiment count.</returns>
     private static int GetRequiredAttackRegimentCount(
         GameRoot game,
+        IGameQueries queries,
         Faction faction,
         Planet targetPlanet,
         int targetRegimentCount
@@ -230,11 +227,7 @@ public static partial class HeadlessSimulationRunner
         if (game == null || faction == null || targetPlanet == null)
             return 0;
 
-        int stableGarrison = UprisingSystem.CalculateGarrisonRequirement(
-            targetPlanet,
-            faction,
-            game.Config.AI.Garrison
-        );
+        int stableGarrison = queries.GetGarrisonRequirement(targetPlanet, faction);
         return Math.Max(
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount,
             targetRegimentCount + stableGarrison

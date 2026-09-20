@@ -12,7 +12,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 public static partial class HeadlessSimulationRunner
@@ -20,7 +20,7 @@ public static partial class HeadlessSimulationRunner
     /// <summary>
     /// Builds the JSON summary for a completed simulation.
     /// </summary>
-    /// <param name="game">The completed game state.</param>
+    /// <param name="session">The completed game session.</param>
     /// <param name="summary">The game generation summary.</param>
     /// <param name="options">The simulation options.</param>
     /// <param name="idleTracker">The manufacturing idle tracker.</param>
@@ -36,7 +36,7 @@ public static partial class HeadlessSimulationRunner
     /// <param name="victory">The first victory reached during the simulation.</param>
     /// <returns>The simulation summary.</returns>
     private static SimulationSummary BuildSimulationSummary(
-        GameRoot game,
+        GameSession session,
         GameSummary summary,
         SimulationOptions options,
         ManufacturingIdleTracker idleTracker,
@@ -52,6 +52,7 @@ public static partial class HeadlessSimulationRunner
         VictoryResult victory
     )
     {
+        GameRoot game = session.GetGame();
         return new SimulationSummary
         {
             TicksRequested = options.TickCount,
@@ -249,10 +250,10 @@ public static partial class HeadlessSimulationRunner
                     CurrentIdlePlanets = BuildCurrentIdlePlanetSummaries(game, faction),
                     Fleets = game.GetSceneNodesByOwnerInstanceID<Fleet>(faction.InstanceID)
                         .OrderBy(fleet => fleet.InstanceID, StringComparer.Ordinal)
-                        .Select(fleet => BuildFleetSummary(game, faction, fleet))
+                        .Select(fleet => BuildFleetSummary(session, faction, fleet))
                         .ToArray(),
                 })
-                .Select(factionSummary => AddProductionPlanningSummary(game, factionSummary))
+                .Select(factionSummary => AddProductionPlanningSummary(session, factionSummary))
                 .ToArray(),
         };
     }
@@ -281,27 +282,23 @@ public static partial class HeadlessSimulationRunner
     /// <summary>
     /// Evaluates the faction's current production plan and adds its counts to the summary.
     /// </summary>
-    /// <param name="game">The simulated game state.</param>
+    /// <param name="session">The simulated game session.</param>
     /// <param name="summary">The faction summary to enrich.</param>
     /// <returns>The enriched faction summary.</returns>
     private static FactionSimulationSummary AddProductionPlanningSummary(
-        GameRoot game,
+        GameSession session,
         FactionSimulationSummary summary
     )
     {
+        GameRoot game = session.GetGame();
         Faction faction = game.GetFactionByOwnerInstanceID(summary.FactionId);
-        FleetSystem fleetSystem = new FleetSystem(game);
-        ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleetSystem);
         AITurnContext context = new AITurnContext(
             game,
             faction,
-            null,
-            null,
-            manufacturing,
-            null,
-            null,
+            session.Commands,
+            session.Queries,
             new SystemRandomProvider(0),
-            new FogOfWarSystem(game).BuildFactionView(faction)
+            session.Queries.BuildGalaxyView(faction)
         );
         List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
         List<AIManufactureProposal> proposals = new AIProductionPlanner()

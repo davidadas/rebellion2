@@ -8,7 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -28,7 +28,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private int _dirtyCount;
         private ManufacturingTrackingActions _trackingActions;
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _gameSession;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private TargetingController _targetingController;
@@ -44,7 +44,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             _dirtyCount = 0;
             _game = CreateGame();
-            _gameManager = TestContent.CreateGameManager(_game);
+            _gameSession = TestContent.CreateGameSession(_game);
             _uiContext = TestContent.CreateUIContext(
                 _game,
                 TestContent.CreateThemeLibrary(),
@@ -86,7 +86,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.Throws<ArgumentNullException>(() =>
                 new FacilityWindowController(
                     null,
-                    () => _gameManager.ManufacturingSystem,
+                    _gameSession,
                     _constructionController,
                     () => _uiContext,
                     _targetingController,
@@ -370,7 +370,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             return new FacilityWindowController(
                 () => _game,
-                () => _gameManager.ManufacturingSystem,
+                _gameSession,
                 _constructionController,
                 () => _uiContext,
                 _targetingController,
@@ -389,8 +389,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             return new ConstructionWindowController(
                 () => _game,
-                () => _gameManager.ManufacturingSystem,
-                () => _gameManager.MovementSystem,
+                _gameSession,
                 () => _uiContext,
                 _windowLayer,
                 _windowManager,

@@ -5,12 +5,12 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.AI.Helpers
 {
-    public static class AITestSceneBuilder
+    internal static class AITestSceneBuilder
     {
         /// <summary>
         /// Creates game.
@@ -279,58 +279,38 @@ namespace Rebellion.Tests.AI.Helpers
         /// </summary>
         /// <param name="game">The game.</param>
         /// <param name="faction">The faction.</param>
-        /// <param name="missions">The missions.</param>
-        /// <param name="movement">The movement.</param>
-        /// <param name="manufacturing">The manufacturing.</param>
-        /// <param name="bombardment">The bombardment.</param>
-        /// <param name="planetaryAssault">The planetary assault.</param>
         /// <param name="random">The random.</param>
-        /// <param name="maintenance">The maintenance.</param>
         /// <returns>The created context.</returns>
         public static AITurnContext CreateContext(
             GameRoot game,
             Faction faction,
-            MissionSystem missions = null,
-            MovementSystem movement = null,
-            ManufacturingSystem manufacturing = null,
-            BombardmentSystem bombardment = null,
-            PlanetaryAssaultSystem planetaryAssault = null,
-            IRandomNumberProvider random = null,
-            MaintenanceSystem maintenance = null
+            IRandomNumberProvider random = null
         )
         {
             IRandomNumberProvider provider = random ?? new StubRNG();
-            FogOfWarSystem fog = new FogOfWarSystem(game);
-            FleetSystem fleetSystem = new FleetSystem(game);
-            MovementSystem movementSystem = movement ?? new MovementSystem(game, fog, fleetSystem);
-            MissionSystem missionSystem =
-                missions ?? TestSystems.CreateMissionSystem(game, provider, movementSystem);
-            ManufacturingSystem manufacturingSystem =
-                manufacturing ?? new ManufacturingSystem(game, fleetSystem, movementSystem);
-            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
-                game,
-                movementSystem,
-                manufacturingSystem,
-                fog
-            );
-            BombardmentSystem bombardmentSystem =
-                bombardment
-                ?? new BombardmentSystem(game, provider, movementSystem, planetaryControl);
-            PlanetaryAssaultSystem planetaryAssaultSystem =
-                planetaryAssault ?? new PlanetaryAssaultSystem(game, provider, planetaryControl);
+            GameSession session = GameSessionFactory.Compose(game, TestContent.Data);
+            FogOfWar fog = session.Features.FogOfWar;
 
             return new AITurnContext(
                 game,
                 faction,
-                missionSystem,
-                movementSystem,
-                manufacturingSystem,
-                bombardmentSystem,
-                planetaryAssaultSystem,
+                session.Features.Commands,
+                session.Queries,
                 provider,
-                fog.BuildFactionView(faction),
-                maintenance
+                fog.BuildFactionView(faction)
             );
+        }
+
+        /// <summary>
+        /// Creates a minimal valid context for isolated AI phase tests.
+        /// </summary>
+        /// <returns>The minimal AI turn context.</returns>
+        public static AITurnContext CreateContext()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "faction" };
+            game.GetFactions().Add(faction);
+            return CreateContext(game, faction);
         }
 
         /// <summary>

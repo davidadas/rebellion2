@@ -10,7 +10,7 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Generation
 {
@@ -544,7 +544,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_FogOfWar_OuterRimOwnerCanSeeOwnPlanet()
         {
-            FogOfWarSystem fogSystem = new FogOfWarSystem(_game);
+            FogOfWar fogSystem = new FogOfWar(_game);
 
             foreach (
                 PlanetSector sector in _game
@@ -573,7 +573,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_FogOfWar_OuterRimEnemyPlanetNotVisible()
         {
-            FogOfWarSystem fogSystem = new FogOfWarSystem(_game);
+            FogOfWar fogSystem = new FogOfWar(_game);
 
             foreach (
                 PlanetSector sector in _game

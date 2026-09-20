@@ -6,7 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -21,7 +21,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             empirePlanet.BeginUprising();
@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             empirePlanet.BeginUprising();
@@ -80,7 +80,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             empirePlanet.BeginUprising();
@@ -111,7 +111,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             empirePlanet.BeginUprising();
@@ -142,7 +142,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
             empirePlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             empirePlanet.SetPopularSupport("empire", 10);
@@ -188,7 +188,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
             empirePlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             empirePlanet.SetPopularSupport("empire", 10);
@@ -234,7 +234,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
             empirePlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             empirePlanet.SetPopularSupport("empire", 10);
@@ -282,7 +282,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             Assert.IsNull(
@@ -337,7 +337,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWar fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.BeginUprising();
@@ -413,23 +413,18 @@ namespace Rebellion.Tests.Game.Missions
         /// <param name="fog">The fog.</param>
         /// <param name="rng">The rng.</param>
         /// <returns>The created mission system.</returns>
-        private static MissionSystem CreateMissionSystem(
+        private static Rebellion.Simulation.Missions CreateMissionSystem(
             GameRoot game,
-            FogOfWarSystem fog,
+            FogOfWar fog,
             FixedRNG rng
         )
         {
-            FleetSystem fleet = new FleetSystem(game);
-            MovementSystem movement = new MovementSystem(game, fog, fleet);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleet, movement);
-            PlanetaryControlSystem control = new PlanetaryControlSystem(
-                game,
-                movement,
-                manufacturing,
-                fog
-            );
-            UprisingSystem uprising = new UprisingSystem(game, rng, control);
-            return new MissionSystem(game, rng, movement, uprising);
+            Fleets fleet = new Fleets(game);
+            Movement movement = new Movement(game, fog, fleet);
+            Manufacturing manufacturing = new Manufacturing(game, fleet, movement);
+            PlanetaryControl control = new PlanetaryControl(game, movement, manufacturing, fog);
+            Uprisings uprising = new Uprisings(game, rng, control);
+            return new Rebellion.Simulation.Missions(game, rng, movement, uprising);
         }
     }
 }

@@ -4,13 +4,14 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Owns advisor construction targeting and routes valid destinations to construction windows.
 /// </summary>
 public sealed class AdvisorCommandController : ITargetingReceiver
 {
-    private readonly GameManager gameManager;
+    private readonly GameSession gameSession;
     private readonly TargetingController targetingController;
     private readonly Func<IReadOnlyList<GalaxyMapSector>> getSectors;
     private readonly Action<
@@ -22,18 +23,18 @@ public sealed class AdvisorCommandController : ITargetingReceiver
     /// <summary>
     /// Creates the advisor command controller.
     /// </summary>
-    /// <param name="gameManager">The active game manager.</param>
+    /// <param name="gameSession">The active game manager.</param>
     /// <param name="targetingController">Owns the active strategy targeting request.</param>
     /// <param name="getSectors">Returns the current visible galaxy sectors.</param>
     /// <param name="openConstructionWindow">Opens construction for a producer and destination.</param>
     public AdvisorCommandController(
-        GameManager gameManager,
+        GameSession gameSession,
         TargetingController targetingController,
         Func<IReadOnlyList<GalaxyMapSector>> getSectors,
         Action<GalaxyMapPlanet, GalaxyMapPlanet, FacilityWindowTab> openConstructionWindow
     )
     {
-        this.gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
+        this.gameSession = gameSession ?? throw new ArgumentNullException(nameof(gameSession));
         this.targetingController =
             targetingController ?? throw new ArgumentNullException(nameof(targetingController));
         this.getSectors = getSectors ?? throw new ArgumentNullException(nameof(getSectors));
@@ -71,7 +72,7 @@ public sealed class AdvisorCommandController : ITargetingReceiver
         )
             return;
 
-        Faction faction = gameManager.GetPlayerFaction();
+        Faction faction = gameSession.GetPlayerFaction();
         Planet producer = FindProducerPlanet(
             faction,
             manufacturingType,

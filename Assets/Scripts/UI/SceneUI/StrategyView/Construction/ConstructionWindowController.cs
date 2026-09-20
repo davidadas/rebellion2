@@ -5,7 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 
 /// <summary>
@@ -58,8 +58,7 @@ public sealed class ConstructionWindowController
     /// Creates a construction feature controller.
     /// </summary>
     /// <param name="getGame">Returns the active game.</param>
-    /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
-    /// <param name="getMovementSystem">Returns the active movement system.</param>
+    /// <param name="gameSession">The active simulation session.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="windowLayer">Provides the authored construction prefab and modal layer.</param>
     /// <param name="windowManager">Owns strategy-window creation, focus, and registration.</param>
@@ -69,8 +68,7 @@ public sealed class ConstructionWindowController
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     public ConstructionWindowController(
         Func<GameRoot> getGame,
-        Func<ManufacturingSystem> getManufacturingSystem,
-        Func<MovementSystem> getMovementSystem,
+        GameSession gameSession,
         Func<UIContext> getUIContext,
         StrategyWindowLayerView windowLayer,
         UIWindowManager windowManager,
@@ -92,11 +90,7 @@ public sealed class ConstructionWindowController
             ?? throw new ArgumentNullException(nameof(getUtilityWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
-        orderController = new ConstructionOrderController(
-            getGame,
-            getManufacturingSystem,
-            getMovementSystem
-        );
+        orderController = new ConstructionOrderController(getGame, gameSession);
         projector = new ConstructionWindowProjector(getUIContext);
     }
 

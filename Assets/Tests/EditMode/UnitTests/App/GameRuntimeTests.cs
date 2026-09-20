@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.App
 {
@@ -50,12 +51,12 @@ namespace Rebellion.Tests.App
             GameRoot game = CreateContestedGame();
             game.CurrentTick = 39;
             _gameplaySettings.AutosaveIntervalTicks = 40;
-            GameManager manager = _runtime.StartGame(game);
+            GameSession manager = _runtime.StartGame(game);
             string autosavePath = _saveGameManager.GetSaveFilePath(
                 SaveGameManager.AutosaveFilePrefix + "0000000040"
             );
 
-            manager.ProcessTick();
+            manager.Tick.ExecuteImmediately();
 
             Assert.IsFalse(File.Exists(autosavePath));
             Assert.IsFalse(_runtime.CanSave);
@@ -85,11 +86,11 @@ namespace Rebellion.Tests.App
         {
             GameRoot game = CreateContestedGame();
             game.CurrentTick = 40;
-            GameManager manager = _runtime.StartLoadedGame(game);
+            GameSession manager = _runtime.StartLoadedGame(game);
 
             bool saved = _runtime.SaveGame("pending_combat", "Pending Combat");
 
-            Assert.IsTrue(manager.SpaceCombatSystem.HasPendingDecision);
+            Assert.IsTrue(manager.Features.SpaceCombat.HasPendingDecision);
             Assert.IsFalse(_runtime.CanSave);
             Assert.IsFalse(saved);
             Assert.IsFalse(File.Exists(_saveGameManager.GetSaveFilePath("pending_combat")));
@@ -101,18 +102,19 @@ namespace Rebellion.Tests.App
         {
             GameRoot game = CreateGame();
             game.CurrentTick = 123;
-            GameManager manager = _runtime.StartGame(game);
-            GameRoot replacement = null;
-            manager.GameReplaced += loadedGame => replacement = loadedGame;
+            GameSession manager = _runtime.StartGame(game);
+            GameSession replacement = null;
+            _runtime.SessionReplaced += loadedSession => replacement = loadedSession;
 
             _runtime.QuickSave();
             game.CurrentTick = 999;
             _runtime.QuickLoad();
 
             Assert.IsNotNull(replacement);
-            Assert.AreNotSame(game, replacement);
-            Assert.AreSame(replacement, _runtime.GetActiveGame());
-            Assert.AreEqual(123, replacement.CurrentTick);
+            Assert.AreNotSame(manager, replacement);
+            Assert.AreNotSame(game, replacement.GetGame());
+            Assert.AreSame(replacement, _runtime.GetActiveGameSession());
+            Assert.AreEqual(123, replacement.GetCurrentTick());
         }
 
         [Test]

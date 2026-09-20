@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
@@ -94,14 +95,25 @@ namespace Rebellion.AI.Proposals
                 .Cast<IManufacturable>()
                 .ToList();
             if (completed.Count > 0)
-                context.Maintenance.TryScrap(completed, context.Faction.InstanceID);
+                context.Execute(
+                    new ScrapUnitsCommand
+                    {
+                        Items = completed,
+                        OwnerInstanceID = context.Faction.InstanceID,
+                    }
+                );
 
-            context.Manufacturing.CancelManufacturing(
-                _surplus
-                    .Where(building => building.ManufacturingStatus != ManufacturingStatus.Complete)
-                    .Cast<IManufacturable>()
-                    .ToList(),
-                context.Faction.InstanceID
+            context.Execute(
+                new CancelManufacturingCommand
+                {
+                    Items = _surplus
+                        .Where(building =>
+                            building.ManufacturingStatus != ManufacturingStatus.Complete
+                        )
+                        .Cast<IManufacturable>()
+                        .ToList(),
+                    OwnerInstanceID = context.Faction.InstanceID,
+                }
             );
             _surplus.Clear();
         }
@@ -146,8 +158,6 @@ namespace Rebellion.AI.Proposals
         private bool IsValid(AITurnContext context)
         {
             return context?.Game != null
-                && context.Maintenance != null
-                && context.Manufacturing != null
                 && IsOwnedBy(context, Planet)
                 && context.Game.GetSceneNodeByInstanceID<Planet>(Planet.InstanceID) == Planet
                 && BuildingType is BuildingType.Shipyard or BuildingType.ConstructionFacility;

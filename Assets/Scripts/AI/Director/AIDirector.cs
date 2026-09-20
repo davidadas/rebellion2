@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using Rebellion.AI.Phases;
 using Rebellion.Game;
+using Rebellion.Game.Commands;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Systems;
 using Rebellion.Util.Random;
 
 namespace Rebellion.AI.Director
@@ -16,44 +16,28 @@ namespace Rebellion.AI.Director
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _random;
-        private readonly MissionSystem _missions;
-        private readonly MovementSystem _movement;
-        private readonly ManufacturingSystem _manufacturing;
-        private readonly MaintenanceSystem _maintenance;
-        private readonly BombardmentSystem _bombardment;
-        private readonly PlanetaryAssaultSystem _planetaryAssault;
+        private readonly IGameCommandExecutor _commands;
+        private readonly IGameQueries _queries;
         private readonly IReadOnlyList<IAITurnPhase> _turnPhases;
 
         /// <summary>
         /// Creates an AI director using the current game systems.
         /// </summary>
         /// <param name="game">The game instance.</param>
-        /// <param name="missions">Mission system used by mission proposals.</param>
-        /// <param name="movement">Movement system used by movement proposals.</param>
-        /// <param name="manufacturing">Manufacturing system used by production proposals.</param>
-        /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
-        /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
+        /// <param name="commands">Executes authoritative AI decisions.</param>
+        /// <param name="queries">Answers simulation questions for AI planning.</param>
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
-        /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         public AIDirector(
             GameRoot game,
-            MissionSystem missions,
-            MovementSystem movement,
-            ManufacturingSystem manufacturing,
-            BombardmentSystem bombardment,
-            PlanetaryAssaultSystem planetaryAssault,
-            IRandomNumberProvider random,
-            MaintenanceSystem maintenance = null
+            IGameCommandExecutor commands,
+            IGameQueries queries,
+            IRandomNumberProvider random
         )
         {
             _game = game;
             _random = random;
-            _missions = missions;
-            _movement = movement;
-            _manufacturing = manufacturing;
-            _maintenance = maintenance;
-            _bombardment = bombardment;
-            _planetaryAssault = planetaryAssault;
+            _commands = commands;
+            _queries = queries;
             _turnPhases = new List<IAITurnPhase>
             {
                 new AISpecialForcesIntentPhase(),
@@ -95,14 +79,10 @@ namespace Rebellion.AI.Director
             AITurnContext context = new AITurnContext(
                 _game,
                 faction,
-                _missions,
-                _movement,
-                _manufacturing,
-                _bombardment,
-                _planetaryAssault,
+                _commands,
+                _queries,
                 _random,
-                factionView,
-                _maintenance
+                factionView
             );
             yield return null;
 

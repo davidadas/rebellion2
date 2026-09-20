@@ -139,13 +139,7 @@ namespace Rebellion.AI.Proposals
                 }
 
                 Fleet.Order.Status = FleetOrderStatus.Readying;
-                if (context.Movement == null)
-                {
-                    Fleet.Order.Status = FleetOrderStatus.Staging;
-                    return;
-                }
-
-                context.Movement.RequestMove(Fleet, TargetPlanet);
+                context.Move(Fleet, TargetPlanet);
                 return;
             }
 
@@ -164,7 +158,7 @@ namespace Rebellion.AI.Proposals
             }
 
             Fleet.Order.Status = FleetOrderStatus.Ready;
-            context.Movement?.RequestMove(regiment, liveTarget);
+            context.Move(regiment, liveTarget);
 
             if (liveTarget.GetOwnerInstanceID() == context.Faction.InstanceID)
                 ClearOrder();
