@@ -964,37 +964,6 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns whether destroying one enemy garrison regiment would destabilize the planet.
-        /// </summary>
-        /// <param name="planet">The hostile planet to inspect.</param>
-        /// <returns>True when one loss starts an uprising or transfers control to the AI faction.</returns>
-        public bool IsGarrisonSabotageCritical(Planet planet)
-        {
-            string ownerInstanceId = planet?.GetOwnerInstanceID();
-            if (
-                string.IsNullOrEmpty(ownerInstanceId)
-                || ownerInstanceId == _context?.Faction?.InstanceID
-            )
-                return false;
-
-            int activeGarrisonCount = GetActiveGarrisonCount(planet, ownerInstanceId);
-            if (activeGarrisonCount <= 0)
-                return false;
-
-            Faction owner = _context.Game.GetFactionByOwnerInstanceID(ownerInstanceId);
-            int stabilityRequirement =
-                owner == null
-                    ? 0
-                    : UprisingSystem.CalculateGarrisonRequirement(
-                        planet,
-                        owner,
-                        _context.Game.Config.AI.Garrison
-                    );
-            return activeGarrisonCount - 1 < stabilityRequirement
-                || activeGarrisonCount == 1 && HasFactionControlSupport(planet);
-        }
-
-        /// <summary>
         /// Returns the starfighters attached to a planet during this AI turn.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -1468,21 +1437,6 @@ namespace Rebellion.AI.Director
 
             Planet targetPlanet = GetKnownPlanet(targetPlanetId);
             return IsEnemyPlanet(targetPlanet) ? targetPlanet : null;
-        }
-
-        /// <summary>
-        /// Returns whether a fleet is an idle battle fleet.
-        /// </summary>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>True if the fleet is an idle battle fleet.</returns>
-        public bool IsIdleBattleFleet(Fleet fleet)
-        {
-            return fleet != null
-                && fleet.RoleType == FleetRoleType.Battle
-                && fleet.Movement == null
-                && !fleet.IsInCombat
-                && fleet.Order == null
-                && fleet.HasOperationalCapitalShips();
         }
 
         /// <summary>

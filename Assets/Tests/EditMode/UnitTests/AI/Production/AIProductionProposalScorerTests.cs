@@ -15,6 +15,22 @@ namespace Rebellion.Tests.AI.Scoring
     [TestFixture]
     public class AIProductionProposalScorerTests
     {
+        /// <summary>
+        /// Verifies mandatory facility cleanup receives the neutral domain score.
+        /// </summary>
+        [Test]
+        public void Score_FacilityRemovalProposal_ReturnsZero()
+        {
+            AIProductionProposalScorer scorer = new AIProductionProposalScorer();
+
+            double score = scorer.Score(
+                null,
+                new AIFacilityRemovalProposal(null, BuildingType.Shipyard, 1, 0)
+            );
+
+            Assert.Zero(score);
+        }
+
         [Test]
         public void Score_WithDifferentDemandPressure_PreservesPressureDifference()
         {

@@ -18,7 +18,7 @@ namespace Rebellion.AI.Scoring
         /// <returns>True if the proposal is a production proposal.</returns>
         public bool CanScore(AIProposal proposal)
         {
-            return proposal is AIManufactureProposal;
+            return proposal is AIManufactureProposal or AIFacilityRemovalProposal;
         }
 
         /// <summary>
@@ -31,6 +31,7 @@ namespace Rebellion.AI.Scoring
         {
             return proposal switch
             {
+                AIFacilityRemovalProposal => 0,
                 AIManufactureProposal manufactureProposal => ScoreManufactureProposal(
                     context,
                     manufactureProposal

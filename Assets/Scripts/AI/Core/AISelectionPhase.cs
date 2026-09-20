@@ -57,11 +57,24 @@ namespace Rebellion.AI.Phases
                     selectedProposal = selectedManufactureProposal;
                 }
 
-                if (!allocation.TrySelect(context, selectedProposal))
+                if (
+                    proposal is AIManufactureProposal
+                    && selectedProposal is AIManufactureProposal acceptedManufactureProposal
+                )
+                {
+                    if (
+                        !allocation.CanSelect(context, selectedProposal)
+                        || !productionSelector.CanReserve(context, acceptedManufactureProposal)
+                    )
+                        continue;
+
+                    allocation.Reserve(selectedProposal);
+                    productionSelector.Reserve(acceptedManufactureProposal);
+                    productionSelector.ScoreResolved(context, proposal, selectedProposal);
+                }
+                else if (!allocation.TrySelect(context, selectedProposal))
                     continue;
 
-                if (proposal is AIManufactureProposal)
-                    productionSelector.ScoreResolved(context, proposal, selectedProposal);
                 selectedProposals.Add(selectedProposal);
             }
 

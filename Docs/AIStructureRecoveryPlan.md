@@ -180,10 +180,10 @@ The current buckets are divided by independent production question, not by vague
 
 | Replacement | Exact responsibility |
 | --- | --- |
-| `AIColonyRequirements` | Colony foundation and colonization-unit seed requirements |
+| `AIColonyRequirements` | Founding infrastructure for newly claimed planets |
 | `AIResourceRequirements` | Refined-material and maintenance-economy balancing requirements |
-| `AIPlanetDefenseRequirements` | Planetary fighters, garrisons, shields, and planetary weapons |
-| `AIProductionCapacityRequirements` | Facility targets, facility expansion, upgrades, and idle-capacity work |
+| `AIPlanetDefenseRequirements` | Planetary fighters, garrisons, shields, planetary weapons, and idle-shipyard fighter reserves |
+| `AIProductionCapacityRequirements` | Facility targets, facility expansion, and upgrades |
 | `AIFleetFormationRequirements` | Creation and initial composition of battle and colonization fleets |
 | `AIFleetReinforcementRequirements` | Reinforcement deficits, readiness pressure, and composition of existing fleets |
 | `AISpecialForcesRequirements` | Special-forces supply for mission demand |
@@ -213,8 +213,9 @@ The assessment audit uses callers, not method names, to place remaining methods:
 | Planet/fleet/unit collections and indexed counts | Retain as facts |
 | Combat, bombardment, capacity, production-rate, backlog, distance, and intelligence projections | Retain as factual projections |
 | Planet and system value/support estimates shared by several domains | Retain as shared strategic estimates; they do not select an action |
-| `IsPriorityDefensePlanet` and `IsPlanetThreatened` | Move to `AIStrategicPlan`; they define defense policy |
-| `IsAttackPreparationTarget` | Move to `AIAttackRequirements`; it defines attack policy |
+| `IsPriorityDefensePlanet` | Retain; it combines indexed headquarters-ownership facts and is consumed by fleet planning, fleet validation, strategic allocation, and production |
+| `IsPlanetThreatened` | Retain; it caches the shared known-contact/hostile-sector classification used by production and defense policy |
+| `IsAttackPreparationTarget` | Retain; it exposes the indexed set of active attack-order targets to fleet, mission, and production consumers |
 | `IsGarrisonSabotageCritical` | Move into mission scoring; it has one mission-policy consumer |
 | Unused public policy queries such as `IsIdleBattleFleet` | Delete after reference verification |
 | Private helpers used only to construct retained facts | Keep private in assessment |
@@ -270,9 +271,9 @@ the measured ordering contract and is not generalized into a one-implementation 
 2. Delete `AIProductionRequirements`; move its exact call order into `AIProductionPlanner`.
 3. Split each broad requirement bucket by the disposition table using move-only commits. Delete the
    bucket immediately when its last method moves.
-4. Move tests to the owning requirement calculator and test its meaningful internal contract.
-   Add planner-level ordering tests through `AIProductionPlanner.Plan`. Do not retain a public
-   coordinator or widen visibility merely as a test seam.
+4. Keep requirement behavior tests on `AIProductionPlanner.BuildRequirements`, the public query
+   consumed by production planning and simulation reporting. Group them separately from proposal
+   generation tests without inventing a test-only coordinator or widening calculator visibility.
 5. Audit `AIAssessment` methods: factual calculations remain; policy methods move only to an owner
    named above. Do not create additional categories during implementation.
 6. Move production-only reservation state out of `AIProposalAllocator` and into
@@ -390,16 +391,16 @@ for another type stops implementation and reopens this audit before code is adde
 
 The split boundary is fixed before implementation:
 
-- `AIColonyRequirements`: `AddColonyRequirements`, `SelectInitialColonyBuildingType`,
-  `RequiresFoundingFacility`, `AddColonizationFleetSeedRequirements`,
-  `HasColonizationOpportunity`, and its colonization assembly-planet helpers.
+- `AIColonyRequirements`: `AddColonyRequirements`, `SelectInitialColonyBuildingType`, and
+  `RequiresFoundingFacility`.
 - `AIResourceRequirements`: `AddResourceRequirements` and all mine/refinery deficit, destination,
   batch, maintenance-pressure, and refined-material-pressure helpers.
 - `AIPlanetDefenseRequirements`: planetary starfighter, shield, weapon, garrison, static-defense,
-  defense-pressure, and local production-infrastructure predicates.
+  defense-pressure, local production-infrastructure predicates, and idle-shipyard fighter work.
 - `AIProductionCapacityRequirements`: facility portfolio construction, desired facility counts,
-  facility expansion, facility upgrades, facility placement pressure, and idle-shipyard work.
-- `AIFleetFormationRequirements`: battle-fleet seed requirements and battle-fleet assembly helpers.
+  facility expansion, facility upgrades, and facility placement pressure.
+- `AIFleetFormationRequirements`: battle- and colonization-fleet seed requirements,
+  `HasColonizationOpportunity`, and shared fleet-assembly helpers.
 - `AIFleetReinforcementRequirements`: existing-fleet priority, deficits, composition, readiness
   pressure, and reinforcement eligibility.
 - `AISpecialForcesRequirements`: unchanged.

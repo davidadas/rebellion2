@@ -4,9 +4,11 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Systems;
 
 namespace Rebellion.AI.Scoring
 {
@@ -22,7 +24,7 @@ namespace Rebellion.AI.Scoring
         /// <returns>True if the proposal is a mission proposal.</returns>
         public bool CanScore(AIProposal proposal)
         {
-            return proposal is AIMissionProposal;
+            return proposal is AIMissionProposal or AIAbortMissionProposal;
         }
 
         /// <summary>
@@ -33,6 +35,9 @@ namespace Rebellion.AI.Scoring
         /// <returns>The mission proposal score.</returns>
         public double Score(AITurnContext context, AIProposal proposal)
         {
+            if (proposal is AIAbortMissionProposal)
+                return 0;
+
             if (
                 context?.Faction == null
                 || context.Game?.Config == null
@@ -271,7 +276,7 @@ namespace Rebellion.AI.Scoring
             score.Add(isAttackTarget ? 1 : 0, utility.AttackTarget);
             score.Add(isAttackTarget && isPlanetaryDefense ? 1 : 0, utility.AttackDefense);
             score.Add(
-                isGarrisonRegiment && context.Assessment.IsGarrisonSabotageCritical(planet) ? 1 : 0,
+                isGarrisonRegiment && IsGarrisonSabotageCritical(context, planet) ? 1 : 0,
                 utility.FavoredSupportRegiment
             );
             score.Add(isGarrisonRegiment ? 1 : 0, utility.GarrisonRegiment);
@@ -280,6 +285,41 @@ namespace Rebellion.AI.Scoring
                 building == null && !isGarrisonRegiment && !isGarrisonStarfighter ? 1 : 0,
                 utility.OtherUnit
             );
+        }
+
+        /// <summary>
+        /// Returns whether destroying one enemy garrison regiment would destabilize the planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The hostile planet to inspect.</param>
+        /// <returns>True when one loss starts an uprising or transfers control to the AI faction.</returns>
+        private static bool IsGarrisonSabotageCritical(AITurnContext context, Planet planet)
+        {
+            string ownerInstanceId = planet?.GetOwnerInstanceID();
+            if (
+                string.IsNullOrEmpty(ownerInstanceId)
+                || ownerInstanceId == context?.Faction?.InstanceID
+            )
+                return false;
+
+            int activeGarrisonCount = context.Assessment.GetActiveGarrisonCount(
+                planet,
+                ownerInstanceId
+            );
+            if (activeGarrisonCount <= 0)
+                return false;
+
+            Faction owner = context.Game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            int stabilityRequirement =
+                owner == null
+                    ? 0
+                    : UprisingSystem.CalculateGarrisonRequirement(
+                        planet,
+                        owner,
+                        context.Game.Config.AI.Garrison
+                    );
+            return activeGarrisonCount - 1 < stabilityRequirement
+                || activeGarrisonCount == 1 && context.Assessment.HasFactionControlSupport(planet);
         }
 
         /// <summary>

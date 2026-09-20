@@ -1,3 +1,4 @@
+using System;
 using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
@@ -99,6 +100,32 @@ namespace Rebellion.AI.Scoring
                 utility.AssemblyCapacityNeed
             );
             return score.Value;
+        }
+
+        /// <summary>
+        /// Scores the production pressure created by a fleet-unit deficit.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="basePressure">Configured pressure before deficit scaling.</param>
+        /// <param name="deficit">Current unit deficit.</param>
+        /// <param name="targetCount">Target unit count.</param>
+        /// <returns>The scaled fleet-production pressure.</returns>
+        public static double ScoreDeficit(
+            AITurnContext context,
+            int basePressure,
+            int deficit,
+            int targetCount
+        )
+        {
+            double deficitRatio = deficit / (double)Math.Max(1, targetCount);
+            return Math.Min(
+                100,
+                basePressure
+                    + AIUtility.EvaluateDiscretePressure(
+                        deficitRatio,
+                        context.Game.Config.AI.Infrastructure.DemandUtility.Deficit
+                    )
+            );
         }
 
         /// <summary>

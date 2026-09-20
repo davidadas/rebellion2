@@ -10,6 +10,7 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
+using FacilityPortfolio = Rebellion.AI.Planners.AIProductionCapacityRequirements.FacilityPortfolio;
 
 namespace Rebellion.AI.Planners
 {
@@ -18,7 +19,14 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionPlanner : IAIProposalPlanner
     {
-        private readonly AIProductionRequirements _demandGenerator = new AIProductionRequirements();
+        private static readonly AIColonyRequirements _colonyRequirements = new();
+        private static readonly AIFleetFormationRequirements _fleetFormationRequirements = new();
+        private static readonly AIFleetReinforcementRequirements _fleetReinforcementRequirements =
+            new();
+        private static readonly AIResourceRequirements _resourceRequirements = new();
+        private static readonly AISpecialForcesRequirements _specialForcesRequirements = new();
+        private readonly AIPlanetDefenseRequirements _planetDefenseRequirements = new();
+        private readonly AIProductionCapacityRequirements _productionCapacityRequirements = new();
         private readonly Dictionary<ManufacturingType, List<Technology>> _unlockedTechnologies =
             new Dictionary<ManufacturingType, List<Technology>>();
         private readonly Dictionary<
@@ -101,8 +109,54 @@ namespace Rebellion.AI.Planners
         public List<AIProposal> Plan(AITurnContext context)
         {
             ResetPlanningCache();
-            List<AIProductionRequirement> demands = _demandGenerator.BuildRequirements(context);
+            List<AIProductionRequirement> demands = BuildRequirements(context);
             return GenerateProposals(context, demands);
+        }
+
+        /// <summary>
+        /// Builds production requirements for the current AI turn in strategic priority order.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>Production requirements generated for this faction.</returns>
+        public List<AIProductionRequirement> BuildRequirements(AITurnContext context)
+        {
+            List<AIProductionRequirement> requirements = new List<AIProductionRequirement>();
+
+            if (context?.Game == null || context.Faction == null || context.Assessment == null)
+                return requirements;
+
+            FacilityPortfolio facilityPortfolio = _productionCapacityRequirements.BuildPortfolio(
+                context
+            );
+            _colonyRequirements.AddColonyRequirements(context, requirements);
+            _resourceRequirements.AddResourceRequirements(context, requirements);
+            _planetDefenseRequirements.AddPlanetaryDefenseRequirements(
+                context,
+                requirements,
+                facilityPortfolio
+            );
+            _planetDefenseRequirements.AddPlanetaryStarfighterRequirements(context, requirements);
+            _fleetFormationRequirements.AddFleetSeedRequirements(context, requirements);
+            _fleetFormationRequirements.AddColonizationFleetSeedRequirements(context, requirements);
+            _fleetReinforcementRequirements.AddFleetReinforcementRequirements(
+                context,
+                requirements
+            );
+            _planetDefenseRequirements.AddGarrisonRequirements(context, requirements);
+            _specialForcesRequirements.AddRequirements(context, requirements);
+            _productionCapacityRequirements.AddProductionFacilityRequirements(
+                context,
+                requirements,
+                new AIInfrastructurePlacementScorer(context),
+                facilityPortfolio
+            );
+            _productionCapacityRequirements.AddProductionFacilityUpgradeRequirements(
+                context,
+                requirements
+            );
+            _planetDefenseRequirements.AddIdleShipyardRequirements(context, requirements);
+
+            return requirements;
         }
 
         /// <summary>

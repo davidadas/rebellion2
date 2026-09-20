@@ -15,7 +15,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Planners
 {
     [TestFixture]
-    public class AIProductionPlannerTests
+    public partial class AIProductionPlannerTests
     {
         [Test]
         public void Plan_WithClaimedUncolonizedPlanet_AddsColonyManufactureProposal()
