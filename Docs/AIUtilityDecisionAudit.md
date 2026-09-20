@@ -9,7 +9,7 @@ utility decision: the question is whether it suppresses otherwise feasible strat
 | Attack candidate pruning | `AIFleetAttackCandidateSelector` | Proven score upper bound; does not prune a candidate that can beat the retained set |
 | Mission objectives and aborts | `AIMissionProposalScorer` plus global proposal selection | Configured utility |
 | Mission candidate retention | Mission score upper bounds and per-actor claim keys | Bounded alternatives preserve the strongest candidates |
-| Production demands | `AIProductionDemandGenerator` pressure calculations | Configured utility |
+| Production demands | `AIProductionRequirements` pressure calculations | Configured utility |
 | Production proposal choice | `AIProductionProposalScorer` plus shared resource claims | Configured utility |
 | Fleet production routing | `AIFleetProductionAllocationScorer` | Configured sequential allocation |
 | Production-facility placement | `AIInfrastructurePlacementScorer` | Configured utility |

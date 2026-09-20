@@ -18,8 +18,7 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionPlanner : IAIProposalPlanner
     {
-        private readonly AIProductionDemandGenerator _demandGenerator =
-            new AIProductionDemandGenerator();
+        private readonly AIProductionRequirements _demandGenerator = new AIProductionRequirements();
         private readonly Dictionary<ManufacturingType, List<Technology>> _unlockedTechnologies =
             new Dictionary<ManufacturingType, List<Technology>>();
         private readonly Dictionary<

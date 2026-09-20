@@ -312,7 +312,7 @@ public static partial class HeadlessSimulationRunner
             new SystemRandomProvider(0),
             fogOfWar.BuildFactionView(faction)
         );
-        List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
+        List<AIDemand> demands = new AIProductionRequirements().Generate(context);
         List<AIManufactureProposal> proposals = new AIProductionPlanner()
             .Plan(context)
             .OfType<AIManufactureProposal>()

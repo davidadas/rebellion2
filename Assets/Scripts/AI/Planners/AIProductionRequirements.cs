@@ -15,7 +15,7 @@ namespace Rebellion.AI.Planners
     /// <summary>
     /// Builds production demand from faction state and current force needs.
     /// </summary>
-    public sealed class AIProductionDemandGenerator
+    public sealed class AIProductionRequirements
     {
         private static readonly AIEconomyRequirements _economyRequirements = new();
         private static readonly AIForceRequirements _forceRequirements = new();
