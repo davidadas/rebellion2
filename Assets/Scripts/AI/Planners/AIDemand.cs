@@ -58,7 +58,7 @@ namespace Rebellion.AI.Planners
         public BuildingType BuildingType { get; }
         public string ProductTypeId { get; }
         public AICapitalShipProductionRole CapitalShipRole { get; }
-        public Building BuildingToReplace { get; set; }
+        public Building BuildingToReplace { get; }
 
         // Destination.
         public ContainerNode Destination { get; }
@@ -100,6 +100,7 @@ namespace Rebellion.AI.Planners
         /// <param name="pressure">Demand pressure used for scoring.</param>
         /// <param name="productTypeId">Exact product type required by the demand.</param>
         /// <param name="capitalShipRole">Capital ship role required by the demand.</param>
+        /// <param name="buildingToReplace">Existing building replaced by an upgrade.</param>
         public AIDemand(
             string id,
             AIDemandKind kind,
@@ -109,7 +110,8 @@ namespace Rebellion.AI.Planners
             int quantityNeeded,
             double pressure,
             string productTypeId = null,
-            AICapitalShipProductionRole capitalShipRole = AICapitalShipProductionRole.None
+            AICapitalShipProductionRole capitalShipRole = AICapitalShipProductionRole.None,
+            Building buildingToReplace = null
         )
         {
             Id = id;
@@ -121,6 +123,7 @@ namespace Rebellion.AI.Planners
             Pressure = pressure;
             ProductTypeId = productTypeId;
             CapitalShipRole = capitalShipRole;
+            BuildingToReplace = buildingToReplace;
         }
 
         /// <summary>
@@ -139,11 +142,9 @@ namespace Rebellion.AI.Planners
                 quantityNeeded,
                 Pressure,
                 ProductTypeId,
-                CapitalShipRole
-            )
-            {
-                BuildingToReplace = BuildingToReplace,
-            };
+                CapitalShipRole,
+                BuildingToReplace
+            );
         }
 
         /// <summary>

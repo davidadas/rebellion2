@@ -731,9 +731,9 @@ namespace Rebellion.AI.Planners
                 buildingType,
                 planet,
                 1,
-                GetProductionFacilityUpgradePressure(context, planet)
+                GetProductionFacilityUpgradePressure(context, planet),
+                buildingToReplace: replacement
             );
-            demand.BuildingToReplace = replacement;
             demands.Add(demand);
         }
 

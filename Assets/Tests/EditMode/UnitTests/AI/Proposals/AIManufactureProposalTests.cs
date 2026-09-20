@@ -902,9 +902,9 @@ namespace Rebellion.Tests.AI.Proposals
                 BuildingType.Shipyard,
                 planet,
                 1,
-                100
+                100,
+                buildingToReplace: replacement
             );
-            demand.BuildingToReplace = replacement;
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,
