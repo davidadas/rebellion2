@@ -54,6 +54,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void Render_GlobalView_UpdatesToggleAndRaisesRequest()
+        {
+            int requestCount = 0;
+            _view.VisibilityModeRequested += () => requestCount++;
+            GalaxyMapRenderData data = new GalaxyMapRenderData(
+                _backgroundTexture,
+                null,
+                Color.white,
+                new GalaxyMapActiveFilterLabelRenderData(
+                    string.Empty,
+                    Color.white,
+                    new RectInt(),
+                    0
+                ),
+                Array.Empty<GalaxyMapClusterRenderData>(),
+                globalViewEnabled: true
+            );
+
+            _view.Render(data);
+            GetField<Button>("visibilityToggleButton").onClick.Invoke();
+
+            Assert.AreEqual("FOG", GetField<TextMeshProUGUI>("visibilityToggleLabel").text);
+            Assert.AreEqual(1, requestCount);
+        }
+
+        [Test]
         public void Render_CompleteMap_AppliesBackgroundFilterLabelAndClusters()
         {
             GalaxyMapRenderData data = CreateMap(

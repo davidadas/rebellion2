@@ -2112,6 +2112,16 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Toggles the galaxy between faction knowledge and authoritative world state.
+    /// </summary>
+    void IGalaxyMapActions.ToggleGalaxyVisibility()
+    {
+        galaxyMapController.ToggleVisibility();
+        RebuildSnapshot();
+        dirty = true;
+    }
+
+    /// <summary>
     /// Requests a strategy render after selector state or the active filter changes.
     /// </summary>
     void IGalacticInformationDisplayActions.RequestGalacticInformationRender()

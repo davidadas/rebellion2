@@ -111,12 +111,6 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (!context.StrategicPlan.CanFleetDepart(Fleet))
-            {
-                Fleet.Order.Status = FleetOrderStatus.Staging;
-                return;
-            }
-
             if (
                 Fleet.GetParentOfType<Planet>()?.InstanceID != TargetPlanet.InstanceID
                 && context.Assessment.GetReadyFleetRegimentCount(Fleet)

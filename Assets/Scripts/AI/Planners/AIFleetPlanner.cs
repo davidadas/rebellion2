@@ -658,8 +658,7 @@ namespace Rebellion.AI.Planners
                     >= Math.Max(
                         1,
                         context.Game.Config.AI.FleetDeployment.ColonizationFleetMinimumRegimentCount
-                    )
-                && context.StrategicPlan.CanFleetDepart(fleet);
+                    );
         }
 
         /// <summary>

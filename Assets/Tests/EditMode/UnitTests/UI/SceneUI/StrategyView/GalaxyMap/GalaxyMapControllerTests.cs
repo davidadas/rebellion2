@@ -314,6 +314,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             public int OpenedX { get; private set; } = -1;
             public int OpenedY { get; private set; } = -1;
             public int RenderRequestCount { get; private set; }
+            public int VisibilityToggleCount { get; private set; }
 
             /// <summary>
             /// Opens planet sector window.
@@ -338,6 +339,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             public void RequestGalaxyMapRender()
             {
                 RenderRequestCount++;
+            }
+
+            /// <summary>
+            /// Records a galaxy visibility toggle.
+            /// </summary>
+            public void ToggleGalaxyVisibility()
+            {
+                VisibilityToggleCount++;
             }
         }
     }

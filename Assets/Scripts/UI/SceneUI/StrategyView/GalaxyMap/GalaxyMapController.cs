@@ -24,6 +24,11 @@ public interface IGalaxyMapActions
     /// Requests a strategy render after galaxy-map interaction state changes.
     /// </summary>
     void RequestGalaxyMapRender();
+
+    /// <summary>
+    /// Switches between faction knowledge and the authoritative galaxy.
+    /// </summary>
+    void ToggleGalaxyVisibility();
 }
 
 /// <summary>
@@ -50,6 +55,7 @@ public sealed class GalaxyMapController
     private string hoveredSectorInstanceId;
     private string playerFactionId = string.Empty;
     private string spotlightPlanetInstanceId;
+    private bool globalViewEnabled;
 
     public string PlayerFactionId => playerFactionId;
 
@@ -95,6 +101,7 @@ public sealed class GalaxyMapController
         view.SectorHoverCleared += HandleSectorHoverCleared;
         view.SectorHovered += HandleSectorHovered;
         view.SectorOpenRequested += HandleSectorOpenRequested;
+        view.VisibilityModeRequested += HandleVisibilityModeRequested;
     }
 
     /// <summary>
@@ -112,7 +119,9 @@ public sealed class GalaxyMapController
         visibleGalaxyMap = null;
         if (playerFaction != null)
         {
-            visibleGalaxyMap = gameManager.GetFogOfWarSystem().BuildFactionView(playerFaction);
+            visibleGalaxyMap = globalViewEnabled
+                ? gameManager.GetGame().Galaxy
+                : gameManager.GetFogOfWarSystem().BuildFactionView(playerFaction);
             IReadOnlyList<PlanetSector> visibleSectors =
                 visibleGalaxyMap?.GetChildren<PlanetSector>();
             foreach (PlanetSector sector in visibleSectors ?? Array.Empty<PlanetSector>())
@@ -158,7 +167,8 @@ public sealed class GalaxyMapController
                     briefingPresentation,
                     waypointPlan,
                     selectedFleetInstanceIds,
-                    spotlightPlanetInstanceId
+                    spotlightPlanetInstanceId,
+                    globalViewEnabled
                 )
             );
     }
@@ -347,6 +357,22 @@ public sealed class GalaxyMapController
     }
 
     /// <summary>
+    /// Requests the alternate galaxy visibility mode from the screen boundary.
+    /// </summary>
+    private void HandleVisibilityModeRequested()
+    {
+        actions.ToggleGalaxyVisibility();
+    }
+
+    /// <summary>
+    /// Toggles whether snapshot rebuilding uses the authoritative galaxy.
+    /// </summary>
+    public void ToggleVisibility()
+    {
+        globalViewEnabled = !globalViewEnabled;
+    }
+
+    /// <summary>
     /// Releases subscriptions when the bound authored map view is destroyed.
     /// </summary>
     /// <param name="destroyedView">The destroyed map view.</param>
@@ -432,6 +458,7 @@ public sealed class GalaxyMapController
         view.SectorHoverCleared -= HandleSectorHoverCleared;
         view.SectorHovered -= HandleSectorHovered;
         view.SectorOpenRequested -= HandleSectorOpenRequested;
+        view.VisibilityModeRequested -= HandleVisibilityModeRequested;
         view = null;
     }
 

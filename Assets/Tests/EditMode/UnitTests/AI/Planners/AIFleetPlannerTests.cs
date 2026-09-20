@@ -1677,6 +1677,39 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithColonizationFleetReservedAtHeadquarters_AddsColonizationProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
+            target.IsColonized = false;
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = AddBattleFleet(game, headquarters, empire.InstanceID, "fleet");
+            fleet.RoleType = FleetRoleType.Colonization;
+            fleet.GetChildren<CapitalShip>().Single().RegimentCapacity = 2;
+            AddColonizationRegiment(game, fleet, empire.InstanceID);
+            AddColonizationRegiment(game, fleet, empire.InstanceID);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            Assert.IsFalse(context.StrategicPlan.CanFleetDepart(fleet));
+
+            AIColonizationProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIColonizationProposal>()
+                .Single(candidate => candidate.Fleet == fleet);
+
+            Assert.AreEqual(target.InstanceID, proposal.TargetPlanet.InstanceID);
+        }
+
+        [Test]
         public void Plan_WithUnexploredOuterRimSystem_SurveysBeforeColonizing()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
