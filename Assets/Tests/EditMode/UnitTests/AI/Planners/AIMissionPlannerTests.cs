@@ -680,10 +680,10 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
-        /// Verifies plan with decoy intents does not offer units as primary agents.
+        /// Verifies decoy intents retain one unit as a primary agent.
         /// </summary>
         [Test]
-        public void Plan_WithDecoyIntents_DoesNotOfferUnitsAsPrimaryAgents()
+        public void Plan_WithDecoyIntents_RetainsOneUnitAsPrimaryAgent()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -718,12 +718,15 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(candidate => candidate.MissionTypeID == MissionTypeIDs.Espionage)
                 .ToArray();
 
-            Assert.AreEqual(SpecialForcesIntent.Decoy, context.GetSpecialForcesIntent(leadSpy));
+            Assert.AreEqual(
+                SpecialForcesIntent.PrimaryAgent,
+                context.GetSpecialForcesIntent(leadSpy)
+            );
             Assert.AreEqual(
                 SpecialForcesIntent.Decoy,
                 context.GetSpecialForcesIntent(specialForcesDecoy)
             );
-            Assert.IsFalse(proposals.Any(proposal => proposal.Participant == leadSpy));
+            Assert.IsTrue(proposals.Any(proposal => proposal.Participant == leadSpy));
             Assert.IsFalse(proposals.Any(proposal => proposal.Participant == specialForcesDecoy));
         }
 
@@ -807,10 +810,7 @@ namespace Rebellion.Tests.AI.Planners
 
             EspionageMission mission = game.GetSceneNodesByType<EspionageMission>().Single();
             CollectionAssert.AreEqual(new[] { leadSpy }, mission.GetMainParticipants());
-            CollectionAssert.AreEquivalent(
-                new SpecialForces[] { decoy, primaryAgent },
-                mission.GetDecoyParticipants()
-            );
+            CollectionAssert.AreEqual(new[] { primaryAgent }, mission.GetDecoyParticipants());
         }
 
         /// <summary>

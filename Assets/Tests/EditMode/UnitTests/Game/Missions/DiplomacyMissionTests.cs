@@ -257,10 +257,10 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         /// <summary>
-        /// Verifies get abort reason when planet taken by third faction returns failure.
+        /// Verifies get abort reason when planet taken by third faction reports changed sides.
         /// </summary>
         [Test]
-        public void GetAbortReason_WhenPlanetTakenByThirdFaction_ReturnsFailure()
+        public void GetAbortReason_WhenPlanetTakenByThirdFaction_ReturnsTargetChangedSides()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
             Mission mission = CreateAndAttachMission(game, planet);
@@ -268,10 +268,31 @@ namespace Rebellion.Tests.Game.Missions
             planet.OwnerInstanceID = "rebels";
 
             Assert.AreEqual(
-                MissionCompletionReason.Failure,
+                MissionCompletionReason.TargetChangedSides,
                 mission.GetAbortReason(game),
                 "Diplomacy mission should be canceled when target planet is taken by another faction"
             );
+        }
+
+        /// <summary>
+        /// Verifies an enemy takeover observed by diplomacy emits authoritative planet intelligence.
+        /// </summary>
+        [Test]
+        public void ResolveInterruption_WhenPlanetChangedSides_RevealsPlanetToMissionOwner()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
+            Mission mission = CreateAndAttachMission(game, planet);
+            planet.OwnerInstanceID = "rebels";
+            game.CurrentTick = 42;
+
+            IntelligenceRevealedResult revealed = mission
+                .ResolveInterruption(game, new FixedRNG(0.0))
+                .OfType<IntelligenceRevealedResult>()
+                .Single();
+
+            Assert.AreEqual("empire", revealed.Recipient.InstanceID);
+            Assert.AreEqual(planet, revealed.Observations.Single());
+            Assert.AreEqual(42, revealed.Tick);
         }
 
         /// <summary>

@@ -119,6 +119,12 @@ namespace Rebellion.AI.Planners
             FleetOrder order = fleet.Order;
             Planet currentPlanet = context.Assessment.GetFleetPlanet(fleet);
 
+            if (ShouldEvacuate(context, fleet, currentPlanet))
+            {
+                proposals.Add(new AIFleetEvacuationProposal(fleet, currentPlanet));
+                return;
+            }
+
             if (order == null)
             {
                 if (
@@ -257,6 +263,28 @@ namespace Rebellion.AI.Planners
                     )
                 );
             }
+        }
+
+        /// <summary>
+        /// Returns whether a stationary fleet must leave a hostile planet where it has no viable
+        /// orbital or planetary action.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <param name="currentPlanet">Planet currently containing the fleet.</param>
+        /// <returns>True when the fleet should evacuate to friendly territory.</returns>
+        private static bool ShouldEvacuate(AITurnContext context, Fleet fleet, Planet currentPlanet)
+        {
+            if (
+                currentPlanet == null
+                || fleet.Movement != null
+                || fleet.IsInCombat
+                || string.IsNullOrEmpty(currentPlanet.GetOwnerInstanceID())
+                || currentPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
+            )
+                return false;
+
+            return !context.Assessment.CanFleetActAtPlanet(fleet, currentPlanet);
         }
 
         /// <summary>

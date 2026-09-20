@@ -117,6 +117,78 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
+        /// Verifies an idle fleet unable to attack its hostile location returns to friendly
+        /// territory even when it has no existing order.
+        /// </summary>
+        [Test]
+        public void Plan_WithIdleFleetAtUnattackableEnemyPlanet_ReturnsFleetToFriendlyTerritory()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            AITestSceneBuilder.AddPlanet(game, system, "friendly", empire.InstanceID);
+            Planet hostile = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "hostile",
+                rebels.InstanceID
+            );
+            AddShield(game, hostile, "shield-1", rebels.InstanceID);
+            AddShield(game, hostile, "shield-2", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, hostile);
+            Fleet fleet = AddBattleFleet(game, hostile, empire.InstanceID, "fleet");
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIFleetEvacuationProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetEvacuationProposal>()
+                .Single(candidate => candidate.Fleet == fleet);
+
+            Assert.AreSame(hostile, proposal.HostilePlanet);
+        }
+
+        /// <summary>
+        /// Verifies an unusable assignment does not prevent a stranded fleet from leaving hostile
+        /// orbit.
+        /// </summary>
+        /// <param name="orderType">Order type assigned to the stranded fleet.</param>
+        [TestCase(FleetOrderType.Attack)]
+        [TestCase(FleetOrderType.Colonize)]
+        [TestCase(FleetOrderType.Defend)]
+        [TestCase(FleetOrderType.Engage)]
+        public void Plan_WithAssignedFleetAtUnattackableEnemyPlanet_ReturnsFleetToFriendlyTerritory(
+            FleetOrderType orderType
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            AITestSceneBuilder.AddPlanet(game, system, "friendly", empire.InstanceID);
+            Planet hostile = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "hostile",
+                rebels.InstanceID
+            );
+            AddShield(game, hostile, "shield-1", rebels.InstanceID);
+            AddShield(game, hostile, "shield-2", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, hostile);
+            Fleet fleet = AddBattleFleet(game, hostile, empire.InstanceID, "fleet");
+            fleet.Order = new FleetOrder
+            {
+                OrderType = orderType,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = hostile.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIFleetEvacuationProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetEvacuationProposal>()
+                .Single(candidate => candidate.Fleet == fleet);
+
+            Assert.AreSame(hostile, proposal.HostilePlanet);
+        }
+
+        /// <summary>
         /// Verifies plan with multiple idle battle fleets adds best attack proposal.
         /// </summary>
         [Test]
@@ -529,15 +601,14 @@ namespace Rebellion.Tests.AI.Planners
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIFleetAttackProposal> proposals = new AIFleetPlanner()
+            List<AIFleetEvacuationProposal> proposals = new AIFleetPlanner()
                 .Plan(context)
-                .OfType<AIFleetAttackProposal>()
+                .OfType<AIFleetEvacuationProposal>()
                 .Where(proposal => proposal.Fleet == fleet)
                 .ToList();
 
             Assert.AreEqual(1, proposals.Count);
-            Assert.AreEqual(FleetOrderStatus.Returning, proposals[0].Status);
-            Assert.AreEqual(blockedTarget.InstanceID, proposals[0].TargetPlanet.InstanceID);
+            Assert.AreSame(blockedTarget, proposals[0].HostilePlanet);
         }
 
         /// <summary>
@@ -560,12 +631,12 @@ namespace Rebellion.Tests.AI.Planners
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIFleetAttackProposal proposal = new AIFleetPlanner()
+            AIFleetEvacuationProposal proposal = new AIFleetPlanner()
                 .Plan(context)
-                .OfType<AIFleetAttackProposal>()
+                .OfType<AIFleetEvacuationProposal>()
                 .Single(candidate => candidate.Fleet == fleet);
 
-            Assert.AreEqual(FleetOrderStatus.Returning, proposal.Status);
+            Assert.AreSame(target, proposal.HostilePlanet);
         }
 
         /// <summary>
@@ -592,12 +663,12 @@ namespace Rebellion.Tests.AI.Planners
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIFleetAttackProposal proposal = new AIFleetPlanner()
+            AIFleetEvacuationProposal proposal = new AIFleetPlanner()
                 .Plan(context)
-                .OfType<AIFleetAttackProposal>()
+                .OfType<AIFleetEvacuationProposal>()
                 .Single(candidate => candidate.Fleet == fleet);
 
-            Assert.AreEqual(FleetOrderStatus.Returning, proposal.Status);
+            Assert.AreSame(target, proposal.HostilePlanet);
         }
 
         /// <summary>
@@ -636,13 +707,12 @@ namespace Rebellion.Tests.AI.Planners
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIFleetAttackProposal proposal = new AIFleetPlanner()
+            AIFleetEvacuationProposal proposal = new AIFleetPlanner()
                 .Plan(context)
-                .OfType<AIFleetAttackProposal>()
+                .OfType<AIFleetEvacuationProposal>()
                 .Single(candidate => candidate.Fleet == fleet);
 
-            Assert.AreEqual(FleetOrderStatus.Returning, proposal.Status);
-            Assert.AreSame(hostileStaging, proposal.TargetPlanet);
+            Assert.AreSame(hostileStaging, proposal.HostilePlanet);
         }
 
         /// <summary>
@@ -1770,11 +1840,11 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
-        /// Verifies an active survey campaign recalculates its next leg after a previously queued
-        /// planet becomes known to be hostile.
+        /// Verifies a colonization fleet stranded at a hostile planet evacuates before continuing
+        /// its survey campaign.
         /// </summary>
         [Test]
-        public void Plan_WithExploredHostileCampaignPlanet_ExcludesItFromNextSurveyLeg()
+        public void Plan_WithColonizationFleetStrandedAtHostilePlanet_AddsEvacuationProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "outer-rim");
@@ -1785,8 +1855,7 @@ namespace Rebellion.Tests.AI.Planners
                 "hostile",
                 rebels.InstanceID
             );
-            Planet unexplored = AITestSceneBuilder.AddPlanet(game, system, "unexplored", null);
-            unexplored.IsColonized = false;
+            AITestSceneBuilder.AddPlanet(game, system, "unexplored", null).IsColonized = false;
             AITestSceneBuilder.RevealPlanet(game, empire, hostile);
             Fleet fleet = AddBattleFleet(game, hostile, empire.InstanceID, "fleet");
             fleet.RoleType = FleetRoleType.Colonization;
@@ -1798,16 +1867,12 @@ namespace Rebellion.Tests.AI.Planners
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIColonizationCampaignProposal proposal = new AIFleetPlanner()
+            AIFleetEvacuationProposal proposal = new AIFleetPlanner()
                 .Plan(context)
-                .OfType<AIColonizationCampaignProposal>()
+                .OfType<AIFleetEvacuationProposal>()
                 .Single();
 
-            Assert.AreEqual(unexplored.InstanceID, proposal.EntryPlanet.InstanceID);
-            CollectionAssert.AreEqual(
-                new[] { unexplored.InstanceID },
-                proposal.UnexploredPlanets.Select(planet => planet.InstanceID)
-            );
+            Assert.AreSame(hostile, proposal.HostilePlanet);
         }
 
         /// <summary>

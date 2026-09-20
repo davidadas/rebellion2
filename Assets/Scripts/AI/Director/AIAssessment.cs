@@ -2132,6 +2132,25 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns whether a fleet can make immediate progress at its current hostile planet.
+        /// Orbital combat takes precedence while hostile fleets remain; otherwise the fleet must
+        /// be able to bombard or assault the planet.
+        /// </summary>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <param name="planet">Hostile planet currently containing the fleet.</param>
+        /// <returns>True when the fleet has a viable immediate action.</returns>
+        public bool CanFleetActAtPlanet(Fleet fleet, Planet planet)
+        {
+            if (fleet == null || planet == null)
+                return false;
+
+            if (GetStrongestHostileFleetStrength(planet) > 0)
+                return CanWinProjectedOrbitalCombat(fleet, planet);
+
+            return CanAdvanceAttack(fleet, planet);
+        }
+
+        /// <summary>
         /// Returns whether a fleet can immediately bombard military targets on a planet.
         /// </summary>
         /// <param name="fleet">Fleet being evaluated.</param>

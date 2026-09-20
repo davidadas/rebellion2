@@ -388,15 +388,57 @@ public static partial class HeadlessSimulationRunner
                         RemainingAttackerRegimentCount = result.RemainingAttackerRegimentCount,
                         InitialDefenderRegimentCount = result.InitialDefenderRegimentCount,
                         RemainingDefenderRegimentCount = result.RemainingDefenderRegimentCount,
+                        LandedRegimentCount = result.LandedRegiments.Count,
+                        AttackingCombatValue = GetAttackingCombatValue(result),
+                        AttackingCapitalShipCount = CountOperationalUnits<CapitalShip>(result),
+                        AttackingStarfighterCount = CountOperationalUnits<Starfighter>(result),
                         ImmediateUprising = immediateUprising,
                         RequiredGarrisonCount = requiredGarrison,
                         GarrisonDeficit = Math.Max(
                             0,
-                            requiredGarrison - result.RemainingAttackerRegimentCount
+                            requiredGarrison - result.LandedRegiments.Count
                         ),
                     }
                 );
             }
+        }
+
+        /// <summary>
+        /// Calculates the strategic combat value of the operational fleet units that initiated
+        /// an assault.
+        /// </summary>
+        /// <param name="result">The resolved planetary assault.</param>
+        /// <returns>The attacking fleet's combat value when the assault began.</returns>
+        private static int GetAttackingCombatValue(PlanetaryAssaultResult result)
+        {
+            return result
+                .AttackingUnits.Where(snapshot => snapshot.WasOperational)
+                .Sum(snapshot =>
+                    snapshot.Unit switch
+                    {
+                        CapitalShip ship => ship.GetCombatValue(),
+                        Starfighter fighter when fighter.MaxSquadronSize > 0 =>
+                            fighter.GetWeaponStrength()
+                                * fighter.CurrentSquadronSize
+                                / fighter.MaxSquadronSize,
+                        Starfighter fighter => fighter.GetWeaponStrength(),
+                        _ => 0,
+                    }
+                );
+        }
+
+        /// <summary>
+        /// Counts operational attacking units of one type at the start of an assault.
+        /// </summary>
+        /// <typeparam name="TUnit">The unit type to count.</typeparam>
+        /// <param name="result">The resolved planetary assault.</param>
+        /// <returns>The operational attacking-unit count.</returns>
+        private static int CountOperationalUnits<TUnit>(PlanetaryAssaultResult result)
+            where TUnit : class
+        {
+            return result.AttackingUnits.Count(snapshot =>
+                snapshot.WasOperational && snapshot.Unit is TUnit
+            );
         }
 
         /// <summary>

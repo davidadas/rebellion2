@@ -7,6 +7,7 @@ using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
@@ -128,16 +129,79 @@ namespace Rebellion.Tests.Editor.Simulation
         }
 
         /// <summary>
+        /// Verifies mission outcome tracking records changed-side diplomacy and its fog refresh.
+        /// </summary>
+        [Test]
+        public void MissionOutcomeTracker_RecordChangedSideDiplomacy_RecordsOwnershipAndRefresh()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction alliance);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "target",
+                alliance.InstanceID
+            );
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = "mission-1",
+                OwnerInstanceID = empire.InstanceID,
+                TypeID = MissionTypeIDs.Diplomacy,
+            };
+            MissionCompletedResult completion = new MissionCompletedResult
+            {
+                Mission = mission,
+                MissionInstanceID = mission.InstanceID,
+                MissionTypeID = MissionTypeIDs.Diplomacy,
+                Location = planet,
+                Outcome = MissionOutcome.Failed,
+                CompletionReason = MissionCompletionReason.TargetChangedSides,
+                Tick = 42,
+            };
+            IntelligenceRevealedResult intelligence = new IntelligenceRevealedResult
+            {
+                MissionInstanceID = mission.InstanceID,
+                Recipient = empire,
+                Observations = new List<Rebellion.SceneGraph.ISceneNode> { planet },
+                Tick = 42,
+            };
+            object tracker = CreateRunnerNestedType("MissionOutcomeTracker");
+
+            tracker
+                .GetType()
+                .GetMethod("Record")
+                .Invoke(tracker, new object[] { new GameResult[] { intelligence, completion } });
+            object summary = tracker
+                .GetType()
+                .GetMethod("BuildSummary")
+                .Invoke(tracker, new object[] { empire.InstanceID });
+            Array records = (Array)
+                summary.GetType().GetField("DiplomacyOwnershipChanges").GetValue(summary);
+            object record = records.GetValue(0);
+
+            Assert.AreEqual(1, records.Length);
+            Assert.AreEqual(42, record.GetType().GetField("Tick").GetValue(record));
+            Assert.AreEqual(
+                planet.InstanceID,
+                record.GetType().GetField("PlanetId").GetValue(record)
+            );
+            Assert.AreEqual(
+                alliance.InstanceID,
+                record.GetType().GetField("CurrentOwnerFactionId").GetValue(record)
+            );
+            Assert.IsTrue(
+                (bool)record.GetType().GetField("IntelligenceRefreshed").GetValue(record)
+            );
+        }
+
+        /// <summary>
         /// Parses simulation options through the headless runner's private option type.
         /// </summary>
         /// <param name="args">The command-line arguments to parse.</param>
         /// <returns>The parsed simulation options.</returns>
         private static object ParseSimulationOptions(params string[] args)
         {
-            Type runnerType = AppDomain
-                .CurrentDomain.GetAssemblies()
-                .Select(assembly => assembly.GetType("HeadlessSimulationRunner"))
-                .Single(type => type != null);
+            Type runnerType = GetRunnerType();
             Type optionsType = runnerType.GetNestedType(
                 "SimulationOptions",
                 BindingFlags.NonPublic
@@ -145,6 +209,29 @@ namespace Rebellion.Tests.Editor.Simulation
             return optionsType
                 .GetMethod("Parse", BindingFlags.Public | BindingFlags.Static)
                 .Invoke(null, new object[] { args });
+        }
+
+        /// <summary>
+        /// Creates a private nested headless-runner collaborator for focused instrumentation tests.
+        /// </summary>
+        /// <param name="typeName">The nested type name.</param>
+        /// <returns>A new collaborator instance.</returns>
+        private static object CreateRunnerNestedType(string typeName)
+        {
+            Type type = GetRunnerType().GetNestedType(typeName, BindingFlags.NonPublic);
+            return Activator.CreateInstance(type, nonPublic: true);
+        }
+
+        /// <summary>
+        /// Finds the headless simulation runner type in the loaded editor assemblies.
+        /// </summary>
+        /// <returns>The headless simulation runner type.</returns>
+        private static Type GetRunnerType()
+        {
+            return AppDomain
+                .CurrentDomain.GetAssemblies()
+                .Select(assembly => assembly.GetType("HeadlessSimulationRunner"))
+                .Single(type => type != null);
         }
     }
 }

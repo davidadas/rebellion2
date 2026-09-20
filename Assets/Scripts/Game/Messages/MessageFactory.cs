@@ -274,6 +274,13 @@ namespace Rebellion.Game.Messages
             string officerName = GetMissionOfficerName(result, game, killedResults);
             string targetName = GetMissionObjectTargetName(result, game, sabotageResults);
             string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
+            string targetOwnerInstanceId = target?.GetOwnerInstanceID();
+            string targetOwnerName = string.IsNullOrEmpty(targetOwnerInstanceId)
+                ? string.Empty
+                : game?.GetFactions()
+                    .FirstOrDefault(candidate => candidate.InstanceID == targetOwnerInstanceId)
+                    ?.GetDisplayName()
+                    ?? string.Empty;
             MessageDefinition definition = GetMissionDefinition(
                 MessageResultType.MissionReport,
                 outcome,
@@ -299,6 +306,7 @@ namespace Rebellion.Game.Messages
                         },
                         { "officer", string.IsNullOrEmpty(officerName) ? "target" : officerName },
                         { "target", string.IsNullOrEmpty(targetName) ? "target" : targetName },
+                        { "faction", targetOwnerName },
                         { "assassination_result", assassinationResult },
                         { "details", missionDetails },
                     },
@@ -1270,7 +1278,11 @@ namespace Rebellion.Game.Messages
         /// <returns>The voice line type that matches the mission outcome.</returns>
         private static OfficerVoiceLineType GetMissionVoiceLineType(MissionCompletedResult result)
         {
-            if (result?.CompletionReason == MissionCompletionReason.TargetUnavailable)
+            if (
+                result?.CompletionReason
+                is MissionCompletionReason.TargetUnavailable
+                    or MissionCompletionReason.TargetChangedSides
+            )
                 return OfficerVoiceLineType.MissionAbort;
 
             return result?.Outcome == MissionOutcome.Success

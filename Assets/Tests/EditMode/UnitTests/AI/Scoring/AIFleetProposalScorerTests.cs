@@ -52,6 +52,38 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         /// <summary>
+        /// Verifies evacuation receives full utility and mandatory priority.
+        /// </summary>
+        [Test]
+        public void Score_FleetEvacuation_ReturnsHighestScore()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet hostile = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "hostile",
+                rebels.InstanceID
+            );
+            Fleet fleet = AddBattleFleet(
+                game,
+                hostile,
+                "fleet",
+                empire.InstanceID,
+                combatStrength: 100
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetEvacuationProposal proposal = new AIFleetEvacuationProposal(fleet, hostile);
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+
+            double score = scorer.Score(context, proposal);
+
+            Assert.IsTrue(scorer.CanScore(proposal));
+            Assert.AreEqual(1, score);
+            Assert.AreEqual(AIProposalPriority.Mandatory, proposal.Priority);
+        }
+
+        /// <summary>
         /// Verifies score attack proposal for headquarters returns higher score.
         /// </summary>
         [Test]

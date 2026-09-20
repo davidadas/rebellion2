@@ -3252,58 +3252,6 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         /// <summary>
-        /// Creates busy shipyard scene.
-        /// </summary>
-        /// <returns>The created busy shipyard scene.</returns>
-        private static (
-            GameRoot game,
-            Faction empire,
-            Planet hub,
-            Planet destination,
-            Fleet fleet,
-            CapitalShip ship
-        ) CreateBusyShipyardScene()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
-            game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet hub = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "shipyard-hub",
-                empire.InstanceID,
-                positionX: 0
-            );
-            AITestSceneBuilder.AddProductionFacility(
-                game,
-                hub,
-                "shipyard",
-                BuildingType.Shipyard,
-                ManufacturingType.Ship
-            );
-            Planet destination = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "fleet-world",
-                empire.InstanceID,
-                positionX: 100
-            );
-            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
-            fleet.RoleType = FleetRoleType.Battle;
-            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
-                "ship",
-                empire.InstanceID,
-                combatStrength: 100,
-                regimentCapacity: 0,
-                starfighterCapacity: 1
-            );
-            game.AttachNode(fleet, destination);
-            game.AttachNode(ship, fleet);
-            return (game, empire, hub, destination, fleet, ship);
-        }
-
-        /// <summary>
         /// Adds attack fleet.
         /// </summary>
         /// <param name="game">The game.</param>

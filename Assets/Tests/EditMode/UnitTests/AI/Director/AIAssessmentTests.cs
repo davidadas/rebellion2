@@ -1553,8 +1553,8 @@ namespace Rebellion.Tests.AI.Director
             );
 
             Assert.Greater(shieldPriority, batteryPriority);
-            Assert.Greater(batteryPriority, regimentPriority);
-            Assert.Greater(regimentPriority, starfighterPriority);
+            Assert.Greater(regimentPriority, batteryPriority);
+            Assert.Greater(batteryPriority, starfighterPriority);
             Assert.Greater(starfighterPriority, infrastructurePriority);
         }
 

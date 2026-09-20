@@ -824,6 +824,7 @@ namespace Rebellion.Tests.Game.Combat
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 1);
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 0.33;
             config.AutoResolveTargetScanDivisor = 1;
 
             SpaceCombatAutoResult result = Resolve(
@@ -855,7 +856,10 @@ namespace Rebellion.Tests.Game.Combat
             defender.ShieldStrength = 10;
             defender.SublightSpeed = 10;
 
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 0.33;
             SpaceCombatAutoResult result = Resolve(
+                config,
                 new[] { attacker },
                 new List<Starfighter>(),
                 new List<CapitalShip>(),
@@ -865,7 +869,7 @@ namespace Rebellion.Tests.Game.Combat
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(4, GetFighterOutcome(result, defender).SquadronSizeAfter);
+            Assert.AreEqual(12, GetFighterOutcome(result, defender).SquadronSizeAfter);
         }
 
         /// <summary>
@@ -1027,7 +1031,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.IsTrue(GetShipOutcome(result, secondWithdrawingShip).Withdrew);
             Assert.IsFalse(GetShipOutcome(result, strandedShip).Withdrew);
             Assert.AreEqual(0, GetShipOutcome(result, strandedShip).HullAfter);
-            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 1000);
+            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
         }
 
@@ -1117,7 +1121,7 @@ namespace Rebellion.Tests.Game.Combat
         [Test]
         public void Resolve_CarriedNonHyperdriveFighterWithdraws_PreservesFighter()
         {
-            CapitalShip attacker = CreatePassiveTarget("attacker", hull: 100);
+            CapitalShip attacker = CreateShip("attacker", hull: 10000, weaponStrength: 10);
             CapitalShip carrier = CreateShip("carrier", hull: 100, weaponStrength: 1);
             carrier.StarfighterCapacity = 1;
             carrier.SublightSpeed = 10;
@@ -1146,8 +1150,8 @@ namespace Rebellion.Tests.Game.Combat
                 );
 
             Assert.IsTrue(GetShipOutcome(result, carrier).Withdrew);
-            Assert.IsTrue(GetFighterOutcome(result, fighter).Withdrew);
             Assert.AreEqual(12, GetFighterOutcome(result, fighter).SquadronSizeAfter);
+            Assert.IsTrue(GetFighterOutcome(result, fighter).Withdrew);
         }
 
         /// <summary>
@@ -1264,7 +1268,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.IsFalse(GetFighterOutcome(result, secondFighter).Withdrew);
             Assert.AreEqual(0, GetFighterOutcome(result, firstFighter).SquadronSizeAfter);
             Assert.AreEqual(0, GetFighterOutcome(result, secondFighter).SquadronSizeAfter);
-            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 1000);
+            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
         }
 
         /// <summary>
@@ -1640,7 +1644,7 @@ namespace Rebellion.Tests.Game.Combat
                 AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                 AutoResolveMaximumIterations = 4096,
                 AutoResolveStagnationIterations = 1200,
-                AutoResolveRetreatStrengthRatio = 0.33,
+                AutoResolveRetreatStrengthRatio = 0,
                 AutoResolveMinimumManeuverRatio = 0.1,
                 AutoResolveTargetScanDivisor = 3,
                 AutoResolveStartingDistance = 75,

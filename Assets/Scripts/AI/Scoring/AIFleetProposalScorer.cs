@@ -23,6 +23,7 @@ namespace Rebellion.AI.Scoring
         {
             return proposal
                 is AIFleetAttackProposal
+                    or AIFleetEvacuationProposal
                     or AIOrbitalEngagementProposal
                     or AIColonizationProposal
                     or AIColonizationCampaignProposal
@@ -47,6 +48,7 @@ namespace Rebellion.AI.Scoring
             {
                 AIFleetAttackProposal { Status: FleetOrderStatus.Returning } returnProposal =>
                     ScoreReturn(),
+                AIFleetEvacuationProposal => ScoreReturn(),
                 AIFleetAttackProposal attackProposal => ScoreAttack(
                     context,
                     attackProposal.Fleet,
