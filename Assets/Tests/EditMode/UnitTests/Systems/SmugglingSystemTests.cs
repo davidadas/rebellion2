@@ -42,9 +42,6 @@ namespace Rebellion.Tests.Sectors
             _system = new SmugglingSystem(_game);
         }
 
-        /// <summary>
-        /// Verifies process tick low support starts configured smuggling loss percentage.
-        /// </summary>
         [Test]
         public void ProcessTick_LowSupport_StartsConfiguredSmugglingLossPercentage()
         {
@@ -59,9 +56,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("FACTION2", changed.Beneficiary.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies process tick existing smuggling state does not repeat start notification.
-        /// </summary>
         [Test]
         public void ProcessTick_ExistingSmugglingState_DoesNotRepeatStartNotification()
         {
@@ -73,9 +67,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(results.OfType<SmugglingChangedResult>());
         }
 
-        /// <summary>
-        /// Verifies process tick garrison and fleet presence reduce smuggling percentage.
-        /// </summary>
         [Test]
         public void ProcessTick_GarrisonAndFleetPresence_ReduceSmugglingPercentage()
         {
@@ -98,9 +89,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(58, result.NewValue);
         }
 
-        /// <summary>
-        /// Verifies process tick planet destroying ship present fully suppresses smuggling.
-        /// </summary>
         [Test]
         public void ProcessTick_PlanetDestroyingShipPresent_FullySuppressesSmuggling()
         {
@@ -123,9 +111,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(results);
         }
 
-        /// <summary>
-        /// Verifies process tick control changed ends old smuggling and starts new relationship.
-        /// </summary>
         [Test]
         public void ProcessTick_ControlChanged_EndsOldSmugglingAndStartsNewRelationship()
         {
@@ -145,9 +130,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, changes[1].OldPercent);
         }
 
-        /// <summary>
-        /// Verifies process tick diversion changes within relationship only reports stat change.
-        /// </summary>
         [Test]
         public void ProcessTick_DiversionChangesWithinRelationship_OnlyReportsStatChange()
         {

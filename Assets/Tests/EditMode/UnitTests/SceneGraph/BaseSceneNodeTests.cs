@@ -52,9 +52,6 @@ namespace Rebellion.Tests.SceneGraph
             };
         }
 
-        /// <summary>
-        /// Verifies set parent valid parent updates parent references.
-        /// </summary>
         [Test]
         public void SetParent_ValidParent_UpdatesParentReferences()
         {
@@ -65,9 +62,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(_childNode1, _rootNode.GetChildren().First());
         }
 
-        /// <summary>
-        /// Verifies set parent changes parent updates last parent.
-        /// </summary>
         [Test]
         public void SetParent_ChangesParent_UpdatesLastParent()
         {
@@ -78,9 +72,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(_childNode1.GetParent());
         }
 
-        /// <summary>
-        /// Verifies set parent null after parent clears parent references.
-        /// </summary>
         [Test]
         public void SetParent_NullAfterParent_ClearsParentReferences()
         {
@@ -92,9 +83,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(_childNode1.ParentInstanceID);
         }
 
-        /// <summary>
-        /// Verifies set parent new parent removes node from old parent.
-        /// </summary>
         [Test]
         public void SetParent_NewParent_RemovesNodeFromOldParent()
         {
@@ -107,9 +95,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreSame(_nodeB, _childNode1.GetParent());
         }
 
-        /// <summary>
-        /// Verifies set parent same parent twice does not change previous.
-        /// </summary>
         [Test]
         public void SetParent_SameParentTwice_DoesNotChangePrevious()
         {
@@ -126,9 +111,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(lastParentInstanceIDBefore, _childNode1.LastParentInstanceID);
         }
 
-        /// <summary>
-        /// Verifies get parent of type valid type returns correct parent.
-        /// </summary>
         [Test]
         public void GetParentOfType_ValidType_ReturnsCorrectParent()
         {
@@ -141,9 +123,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies get parent of type cyclic graph with different mock types throws invalid operation exception.
-        /// </summary>
         [Test]
         public void GetParentOfType_CyclicGraphWithDifferentMockTypes_ThrowsInvalidOperationException()
         {
@@ -159,9 +138,6 @@ namespace Rebellion.Tests.SceneGraph
             );
         }
 
-        /// <summary>
-        /// Verifies set owner instance id sets current owner.
-        /// </summary>
         [Test]
         public void SetOwnerInstanceID_SetsCurrentOwner()
         {
@@ -169,9 +145,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual("Owner1", _childNode1.OwnerInstanceID);
         }
 
-        /// <summary>
-        /// Verifies set owner instance id any faction sets successfully.
-        /// </summary>
         [Test]
         public void SetOwnerInstanceID_AnyFaction_SetsSuccessfully()
         {
@@ -179,9 +152,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual("AnyOwner", _childNode1.OwnerInstanceID);
         }
 
-        /// <summary>
-        /// Verifies set owner instance id null value sets successfully.
-        /// </summary>
         [Test]
         public void SetOwnerInstanceID_NullValue_SetsSuccessfully()
         {
@@ -189,9 +159,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(_childNode1.OwnerInstanceID);
         }
 
-        /// <summary>
-        /// Verifies get children with predicate and type returns matching children.
-        /// </summary>
         [Test]
         public void GetChildren_WithPredicateAndType_ReturnsMatchingChildren()
         {
@@ -209,9 +176,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(_childNode1, matchingChildren.First());
         }
 
-        /// <summary>
-        /// Verifies get children recursive traversal returns all descendants.
-        /// </summary>
         [Test]
         public void GetChildren_RecursiveTraversal_ReturnsAllDescendants()
         {
@@ -243,9 +207,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsTrue(allDescendants.Contains(grandchild2));
         }
 
-        /// <summary>
-        /// Verifies get children recursive with predicate returns matching descendants.
-        /// </summary>
         [Test]
         public void GetChildren_RecursiveWithPredicate_ReturnsMatchingDescendants()
         {
@@ -280,9 +241,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsTrue(matchingDescendants.Contains(grandchild1));
         }
 
-        /// <summary>
-        /// Verifies get children non generic returns all direct children.
-        /// </summary>
         [Test]
         public void GetChildren_NonGeneric_ReturnsAllDirectChildren()
         {
@@ -298,9 +256,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsTrue(children.Contains(_nodeA));
         }
 
-        /// <summary>
-        /// Verifies get children non generic when no children returns empty collection.
-        /// </summary>
         [Test]
         public void GetChildren_NonGeneric_WhenNoChildren_ReturnsEmptyCollection()
         {
@@ -309,9 +264,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(0, children.Count());
         }
 
-        /// <summary>
-        /// Verifies create copy default copies only detached node.
-        /// </summary>
         [Test]
         public void CreateCopy_Default_CopiesOnlyDetachedNode()
         {
@@ -329,9 +281,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(1, _rootNode.GetChildren().Count);
         }
 
-        /// <summary>
-        /// Verifies create copy null encyclopedia stats preserves null stats.
-        /// </summary>
         [Test]
         public void CreateCopy_NullEncyclopediaStats_PreservesNullStats()
         {
@@ -342,9 +291,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(copy.EncyclopediaStats);
         }
 
-        /// <summary>
-        /// Verifies create copy create node copy returns different type throws invalid operation exception.
-        /// </summary>
         [Test]
         public void CreateCopy_CreateNodeCopyReturnsDifferentType_ThrowsInvalidOperationException()
         {
@@ -355,9 +301,6 @@ namespace Rebellion.Tests.SceneGraph
             StringAssert.Contains(nameof(MockSceneNodeA), exception.Message);
         }
 
-        /// <summary>
-        /// Verifies create copy recursive copies hierarchy and reconnects parents.
-        /// </summary>
         [Test]
         public void CreateCopy_Recursive_CopiesHierarchyAndReconnectsParents()
         {
@@ -382,9 +325,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(copiedChild.InstanceID, copiedGrandchild.ParentInstanceID);
         }
 
-        /// <summary>
-        /// Verifies create copy recursive by default excludes disabled branches.
-        /// </summary>
         [Test]
         public void CreateCopy_RecursiveByDefault_ExcludesDisabledBranches()
         {
@@ -404,9 +344,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsEmpty(copy.GetChildren(includeDisabled: true));
         }
 
-        /// <summary>
-        /// Verifies create copy recursive including disabled copies disabled branches.
-        /// </summary>
         [Test]
         public void CreateCopy_RecursiveIncludingDisabled_CopiesDisabledBranches()
         {
@@ -423,9 +360,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreSame(copy, copiedChild.GetParent());
         }
 
-        /// <summary>
-        /// Verifies traverse hierarchical nodes visits all nodes.
-        /// </summary>
         [Test]
         public void Traverse_HierarchicalNodes_VisitsAllNodes()
         {
@@ -438,9 +372,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(3, visitedNodes.Count); // rootNode + childNode1 + childNode2
         }
 
-        /// <summary>
-        /// Verifies get owner instance id when set returns correct value.
-        /// </summary>
         [Test]
         public void GetOwnerInstanceID_WhenSet_ReturnsCorrectValue()
         {
@@ -452,9 +383,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(testOwnerId, result);
         }
 
-        /// <summary>
-        /// Verifies get owner instance id when not set returns null.
-        /// </summary>
         [Test]
         public void GetOwnerInstanceID_WhenNotSet_ReturnsNull()
         {
@@ -463,9 +391,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(result);
         }
 
-        /// <summary>
-        /// Verifies parent instance id when parent set matches parent instance id.
-        /// </summary>
         [Test]
         public void ParentInstanceID_WhenParentSet_MatchesParentInstanceID()
         {
@@ -474,9 +399,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(_rootNode.InstanceID, _childNode1.ParentInstanceID);
         }
 
-        /// <summary>
-        /// Verifies parent instance id when parent null returns null.
-        /// </summary>
         [Test]
         public void ParentInstanceID_WhenParentNull_ReturnsNull()
         {
@@ -485,9 +407,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(_childNode1.ParentInstanceID);
         }
 
-        /// <summary>
-        /// Verifies last parent instance id after parent change matches previous parent instance id.
-        /// </summary>
         [Test]
         public void LastParentInstanceID_AfterParentChange_MatchesPreviousParentInstanceID()
         {
@@ -500,9 +419,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.AreEqual(_childNode2.InstanceID, _childNode1.ParentInstanceID);
         }
 
-        /// <summary>
-        /// Verifies last parent instance id when parent set to null matches previous parent instance id.
-        /// </summary>
         [Test]
         public void LastParentInstanceID_WhenParentSetToNull_MatchesPreviousParentInstanceID()
         {

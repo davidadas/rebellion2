@@ -39,18 +39,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render selected mission applies window mission rows target tabs and participants.
-        /// </summary>
         [Test]
         public void Render_SelectedMission_AppliesWindowMissionRowsTargetTabsAndParticipants()
         {
@@ -86,9 +80,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual("Han", FindParticipantText(participants[1]).text);
         }
 
-        /// <summary>
-        /// Verifies render no selected mission hides details tabs and cached participants.
-        /// </summary>
         [Test]
         public void Render_NoSelectedMission_HidesDetailsTabsAndCachedParticipants()
         {
@@ -119,9 +110,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsFalse(participant.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render selected mission without target image hides only target image.
-        /// </summary>
         [Test]
         public void Render_SelectedMissionWithoutTargetImage_HidesOnlyTargetImage()
         {
@@ -141,9 +129,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual("Coruscant", FindText("TargetNameTextField").text);
         }
 
-        /// <summary>
-        /// Verifies render shorter collections hide unused cached rows.
-        /// </summary>
         [Test]
         public void Render_ShorterCollections_HideUnusedCachedRows()
         {
@@ -171,9 +156,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual("Luke", FindParticipantText(FindParticipantRows()[0]).text);
         }
 
-        /// <summary>
-        /// Verifies render invalid tab count throws argument exception.
-        /// </summary>
         [Test]
         public void Render_InvalidTabCount_ThrowsArgumentException()
         {
@@ -188,9 +170,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
-        /// <summary>
-        /// Verifies render invalid tab order throws argument exception.
-        /// </summary>
         [Test]
         public void Render_InvalidTabOrder_ThrowsArgumentException()
         {
@@ -211,9 +190,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentException>(() => _view.Render(data));
         }
 
-        /// <summary>
-        /// Verifies on pointer click primary and secondary raises only primary surface request.
-        /// </summary>
         [Test]
         public void OnPointerClick_PrimaryAndSecondary_RaisesOnlyPrimarySurfaceRequest()
         {
@@ -241,9 +217,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(primary, received);
         }
 
-        /// <summary>
-        /// Verifies tab button click raises authored participant role.
-        /// </summary>
         [Test]
         public void TabButton_Click_RaisesAuthoredParticipantRole()
         {
@@ -255,9 +228,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(MissionParticipantRole.Decoy, requested);
         }
 
-        /// <summary>
-        /// Verifies mission row gestures rendered row raise stable index and original event.
-        /// </summary>
         [Test]
         public void MissionRowGestures_RenderedRow_RaiseStableIndexAndOriginalEvent()
         {
@@ -301,9 +271,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(1, doubleClickedIndex);
         }
 
-        /// <summary>
-        /// Verifies participant gestures rendered row raise stable index and original event.
-        /// </summary>
         [Test]
         public void ParticipantGestures_RenderedRow_RaiseStableIndexAndOriginalEvent()
         {
@@ -345,9 +312,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(eventData, releasedEvent);
         }
 
-        /// <summary>
-        /// Verifies get participant index active participant and missing target return expected indexes.
-        /// </summary>
         [Test]
         public void GetParticipantIndex_ActiveParticipantAndMissingTarget_ReturnExpectedIndexes()
         {
@@ -374,9 +338,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(-1, missingIndex);
         }
 
-        /// <summary>
-        /// Verifies scroll metrics authored templates return consistent row geometry.
-        /// </summary>
         [Test]
         public void ScrollMetrics_AuthoredTemplates_ReturnConsistentRowGeometry()
         {
@@ -397,9 +358,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies child views null render data throw argument null exception.
-        /// </summary>
         [Test]
         public void ChildViews_NullRenderData_ThrowArgumentNullException()
         {
@@ -414,9 +372,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentNullException>(() => participantTemplate.Render(null));
         }
 
-        /// <summary>
-        /// Verifies on destroy initialized view unbinds controls rows and raises destroyed event.
-        /// </summary>
         [Test]
         public void OnDestroy_InitializedView_UnbindsControlsRowsAndRaisesDestroyedEvent()
         {

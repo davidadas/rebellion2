@@ -25,9 +25,6 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public class GameManagerTests
     {
-        /// <summary>
-        /// Verifies set game speed configured intervals updates tick interval.
-        /// </summary>
         [Test]
         public void SetGameSpeed_ConfiguredIntervals_UpdatesTickInterval()
         {
@@ -55,9 +52,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(120.5f, GetTickInterval(manager));
         }
 
-        /// <summary>
-        /// Verifies constructor with factions rebuilds research catalogs.
-        /// </summary>
         [Test]
         public void Constructor_WithFactions_RebuildsResearchCatalogs()
         {
@@ -86,9 +80,6 @@ namespace Rebellion.Tests.Managers
             );
         }
 
-        /// <summary>
-        /// Verifies reconcile loaded state contested player fleet restores pending combat.
-        /// </summary>
         [Test]
         public void ReconcileLoadedState_ContestedPlayerFleet_RestoresPendingCombat()
         {
@@ -138,9 +129,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(manager.IsTickSettled);
         }
 
-        /// <summary>
-        /// Verifies process faction automation manage naming assigns name immediately.
-        /// </summary>
         [Test]
         public void ProcessFactionAutomation_ManageNaming_AssignsNameImmediately()
         {
@@ -173,9 +161,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(ship.HasAssignedName);
         }
 
-        /// <summary>
-        /// Verifies process tick event results does not add automatic messages.
-        /// </summary>
         [Test]
         public void ProcessTick_AdvisorOrderCompletes_RefillsReleasedLaneOnly()
         {
@@ -283,9 +268,6 @@ namespace Rebellion.Tests.Managers
             );
         }
 
-        /// <summary>
-        /// Verifies that event results do not generate automatic messages during tick processing.
-        /// </summary>
         [Test]
         public void ProcessTick_EventResults_DoesNotAddAutomaticMessages()
         {
@@ -318,9 +300,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsEmpty(faction.Messages[MessageType.Manufacturing]);
         }
 
-        /// <summary>
-        /// Verifies process tick fully recovered units delivers recovery messages.
-        /// </summary>
         [Test]
         public void ProcessTick_FullyRecoveredUnits_DeliversRecoveryMessages()
         {
@@ -346,9 +325,6 @@ namespace Rebellion.Tests.Managers
             );
         }
 
-        /// <summary>
-        /// Verifies process tick injured officer at friendly planet heals.
-        /// </summary>
         [Test]
         public void ProcessTick_InjuredOfficerAtFriendlyPlanet_Heals()
         {
@@ -376,9 +352,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(1, officer.InjuryPoints);
         }
 
-        /// <summary>
-        /// Verifies process tick frees a captured officer whose escape attempt is due.
-        /// </summary>
         [Test]
         public void ProcessTick_CapturedOfficerWithDueEscapeAttempt_FreesOfficer()
         {
@@ -409,9 +382,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsFalse(captive.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies process tick event captures mission participant completes capture lifecycle.
-        /// </summary>
         [Test]
         public void ProcessTick_EventCapturesMissionParticipant_CompletesCaptureLifecycle()
         {
@@ -489,9 +459,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsNull(observed.Movement);
         }
 
-        /// <summary>
-        /// Verifies process tick victory condition met raises victory declared once.
-        /// </summary>
         [Test]
         public void ProcessTick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
         {
@@ -529,9 +496,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreSame(empire, declarations[0].Loser);
         }
 
-        /// <summary>
-        /// Verifies process tick planetary assault result raises resolved event.
-        /// </summary>
         [Test]
         public void ProcessTick_PlanetaryAssaultResult_RaisesResolvedEvent()
         {
@@ -557,9 +521,6 @@ namespace Rebellion.Tests.Managers
             Assert.That(observedResults, Has.Count.EqualTo(1));
         }
 
-        /// <summary>
-        /// Verifies process tick victory result raises resolved event.
-        /// </summary>
         [Test]
         public void ProcessTick_VictoryResult_RaisesResolvedEvent()
         {
@@ -585,9 +546,6 @@ namespace Rebellion.Tests.Managers
             Assert.That(observedResults, Has.Count.EqualTo(1));
         }
 
-        /// <summary>
-        /// Verifies process tick expired message removes message after tick advances.
-        /// </summary>
         [Test]
         public void ProcessTick_ExpiredMessage_RemovesMessageAfterTickAdvances()
         {
@@ -606,9 +564,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsEmpty(faction.Messages[MessageType.Conflict]);
         }
 
-        /// <summary>
-        /// Verifies process tick blockade starts reroutes inbound starfighter.
-        /// </summary>
         [Test]
         public void ProcessTick_BlockadeStarts_ReroutesInboundStarfighter()
         {
@@ -677,9 +632,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsNotNull(starfighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies process tick sabotage result removes destroyed object from actor snapshot.
-        /// </summary>
         [Test]
         public void ProcessTick_SabotageResult_RemovesDestroyedObjectFromActorSnapshot()
         {
@@ -770,9 +722,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsFalse(viewedPlanet.GetChildren<Building>().Any(b => b.InstanceID == "MINE1"));
         }
 
-        /// <summary>
-        /// Verifies process tick fleet destroyed after arrival adds fleet arrival and battle messages.
-        /// </summary>
         [Test]
         public void ProcessTick_FleetDestroyedAfterArrival_AddsFleetArrivalAndBattleMessages()
         {
@@ -855,9 +804,6 @@ namespace Rebellion.Tests.Managers
             );
         }
 
-        /// <summary>
-        /// Verifies process tick loaded converging multiple fleets resolves single combined combat.
-        /// </summary>
         [Test]
         public void ProcessTick_LoadedConvergingMultipleFleets_ResolvesSingleCombinedCombat()
         {
@@ -974,9 +920,6 @@ namespace Rebellion.Tests.Managers
             }
         }
 
-        /// <summary>
-        /// Verifies process tick fleet arrives at planetary starfighters creates pending combat.
-        /// </summary>
         [Test]
         public void ProcessTick_FleetArrivesAtPlanetaryStarfighters_CreatesPendingCombat()
         {
@@ -1057,9 +1000,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreSame(destination, pending.Planet);
         }
 
-        /// <summary>
-        /// Verifies process tick fleet reaches waypoint starts next leg after combat detection.
-        /// </summary>
         [Test]
         public void ProcessTick_FleetReachesWaypoint_StartsNextLegAfterCombatDetection()
         {
@@ -1100,9 +1040,6 @@ namespace Rebellion.Tests.Managers
             CollectionAssert.AreEqual(new[] { destination.InstanceID }, fleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies process tick pending combat completes tick after resolution.
-        /// </summary>
         [Test]
         public void ProcessTick_PendingCombat_CompletesTickAfterResolution()
         {
@@ -1164,9 +1101,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(manager.IsTickSettled);
         }
 
-        /// <summary>
-        /// Verifies process tick paused game does not advance tick.
-        /// </summary>
         [Test]
         public void ProcessTick_PausedGame_DoesNotAdvanceTick()
         {
@@ -1179,9 +1113,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, game.CurrentTick);
         }
 
-        /// <summary>
-        /// Verifies resolve combat unrelated fleet reached waypoint starts deferred next leg.
-        /// </summary>
         [Test]
         public void ResolveCombat_UnrelatedFleetReachedWaypoint_StartsDeferredNextLeg()
         {
@@ -1249,9 +1180,6 @@ namespace Rebellion.Tests.Managers
             CollectionAssert.AreEqual(new[] { destination.InstanceID }, routeFleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies advance time completed interval processes tick and raises tick completed.
-        /// </summary>
         [Test]
         public void AdvanceTime_CompletedInterval_ProcessesTickAndRaisesTickCompleted()
         {
@@ -1269,9 +1197,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(1, completedTicks);
         }
 
-        /// <summary>
-        /// Verifies advance time below completed interval does not process tick.
-        /// </summary>
         [Test]
         public void AdvanceTime_BelowCompletedInterval_DoesNotProcessTick()
         {
@@ -1288,9 +1213,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, completedTicks);
         }
 
-        /// <summary>
-        /// Verifies process tick incrementally disposed before completion allows next tick.
-        /// </summary>
         [Test]
         public void ProcessTickIncrementally_DisposedBeforeCompletion_AllowsNextTick()
         {
@@ -1306,9 +1228,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, game.CurrentTick);
         }
 
-        /// <summary>
-        /// Verifies movement command surface regiment creates garrison deficit starts uprising immediately.
-        /// </summary>
         [Test]
         public void MovementCommand_SurfaceRegimentCreatesGarrisonDeficit_StartsUprisingImmediately()
         {
@@ -1420,9 +1339,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsNull(diplomat.Movement);
         }
 
-        /// <summary>
-        /// Verifies movement command last surface regiment neutralizes planet reports immediately.
-        /// </summary>
         [Test]
         public void MovementCommand_LastSurfaceRegimentNeutralizesPlanet_ReportsImmediately()
         {
@@ -1490,9 +1406,6 @@ namespace Rebellion.Tests.Managers
             );
         }
 
-        /// <summary>
-        /// Verifies scrap command last surface regiment reconciles planet immediately.
-        /// </summary>
         [Test]
         public void ScrapCommand_LastSurfaceRegiment_ReconcilesPlanetImmediately()
         {

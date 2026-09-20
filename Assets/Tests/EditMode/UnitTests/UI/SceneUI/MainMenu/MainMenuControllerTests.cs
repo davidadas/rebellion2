@@ -31,9 +31,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             GameLaunchContext.Reset(TestContent.Pack);
         }
 
-        /// <summary>
-        /// Verifies select faction configured id updates launch summary.
-        /// </summary>
         [Test]
         public void SelectFaction_ConfiguredID_UpdatesLaunchSummary()
         {
@@ -42,9 +39,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual("faction-2", GameLaunchContext.Summary.PlayerFactionID);
         }
 
-        /// <summary>
-        /// Verifies select galaxy size value updates launch summary.
-        /// </summary>
         [Test]
         public void SelectGalaxySize_Value_UpdatesLaunchSummary()
         {
@@ -53,9 +47,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(GameSize.Medium, GameLaunchContext.Summary.GalaxySize);
         }
 
-        /// <summary>
-        /// Verifies select difficulty value updates launch summary.
-        /// </summary>
         [Test]
         public void SelectDifficulty_Value_UpdatesLaunchSummary()
         {
@@ -64,9 +55,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Summary.Difficulty);
         }
 
-        /// <summary>
-        /// Verifies select victory condition value updates launch summary without view.
-        /// </summary>
         [Test]
         public void SelectVictoryCondition_Value_UpdatesLaunchSummaryWithoutView()
         {

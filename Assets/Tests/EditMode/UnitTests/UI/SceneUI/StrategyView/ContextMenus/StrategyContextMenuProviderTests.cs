@@ -19,9 +19,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 Object.DestroyImmediate(_windowObject);
         }
 
-        /// <summary>
-        /// Verifies menu data command source change preserves snapshot.
-        /// </summary>
         [Test]
         public void MenuData_CommandSourceChange_PreservesSnapshot()
         {
@@ -46,9 +43,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreSame(command, data.Commands[0]);
         }
 
-        /// <summary>
-        /// Verifies menu data null commands uses empty collection.
-        /// </summary>
         [Test]
         public void MenuData_NullCommands_UsesEmptyCollection()
         {

@@ -7,9 +7,6 @@ namespace Rebellion.Tests.Game.Messages
     [TestFixture]
     public class CombatReportTests
     {
-        /// <summary>
-        /// Verifies serialize and deserialize combat report maintains state.
-        /// </summary>
         [Test]
         public void SerializeAndDeserialize_CombatReport_MaintainsState()
         {

@@ -12,9 +12,6 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public sealed class AIInfrastructureDemandPlannerTests
     {
-        /// <summary>
-        /// Verifies desired shipyard count follows the configured faction-wide planet ratio.
-        /// </summary>
         [Test]
         public void GetDesiredFacilityCount_WithShipyardRatio_ReturnsFactionWideRequirement()
         {
@@ -33,9 +30,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(3, desired);
         }
 
-        /// <summary>
-        /// Verifies construction requirements preserve the configured minimum lane count.
-        /// </summary>
         [Test]
         public void GetDesiredFacilityCount_WithConstructionLaneFloor_PreservesMinimum()
         {

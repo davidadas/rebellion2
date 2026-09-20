@@ -7,9 +7,6 @@ namespace Rebellion.Tests.Util.Common
     [TestFixture]
     public class ProbabilityTableTests
     {
-        /// <summary>
-        /// Verifies lookup value between thresholds returns previous threshold value.
-        /// </summary>
         [Test]
         public void Lookup_ValueBetweenThresholds_ReturnsPreviousThresholdValue()
         {
@@ -27,9 +24,6 @@ namespace Rebellion.Tests.Util.Common
             Assert.AreEqual(96, table.Lookup(0));
         }
 
-        /// <summary>
-        /// Verifies lookup value below lowest threshold returns lowest threshold value.
-        /// </summary>
         [Test]
         public void Lookup_ValueBelowLowestThreshold_ReturnsLowestThresholdValue()
         {
@@ -40,9 +34,6 @@ namespace Rebellion.Tests.Util.Common
             Assert.AreEqual(20, table.Lookup(0));
         }
 
-        /// <summary>
-        /// Verifies lookup empty table returns zero.
-        /// </summary>
         [Test]
         public void Lookup_EmptyTable_ReturnsZero()
         {

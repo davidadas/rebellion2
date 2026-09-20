@@ -25,9 +25,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _playerFaction = new Faction { InstanceID = _playerFactionId };
         }
 
-        /// <summary>
-        /// Verifies project available entities returns every entity grouped and sorted.
-        /// </summary>
         [Test]
         public void Project_AvailableEntities_ReturnsEveryEntityGroupedAndSorted()
         {
@@ -68,9 +65,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(new RectInt(10, 20, 300, 200), result.DesktopBounds);
         }
 
-        /// <summary>
-        /// Verifies project no available entities returns empty strip.
-        /// </summary>
         [Test]
         public void Project_NoAvailableEntities_ReturnsEmptyStrip()
         {
@@ -82,9 +76,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsEmpty(result.Entries);
         }
 
-        /// <summary>
-        /// Verifies project main characters precede other officers.
-        /// </summary>
         [Test]
         public void Project_MainCharacters_PrecedeOtherOfficers()
         {
@@ -103,9 +94,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
         }
 
-        /// <summary>
-        /// Verifies project participants with unavailable status are excluded.
-        /// </summary>
         [Test]
         public void Project_ParticipantsWithUnavailableStatus_AreExcluded()
         {

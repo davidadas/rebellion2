@@ -8,11 +8,6 @@ namespace Rebellion.Tests.AI.Scoring
     [TestFixture]
     public class AIUtilityTests
     {
-        /// <summary>
-        /// Verifies a linear curve returns normalized inputs unchanged.
-        /// </summary>
-        /// <param name="input">The normalized input.</param>
-        /// <param name="expected">The expected curve output.</param>
         [TestCase(0, 0)]
         [TestCase(0.25, 0.25)]
         [TestCase(1, 1)]
@@ -27,10 +22,6 @@ namespace Rebellion.Tests.AI.Scoring
             );
         }
 
-        /// <summary>
-        /// Verifies response curves reject values outside their normalized contract.
-        /// </summary>
-        /// <param name="input">The invalid curve input.</param>
         [TestCase(-0.01)]
         [TestCase(1.01)]
         [TestCase(double.NaN)]
@@ -43,9 +34,6 @@ namespace Rebellion.Tests.AI.Scoring
             );
         }
 
-        /// <summary>
-        /// Verifies consideration weight is applied after curve evaluation.
-        /// </summary>
         [Test]
         public void Evaluate_WithWeightedPowerCurve_AppliesWeightAfterCurve()
         {
@@ -62,9 +50,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(AIUtility.Evaluate(0.5, consideration), Is.EqualTo(0.1).Within(0.000001));
         }
 
-        /// <summary>
-        /// Verifies discrete pressure truncates fractional score points.
-        /// </summary>
         [Test]
         public void EvaluateDiscretePressure_WithFractionalContribution_TruncatesScore()
         {
@@ -76,11 +61,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(AIUtility.EvaluateDiscretePressure(1.0 / 3, consideration), Is.EqualTo(33));
         }
 
-        /// <summary>
-        /// Verifies centered utility spans both sides of its neutral midpoint.
-        /// </summary>
-        /// <param name="input">The normalized input.</param>
-        /// <param name="expected">The expected centered contribution.</param>
         [TestCase(0, -0.5)]
         [TestCase(0.5, 0)]
         [TestCase(1, 0.5)]
@@ -97,9 +77,6 @@ namespace Rebellion.Tests.AI.Scoring
             );
         }
 
-        /// <summary>
-        /// Verifies utility scores return their weighted average.
-        /// </summary>
         [Test]
         public void Value_WithWeightedConsiderations_ReturnsWeightedAverage()
         {
@@ -110,9 +87,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(score.Value, Is.EqualTo(2.0 / 3).Within(0.000001));
         }
 
-        /// <summary>
-        /// Verifies cost inputs are inverted for fixed-vector utility scores.
-        /// </summary>
         [Test]
         public void Value_WithCostConsideration_InvertsCost()
         {
@@ -122,9 +96,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(score.Value, Is.EqualTo(0.75).Within(0.000001));
         }
 
-        /// <summary>
-        /// Verifies rank utility preserves positive signed ordering.
-        /// </summary>
         [Test]
         public void RankValue_WithPositiveScores_PreservesOrdering()
         {
@@ -138,9 +109,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Less(higher.RankValue, 1);
         }
 
-        /// <summary>
-        /// Verifies rank utility rejects non-positive signed totals.
-        /// </summary>
         [Test]
         public void RankValue_WithNonPositiveSignedUtility_ReturnsZero()
         {
@@ -151,9 +119,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Zero(score.RankValue);
         }
 
-        /// <summary>
-        /// Verifies smooth-step curves preserve their endpoints and midpoint.
-        /// </summary>
         [Test]
         public void EvaluateCurve_WithSmoothStepCurve_PreservesEndpointsAndMidpoint()
         {
@@ -167,9 +132,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(AIUtility.EvaluateCurve(1, curve), Is.EqualTo(1));
         }
 
-        /// <summary>
-        /// Verifies logistic curves are endpoint-normalized and centered.
-        /// </summary>
         [Test]
         public void EvaluateCurve_WithLogisticCurve_IsNormalizedAndCentered()
         {
@@ -186,12 +148,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(AIUtility.EvaluateCurve(0.75, curve), Is.GreaterThan(0.75));
         }
 
-        /// <summary>
-        /// Verifies fulfillment converts raw progress to a normalized value.
-        /// </summary>
-        /// <param name="value">The measured value.</param>
-        /// <param name="target">The full-fulfillment target.</param>
-        /// <param name="expected">The expected normalized fulfillment.</param>
         [TestCase(0, 0, 1)]
         [TestCase(5, 10, 0.5)]
         [TestCase(20, 10, 1)]

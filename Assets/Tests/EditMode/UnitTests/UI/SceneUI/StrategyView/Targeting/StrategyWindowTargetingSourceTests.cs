@@ -21,9 +21,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                 Object.DestroyImmediate(_windowObject);
         }
 
-        /// <summary>
-        /// Verifies constructor source items change preserves snapshot.
-        /// </summary>
         [Test]
         public void Constructor_SourceItemsChange_PreservesSnapshot()
         {
@@ -44,9 +41,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreSame(officer, source.Items[0]);
         }
 
-        /// <summary>
-        /// Verifies constructor null items normalizes to empty list.
-        /// </summary>
         [Test]
         public void Constructor_NullItems_NormalizesToEmptyList()
         {
@@ -81,9 +75,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(expectedPrompt, prompt);
         }
 
-        /// <summary>
-        /// Verifies try append waypoint valid identifiers preserves selection order.
-        /// </summary>
         [Test]
         public void TryAppendWaypoint_ValidIdentifiers_PreservesSelectionOrder()
         {
@@ -103,9 +94,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             CollectionAssert.AreEqual(new[] { "first", "second" }, source.WaypointPlanetIds);
         }
 
-        /// <summary>
-        /// Verifies try remove last waypoint multiple waypoints removes newest waypoint.
-        /// </summary>
         [Test]
         public void TryRemoveLastWaypoint_MultipleWaypoints_RemovesNewestWaypoint()
         {

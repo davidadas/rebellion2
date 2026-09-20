@@ -16,9 +16,6 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AIFleetAttackProposalTests
     {
-        /// <summary>
-        /// Verifies execute with fleet not ready assigns building order.
-        /// </summary>
         [Test]
         public void Execute_WithFleetNotReady_AssignsBuildingOrder()
         {
@@ -53,9 +50,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(enemy.InstanceID, fleet.Order.TargetPlanetId);
         }
 
-        /// <summary>
-        /// Verifies execute applies an uncertainty reserve when target intelligence is stale.
-        /// </summary>
         [Test]
         public void Execute_WithStaleTargetIntelligence_AppliesUncertaintyReserve()
         {
@@ -88,10 +82,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
         }
 
-        /// <summary>
-        /// Verifies a ready fleet waits when an inbound ship cannot reach the target by the fleet's
-        /// arrival tick.
-        /// </summary>
         [Test]
         public void Execute_WithInboundShipArrivingAtTargetAfterFleet_WaitsAtStagingPlanet()
         {
@@ -134,9 +124,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
         }
 
-        /// <summary>
-        /// Verifies a ready fleet delays a faster inbound ship to arrive with the fleet.
-        /// </summary>
         [Test]
         public void Execute_WithInboundShipArrivingAtTargetBeforeFleet_SynchronizesArrival()
         {
@@ -180,10 +167,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(fleet.Movement.TransitTicks, inbound.Movement.TransitTicks);
         }
 
-        /// <summary>
-        /// Verifies a ready fleet launches when an inbound ship would reach the target at the same
-        /// time as the fleet.
-        /// </summary>
         [Test]
         public void Execute_WithInboundShipArrivingAtTargetWithFleet_LaunchesAttack()
         {
@@ -226,9 +209,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(FleetOrderStatus.Readying, fleet.Order.Status);
         }
 
-        /// <summary>
-        /// Verifies execute with completed attack order clears order.
-        /// </summary>
         [Test]
         public void Execute_WithCompletedAttackOrder_ClearsOrder()
         {
@@ -266,9 +246,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNull(fleet.Order);
         }
 
-        /// <summary>
-        /// Verifies can execute with friendly target returns false.
-        /// </summary>
         [Test]
         public void CanExecute_WithFriendlyTarget_ReturnsFalse()
         {
@@ -300,10 +277,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsFalse(canExecute);
         }
 
-        /// <summary>
-        /// Verifies returning an inactive fleet shell rebases it and its inbound delivery to
-        /// friendly territory.
-        /// </summary>
         [Test]
         public void Execute_WithReturningDeliveryOnlyFleet_RebasesFleetAndInboundDelivery()
         {
@@ -350,9 +323,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(new Point(7500, 0), inbound.Movement.OriginPosition);
         }
 
-        /// <summary>
-        /// Verifies execute with exposed defending regiment bombards before assaulting.
-        /// </summary>
         [Test]
         public void Execute_WithExposedDefendingRegiment_BombardsBeforeAssaulting()
         {
@@ -384,9 +354,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(1, context.Results.OfType<BombardmentResult>().Count());
         }
 
-        /// <summary>
-        /// Verifies execute with impenetrable shields returns order to building.
-        /// </summary>
         [Test]
         public void Execute_WithImpenetrableShields_ReturnsOrderToBuilding()
         {
@@ -415,9 +382,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
         }
 
-        /// <summary>
-        /// Verifies execute with no viable bombardment or assault returns order to building.
-        /// </summary>
         [Test]
         public void Execute_WithNoViableBombardmentOrAssault_ReturnsOrderToBuilding()
         {
@@ -451,9 +415,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsEmpty(context.Results.OfType<PlanetaryAssaultResult>());
         }
 
-        /// <summary>
-        /// Verifies execute with successful planetary assault adds garrison change result.
-        /// </summary>
         [Test]
         public void Execute_WithSuccessfulPlanetaryAssault_AddsGarrisonChangeResult()
         {

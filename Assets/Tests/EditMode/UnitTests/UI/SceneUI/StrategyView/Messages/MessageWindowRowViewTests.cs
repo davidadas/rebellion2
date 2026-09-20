@@ -46,18 +46,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             UnityEngine.Object.DestroyImmediate(_windowObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _row.Render(null, 0));
         }
 
-        /// <summary>
-        /// Verifies render selected row applies identity selection icon header and index.
-        /// </summary>
         [Test]
         public void Render_SelectedRow_AppliesIdentitySelectionIconHeaderAndIndex()
         {
@@ -79,9 +73,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(fontWeight, header.fontWeight);
         }
 
-        /// <summary>
-        /// Verifies render unselected row uses normal icon offset and clears selection.
-        /// </summary>
         [Test]
         public void Render_UnselectedRow_UsesNormalIconOffsetAndClearsSelection()
         {

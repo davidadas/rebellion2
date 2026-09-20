@@ -7,11 +7,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
     [TestFixture]
     public class MessagesTabCatalogTests
     {
-        /// <summary>
-        /// Verifies get message type category tab returns message type.
-        /// </summary>
-        /// <param name="tab">The tab.</param>
-        /// <param name="expected">The expected.</param>
         [TestCase(MessagesTab.Support, MessageType.PopularSupport)]
         [TestCase(MessagesTab.Fleet, MessageType.Fleet)]
         [TestCase(MessagesTab.Mission, MessageType.Mission)]
@@ -29,18 +24,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(expected, MessagesTabCatalog.GetMessageType(tab));
         }
 
-        /// <summary>
-        /// Verifies get message type all messages tab returns null.
-        /// </summary>
         [Test]
         public void GetMessageType_AllMessagesTab_ReturnsNull()
         {
             Assert.IsNull(MessagesTabCatalog.GetMessageType(MessagesTab.All));
         }
 
-        /// <summary>
-        /// Verifies get message type unsupported tab returns null.
-        /// </summary>
         [Test]
         public void GetMessageType_UnsupportedTab_ReturnsNull()
         {
@@ -49,9 +38,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsNull(MessagesTabCatalog.GetMessageType(tab));
         }
 
-        /// <summary>
-        /// Verifies ordered tabs default catalog returns authored tab order.
-        /// </summary>
         [Test]
         public void OrderedTabs_DefaultCatalog_ReturnsAuthoredTabOrder()
         {
@@ -74,11 +60,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(10, MessagesTabCatalog.Count);
         }
 
-        /// <summary>
-        /// Verifies clamp external index returns bounded authored tab.
-        /// </summary>
-        /// <param name="index">The index.</param>
-        /// <param name="expected">The expected.</param>
         [TestCase(-5, MessagesTab.All)]
         [TestCase(0, MessagesTab.All)]
         [TestCase(4, MessagesTab.Resource)]
@@ -91,11 +72,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(expected, tab);
         }
 
-        /// <summary>
-        /// Verifies get at authored index returns semantic tab.
-        /// </summary>
-        /// <param name="index">The index.</param>
-        /// <param name="expected">The expected.</param>
         [TestCase(0, MessagesTab.All)]
         [TestCase(1, MessagesTab.Support)]
         [TestCase(2, MessagesTab.Fleet)]
@@ -113,10 +89,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(expected, tab);
         }
 
-        /// <summary>
-        /// Verifies get at invalid index throws argument out of range exception.
-        /// </summary>
-        /// <param name="index">The index.</param>
         [TestCase(-1)]
         [TestCase(10)]
         public void GetAt_InvalidIndex_ThrowsArgumentOutOfRangeException(int index)
@@ -124,11 +96,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.Throws<ArgumentOutOfRangeException>(() => MessagesTabCatalog.GetAt(index));
         }
 
-        /// <summary>
-        /// Verifies get title semantic tab returns displayed title.
-        /// </summary>
-        /// <param name="tab">The tab.</param>
-        /// <param name="expected">The expected.</param>
         [TestCase(MessagesTab.All, "All Messages")]
         [TestCase(MessagesTab.Support, "Popular Support Messages")]
         [TestCase(MessagesTab.Fleet, "Fleet Messages")]
@@ -146,9 +113,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(expected, title);
         }
 
-        /// <summary>
-        /// Verifies get title unsupported tab returns empty string.
-        /// </summary>
         [Test]
         public void GetTitle_UnsupportedTab_ReturnsEmptyString()
         {

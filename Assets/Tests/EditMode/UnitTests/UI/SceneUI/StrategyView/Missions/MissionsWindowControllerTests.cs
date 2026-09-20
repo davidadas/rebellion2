@@ -71,9 +71,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies constructor null targeting controller throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullTargetingController_ThrowsArgumentNullException()
         {
@@ -90,18 +87,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies initialize null actions throws argument null exception.
-        /// </summary>
         [Test]
         public void Initialize_NullActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _controller.Initialize(null));
         }
 
-        /// <summary>
-        /// Verifies bind window before initialize throws invalid operation exception.
-        /// </summary>
         [Test]
         public void BindWindow_BeforeInitialize_ThrowsInvalidOperationException()
         {
@@ -114,9 +105,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<InvalidOperationException>(() => controller.BindWindow(view));
         }
 
-        /// <summary>
-        /// Verifies try initialize window null planet returns false.
-        /// </summary>
         [Test]
         public void TryInitializeWindow_NullPlanet_ReturnsFalse()
         {
@@ -131,9 +119,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(_controller.GetPlanet(view));
         }
 
-        /// <summary>
-        /// Verifies open valid planet creates named window with default mission selection.
-        /// </summary>
         [Test]
         public void Open_ValidPlanet_CreatesNamedWindowWithDefaultMissionSelection()
         {
@@ -153,9 +138,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(MissionParticipantRole.Agent, _controller.GetActiveRole(view));
         }
 
-        /// <summary>
-        /// Verifies open existing planet reuses window without additional invalidation.
-        /// </summary>
         [Test]
         public void Open_ExistingPlanet_ReusesWindowWithoutAdditionalInvalidation()
         {
@@ -170,9 +152,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies surface clicked active targeting selects planet node.
-        /// </summary>
         [Test]
         public void SurfaceClicked_ActiveTargeting_SelectsPlanetNode()
         {
@@ -190,9 +169,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_planet.Planet, target.Item);
         }
 
-        /// <summary>
-        /// Verifies participant released active targeting selects participant node.
-        /// </summary>
         [Test]
         public void ParticipantReleased_ActiveTargeting_SelectsParticipantNode()
         {
@@ -219,9 +195,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_firstAgent, target.Item);
         }
 
-        /// <summary>
-        /// Verifies select target decoy participant selects mission and decoy role.
-        /// </summary>
         [Test]
         public void SelectTarget_DecoyParticipant_SelectsMissionAndDecoyRole()
         {
@@ -236,9 +209,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(_secondMission, _controller.GetStatusTarget(view).Item);
         }
 
-        /// <summary>
-        /// Verifies reconcile window fresh projection preserves mission selection by identity.
-        /// </summary>
         [Test]
         public void ReconcileWindow_FreshProjection_PreservesMissionSelectionByIdentity()
         {
@@ -273,9 +243,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(freshSecond, _controller.GetStatusTarget(view).Item);
         }
 
-        /// <summary>
-        /// Verifies try create context menu selected mission returns authored commands and width.
-        /// </summary>
         [Test]
         public void TryCreateContextMenu_SelectedMission_ReturnsAuthoredCommandsAndWidth()
         {
@@ -302,9 +269,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies on context menu command selected abort routes selected mission identity.
-        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_Abort_RoutesSelectedMissionIdentity()
         {
@@ -326,9 +290,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(_firstMission.InstanceID, _actions.AbortedMissionInstanceId);
         }
 
-        /// <summary>
-        /// Verifies view destroyed initialized session releases planet association.
-        /// </summary>
         [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {

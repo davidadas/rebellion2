@@ -39,18 +39,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
-        /// <summary>
-        /// Verifies render null data throws argument null exception.
-        /// </summary>
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
         }
 
-        /// <summary>
-        /// Verifies render selected item and open dropdown applies complete presentation.
-        /// </summary>
         [Test]
         public void Render_SelectedItemAndOpenDropdown_AppliesCompletePresentation()
         {
@@ -105,9 +99,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsTrue(rows[1].gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render selection artwork and dropdown use original source geometry.
-        /// </summary>
         [Test]
         public void Render_SelectionArtworkAndDropdown_UseOriginalSourceGeometry()
         {
@@ -147,9 +138,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
         }
 
-        /// <summary>
-        /// Verifies render empty selection after open dropdown hides selection and cached rows.
-        /// </summary>
         [Test]
         public void Render_EmptySelectionAfterOpenDropdown_HidesSelectionAndCachedRows()
         {
@@ -175,9 +163,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsFalse(row.gameObject.activeSelf);
         }
 
-        /// <summary>
-        /// Verifies render unavailable selection disables start and shows unavailable estimates.
-        /// </summary>
         [Test]
         public void Render_UnavailableSelection_DisablesStartAndShowsUnavailableEstimates()
         {
@@ -204,9 +189,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual("N/A", FindComponent<TextMeshProUGUI>("DeploymentValueTextField").text);
         }
 
-        /// <summary>
-        /// Verifies render unchanged open dropdown preserves scroll position.
-        /// </summary>
         [Test]
         public void Render_UnchangedOpenDropdown_PreservesScrollPosition()
         {
@@ -226,9 +208,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(scrolledOffset, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
         }
 
-        /// <summary>
-        /// Verifies render changed open dropdown resets scroll position.
-        /// </summary>
         [Test]
         public void Render_ChangedOpenDropdown_ResetsScrollPosition()
         {
@@ -245,9 +224,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(0f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
         }
 
-        /// <summary>
-        /// Verifies build count input text rect is inset within field.
-        /// </summary>
         [Test]
         public void BuildCountInput_TextRectIsInsetWithinField()
         {
@@ -263,9 +239,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(15f, input.textComponent.rectTransform.sizeDelta.y);
         }
 
-        /// <summary>
-        /// Verifies request methods subscribed handlers emit semantic requests.
-        /// </summary>
         [Test]
         public void RequestMethods_SubscribedHandlers_EmitSemanticRequests()
         {
@@ -301,9 +274,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(1, toggleCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer click open dropdown and left button requests dismissal.
-        /// </summary>
         [Test]
         public void OnPointerClick_OpenDropdownAndLeftButton_RequestsDismissal()
         {
@@ -331,9 +301,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(1, dismissCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer click scrollbar press with open dropdown does not request dismissal.
-        /// </summary>
         [Test]
         public void OnPointerClick_ScrollbarPressWithOpenDropdown_DoesNotRequestDismissal()
         {
@@ -358,9 +325,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(0, dismissCount);
         }
 
-        /// <summary>
-        /// Verifies get dropdown scroll content height item count scales authored row height.
-        /// </summary>
         [Test]
         public void GetDropdownScrollContentHeight_ItemCount_ScalesAuthoredRowHeight()
         {
@@ -372,9 +336,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(oneRowHeight * 3, threeRowHeight);
         }
 
-        /// <summary>
-        /// Verifies awake then on destroy authored controls binds then unbinds and raises destroyed.
-        /// </summary>
         [Test]
         public void AwakeThenOnDestroy_AuthoredControls_BindsThenUnbindsAndRaisesDestroyed()
         {

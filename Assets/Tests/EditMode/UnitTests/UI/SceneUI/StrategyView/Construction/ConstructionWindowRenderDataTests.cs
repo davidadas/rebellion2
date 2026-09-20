@@ -8,9 +8,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
     [TestFixture]
     public class ConstructionWindowRenderDataTests
     {
-        /// <summary>
-        /// Verifies constructor mutable dropdown items copies input collection.
-        /// </summary>
         [Test]
         public void Constructor_MutableDropdownItems_CopiesInputCollection()
         {
@@ -26,9 +23,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsTrue(data.HasSelection);
         }
 
-        /// <summary>
-        /// Verifies constructor null text normalizes text to empty strings.
-        /// </summary>
         [Test]
         public void Constructor_NullText_NormalizesTextToEmptyStrings()
         {
@@ -59,9 +53,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsFalse(data.HasSelection);
         }
 
-        /// <summary>
-        /// Verifies constructor null dropdown items throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullDropdownItems_ThrowsArgumentNullException()
         {

@@ -17,9 +17,6 @@ namespace Rebellion.Tests.AI.Phases
     [TestFixture]
     public class AIPlanningPhaseTests
     {
-        /// <summary>
-        /// Verifies execute with diplomacy opportunity adds mission proposal.
-        /// </summary>
         [Test]
         public void Execute_WithDiplomacyOpportunity_AddsMissionProposal()
         {
@@ -47,9 +44,6 @@ namespace Rebellion.Tests.AI.Phases
             );
         }
 
-        /// <summary>
-        /// Verifies execute with injected planner adds planner proposals.
-        /// </summary>
         [Test]
         public void Execute_WithInjectedPlanner_AddsPlannerProposals()
         {
@@ -73,9 +67,6 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreSame(proposal, context.Proposals.Single());
         }
 
-        /// <summary>
-        /// Verifies execute incrementally with injected planners yields after each planner.
-        /// </summary>
         [Test]
         public void ExecuteIncrementally_WithInjectedPlanners_YieldsAfterEachPlanner()
         {

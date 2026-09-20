@@ -12,9 +12,6 @@ namespace Rebellion.Tests.AI.Scoring
     [TestFixture]
     public class AIFleetProductionAllocationScorerTests
     {
-        /// <summary>
-        /// Verifies assembly allocation ranks the fleet with less combat strength first.
-        /// </summary>
         [Test]
         public void ScoreAssembly_WithDifferentCombatStrength_PrioritizesWeakerFleet()
         {

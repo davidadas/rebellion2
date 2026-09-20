@@ -87,9 +87,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
-        /// <summary>
-        /// Verifies constructor null dependency throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_NullDependency_ThrowsArgumentNullException()
         {
@@ -235,9 +232,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             );
         }
 
-        /// <summary>
-        /// Verifies pointer handlers null or unresolved event do nothing.
-        /// </summary>
         [Test]
         public void PointerHandlers_NullOrUnresolvedEvent_DoNothing()
         {
@@ -259,9 +253,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreSame(_otherWindow, _windowManager.ActiveWindow);
         }
 
-        /// <summary>
-        /// Verifies on pointer down left window focuses window and marks dirty.
-        /// </summary>
         [Test]
         public void OnPointerDown_LeftWindow_FocusesWindowAndMarksDirty()
         {
@@ -273,9 +264,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer down right window opens context menu and marks dirty.
-        /// </summary>
         [Test]
         public void OnPointerDown_RightWindow_OpensContextMenuAndMarksDirty()
         {
@@ -290,9 +278,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer down active targeting moves cursor and suppresses next click.
-        /// </summary>
         [Test]
         public void OnPointerDown_ActiveTargeting_MovesCursorAndSuppressesNextClick()
         {
@@ -308,9 +293,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(0, _openStatusCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer up targeting window accepted marks dirty and suppresses click.
-        /// </summary>
         [Test]
         public void OnPointerUp_TargetingWindowAccepted_MarksDirtyAndSuppressesClick()
         {
@@ -327,9 +309,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(0, _receiver.CancelledCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer up targeting without target cancels and marks dirty.
-        /// </summary>
         [Test]
         public void OnPointerUp_TargetingWithoutTarget_CancelsAndMarksDirty()
         {
@@ -343,9 +322,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer up targeting right button moves cursor without cancelling.
-        /// </summary>
         [Test]
         public void OnPointerUp_TargetingRightButton_MovesCursorWithoutCancelling()
         {
@@ -363,9 +339,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer up right button without targeting does not mark dirty.
-        /// </summary>
         [Test]
         public void OnPointerUp_RightButtonWithoutTargeting_DoesNotMarkDirty()
         {
@@ -379,9 +352,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(0, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer up unresolved item candidate clears drag and marks dirty.
-        /// </summary>
         [Test]
         public void OnPointerUp_UnresolvedItemCandidate_ClearsDragAndMarksDirty()
         {
@@ -396,9 +366,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.IsFalse(_dragController.TryGetOverlay(out _, out _));
         }
 
-        /// <summary>
-        /// Verifies cancel targeting active then inactive returns matching state.
-        /// </summary>
         [Test]
         public void CancelTargeting_ActiveThenInactive_ReturnsMatchingState()
         {
@@ -413,9 +380,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies try cancel active item drag clears targeting and overlay.
-        /// </summary>
         [Test]
         public void TryCancel_ActiveItemDrag_ClearsTargetingAndOverlay()
         {
@@ -438,9 +402,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer move active targeting moves cursor.
-        /// </summary>
         [Test]
         public void OnPointerMove_ActiveTargeting_MovesCursor()
         {
@@ -454,9 +415,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(_sourceY, _cursor.LastY);
         }
 
-        /// <summary>
-        /// Verifies on drag item candidate starts preview renders overlay and suppresses click.
-        /// </summary>
         [Test]
         public void OnDrag_ItemCandidateStartsPreview_RendersOverlayAndSuppressesClick()
         {
@@ -476,9 +434,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(0, _openStatusCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer click status double click opens status and marks dirty.
-        /// </summary>
         [Test]
         public void OnPointerClick_StatusDoubleClick_OpensStatusAndMarksDirty()
         {
@@ -491,9 +446,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer click nonactivating clicks do not open status.
-        /// </summary>
         [Test]
         public void OnPointerClick_NonactivatingClicks_DoNotOpenStatus()
         {
@@ -510,9 +462,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(0, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies on pointer click unmarked window double click marks window dirty without opening status.
-        /// </summary>
         [Test]
         public void OnPointerClick_UnmarkedWindowDoubleClick_MarksWindowDirtyWithoutOpeningStatus()
         {
@@ -529,9 +478,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies suppress next click first status double click ignored and second handled.
-        /// </summary>
         [Test]
         public void SuppressNextClick_FirstStatusDoubleClickIgnoredAndSecondHandled()
         {
@@ -546,9 +492,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies start item drag null window does not create candidate.
-        /// </summary>
         [Test]
         public void StartItemDrag_NullWindow_DoesNotCreateCandidate()
         {

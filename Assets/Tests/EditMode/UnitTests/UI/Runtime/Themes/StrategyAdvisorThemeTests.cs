@@ -6,9 +6,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
     [TestFixture]
     public class StrategyAdvisorThemeTests
     {
-        /// <summary>
-        /// Verifies get notification general notification returns semantic presentation.
-        /// </summary>
         [Test]
         public void GetNotification_GeneralNotification_ReturnsSemanticPresentation()
         {
@@ -28,9 +25,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreSame(expected, notification);
         }
 
-        /// <summary>
-        /// Verifies get notification known subject returns subject presentation.
-        /// </summary>
         [Test]
         public void GetNotification_KnownSubject_ReturnsSubjectPresentation()
         {
@@ -51,9 +45,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreSame(expected, notification);
         }
 
-        /// <summary>
-        /// Verifies get notification unconfigured subject returns default subject presentation.
-        /// </summary>
         [Test]
         public void GetNotification_UnconfiguredSubject_ReturnsDefaultSubjectPresentation()
         {
@@ -73,9 +64,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreSame(expected, notification);
         }
 
-        /// <summary>
-        /// Verifies get notification key shared queue group returns same semantic key.
-        /// </summary>
         [Test]
         public void GetNotificationKey_SharedQueueGroup_ReturnsSameSemanticKey()
         {
@@ -98,9 +86,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual(generalKey, subjectKey);
         }
 
-        /// <summary>
-        /// Verifies get frame path advisor theme returns role resource and frame path.
-        /// </summary>
         [Test]
         public void GetFramePath_AdvisorTheme_ReturnsRoleResourceAndFramePath()
         {
@@ -118,9 +103,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             );
         }
 
-        /// <summary>
-        /// Verifies get frame path briefing theme returns resource and frame path.
-        /// </summary>
         [Test]
         public void GetFramePath_BriefingTheme_ReturnsResourceAndFramePath()
         {
@@ -137,9 +119,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             );
         }
 
-        /// <summary>
-        /// Verifies get audio path advisor theme returns named audio path.
-        /// </summary>
         [Test]
         public void GetAudioPath_AdvisorTheme_ReturnsNamedAudioPath()
         {
@@ -156,9 +135,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             );
         }
 
-        /// <summary>
-        /// Verifies opening preload data excludes briefing segments that are not yet visible.
-        /// </summary>
         [Test]
         public void CreateOpeningPreloadManifest_Briefing_ReturnsOpeningAndSkipMedia()
         {
@@ -204,9 +180,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             );
         }
 
-        /// <summary>
-        /// Verifies an incremental preload manifest contains only its requested segment.
-        /// </summary>
         [Test]
         public void CreateSegmentPreloadManifest_Segment_ReturnsOnlyRequestedMedia()
         {

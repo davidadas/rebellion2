@@ -17,9 +17,6 @@ namespace Rebellion.Tests.AI.Phases
     [TestFixture]
     public class AIMissionDecoyAssignmentPhaseTests
     {
-        /// <summary>
-        /// Verifies execute with officer led hostile mission assigns decoy intent unit.
-        /// </summary>
         [Test]
         public void Execute_WithOfficerLedHostileMission_AssignsDecoyIntentUnit()
         {
@@ -49,9 +46,6 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { decoy }, selected.DecoyParticipants);
         }
 
-        /// <summary>
-        /// Verifies execute assigns two available decoys to an officer-led hostile mission.
-        /// </summary>
         [Test]
         public void Execute_WithTwoAvailableDecoys_AssignsBothDecoys()
         {
@@ -87,9 +81,6 @@ namespace Rebellion.Tests.AI.Phases
             );
         }
 
-        /// <summary>
-        /// Verifies execute with decoy reducing officer loss below limit keeps mission.
-        /// </summary>
         [Test]
         public void Execute_WithDecoyReducingOfficerLossBelowLimit_KeepsMission()
         {
@@ -137,9 +128,6 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { decoy }, selected.DecoyParticipants);
         }
 
-        /// <summary>
-        /// Verifies execute with unprotected officer loss above limit removes mission.
-        /// </summary>
         [Test]
         public void Execute_WithUnprotectedOfficerLossAboveLimit_RemovesMission()
         {
@@ -176,9 +164,6 @@ namespace Rebellion.Tests.AI.Phases
             Assert.IsEmpty(context.SelectedProposals.OfType<AIMissionProposal>());
         }
 
-        /// <summary>
-        /// Verifies execute with special forces led mission does not assign decoy.
-        /// </summary>
         [Test]
         public void Execute_WithSpecialForcesLedMission_DoesNotAssignDecoy()
         {
@@ -209,9 +194,6 @@ namespace Rebellion.Tests.AI.Phases
             Assert.IsEmpty(selected.DecoyParticipants);
         }
 
-        /// <summary>
-        /// Verifies execute with only officer available keeps espionage mission.
-        /// </summary>
         [Test]
         public void Execute_WithOnlyOfficerAvailable_KeepsEspionageMission()
         {
@@ -236,9 +218,6 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreSame(mission, context.SelectedProposals.Single());
         }
 
-        /// <summary>
-        /// Verifies execute with unclaimed officer available assigns officer as decoy.
-        /// </summary>
         [Test]
         public void Execute_WithUnclaimedOfficerAvailable_AssignsOfficerAsDecoy()
         {
@@ -267,9 +246,6 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { decoy }, selected.DecoyParticipants);
         }
 
-        /// <summary>
-        /// Verifies execute with stale intel and no decoy removes officer mission.
-        /// </summary>
         [Test]
         public void Execute_WithStaleIntelAndNoDecoy_RemovesOfficerMission()
         {
@@ -298,9 +274,6 @@ namespace Rebellion.Tests.AI.Phases
             Assert.IsEmpty(context.SelectedProposals);
         }
 
-        /// <summary>
-        /// Verifies execute with two risky officer missions combines them into protected mission.
-        /// </summary>
         [Test]
         public void Execute_WithTwoRiskyOfficerMissions_CombinesThemIntoProtectedMission()
         {
@@ -356,9 +329,6 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { secondOfficer }, selected.DecoyParticipants);
         }
 
-        /// <summary>
-        /// Verifies execute with officer led neutral mission does not assign decoy.
-        /// </summary>
         [Test]
         public void Execute_WithOfficerLedNeutralMission_DoesNotAssignDecoy()
         {
@@ -388,9 +358,6 @@ namespace Rebellion.Tests.AI.Phases
             Assert.IsEmpty(selected.DecoyParticipants);
         }
 
-        /// <summary>
-        /// Verifies execute with fresh intel and no decoy keeps officer mission.
-        /// </summary>
         [Test]
         public void Execute_WithFreshIntelAndNoDecoy_KeepsOfficerMission()
         {
@@ -415,9 +382,6 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreSame(mission, context.SelectedProposals.Single());
         }
 
-        /// <summary>
-        /// Verifies execute with scarce decoy assigns highest foil risk mission.
-        /// </summary>
         [Test]
         public void Execute_WithScarceDecoy_AssignsHighestFoilRiskMission()
         {

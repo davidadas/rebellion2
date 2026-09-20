@@ -63,9 +63,6 @@ namespace Rebellion.Tests.Systems
             _automation = new FactionAutomationSystem(_game, gameData, manufacturing);
         }
 
-        /// <summary>
-        /// Verifies process tick manage garrisons queues troop for unguarded planet.
-        /// </summary>
         [Test]
         public void ProcessTick_ManageGarrisons_QueuesTroopForUnguardedPlanet()
         {
@@ -84,9 +81,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(_garrisonTypeId, _destination.GetAllRegiments().Single().TypeID);
         }
 
-        /// <summary>
-        /// Verifies process tick manage garrisons prioritizes uprising.
-        /// </summary>
         [Test]
         public void ProcessTick_ManageGarrisons_PrioritizesUprising()
         {
@@ -103,9 +97,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(_destination.GetAllRegiments());
         }
 
-        /// <summary>
-        /// Verifies process tick manage garrisons fills available capacity across shortages.
-        /// </summary>
         [Test]
         public void ProcessTick_ManageGarrisons_FillsAvailableCapacityAcrossShortages()
         {
@@ -122,9 +113,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, secondDestination.GetAllRegiments().Count);
         }
 
-        /// <summary>
-        /// Verifies process tick manage garrisons with reserved training facility does not queue work.
-        /// </summary>
         [Test]
         public void ProcessTick_ManageGarrisonsWithReservedTrainingFacility_DoesNotQueueWork()
         {
@@ -136,9 +124,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(_destination.GetAllRegiments());
         }
 
-        /// <summary>
-        /// Verifies process tick manage production fills lane with one project.
-        /// </summary>
         [Test]
         public void ProcessTick_ManageProduction_FillsLaneWithOneProject()
         {
@@ -150,9 +135,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(10, CountResourceFacilities(BuildingType.Refinery));
         }
 
-        /// <summary>
-        /// Verifies process tick manage production uses closest available resource slot.
-        /// </summary>
         [Test]
         public void ProcessTick_ManageProduction_UsesClosestAvailableResourceSlot()
         {
@@ -168,9 +150,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, distant.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
 
-        /// <summary>
-        /// Verifies process tick manage production with reserved building lane does not queue work.
-        /// </summary>
         [Test]
         public void ProcessTick_ManageProductionWithReservedBuildingLane_DoesNotQueueWork()
         {
@@ -185,9 +164,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(refineryCount, CountResourceFacilities(BuildingType.Refinery));
         }
 
-        /// <summary>
-        /// Verifies process tick reserved destination remains available for automated delivery.
-        /// </summary>
         [Test]
         public void ProcessTick_ReservedDestination_RemainsAvailableForAutomatedDelivery()
         {
@@ -200,9 +176,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(2, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
 
-        /// <summary>
-        /// Verifies process tick manage production without mine capacity does not add refinery.
-        /// </summary>
         [Test]
         public void ProcessTick_ManageProductionWithoutMineCapacity_DoesNotAddRefinery()
         {
@@ -215,9 +188,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(refineryCount, CountResourceFacilities(BuildingType.Refinery));
         }
 
-        /// <summary>
-        /// Verifies process tick disabled automation does not queue work.
-        /// </summary>
         [Test]
         public void ProcessTick_DisabledAutomation_DoesNotQueueWork()
         {

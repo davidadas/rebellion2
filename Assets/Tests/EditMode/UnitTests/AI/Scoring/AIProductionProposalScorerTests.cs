@@ -15,9 +15,6 @@ namespace Rebellion.Tests.AI.Scoring
     [TestFixture]
     public class AIProductionProposalScorerTests
     {
-        /// <summary>
-        /// Verifies score with fleet reinforcement deducts travel penalty.
-        /// </summary>
         [Test]
         public void Score_WithDifferentDemandPressure_PreservesPressureDifference()
         {
@@ -55,9 +52,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.That(highScore, Is.EqualTo(5.0 / 11).Within(0.0001));
         }
 
-        /// <summary>
-        /// Verifies score withfleetreinforcement deductstravelpenalty.
-        /// </summary>
         [Test]
         public void Score_WithFleetReinforcement_DeductsTravelPenalty()
         {
@@ -118,9 +112,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Zero(farScore);
         }
 
-        /// <summary>
-        /// Verifies economy recovery remains selectable below the maintenance reserve.
-        /// </summary>
         [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
         [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
         public void Score_WithEconomyRecoveryBelowMaintenanceReserve_ReturnsPositiveScore(
@@ -168,9 +159,6 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Greater(score, 0);
         }
 
-        /// <summary>
-        /// Verifies an Outer Rim economy building remains useful before local construction is founded.
-        /// </summary>
         [Test]
         public void Score_WithOuterRimEconomyDestination_ReturnsPositiveScore()
         {

@@ -6,18 +6,12 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
     [TestFixture]
     public class TargetingControllerTests
     {
-        /// <summary>
-        /// Verifies request null receiver throws argument null exception.
-        /// </summary>
         [Test]
         public void Request_NullReceiver_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new TargetingRequest("Prompt", null, null));
         }
 
-        /// <summary>
-        /// Verifies request null prompt stores normalized state.
-        /// </summary>
         [Test]
         public void Request_NullPrompt_StoresNormalizedState()
         {
@@ -31,9 +25,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreSame(receiver, request.Receiver);
         }
 
-        /// <summary>
-        /// Verifies begin null request throws argument null exception.
-        /// </summary>
         [Test]
         public void Begin_NullRequest_ThrowsArgumentNullException()
         {
@@ -42,9 +33,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.Throws<ArgumentNullException>(() => controller.Begin(null));
         }
 
-        /// <summary>
-        /// Verifies begin existing request cancels existing and activates replacement.
-        /// </summary>
         [Test]
         public void Begin_ExistingRequest_CancelsExistingAndActivatesReplacement()
         {
@@ -64,9 +52,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreSame(second, controller.ActiveRequest);
         }
 
-        /// <summary>
-        /// Verifies begin with cursor shows and moves cursor while active.
-        /// </summary>
         [Test]
         public void Begin_WithCursor_ShowsAndMovesCursorWhileActive()
         {
@@ -89,9 +74,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(78, cursor.MoveY);
         }
 
-        /// <summary>
-        /// Verifies begin without cursor visibility ignores move requests.
-        /// </summary>
         [Test]
         public void Begin_WithoutCursorVisibility_IgnoresMoveRequests()
         {
@@ -104,9 +86,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(0, cursor.MoveCount);
         }
 
-        /// <summary>
-        /// Verifies try select target no active request or target returns false.
-        /// </summary>
         [Test]
         public void TrySelectTarget_NoActiveRequestOrTarget_ReturnsFalse()
         {
@@ -125,9 +104,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(0, receiver.SelectedCount);
         }
 
-        /// <summary>
-        /// Verifies try select target active request completes and hides cursor.
-        /// </summary>
         [Test]
         public void TrySelectTarget_ActiveRequest_CompletesAndHidesCursor()
         {
@@ -149,9 +125,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreSame(target, receiver.LastTarget);
         }
 
-        /// <summary>
-        /// Verifies try select target repeating request remains active and accepts subsequent targets.
-        /// </summary>
         [Test]
         public void TrySelectTarget_RepeatingRequest_RemainsActiveAndAcceptsSubsequentTargets()
         {
@@ -180,9 +153,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreSame(secondTarget, receiver.LastTarget);
         }
 
-        /// <summary>
-        /// Verifies cancel active request cancels and hides cursor.
-        /// </summary>
         [Test]
         public void Cancel_ActiveRequest_CancelsAndHidesCursor()
         {
@@ -201,9 +171,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreSame(request, receiver.LastRequest);
         }
 
-        /// <summary>
-        /// Verifies try cancel inactive then active returns matching result.
-        /// </summary>
         [Test]
         public void TryCancel_InactiveThenActive_ReturnsMatchingResult()
         {
@@ -217,9 +184,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.IsTrue(activeResult);
         }
 
-        /// <summary>
-        /// Verifies try submit receiver accepts clears request and hides cursor.
-        /// </summary>
         [Test]
         public void TrySubmit_ReceiverAccepts_ClearsRequestAndHidesCursor()
         {
@@ -241,9 +205,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(1, cursor.HideCount);
         }
 
-        /// <summary>
-        /// Verifies try cancel undo receiver keeps request active does not cancel request.
-        /// </summary>
         [Test]
         public void TryCancel_UndoReceiverKeepsRequestActive_DoesNotCancelRequest()
         {
@@ -263,9 +224,6 @@ namespace Rebellion.Tests.UI.Runtime.Targeting
             Assert.AreEqual(0, receiver.CanceledCount);
         }
 
-        /// <summary>
-        /// Verifies try cancel undo receiver rejects cancels request.
-        /// </summary>
         [Test]
         public void TryCancel_UndoReceiverRejects_CancelsRequest()
         {

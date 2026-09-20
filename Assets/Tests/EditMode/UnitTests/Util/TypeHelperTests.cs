@@ -8,9 +8,6 @@ namespace Rebellion.Tests.Util
     [TestFixture]
     public class TypeHelperTests
     {
-        /// <summary>
-        /// Verifies is scalar class returns false.
-        /// </summary>
         [Test]
         public void IsScalar_Class_ReturnsFalse()
         {
@@ -27,189 +24,126 @@ namespace Rebellion.Tests.Util
             Assert.IsTrue(TypeHelper.IsScalar(type));
         }
 
-        /// <summary>
-        /// Verifies is value type struct returns true.
-        /// </summary>
         [Test]
         public void IsValueType_Struct_ReturnsTrue()
         {
             Assert.IsTrue(TypeHelper.IsValueType(typeof(int)));
         }
 
-        /// <summary>
-        /// Verifies is value type string returns true.
-        /// </summary>
         [Test]
         public void IsValueType_String_ReturnsTrue()
         {
             Assert.IsTrue(TypeHelper.IsValueType(typeof(string)));
         }
 
-        /// <summary>
-        /// Verifies is value type class returns false.
-        /// </summary>
         [Test]
         public void IsValueType_Class_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.IsValueType(typeof(UntaggedClass)));
         }
 
-        /// <summary>
-        /// Verifies is struct value type non enum returns true.
-        /// </summary>
         [Test]
         public void IsStruct_ValueTypeNonEnum_ReturnsTrue()
         {
             Assert.IsTrue(TypeHelper.IsStruct(typeof(DateTime)));
         }
 
-        /// <summary>
-        /// Verifies is struct enum returns false.
-        /// </summary>
         [Test]
         public void IsStruct_Enum_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.IsStruct(typeof(SampleEnum)));
         }
 
-        /// <summary>
-        /// Verifies is struct clr primitive returns false.
-        /// </summary>
         [Test]
         public void IsStruct_ClrPrimitive_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.IsStruct(typeof(int)));
         }
 
-        /// <summary>
-        /// Verifies is struct class returns false.
-        /// </summary>
         [Test]
         public void IsStruct_Class_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.IsStruct(typeof(UntaggedClass)));
         }
 
-        /// <summary>
-        /// Verifies is enumerable list returns true.
-        /// </summary>
         [Test]
         public void IsEnumerable_List_ReturnsTrue()
         {
             Assert.IsTrue(TypeHelper.IsEnumerable(typeof(List<int>)));
         }
 
-        /// <summary>
-        /// Verifies is enumerable string returns false.
-        /// </summary>
         [Test]
         public void IsEnumerable_String_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.IsEnumerable(typeof(string)));
         }
 
-        /// <summary>
-        /// Verifies is enumerable int returns false.
-        /// </summary>
         [Test]
         public void IsEnumerable_Int_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.IsEnumerable(typeof(int)));
         }
 
-        /// <summary>
-        /// Verifies is dictionary generic dictionary returns true.
-        /// </summary>
         [Test]
         public void IsDictionary_GenericDictionary_ReturnsTrue()
         {
             Assert.IsTrue(TypeHelper.IsDictionary(typeof(Dictionary<string, int>)));
         }
 
-        /// <summary>
-        /// Verifies is dictionary list returns false.
-        /// </summary>
         [Test]
         public void IsDictionary_List_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.IsDictionary(typeof(List<int>)));
         }
 
-        /// <summary>
-        /// Verifies is class class returns true.
-        /// </summary>
         [Test]
         public void IsClass_Class_ReturnsTrue()
         {
             Assert.IsTrue(TypeHelper.IsClass(typeof(UntaggedClass)));
         }
 
-        /// <summary>
-        /// Verifies is class struct returns false.
-        /// </summary>
         [Test]
         public void IsClass_Struct_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.IsClass(typeof(DateTime)));
         }
 
-        /// <summary>
-        /// Verifies is tuple tuple2 returns true.
-        /// </summary>
         [Test]
         public void IsTuple_Tuple2_ReturnsTrue()
         {
             Assert.IsTrue(TypeHelper.IsTuple(typeof(Tuple<int, string>)));
         }
 
-        /// <summary>
-        /// Verifies is tuple non generic type returns false.
-        /// </summary>
         [Test]
         public void IsTuple_NonGenericType_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.IsTuple(typeof(int)));
         }
 
-        /// <summary>
-        /// Verifies is tuple list returns false.
-        /// </summary>
         [Test]
         public void IsTuple_List_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.IsTuple(typeof(List<int>)));
         }
 
-        /// <summary>
-        /// Verifies has attribute generic type has attribute returns true.
-        /// </summary>
         [Test]
         public void HasAttribute_Generic_TypeHasAttribute_ReturnsTrue()
         {
             Assert.IsTrue(TypeHelper.HasAttribute<SampleAttribute>(typeof(TaggedClass)));
         }
 
-        /// <summary>
-        /// Verifies has attribute generic type lacks attribute returns false.
-        /// </summary>
         [Test]
         public void HasAttribute_Generic_TypeLacksAttribute_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.HasAttribute<SampleAttribute>(typeof(UntaggedClass)));
         }
 
-        /// <summary>
-        /// Verifies has attribute non generic type has attribute returns true.
-        /// </summary>
         [Test]
         public void HasAttribute_NonGeneric_TypeHasAttribute_ReturnsTrue()
         {
             Assert.IsTrue(TypeHelper.HasAttribute(typeof(TaggedClass), typeof(SampleAttribute)));
         }
 
-        /// <summary>
-        /// Verifies has attribute non generic non attribute type throws argument exception.
-        /// </summary>
         [Test]
         public void HasAttribute_NonGeneric_NonAttributeType_ThrowsArgumentException()
         {
@@ -234,9 +168,6 @@ namespace Rebellion.Tests.Util
             Assert.AreEqual(expected, TypeHelper.ConvertToScalar(content, targetType));
         }
 
-        /// <summary>
-        /// Verifies convert to scalar unsupported type throws argument exception.
-        /// </summary>
         [Test]
         public void ConvertToScalar_UnsupportedType_ThrowsArgumentException()
         {
@@ -259,18 +190,12 @@ namespace Rebellion.Tests.Util
             Assert.AreEqual(expected, TypeHelper.ConvertScalarToString(value));
         }
 
-        /// <summary>
-        /// Verifies convert scalar to string null returns empty string.
-        /// </summary>
         [Test]
         public void ConvertScalarToString_Null_ReturnsEmptyString()
         {
             Assert.AreEqual(string.Empty, TypeHelper.ConvertScalarToString(null));
         }
 
-        /// <summary>
-        /// Verifies convert scalar to string unsupported type throws argument exception.
-        /// </summary>
         [Test]
         public void ConvertScalarToString_UnsupportedType_ThrowsArgumentException()
         {

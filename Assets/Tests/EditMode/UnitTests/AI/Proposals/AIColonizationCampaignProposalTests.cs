@@ -13,9 +13,6 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public class AIColonizationCampaignProposalTests
     {
-        /// <summary>
-        /// Verifies execute withunexploredplanets startsonlynearestsurveyleg.
-        /// </summary>
         [Test]
         public void Execute_WithUnexploredPlanets_StartsOnlyNearestSurveyLeg()
         {
@@ -56,9 +53,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNotNull(fleet.Movement);
         }
 
-        /// <summary>
-        /// Verifies execute withcompletedsurvey assignsselectedcolony.
-        /// </summary>
         [Test]
         public void Execute_WithCompletedSurvey_AssignsSelectedColony()
         {

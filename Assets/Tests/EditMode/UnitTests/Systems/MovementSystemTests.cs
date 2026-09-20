@@ -21,9 +21,6 @@ namespace Rebellion.Tests.Sectors
     [TestFixture]
     public class MovementSystemTests
     {
-        /// <summary>
-        /// Verifies relocate units no compatible ship moves hyperdrive starfighter to friendly planet.
-        /// </summary>
         [Test]
         public void RelocateUnits_NoCompatibleShip_MovesHyperdriveStarfighterToFriendlyPlanet()
         {
@@ -79,9 +76,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(friendlyPlanet, starfighter.GetParent());
         }
 
-        /// <summary>
-        /// Verifies relocate units no compatible ship and no hyperdrive leaves starfighter with current ship.
-        /// </summary>
         [Test]
         public void RelocateUnits_NoCompatibleShipAndNoHyperdrive_LeavesStarfighterWithCurrentShip()
         {
@@ -129,9 +123,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(starfighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies relocate units limited recovery capacity prioritizes non hyperdrive starfighter.
-        /// </summary>
         [Test]
         public void RelocateUnits_LimitedRecoveryCapacity_PrioritizesNonHyperdriveStarfighter()
         {
@@ -198,9 +189,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNotNull(hyperdriveFighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies relocate units hyperdrive fighter occupies recovery capacity evacuates hyperdrive fighter and recovers non hyperdrive fighter.
-        /// </summary>
         [Test]
         public void RelocateUnits_HyperdriveFighterOccupiesRecoveryCapacity_EvacuatesHyperdriveFighterAndRecoversNonHyperdriveFighter()
         {
@@ -267,9 +255,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNotNull(hyperdriveFighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies constructor with null game throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
@@ -286,9 +271,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("game", exception.ParamName);
         }
 
-        /// <summary>
-        /// Verifies constructor with null fog of war throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_WithNullFogOfWar_ThrowsArgumentNullException()
         {
@@ -301,9 +283,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("fogOfWar", exception.ParamName);
         }
 
-        /// <summary>
-        /// Verifies constructor with null fleet system throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_WithNullFleetSystem_ThrowsArgumentNullException()
         {
@@ -316,9 +295,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("fleetSystem", exception.ParamName);
         }
 
-        /// <summary>
-        /// Verifies request move valid destination immediately reparents unit.
-        /// </summary>
         [Test]
         public void RequestMove_ValidDestination_ImmediatelyReparentsUnit()
         {
@@ -335,9 +311,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(destination, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies request move valid destination unit is no longer at origin.
-        /// </summary>
         [Test]
         public void RequestMove_ValidDestination_UnitIsNoLongerAtOrigin()
         {
@@ -354,9 +327,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreNotEqual(origin, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies request move valid destination sets movement state with destination.
-        /// </summary>
         [Test]
         public void RequestMove_ValidDestination_SetsMovementStateWithDestination()
         {
@@ -374,9 +344,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(destination, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies request move valid destination sets origin position from departure planet.
-        /// </summary>
         [Test]
         public void RequestMove_ValidDestination_SetsOriginPositionFromDeparturePlanet()
         {
@@ -394,9 +361,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(expectedOrigin, officer.Movement.OriginPosition);
         }
 
-        /// <summary>
-        /// Verifies request move valid destination sets transit ticks greater than zero.
-        /// </summary>
         [Test]
         public void RequestMove_ValidDestination_SetsTransitTicksGreaterThanZero()
         {
@@ -413,9 +377,6 @@ namespace Rebellion.Tests.Sectors
             Assert.Greater(officer.Movement.TransitTicks, 0);
         }
 
-        /// <summary>
-        /// Verifies request move same sector destination can use local transit minimum.
-        /// </summary>
         [Test]
         public void RequestMove_SameSectorDestination_CanUseLocalTransitMinimum()
         {
@@ -464,9 +425,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move different system destination uses global transit minimum.
-        /// </summary>
         [Test]
         public void RequestMove_DifferentSystemDestination_UsesGlobalTransitMinimum()
         {
@@ -514,9 +472,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(config.Movement.MinTransitTicks, officer.Movement.TransitTicks);
         }
 
-        /// <summary>
-        /// Verifies request move valid destination sets movement group id.
-        /// </summary>
         [Test]
         public void RequestMove_ValidDestination_SetsMovementGroupID()
         {
@@ -533,9 +488,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(string.IsNullOrEmpty(officer.Movement.MovementGroupID));
         }
 
-        /// <summary>
-        /// Verifies request move when unit already in transit does not redirect.
-        /// </summary>
         [Test]
         public void RequestMove_WhenUnitAlreadyInTransit_DoesNotRedirect()
         {
@@ -559,9 +511,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(destination, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies request move when unit not at any planet is ignored.
-        /// </summary>
         [Test]
         public void RequestMove_WhenUnitNotAtAnyPlanet_IsIgnored()
         {
@@ -578,9 +527,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(officer.Movement, "Orphaned unit must not be given a movement state");
         }
 
-        /// <summary>
-        /// Verifies request move when destination rejects unit leaves unit at origin without movement.
-        /// </summary>
         [Test]
         public void RequestMove_WhenDestinationRejectsUnit_LeavesUnitAtOriginWithoutMovement()
         {
@@ -611,9 +557,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move captured officer is not moved.
-        /// </summary>
         [Test]
         public void RequestMove_CapturedOfficer_IsNotMoved()
         {
@@ -635,9 +578,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move captured officer at same planet reparents without movement.
-        /// </summary>
         [Test]
         public void RequestMove_CapturedOfficerAtSamePlanet_ReparentsWithoutMovement()
         {
@@ -667,9 +607,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies request move completed building does not move.
-        /// </summary>
         [Test]
         public void RequestMove_CompletedBuilding_DoesNotMove()
         {
@@ -697,9 +634,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(building.Movement);
         }
 
-        /// <summary>
-        /// Verifies request move group non captured units all move.
-        /// </summary>
         [Test]
         public void RequestMove_GroupNonCapturedUnits_AllMove()
         {
@@ -720,9 +654,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(destination, officer2.GetParent());
         }
 
-        /// <summary>
-        /// Verifies request move group non captured units sets shared movement group id.
-        /// </summary>
         [Test]
         public void RequestMove_GroupNonCapturedUnits_SetsSharedMovementGroupID()
         {
@@ -743,9 +674,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(officer.Movement.MovementGroupID, officer2.Movement.MovementGroupID);
         }
 
-        /// <summary>
-        /// Verifies request move group to faction view fleet boards live fleet.
-        /// </summary>
         [Test]
         public void RequestMove_GroupToFactionViewFleet_BoardsLiveFleet()
         {
@@ -774,9 +702,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(ship, officer2.GetParent());
         }
 
-        /// <summary>
-        /// Verifies request move group units at different locations none move.
-        /// </summary>
         [Test]
         public void RequestMove_GroupUnitsAtDifferentLocations_NoneMove()
         {
@@ -799,9 +724,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(officer2.Movement);
         }
 
-        /// <summary>
-        /// Verifies request move group unit already in transit none move.
-        /// </summary>
         [Test]
         public void RequestMove_GroupUnitAlreadyInTransit_NoneMove()
         {
@@ -825,9 +747,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(originalMovement, movingOfficer.Movement);
         }
 
-        /// <summary>
-        /// Verifies request move group unit under construction retargets delivery.
-        /// </summary>
         [Test]
         public void RequestMove_GroupUnitUnderConstruction_RetargetsDelivery()
         {
@@ -856,9 +775,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(ManufacturingStatus.Building, starfighter.ManufacturingStatus);
         }
 
-        /// <summary>
-        /// Verifies request move group completed building none move.
-        /// </summary>
         [Test]
         public void RequestMove_GroupCompletedBuilding_NoneMove()
         {
@@ -888,9 +804,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(building.Movement);
         }
 
-        /// <summary>
-        /// Verifies request move group captured officer with capturing officer escort both move.
-        /// </summary>
         [Test]
         public void RequestMove_GroupCapturedOfficerWithCapturingOfficerEscort_BothMove()
         {
@@ -921,9 +834,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(destination, captive.GetParent(), "Captive should move with escort");
         }
 
-        /// <summary>
-        /// Verifies request move group captured officer with capturing special forces escort both move.
-        /// </summary>
         [Test]
         public void RequestMove_GroupCapturedOfficerWithCapturingSpecialForcesEscort_BothMove()
         {
@@ -963,9 +873,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(destination, captive.GetParent(), "Captive should move with escort");
         }
 
-        /// <summary>
-        /// Verifies request move group captured officer with capturing regiment escort does not move.
-        /// </summary>
         [Test]
         public void RequestMove_GroupCapturedOfficerWithCapturingRegimentEscort_DoesNotMove()
         {
@@ -999,9 +906,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(captive.Movement);
         }
 
-        /// <summary>
-        /// Verifies request move group captured officer without escort not moved.
-        /// </summary>
         [Test]
         public void RequestMove_GroupCapturedOfficerWithoutEscort_NotMoved()
         {
@@ -1035,9 +939,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move group captured officer escort from wrong faction none move.
-        /// </summary>
         [Test]
         public void RequestMove_GroupCapturedOfficerEscortFromWrongFaction_NoneMove()
         {
@@ -1076,9 +977,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move group captured officer escort at different location none move.
-        /// </summary>
         [Test]
         public void RequestMove_GroupCapturedOfficerEscortAtDifferentLocation_NoneMove()
         {
@@ -1109,9 +1007,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(destination, captive.GetParent());
         }
 
-        /// <summary>
-        /// Verifies request move fleet with inbound units retargets inbound units.
-        /// </summary>
         [Test]
         public void RequestMove_FleetWithInboundUnits_RetargetsInboundUnits()
         {
@@ -1256,9 +1151,6 @@ namespace Rebellion.Tests.Sectors
             }
         }
 
-        /// <summary>
-        /// Verifies request move building under construction retargets destination.
-        /// </summary>
         [Test]
         public void RequestMove_BuildingUnderConstruction_RetargetsDestination()
         {
@@ -1293,9 +1185,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move starfighter under construction retargets destination.
-        /// </summary>
         [Test]
         public void RequestMove_StarfighterUnderConstruction_RetargetsDestination()
         {
@@ -1368,9 +1257,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move capital ship to fleet lands at fleet.
-        /// </summary>
         [Test]
         public void RequestMove_CapitalShipToFleet_LandsAtFleet()
         {
@@ -1439,9 +1325,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(planetB, fleet.GetParent(), "Fleet should still be at planet B.");
         }
 
-        /// <summary>
-        /// Verifies request move capital ship in friendly fleet over hostile planet starts transit.
-        /// </summary>
         [Test]
         public void RequestMove_CapitalShipInFriendlyFleetOverHostilePlanet_StartsTransit()
         {
@@ -1498,9 +1381,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move capital ship in fleet destination captured ship remains in fleet.
-        /// </summary>
         [Test]
         public void RequestMove_CapitalShipInFleetDestinationCaptured_ShipRemainsInFleet()
         {
@@ -1558,9 +1438,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move manufactured unit destination without planet throws.
-        /// </summary>
         [Test]
         public void RequestMove_ManufacturedUnitDestinationWithoutPlanet_Throws()
         {
@@ -1587,9 +1464,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(ship.Movement);
         }
 
-        /// <summary>
-        /// Verifies request move officer on capital ship in fleet can move to mission.
-        /// </summary>
         [Test]
         public void RequestMove_OfficerOnCapitalShipInFleet_CanMoveToMission()
         {
@@ -1649,9 +1523,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move capital ship from fleet to fleet at same planet reparents without transit.
-        /// </summary>
         [Test]
         public void RequestMove_CapitalShipFromFleetToFleetAtSamePlanet_ReparentsWithoutTransit()
         {
@@ -1694,9 +1565,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(ship.Movement);
         }
 
-        /// <summary>
-        /// Verifies request move group from different ships at same planet moves all to destination fleet.
-        /// </summary>
         [Test]
         public void RequestMove_GroupFromDifferentShipsAtSamePlanet_MovesAllToDestinationFleet()
         {
@@ -1760,9 +1628,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(officer2.Movement);
         }
 
-        /// <summary>
-        /// Verifies request move special forces to fleet at same planet boards first ship.
-        /// </summary>
         [Test]
         public void RequestMove_SpecialForcesToFleetAtSamePlanet_BoardsFirstShip()
         {
@@ -1810,9 +1675,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(specialForces.Movement);
         }
 
-        /// <summary>
-        /// Verifies request move manufactured building completed at blockaded production planet remains local.
-        /// </summary>
         [Test]
         public void RequestMove_ManufacturedBuildingCompletedAtBlockadedProductionPlanet_RemainsLocal()
         {
@@ -1850,9 +1712,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
         }
 
-        /// <summary>
-        /// Verifies request move regiment from blockaded planet low roll destroys regiment.
-        /// </summary>
         [Test]
         public void RequestMove_RegimentFromBlockadedPlanet_LowRoll_DestroysRegiment()
         {
@@ -1872,9 +1731,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move regiment from blockaded planet high roll regiment survives.
-        /// </summary>
         [Test]
         public void RequestMove_RegimentFromBlockadedPlanet_HighRoll_RegimentSurvives()
         {
@@ -1895,9 +1751,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNotNull(regiment.Movement, "Surviving regiment should be in transit");
         }
 
-        /// <summary>
-        /// Verifies request move regiment from blockaded planet emits evacuation result.
-        /// </summary>
         [Test]
         public void RequestMove_RegimentFromBlockadedPlanet_EmitsEvacuationResult()
         {
@@ -1921,9 +1774,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, evacResult.LostRegiments.Count);
         }
 
-        /// <summary>
-        /// Verifies request move regiment from unblocked planet no evacuation loss.
-        /// </summary>
         [Test]
         public void RequestMove_RegimentFromUnblockedPlanet_NoEvacuationLoss()
         {
@@ -1981,9 +1831,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move officer from blockaded planet not affected.
-        /// </summary>
         [Test]
         public void RequestMove_OfficerFromBlockadedPlanet_NotAffected()
         {
@@ -2001,9 +1848,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies request move building under construction to uncolonized planet is rejected.
-        /// </summary>
         [Test]
         public void RequestMove_BuildingUnderConstructionToUncolonizedPlanet_IsRejected()
         {
@@ -2029,9 +1873,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(destination.IsColonized);
         }
 
-        /// <summary>
-        /// Verifies request move regiment from fleet at neutral uncolonized planet claims immediately.
-        /// </summary>
         [Test]
         public void RequestMove_RegimentFromFleetAtNeutralUncolonizedPlanet_ClaimsImmediately()
         {
@@ -2049,9 +1890,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(destination, regiment.GetParent());
         }
 
-        /// <summary>
-        /// Verifies request move regiment from fleet at neutral uncolonized planet hidden observer snapshot not refreshed.
-        /// </summary>
         [Test]
         public void RequestMove_RegimentFromFleetAtNeutralUncolonizedPlanet_HiddenObserverSnapshot_NotRefreshed()
         {
@@ -2073,9 +1911,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(snapshot.OwnerInstanceID);
         }
 
-        /// <summary>
-        /// Verifies request move regiment from fleet at enemy uncolonized planet is rejected.
-        /// </summary>
         [Test]
         public void RequestMove_RegimentFromFleetAtEnemyUncolonizedPlanet_IsRejected()
         {
@@ -2093,9 +1928,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("rebels", destination.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies request move regiment from other planet to neutral uncolonized planet is rejected.
-        /// </summary>
         [Test]
         public void RequestMove_RegimentFromOtherPlanetToNeutralUncolonizedPlanet_IsRejected()
         {
@@ -2118,9 +1950,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(destination.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies request move regiment from fleet at other planet to neutral uncolonized planet is rejected.
-        /// </summary>
         [Test]
         public void RequestMove_RegimentFromFleetAtOtherPlanetToNeutralUncolonizedPlanet_IsRejected()
         {
@@ -2138,9 +1967,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(destination.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies request move starfighter to neutral uncolonized planet is rejected.
-        /// </summary>
         [Test]
         public void RequestMove_StarfighterToNeutralUncolonizedPlanet_IsRejected()
         {
@@ -2163,9 +1989,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(destination.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies request move fleet to neutral uncolonized planet is allowed.
-        /// </summary>
         [Test]
         public void RequestMove_FleetToNeutralUncolonizedPlanet_IsAllowed()
         {
@@ -2191,9 +2014,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(destination.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies request move fleet to rejected destination preserves waypoint route.
-        /// </summary>
         [Test]
         public void RequestMove_FleetToRejectedDestination_PreservesWaypointRoute()
         {
@@ -2216,9 +2036,6 @@ namespace Rebellion.Tests.Sectors
             CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, fleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies request move regiment to neutral colonized planet is rejected.
-        /// </summary>
         [Test]
         public void RequestMove_RegimentToNeutralColonizedPlanet_IsRejected()
         {
@@ -2235,9 +2052,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreNotEqual(destination, regiment.GetParent());
         }
 
-        /// <summary>
-        /// Verifies request move last regiment off uncolonized owned planet does not immediately release to neutral.
-        /// </summary>
         [Test]
         public void RequestMove_LastRegimentOffUncolonizedOwnedPlanet_DoesNotImmediatelyReleaseToNeutral()
         {
@@ -2271,9 +2085,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("empire", destination.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies request move last regiment off colonized owned planet ownership persists.
-        /// </summary>
         [Test]
         public void RequestMove_LastRegimentOffColonizedOwnedPlanet_OwnershipPersists()
         {
@@ -2306,9 +2117,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("empire", destination.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies handle movement request valid request routes through authoritative move path.
-        /// </summary>
         [Test]
         public void HandleMovementRequest_ValidRequest_RoutesThroughAuthoritativeMovePath()
         {
@@ -2331,9 +2139,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNotNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies handle movement request event originated request propagates source to arrival.
-        /// </summary>
         [Test]
         public void HandleMovementRequest_EventOriginatedRequest_PropagatesSourceToArrival()
         {
@@ -2360,9 +2165,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("SEND_OFFICER", arrival.SourceEventInstanceID);
         }
 
-        /// <summary>
-        /// Verifies handle movement request event originated request already at destination emits arrival.
-        /// </summary>
         [Test]
         public void HandleMovementRequest_EventOriginatedRequestAlreadyAtDestination_EmitsArrival()
         {
@@ -2387,9 +2189,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("SEND_OFFICER", arrival.SourceEventInstanceID);
         }
 
-        /// <summary>
-        /// Verifies handle movement request first candidate rejects group uses next candidate.
-        /// </summary>
         [Test]
         public void HandleMovementRequest_FirstCandidateRejectsGroup_UsesNextCandidate()
         {
@@ -2457,9 +2256,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies handle placement request group exceeds capacity leaves every unit unchanged.
-        /// </summary>
         [Test]
         public void HandlePlacementRequest_GroupExceedsCapacity_LeavesEveryUnitUnchanged()
         {
@@ -2516,9 +2312,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(sourceShip, second.GetParent());
         }
 
-        /// <summary>
-        /// Verifies send to mission officer aboard ship records ship and planet.
-        /// </summary>
         [Test]
         public void SendToMission_OfficerAboardShip_RecordsShipAndPlanet()
         {
@@ -2549,9 +2342,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(mission, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies return from mission recorded ship moved returns to recorded ship.
-        /// </summary>
         [Test]
         public void ReturnFromMission_RecordedShipMoved_ReturnsToRecordedShip()
         {
@@ -2587,9 +2377,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(ship, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies return from mission missing recorded location returns to nearest friendly planet.
-        /// </summary>
         [Test]
         public void ReturnFromMission_MissingRecordedLocation_ReturnsToNearestFriendlyPlanet()
         {
@@ -2616,9 +2403,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(origin, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies return from mission missing owner and recorded location returns participant as stranded.
-        /// </summary>
         [Test]
         public void ReturnFromMission_MissingOwnerAndRecordedLocation_ReturnsParticipantAsStranded()
         {
@@ -2641,9 +2425,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(mission, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies return from mission recorded planet captured returns to nearest friendly planet.
-        /// </summary>
         [Test]
         public void ReturnFromMission_RecordedPlanetCaptured_ReturnsToNearestFriendlyPlanet()
         {
@@ -2678,9 +2459,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(fallback, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies return from mission missing recorded location uses friendly planet instead of unrelated fleet.
-        /// </summary>
         [Test]
         public void ReturnFromMission_MissingRecordedLocation_UsesFriendlyPlanetInsteadOfUnrelatedFleet()
         {
@@ -2717,9 +2495,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(origin, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies return from mission no friendly destination returns participant as stranded.
-        /// </summary>
         [Test]
         public void ReturnFromMission_NoFriendlyDestination_ReturnsParticipantAsStranded()
         {
@@ -2749,9 +2524,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies return from mission captured passenger returns with escort group.
-        /// </summary>
         [Test]
         public void ReturnFromMission_CapturedPassenger_ReturnsWithEscortGroup()
         {
@@ -2782,9 +2554,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(escort.Movement.MovementGroupID, passenger.Movement.MovementGroupID);
         }
 
-        /// <summary>
-        /// Verifies return from mission passenger without participant returns passenger as stranded.
-        /// </summary>
         [Test]
         public void ReturnFromMission_PassengerWithoutParticipant_ReturnsPassengerAsStranded()
         {
@@ -2810,9 +2579,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(passenger.Movement);
         }
 
-        /// <summary>
-        /// Verifies return from mission participants with different origins return to their own locations.
-        /// </summary>
         [Test]
         public void ReturnFromMission_ParticipantsWithDifferentOrigins_ReturnToTheirOwnLocations()
         {
@@ -2862,9 +2628,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies try get transit ticks valid destination does not move unit.
-        /// </summary>
         [Test]
         public void TryGetTransitTicks_ValidDestination_DoesNotMoveUnit()
         {
@@ -2888,9 +2651,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies a fleet moves at the speed of its slowest completed capital ship.
-        /// </summary>
         [Test]
         public void RequestMove_FleetWithDifferentHyperdrives_UsesSlowestCompletedShip()
         {
@@ -2932,9 +2692,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(fleet, slowShip.GetParent());
         }
 
-        /// <summary>
-        /// Verifies an unfinished slower ship does not determine its fleet's transit time.
-        /// </summary>
         [Test]
         public void TryGetTransitTicks_FleetWithUnfinishedSlowerShip_IgnoresUnfinishedShip()
         {
@@ -2972,9 +2729,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(fleet.Movement);
         }
 
-        /// <summary>
-        /// Verifies try estimate manufactured transit ticks valid destination does not assign movement.
-        /// </summary>
         [Test]
         public void TryEstimateManufacturedTransitTicks_ValidDestination_DoesNotAssignMovement()
         {
@@ -2998,9 +2752,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies try estimate manufactured transit ticks view fleet destination uses live fleet location.
-        /// </summary>
         [Test]
         public void TryEstimateManufacturedTransitTicks_ViewFleetDestination_UsesLiveFleetLocation()
         {
@@ -3029,9 +2780,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies try estimate manufactured transit ticks hostile planet destination returns false.
-        /// </summary>
         [Test]
         public void TryEstimateManufacturedTransitTicks_HostilePlanetDestination_ReturnsFalse()
         {
@@ -3056,9 +2804,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies try estimate manufactured transit ticks starfighter to enemy blockaded planet returns false.
-        /// </summary>
         [Test]
         public void TryEstimateManufacturedTransitTicks_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
         {
@@ -3078,9 +2823,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(estimated);
         }
 
-        /// <summary>
-        /// Verifies update movement when not in transit does nothing.
-        /// </summary>
         [Test]
         public void UpdateMovement_WhenNotInTransit_DoesNothing()
         {
@@ -3096,9 +2838,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies update movement in transit increments elapsed ticks.
-        /// </summary>
         [Test]
         public void UpdateMovement_InTransit_IncrementsElapsedTicks()
         {
@@ -3116,9 +2855,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, officer.Movement.TicksElapsed);
         }
 
-        /// <summary>
-        /// Verifies update movement on arrival clears movement state.
-        /// </summary>
         [Test]
         public void UpdateMovement_OnArrival_ClearsMovementState()
         {
@@ -3145,9 +2881,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(results.OfType<GameObjectEnrouteActiveResult>().Any(r => !r.IsActive));
         }
 
-        /// <summary>
-        /// Verifies update movement on arrival preserves movement group id in arrival result.
-        /// </summary>
         [Test]
         public void UpdateMovement_OnArrival_PreservesMovementGroupIDInArrivalResult()
         {
@@ -3167,9 +2900,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(movementGroupId, arrival.MovementGroupID);
         }
 
-        /// <summary>
-        /// Verifies update movement on arrival unit remains at destination.
-        /// </summary>
         [Test]
         public void UpdateMovement_OnArrival_UnitRemainsAtDestination()
         {
@@ -3188,9 +2918,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(destination, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies update movement officer arrives at mission clears movement state.
-        /// </summary>
         [Test]
         public void UpdateMovement_OfficerArrivesAtMission_ClearsMovementState()
         {
@@ -3227,9 +2954,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(results.OfType<GameObjectEnrouteResult>().Any());
         }
 
-        /// <summary>
-        /// Verifies update movement special forces arrives at mission clears role enroute state.
-        /// </summary>
         [Test]
         public void UpdateMovement_SpecialForcesArrivesAtMission_ClearsRoleEnrouteState()
         {
@@ -3268,9 +2992,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(mission, specialForces.GetParent());
         }
 
-        /// <summary>
-        /// Verifies update movement group non captured units preserves movement group id in arrival results.
-        /// </summary>
         [Test]
         public void UpdateMovement_GroupNonCapturedUnits_PreservesMovementGroupIDInArrivalResults()
         {
@@ -3301,9 +3022,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(arrivals.All(result => result.MovementGroupID == movementGroupId));
         }
 
-        /// <summary>
-        /// Verifies update movement fleet moves before unit arrives unit still en route.
-        /// </summary>
         [Test]
         public void UpdateMovement_FleetMovesBeforeUnitArrives_UnitStillEnRoute()
         {
@@ -3393,9 +3111,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update movement in transit fleet with in transit children fleet arrives before children.
-        /// </summary>
         [Test]
         public void UpdateMovement_InTransitFleetWithInTransitChildren_FleetArrivesBeforeChildren()
         {
@@ -3443,9 +3158,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(scene.capitalShip1, scene.officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies update movement in transit fleet with in transit children children arrive after fleet.
-        /// </summary>
         [Test]
         public void UpdateMovement_InTransitFleetWithInTransitChildren_ChildrenArriveAfterFleet()
         {
@@ -3489,9 +3201,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update movement building in transit destination changed sides building destroyed.
-        /// </summary>
         [Test]
         public void UpdateMovement_BuildingInTransitDestinationChangedSides_BuildingDestroyed()
         {
@@ -3556,9 +3265,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(allResults.OfType<GameObjectDestroyedOnArrivalResult>().Any());
         }
 
-        /// <summary>
-        /// Verifies update movement non building in transit destination changed sides unit rerouted.
-        /// </summary>
         [Test]
         public void UpdateMovement_NonBuildingInTransitDestinationChangedSides_UnitRerouted()
         {
@@ -3620,9 +3326,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update movement fleet in transit to hostile planet fleet arrives at hostile planet.
-        /// </summary>
         [Test]
         public void UpdateMovement_FleetInTransitToHostilePlanet_FleetArrivesAtHostilePlanet()
         {
@@ -3684,9 +3387,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update movement regiment in transit to friendly fleet at hostile planet arrives in fleet.
-        /// </summary>
         [Test]
         public void UpdateMovement_RegimentInTransitToFriendlyFleetAtHostilePlanet_ArrivesInFleet()
         {
@@ -3767,9 +3467,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update movement manufactured building dispatched after blockade started destroys on arrival.
-        /// </summary>
         [Test]
         public void UpdateMovement_ManufacturedBuildingDispatchedAfterBlockadeStarted_DestroysOnArrival()
         {
@@ -3815,9 +3512,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update movement manufactured regiment dispatched after blockade started destroys on arrival.
-        /// </summary>
         [Test]
         public void UpdateMovement_ManufacturedRegimentDispatchedAfterBlockadeStarted_DestroysOnArrival()
         {
@@ -3862,9 +3556,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies update movement blockade ends before manufactured building arrival completes arrival.
-        /// </summary>
         [Test]
         public void UpdateMovement_BlockadeEndsBeforeManufacturedBuildingArrival_CompletesArrival()
         {
@@ -3917,9 +3608,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies try set fleet waypoint route multiple destinations continues route after arrival.
-        /// </summary>
         [Test]
         public void TrySetFleetWaypointRoute_MultipleDestinations_ContinuesRouteAfterArrival()
         {
@@ -3970,10 +3658,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(fleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies a persisted multi-leg colonization survey stops after its current leg so the
-        /// strategic planner can rebuild the route from current intelligence.
-        /// </summary>
         [Test]
         public void ProcessTick_ColonizationSurveyWithLegacyWaypoints_CompletesAfterCurrentLeg()
         {
@@ -4010,9 +3694,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(firstDestination, completed.Destination);
         }
 
-        /// <summary>
-        /// Verifies try set fleet waypoint route fleet already moving queues continuation.
-        /// </summary>
         [Test]
         public void TrySetFleetWaypointRoute_FleetAlreadyMoving_QueuesContinuation()
         {
@@ -4044,9 +3725,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies try set fleet waypoint route opposing fleet returns false.
-        /// </summary>
         [Test]
         public void TrySetFleetWaypointRoute_OpposingFleet_ReturnsFalse()
         {
@@ -4065,9 +3743,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(origin, fleet.GetParent());
         }
 
-        /// <summary>
-        /// Verifies try set fleet waypoint route capital ship creates fleet and completes route.
-        /// </summary>
         [Test]
         public void TrySetFleetWaypointRoute_CapitalShip_CreatesFleetAndCompletesRoute()
         {
@@ -4117,9 +3792,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(routeFleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies try set fleet waypoint route capital ship under construction preserves route until complete.
-        /// </summary>
         [Test]
         public void TrySetFleetWaypointRoute_CapitalShipUnderConstruction_PreservesRouteUntilComplete()
         {
@@ -4159,9 +3831,6 @@ namespace Rebellion.Tests.Sectors
             CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, routeFleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies can set fleet waypoint route valid route does not mutate fleet.
-        /// </summary>
         [Test]
         public void CanSetFleetWaypointRoute_ValidRoute_DoesNotMutateFleet()
         {
@@ -4186,9 +3855,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(fleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies can set fleet waypoint route capital ship does not change fleet membership.
-        /// </summary>
         [Test]
         public void CanSetFleetWaypointRoute_CapitalShip_DoesNotChangeFleetMembership()
         {
@@ -4214,9 +3880,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(fleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies clear fleet waypoints active route preserves current movement and stops continuation.
-        /// </summary>
         [Test]
         public void ClearFleetWaypoints_ActiveRoute_PreservesCurrentMovementAndStopsContinuation()
         {
@@ -4250,9 +3913,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(firstDestination, fleet.GetParent());
         }
 
-        /// <summary>
-        /// Verifies try request move fleet with queued waypoints replaces route.
-        /// </summary>
         [Test]
         public void TryRequestMove_FleetWithQueuedWaypoints_ReplacesRoute()
         {
@@ -4280,9 +3940,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(origin, fleet.GetParent());
         }
 
-        /// <summary>
-        /// Verifies try request move group under construction exceeds capacity none retarget.
-        /// </summary>
         [Test]
         public void TryRequestMove_GroupUnderConstructionExceedsCapacity_NoneRetarget()
         {
@@ -4333,9 +3990,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(results);
         }
 
-        /// <summary>
-        /// Verifies try request move starfighter to enemy blockaded planet returns false.
-        /// </summary>
         [Test]
         public void TryRequestMove_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
         {
@@ -4357,9 +4011,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(starfighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies try request move regiment to enemy blockaded planet returns false.
-        /// </summary>
         [Test]
         public void TryRequestMove_RegimentToEnemyBlockadedPlanet_ReturnsFalse()
         {
@@ -4381,9 +4032,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(regiment.Movement);
         }
 
-        /// <summary>
-        /// Verifies try request move regiment to ship returns garrison change.
-        /// </summary>
         [Test]
         public void TryRequestMove_RegimentToShip_ReturnsGarrisonChange()
         {
@@ -4420,9 +4068,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(movement.ProcessTick().OfType<PlanetGarrisonChangedResult>());
         }
 
-        /// <summary>
-        /// Verifies try request move fleet to fleet moves ships and removes source fleet.
-        /// </summary>
         [Test]
         public void TryRequestMove_FleetToFleet_MovesShipsAndRemovesSourceFleet()
         {
@@ -4449,9 +4094,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(sourceFleet.GetParent());
         }
 
-        /// <summary>
-        /// Verifies try request move fleet with only ships under construction retargets delivery.
-        /// </summary>
         [Test]
         public void TryRequestMove_FleetWithOnlyShipsUnderConstruction_RetargetsDelivery()
         {
@@ -4475,9 +4117,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(fleet, ship.GetParent());
         }
 
-        /// <summary>
-        /// Verifies try request move capital ship to fleet removes empty source fleet.
-        /// </summary>
         [Test]
         public void TryRequestMove_CapitalShipToFleet_RemovesEmptySourceFleet()
         {
@@ -4502,9 +4141,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(ship.Movement);
         }
 
-        /// <summary>
-        /// Verifies try request move capital ship under construction retargets delivery.
-        /// </summary>
         [Test]
         public void TryRequestMove_CapitalShipUnderConstruction_RetargetsDelivery()
         {
@@ -4537,9 +4173,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(results);
         }
 
-        /// <summary>
-        /// Verifies try request move capital ship in moving fleet preserves source graph.
-        /// </summary>
         [Test]
         public void TryRequestMove_CapitalShipInMovingFleet_PreservesSourceGraph()
         {
@@ -4567,9 +4200,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies try request move capital ship to planet creates destination fleet.
-        /// </summary>
         [Test]
         public void TryRequestMove_CapitalShipToPlanet_CreatesDestinationFleet()
         {
@@ -4589,9 +4219,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(sourceFleet.GetParent());
         }
 
-        /// <summary>
-        /// Verifies try request move snapshot planet creates fleet on live destination.
-        /// </summary>
         [Test]
         public void TryRequestMove_SnapshotPlanet_CreatesFleetOnLiveDestination()
         {
@@ -4610,9 +4237,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(0, snapshot.GetChildren<Fleet>().Count);
         }
 
-        /// <summary>
-        /// Verifies try request move multiple capital ships to planet creates one destination fleet.
-        /// </summary>
         [Test]
         public void TryRequestMove_MultipleCapitalShipsToPlanet_CreatesOneDestinationFleet()
         {
@@ -4641,9 +4265,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies try request move capital ships at different planets preserves source fleets.
-        /// </summary>
         [Test]
         public void TryRequestMove_CapitalShipsAtDifferentPlanets_PreservesSourceFleets()
         {
@@ -4674,9 +4295,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(destinationFleet, destinationShip.GetParent());
         }
 
-        /// <summary>
-        /// Verifies process tick group captured officer arrives at captor planet completes movement.
-        /// </summary>
         [Test]
         public void ProcessTick_GroupCapturedOfficerArrivesAtCaptorPlanet_CompletesMovement()
         {
@@ -4716,9 +4334,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies process tick fleet arrives at planet marks faction as visitor.
-        /// </summary>
         [Test]
         public void ProcessTick_FleetArrivesAtPlanet_MarksFactionAsVisitor()
         {
@@ -4746,9 +4361,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies process tick fleet arrives at neutral planet completes and marks visitor.
-        /// </summary>
         [Test]
         public void ProcessTick_FleetArrivesAtNeutralPlanet_CompletesAndMarksVisitor()
         {
@@ -4780,9 +4392,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies process tick officer arrives at planet marks faction as visitor.
-        /// </summary>
         [Test]
         public void ProcessTick_OfficerArrivesAtPlanet_MarksFactionAsVisitor()
         {
@@ -4812,9 +4421,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies process tick fleet arrives at already visited planet does not duplicate.
-        /// </summary>
         [Test]
         public void ProcessTick_FleetArrivesAtAlreadyVisitedPlanet_DoesNotDuplicate()
         {
@@ -4842,9 +4448,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies try get selection transit ticks starfighter to enemy blockaded planet returns false.
-        /// </summary>
         [Test]
         public void TryGetSelectionTransitTicks_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
         {
@@ -4865,9 +4468,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(estimated);
         }
 
-        /// <summary>
-        /// Verifies blockade started independent inbound units reroute from current position.
-        /// </summary>
         [Test]
         public void BlockadeStarted_IndependentInboundUnits_RerouteFromCurrentPosition()
         {
@@ -4932,9 +4532,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(results.OfType<EvacuationLossesResult>());
         }
 
-        /// <summary>
-        /// Verifies blockade started excluded inbound units continue to destination.
-        /// </summary>
         [Test]
         public void BlockadeStarted_ExcludedInboundUnits_ContinueToDestination()
         {
@@ -5029,9 +4626,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsEmpty(results.OfType<GameObjectDestroyedResult>());
         }
 
-        /// <summary>
-        /// Verifies blockade started in transit building is destroyed.
-        /// </summary>
         [Test]
         public void BlockadeStarted_InTransitBuilding_IsDestroyed()
         {
@@ -5061,9 +4655,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(scene.blockadedDestination, destroyed.Context);
         }
 
-        /// <summary>
-        /// Verifies blockade started no valid fallback destroys autorouted unit.
-        /// </summary>
         [Test]
         public void BlockadeStarted_NoValidFallback_DestroysAutoroutedUnit()
         {
@@ -5096,9 +4687,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(scene.blockadedDestination, destroyed.Context);
         }
 
-        /// <summary>
-        /// Verifies blockade started blockader owned inbound unit continues.
-        /// </summary>
         [Test]
         public void BlockadeStarted_BlockaderOwnedInboundUnit_Continues()
         {
@@ -5140,9 +4728,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies blockade started nearer friendly carrier is preferred over owned planet.
-        /// </summary>
         [Test]
         public void BlockadeStarted_NearerFriendlyCarrier_IsPreferredOverOwnedPlanet()
         {
@@ -5187,9 +4772,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNotNull(starfighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies blockade started blockaded fallback is skipped.
-        /// </summary>
         [Test]
         public void BlockadeStarted_BlockadedFallback_IsSkipped()
         {

@@ -15,9 +15,6 @@ namespace Rebellion.Tests.AI.Proposals
     [TestFixture]
     public sealed class AIFacilityRemovalProposalTests
     {
-        /// <summary>
-        /// Verifies healthy maintenance does not trigger strategic shipyard removal.
-        /// </summary>
         [Test]
         public void Plan_WithHealthyMaintenance_DoesNotRemoveShipyards()
         {
@@ -30,9 +27,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsEmpty(new AIFacilityRemovalPlanner().Plan(context));
         }
 
-        /// <summary>
-        /// Verifies maintenance distress removes only faction-wide shipyard surplus.
-        /// </summary>
         [Test]
         public void Plan_WithMaintenanceDistressAndSurplus_AddsRemovalProposal()
         {
@@ -52,9 +46,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(1, proposal.MinimumFactionFacilityCount);
         }
 
-        /// <summary>
-        /// Verifies executing removal preserves the faction-wide strategic shipyard floor.
-        /// </summary>
         [Test]
         public void Execute_WithMaintenanceDistressAndSurplus_PreservesStrategicFloor()
         {

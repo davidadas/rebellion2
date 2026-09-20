@@ -46,9 +46,6 @@ namespace Rebellion.Tests.Game.Units
             };
         }
 
-        /// <summary>
-        /// Verifies get manufacturing type for starfighter returns ship.
-        /// </summary>
         [Test]
         public void GetManufacturingType_ForStarfighter_ReturnsShip()
         {
@@ -57,9 +54,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingType.Ship, type, "Starfighter should be of type Ship");
         }
 
-        /// <summary>
-        /// Verifies get weapon strength with configured weapons returns combined strength.
-        /// </summary>
         [Test]
         public void GetWeaponStrength_WithConfiguredWeapons_ReturnsCombinedStrength()
         {
@@ -68,9 +62,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(45, weaponStrength);
         }
 
-        /// <summary>
-        /// Verifies get combat value with partial squadron returns scaled weapon strength.
-        /// </summary>
         [Test]
         public void GetCombatValue_WithPartialSquadron_ReturnsScaledWeaponStrength()
         {
@@ -82,9 +73,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(270, combatValue);
         }
 
-        /// <summary>
-        /// Verifies get combat value when unavailable returns zero.
-        /// </summary>
         [Test]
         public void GetCombatValue_WhenUnavailable_ReturnsZero()
         {
@@ -96,9 +84,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, combatValue);
         }
 
-        /// <summary>
-        /// Verifies is movable when in transit returns false.
-        /// </summary>
         [Test]
         public void IsMovable_WhenInTransit_ReturnsFalse()
         {
@@ -109,9 +94,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsFalse(isMovable, "Starfighter should not be movable when in transit");
         }
 
-        /// <summary>
-        /// Verifies is movable when idle returns true.
-        /// </summary>
         [Test]
         public void IsMovable_WhenIdle_ReturnsTrue()
         {
@@ -122,9 +104,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(isMovable, "Starfighter should be movable when idle");
         }
 
-        /// <summary>
-        /// Verifies laser cannon set and get stores correct value.
-        /// </summary>
         [Test]
         public void LaserCannon_SetAndGet_StoresCorrectValue()
         {
@@ -137,9 +116,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies ion cannon set and get stores correct value.
-        /// </summary>
         [Test]
         public void IonCannon_SetAndGet_StoresCorrectValue()
         {
@@ -152,9 +128,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies torpedoes set and get stores correct value.
-        /// </summary>
         [Test]
         public void Torpedoes_SetAndGet_StoresCorrectValue()
         {
@@ -167,9 +140,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies laser range set and get stores correct value.
-        /// </summary>
         [Test]
         public void LaserRange_SetAndGet_StoresCorrectValue()
         {
@@ -182,9 +152,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies ion range set and get stores correct value.
-        /// </summary>
         [Test]
         public void IonRange_SetAndGet_StoresCorrectValue()
         {
@@ -197,9 +164,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies torpedo range set and get stores correct value.
-        /// </summary>
         [Test]
         public void TorpedoRange_SetAndGet_StoresCorrectValue()
         {
@@ -212,9 +176,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies squadron size set and get stores correct value.
-        /// </summary>
         [Test]
         public void SquadronSize_SetAndGet_StoresCorrectValue()
         {
@@ -227,9 +188,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies squadron size default value is zero.
-        /// </summary>
         [Test]
         public void SquadronSize_DefaultValue_IsZero()
         {
@@ -242,9 +200,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies detection rating set and get stores correct value.
-        /// </summary>
         [Test]
         public void DetectionRating_SetAndGet_StoresCorrectValue()
         {
@@ -257,9 +212,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies detection rating default value is zero.
-        /// </summary>
         [Test]
         public void DetectionRating_DefaultValue_IsZero()
         {
@@ -272,9 +224,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies bombardment set and get stores correct value.
-        /// </summary>
         [Test]
         public void Bombardment_SetAndGet_StoresCorrectValue()
         {
@@ -287,9 +236,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies bombardment default value is zero.
-        /// </summary>
         [Test]
         public void Bombardment_DefaultValue_IsZero()
         {
@@ -298,9 +244,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, newStarfighter.Bombardment, "Bombardment should default to 0");
         }
 
-        /// <summary>
-        /// Verifies hyperdrive set and get stores correct value.
-        /// </summary>
         [Test]
         public void Hyperdrive_SetAndGet_StoresCorrectValue()
         {
@@ -313,9 +256,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies hyperdrive default value is zero.
-        /// </summary>
         [Test]
         public void Hyperdrive_DefaultValue_IsZero()
         {
@@ -324,9 +264,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, newStarfighter.Hyperdrive, "Hyperdrive should default to 0");
         }
 
-        /// <summary>
-        /// Verifies sublight speed set and get stores correct value.
-        /// </summary>
         [Test]
         public void SublightSpeed_SetAndGet_StoresCorrectValue()
         {
@@ -339,9 +276,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies sublight speed default value is zero.
-        /// </summary>
         [Test]
         public void SublightSpeed_DefaultValue_IsZero()
         {
@@ -350,9 +284,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, newStarfighter.SublightSpeed, "SublightSpeed should default to 0");
         }
 
-        /// <summary>
-        /// Verifies agility set and get stores correct value.
-        /// </summary>
         [Test]
         public void Agility_SetAndGet_StoresCorrectValue()
         {
@@ -365,9 +296,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies agility default value is zero.
-        /// </summary>
         [Test]
         public void Agility_DefaultValue_IsZero()
         {
@@ -376,9 +304,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, newStarfighter.Agility, "Agility should default to 0");
         }
 
-        /// <summary>
-        /// Verifies shield strength set and get stores correct value.
-        /// </summary>
         [Test]
         public void ShieldStrength_SetAndGet_StoresCorrectValue()
         {
@@ -391,9 +316,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies shield strength default value is zero.
-        /// </summary>
         [Test]
         public void ShieldStrength_DefaultValue_IsZero()
         {
@@ -402,9 +324,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(0, newStarfighter.ShieldStrength, "ShieldStrength should default to 0");
         }
 
-        /// <summary>
-        /// Verifies manufacturing progress set and get stores correct value.
-        /// </summary>
         [Test]
         public void ManufacturingProgress_SetAndGet_StoresCorrectValue()
         {
@@ -417,9 +336,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies manufacturing progress default value is zero.
-        /// </summary>
         [Test]
         public void ManufacturingProgress_DefaultValue_IsZero()
         {
@@ -432,9 +348,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies manufacturing progress increment updates correctly.
-        /// </summary>
         [Test]
         public void ManufacturingProgress_Increment_UpdatesCorrectly()
         {
@@ -448,9 +361,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies manufacturing status set to completed stores correct value.
-        /// </summary>
         [Test]
         public void ManufacturingStatus_SetToCompleted_StoresCorrectValue()
         {
@@ -463,9 +373,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies manufacturing status default value is building.
-        /// </summary>
         [Test]
         public void ManufacturingStatus_DefaultValue_IsBuilding()
         {
@@ -478,9 +385,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies producer owner id set and get stores correct value.
-        /// </summary>
         [Test]
         public void ProducerOwnerID_SetAndGet_StoresCorrectValue()
         {
@@ -493,9 +397,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies producer owner id default value is null.
-        /// </summary>
         [Test]
         public void ProducerOwnerID_DefaultValue_IsNull()
         {
@@ -504,9 +405,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsNull(newStarfighter.ProducerOwnerID, "ProducerOwnerID should default to null");
         }
 
-        /// <summary>
-        /// Verifies producer owner id set to null stores null.
-        /// </summary>
         [Test]
         public void ProducerOwnerID_SetToNull_StoresNull()
         {
@@ -519,9 +417,6 @@ namespace Rebellion.Tests.Game.Units
             );
         }
 
-        /// <summary>
-        /// Verifies serialize and deserialize with populated starfighter maintains state.
-        /// </summary>
         [Test]
         public void SerializeAndDeserialize_WithPopulatedStarfighter_MaintainsState()
         {

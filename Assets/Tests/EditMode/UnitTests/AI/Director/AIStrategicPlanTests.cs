@@ -10,9 +10,6 @@ namespace Rebellion.Tests.AI.Director
     [TestFixture]
     public class AIStrategicPlanTests
     {
-        /// <summary>
-        /// Verifies fleet count change redistributes independent mobile strength target.
-        /// </summary>
         [Test]
         public void FleetCountChange_RedistributesIndependentMobileStrengthTarget()
         {
@@ -45,9 +42,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(1750, tenPlanetPlan.AssemblyFleetCombatStrength);
         }
 
-        /// <summary>
-        /// Verifies mobilestrengthtarget coversminimumstrengthforeverytargetfleet.
-        /// </summary>
         [Test]
         public void MobileStrengthTarget_CoversMinimumStrengthForEveryTargetFleet()
         {

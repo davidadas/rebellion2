@@ -19,9 +19,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
-        /// <summary>
-        /// Verifies build command menu player faction returns authored order and default checks.
-        /// </summary>
         [Test]
         public void BuildCommandMenu_PlayerFaction_ReturnsAuthoredOrderAndDefaultChecks()
         {
@@ -60,9 +57,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             );
         }
 
-        /// <summary>
-        /// Verifies build command menu without player faction disables all commands.
-        /// </summary>
         [Test]
         public void BuildCommandMenu_WithoutPlayerFaction_DisablesAllCommands()
         {
@@ -72,9 +66,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(commandMenu.All(command => !command.Enabled));
         }
 
-        /// <summary>
-        /// Verifies build notification menu saved category setting returns authored order and checks.
-        /// </summary>
         [Test]
         public void BuildNotificationMenu_SavedCategorySetting_ReturnsAuthoredOrderAndChecks()
         {
@@ -117,9 +108,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsFalse(commands.Single(command => command.Text == "Mark All Read").Enabled);
         }
 
-        /// <summary>
-        /// Verifies build notification menu with unread messages enables mark all read.
-        /// </summary>
         [Test]
         public void BuildNotificationMenu_UnreadMessages_EnablesMarkAllRead()
         {
@@ -132,9 +120,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(commands.Single(command => command.Text == "Mark All Read").Enabled);
         }
 
-        /// <summary>
-        /// Verifies build notification menu without player faction disables all commands.
-        /// </summary>
         [Test]
         public void BuildNotificationMenu_WithoutPlayerFaction_DisablesAllCommands()
         {
@@ -149,9 +134,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             );
         }
 
-        /// <summary>
-        /// Verifies on context menu command selected manage production enabled processes automation immediately.
-        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ManageProductionEnabled_ProcessesAutomationImmediately()
         {
@@ -188,9 +170,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(faction, actions.ProcessedFaction);
         }
 
-        /// <summary>
-        /// Verifies on context menu command selected manage naming enabled processes automation immediately.
-        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ManageNamingEnabled_ProcessesAutomationImmediately()
         {
@@ -227,9 +206,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreSame(faction, actions.ProcessedFaction);
         }
 
-        /// <summary>
-        /// Verifies on context menu command selected management toggles play authored enable and disable responses.
-        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ManagementToggles_PlayAuthoredEnableAndDisableResponses()
         {
@@ -300,9 +276,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies on context menu command selected rapid management toggles stop previous response audio.
-        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_RapidManagementToggles_StopPreviousResponseAudio()
         {
@@ -375,9 +348,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies on context menu command selected management response holds animation for audio duration.
-        /// </summary>
         [Test]
         public void OnContextMenuCommandSelected_ManagementResponse_HoldsAnimationForAudioDuration()
         {
@@ -422,9 +392,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies handle playback started next queued response preserves previous response audio.
-        /// </summary>
         [Test]
         public void HandlePlaybackStarted_NextQueuedResponse_PreservesPreviousResponseAudio()
         {
@@ -506,9 +473,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies render same theme after idle frames load refreshes advisor images.
-        /// </summary>
         [Test]
         public void Render_SameThemeAfterIdleFramesLoad_RefreshesAdvisorImages()
         {
@@ -545,9 +509,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies process pending frames still loading retains notification until playback is ready.
-        /// </summary>
         [Test]
         public void ProcessPending_FramesStillLoading_RetainsNotificationUntilPlaybackIsReady()
         {
@@ -615,9 +576,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies process pending custom notification uses authored animation and audio paths.
-        /// </summary>
         [Test]
         public void ProcessPending_CustomNotification_UsesAuthoredAnimationAndAudioPaths()
         {
@@ -676,9 +634,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies play invalid order rejected authored response replaces playback.
-        /// </summary>
         [Test]
         public void PlayInvalidOrderRejected_AuthoredResponse_ReplacesPlayback()
         {
@@ -723,9 +678,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies replace animation valid playback invokes playback callbacks.
-        /// </summary>
         [Test]
         public void ReplaceAnimation_ValidPlayback_InvokesPlaybackCallbacks()
         {
@@ -768,9 +720,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies replace animation empty playback cancels active playback and completes replacement.
-        /// </summary>
         [Test]
         public void ReplaceAnimation_EmptyPlayback_CancelsActivePlaybackAndCompletesReplacement()
         {
@@ -812,9 +761,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
-        /// <summary>
-        /// Verifies cancel animation active playback does not invoke completion.
-        /// </summary>
         [Test]
         public void CancelAnimation_ActivePlayback_DoesNotInvokeCompletion()
         {

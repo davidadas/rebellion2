@@ -40,11 +40,6 @@ namespace Rebellion.Tests.Content
             "<GameConfig><Movement><DistanceScale>12</DistanceScale></Movement>"
             + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research></GameConfig>";
 
-        /// <summary>
-        /// Verifies resolve player content root path desktop player returns directory beside artifact.
-        /// </summary>
-        /// <param name="platform">The platform.</param>
-        /// <param name="relativeDataPath">The relative data path.</param>
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents")]
         [TestCase(RuntimePlatform.LinuxPlayer, "Game_Data")]
@@ -62,9 +57,6 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(Path.Combine(playerDirectory, "Content"), contentRoot);
         }
 
-        /// <summary>
-        /// Verifies resolve player content root path mac bundle layout does not depend on platform enum.
-        /// </summary>
         [Test]
         public void ResolvePlayerContentRootPath_MacBundleLayout_DoesNotDependOnPlatformEnum()
         {
@@ -85,9 +77,6 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(Path.Combine(playerDirectory, "Content"), contentRoot);
         }
 
-        /// <summary>
-        /// Verifies load game config no pack override path uses application defaults.
-        /// </summary>
         [Test]
         public void LoadGameConfig_NoPackOverridePath_UsesApplicationDefaults()
         {
@@ -100,9 +89,6 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(1, config.Research.BaseResearchPoints);
         }
 
-        /// <summary>
-        /// Verifies load game config pack override leaf replaces default value.
-        /// </summary>
         [Test]
         public void LoadGameConfig_PackOverrideLeaf_ReplacesDefaultValue()
         {
@@ -115,9 +101,6 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(1, config.Research.BaseResearchPoints);
         }
 
-        /// <summary>
-        /// Verifies load game config pack supplies section missing from defaults merges into defaults.
-        /// </summary>
         [Test]
         public void LoadGameConfig_PackSuppliesSectionMissingFromDefaults_MergesIntoDefaults()
         {
@@ -130,9 +113,6 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(3, config.Research.BaseResearchPoints);
         }
 
-        /// <summary>
-        /// Verifies load game config merged document missing required element rejects document.
-        /// </summary>
         [Test]
         public void LoadGameConfig_MergedDocumentMissingRequiredElement_RejectsDocument()
         {
@@ -141,9 +121,6 @@ namespace Rebellion.Tests.Content
             );
         }
 
-        /// <summary>
-        /// Verifies load game config unknown override element rejects document.
-        /// </summary>
         [Test]
         public void LoadGameConfig_UnknownOverrideElement_RejectsDocument()
         {

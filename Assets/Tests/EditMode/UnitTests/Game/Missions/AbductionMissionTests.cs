@@ -15,9 +15,6 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class AbductionMissionTests
     {
-        /// <summary>
-        /// Verifies try create target in transit returns null.
-        /// </summary>
         [Test]
         public void TryCreate_TargetInTransit_ReturnsNull()
         {
@@ -44,9 +41,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission);
         }
 
-        /// <summary>
-        /// Verifies try create hostile officer in fleet over friendly planet returns mission.
-        /// </summary>
         [Test]
         public void TryCreate_HostileOfficerInFleetOverFriendlyPlanet_ReturnsMission()
         {
@@ -75,9 +69,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNotNull(mission);
         }
 
-        /// <summary>
-        /// Verifies try create null target returns null.
-        /// </summary>
         [Test]
         public void TryCreate_NullTarget_ReturnsNull()
         {
@@ -101,9 +92,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null when target is null");
         }
 
-        /// <summary>
-        /// Verifies try create non planet target returns null.
-        /// </summary>
         [Test]
         public void TryCreate_NonPlanetTarget_ReturnsNull()
         {
@@ -127,9 +115,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null when target is not a Planet");
         }
 
-        /// <summary>
-        /// Verifies try create no valid target returns null.
-        /// </summary>
         [Test]
         public void TryCreate_NoValidTarget_ReturnsNull()
         {
@@ -155,9 +140,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies try create friendly officer as target returns null.
-        /// </summary>
         [Test]
         public void TryCreate_FriendlyOfficerAsTarget_ReturnsNull()
         {
@@ -187,9 +169,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies try create target already captured returns null.
-        /// </summary>
         [Test]
         public void TryCreate_TargetAlreadyCaptured_ReturnsNull()
         {
@@ -217,9 +196,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(mission, "TryCreate should return null when target is already captured");
         }
 
-        /// <summary>
-        /// Verifies try create target on wrong planet returns null.
-        /// </summary>
         [Test]
         public void TryCreate_TargetOnWrongPlanet_ReturnsNull()
         {
@@ -248,9 +224,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies try create valid target returns not null.
-        /// </summary>
         [Test]
         public void TryCreate_ValidTarget_ReturnsNotNull()
         {
@@ -281,9 +254,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("target", ((AbductionMission)mission).TargetOfficerInstanceID);
         }
 
-        /// <summary>
-        /// Verifies resolve objective target on enemy planet sets target captured.
-        /// </summary>
         [Test]
         public void ResolveObjective_TargetOnEnemyPlanet_SetsTargetCaptured()
         {
@@ -319,9 +289,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective target on enemy planet returns character captured result.
-        /// </summary>
         [Test]
         public void ResolveObjective_TargetOnEnemyPlanet_ReturnsCharacterCapturedResult()
         {
@@ -365,9 +332,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective minor target dies from capture injury does not capture target.
-        /// </summary>
         [Test]
         public void ResolveObjective_MinorTargetDiesFromCaptureInjury_DoesNotCaptureTarget()
         {
@@ -403,9 +367,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies resolve objective target avoids capture injury is captured without injury.
-        /// </summary>
         [Test]
         public void ResolveObjective_TargetAvoidsCaptureInjury_IsCapturedWithoutInjury()
         {
@@ -440,9 +401,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(target.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies resolve objective multiple successful participants each attempts capture.
-        /// </summary>
         [Test]
         public void ResolveObjective_MultipleSuccessfulParticipants_EachAttemptsCapture()
         {
@@ -472,9 +430,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(target.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies update mission target already captured returns failed.
-        /// </summary>
         [Test]
         public void UpdateMission_TargetAlreadyCaptured_ReturnsFailed()
         {
@@ -520,9 +475,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies update mission target moved to different planet does not roll or improve participant.
-        /// </summary>
         [Test]
         public void UpdateMission_TargetMovedToDifferentPlanet_DoesNotRollOrImproveParticipant()
         {
@@ -579,9 +531,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(originalCombat, officer.GetBaseRating(OfficerRating.Combat));
         }
 
-        /// <summary>
-        /// Verifies resolve objective target removed from scene returns failed.
-        /// </summary>
         [Test]
         public void ResolveObjective_TargetRemovedFromScene_ReturnsFailed()
         {
@@ -621,9 +570,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies update mission successful abduction moves target to abductor origin.
-        /// </summary>
         [Test]
         public void UpdateMission_SuccessfulAbduction_MovesTargetToAbductorOrigin()
         {
@@ -677,9 +623,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies update mission successful abduction with special forces moves target to abductor origin.
-        /// </summary>
         [Test]
         public void UpdateMission_SuccessfulAbductionWithSpecialForces_MovesTargetToAbductorOrigin()
         {
@@ -740,9 +683,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies get successful return passengers target captured by owner returns target.
-        /// </summary>
         [Test]
         public void GetSuccessfulReturnPassengers_TargetCapturedByOwner_ReturnsTarget()
         {
@@ -766,9 +706,6 @@ namespace Rebellion.Tests.Game.Missions
             CollectionAssert.AreEqual(new IMovable[] { target }, passengers);
         }
 
-        /// <summary>
-        /// Verifies get successful return passengers target not captured by owner returns empty.
-        /// </summary>
         [Test]
         public void GetSuccessfulReturnPassengers_TargetNotCapturedByOwner_ReturnsEmpty()
         {
@@ -792,9 +729,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsEmpty(passengers);
         }
 
-        /// <summary>
-        /// Verifies serialize round trip preserves data.
-        /// </summary>
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
@@ -823,9 +757,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(5, deserialized.MaxProgress);
         }
 
-        /// <summary>
-        /// Verifies roll participant success subtracts target combat from participant combat.
-        /// </summary>
         [Test]
         public void RollParticipantSuccess_SubtractsTargetCombatFromParticipantCombat()
         {

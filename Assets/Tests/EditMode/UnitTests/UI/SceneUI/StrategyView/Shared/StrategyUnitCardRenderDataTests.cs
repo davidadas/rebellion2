@@ -6,9 +6,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
     [TestFixture]
     public sealed class StrategyUnitCardRenderDataTests
     {
-        /// <summary>
-        /// Verifies constructor null name normalizes name.
-        /// </summary>
         [Test]
         public void Constructor_NullName_NormalizesName()
         {

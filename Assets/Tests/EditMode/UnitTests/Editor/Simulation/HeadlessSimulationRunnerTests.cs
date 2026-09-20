@@ -17,9 +17,6 @@ namespace Rebellion.Tests.Editor.Simulation
     [TestFixture]
     public sealed class HeadlessSimulationRunnerTests
     {
-        /// <summary>
-        /// Verifies manufactured unit tracker record completion counts facility once.
-        /// </summary>
         [Test]
         public void SimulationOptions_ParseDifficulty_UsesRequestedValue()
         {
@@ -31,9 +28,6 @@ namespace Rebellion.Tests.Editor.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies parsing without a difficulty argument defaults to medium.
-        /// </summary>
         [Test]
         public void SimulationOptions_ParseDifficulty_DefaultsToMedium()
         {
@@ -45,9 +39,6 @@ namespace Rebellion.Tests.Editor.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies recording the same facility completion twice counts it once.
-        /// </summary>
         [Test]
         public void ManufacturedUnitTracker_RecordCompletion_CountsFacilityOnce()
         {
@@ -128,9 +119,6 @@ namespace Rebellion.Tests.Editor.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies mission outcome tracking records changed-side diplomacy and its fog refresh.
-        /// </summary>
         [Test]
         public void MissionOutcomeTracker_RecordChangedSideDiplomacy_RecordsOwnershipAndRefresh()
         {

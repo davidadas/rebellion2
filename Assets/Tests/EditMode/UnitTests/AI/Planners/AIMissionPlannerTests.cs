@@ -19,9 +19,6 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public class AIMissionPlannerTests
     {
-        /// <summary>
-        /// Verifies plan with reconnaissance team adds proposal for nearest unexplored planet.
-        /// </summary>
         [Test]
         public void Plan_WithReconnaissanceTeam_AddsProposalForNearestUnexploredPlanet()
         {
@@ -62,9 +59,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(nearTarget.InstanceID, proposal.TargetPlanet.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies a reconnaissance team can target the nearest unexplored Outer Rim planet.
-        /// </summary>
         [Test]
         public void Plan_WithUnexploredOuterRimPlanet_AddsReconnaissanceProposal()
         {
@@ -110,9 +104,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan withnonmainrecruiter doesnotaddrecruitmentproposal.
-        /// </summary>
         [Test]
         public void Plan_WithNonMainRecruiter_DoesNotAddRecruitmentProposal()
         {
@@ -138,9 +129,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with main recruiter adds recruitment proposal.
-        /// </summary>
         [Test]
         public void Plan_WithMainRecruiter_AddsRecruitmentProposal()
         {
@@ -166,9 +154,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with multiple qualified recruiters uses lowest diplomacy officer.
-        /// </summary>
         [Test]
         public void Plan_WithMultipleQualifiedRecruiters_UsesLowestDiplomacyOfficer()
         {
@@ -200,9 +185,6 @@ namespace Rebellion.Tests.AI.Planners
             CollectionAssert.AreEqual(new[] { recruiter.InstanceID }, recruiterIds);
         }
 
-        /// <summary>
-        /// Verifies plan with preferred recruiter only assigns recruitment to officer.
-        /// </summary>
         [Test]
         public void Plan_WithPreferredRecruiter_OnlyAssignsRecruitmentToOfficer()
         {
@@ -230,9 +212,6 @@ namespace Rebellion.Tests.AI.Planners
             CollectionAssert.AreEqual(new[] { MissionTypeIDs.Recruitment }, missionTypeIds);
         }
 
-        /// <summary>
-        /// Verifies plan with limited recruitment frontier retains highest scoring planets.
-        /// </summary>
         [Test]
         public void Plan_WithLimitedRecruitmentFrontier_RetainsHighestScoringPlanets()
         {
@@ -286,9 +265,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with known sabotage target adds executable targeted proposal.
-        /// </summary>
         [Test]
         public void Plan_WithKnownSabotageTarget_AddsExecutableTargetedProposal()
         {
@@ -327,9 +303,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(building.InstanceID, mission.SabotageTargetInstanceID);
         }
 
-        /// <summary>
-        /// Verifies plan with duplicate sabotage target types offers one representative.
-        /// </summary>
         [Test]
         public void Plan_WithDuplicateSabotageTargetTypes_OffersOneRepresentative()
         {
@@ -373,9 +346,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(first.InstanceID, proposals[0].SelectedTarget.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies plan with several active hostile missions adds additional sabotage proposal.
-        /// </summary>
         [Test]
         public void Plan_WithSeveralActiveHostileMissions_AddsAdditionalSabotageProposal()
         {
@@ -421,9 +391,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(building.InstanceID, proposal.SelectedTarget.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies plan with active sabotage mission excludes its selected target.
-        /// </summary>
         [Test]
         public void Plan_WithActiveSabotageMission_ExcludesItsSelectedTarget()
         {
@@ -489,9 +456,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with shield blocked attack prioritizes blocking shield.
-        /// </summary>
         [Test]
         public void Plan_WithShieldBlockedAttack_PrioritizesBlockingShield()
         {
@@ -551,9 +515,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(((Building)proposal.SelectedTarget).IsPlanetaryShieldGenerator());
         }
 
-        /// <summary>
-        /// Verifies plan with attack preparation targets offers only highest priority targets.
-        /// </summary>
         [Test]
         public void Plan_WithAttackPreparationTargets_OffersOnlyHighestPriorityTargets()
         {
@@ -611,9 +572,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(defense.InstanceID, proposals[0].SelectedTarget.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies plan with mixed sabotage targets offers only shield generators.
-        /// </summary>
         [Test]
         public void Plan_WithMixedSabotageTargets_OffersOnlyShieldGenerators()
         {
@@ -649,9 +607,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(shield.InstanceID, proposals[0].SelectedTarget.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies plan with only garrisoned regiment adds sabotage proposal.
-        /// </summary>
         [Test]
         public void Plan_WithOnlyGarrisonedRegiment_AddsSabotageProposal()
         {
@@ -679,9 +634,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreEqual(regiment.InstanceID, proposal.SelectedTarget.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies decoy intents retain one unit as a primary agent.
-        /// </summary>
         [Test]
         public void Plan_WithDecoyIntents_RetainsOneUnitAsPrimaryAgent()
         {
@@ -730,9 +682,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(proposals.Any(proposal => proposal.Participant == specialForcesDecoy));
         }
 
-        /// <summary>
-        /// Verifies plan without qualified special forces does not assign officer decoy.
-        /// </summary>
         [Test]
         public void Plan_WithoutQualifiedSpecialForces_DoesNotAssignOfficerDecoy()
         {
@@ -764,9 +713,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsEmpty(proposal.DecoyParticipants);
         }
 
-        /// <summary>
-        /// Verifies execute with decoy creates mission with separate participant roles.
-        /// </summary>
         [Test]
         public void Execute_WithDecoy_CreatesMissionWithSeparateParticipantRoles()
         {
@@ -813,9 +759,6 @@ namespace Rebellion.Tests.AI.Planners
             CollectionAssert.AreEqual(new[] { primaryAgent }, mission.GetDecoyParticipants());
         }
 
-        /// <summary>
-        /// Verifies plan with stale enemy intel adds espionage without hostile mission.
-        /// </summary>
         [Test]
         public void Plan_WithStaleEnemyIntel_AddsEspionageWithoutHostileMission()
         {
@@ -861,9 +804,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with stale shield blocked attack adds sabotage proposal.
-        /// </summary>
         [Test]
         public void Plan_WithStaleShieldBlockedAttack_AddsSabotageProposal()
         {
@@ -906,9 +846,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with multiple spies offers every distinct target.
-        /// </summary>
         [Test]
         public void Plan_WithMultipleSpies_OffersEveryDistinctTarget()
         {
@@ -955,9 +892,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with qualified trainer and student adds team training proposal.
-        /// </summary>
         [Test]
         public void Plan_WithQualifiedTrainerAndStudent_AddsTeamTrainingProposal()
         {
@@ -987,9 +921,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with qualified trainer and no known student allows other mission proposals.
-        /// </summary>
         [Test]
         public void Plan_WithQualifiedTrainerAndNoKnownStudent_AllowsOtherMissionProposals()
         {
@@ -1010,9 +941,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(proposals.Any(proposal => proposal.Participants.Contains(trainer)));
         }
 
-        /// <summary>
-        /// Verifies plan with qualified trainer and remote student allows other mission proposals.
-        /// </summary>
         [Test]
         public void Plan_WithQualifiedTrainerAndRemoteStudent_AllowsOtherMissionProposals()
         {
@@ -1049,9 +977,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(proposals.Any(proposal => proposal.Participants.Contains(trainer)));
         }
 
-        /// <summary>
-        /// Verifies plan with captured friendly officer adds rescue proposal.
-        /// </summary>
         [Test]
         public void Plan_WithCapturedFriendlyOfficer_AddsRescueProposal()
         {
@@ -1081,9 +1006,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(proposal.CanExecute(context));
         }
 
-        /// <summary>
-        /// Verifies plan with captured friendly officer aboard fleet adds rescue proposal.
-        /// </summary>
         [Test]
         public void Plan_WithCapturedFriendlyOfficerAboardFleet_AddsRescueProposal()
         {
@@ -1117,9 +1039,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(proposal.CanExecute(context));
         }
 
-        /// <summary>
-        /// Verifies plan with only officer available does not add rescue proposal.
-        /// </summary>
         [Test]
         public void Plan_WithOnlyOfficerAvailable_DoesNotAddRescueProposal()
         {
@@ -1145,9 +1064,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with captured officer in transit does not add rescue proposal.
-        /// </summary>
         [Test]
         public void Plan_WithCapturedOfficerInTransit_DoesNotAddRescueProposal()
         {
@@ -1177,9 +1093,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with available research adds matching discipline proposal.
-        /// </summary>
         [Test]
         public void Plan_WithAvailableResearch_AddsMatchingDisciplineProposal()
         {
@@ -1214,9 +1127,6 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(proposal.CanExecute(context));
         }
 
-        /// <summary>
-        /// Verifies plan with multiple diplomacy targets offers production infrastructure.
-        /// </summary>
         [Test]
         public void Plan_WithMultipleDiplomacyTargets_OffersProductionInfrastructure()
         {
@@ -1265,9 +1175,6 @@ namespace Rebellion.Tests.AI.Planners
             );
         }
 
-        /// <summary>
-        /// Verifies plan with qualified diplomat and valid target offers only diplomacy.
-        /// </summary>
         [Test]
         public void Plan_WithQualifiedDiplomatAndValidTarget_OffersOnlyDiplomacy()
         {

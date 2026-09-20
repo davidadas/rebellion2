@@ -6,9 +6,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
     [TestFixture]
     public class FactionThemeTests
     {
-        /// <summary>
-        /// Verifies get primary color valid hex returns parsed color.
-        /// </summary>
         [Test]
         public void GetPrimaryColor_ValidHex_ReturnsParsedColor()
         {
@@ -19,9 +16,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual(new Color32(0x12, 0x34, 0x56, 0xff), (Color32)color);
         }
 
-        /// <summary>
-        /// Verifies get primary color invalid hex returns white.
-        /// </summary>
         [Test]
         public void GetPrimaryColor_InvalidHex_ReturnsWhite()
         {
@@ -32,9 +26,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual(Color.white, color);
         }
 
-        /// <summary>
-        /// Verifies get primary color whitespace hex returns white.
-        /// </summary>
         [Test]
         public void GetPrimaryColor_WhitespaceHex_ReturnsWhite()
         {
@@ -45,9 +36,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual(Color.white, color);
         }
 
-        /// <summary>
-        /// Verifies get primary color after first read returns cached color.
-        /// </summary>
         [Test]
         public void GetPrimaryColor_AfterFirstRead_ReturnsCachedColor()
         {

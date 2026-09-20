@@ -31,9 +31,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UnityEngine.Object.DestroyImmediate(_secondTexture);
         }
 
-        /// <summary>
-        /// Verifies display source changes preserves read only category snapshot.
-        /// </summary>
         [Test]
         public void Display_SourceChanges_PreservesReadOnlyCategorySnapshot()
         {
@@ -77,9 +74,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
-        /// <summary>
-        /// Verifies submenu source changes preserves read only filter snapshot.
-        /// </summary>
         [Test]
         public void Submenu_SourceChanges_PreservesReadOnlyFilterSnapshot()
         {
@@ -111,9 +105,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
-        /// <summary>
-        /// Verifies filter null label text normalizes to empty string.
-        /// </summary>
         [Test]
         public void Filter_NullLabelText_NormalizesToEmptyString()
         {
@@ -143,9 +134,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(string.Empty, data.Label.Text);
         }
 
-        /// <summary>
-        /// Verifies frame source changes preserves read only texture snapshot.
-        /// </summary>
         [Test]
         public void Frame_SourceChanges_PreservesReadOnlyTextureSnapshot()
         {

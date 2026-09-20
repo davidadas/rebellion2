@@ -8,9 +8,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
     [TestFixture]
     public class GalaxyMapSnapshotTests
     {
-        /// <summary>
-        /// Verifies planet values preserves normalized snapshot.
-        /// </summary>
         [Test]
         public void Planet_Values_PreservesNormalizedSnapshot()
         {
@@ -26,9 +23,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsNull(snapshot.Sector);
         }
 
-        /// <summary>
-        /// Verifies sector source changes preserves planet snapshot and attaches sector.
-        /// </summary>
         [Test]
         public void Sector_SourceChanges_PreservesPlanetSnapshotAndAttachesSector()
         {
@@ -52,9 +46,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
-        /// <summary>
-        /// Verifies sector null planets returns empty snapshot.
-        /// </summary>
         [Test]
         public void Sector_NullPlanets_ReturnsEmptySnapshot()
         {
@@ -63,9 +54,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsEmpty(sector.Planets);
         }
 
-        /// <summary>
-        /// Verifies sector planet already attached to different sector throws invalid operation exception.
-        /// </summary>
         [Test]
         public void Sector_PlanetAlreadyAttachedToDifferentSector_ThrowsInvalidOperationException()
         {
@@ -78,9 +66,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
         }
 
-        /// <summary>
-        /// Verifies attach to sector null sector throws argument null exception.
-        /// </summary>
         [Test]
         public void AttachToSector_NullSector_ThrowsArgumentNullException()
         {

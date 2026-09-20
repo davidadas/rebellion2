@@ -16,9 +16,6 @@ namespace Rebellion.Tests.Sectors
     [TestFixture]
     public class MaintenanceSystemTests
     {
-        /// <summary>
-        /// Verifies constructor with null game throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
@@ -31,9 +28,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("game", exception.ParamName);
         }
 
-        /// <summary>
-        /// Verifies constructor with null fleet system throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_WithNullFleetSystem_ThrowsArgumentNullException()
         {
@@ -46,9 +40,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual("fleetSystem", exception.ParamName);
         }
 
-        /// <summary>
-        /// Verifies process tick no shortfall does not scrap.
-        /// </summary>
         [Test]
         public void ProcessTick_NoShortfall_DoesNotScrap()
         {
@@ -82,9 +73,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
 
-        /// <summary>
-        /// Verifies process tick shortfall after autoscrap interval scraps one unit.
-        /// </summary>
         [Test]
         public void ProcessTick_Shortfall_AfterAutoscrapInterval_ScrapsOneUnit()
         {
@@ -147,9 +135,6 @@ namespace Rebellion.Tests.Sectors
             Assert.Greater(shortfall.Amount, 0);
         }
 
-        /// <summary>
-        /// Verifies process tick shortfall before autoscrap interval does not scrap again.
-        /// </summary>
         [Test]
         public void ProcessTick_Shortfall_BeforeAutoscrapInterval_DoesNotScrapAgain()
         {
@@ -201,9 +186,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(2, remaining);
         }
 
-        /// <summary>
-        /// Verifies process tick shortfall continues scrapping while over capacity.
-        /// </summary>
         [Test]
         public void ProcessTick_Shortfall_ContinuesScrappingWhileOverCapacity()
         {
@@ -250,9 +232,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(1, remaining);
         }
 
-        /// <summary>
-        /// Verifies process tick unit under construction does not scrap.
-        /// </summary>
         [Test]
         public void ProcessTick_UnitUnderConstruction_DoesNotScrap()
         {
@@ -293,9 +272,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(secondResults.OfType<GameObjectAutoscrappedResult>().Any());
         }
 
-        /// <summary>
-        /// Verifies process tick unit under construction reserves maintenance.
-        /// </summary>
         [Test]
         public void ProcessTick_UnitUnderConstruction_ReservesMaintenance()
         {
@@ -335,9 +311,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
 
-        /// <summary>
-        /// Verifies process tick unit in transit remains eligible for autoscrap.
-        /// </summary>
         [Test]
         public void ProcessTick_UnitInTransit_RemainsEligibleForAutoscrap()
         {
@@ -391,9 +364,6 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
-        /// <summary>
-        /// Verifies process tick excess buildings over capacity scraps buildings.
-        /// </summary>
         [Test]
         public void ProcessTick_ExcessBuildingsOverCapacity_ScrapsBuildings()
         {
@@ -433,9 +403,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(defense.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies process tick zero maintenance infrastructure present scraps positive maintenance unit first.
-        /// </summary>
         [Test]
         public void ProcessTick_ZeroMaintenanceInfrastructurePresent_ScrapsPositiveMaintenanceUnitFirst()
         {
@@ -477,9 +444,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies get maintenance capacity faction with planets calculates correctly.
-        /// </summary>
         [Test]
         public void GetMaintenanceCapacity_FactionWithPlanets_CalculatesCorrectly()
         {
@@ -500,9 +464,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(50, capacity);
         }
 
-        /// <summary>
-        /// Verifies get maintenance capacity refinement multiplier does not change capacity.
-        /// </summary>
         [Test]
         public void GetMaintenanceCapacity_RefinementMultiplierDoesNotChangeCapacity()
         {
@@ -521,9 +482,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(50, empire.MaintenanceCapacity);
         }
 
-        /// <summary>
-        /// Verifies get maintenance capacity mine and refinery on different planets calculates global pair.
-        /// </summary>
         [Test]
         public void GetMaintenanceCapacity_MineAndRefineryOnDifferentPlanets_CalculatesGlobalPair()
         {
@@ -544,9 +502,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(50, capacity);
         }
 
-        /// <summary>
-        /// Verifies try scrap owned surface regiment refunds removes and reports garrison change.
-        /// </summary>
         [Test]
         public void TryScrap_OwnedSurfaceRegiment_RefundsRemovesAndReportsGarrisonChange()
         {
@@ -586,9 +541,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(planet, results.OfType<PlanetGarrisonChangedResult>().Single().Planet);
         }
 
-        /// <summary>
-        /// Verifies scrapping an owned building reports the object and its original planet.
-        /// </summary>
         [Test]
         public void TryScrap_OwnedBuilding_ReportsScrappedObjectAndContext()
         {
@@ -628,9 +580,6 @@ namespace Rebellion.Tests.Sectors
             Assert.AreSame(planet, scrappedResult.Context);
         }
 
-        /// <summary>
-        /// Verifies try scrap unit under construction preserves unit and materials.
-        /// </summary>
         [Test]
         public void TryScrap_UnitUnderConstruction_PreservesUnitAndMaterials()
         {
@@ -669,9 +618,6 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(results);
         }
 
-        /// <summary>
-        /// Verifies try scrap other faction unit preserves unit.
-        /// </summary>
         [Test]
         public void TryScrap_OtherFactionUnit_PreservesUnit()
         {

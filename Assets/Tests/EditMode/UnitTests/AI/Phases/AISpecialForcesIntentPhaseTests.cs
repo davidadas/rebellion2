@@ -15,9 +15,6 @@ namespace Rebellion.Tests.AI.Phases
     [TestFixture]
     public class AISpecialForcesIntentPhaseTests
     {
-        /// <summary>
-        /// Verifies execute with one replaceable unit retains it as a primary agent.
-        /// </summary>
         [Test]
         public void Execute_WithOneOfficerReplaceableUnit_RetainsPrimaryAgent()
         {
@@ -42,9 +39,6 @@ namespace Rebellion.Tests.AI.Phases
             );
         }
 
-        /// <summary>
-        /// Verifies execute without officer replacement keeps special forces as primary agent.
-        /// </summary>
         [Test]
         public void Execute_WithoutOfficerReplacement_KeepsSpecialForcesAsPrimaryAgent()
         {
@@ -69,9 +63,6 @@ namespace Rebellion.Tests.AI.Phases
             );
         }
 
-        /// <summary>
-        /// Verifies execute with multiple replaceable units retains one primary agent.
-        /// </summary>
         [Test]
         public void Execute_WithMultipleReplaceableUnits_RetainsOnePrimaryAgent()
         {
@@ -110,9 +101,6 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(SpecialForcesIntent.Decoy, context.GetSpecialForcesIntent(third));
         }
 
-        /// <summary>
-        /// Verifies execute with partially replaceable role keeps special forces as primary agent.
-        /// </summary>
         [Test]
         public void Execute_WithPartiallyReplaceableRole_KeepsSpecialForcesAsPrimaryAgent()
         {
