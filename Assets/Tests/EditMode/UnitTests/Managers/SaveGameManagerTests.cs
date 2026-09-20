@@ -690,7 +690,7 @@ namespace Rebellion.Tests.Managers
             GameEvent event1 = new GameEvent
             {
                 InstanceID = "EVENT1",
-                Schedule = new GameEventScheduler
+                Schedule = new GameEventSchedule
                 {
                     RandomInterval = new RandomInterval { MinimumTicks = 300, MaximumTicks = 400 },
                 },

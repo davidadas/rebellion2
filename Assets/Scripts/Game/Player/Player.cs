@@ -4,15 +4,6 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game
 {
     /// <summary>
-    /// Identifies the kind of controller assigned to a game participant.
-    /// </summary>
-    public enum PlayerControllerType
-    {
-        Human,
-        AI,
-    }
-
-    /// <summary>
     /// Represents one participant in a game and the faction that participant controls.
     /// </summary>
     [PersistableObject]

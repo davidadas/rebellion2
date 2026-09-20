@@ -258,8 +258,8 @@ namespace Rebellion.AI.Phases
                 return candidateIsSpecialForces;
 
             int ratingComparison = candidate
-                .GetEffectiveRating(OfficerRating.Espionage)
-                .CompareTo(selected.GetEffectiveRating(OfficerRating.Espionage));
+                .GetEffectiveRating(SkillRating.Espionage)
+                .CompareTo(selected.GetEffectiveRating(SkillRating.Espionage));
             if (ratingComparison != 0)
                 return ratingComparison > 0;
 

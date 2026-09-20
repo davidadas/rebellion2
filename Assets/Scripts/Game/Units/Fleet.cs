@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Missions;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -356,7 +355,7 @@ namespace Rebellion.Game.Units
         {
             Officer commander = GetOfficers()
                 .FirstOrDefault(o => o.CurrentRank == OfficerRank.General);
-            int personnel = commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
+            int personnel = commander?.GetEffectiveRating(SkillRating.Leadership) ?? 0;
             return (personnel / assaultPersonnelDivisor + 1) * GetCombatValue();
         }
 

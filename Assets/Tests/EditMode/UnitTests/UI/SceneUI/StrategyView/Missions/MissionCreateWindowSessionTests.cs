@@ -255,7 +255,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 new MissionOption(
                     typeId,
                     displayName,
-                    OfficerRating.Diplomacy,
+                    SkillRating.Diplomacy,
                     MissionTargetKind.Planet
                 )
             );

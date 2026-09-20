@@ -33,7 +33,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID
             );
             participant.AllowedMissionTypeIDs.Add(SubdueUprisingMission.MissionTypeID);
-            participant.Ratings[OfficerRating.Leadership] = 0;
+            participant.Ratings[SkillRating.Leadership] = 0;
             game.AttachNode(participant, planet);
             game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
             {

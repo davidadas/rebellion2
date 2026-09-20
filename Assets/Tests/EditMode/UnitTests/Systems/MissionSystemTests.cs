@@ -258,7 +258,7 @@ namespace Rebellion.Tests.Sectors
 
             Planet planet = inciteMission.GetParentOfType<Planet>();
             IMissionParticipant participant = inciteMission.GetMainParticipants().Single();
-            int leadershipBefore = participant.GetEffectiveRating(OfficerRating.Leadership);
+            int leadershipBefore = participant.GetEffectiveRating(SkillRating.Leadership);
             missionSystem.UpdateMission(diplomacyMission);
             List<GameResult> results = missionSystem.UpdateMission(inciteMission);
 
@@ -269,7 +269,7 @@ namespace Rebellion.Tests.Sectors
             Assert.IsTrue(planet.IsInUprising);
             Assert.AreEqual(
                 leadershipBefore,
-                participant.GetEffectiveRating(OfficerRating.Leadership)
+                participant.GetEffectiveRating(SkillRating.Leadership)
             );
 
             List<GameResult> diplomacyResults = missionSystem.UpdateMission(diplomacyMission);
@@ -315,7 +315,7 @@ namespace Rebellion.Tests.Sectors
                 MissionSystem missionSystem
             ) = BuildConcurrentMissionsScene(ownerSupport: 60, hasGarrison: false);
             Officer participant = (Officer)inciteMission.GetMainParticipants().Single();
-            int leadershipBefore = participant.GetBaseRating(OfficerRating.Leadership);
+            int leadershipBefore = participant.GetBaseRating(SkillRating.Leadership);
 
             List<GameResult> results = missionSystem.UpdateMission(inciteMission);
 
@@ -324,7 +324,7 @@ namespace Rebellion.Tests.Sectors
             Assert.IsNull(game.GetSceneNodeByInstanceID<Planet>("rebels_planet").OwnerInstanceID);
             Assert.AreEqual(
                 leadershipBefore + 1,
-                participant.GetBaseRating(OfficerRating.Leadership)
+                participant.GetBaseRating(SkillRating.Leadership)
             );
         }
 
@@ -565,9 +565,9 @@ namespace Rebellion.Tests.Sectors
             Officer weakDecoy = EntityFactory.CreateOfficer("weak-decoy-1", "empire");
             Officer secondWeakDecoy = EntityFactory.CreateOfficer("weak-decoy-2", "empire");
             Officer strongDecoy = EntityFactory.CreateOfficer("strong-decoy", "empire");
-            weakDecoy.SetBaseRating(OfficerRating.Espionage, 0);
-            secondWeakDecoy.SetBaseRating(OfficerRating.Espionage, 0);
-            strongDecoy.SetBaseRating(OfficerRating.Espionage, 200);
+            weakDecoy.SetBaseRating(SkillRating.Espionage, 0);
+            secondWeakDecoy.SetBaseRating(SkillRating.Espionage, 0);
+            strongDecoy.SetBaseRating(SkillRating.Espionage, 200);
             game.AttachNode(weakDecoy, spy.GetParent());
             game.AttachNode(secondWeakDecoy, spy.GetParent());
             game.AttachNode(strongDecoy, spy.GetParent());
@@ -744,11 +744,11 @@ namespace Rebellion.Tests.Sectors
             ) = BuildMissionOddsScene("rebels");
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.IsMain = false;
-            target.SetBaseRating(OfficerRating.Combat, 0);
+            target.SetBaseRating(SkillRating.Combat, 0);
             game.AttachNode(target, targetPlanet);
             Planet observedPlanet = targetPlanet.CreateCopy(recursive: true) as Planet;
             Officer observedTarget = observedPlanet.GetChildren<Officer>().Single();
-            target.SetBaseRating(OfficerRating.Combat, 100);
+            target.SetBaseRating(SkillRating.Combat, 100);
             game.Config.ProbabilityTables.Mission.Abduction = new Dictionary<int, int>
             {
                 { -100, 10 },
@@ -786,7 +786,7 @@ namespace Rebellion.Tests.Sectors
             ) = BuildMissionOddsScene("rebels");
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.IsMain = true;
-            target.SetBaseRating(OfficerRating.Combat, 0);
+            target.SetBaseRating(SkillRating.Combat, 0);
             game.AttachNode(target, targetPlanet);
             game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
             {
@@ -1006,9 +1006,9 @@ namespace Rebellion.Tests.Sectors
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
-            spy.SetBaseRating(OfficerRating.Diplomacy, 200);
-            spy.SetBaseRating(OfficerRating.Espionage, 0);
-            defender.SetBaseRating(OfficerRating.Espionage, 10);
+            spy.SetBaseRating(SkillRating.Diplomacy, 200);
+            spy.SetBaseRating(SkillRating.Espionage, 0);
+            defender.SetBaseRating(SkillRating.Espionage, 10);
             planet.GetChildren<Regiment>().Single().DetectionRating = 10;
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
@@ -1041,10 +1041,10 @@ namespace Rebellion.Tests.Sectors
         {
             (GameRoot game, Planet planet, Officer spy, Officer general, MovementSystem movement) =
                 BuildDetectionScene();
-            general.SetBaseRating(OfficerRating.Espionage, 40);
+            general.SetBaseRating(SkillRating.Espionage, 40);
             Officer admiral = EntityFactory.CreateOfficer("admiral", "rebels");
             admiral.CurrentRank = OfficerRank.Admiral;
-            admiral.SetBaseRating(OfficerRating.Espionage, 100);
+            admiral.SetBaseRating(SkillRating.Espionage, 100);
             game.AttachNode(admiral, planet);
             Regiment detector = planet.GetChildren<Regiment>().Single();
             detector.DefenseRating = 999;
@@ -1077,8 +1077,8 @@ namespace Rebellion.Tests.Sectors
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
-            spy.SetBaseRating(OfficerRating.Espionage, 0);
-            defender.SetBaseRating(OfficerRating.Espionage, 0);
+            spy.SetBaseRating(SkillRating.Espionage, 0);
+            defender.SetBaseRating(SkillRating.Espionage, 0);
             planet.GetChildren<Regiment>().Single().DetectionRating = 0;
             game.AttachNode(
                 new Regiment
@@ -1236,7 +1236,7 @@ namespace Rebellion.Tests.Sectors
             game.AttachNode(fleet, planet);
             game.AttachNode(capitalShip, fleet);
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
-            decoy.SetBaseRating(OfficerRating.Espionage, 200);
+            decoy.SetBaseRating(SkillRating.Espionage, 200);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             mission.SetExecutionTick(5);
@@ -1432,8 +1432,8 @@ namespace Rebellion.Tests.Sectors
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
-            spy.SetBaseRating(OfficerRating.Espionage, 0);
-            defender.SetBaseRating(OfficerRating.Espionage, 0);
+            spy.SetBaseRating(SkillRating.Espionage, 0);
+            defender.SetBaseRating(SkillRating.Espionage, 0);
             planet.GetChildren<Regiment>().Single().DetectionRating = 0;
 
             SpecialForces support = new SpecialForces
@@ -1442,7 +1442,7 @@ namespace Rebellion.Tests.Sectors
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            support.SetBaseRating(OfficerRating.Espionage, 0);
+            support.SetBaseRating(SkillRating.Espionage, 0);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 35;
@@ -1840,7 +1840,7 @@ namespace Rebellion.Tests.Sectors
                 BuildDetectionScene();
 
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
-            decoy.SetBaseRating(OfficerRating.Espionage, 200);
+            decoy.SetBaseRating(SkillRating.Espionage, 200);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
@@ -1873,12 +1873,12 @@ namespace Rebellion.Tests.Sectors
             {
                 InstanceID = "decoy",
                 OwnerInstanceID = "empire",
-                Ratings = new Dictionary<OfficerRating, int>
+                Ratings = new Dictionary<SkillRating, int>
                 {
-                    { OfficerRating.Espionage, 0 },
-                    { OfficerRating.Combat, 200 },
-                    { OfficerRating.Diplomacy, 0 },
-                    { OfficerRating.Leadership, 0 },
+                    { SkillRating.Espionage, 0 },
+                    { SkillRating.Combat, 200 },
+                    { SkillRating.Diplomacy, 0 },
+                    { SkillRating.Leadership, 0 },
                 },
             };
 
@@ -1960,10 +1960,10 @@ namespace Rebellion.Tests.Sectors
             // FixedRNG NextInt returns min (0), so first decoy is always picked.
             // If all decoys were checked, the second would save the spy.
             Officer weakDecoy = EntityFactory.CreateOfficer("decoy_weak", "empire");
-            weakDecoy.SetBaseRating(OfficerRating.Espionage, 0);
+            weakDecoy.SetBaseRating(SkillRating.Espionage, 0);
 
             Officer strongDecoy = EntityFactory.CreateOfficer("decoy_strong", "empire");
-            strongDecoy.SetBaseRating(OfficerRating.Espionage, 200);
+            strongDecoy.SetBaseRating(SkillRating.Espionage, 200);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
@@ -4534,7 +4534,7 @@ namespace Rebellion.Tests.Sectors
                     locationInstanceId,
                     new List<IMissionParticipant> { participant },
                     new List<IMissionParticipant>(),
-                    OfficerRating.Diplomacy
+                    SkillRating.Diplomacy
                 )
             {
                 _target = target;

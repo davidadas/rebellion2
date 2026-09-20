@@ -1,5 +1,3 @@
-using System;
-
 namespace Rebellion.Util.Random
 {
     /// <summary>

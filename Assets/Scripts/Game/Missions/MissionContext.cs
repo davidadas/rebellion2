@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Missions

@@ -380,7 +380,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "alliance",
                 CurrentRank = OfficerRank.Admiral,
             };
-            admiral.SetBaseRating(OfficerRating.Leadership, 40);
+            admiral.SetBaseRating(SkillRating.Leadership, 40);
             game.AttachNode(admiral, ship);
 
             BombardmentResult result = MakeBombardment(game, new SequenceRNG())
@@ -407,11 +407,11 @@ namespace Rebellion.Tests.Systems
                 IsCaptured = true,
                 CurrentRank = OfficerRank.General,
             };
-            captive.SetBaseRating(OfficerRating.Leadership, 400);
+            captive.SetBaseRating(SkillRating.Leadership, 400);
             game.AttachNode(captive, planet);
             Officer general = AddOfficer(game, planet, "general", "empire", isMain: true);
             general.CurrentRank = OfficerRank.General;
-            general.SetBaseRating(OfficerRating.Leadership, 40);
+            general.SetBaseRating(SkillRating.Leadership, 40);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
             CapitalShip ship = fleet.GetChildren<CapitalShip>()[0];
             ship.MaxShieldStrength = 100;

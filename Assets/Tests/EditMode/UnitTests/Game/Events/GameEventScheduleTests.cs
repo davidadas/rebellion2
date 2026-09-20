@@ -5,12 +5,12 @@ using Rebellion.Game.Events;
 namespace Rebellion.Tests.Game.Events
 {
     [TestFixture]
-    public class GameEventSchedulerTests
+    public class GameEventScheduleTests
     {
         [Test]
         public void GetInitialRange_AtSchedule_ReturnsAbsoluteTick()
         {
-            GameEventScheduler scheduler = new GameEventScheduler { At = new AtTick { Tick = 25 } };
+            GameEventSchedule scheduler = new GameEventSchedule { At = new AtTick { Tick = 25 } };
 
             scheduler.GetInitialRange(out int minimum, out int maximum);
 
@@ -21,7 +21,7 @@ namespace Rebellion.Tests.Game.Events
         [Test]
         public void GetInitialRange_EverySchedule_ReturnsInitialDelay()
         {
-            GameEventScheduler scheduler = new GameEventScheduler
+            GameEventSchedule scheduler = new GameEventSchedule
             {
                 Every = new EveryTicks { Ticks = 20, InitialDelayTicks = 5 },
             };
@@ -35,7 +35,7 @@ namespace Rebellion.Tests.Game.Events
         [Test]
         public void GetInitialRange_RandomDelaySchedule_ReturnsInclusiveRange()
         {
-            GameEventScheduler scheduler = new GameEventScheduler
+            GameEventSchedule scheduler = new GameEventSchedule
             {
                 RandomDelay = new RandomDelay { MinimumTicks = 10, MaximumTicks = 30 },
             };
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.Game.Events
         [Test]
         public void GetRepeatRange_RandomIntervalSchedule_ReturnsInclusiveRange()
         {
-            GameEventScheduler scheduler = new GameEventScheduler
+            GameEventSchedule scheduler = new GameEventSchedule
             {
                 RandomInterval = new RandomInterval { MinimumTicks = 10, MaximumTicks = 30 },
             };
@@ -63,7 +63,7 @@ namespace Rebellion.Tests.Game.Events
         [Test]
         public void Serialization_RandomIntervalUntilConditions_RoundTrips()
         {
-            GameEventScheduler scheduler = new GameEventScheduler
+            GameEventSchedule scheduler = new GameEventSchedule
             {
                 RandomInterval = new RandomInterval
                 {
@@ -81,7 +81,7 @@ namespace Rebellion.Tests.Game.Events
             };
 
             string xml = SerializationHelper.Serialize(scheduler);
-            GameEventScheduler restored = SerializationHelper.Deserialize<GameEventScheduler>(xml);
+            GameEventSchedule restored = SerializationHelper.Deserialize<GameEventSchedule>(xml);
 
             TickCountConditional condition = (TickCountConditional)restored.RandomInterval.Until[0];
             Assert.AreEqual(ComparisonOperator.GreaterThanOrEqual, condition.Comparison);
@@ -91,7 +91,7 @@ namespace Rebellion.Tests.Game.Events
         [Test]
         public void Serialization_ExplicitAfterAllDependencies_PreservesOrder()
         {
-            GameEventScheduler scheduler = new GameEventScheduler
+            GameEventSchedule scheduler = new GameEventSchedule
             {
                 AfterAll = new AfterEvents
                 {
@@ -105,7 +105,7 @@ namespace Rebellion.Tests.Game.Events
             };
 
             string xml = SerializationHelper.Serialize(scheduler);
-            GameEventScheduler restored = SerializationHelper.Deserialize<GameEventScheduler>(xml);
+            GameEventSchedule restored = SerializationHelper.Deserialize<GameEventSchedule>(xml);
 
             CollectionAssert.AreEqual(
                 new[] { "FIRST", "SECOND" },

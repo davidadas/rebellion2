@@ -79,7 +79,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
-            officer.SetBaseRating(OfficerRating.Diplomacy, 100);
+            officer.SetBaseRating(SkillRating.Diplomacy, 100);
             game.AttachNode(officer, planet);
             Mission mission = CreateDiplomacyMission(
                 "empire",
@@ -156,7 +156,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 80, planetOwner: "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
-            officer.SetBaseRating(OfficerRating.Diplomacy, 40);
+            officer.SetBaseRating(SkillRating.Diplomacy, 40);
             game.AttachNode(officer, planet);
             Mission mission = CreateDiplomacyMission(
                 "empire",
@@ -373,7 +373,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Diplomacy",
                 DisplayName = "Diplomacy",
                 LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.Diplomacy,
+                ParticipantRating = SkillRating.Diplomacy,
                 HasInitiated = true,
                 MaxProgress = 12,
                 CurrentProgress = 3,
@@ -386,7 +386,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("FACTION1", deserialized.OwnerInstanceID);
             Assert.AreEqual("Diplomacy", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
-            Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
+            Assert.AreEqual(SkillRating.Diplomacy, deserialized.ParticipantRating);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(12, deserialized.MaxProgress);
             Assert.AreEqual(3, deserialized.CurrentProgress);
@@ -473,7 +473,7 @@ namespace Rebellion.Tests.Game.Missions
         private Mission CreateAndAttachMission(GameRoot game, Planet planet)
         {
             Officer officer = EntityFactory.CreateOfficer("diplomat", "empire");
-            officer.SetBaseRating(OfficerRating.Diplomacy, 100);
+            officer.SetBaseRating(SkillRating.Diplomacy, 100);
 
             Mission mission = CreateDiplomacyMission(
                 "empire",

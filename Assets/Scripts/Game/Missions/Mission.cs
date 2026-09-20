@@ -117,7 +117,7 @@ namespace Rebellion.Game.Missions
         private bool _hasCapturedMainParticipantIds;
 
         // Mission configuration.
-        public OfficerRating ParticipantRating { get; set; }
+        public SkillRating ParticipantRating { get; set; }
         public bool HasInitiated;
 
         // Mission progress.
@@ -154,7 +154,7 @@ namespace Rebellion.Game.Missions
             string locationInstanceId,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants,
-            OfficerRating participantRating,
+            SkillRating participantRating,
             string displayName = null
         )
         {
@@ -523,11 +523,11 @@ namespace Rebellion.Game.Missions
             GameRoot game
         )
         {
-            int decoyEspionage = decoy.GetEffectiveRating(OfficerRating.Espionage);
+            int decoyEspionage = decoy.GetEffectiveRating(SkillRating.Espionage);
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
             Officer commander = FindDetectorCommander(detector);
             int scaledDefender =
-                (commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
+                (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
                 * missionTables.DecoyDefenderScalingPercent
                 / _ratingPercentScale;
             int score = decoyEspionage - GetDetectorRating(detector) - scaledDefender;
@@ -735,7 +735,7 @@ namespace Rebellion.Game.Missions
             int injuryChance = Math.Max(
                 game.Config.DuelResolution.MinimumInjuryChance,
                 game.Config.DuelResolution.CaptureEvasionInjuryBaseChance
-                    - officer.GetEffectiveRating(OfficerRating.Combat)
+                    - officer.GetEffectiveRating(SkillRating.Combat)
             );
             if (provider.NextInt(0, 100) >= Math.Min(100, injuryChance))
                 return false;

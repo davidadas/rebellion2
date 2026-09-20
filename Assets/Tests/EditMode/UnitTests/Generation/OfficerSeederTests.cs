@@ -272,39 +272,39 @@ namespace Rebellion.Tests.Generation
         public void Seed_WithZeroVariance_SkillsMatchBase()
         {
             Officer officer = MakeOfficer("O1", "FNALL1");
-            officer.Ratings[OfficerRating.Diplomacy] = 10;
+            officer.Ratings[SkillRating.Diplomacy] = 10;
             officer.DiplomacyVariance = 0;
             PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
 
-            Assert.AreEqual(10, officer.Ratings[OfficerRating.Diplomacy]);
+            Assert.AreEqual(10, officer.Ratings[SkillRating.Diplomacy]);
         }
 
         [Test]
         public void Seed_WithVariance_SkillsAtLeastBase()
         {
             Officer officer = MakeOfficer("O1", "FNALL1");
-            officer.Ratings[OfficerRating.Espionage] = 5;
+            officer.Ratings[SkillRating.Espionage] = 5;
             officer.EspionageVariance = 10;
             PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new StubRNG());
 
-            Assert.GreaterOrEqual(officer.Ratings[OfficerRating.Espionage], 5);
+            Assert.GreaterOrEqual(officer.Ratings[SkillRating.Espionage], 5);
         }
 
         [Test]
         public void Seed_WithMaximumVariance_IncludesConfiguredExtent()
         {
             Officer officer = MakeOfficer("O1", "FNALL1");
-            officer.Ratings[OfficerRating.Espionage] = 5;
+            officer.Ratings[SkillRating.Espionage] = 5;
             officer.EspionageVariance = 10;
             PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
             Deploy(new[] { officer }, new[] { sector }, _rules, _summary, new MaximumRNG());
 
-            Assert.AreEqual(15, officer.Ratings[OfficerRating.Espionage]);
+            Assert.AreEqual(15, officer.Ratings[SkillRating.Espionage]);
         }
 
         [Test]
@@ -312,7 +312,7 @@ namespace Rebellion.Tests.Generation
         {
             _rules.Officers.NumStartingOfficers.Small = 0;
             Officer officer = MakeOfficer("O1", "FNALL1");
-            officer.Ratings[OfficerRating.Espionage] = 5;
+            officer.Ratings[SkillRating.Espionage] = 5;
             officer.EspionageVariance = 10;
             PlanetSector sector = MakeSector(("p1", "FNALL1"));
 
@@ -325,7 +325,7 @@ namespace Rebellion.Tests.Generation
             );
 
             Assert.Contains(officer, results.Unrecruited);
-            Assert.AreEqual(15, officer.Ratings[OfficerRating.Espionage]);
+            Assert.AreEqual(15, officer.Ratings[SkillRating.Espionage]);
         }
 
         [Test]

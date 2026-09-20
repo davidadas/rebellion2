@@ -450,7 +450,7 @@ namespace Rebellion.Tests.AI.Proposals
                 "commandos",
                 empire.InstanceID
             );
-            template.SetBaseRating(OfficerRating.Combat, 70);
+            template.SetBaseRating(SkillRating.Combat, 70);
             AIDemand demand = new AIDemand(
                 "special-forces-demand",
                 AIDemandKind.SpecialForces,
@@ -476,7 +476,7 @@ namespace Rebellion.Tests.AI.Proposals
                 .Single();
             Assert.AreEqual("commandos", queued.GetTypeID());
             Assert.AreSame(planet, queued.GetParent());
-            Assert.AreEqual(70, queued.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(70, queued.GetBaseRating(SkillRating.Combat));
         }
 
         [Test]

@@ -194,7 +194,7 @@ namespace Rebellion.Systems
         /// <param name="gameEvent">The event whose authored schedule is validated.</param>
         private static void ValidateSchedule(GameEvent gameEvent)
         {
-            GameEventScheduler schedule = gameEvent.Schedule;
+            GameEventSchedule schedule = gameEvent.Schedule;
             if (schedule == null)
                 return;
 

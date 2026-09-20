@@ -456,7 +456,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         )
         {
             return new StrategyMissionChoice(
-                new MissionOption(missionTypeId, name, OfficerRating.Diplomacy, targetKind)
+                new MissionOption(missionTypeId, name, SkillRating.Diplomacy, targetKind)
             );
         }
 

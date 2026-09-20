@@ -910,7 +910,7 @@ namespace Rebellion.Tests.AI.Director
             };
             Officer admiral = EntityFactory.CreateOfficer("admiral", empire.InstanceID);
             admiral.CurrentRank = OfficerRank.Admiral;
-            admiral.Ratings[OfficerRating.Leadership] = 20;
+            admiral.Ratings[SkillRating.Leadership] = 20;
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             game.AttachNode(fighter, ship);

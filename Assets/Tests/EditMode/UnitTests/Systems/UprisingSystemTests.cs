@@ -636,9 +636,9 @@ namespace Rebellion.Tests.Systems
             CountingRNG rng = new CountingRNG();
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(rng: rng);
             Officer highProbabilityOfficer = EntityFactory.CreateOfficer("high", "rebels");
-            highProbabilityOfficer.SetBaseRating(OfficerRating.Leadership, 100);
+            highProbabilityOfficer.SetBaseRating(SkillRating.Leadership, 100);
             Officer lowProbabilityOfficer = EntityFactory.CreateOfficer("low", "rebels");
-            lowProbabilityOfficer.SetBaseRating(OfficerRating.Leadership, 0);
+            lowProbabilityOfficer.SetBaseRating(SkillRating.Leadership, 0);
             game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
             {
                 { -10, 0 },
@@ -771,7 +771,7 @@ namespace Rebellion.Tests.Systems
                 $"{missionTypeId}-officer",
                 ownerInstanceId
             );
-            officer.SetBaseRating(OfficerRating.Leadership, leadership);
+            officer.SetBaseRating(SkillRating.Leadership, leadership);
             Mission mission = MissionTestFactory.TryCreate(
                 missionTypeId,
                 game,

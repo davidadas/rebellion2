@@ -326,14 +326,14 @@ namespace Rebellion.Tests.Game.Missions
         public void ResolveObjective_Success_DoesNotIncrementLeadership()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
-            int leadershipBefore = officer.GetBaseRating(OfficerRating.Leadership);
+            int leadershipBefore = officer.GetBaseRating(SkillRating.Leadership);
             Mission mission = CreateMission(officer);
 
             mission.ResolveObjective(_game, new FixedRNG(0.0));
 
             Assert.AreEqual(
                 leadershipBefore,
-                officer.GetBaseRating(OfficerRating.Leadership),
+                officer.GetBaseRating(SkillRating.Leadership),
                 "Research missions should not increment Leadership"
             );
         }
@@ -396,7 +396,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Research",
                 DisplayName = "Ship Design",
                 LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.ShipResearch,
+                ParticipantRating = SkillRating.ShipResearch,
                 Discipline = ResearchDiscipline.ShipDesign,
                 HasInitiated = true,
                 MaxProgress = 15,
@@ -411,7 +411,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Ship Design", deserialized.DisplayName);
             Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
-            Assert.AreEqual(OfficerRating.ShipResearch, deserialized.ParticipantRating);
+            Assert.AreEqual(SkillRating.ShipResearch, deserialized.ParticipantRating);
             Assert.AreEqual(
                 ResearchDiscipline.ShipDesign,
                 ((ResearchMission)deserialized).Discipline

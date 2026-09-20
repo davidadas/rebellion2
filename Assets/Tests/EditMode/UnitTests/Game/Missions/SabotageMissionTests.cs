@@ -403,8 +403,8 @@ namespace Rebellion.Tests.Game.Missions
             Regiment target = EntityFactory.CreateRegiment("target", "rebels");
             target.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(target, enemyPlanet);
-            officer.SetBaseRating(OfficerRating.Espionage, 20);
-            officer.SetBaseRating(OfficerRating.Combat, 80);
+            officer.SetBaseRating(SkillRating.Espionage, 20);
+            officer.SetBaseRating(SkillRating.Combat, 80);
             game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
             {
                 { 0, 0 },
@@ -437,8 +437,8 @@ namespace Rebellion.Tests.Game.Missions
             Regiment target = EntityFactory.CreateRegiment("target", "rebels");
             target.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(target, enemyPlanet);
-            officer.SetBaseRating(OfficerRating.Espionage, 20);
-            officer.SetBaseRating(OfficerRating.Combat, 80);
+            officer.SetBaseRating(SkillRating.Espionage, 20);
+            officer.SetBaseRating(SkillRating.Combat, 80);
             game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int>
             {
                 { 50, 100 },
@@ -459,8 +459,8 @@ namespace Rebellion.Tests.Game.Missions
                 MissionOutcome.Success,
                 results.OfType<MissionCompletedResult>().Single().Outcome
             );
-            Assert.AreEqual(21, officer.GetBaseRating(OfficerRating.Espionage));
-            Assert.AreEqual(81, officer.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(21, officer.GetBaseRating(SkillRating.Espionage));
+            Assert.AreEqual(81, officer.GetBaseRating(SkillRating.Combat));
         }
 
         [Test]
@@ -474,7 +474,7 @@ namespace Rebellion.Tests.Game.Missions
                 DisplayName = "Sabotage",
                 LocationInstanceID = "PLANET1",
                 SabotageTargetInstanceID = "BUILDING1",
-                ParticipantRating = OfficerRating.Combat,
+                ParticipantRating = SkillRating.Combat,
                 HasInitiated = true,
                 MaxProgress = 6,
                 CurrentProgress = 4,
@@ -487,7 +487,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("Sabotage", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
             Assert.AreEqual("BUILDING1", ((SabotageMission)deserialized).SabotageTargetInstanceID);
-            Assert.AreEqual(OfficerRating.Combat, deserialized.ParticipantRating);
+            Assert.AreEqual(SkillRating.Combat, deserialized.ParticipantRating);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(6, deserialized.MaxProgress);
             Assert.AreEqual(4, deserialized.CurrentProgress);

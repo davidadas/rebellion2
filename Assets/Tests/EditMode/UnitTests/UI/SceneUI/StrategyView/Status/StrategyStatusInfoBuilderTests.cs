@@ -445,10 +445,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 ManufacturingStatus = ManufacturingStatus.Building,
                 MaintenanceCost = 5,
             };
-            specialForces.SetBaseRating(OfficerRating.Diplomacy, 11);
-            specialForces.SetBaseRating(OfficerRating.Espionage, 22);
-            specialForces.SetBaseRating(OfficerRating.Combat, 33);
-            specialForces.SetBaseRating(OfficerRating.Leadership, 44);
+            specialForces.SetBaseRating(SkillRating.Diplomacy, 11);
+            specialForces.SetBaseRating(SkillRating.Espionage, 22);
+            specialForces.SetBaseRating(SkillRating.Combat, 33);
+            specialForces.SetBaseRating(SkillRating.Leadership, 44);
             _game.AttachNode(specialForces, _planet);
 
             StrategyStatusInfo info = _builder.Build(
@@ -478,10 +478,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 FacilityResearch = 2,
                 AllowedRanks = new[] { OfficerRank.Admiral, OfficerRank.Commander },
             };
-            officer.SetBaseRating(OfficerRating.Diplomacy, 10);
-            officer.SetBaseRating(OfficerRating.Espionage, 20);
-            officer.SetBaseRating(OfficerRating.Combat, 30);
-            officer.SetBaseRating(OfficerRating.Leadership, 40);
+            officer.SetBaseRating(SkillRating.Diplomacy, 10);
+            officer.SetBaseRating(SkillRating.Espionage, 20);
+            officer.SetBaseRating(SkillRating.Combat, 30);
+            officer.SetBaseRating(SkillRating.Leadership, 40);
             _game.AttachNode(officer, _planet);
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));

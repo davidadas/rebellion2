@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Game.Missions
             game.GetUnrecruitedOfficers().Add(target);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
-            int originalLeadership = officer.GetBaseRating(OfficerRating.Leadership);
+            int originalLeadership = officer.GetBaseRating(SkillRating.Leadership);
 
             // The candidate pool empties before the mission executes.
             game.GetUnrecruitedOfficers().Remove(target);
@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
             Assert.IsFalse(completed.CanContinue);
-            Assert.AreEqual(originalLeadership, officer.GetBaseRating(OfficerRating.Leadership));
+            Assert.AreEqual(originalLeadership, officer.GetBaseRating(SkillRating.Leadership));
         }
 
         [Test]
@@ -128,7 +128,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.RecruitingFactionInstanceIDs = new List<string> { "empire" };
             game.GetUnrecruitedOfficers().Add(target);
-            officer.SetBaseRating(OfficerRating.Leadership, 40);
+            officer.SetBaseRating(SkillRating.Leadership, 40);
 
             Mission mission = CreateMission(game, empirePlanet, officer);
             game.Config.ProbabilityTables.Mission.Recruitment = new Dictionary<int, int>
@@ -177,10 +177,10 @@ namespace Rebellion.Tests.Game.Missions
             (GameRoot game, Planet empirePlanet, Officer firstRecruiter) = BuildScene();
             Officer secondRecruiter = EntityFactory.CreateOfficer("second-recruiter", "empire");
             secondRecruiter.IsMain = true;
-            firstRecruiter.SetBaseRating(OfficerRating.Leadership, 100);
-            secondRecruiter.SetBaseRating(OfficerRating.Leadership, 100);
-            int firstRating = firstRecruiter.GetBaseRating(OfficerRating.Leadership);
-            int secondRating = secondRecruiter.GetBaseRating(OfficerRating.Leadership);
+            firstRecruiter.SetBaseRating(SkillRating.Leadership, 100);
+            secondRecruiter.SetBaseRating(SkillRating.Leadership, 100);
+            int firstRating = firstRecruiter.GetBaseRating(SkillRating.Leadership);
+            int secondRating = secondRecruiter.GetBaseRating(SkillRating.Leadership);
 
             Officer firstTarget = EntityFactory.CreateOfficer("first-target", "rebels");
             firstTarget.RecruitingFactionInstanceIDs = new List<string> { "empire" };
@@ -217,11 +217,8 @@ namespace Rebellion.Tests.Game.Missions
             );
             Assert.AreEqual("empire", firstTarget.OwnerInstanceID);
             Assert.IsTrue(game.GetUnrecruitedOfficers().Contains(secondTarget));
-            Assert.AreEqual(
-                firstRating + 1,
-                firstRecruiter.GetBaseRating(OfficerRating.Leadership)
-            );
-            Assert.AreEqual(secondRating, secondRecruiter.GetBaseRating(OfficerRating.Leadership));
+            Assert.AreEqual(firstRating + 1, firstRecruiter.GetBaseRating(SkillRating.Leadership));
+            Assert.AreEqual(secondRating, secondRecruiter.GetBaseRating(SkillRating.Leadership));
             Assert.AreEqual(
                 MissionOutcome.Success,
                 results.OfType<MissionCompletedResult>().Single().Outcome
@@ -334,7 +331,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Recruitment",
                 DisplayName = "Recruitment",
                 LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.Diplomacy,
+                ParticipantRating = SkillRating.Diplomacy,
                 RecruitedOfficerInstanceID = "OFFICER4",
             };
 
@@ -347,7 +344,7 @@ namespace Rebellion.Tests.Game.Missions
                 "OFFICER4",
                 ((RecruitmentMission)deserialized).RecruitedOfficerInstanceID
             );
-            Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
+            Assert.AreEqual(SkillRating.Diplomacy, deserialized.ParticipantRating);
         }
 
         /// <summary>

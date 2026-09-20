@@ -839,7 +839,7 @@ namespace Rebellion.Systems
                         : mission
                             .GetMainParticipants()
                             .Sum(participant =>
-                                participant.GetEffectiveRating(OfficerRating.Leadership)
+                                participant.GetEffectiveRating(SkillRating.Leadership)
                             ) / mission.GetMainParticipants().Count;
                 int missionAdjustment = averageLeadership / config.MissionLeadershipDivisor;
 

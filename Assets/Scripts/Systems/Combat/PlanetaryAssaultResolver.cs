@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
@@ -155,7 +154,7 @@ namespace Rebellion.Systems.Combat
                 && officer.GetOwnerInstanceID() == ownerId
                 && !officer.IsKilled
             );
-            int leadership = commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
+            int leadership = commander?.GetEffectiveRating(SkillRating.Leadership) ?? 0;
             return leadership / config.GeneralLeadershipDivisor;
         }
 

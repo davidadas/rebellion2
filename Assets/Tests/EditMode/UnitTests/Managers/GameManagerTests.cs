@@ -280,7 +280,7 @@ namespace Rebellion.Tests.Managers
                     new GameEvent
                     {
                         InstanceID = "EVENT_RESEARCH_EXHAUSTED",
-                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                         Actions = new List<GameAction>
                         {
                             new EmitResultAction(
@@ -429,7 +429,7 @@ namespace Rebellion.Tests.Managers
                     new GameEvent
                     {
                         InstanceID = "CAPTURE_OFFICER",
-                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                         Actions = new List<GameAction>
                         {
                             new SetCaptureStatusAction
@@ -506,7 +506,7 @@ namespace Rebellion.Tests.Managers
                     new GameEvent
                     {
                         InstanceID = "EVENT_PLANETARY_ASSAULT",
-                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                         Actions = new List<GameAction>
                         {
                             new EmitResultAction(new PlanetaryAssaultResult()),
@@ -531,7 +531,7 @@ namespace Rebellion.Tests.Managers
                     new GameEvent
                     {
                         InstanceID = "EVENT_VICTORY",
-                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                         Actions = new List<GameAction>
                         {
                             new EmitResultAction(new VictoryResult()),
@@ -696,7 +696,7 @@ namespace Rebellion.Tests.Managers
                     new GameEvent
                     {
                         InstanceID = "EVENT_SABOTAGE",
-                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                         Actions = new List<GameAction>
                         {
                             new EmitResultAction(

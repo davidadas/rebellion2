@@ -8,7 +8,7 @@ namespace Rebellion.Game.Events
     /// Defines exactly one absolute, fixed-interval, or random-range event schedule.
     /// </summary>
     [PersistableObject]
-    public sealed class GameEventScheduler
+    public sealed class GameEventSchedule
     {
         public AtTick At { get; set; }
         public EveryTicks Every { get; set; }

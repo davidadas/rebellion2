@@ -59,8 +59,8 @@ namespace Rebellion.Tests.Game.Units
         public void GetBaseRating_ValidRating_ReturnsCorrectValue()
         {
             Officer officer = new Officer();
-            officer.SetBaseRating(OfficerRating.Diplomacy, 10);
-            int ratingValue = officer.GetBaseRating(OfficerRating.Diplomacy);
+            officer.SetBaseRating(SkillRating.Diplomacy, 10);
+            int ratingValue = officer.GetBaseRating(SkillRating.Diplomacy);
             Assert.AreEqual(10, ratingValue);
         }
 
@@ -68,29 +68,29 @@ namespace Rebellion.Tests.Game.Units
         public void SetBaseRating_ValidRating_UpdatesValue()
         {
             Officer officer = new Officer();
-            int updatedValue = officer.SetBaseRating(OfficerRating.Combat, 15);
+            int updatedValue = officer.SetBaseRating(SkillRating.Combat, 15);
             Assert.AreEqual(15, updatedValue);
-            Assert.AreEqual(15, officer.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(15, officer.GetBaseRating(SkillRating.Combat));
         }
 
         [Test]
         public void GetEffectiveRating_Diplomacy_AppliesForceRankBonus()
         {
             Officer officer = new Officer { ForceValue = 20, ForceTrainingAdjustment = 10 };
-            officer.SetBaseRating(OfficerRating.Diplomacy, 50);
+            officer.SetBaseRating(SkillRating.Diplomacy, 50);
 
-            Assert.AreEqual(65, officer.GetEffectiveRating(OfficerRating.Diplomacy));
-            Assert.AreEqual(50, officer.GetBaseRating(OfficerRating.Diplomacy));
+            Assert.AreEqual(65, officer.GetEffectiveRating(SkillRating.Diplomacy));
+            Assert.AreEqual(50, officer.GetBaseRating(SkillRating.Diplomacy));
         }
 
         [Test]
         public void GetEffectiveRating_Espionage_AppliesForceRankBonus()
         {
             Officer officer = new Officer { ForceValue = 20, ForceTrainingAdjustment = 10 };
-            officer.SetBaseRating(OfficerRating.Espionage, 40);
+            officer.SetBaseRating(SkillRating.Espionage, 40);
 
-            Assert.AreEqual(52, officer.GetEffectiveRating(OfficerRating.Espionage));
-            Assert.AreEqual(40, officer.GetBaseRating(OfficerRating.Espionage));
+            Assert.AreEqual(52, officer.GetEffectiveRating(SkillRating.Espionage));
+            Assert.AreEqual(40, officer.GetBaseRating(SkillRating.Espionage));
         }
 
         [Test]
@@ -102,49 +102,49 @@ namespace Rebellion.Tests.Game.Units
                 ForceTrainingAdjustment = 10,
                 InjuryPoints = 10,
             };
-            officer.SetBaseRating(OfficerRating.Combat, 50);
+            officer.SetBaseRating(SkillRating.Combat, 50);
 
-            Assert.AreEqual(55, officer.GetEffectiveRating(OfficerRating.Combat));
-            Assert.AreEqual(50, officer.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(55, officer.GetEffectiveRating(SkillRating.Combat));
+            Assert.AreEqual(50, officer.GetBaseRating(SkillRating.Combat));
         }
 
         [Test]
         public void GetEffectiveRating_Combat_InjuryCannotGoBelowZero()
         {
             Officer officer = new Officer { InjuryPoints = 90 };
-            officer.SetBaseRating(OfficerRating.Combat, 50);
+            officer.SetBaseRating(SkillRating.Combat, 50);
 
-            Assert.AreEqual(0, officer.GetEffectiveRating(OfficerRating.Combat));
+            Assert.AreEqual(0, officer.GetEffectiveRating(SkillRating.Combat));
         }
 
         [Test]
         public void GetEffectiveRating_Leadership_DoesNotApplyForceRankBonus()
         {
             Officer officer = new Officer { ForceValue = 50, ForceTrainingAdjustment = 50 };
-            officer.SetBaseRating(OfficerRating.Leadership, 40);
+            officer.SetBaseRating(SkillRating.Leadership, 40);
 
-            Assert.AreEqual(40, officer.GetEffectiveRating(OfficerRating.Leadership));
+            Assert.AreEqual(40, officer.GetEffectiveRating(SkillRating.Leadership));
         }
 
         [Test]
         public void GetEffectiveRating_ShipResearch_DoesNotApplyForceRankBonus()
         {
             Officer officer = new Officer { ForceValue = 50, ForceTrainingAdjustment = 50 };
-            officer.SetBaseRating(OfficerRating.ShipResearch, 40);
+            officer.SetBaseRating(SkillRating.ShipResearch, 40);
 
-            Assert.AreEqual(40, officer.GetEffectiveRating(OfficerRating.ShipResearch));
+            Assert.AreEqual(40, officer.GetEffectiveRating(SkillRating.ShipResearch));
         }
 
         [Test]
         public void IncrementBaseRating_WithForceBonus_IncrementsBaseRatingOnly()
         {
             Officer officer = new Officer { ForceValue = 50 };
-            officer.SetBaseRating(OfficerRating.Diplomacy, 40);
+            officer.SetBaseRating(SkillRating.Diplomacy, 40);
 
-            officer.IncrementBaseRating(OfficerRating.Diplomacy);
+            officer.IncrementBaseRating(SkillRating.Diplomacy);
 
-            Assert.AreEqual(41, officer.GetBaseRating(OfficerRating.Diplomacy));
-            Assert.AreEqual(61, officer.GetEffectiveRating(OfficerRating.Diplomacy));
+            Assert.AreEqual(41, officer.GetBaseRating(SkillRating.Diplomacy));
+            Assert.AreEqual(61, officer.GetEffectiveRating(SkillRating.Diplomacy));
         }
 
         [Test]
@@ -172,10 +172,10 @@ namespace Rebellion.Tests.Game.Units
             {
                 IsMain = true,
                 CurrentRank = OfficerRank.Admiral,
-                Ratings = new Dictionary<OfficerRating, int>
+                Ratings = new Dictionary<SkillRating, int>
                 {
-                    { OfficerRating.Espionage, 15 },
-                    { OfficerRating.Leadership, 25 },
+                    { SkillRating.Espionage, 15 },
+                    { SkillRating.Leadership, 25 },
                 },
                 Movement = null,
                 IsForceSensitive = true,
@@ -240,15 +240,15 @@ namespace Rebellion.Tests.Game.Units
                 originalOfficer.MissionReturnLocationInstanceID,
                 deserializedOfficer.MissionReturnLocationInstanceID
             );
-            Assert.AreEqual(25, deserializedOfficer.GetEffectiveRating(OfficerRating.Leadership));
+            Assert.AreEqual(25, deserializedOfficer.GetEffectiveRating(SkillRating.Leadership));
             Assert.AreEqual(
-                originalOfficer.GetBaseRating(OfficerRating.Espionage),
-                deserializedOfficer.GetBaseRating(OfficerRating.Espionage),
+                originalOfficer.GetBaseRating(SkillRating.Espionage),
+                deserializedOfficer.GetBaseRating(SkillRating.Espionage),
                 "Espionage rating mismatch"
             );
             Assert.AreEqual(
-                originalOfficer.GetBaseRating(OfficerRating.Leadership),
-                deserializedOfficer.GetBaseRating(OfficerRating.Leadership),
+                originalOfficer.GetBaseRating(SkillRating.Leadership),
+                deserializedOfficer.GetBaseRating(SkillRating.Leadership),
                 "Leadership rating mismatch"
             );
         }

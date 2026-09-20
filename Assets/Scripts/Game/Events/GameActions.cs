@@ -648,7 +648,7 @@ namespace Rebellion.Game.Events
 
         // Rating.
         [PersistableAttribute]
-        public OfficerRating Rating { get; set; }
+        public SkillRating Rating { get; set; }
 
         // Adjustment.
         public int? Amount { get; set; }
@@ -922,7 +922,7 @@ namespace Rebellion.Game.Events
         public string OfficerInstanceID { get; set; }
 
         [PersistableAttribute]
-        public OfficerRating Rating { get; set; }
+        public SkillRating Rating { get; set; }
 
         [PersistableAttribute]
         public string ProbabilityTable { get; set; }
@@ -947,7 +947,7 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     $"PerformSkillCheck could not resolve officer '{OfficerInstanceID}'."
                 );
-            if (Rating == OfficerRating.None)
+            if (Rating == SkillRating.None)
                 throw new InvalidOperationException("PerformSkillCheck requires a rating.");
             if (RatingMultiplier == 0)
                 throw new InvalidOperationException(

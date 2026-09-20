@@ -55,13 +55,13 @@ namespace Rebellion.Game.Units
         public List<string> AllowedMissionTypeIDs { get; set; } = new List<string>();
 
         // Mission rating info.
-        public Dictionary<OfficerRating, int> Ratings { get; set; } =
-            new Dictionary<OfficerRating, int>
+        public Dictionary<SkillRating, int> Ratings { get; set; } =
+            new Dictionary<SkillRating, int>
             {
-                { OfficerRating.Diplomacy, 0 },
-                { OfficerRating.Espionage, 0 },
-                { OfficerRating.Combat, 0 },
-                { OfficerRating.Leadership, 0 },
+                { SkillRating.Diplomacy, 0 },
+                { SkillRating.Espionage, 0 },
+                { SkillRating.Combat, 0 },
+                { SkillRating.Leadership, 0 },
             };
         public bool CanImproveMissionRating => false;
 
@@ -108,7 +108,7 @@ namespace Rebellion.Game.Units
             copy.MissionReturnParentInstanceID = MissionReturnParentInstanceID;
             copy.MissionReturnLocationInstanceID = MissionReturnLocationInstanceID;
             copy.AllowedMissionTypeIDs = new List<string>(AllowedMissionTypeIDs);
-            copy.Ratings = new Dictionary<OfficerRating, int>(Ratings);
+            copy.Ratings = new Dictionary<SkillRating, int>(Ratings);
         }
 
         /// <summary>
@@ -125,7 +125,7 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="rating">The rating to read.</param>
         /// <returns>The stored rating value.</returns>
-        public int GetBaseRating(OfficerRating rating)
+        public int GetBaseRating(SkillRating rating)
         {
             return Ratings.TryGetValue(rating, out int value) ? value : 0;
         }
@@ -135,7 +135,7 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="rating">The rating to read.</param>
         /// <returns>The effective rating value.</returns>
-        public int GetEffectiveRating(OfficerRating rating)
+        public int GetEffectiveRating(SkillRating rating)
         {
             return GetBaseRating(rating);
         }
@@ -146,7 +146,7 @@ namespace Rebellion.Game.Units
         /// <param name="rating">The rating to update.</param>
         /// <param name="value">The new rating value.</param>
         /// <returns>The stored rating value.</returns>
-        public int SetBaseRating(OfficerRating rating, int value)
+        public int SetBaseRating(SkillRating rating, int value)
         {
             Ratings[rating] = value;
             return value;

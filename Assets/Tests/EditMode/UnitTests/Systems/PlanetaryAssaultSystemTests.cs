@@ -152,7 +152,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 CurrentRank = OfficerRank.General,
             };
-            general.SetBaseRating(OfficerRating.Leadership, 60);
+            general.SetBaseRating(SkillRating.Leadership, 60);
             game.AttachNode(general, commandedFleet.GetChildren<CapitalShip>()[0]);
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(

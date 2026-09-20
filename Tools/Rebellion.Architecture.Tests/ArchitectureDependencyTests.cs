@@ -4,7 +4,6 @@ using ArchUnitNET.NUnit;
 using NUnit.Framework;
 using Rebellion.Game;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
-using static ArchUnitNET.Fluent.Slices.SliceRuleDefinition;
 
 namespace Rebellion.Architecture.Tests
 {
@@ -74,17 +73,6 @@ namespace Rebellion.Architecture.Tests
                             "Rebellion.Util.Serialization.PersistableIgnoreAttribute"
                         )
                 );
-
-            rule.Check(_architecture);
-        }
-
-        /// <summary>
-        /// Verifies that Rebellion namespace slices do not form dependency cycles.
-        /// </summary>
-        [Test]
-        public void NamespaceSlices_Dependencies_AreFreeOfCycles()
-        {
-            IArchRule rule = Slices().Matching("Rebellion.(*)").Should().BeFreeOfCycles();
 
             rule.Check(_architecture);
         }

@@ -201,11 +201,11 @@ namespace Rebellion.AI.Planners
                 .Assessment.AvailableMissionParticipants.OfType<Officer>()
                 .Where(officer => officer.IsMain)
                 .Where(officer =>
-                    officer.GetEffectiveRating(OfficerRating.Leadership)
+                    officer.GetEffectiveRating(SkillRating.Leadership)
                     >= context.Game.Config.AI.RecruitmentMinimumLeadership
                 )
-                .OrderBy(officer => officer.GetEffectiveRating(OfficerRating.Diplomacy))
-                .ThenByDescending(officer => officer.GetEffectiveRating(OfficerRating.Leadership))
+                .OrderBy(officer => officer.GetEffectiveRating(SkillRating.Diplomacy))
+                .ThenByDescending(officer => officer.GetEffectiveRating(SkillRating.Leadership))
                 .ThenBy(officer => officer.InstanceID)
                 .FirstOrDefault();
         }
@@ -256,7 +256,7 @@ namespace Rebellion.AI.Planners
         )
         {
             if (
-                participant.GetEffectiveRating(OfficerRating.Diplomacy)
+                participant.GetEffectiveRating(SkillRating.Diplomacy)
                 < context.Game.Config.AI.DiplomacyMinimumSkill
             )
                 return false;
@@ -1072,10 +1072,10 @@ namespace Rebellion.AI.Planners
         /// <returns>The calculated value.</returns>
         private int GetOfficerTargetCandidatePriority(Officer officer)
         {
-            return officer.GetEffectiveRating(OfficerRating.Combat)
-                + officer.GetEffectiveRating(OfficerRating.Espionage)
-                + officer.GetEffectiveRating(OfficerRating.Diplomacy)
-                + officer.GetEffectiveRating(OfficerRating.Leadership)
+            return officer.GetEffectiveRating(SkillRating.Combat)
+                + officer.GetEffectiveRating(SkillRating.Espionage)
+                + officer.GetEffectiveRating(SkillRating.Diplomacy)
+                + officer.GetEffectiveRating(SkillRating.Leadership)
                 + officer.GetBaseRating(ResearchDiscipline.ShipDesign)
                 + officer.GetBaseRating(ResearchDiscipline.FacilityDesign)
                 + officer.GetBaseRating(ResearchDiscipline.TroopTraining);

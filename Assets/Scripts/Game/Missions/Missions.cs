@@ -46,7 +46,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
-            ParticipantRating = OfficerRating.Combat;
+            ParticipantRating = SkillRating.Combat;
         }
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Abduction").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Combat
+                SkillRating.Combat
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;
@@ -140,8 +140,8 @@ namespace Rebellion.Game.Missions
             if (target == null)
                 return null;
 
-            return agent.GetEffectiveRating(OfficerRating.Combat)
-                - target.GetEffectiveRating(OfficerRating.Combat);
+            return agent.GetEffectiveRating(SkillRating.Combat)
+                - target.GetEffectiveRating(SkillRating.Combat);
         }
 
         /// <summary>
@@ -307,7 +307,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
-            ParticipantRating = OfficerRating.Combat;
+            ParticipantRating = SkillRating.Combat;
         }
 
         /// <summary>
@@ -331,7 +331,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Assassination").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Combat
+                SkillRating.Combat
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;
@@ -398,8 +398,8 @@ namespace Rebellion.Game.Missions
             if (target == null)
                 return null;
 
-            return agent.GetEffectiveRating(OfficerRating.Combat)
-                - target.GetEffectiveRating(OfficerRating.Combat);
+            return agent.GetEffectiveRating(SkillRating.Combat)
+                - target.GetEffectiveRating(SkillRating.Combat);
         }
 
         /// <summary>
@@ -605,7 +605,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
-            ParticipantRating = OfficerRating.Diplomacy;
+            ParticipantRating = SkillRating.Diplomacy;
         }
 
         /// <summary>
@@ -627,7 +627,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Diplomacy").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Diplomacy
+                SkillRating.Diplomacy
             ) { }
 
         /// <summary>
@@ -698,7 +698,7 @@ namespace Rebellion.Game.Missions
             if (planet == null)
                 return base.GetAgentScore(agent, context);
 
-            return agent.GetEffectiveRating(OfficerRating.Diplomacy)
+            return agent.GetEffectiveRating(SkillRating.Diplomacy)
                 - planet.GetOpposingPopularSupport(OwnerInstanceID);
         }
 
@@ -824,7 +824,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
-            ParticipantRating = OfficerRating.Espionage;
+            ParticipantRating = SkillRating.Espionage;
         }
 
         /// <summary>
@@ -846,7 +846,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Espionage").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Espionage
+                SkillRating.Espionage
             ) { }
 
         /// <summary>
@@ -1058,7 +1058,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = MissionTypeID;
             DisplayName = "Incite Uprising";
-            ParticipantRating = OfficerRating.Leadership;
+            ParticipantRating = SkillRating.Leadership;
         }
 
         /// <summary>
@@ -1080,7 +1080,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Incite Uprising").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Leadership,
+                SkillRating.Leadership,
                 displayName: "Incite Uprising"
             ) { }
 
@@ -1123,7 +1123,7 @@ namespace Rebellion.Game.Missions
                     "InciteUprisingMission must be attached to a Planet."
                 );
 
-            int leadershipSkill = agent.GetEffectiveRating(OfficerRating.Leadership);
+            int leadershipSkill = agent.GetEffectiveRating(SkillRating.Leadership);
             int enemySupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
             return leadershipSkill - enemySupport;
         }
@@ -1217,7 +1217,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Jedi Training").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Diplomacy,
+                SkillRating.Diplomacy,
                 displayName: "Jedi Training"
             )
         {
@@ -1495,7 +1495,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
-            ParticipantRating = OfficerRating.Espionage;
+            ParticipantRating = SkillRating.Espionage;
         }
 
         /// <summary>
@@ -1549,7 +1549,7 @@ namespace Rebellion.Game.Missions
                 target.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Espionage
+                SkillRating.Espionage
             ) { }
 
         /// <summary>
@@ -1665,7 +1665,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
-            ParticipantRating = OfficerRating.Leadership;
+            ParticipantRating = SkillRating.Leadership;
         }
 
         /// <summary>
@@ -1687,7 +1687,7 @@ namespace Rebellion.Game.Missions
                 target.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Leadership
+                SkillRating.Leadership
             ) { }
 
         /// <summary>
@@ -1769,7 +1769,7 @@ namespace Rebellion.Game.Missions
                 return base.GetAgentScore(agent, context);
 
             int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
-            return agent.GetEffectiveRating(OfficerRating.Leadership) - opposingSupport;
+            return agent.GetEffectiveRating(SkillRating.Leadership) - opposingSupport;
         }
 
         /// <summary>
@@ -1908,7 +1908,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
-            ParticipantRating = OfficerRating.Combat;
+            ParticipantRating = SkillRating.Combat;
         }
 
         /// <summary>
@@ -1932,7 +1932,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Rescue").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Combat
+                SkillRating.Combat
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;
@@ -2091,7 +2091,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
-            ParticipantRating = OfficerRating.None;
+            ParticipantRating = SkillRating.None;
         }
 
         /// <summary>
@@ -2490,7 +2490,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
-            ParticipantRating = OfficerRating.Combat;
+            ParticipantRating = SkillRating.Combat;
         }
 
         /// <summary>
@@ -2514,7 +2514,7 @@ namespace Rebellion.Game.Missions
                 missionPlanet.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Combat
+                SkillRating.Combat
             )
         {
             SabotageTargetInstanceID = selectedTarget.GetInstanceID();
@@ -2580,8 +2580,8 @@ namespace Rebellion.Game.Missions
         )
         {
             return (
-                    agent.GetEffectiveRating(OfficerRating.Espionage)
-                    + agent.GetEffectiveRating(OfficerRating.Combat)
+                    agent.GetEffectiveRating(SkillRating.Espionage)
+                    + agent.GetEffectiveRating(SkillRating.Combat)
                 ) / 2;
         }
 
@@ -2627,8 +2627,8 @@ namespace Rebellion.Game.Missions
             if (participant is not Officer officer || !participant.CanImproveMissionRating)
                 return;
 
-            officer.IncrementBaseRating(OfficerRating.Espionage);
-            officer.IncrementBaseRating(OfficerRating.Combat);
+            officer.IncrementBaseRating(SkillRating.Espionage);
+            officer.IncrementBaseRating(SkillRating.Combat);
         }
 
         /// <summary>
@@ -2721,7 +2721,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = MissionTypeID;
             DisplayName = "Subdue Uprising";
-            ParticipantRating = OfficerRating.Leadership;
+            ParticipantRating = SkillRating.Leadership;
         }
 
         /// <summary>
@@ -2743,7 +2743,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Subdue Uprising").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Leadership,
+                SkillRating.Leadership,
                 displayName: "Subdue Uprising"
             ) { }
 
@@ -2805,7 +2805,7 @@ namespace Rebellion.Game.Missions
                     "SubdueUprisingMission must be attached to a Planet."
                 );
 
-            return agent.GetEffectiveRating(OfficerRating.Leadership)
+            return agent.GetEffectiveRating(SkillRating.Leadership)
                 - planet.GetOpposingPopularSupport(OwnerInstanceID);
         }
 

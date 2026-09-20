@@ -1,21 +1,8 @@
 using System.Collections.Generic;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Game.Missions
+namespace Rebellion.Game.Units
 {
-    public enum OfficerRating
-    {
-        None,
-        Diplomacy,
-        Espionage,
-        Combat,
-        Leadership,
-        ShipResearch,
-        TroopResearch,
-        FacilityResearch,
-    }
-
     /// <summary>
     /// Represents a scene node that exposes officer-style ratings to mission systems.
     /// </summary>
@@ -25,7 +12,7 @@ namespace Rebellion.Game.Missions
         public string MissionReturnLocationInstanceID { get; set; }
 
         // Mission ratings.
-        public Dictionary<OfficerRating, int> Ratings { get; set; }
+        public Dictionary<SkillRating, int> Ratings { get; set; }
         public bool CanImproveMissionRating { get; }
 
         /// <summary>
@@ -33,14 +20,14 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="rating">The rating to read.</param>
         /// <returns>The stored rating value.</returns>
-        public int GetBaseRating(OfficerRating rating);
+        public int GetBaseRating(SkillRating rating);
 
         /// <summary>
         /// Returns the rating value after applicable runtime modifiers.
         /// </summary>
         /// <param name="rating">The rating to read.</param>
         /// <returns>The effective rating value.</returns>
-        public int GetEffectiveRating(OfficerRating rating);
+        public int GetEffectiveRating(SkillRating rating);
 
         /// <summary>
         /// Assigns a stored rating value, overwriting any prior value.
@@ -48,7 +35,7 @@ namespace Rebellion.Game.Missions
         /// <param name="rating">The rating to assign.</param>
         /// <param name="value">The new value.</param>
         /// <returns>The stored value.</returns>
-        public int SetBaseRating(OfficerRating rating, int value);
+        public int SetBaseRating(SkillRating rating, int value);
 
         /// <summary>
         /// Returns whether this participant is qualified to perform the given mission type.

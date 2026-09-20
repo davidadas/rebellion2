@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "INVALID_SCHEDULE",
-                Schedule = new GameEventScheduler
+                Schedule = new GameEventSchedule
                 {
                     At = new AtTick { Tick = 25 },
                     Every = new EveryTicks { Ticks = 5 },
@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "ONE_SHOT",
-                Schedule = new GameEventScheduler { At = new AtTick { Tick = 25 } },
+                Schedule = new GameEventSchedule { At = new AtTick { Tick = 25 } },
             };
 
             Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
@@ -94,7 +94,7 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "INVALID_BINDING",
-                Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                 Bindings = new List<GameEventBinding>
                 {
                     new GameEventBinding
@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "INVALID_BINDING",
-                Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                 Bindings = new List<GameEventBinding> { new GameEventBinding { As = "target" } },
             };
 
@@ -177,7 +177,7 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "FOLLOW_UP",
-                Schedule = new GameEventScheduler
+                Schedule = new GameEventSchedule
                 {
                     After = new AfterEvent { EventInstanceID = "COMPLETED_EVENT", DelayTicks = 10 },
                 },
@@ -193,7 +193,7 @@ namespace Rebellion.Tests.Sectors
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "FOLLOW_UP",
-                Schedule = new GameEventScheduler
+                Schedule = new GameEventSchedule
                 {
                     After = new AfterEvent { EventInstanceID = "UNKNOWN_EVENT", DelayTicks = 10 },
                 },
@@ -249,7 +249,7 @@ namespace Rebellion.Tests.Sectors
         public void ProcessEvents_RecurringScheduleUntilMet_CompletesAndRemovesEvent()
         {
             GameEvent gameEvent = CreateTickEvent("UNTIL_MET", targetTick: 0, repeatable: true);
-            gameEvent.Schedule = new GameEventScheduler
+            gameEvent.Schedule = new GameEventSchedule
             {
                 Every = new EveryTicks
                 {
@@ -307,7 +307,7 @@ namespace Rebellion.Tests.Sectors
                         },
                     },
                 },
-                Schedule = new GameEventScheduler
+                Schedule = new GameEventSchedule
                 {
                     Every = new EveryTicks
                     {
@@ -366,7 +366,7 @@ namespace Rebellion.Tests.Sectors
         {
             GameEvent gameEvent = CreateTickEvent("DELAYED", targetTick: 0, repeatable: false);
             gameEvent.MaximumActivations = null;
-            gameEvent.Schedule = new GameEventScheduler
+            gameEvent.Schedule = new GameEventSchedule
             {
                 RandomDelay = new RandomDelay { MinimumTicks = 10, MaximumTicks = 14 },
             };
@@ -389,7 +389,7 @@ namespace Rebellion.Tests.Sectors
         public void ProcessEvents_RepeatDelay_PreventsActivationUntilCooldownExpires()
         {
             GameEvent gameEvent = CreateTickEvent("COOLDOWN", targetTick: 0, repeatable: true);
-            gameEvent.Schedule = new GameEventScheduler { Every = new EveryTicks { Ticks = 5 } };
+            gameEvent.Schedule = new GameEventSchedule { Every = new EveryTicks { Ticks = 5 } };
             _game.GetEventPool().Add(gameEvent);
 
             _game.CurrentTick = 1;
@@ -408,7 +408,7 @@ namespace Rebellion.Tests.Sectors
         {
             GameEvent predecessor = CreateTickEvent("DEPARTURE", targetTick: 19, repeatable: false);
             GameEvent pending = CreateTickEvent("PENDING_RETURN", targetTick: 0, repeatable: false);
-            pending.Schedule = new GameEventScheduler
+            pending.Schedule = new GameEventSchedule
             {
                 After = new AfterEvent { EventInstanceID = predecessor.InstanceID, DelayTicks = 5 },
             };
@@ -526,7 +526,7 @@ namespace Rebellion.Tests.Sectors
                 {
                     new IsOwnedConditional { PlanetBinding = "target" },
                 },
-                Schedule = new GameEventScheduler
+                Schedule = new GameEventSchedule
                 {
                     Every = new EveryTicks { Ticks = 20, InitialDelayTicks = 10 },
                 },
@@ -572,7 +572,7 @@ namespace Rebellion.Tests.Sectors
                 {
                     new IsOwnedConditional { PlanetBinding = "target" },
                 },
-                Schedule = new GameEventScheduler
+                Schedule = new GameEventSchedule
                 {
                     Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
                 },
@@ -619,7 +619,7 @@ namespace Rebellion.Tests.Sectors
                 {
                     new IsOwnedConditional { PlanetBinding = "target" },
                 },
-                Schedule = new GameEventScheduler
+                Schedule = new GameEventSchedule
                 {
                     Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
                 },
@@ -684,7 +684,7 @@ namespace Rebellion.Tests.Sectors
             {
                 InstanceID = "DELAYED_RANDOM_TARGET",
                 MaximumActivations = 1,
-                Schedule = new GameEventScheduler { At = new AtTick { Tick = 10 } },
+                Schedule = new GameEventSchedule { At = new AtTick { Tick = 10 } },
                 Bindings = new List<GameEventBinding>
                 {
                     new GameEventBinding
@@ -952,7 +952,7 @@ namespace Rebellion.Tests.Sectors
             second.LastActivationTick = afterAll ? 20 : 0;
 
             GameEvent gameEvent = CreateTickEvent(instanceID, targetTick: 0, repeatable: false);
-            gameEvent.Schedule = new GameEventScheduler();
+            gameEvent.Schedule = new GameEventSchedule();
             if (afterAll)
                 gameEvent.Schedule.AfterAll = dependencies;
             else

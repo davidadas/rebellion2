@@ -4,7 +4,6 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -463,8 +462,8 @@ namespace Rebellion.Systems
         /// <returns>The officer escape score.</returns>
         private static int GetEscapeSkillScore(Officer officer)
         {
-            return officer.GetEffectiveRating(OfficerRating.Espionage)
-                + officer.GetEffectiveRating(OfficerRating.Combat);
+            return officer.GetEffectiveRating(SkillRating.Espionage)
+                + officer.GetEffectiveRating(SkillRating.Combat);
         }
 
         /// <summary>
@@ -489,7 +488,7 @@ namespace Rebellion.Systems
             if (guards.Count == 0)
                 return 0;
 
-            return guards.Sum(g => g.GetEffectiveRating(OfficerRating.Combat)) / guards.Count;
+            return guards.Sum(g => g.GetEffectiveRating(SkillRating.Combat)) / guards.Count;
         }
 
         /// <summary>

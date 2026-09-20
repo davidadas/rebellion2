@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
@@ -214,15 +213,10 @@ namespace Rebellion.Generation
         {
             foreach (Officer officer in officers)
             {
-                AddRatingVariance(officer, OfficerRating.Diplomacy, officer.DiplomacyVariance, rng);
-                AddRatingVariance(officer, OfficerRating.Espionage, officer.EspionageVariance, rng);
-                AddRatingVariance(officer, OfficerRating.Combat, officer.CombatVariance, rng);
-                AddRatingVariance(
-                    officer,
-                    OfficerRating.Leadership,
-                    officer.LeadershipVariance,
-                    rng
-                );
+                AddRatingVariance(officer, SkillRating.Diplomacy, officer.DiplomacyVariance, rng);
+                AddRatingVariance(officer, SkillRating.Espionage, officer.EspionageVariance, rng);
+                AddRatingVariance(officer, SkillRating.Combat, officer.CombatVariance, rng);
+                AddRatingVariance(officer, SkillRating.Leadership, officer.LeadershipVariance, rng);
 
                 officer.Loyalty += RollVariance(officer.LoyaltyVariance, rng);
                 officer.ShipResearch += RollVariance(officer.ShipResearchVariance, rng);
@@ -258,7 +252,7 @@ namespace Rebellion.Generation
         /// <param name="rng">Random number provider.</param>
         private void AddRatingVariance(
             Officer officer,
-            OfficerRating rating,
+            SkillRating rating,
             int variance,
             IRandomNumberProvider rng
         )

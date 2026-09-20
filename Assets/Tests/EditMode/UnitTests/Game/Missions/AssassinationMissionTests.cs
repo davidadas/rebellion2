@@ -211,11 +211,11 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.IsMain = false;
             game.AttachNode(target, enemyPlanet);
-            firstAssassin.SetBaseRating(OfficerRating.Combat, 100);
-            secondAssassin.SetBaseRating(OfficerRating.Combat, 100);
-            target.SetBaseRating(OfficerRating.Combat, 0);
-            int firstRating = firstAssassin.GetBaseRating(OfficerRating.Combat);
-            int secondRating = secondAssassin.GetBaseRating(OfficerRating.Combat);
+            firstAssassin.SetBaseRating(SkillRating.Combat, 100);
+            secondAssassin.SetBaseRating(SkillRating.Combat, 100);
+            target.SetBaseRating(SkillRating.Combat, 0);
+            int firstRating = firstAssassin.GetBaseRating(SkillRating.Combat);
+            int secondRating = secondAssassin.GetBaseRating(SkillRating.Combat);
             game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
             {
                 { 0, 100 },
@@ -247,8 +247,8 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(2, results.OfType<OfficerInjuredResult>().Count());
             OfficerAssassinatedResult killed = results.OfType<OfficerAssassinatedResult>().Single();
             Assert.AreSame(secondAssassin, killed.Assassin);
-            Assert.AreEqual(firstRating, firstAssassin.GetBaseRating(OfficerRating.Combat));
-            Assert.AreEqual(secondRating + 1, secondAssassin.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(firstRating, firstAssassin.GetBaseRating(SkillRating.Combat));
+            Assert.AreEqual(secondRating + 1, secondAssassin.GetBaseRating(SkillRating.Combat));
             Assert.AreEqual(
                 MissionOutcome.Success,
                 results.OfType<MissionCompletedResult>().Single().Outcome
@@ -323,14 +323,14 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
-            officer.SetBaseRating(OfficerRating.Combat, 0);
-            target.SetBaseRating(OfficerRating.Combat, 0);
+            officer.SetBaseRating(SkillRating.Combat, 0);
+            target.SetBaseRating(SkillRating.Combat, 0);
             SpecialForces specialForces = new SpecialForces
             {
                 InstanceID = "special-forces",
                 OwnerInstanceID = "empire",
             };
-            specialForces.SetBaseRating(OfficerRating.Combat, 100);
+            specialForces.SetBaseRating(SkillRating.Combat, 100);
             game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
             {
                 { 0, 0 },
@@ -384,7 +384,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
-            int originalCombat = officer.GetBaseRating(OfficerRating.Combat);
+            int originalCombat = officer.GetBaseRating(SkillRating.Combat);
 
             Mission mission = CreateAssassinationMission(
                 game,
@@ -425,7 +425,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             Assert.AreEqual(
                 originalCombat,
-                officer.GetBaseRating(OfficerRating.Combat),
+                officer.GetBaseRating(SkillRating.Combat),
                 "A hit that the target survives must not improve the assassin"
             );
         }
@@ -479,7 +479,7 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
-            int originalCombat = officer.GetBaseRating(OfficerRating.Combat);
+            int originalCombat = officer.GetBaseRating(SkillRating.Combat);
             game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
             {
                 { 0, 100 },
@@ -501,7 +501,7 @@ namespace Rebellion.Tests.Game.Missions
                 MissionOutcome.Success,
                 results.OfType<MissionCompletedResult>().Single().Outcome
             );
-            Assert.AreEqual(originalCombat + 1, officer.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(originalCombat + 1, officer.GetBaseRating(SkillRating.Combat));
         }
 
         [Test]
@@ -585,7 +585,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
-            int originalCombat = officer.GetBaseRating(OfficerRating.Combat);
+            int originalCombat = officer.GetBaseRating(SkillRating.Combat);
 
             // Target moves to a different planet before mission executes
             game.MoveNode(target, anotherEnemyPlanet);
@@ -602,7 +602,7 @@ namespace Rebellion.Tests.Game.Missions
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
-            Assert.AreEqual(originalCombat, officer.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(originalCombat, officer.GetBaseRating(SkillRating.Combat));
         }
 
         [Test]
@@ -656,8 +656,8 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
-            officer.SetBaseRating(OfficerRating.Combat, 80);
-            target.SetBaseRating(OfficerRating.Combat, 60);
+            officer.SetBaseRating(SkillRating.Combat, 80);
+            target.SetBaseRating(SkillRating.Combat, 60);
             game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
             {
                 { 0, 0 },
@@ -677,7 +677,7 @@ namespace Rebellion.Tests.Game.Missions
                 new FixedRNG(0.5),
                 game
             );
-            target.SetBaseRating(OfficerRating.Combat, 80);
+            target.SetBaseRating(SkillRating.Combat, 80);
             bool equalCombatSucceeded = mission.RollParticipantSuccess(
                 officer,
                 new FixedRNG(0),
@@ -698,7 +698,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Assassination",
                 DisplayName = "Assassination",
                 LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.Combat,
+                ParticipantRating = SkillRating.Combat,
                 TargetOfficerInstanceID = "OFFICER1",
                 HasInitiated = true,
                 MaxProgress = 2,
@@ -714,7 +714,7 @@ namespace Rebellion.Tests.Game.Missions
                 "OFFICER1",
                 ((AssassinationMission)deserialized).TargetOfficerInstanceID
             );
-            Assert.AreEqual(OfficerRating.Combat, deserialized.ParticipantRating);
+            Assert.AreEqual(SkillRating.Combat, deserialized.ParticipantRating);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(2, deserialized.MaxProgress);
             Assert.AreEqual(1, deserialized.CurrentProgress);

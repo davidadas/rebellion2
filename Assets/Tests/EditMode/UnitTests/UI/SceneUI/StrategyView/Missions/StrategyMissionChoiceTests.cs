@@ -2,6 +2,7 @@ using System;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
@@ -20,9 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             MissionOption option = new MissionOption(
                 ResearchMission.MissionTypeID,
                 "Research Facilities",
-                OfficerRating.FacilityResearch,
+                SkillRating.FacilityResearch,
                 MissionTargetKind.Planet,
-                OfficerRating.None,
+                SkillRating.None,
                 ResearchDiscipline.FacilityDesign
             );
 

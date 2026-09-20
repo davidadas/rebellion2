@@ -120,9 +120,9 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID
             );
             Officer diplomat = CreateRecruiter("diplomat", empire.InstanceID, isMain: true);
-            diplomat.Ratings[OfficerRating.Diplomacy] = 100;
+            diplomat.Ratings[SkillRating.Diplomacy] = 100;
             Officer recruiter = CreateRecruiter("recruiter", empire.InstanceID, isMain: true);
-            recruiter.Ratings[OfficerRating.Diplomacy] = 20;
+            recruiter.Ratings[SkillRating.Diplomacy] = 20;
             game.AttachNode(diplomat, planet);
             game.AttachNode(recruiter, planet);
             AddRecruitableOfficer(game, empire.InstanceID);
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 SabotageMission.MissionTypeID
             );
-            participant.Ratings[OfficerRating.Espionage] = 100;
+            participant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -285,7 +285,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 SabotageMission.MissionTypeID
             );
-            participant.Ratings[OfficerRating.Espionage] = 100;
+            participant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -330,7 +330,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 SabotageMission.MissionTypeID
             );
-            participant.Ratings[OfficerRating.Espionage] = 100;
+            participant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -376,7 +376,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 SabotageMission.MissionTypeID
             );
-            availableParticipant.Ratings[OfficerRating.Espionage] = 100;
+            availableParticipant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(activeParticipant, origin);
             game.AttachNode(availableParticipant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
@@ -575,7 +575,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 SabotageMission.MissionTypeID
             );
-            participant.Ratings[OfficerRating.Espionage] = 100;
+            participant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -600,15 +600,15 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 EspionageMission.MissionTypeID
             );
-            leadSpy.Ratings[OfficerRating.Espionage] = 90;
+            leadSpy.Ratings[SkillRating.Espionage] = 90;
             SpecialForces specialForcesDecoy = CreateSpecialForces(
                 "special-forces-decoy",
                 empire.InstanceID,
                 EspionageMission.MissionTypeID
             );
-            specialForcesDecoy.Ratings[OfficerRating.Espionage] = 60;
+            specialForcesDecoy.Ratings[SkillRating.Espionage] = 60;
             Officer officerDecoy = EntityFactory.CreateOfficer("officer-decoy", empire.InstanceID);
-            officerDecoy.Ratings[OfficerRating.Espionage] = 100;
+            officerDecoy.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(leadSpy, origin);
             game.AttachNode(specialForcesDecoy, origin);
             game.AttachNode(officerDecoy, origin);
@@ -646,7 +646,7 @@ namespace Rebellion.Tests.AI.Planners
                 EspionageMission.MissionTypeID
             );
             Officer officerDecoy = EntityFactory.CreateOfficer("officer-decoy", empire.InstanceID);
-            officerDecoy.Ratings[OfficerRating.Espionage] = 80;
+            officerDecoy.Ratings[SkillRating.Espionage] = 80;
             game.AttachNode(leadSpy, origin);
             game.AttachNode(officerDecoy, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
@@ -672,7 +672,7 @@ namespace Rebellion.Tests.AI.Planners
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Officer leadSpy = EntityFactory.CreateOfficer("lead-spy", empire.InstanceID);
-            leadSpy.Ratings[OfficerRating.Espionage] = 80;
+            leadSpy.Ratings[SkillRating.Espionage] = 80;
             SpecialForces decoy = CreateSpecialForces(
                 "decoy",
                 empire.InstanceID,
@@ -683,8 +683,8 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 EspionageMission.MissionTypeID
             );
-            decoy.Ratings[OfficerRating.Espionage] = 60;
-            primaryAgent.Ratings[OfficerRating.Espionage] = 40;
+            decoy.Ratings[SkillRating.Espionage] = 60;
+            primaryAgent.Ratings[SkillRating.Espionage] = 40;
             game.AttachNode(leadSpy, origin);
             game.AttachNode(decoy, origin);
             game.AttachNode(primaryAgent, origin);
@@ -882,7 +882,7 @@ namespace Rebellion.Tests.AI.Planners
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "p1", empire.InstanceID);
             planet.AddVisitor(empire.InstanceID);
             Officer trainer = CreateJedi("trainer", empire.InstanceID, 100, isTrainer: true);
-            trainer.Ratings[OfficerRating.Diplomacy] = 100;
+            trainer.Ratings[SkillRating.Diplomacy] = 100;
             game.AttachNode(trainer, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -913,7 +913,7 @@ namespace Rebellion.Tests.AI.Planners
             );
             trainerPlanet.AddVisitor(empire.InstanceID);
             Officer trainer = CreateJedi("trainer", empire.InstanceID, 100, isTrainer: true);
-            trainer.Ratings[OfficerRating.Diplomacy] = 100;
+            trainer.Ratings[SkillRating.Diplomacy] = 100;
             Officer student = CreateJedi("student", empire.InstanceID, 20, isTrainer: false);
             game.AttachNode(trainer, trainerPlanet);
             game.AttachNode(student, studentPlanet);
@@ -1111,7 +1111,7 @@ namespace Rebellion.Tests.AI.Planners
                 ManufacturingType.Ship
             );
             Officer diplomat = EntityFactory.CreateOfficer("diplomat", empire.InstanceID);
-            diplomat.Ratings[OfficerRating.Diplomacy] = 100;
+            diplomat.Ratings[SkillRating.Diplomacy] = 100;
             game.AttachNode(diplomat, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, supportedTarget);
             AITestSceneBuilder.RevealPlanet(game, empire, shipyardTarget);
@@ -1151,9 +1151,9 @@ namespace Rebellion.Tests.AI.Planners
             );
             AddShield(game, sabotageTarget, "shield", rebels.InstanceID);
             Officer diplomat = EntityFactory.CreateOfficer("diplomat", empire.InstanceID);
-            diplomat.Ratings[OfficerRating.Diplomacy] = 50;
-            diplomat.Ratings[OfficerRating.Espionage] = 100;
-            diplomat.Ratings[OfficerRating.Combat] = 100;
+            diplomat.Ratings[SkillRating.Diplomacy] = 50;
+            diplomat.Ratings[SkillRating.Espionage] = 100;
+            diplomat.Ratings[SkillRating.Combat] = 100;
             game.AttachNode(diplomat, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, diplomacyTarget);
             AITestSceneBuilder.RevealPlanet(game, empire, sabotageTarget);
@@ -1185,10 +1185,10 @@ namespace Rebellion.Tests.AI.Planners
         {
             Officer officer = EntityFactory.CreateOfficer(instanceId, ownerInstanceId);
             officer.IsMain = isMain;
-            officer.Ratings[OfficerRating.Leadership] = 100;
-            officer.Ratings[OfficerRating.Diplomacy] = 0;
-            officer.Ratings[OfficerRating.Combat] = 0;
-            officer.Ratings[OfficerRating.Espionage] = 0;
+            officer.Ratings[SkillRating.Leadership] = 100;
+            officer.Ratings[SkillRating.Diplomacy] = 0;
+            officer.Ratings[SkillRating.Combat] = 0;
+            officer.Ratings[SkillRating.Espionage] = 0;
             return officer;
         }
 

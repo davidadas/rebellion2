@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -87,8 +86,8 @@ namespace Rebellion.Systems
             Officer encountered = request.EncounteredOfficer;
             Officer opposing = request.OpposingOfficer;
             Planet location = encountered.GetParentOfType<Planet>();
-            int encounteredCombat = encountered.GetEffectiveRating(OfficerRating.Combat);
-            int opposingCombat = opposing.GetEffectiveRating(OfficerRating.Combat);
+            int encounteredCombat = encountered.GetEffectiveRating(SkillRating.Combat);
+            int opposingCombat = opposing.GetEffectiveRating(SkillRating.Combat);
             bool captured = TryCaptureEncounteredOfficer(
                 encountered,
                 opposing,
@@ -291,7 +290,7 @@ namespace Rebellion.Systems
 
             injured.ApplyInjury(injury, _game.Config.Recovery.MaxInjuryPoints);
             beneficiary.IncrementBaseRating(
-                OfficerRating.Combat,
+                SkillRating.Combat,
                 _game.Config.DuelResolution.CombatReward
             );
             reactions.Add(

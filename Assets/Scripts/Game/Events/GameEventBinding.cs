@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
@@ -38,8 +37,8 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Resolves one officer's effective authored rating.
     /// </summary>
-    [PersistableObject(Name = "OfficerRating")]
-    public sealed class OfficerRatingBindingSource : GameEventBindingSource
+    [PersistableObject(Name = "SkillRating")]
+    public sealed class SkillRatingBindingSource : GameEventBindingSource
     {
         // Officer.
         [PersistableAttribute]
@@ -50,7 +49,7 @@ namespace Rebellion.Game.Events
 
         // Rating.
         [PersistableAttribute]
-        public OfficerRating Rating { get; set; }
+        public SkillRating Rating { get; set; }
 
         internal override Type ValueType => typeof(int);
 
@@ -71,13 +70,13 @@ namespace Rebellion.Game.Events
             bool hasBinding = !string.IsNullOrWhiteSpace(OfficerBinding);
             if (hasInstanceID == hasBinding)
                 throw new InvalidOperationException(
-                    "OfficerRating requires exactly one OfficerInstanceID or OfficerBinding."
+                    "SkillRating requires exactly one OfficerInstanceID or OfficerBinding."
                 );
             Officer officer = hasBinding
                 ? context?.GetBindingReference<Officer>(OfficerBinding)
                 : game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID, includeDisabled: true);
             if (officer == null)
-                throw new InvalidOperationException("OfficerRating could not resolve its officer.");
+                throw new InvalidOperationException("SkillRating could not resolve its officer.");
             return officer.GetEffectiveRating(Rating);
         }
     }

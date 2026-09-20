@@ -809,8 +809,8 @@ namespace Rebellion.Systems
             var decoyGroups = decoys
                 .GroupBy(decoy => new
                 {
-                    Espionage = decoy.GetEffectiveRating(OfficerRating.Espionage),
-                    Combat = decoy.GetEffectiveRating(OfficerRating.Combat),
+                    Espionage = decoy.GetEffectiveRating(SkillRating.Espionage),
+                    Combat = decoy.GetEffectiveRating(SkillRating.Combat),
                     CanBeRemoved = decoy is Officer or SpecialForces,
                 })
                 .Select(group => new { Decoy = group.First(), Count = group.Count() })
@@ -975,8 +975,8 @@ namespace Rebellion.Systems
                 return 1d;
 
             Officer commander = mission.FindDetectorCommander(detector);
-            int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
-            int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
+            int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
+            int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
             return Math.Clamp(GetEvasionProbability(score) / 100d, 0, 1);
         }
 
@@ -1023,7 +1023,7 @@ namespace Rebellion.Systems
             return participants.Count == 0
                 ? 0
                 : participants.Sum(participant =>
-                    participant.GetEffectiveRating(OfficerRating.Espionage)
+                    participant.GetEffectiveRating(SkillRating.Espionage)
                 ) / participants.Count;
         }
 
@@ -1035,7 +1035,7 @@ namespace Rebellion.Systems
         /// <returns>The scaled commander contribution.</returns>
         private static int GetScaledCommanderEspionage(Officer commander, int scalingPercent)
         {
-            return (commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
+            return (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
                 * scalingPercent
                 / 100;
         }
@@ -1127,8 +1127,8 @@ namespace Rebellion.Systems
         )
         {
             Officer commander = mission.FindDetectorCommander(detector);
-            int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
-            int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
+            int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
+            int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
             bool evaded = _provider.NextDouble() * 100 < GetEvasionProbability(score);
             if (evaded)
                 return;

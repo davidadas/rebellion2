@@ -227,7 +227,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "InciteUprising",
                 DisplayName = "Incite Uprising",
                 LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.Diplomacy,
+                ParticipantRating = SkillRating.Diplomacy,
                 HasInitiated = false,
                 MaxProgress = 20,
                 CurrentProgress = 0,
@@ -239,7 +239,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("InciteUprising", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
-            Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
+            Assert.AreEqual(SkillRating.Diplomacy, deserialized.ParticipantRating);
             Assert.IsFalse(deserialized.HasInitiated);
             Assert.AreEqual(20, deserialized.MaxProgress);
         }

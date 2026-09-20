@@ -1676,19 +1676,19 @@ namespace Rebellion.Tests.Sectors
         public void CaptureSnapshot_DeepCopy_ModifyingGameDoesNotAffectSnapshot()
         {
             Officer vader = CreateOfficer("VADER", _empire);
-            vader.SetBaseRating(OfficerRating.Diplomacy, 50);
+            vader.SetBaseRating(SkillRating.Diplomacy, 50);
             _game.AttachNode(vader, _coruscant);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            vader.SetBaseRating(OfficerRating.Diplomacy, 99);
+            vader.SetBaseRating(SkillRating.Diplomacy, 99);
             _coruscant.RemoveChild(vader);
 
             PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
-            Assert.AreEqual(50, snapshot.Officers[0].GetBaseRating(OfficerRating.Diplomacy));
+            Assert.AreEqual(50, snapshot.Officers[0].GetBaseRating(SkillRating.Diplomacy));
         }
 
         [Test]
@@ -1918,7 +1918,7 @@ namespace Rebellion.Tests.Sectors
         public void CaptureSnapshot_PlanetVisible_SnapshotNotOverwrittenWithoutExplicitCall()
         {
             Officer vader = CreateOfficer("VADER", _empire);
-            vader.SetBaseRating(OfficerRating.Diplomacy, 50);
+            vader.SetBaseRating(SkillRating.Diplomacy, 50);
             _game.AttachNode(vader, _coruscant);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
@@ -1931,7 +1931,7 @@ namespace Rebellion.Tests.Sectors
             _game.AttachNode(allianceFleet, _coruscant);
             AddCapitalShip(allianceFleet, _alliance, "CS1");
 
-            vader.SetBaseRating(OfficerRating.Diplomacy, 99);
+            vader.SetBaseRating(SkillRating.Diplomacy, 99);
 
             Assert.AreEqual(
                 originalTickCaptured,
@@ -1940,7 +1940,7 @@ namespace Rebellion.Tests.Sectors
             );
             Assert.AreEqual(
                 50,
-                snapshot.Officers[0].GetBaseRating(OfficerRating.Diplomacy),
+                snapshot.Officers[0].GetBaseRating(SkillRating.Diplomacy),
                 "Snapshot should preserve old skill value"
             );
             Assert.AreEqual(1, snapshot.Officers.Count, "Snapshot should not include new entities");

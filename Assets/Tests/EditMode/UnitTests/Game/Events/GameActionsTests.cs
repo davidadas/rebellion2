@@ -1288,19 +1288,19 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            luke.SetBaseRating(OfficerRating.Diplomacy, 40);
+            luke.SetBaseRating(SkillRating.Diplomacy, 40);
             game.AttachNode(luke, rebelPlanet);
 
             Assert.IsEmpty(
                 new ChangeOfficerRatingAction
                 {
                     OfficerInstanceID = luke.InstanceID,
-                    Rating = OfficerRating.Diplomacy,
+                    Rating = SkillRating.Diplomacy,
                     Amount = 5,
                 }.Execute(game)
             );
 
-            Assert.AreEqual(45, luke.GetBaseRating(OfficerRating.Diplomacy));
+            Assert.AreEqual(45, luke.GetBaseRating(SkillRating.Diplomacy));
         }
 
         [Test]
@@ -1308,17 +1308,17 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            luke.SetBaseRating(OfficerRating.ShipResearch, 40);
+            luke.SetBaseRating(SkillRating.ShipResearch, 40);
             game.AttachNode(luke, rebelPlanet);
 
             new ChangeOfficerRatingAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                Rating = OfficerRating.ShipResearch,
+                Rating = SkillRating.ShipResearch,
                 PercentOfStored = -25,
             }.Execute(game);
 
-            Assert.AreEqual(30, luke.GetBaseRating(OfficerRating.ShipResearch));
+            Assert.AreEqual(30, luke.GetBaseRating(SkillRating.ShipResearch));
         }
 
         [Test]
@@ -1332,7 +1332,7 @@ namespace Rebellion.Tests.Game.Events
                 new ChangeOfficerRatingAction
                 {
                     OfficerInstanceID = luke.InstanceID,
-                    Rating = OfficerRating.Combat,
+                    Rating = SkillRating.Combat,
                     Amount = 5,
                     PercentOfStored = 10,
                 }.Execute(game)
@@ -1344,14 +1344,14 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            luke.SetBaseRating(OfficerRating.Combat, 50);
+            luke.SetBaseRating(SkillRating.Combat, 50);
             game.AttachNode(luke, rebelPlanet);
             luke.IsEnabled = false;
             game.Config.ProbabilityTables.Mission.Rescue = new Dictionary<int, int> { [50] = 60 };
             PerformSkillCheckAction action = new PerformSkillCheckAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                Rating = OfficerRating.Combat,
+                Rating = SkillRating.Combat,
                 ProbabilityTable = RescueMission.MissionTypeID,
                 OnSuccess = new List<GameAction>
                 {
@@ -1383,13 +1383,13 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            luke.SetBaseRating(OfficerRating.Combat, 50);
+            luke.SetBaseRating(SkillRating.Combat, 50);
             game.AttachNode(luke, rebelPlanet);
             game.Config.ProbabilityTables.Mission.Rescue = new Dictionary<int, int> { [50] = 60 };
             PerformSkillCheckAction action = new PerformSkillCheckAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                Rating = OfficerRating.Combat,
+                Rating = SkillRating.Combat,
                 ProbabilityTable = RescueMission.MissionTypeID,
                 OnSuccess = new List<GameAction>(),
                 OnFailure = new List<GameAction>
@@ -1413,7 +1413,7 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            luke.SetBaseRating(OfficerRating.Combat, 50);
+            luke.SetBaseRating(SkillRating.Combat, 50);
             luke.InjuryPoints = 20;
             game.AttachNode(luke, rebelPlanet);
             game.Config.ProbabilityTables.Mission.Rescue = new Dictionary<int, int>
@@ -1424,7 +1424,7 @@ namespace Rebellion.Tests.Game.Events
             PerformSkillCheckAction action = new PerformSkillCheckAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                Rating = OfficerRating.Combat,
+                Rating = SkillRating.Combat,
                 ProbabilityTable = RescueMission.MissionTypeID,
                 OnFailure = new List<GameAction>
                 {
@@ -1442,7 +1442,7 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer han = EntityFactory.CreateOfficer("han", "rebels");
-            han.SetBaseRating(OfficerRating.Combat, 50);
+            han.SetBaseRating(SkillRating.Combat, 50);
             game.AttachNode(han, rebelPlanet);
             game.Config.ProbabilityTables.Mission.Abduction = new Dictionary<int, int>
             {
@@ -1452,7 +1452,7 @@ namespace Rebellion.Tests.Game.Events
             PerformSkillCheckAction action = new PerformSkillCheckAction
             {
                 OfficerInstanceID = han.InstanceID,
-                Rating = OfficerRating.Combat,
+                Rating = SkillRating.Combat,
                 ProbabilityTable = AbductionMission.MissionTypeID,
                 RatingMultiplier = -1,
                 OnSuccess = new List<GameAction>
@@ -1474,7 +1474,7 @@ namespace Rebellion.Tests.Game.Events
             PerformSkillCheckAction action = new PerformSkillCheckAction
             {
                 OfficerInstanceID = "missing",
-                Rating = OfficerRating.Combat,
+                Rating = SkillRating.Combat,
                 ProbabilityTable = RescueMission.MissionTypeID,
             };
 
@@ -1494,7 +1494,7 @@ namespace Rebellion.Tests.Game.Events
             PerformSkillCheckAction action = new PerformSkillCheckAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                Rating = OfficerRating.Combat,
+                Rating = SkillRating.Combat,
                 ProbabilityTable = "missing",
             };
 

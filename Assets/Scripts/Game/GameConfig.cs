@@ -30,8 +30,6 @@ namespace Rebellion.Game
 
         public BlockadeConfig Blockade { get; set; } = new BlockadeConfig();
 
-        public VictoryConfig Victory { get; set; } = new VictoryConfig();
-
         public JediConfig Jedi { get; set; } = new JediConfig();
 
         public DuelResolutionConfig DuelResolution { get; set; } = new DuelResolutionConfig();
@@ -670,12 +668,6 @@ namespace Rebellion.Game
 
             public int EvacuationLossPercent { get; set; }
         }
-
-        /// <summary>
-        /// Victory system parameters.
-        /// </summary>
-        [PersistableObject]
-        public class VictoryConfig { }
 
         /// <summary>
         /// Force tier advancement and detection thresholds.
