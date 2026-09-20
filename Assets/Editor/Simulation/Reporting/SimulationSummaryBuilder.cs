@@ -312,7 +312,7 @@ public static partial class HeadlessSimulationRunner
             new SystemRandomProvider(0),
             fogOfWar.BuildFactionView(faction)
         );
-        List<AIDemand> demands = new AIProductionRequirements().Generate(context);
+        List<AIProductionRequirement> demands = new AIProductionRequirements().Generate(context);
         List<AIManufactureProposal> proposals = new AIProductionPlanner()
             .Plan(context)
             .OfType<AIManufactureProposal>()
@@ -328,8 +328,12 @@ public static partial class HeadlessSimulationRunner
         summary.ProjectedEconomyMaintenanceHeadroom = context
             .Assessment
             .ProjectedEconomyMaintenanceHeadroom;
-        summary.MineDemandCount = demands.Count(demand => demand.Kind == AIDemandKind.Mine);
-        summary.RefineryDemandCount = demands.Count(demand => demand.Kind == AIDemandKind.Refinery);
+        summary.MineDemandCount = demands.Count(demand =>
+            demand.Kind == AIProductionRequirementKind.Mine
+        );
+        summary.RefineryDemandCount = demands.Count(demand =>
+            demand.Kind == AIProductionRequirementKind.Refinery
+        );
         summary.MineDestinationCount = context.Assessment.OwnedPlanets.Count(planet =>
             planet.IsColonized
             && !planet.IsDestroyed
@@ -345,25 +349,25 @@ public static partial class HeadlessSimulationRunner
         summary.ProductionProposalCount = proposals.Count;
         summary.SelectedProductionProposalCount = selected.Count;
         summary.PlanetaryDefenseDemandCount = demands.Count(demand =>
-            demand.Kind == AIDemandKind.PlanetaryDefense
+            demand.Kind == AIProductionRequirementKind.PlanetaryDefense
         );
         summary.PlanetaryDefenseDemandQuantity = demands
-            .Where(demand => demand.Kind == AIDemandKind.PlanetaryDefense)
+            .Where(demand => demand.Kind == AIProductionRequirementKind.PlanetaryDefense)
             .Sum(demand => demand.QuantityNeeded);
         summary.PlanetaryDefenseProposalCount = proposals.Count(proposal =>
-            proposal.Demand.Kind == AIDemandKind.PlanetaryDefense
+            proposal.Demand.Kind == AIProductionRequirementKind.PlanetaryDefense
         );
         summary.SelectedPlanetaryDefenseProposalCount = selected.Count(proposal =>
-            proposal.Demand.Kind == AIDemandKind.PlanetaryDefense
+            proposal.Demand.Kind == AIProductionRequirementKind.PlanetaryDefense
         );
         summary.GarrisonDemandCount = demands.Count(demand =>
-            demand.Kind == AIDemandKind.GarrisonRegimentReserve
+            demand.Kind == AIProductionRequirementKind.GarrisonRegimentReserve
         );
         summary.GarrisonProposalCount = proposals.Count(proposal =>
-            proposal.Demand.Kind == AIDemandKind.GarrisonRegimentReserve
+            proposal.Demand.Kind == AIProductionRequirementKind.GarrisonRegimentReserve
         );
         summary.SelectedGarrisonProposalCount = selected.Count(proposal =>
-            proposal.Demand.Kind == AIDemandKind.GarrisonRegimentReserve
+            proposal.Demand.Kind == AIProductionRequirementKind.GarrisonRegimentReserve
         );
         summary.BuildingProductionProposalCount = proposals.Count(proposal =>
             proposal.Demand.ManufacturingType == ManufacturingType.Building
