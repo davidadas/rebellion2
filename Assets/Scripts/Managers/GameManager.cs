@@ -658,6 +658,7 @@ public sealed class GameManager
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_officerLoyaltySystem);
+        _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_captiveSystem);
         _resultProcessor.Subscribe<HeadquartersLostResult>(_victorySystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);

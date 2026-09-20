@@ -16,13 +16,17 @@ internal static class FacilityWindowContextMenuBuilder
     /// <param name="contextManufacturingTab">The targeted manufacturing facility tab.</param>
     /// <param name="contextInventoryItem">The targeted inventory building.</param>
     /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="trackingEnabled">Whether idle-bar tracking is enabled.</param>
+    /// <param name="manufacturingTracked">Whether the targeted manufacturing lane is tracked.</param>
     /// <returns>The ordered context commands.</returns>
     public static List<StrategyMenuCommand> Build(
         Planet planet,
         FacilityWindowTab activeTab,
         FacilityWindowTab? contextManufacturingTab,
         Building contextInventoryItem,
-        string playerFactionId
+        string playerFactionId,
+        bool trackingEnabled = false,
+        bool manufacturingTracked = false
     )
     {
         bool playerControlsPlanet =
@@ -34,7 +38,9 @@ internal static class FacilityWindowContextMenuBuilder
             return BuildManufacturingCommands(
                 planet,
                 contextManufacturingTab.Value,
-                playerControlsPlanet
+                playerControlsPlanet,
+                trackingEnabled,
+                manufacturingTracked
             );
         }
 
@@ -50,11 +56,15 @@ internal static class FacilityWindowContextMenuBuilder
     /// <param name="planet">The represented planet.</param>
     /// <param name="manufacturingTab">The targeted manufacturing facility tab.</param>
     /// <param name="playerControlsPlanet">Whether the player controls the represented planet.</param>
+    /// <param name="trackingEnabled">Whether idle-bar tracking is enabled.</param>
+    /// <param name="manufacturingTracked">Whether the targeted manufacturing lane is tracked.</param>
     /// <returns>The ordered manufacturing commands.</returns>
     private static List<StrategyMenuCommand> BuildManufacturingCommands(
         Planet planet,
         FacilityWindowTab manufacturingTab,
-        bool playerControlsPlanet
+        bool playerControlsPlanet,
+        bool trackingEnabled,
+        bool manufacturingTracked
     )
     {
         List<StrategyMenuCommand> commands = new List<StrategyMenuCommand>
@@ -89,6 +99,16 @@ internal static class FacilityWindowContextMenuBuilder
                     "Reserved",
                     playerControlsPlanet,
                     planet?.IsManufacturingReserved(manufacturingType.Value) == true
+                        ? StrategyContextMenuIconKeys.CheckMark
+                        : StrategyContextMenuIconKeys.None
+                )
+            );
+            commands.Add(
+                new StrategyMenuCommand(
+                    StrategyMenuAction.ToggleIdleBarTracking,
+                    "Tracked",
+                    playerControlsPlanet && trackingEnabled,
+                    manufacturingTracked
                         ? StrategyContextMenuIconKeys.CheckMark
                         : StrategyContextMenuIconKeys.None
                 )

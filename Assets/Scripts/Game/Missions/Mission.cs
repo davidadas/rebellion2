@@ -1060,7 +1060,7 @@ namespace Rebellion.Game.Missions
 
         /// <summary>
         /// Resolves a mission that an assigned officer deliberately betrayed.
-        /// Betrayal foils the objective without applying enemy-detection consequences.
+        /// Betrayal fails the objective without applying enemy-detection consequences.
         /// </summary>
         /// <param name="game">The game.</param>
         /// <param name="provider">The provider.</param>
@@ -1072,7 +1072,7 @@ namespace Rebellion.Game.Missions
         {
             List<GameResult> results = OnFailed(game, provider);
             results.Add(
-                BuildCompletedResult(MissionOutcome.Foiled, MissionCompletionReason.Foiled, game)
+                BuildCompletedResult(MissionOutcome.Failed, MissionCompletionReason.Failure, game)
             );
             return results;
         }

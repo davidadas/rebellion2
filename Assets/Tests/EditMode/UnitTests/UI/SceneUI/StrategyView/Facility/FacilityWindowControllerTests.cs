@@ -26,6 +26,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private ConstructionWindowController _constructionController;
         private FacilityWindowController _controller;
         private int _dirtyCount;
+        private ManufacturingTrackingActions _trackingActions;
         private GameRoot _game;
         private GameManager _gameManager;
         private GalaxyMapPlanet _planet;
@@ -66,7 +67,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             _constructionController.Initialize(new ConstructionActions());
             _controller = CreateController();
             FacilityActions actions = new FacilityActions();
-            _controller.Initialize(actions, actions);
+            _trackingActions = new ManufacturingTrackingActions();
+            _controller.Initialize(actions, actions, _trackingActions);
         }
 
         /// <summary>
@@ -118,7 +120,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void Initialize_NullActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, new FacilityActions())
+                _controller.Initialize(
+                    null,
+                    new FacilityActions(),
+                    new ManufacturingTrackingActions()
+                )
             );
         }
 
@@ -303,6 +309,50 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void OnContextMenuCommandSelected_ManufacturingTracking_TogglesSelectedLane()
+        {
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            ManufacturingLaneCardView card =
+                view.GetComponentsInChildren<ManufacturingLaneCardView>(true)
+                    .Single(candidate => candidate.name == "TrainingManufacturingLaneCard");
+            UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            PointerEventData pointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+            };
+            card.GetComponent<UIPointerGestureRelay>().OnPointerDown(pointer);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 4, 5, 6, 7),
+                pointer,
+                10,
+                20
+            );
+            StrategyMenuCommand tracked = FacilityWindowContextMenuBuilder
+                .Build(
+                    _planet.Planet,
+                    FacilityWindowTab.Manufacturing,
+                    FacilityWindowTab.Training,
+                    null,
+                    _playerFactionId,
+                    trackingEnabled: true,
+                    manufacturingTracked: true
+                )
+                .Single(command => command.Action == StrategyMenuAction.ToggleIdleBarTracking);
+            ContextMenuRequest request = new ContextMenuRequest(
+                context,
+                new IContextMenuCommand[] { tracked },
+                _controller
+            );
+
+            _controller.OnContextMenuCommandSelected(request, tracked);
+
+            Assert.AreSame(_planet.Planet, _trackingActions.LastPlanet);
+            Assert.AreEqual(ManufacturingType.Troop, _trackingActions.LastType);
+        }
+
+        [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
             FacilityWindowView view = OpenWindow(out UIWindow _);
@@ -475,6 +525,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             /// Refreshes facility state.
             /// </summary>
             public void RefreshFacilityState() { }
+        }
+
+        private sealed class ManufacturingTrackingActions : IIdleBarManufacturingTrackingActions
+        {
+            public bool IsIdleBarEnabled => true;
+
+            public Planet LastPlanet { get; private set; }
+
+            public ManufacturingType LastType { get; private set; }
+
+            /// <inheritdoc />
+            public bool IsIdleBarTracked(Planet planet, ManufacturingType type) => true;
+
+            /// <inheritdoc />
+            public void ToggleIdleBarTracking(Planet planet, ManufacturingType type)
+            {
+                LastPlanet = planet;
+                LastType = type;
+            }
         }
     }
 }

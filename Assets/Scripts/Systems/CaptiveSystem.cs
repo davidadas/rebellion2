@@ -18,7 +18,9 @@ namespace Rebellion.Systems
     /// Escape probability is based on the officer's skills and the forces guarding
     /// the planet, fleet, or ship where the officer is held.
     /// </summary>
-    public class CaptiveSystem : IGameResultHandler<OfficerCaptureStateResult>
+    public class CaptiveSystem
+        : IGameResultHandler<OfficerCaptureStateResult>,
+            IGameResultHandler<PlanetOwnershipChangedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -114,6 +116,43 @@ namespace Rebellion.Systems
                 _fogOfWarSystem.RecordObservations(originalFaction, new[] { officer }, result.Tick);
                 if (officer.CanEscape && officer.NextEscapeAttemptTick <= 0)
                     ScheduleEscapeAttempt(officer);
+            }
+
+            return reactions;
+        }
+
+        /// <summary>
+        /// Releases captured officers when their faction takes control of the planet holding them.
+        /// </summary>
+        /// <param name="results">The planet ownership changes to process.</param>
+        /// <returns>Capture-state changes for the officers released by the ownership changes.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<PlanetOwnershipChangedResult> results)
+        {
+            List<GameResult> reactions = new List<GameResult>();
+            foreach (
+                PlanetOwnershipChangedResult result in results
+                    ?? Array.Empty<PlanetOwnershipChangedResult>()
+            )
+            {
+                Planet planet = result?.Planet;
+                string newOwnerInstanceID = result?.NewOwner?.InstanceID;
+                if (planet == null || string.IsNullOrEmpty(newOwnerInstanceID))
+                    continue;
+
+                foreach (
+                    Officer officer in planet
+                        .GetAllOfficers()
+                        .Where(officer =>
+                            officer.IsCaptured
+                            && !officer.IsKilled
+                            && officer.GetOwnerInstanceID() == newOwnerInstanceID
+                        )
+                )
+                {
+                    reactions.Add(
+                        ReleaseOfficer(officer, planet, result.Tick, officer.CaptorInstanceID)
+                    );
+                }
             }
 
             return reactions;
@@ -393,17 +432,38 @@ namespace Rebellion.Systems
                 return null;
             }
 
+            officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + _loyaltyShift));
+
+            return ReleaseOfficer(officer, planet, _game.CurrentTick, captorInstanceID);
+        }
+
+        /// <summary>
+        /// Clears an officer's custody state and describes the release.
+        /// </summary>
+        /// <param name="officer">The officer being released.</param>
+        /// <param name="context">The planet where the release occurred.</param>
+        /// <param name="tick">The tick when the release occurred.</param>
+        /// <param name="captorInstanceID">The faction that held the officer.</param>
+        /// <returns>The resulting capture-state change.</returns>
+        private static OfficerCaptureStateResult ReleaseOfficer(
+            Officer officer,
+            Planet context,
+            int tick,
+            string captorInstanceID
+        )
+        {
+            officer.IsCaptured = false;
+            officer.CaptorInstanceID = null;
             officer.CanEscape = false;
             officer.NextEscapeAttemptTick = 0;
-            officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + _loyaltyShift));
 
             return new OfficerCaptureStateResult
             {
                 TargetOfficer = officer,
                 IsCaptured = false,
                 CaptorInstanceID = captorInstanceID,
-                Context = planet,
-                Tick = _game.CurrentTick,
+                Context = context,
+                Tick = tick,
             };
         }
 

@@ -706,7 +706,7 @@ public sealed class StrategyController
     private void BindWindowControllerActions()
     {
         constructionWindowController.Initialize(this);
-        facilityWindowController.Initialize(this, windowCommandController);
+        facilityWindowController.Initialize(this, windowCommandController, idleBarController);
         fleetWindowController.Initialize(
             this,
             windowCommandController,
