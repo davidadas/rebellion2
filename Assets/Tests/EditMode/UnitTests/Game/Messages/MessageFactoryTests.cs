@@ -1923,10 +1923,10 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         /// <summary>
-        /// Verifies create messages target unavailable mission uses abort voice.
+        /// Verifies create messages automatic mission cancellation uses failure voice.
         /// </summary>
         [Test]
-        public void CreateMessages_TargetUnavailableMission_UsesAbortVoice()
+        public void CreateMessages_AutomaticallyCanceledMission_UsesFailureVoice()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             Officer reporter = new Officer
@@ -1970,7 +1970,7 @@ namespace Rebellion.Tests.Game.Messages
                 alliance
             );
 
-            Assert.AreEqual("abort-voice", message.OfficerVoicePath);
+            Assert.AreEqual("failure-voice", message.OfficerVoicePath);
         }
 
         /// <summary>

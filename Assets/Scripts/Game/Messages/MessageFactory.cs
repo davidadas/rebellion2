@@ -1278,13 +1278,6 @@ namespace Rebellion.Game.Messages
         /// <returns>The voice line type that matches the mission outcome.</returns>
         private static OfficerVoiceLineType GetMissionVoiceLineType(MissionCompletedResult result)
         {
-            if (
-                result?.CompletionReason
-                is MissionCompletionReason.TargetUnavailable
-                    or MissionCompletionReason.TargetChangedSides
-            )
-                return OfficerVoiceLineType.MissionAbort;
-
             return result?.Outcome == MissionOutcome.Success
                 ? OfficerVoiceLineType.MissionSuccess
                 : OfficerVoiceLineType.MissionFailure;
