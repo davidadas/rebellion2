@@ -13,27 +13,6 @@ using Rebellion.Util.Common;
 namespace Rebellion.AI.Proposals
 {
     /// <summary>
-    /// Pairs a producer with the producer-specific form of a production demand.
-    /// </summary>
-    internal readonly struct AIManufactureOption
-    {
-        internal AIProductionRequirement Demand { get; }
-
-        internal Planet ProducerPlanet { get; }
-
-        /// <summary>
-        /// Creates a production option.
-        /// </summary>
-        /// <param name="demand">Demand adjusted for this producer.</param>
-        /// <param name="producerPlanet">Planet capable of serving the demand.</param>
-        public AIManufactureOption(AIProductionRequirement demand, Planet producerPlanet)
-        {
-            Demand = demand;
-            ProducerPlanet = producerPlanet;
-        }
-    }
-
-    /// <summary>
     /// Proposal to enqueue a manufacturable item.
     /// </summary>
     public sealed class AIManufactureProposal : AIProposal
@@ -42,9 +21,9 @@ namespace Rebellion.AI.Proposals
 
         public Planet ProducerPlanet { get; }
 
-        internal IReadOnlyList<AIManufactureOption> ProducerOptions { get; }
+        internal IReadOnlyList<AIManufactureProposal> ProducerAlternatives { get; }
 
-        internal IReadOnlyList<Planet> ProducerPlanets { get; }
+        internal bool CarriesReducedCountAcrossAlternatives { get; }
 
         public Technology Product { get; }
 
@@ -96,7 +75,13 @@ namespace Rebellion.AI.Proposals
             Technology product,
             bool distributesDemand
         )
-            : this(demand, new[] { producerPlanet }, product, distributesDemand) { }
+        {
+            Demand = demand;
+            ProducerPlanet = producerPlanet;
+            Product = product;
+            DistributesDemand = distributesDemand;
+            ProducerAlternatives = Array.Empty<AIManufactureProposal>();
+        }
 
         /// <summary>
         /// Creates a manufacture proposal from one demand and multiple producers.
@@ -113,57 +98,36 @@ namespace Rebellion.AI.Proposals
         )
         {
             Demand = demand;
-            ProducerPlanets = producerPlanets ?? System.Array.Empty<Planet>();
-            ProducerOptions = System.Array.Empty<AIManufactureOption>();
-            ProducerPlanet = ProducerPlanets.FirstOrDefault();
+            ProducerPlanet = producerPlanets?.FirstOrDefault();
             Product = product;
             DistributesDemand = distributesDemand;
+            ProducerAlternatives =
+                producerPlanets
+                    ?.Skip(1)
+                    .Select(producerPlanet => new AIManufactureProposal(
+                        demand,
+                        producerPlanet,
+                        product,
+                        distributesDemand
+                    ))
+                    .ToList()
+                ?? new List<AIManufactureProposal>();
+            CarriesReducedCountAcrossAlternatives = true;
         }
 
         /// <summary>
-        /// Creates a manufacture proposal from precomputed producer options.
+        /// Creates a manufacture proposal from exact ranked alternatives.
         /// </summary>
-        /// <param name="producerOptions">Eligible demand and producer combinations.</param>
-        /// <param name="product">Technology to manufacture.</param>
-        /// <param name="distributesDemand">Whether the proposal may satisfy demand across producers.</param>
-        internal AIManufactureProposal(
-            IReadOnlyList<AIManufactureOption> producerOptions,
-            Technology product,
-            bool distributesDemand
-        )
+        /// <param name="candidates">Exact eligible manufacturing actions in preference order.</param>
+        internal AIManufactureProposal(IReadOnlyList<AIManufactureProposal> candidates)
         {
-            ProducerOptions = producerOptions ?? System.Array.Empty<AIManufactureOption>();
-            ProducerPlanets = System.Array.Empty<Planet>();
-            AIManufactureOption firstOption = ProducerOptions.FirstOrDefault();
-            Demand = firstOption.Demand;
-            ProducerPlanet = firstOption.ProducerPlanet;
-            Product = product;
-            DistributesDemand = distributesDemand;
-        }
-
-        /// <summary>
-        /// Creates an exact proposal for a ranked producer option.
-        /// </summary>
-        /// <param name="demand">The producer-specific demand.</param>
-        /// <param name="producerPlanet">The exact producer.</param>
-        /// <returns>The exact proposal to validate and execute.</returns>
-        internal AIManufactureProposal ResolveOption(
-            AIProductionRequirement demand,
-            Planet producerPlanet
-        )
-        {
-            if (ReferenceEquals(demand, Demand) && ReferenceEquals(producerPlanet, ProducerPlanet))
-                return this;
-
-            AIManufactureProposal resolved = new AIManufactureProposal(
-                demand,
-                producerPlanet,
-                Product,
-                DistributesDemand
-            );
-            if (HasScore)
-                resolved.SetScore(Score);
-            return resolved;
+            AIManufactureProposal first = candidates?.FirstOrDefault();
+            Demand = first?.Demand;
+            ProducerPlanet = first?.ProducerPlanet;
+            Product = first?.Product;
+            DistributesDemand = first?.DistributesDemand == true;
+            ProducerAlternatives =
+                candidates?.Skip(1).ToList() ?? new List<AIManufactureProposal>();
         }
 
         /// <summary>
@@ -400,10 +364,15 @@ namespace Rebellion.AI.Proposals
             if (!IsCountedManufacturingDemand() || Demand == null)
                 return this;
 
-            return ResolveOption(
+            AIManufactureProposal resolved = new AIManufactureProposal(
                 Demand.WithQuantity(Math.Max(0, Math.Min(count, Demand.QuantityNeeded))),
-                ProducerPlanet
+                ProducerPlanet,
+                Product,
+                DistributesDemand
             );
+            if (HasScore)
+                resolved.SetScore(Score);
+            return resolved;
         }
 
         /// <summary>

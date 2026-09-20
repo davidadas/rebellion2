@@ -296,17 +296,31 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            List<AIManufactureOption> options = producerPlanets
-                .Select(producerPlanet => new AIManufactureOption(
-                    GetProposalDemand(context, demand, producerPlanet, product, remainingQuantity),
-                    producerPlanet
-                ))
-                .Where(option => option.Demand != null)
+            List<AIManufactureProposal> candidates = producerPlanets
+                .Select(producerPlanet =>
+                {
+                    AIProductionRequirement candidateDemand = GetProposalDemand(
+                        context,
+                        demand,
+                        producerPlanet,
+                        product,
+                        remainingQuantity
+                    );
+                    return candidateDemand == null
+                        ? null
+                        : new AIManufactureProposal(
+                            candidateDemand,
+                            producerPlanet,
+                            product,
+                            distributesDemand: false
+                        );
+                })
+                .Where(candidate => candidate != null)
                 .ToList();
-            if (options.Count == 0)
+            if (candidates.Count == 0)
                 return;
 
-            proposals.Add(new AIManufactureProposal(options, product, distributesDemand: false));
+            proposals.Add(new AIManufactureProposal(candidates));
         }
 
         /// <summary>

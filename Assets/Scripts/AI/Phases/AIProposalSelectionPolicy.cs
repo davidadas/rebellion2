@@ -120,30 +120,30 @@ namespace Rebellion.AI.Phases
         )
         {
             int equivalentProducerCount = proposal.ManufacturingCount;
-            foreach (Planet producerPlanet in proposal.ProducerPlanets)
-            {
-                AIManufactureProposal candidate = proposal.ResolveOption(
-                    proposal.Demand,
-                    producerPlanet
-                );
-                if (equivalentProducerCount < candidate.ManufacturingCount)
-                    candidate = candidate.WithManufacturingCount(equivalentProducerCount);
-                if (TrySelectManufacturePrefix(context, candidate, out selectedProposal))
-                    return true;
+            AIManufactureProposal primary = proposal;
+            if (TrySelectManufacturePrefix(context, primary, out selectedProposal))
+                return true;
 
+            if (proposal.CarriesReducedCountAcrossAlternatives)
                 equivalentProducerCount = (
                     (AIManufactureProposal)selectedProposal
                 ).ManufacturingCount;
-            }
 
-            foreach (AIManufactureOption option in proposal.ProducerOptions)
+            foreach (AIManufactureProposal alternative in proposal.ProducerAlternatives)
             {
-                AIManufactureProposal candidate = proposal.ResolveOption(
-                    option.Demand,
-                    option.ProducerPlanet
-                );
+                AIManufactureProposal candidate = alternative;
+                if (
+                    proposal.CarriesReducedCountAcrossAlternatives
+                    && equivalentProducerCount < candidate.ManufacturingCount
+                )
+                    candidate = alternative.WithManufacturingCount(equivalentProducerCount);
                 if (TrySelectManufacturePrefix(context, candidate, out selectedProposal))
                     return true;
+
+                if (proposal.CarriesReducedCountAcrossAlternatives)
+                    equivalentProducerCount = (
+                        (AIManufactureProposal)selectedProposal
+                    ).ManufacturingCount;
             }
 
             selectedProposal = proposal;
