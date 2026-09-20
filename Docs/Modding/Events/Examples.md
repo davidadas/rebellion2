@@ -244,12 +244,12 @@ planet.
                        ProbabilityTable="Abduction"
                        RatingMultiplier="-1">
       <OnSuccess>
-        <!-- Capture state and gameplay activity are independent changes. -->
+        <!-- Mission interruption and deactivation are ordered by the capture lifecycle. -->
         <SetCaptureStatus OfficerInstanceID="HAN_SOLO"
                           IsCaptured="true"
                           CaptorFactionInstanceID="FNEMP1"
-                          CanEscape="false"/>
-        <SetNodeState InstanceID="HAN_SOLO" State="Inactive"/>
+                          CanEscape="false"
+                          DeactivateAfterCapture="true"/>
       </OnSuccess>
       <OnFailure>
         <SendMessage RecipientFactionInstanceID="FNALL1"

@@ -110,9 +110,11 @@ namespace Rebellion.Systems
                         $"Captured officer {officer.GetDisplayName()} has no valid custody destination for {officer.CaptorInstanceID}.",
                         GameLogger.LogLevel.Error
                     );
+                    ApplyPostCaptureState(result, officer);
                     continue;
                 }
 
+                ApplyPostCaptureState(result, officer);
                 _fogOfWarSystem.RecordObservations(originalFaction, new[] { officer }, result.Tick);
                 if (officer.CanEscape && officer.NextEscapeAttemptTick <= 0)
                     ScheduleEscapeAttempt(officer);
@@ -202,6 +204,17 @@ namespace Rebellion.Systems
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Applies authored officer state only after mission interruption and custody processing.
+        /// </summary>
+        /// <param name="result">The completed capture-state change.</param>
+        /// <param name="officer">The captured officer.</param>
+        private static void ApplyPostCaptureState(OfficerCaptureStateResult result, Officer officer)
+        {
+            if (result.DeactivateAfterCapture)
+                officer.IsEnabled = false;
         }
 
         /// <summary>

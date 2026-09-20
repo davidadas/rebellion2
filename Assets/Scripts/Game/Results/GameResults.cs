@@ -308,6 +308,7 @@ namespace Rebellion.Game.Results
     {
         public Officer TargetOfficer { get; set; }
         public bool IsCaptured { get; set; }
+        public bool DeactivateAfterCapture { get; set; }
         public string CaptorInstanceID { get; set; }
         public ISceneNode CapturingUnit { get; set; }
         public Officer CapturedOfficer { get; set; }
