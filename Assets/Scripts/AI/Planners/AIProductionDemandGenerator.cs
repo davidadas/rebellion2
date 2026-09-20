@@ -175,7 +175,7 @@ namespace Rebellion.AI.Planners
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             int availableEnergy = planet.GetAvailableEnergy();
-            int shieldTarget = context.Assessment.GetPlanetaryShieldTargetCount(planet);
+            int shieldTarget = _infrastructureRequirements.GetPlanetaryShieldCount(context, planet);
             int shieldCount = context
                 .Assessment.GetPlanetBuildings(planet)
                 .Count(building =>
@@ -208,7 +208,8 @@ namespace Rebellion.AI.Planners
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
                     && building.GetBuildingType() == BuildingType.Weapon
                 );
-            int weaponTarget = context.Assessment.GetPlanetaryWeaponTargetCount(
+            int weaponTarget = _infrastructureRequirements.GetPlanetaryWeaponCount(
+                context,
                 planet,
                 weaponCount
             );
@@ -237,9 +238,9 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to inspect.</param>
         /// <returns>True when the planet's static defense minimums are complete.</returns>
-        private static bool HasCompletedStaticDefense(AITurnContext context, Planet planet)
+        private bool HasCompletedStaticDefense(AITurnContext context, Planet planet)
         {
-            int shieldTarget = context.Assessment.GetPlanetaryShieldTargetCount(planet);
+            int shieldTarget = _infrastructureRequirements.GetPlanetaryShieldCount(context, planet);
             int shieldCount = 0;
             int weaponCount = 0;
             foreach (Building building in context.Assessment.GetPlanetBuildings(planet))
@@ -253,7 +254,8 @@ namespace Rebellion.AI.Planners
                     weaponCount++;
             }
 
-            int weaponTarget = context.Assessment.GetPlanetaryWeaponTargetCount(
+            int weaponTarget = _infrastructureRequirements.GetPlanetaryWeaponCount(
+                context,
                 planet,
                 weaponCount
             );
@@ -398,8 +400,8 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to inspect.</param>
         /// <returns>True when the planet has at least one production facility.</returns>
-        private static bool HasProductionInfrastructure(AITurnContext context, Planet planet) =>
-            context.Assessment.HasProductionInfrastructure(planet);
+        private bool HasProductionInfrastructure(AITurnContext context, Planet planet) =>
+            _infrastructureRequirements.HasProductionInfrastructure(context, planet);
 
         /// <summary>
         /// Returns the strongest planetary fighter the faction can currently manufacture.
