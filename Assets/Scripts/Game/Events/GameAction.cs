@@ -60,7 +60,7 @@ namespace Rebellion.Game.Events
         public UnitFactory UnitFactory { get; }
         internal List<GameRequest> Requests { get; } = new List<GameRequest>();
         internal List<GameResult> Results { get; } = new List<GameResult>();
-        private readonly Func<IReadOnlyList<GameResult>, List<GameResult>> _resultResolver;
+        private readonly Func<IReadOnlyList<Officer>, List<GameResult>> _captureMissionInterruptor;
 
         /// <summary>
         /// Initializes a new instance of the GameActionContext class.
@@ -69,20 +69,20 @@ namespace Rebellion.Game.Events
         /// <param name="random">The random.</param>
         /// <param name="evaluation">The evaluation.</param>
         /// <param name="unitFactory">The unit factory.</param>
-        /// <param name="resultResolver">Completes result reactions before execution continues.</param>
+        /// <param name="captureMissionInterruptor">Interrupts missions containing newly captured officers.</param>
         public GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
             GameEventEvaluationContext evaluation = null,
             UnitFactory unitFactory = null,
-            Func<IReadOnlyList<GameResult>, List<GameResult>> resultResolver = null
+            Func<IReadOnlyList<Officer>, List<GameResult>> captureMissionInterruptor = null
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
             Random = random ?? throw new ArgumentNullException(nameof(random));
             Evaluation = evaluation;
             UnitFactory = unitFactory;
-            _resultResolver = resultResolver;
+            _captureMissionInterruptor = captureMissionInterruptor;
         }
 
         /// <summary>
@@ -123,24 +123,15 @@ namespace Rebellion.Game.Events
         }
 
         /// <summary>
-        /// Records factual results and completes their domain reactions before returning to the
-        /// executing action.
+        /// Interrupts active missions containing newly captured officers before the next authored
+        /// action executes.
         /// </summary>
-        /// <param name="results">The results whose reactions must complete immediately.</param>
-        internal void Resolve(IEnumerable<GameResult> results)
+        /// <param name="officers">The newly captured officers.</param>
+        internal void InterruptMissionsForCapture(IReadOnlyList<Officer> officers)
         {
-            List<GameResult> directResults =
-                results?.Where(result => result != null).ToList() ?? new List<GameResult>();
-            foreach (GameResult result in directResults)
-            {
-                if (string.IsNullOrEmpty(result.SourceEventInstanceID) && Evaluation?.Event != null)
-                    result.SourceEventInstanceID = Evaluation.Event.InstanceID;
-                Evaluation?.AddResult(result);
-            }
-
-            List<GameResult> resolvedResults =
-                _resultResolver?.Invoke(directResults) ?? directResults;
-            Results.AddRange(resolvedResults.Where(result => result != null));
+            List<GameResult> interruptionResults = _captureMissionInterruptor?.Invoke(officers);
+            if (interruptionResults != null)
+                Results.AddRange(interruptionResults.Where(result => result != null));
         }
     }
 }

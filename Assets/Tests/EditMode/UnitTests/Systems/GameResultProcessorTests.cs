@@ -140,34 +140,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(2, results.Count);
         }
 
-        [Test]
-        public void ResolveReactions_ThenProcess_DoesNotRepeatHandlersAndNotifiesObserversOnce()
-        {
-            GameResultProcessor processor = new GameResultProcessor();
-            int handlerCalls = 0;
-            int observerCalls = 0;
-            processor.Subscribe(
-                new RecordingHandler<PlanetGarrisonChangedResult>(_ =>
-                {
-                    handlerCalls++;
-                    return new List<GameResult> { new PlanetUprisingStartedResult() };
-                })
-            );
-            processor.Observe<PlanetUprisingStartedResult>(_ => observerCalls++);
-
-            List<GameResult> resolvedResults = processor.ResolveReactions(
-                new[] { new PlanetGarrisonChangedResult() }
-            );
-
-            Assert.AreEqual(1, handlerCalls);
-            Assert.AreEqual(0, observerCalls);
-
-            processor.Process(resolvedResults);
-
-            Assert.AreEqual(1, handlerCalls);
-            Assert.AreEqual(1, observerCalls);
-        }
-
         private sealed class RecordingHandler<T> : IGameResultHandler<T>
             where T : GameResult
         {

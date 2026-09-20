@@ -536,7 +536,7 @@ public sealed class GameManager
             _randomProvider,
             unitFactory,
             requestDispatcher,
-            results => _resultProcessor.ResolveReactions(results)
+            _missionSystem.InterruptMissionsForCapturedOfficers
         );
         _eventSystem.ValidateEvents(_game.GetEventPool());
         _aiSystem = new AISystem(

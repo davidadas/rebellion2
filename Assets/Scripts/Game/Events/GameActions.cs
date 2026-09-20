@@ -632,7 +632,9 @@ namespace Rebellion.Game.Events
                     }
                 );
             }
-            context.Resolve(results);
+            context.Record(results);
+            if (IsCaptured)
+                context.InterruptMissionsForCapture(selected.Cast<Officer>().ToList());
         }
     }
 

@@ -19,7 +19,7 @@ namespace Rebellion.Systems
         private readonly IRandomNumberProvider _provider;
         private readonly UnitFactory _unitFactory;
         private readonly GameRequestDispatcher _requestDispatcher;
-        private readonly Func<IReadOnlyList<GameResult>, List<GameResult>> _resultResolver;
+        private readonly Func<IReadOnlyList<Officer>, List<GameResult>> _captureMissionInterruptor;
 
         /// <summary>
         /// Creates a new GameEventSystem.
@@ -28,20 +28,20 @@ namespace Rebellion.Systems
         /// <param name="provider">Random number provider for stochastic event actions.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
         /// <param name="requestDispatcher">Routes action requests to authoritative systems.</param>
-        /// <param name="resultResolver">Completes immediate action-result reactions.</param>
+        /// <param name="captureMissionInterruptor">Interrupts missions containing newly captured officers.</param>
         public GameEventSystem(
             GameRoot game,
             IRandomNumberProvider provider,
             UnitFactory unitFactory = null,
             GameRequestDispatcher requestDispatcher = null,
-            Func<IReadOnlyList<GameResult>, List<GameResult>> resultResolver = null
+            Func<IReadOnlyList<Officer>, List<GameResult>> captureMissionInterruptor = null
         )
         {
             _game = game;
             _provider = provider;
             _unitFactory = unitFactory;
             _requestDispatcher = requestDispatcher;
-            _resultResolver = resultResolver;
+            _captureMissionInterruptor = captureMissionInterruptor;
         }
 
         /// <summary>
@@ -437,7 +437,7 @@ namespace Rebellion.Systems
                 _provider,
                 context,
                 _unitFactory,
-                _resultResolver
+                _captureMissionInterruptor
             );
             results = new List<GameResult>(actionContext.Results);
             if (actionContext.Requests.Count > 0)

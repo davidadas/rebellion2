@@ -325,10 +325,26 @@ namespace Rebellion.Systems
         /// <returns>Mission interruption results produced while tearing down affected missions.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<OfficerCaptureStateResult> results)
         {
+            List<Officer> capturedOfficers = results
+                ?.Where(result => result?.IsCaptured == true)
+                .Select(result => result.TargetOfficer)
+                .Where(officer => officer != null)
+                .ToList();
+            return InterruptMissionsForCapturedOfficers(capturedOfficers);
+        }
+
+        /// <summary>
+        /// Immediately interrupts missions containing newly captured officers.
+        /// </summary>
+        /// <param name="officers">The newly captured officers.</param>
+        /// <returns>Mission interruption results produced while tearing down affected missions.</returns>
+        internal List<GameResult> InterruptMissionsForCapturedOfficers(
+            IReadOnlyList<Officer> officers
+        )
+        {
             List<GameResult> missionResults = new List<GameResult>();
-            List<Mission> affectedMissions = results
-                .Where(result => result?.IsCaptured == true)
-                .Select(result => result.TargetOfficer?.GetParent() as Mission)
+            List<Mission> affectedMissions = (officers ?? Array.Empty<Officer>())
+                .Select(officer => officer?.GetParent() as Mission)
                 .Where(mission => mission != null)
                 .Distinct()
                 .ToList();
