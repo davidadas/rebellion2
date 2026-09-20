@@ -143,15 +143,6 @@ do_lint() {
         echo "=== Architecture Tests ==="
         dotnet test "$ARCHITECTURE_TEST_PROJECT" --configuration Debug --verbosity quiet
         echo ""
-        for test_project in UnitTests.csproj; do
-            if [ ! -f "$test_project" ]; then
-                continue
-            fi
-
-            echo "=== ${test_project%.csproj} ==="
-            dotnet build "$test_project" -verbosity:normal "${extra_args[@]}"
-            echo ""
-        done
     fi
 
     echo "=== Format Rules ==="

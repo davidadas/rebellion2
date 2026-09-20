@@ -803,6 +803,36 @@ namespace Rebellion.Game.Missions
             }
             return false;
         }
+
+        /// <summary>
+        /// Returns whether diplomacy remains eligible after applying its pending support shift.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="objectiveResults">The objective results awaiting system processing.</param>
+        /// <returns>True when another diplomacy attempt remains eligible.</returns>
+        protected override bool ShouldRepeatAfterCompletion(
+            GameRoot game,
+            IReadOnlyList<GameResult> objectiveResults
+        )
+        {
+            if (GetParent() is not Planet planet)
+                return false;
+
+            int pendingShift =
+                objectiveResults
+                    ?.OfType<PopularSupportShiftResult>()
+                    .Where(result =>
+                        result.Planet == planet && result.Faction?.InstanceID == OwnerInstanceID
+                    )
+                    .Sum(result => result.Shift)
+                ?? 0;
+            return (
+                    planet.GetOwnerInstanceID() == OwnerInstanceID
+                    || planet.GetOwnerInstanceID() == null
+                )
+                && planet.GetPopularSupport(OwnerInstanceID) + pendingShift < 100
+                && !planet.IsInUprising;
+        }
     }
 
     /// <summary>

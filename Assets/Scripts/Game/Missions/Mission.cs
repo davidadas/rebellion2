@@ -1025,7 +1025,9 @@ namespace Rebellion.Game.Missions
                 results.AddRange(OnFailed(game, provider));
             }
 
-            results.Add(BuildCompletedResult(outcome, completionReason, game));
+            results.Add(
+                BuildCompletedResult(outcome, completionReason, game, objectiveResults: results)
+            );
             return results;
         }
 
@@ -1085,11 +1087,13 @@ namespace Rebellion.Game.Missions
         /// <param name="outcome">The resolved mission outcome.</param>
         /// <param name="game">The current game state.</param>
         /// <param name="participants">Optional participant snapshot to include in the result.</param>
+        /// <param name="objectiveResults">The objective results awaiting system processing.</param>
         /// <returns>A populated MissionCompletedResult.</returns>
         protected internal MissionCompletedResult BuildCompletedResult(
             MissionOutcome outcome,
             GameRoot game,
-            List<IMissionParticipant> participants = null
+            List<IMissionParticipant> participants = null,
+            IReadOnlyList<GameResult> objectiveResults = null
         )
         {
             return new MissionCompletedResult
@@ -1103,7 +1107,7 @@ namespace Rebellion.Game.Missions
                 Participants = participants ?? GetAllParticipants(),
                 Outcome = outcome,
                 CompletionReason = GetDefaultCompletionReason(outcome),
-                CanContinue = ShouldRepeatAfterCompletion(game),
+                CanContinue = ShouldRepeatAfterCompletion(game, objectiveResults),
                 Tick = game.CurrentTick,
                 SourceEventInstanceID = SourceEventInstanceID,
             };
@@ -1116,18 +1120,36 @@ namespace Rebellion.Game.Missions
         /// <param name="completionReason">The completion reason to include.</param>
         /// <param name="game">The current game state.</param>
         /// <param name="participants">Optional participant snapshot to include in the result.</param>
+        /// <param name="objectiveResults">The objective results awaiting system processing.</param>
         /// <returns>A populated MissionCompletedResult.</returns>
         protected internal MissionCompletedResult BuildCompletedResult(
             MissionOutcome outcome,
             MissionCompletionReason completionReason,
             GameRoot game,
-            List<IMissionParticipant> participants = null
+            List<IMissionParticipant> participants = null,
+            IReadOnlyList<GameResult> objectiveResults = null
         )
         {
-            MissionCompletedResult result = BuildCompletedResult(outcome, game, participants);
+            MissionCompletedResult result = BuildCompletedResult(
+                outcome,
+                game,
+                participants,
+                objectiveResults
+            );
             result.CompletionReason = completionReason;
             return result;
         }
+
+        /// <summary>
+        /// Returns whether the mission should repeat after considering its unresolved objective results.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="objectiveResults">The objective results awaiting system processing.</param>
+        /// <returns>True when the mission remains eligible to repeat.</returns>
+        protected virtual bool ShouldRepeatAfterCompletion(
+            GameRoot game,
+            IReadOnlyList<GameResult> objectiveResults
+        ) => ShouldRepeatAfterCompletion(game);
 
         /// <summary>
         /// Builds a terminal mission result that cannot repeat.
