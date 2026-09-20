@@ -1,5 +1,9 @@
 # Strategic AI Structure Migration Plan
 
+> Superseded by `AIStructureRecoveryPlan.md`. Do not continue this sequence. The extraction-first
+> production steps created broad requirement buckets and a forwarding coordinator that fail the
+> recovered class-admission and ownership rules.
+
 ## Objective
 
 Refactor the strategic AI into one enforceable pipeline without changing gameplay:
