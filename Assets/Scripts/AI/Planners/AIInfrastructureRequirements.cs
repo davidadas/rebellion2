@@ -7,10 +7,9 @@ using Rebellion.Util.Common;
 namespace Rebellion.AI.Planners
 {
     /// <summary>
-    /// Converts assessed faction scale into strategic production-facility requirements.
-    /// This planner defines required capability counts without choosing implementation planets.
+    /// Defines strategic production-facility requirements shared by construction and retirement.
     /// </summary>
-    internal sealed class AIInfrastructureDemandPlanner
+    internal sealed class AIInfrastructureRequirements
     {
         /// <summary>
         /// Returns the strategic facility quantity required by the faction's current planet count.

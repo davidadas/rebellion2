@@ -46,10 +46,9 @@ namespace Rebellion.AI.Planners
             }
         }
 
-        private static readonly AIDemandSource _colonyDemandSource = new AIColonyDemandSource();
-        private static readonly AIDemandSource _specialForcesDemandSource =
-            new AISpecialForcesDemandSource();
-        private readonly AIInfrastructureDemandPlanner _infrastructureDemandPlanner = new();
+        private static readonly AIEconomyRequirements _economyRequirements = new();
+        private static readonly AISpecialForcesRequirements _specialForcesRequirements = new();
+        private readonly AIInfrastructureRequirements _infrastructureRequirements = new();
 
         /// <summary>
         /// Returns production demand for the current AI turn.
@@ -64,7 +63,7 @@ namespace Rebellion.AI.Planners
                 return demands;
 
             FacilityPortfolio facilityPortfolio = BuildFacilityPortfolio(context);
-            _colonyDemandSource.AddDemands(context, demands);
+            _economyRequirements.AddColonyRequirements(context, demands);
             AddResourceBalanceDemand(context, demands);
             AddPlanetaryDefenseDemands(context, demands, facilityPortfolio);
             AddPlanetaryStarfighterDemands(context, demands);
@@ -72,7 +71,7 @@ namespace Rebellion.AI.Planners
             AddColonizationFleetSeedDemand(context, demands);
             AddFleetReinforcementDemands(context, demands);
             AddPlanetaryGarrisonDemands(context, demands);
-            _specialForcesDemandSource.AddDemands(context, demands);
+            _specialForcesRequirements.AddRequirements(context, demands);
             AddProductionFacilityDemands(
                 context,
                 demands,
@@ -795,7 +794,7 @@ namespace Rebellion.AI.Planners
                 .OrderByDescending(demand => demand.Pressure)
                 .ThenBy(demand => demand.Id, StringComparer.Ordinal)
                 .ToList();
-            int desiredFacilityCount = _infrastructureDemandPlanner.GetDesiredFacilityCount(
+            int desiredFacilityCount = _infrastructureRequirements.GetDesiredFacilityCount(
                 context,
                 buildingType
             );

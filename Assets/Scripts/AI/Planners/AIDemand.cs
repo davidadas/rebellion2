@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using Rebellion.AI.Director;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -167,18 +165,5 @@ namespace Rebellion.AI.Planners
 
             return id;
         }
-    }
-
-    /// <summary>
-    /// Base type for a generator-owned source of production demand.
-    /// </summary>
-    internal abstract class AIDemandSource
-    {
-        /// <summary>
-        /// Adds demand from this source to the production plan.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand collection to update.</param>
-        internal abstract void AddDemands(AITurnContext context, ICollection<AIDemand> demands);
     }
 }

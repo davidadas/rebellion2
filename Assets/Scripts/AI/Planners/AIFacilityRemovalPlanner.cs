@@ -13,7 +13,7 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIFacilityRemovalPlanner : IAIProposalPlanner
     {
-        private readonly AIInfrastructureDemandPlanner _demandPlanner = new();
+        private readonly AIInfrastructureRequirements _infrastructureRequirements = new();
 
         /// <summary>
         /// Returns retirement proposals for facility allocations that exceed their caps.
@@ -33,7 +33,7 @@ namespace Rebellion.AI.Planners
             if (context.Assessment.ProjectedMaintenanceHeadroom >= 0)
                 return proposals;
 
-            int minimumShipyardCount = _demandPlanner.GetDesiredFacilityCount(
+            int minimumShipyardCount = _infrastructureRequirements.GetDesiredFacilityCount(
                 context,
                 BuildingType.Shipyard
             );

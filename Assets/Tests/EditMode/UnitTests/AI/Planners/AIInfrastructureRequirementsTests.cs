@@ -10,7 +10,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Planners
 {
     [TestFixture]
-    public sealed class AIInfrastructureDemandPlannerTests
+    public sealed class AIInfrastructureRequirementsTests
     {
         [Test]
         public void GetDesiredFacilityCount_WithShipyardRatio_ReturnsFactionWideRequirement()
@@ -22,7 +22,7 @@ namespace Rebellion.Tests.AI.Planners
                 AITestSceneBuilder.AddPlanet(game, sector, $"planet-{index}", empire.InstanceID);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            int desired = new AIInfrastructureDemandPlanner().GetDesiredFacilityCount(
+            int desired = new AIInfrastructureRequirements().GetDesiredFacilityCount(
                 context,
                 BuildingType.Shipyard
             );
@@ -41,7 +41,7 @@ namespace Rebellion.Tests.AI.Planners
                 AITestSceneBuilder.AddPlanet(game, sector, $"planet-{index}", empire.InstanceID);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            int desired = new AIInfrastructureDemandPlanner().GetDesiredFacilityCount(
+            int desired = new AIInfrastructureRequirements().GetDesiredFacilityCount(
                 context,
                 BuildingType.ConstructionFacility
             );

@@ -13,14 +13,14 @@ namespace Rebellion.AI.Planners
     /// <summary>
     /// Generates founding-facility demand for newly claimed planets.
     /// </summary>
-    internal sealed class AIColonyDemandSource : AIDemandSource
+    internal sealed class AIEconomyRequirements
     {
         /// <summary>
         /// Adds colony demand to the production plan.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand collection to update.</param>
-        internal override void AddDemands(AITurnContext context, ICollection<AIDemand> demands)
+        internal void AddColonyRequirements(AITurnContext context, ICollection<AIDemand> demands)
         {
             int plannedMines = context.Faction.GetTotalRawMinedResources();
             int plannedRefineries = context.Faction.GetTotalRawRefinementCapacity();
@@ -103,14 +103,14 @@ namespace Rebellion.AI.Planners
     /// <summary>
     /// Generates production demand for faction special-forces templates.
     /// </summary>
-    internal sealed class AISpecialForcesDemandSource : AIDemandSource
+    internal sealed class AISpecialForcesRequirements
     {
         /// <summary>
         /// Adds special-forces demand to the production plan.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand collection to update.</param>
-        internal override void AddDemands(AITurnContext context, ICollection<AIDemand> demands)
+        internal void AddRequirements(AITurnContext context, ICollection<AIDemand> demands)
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             List<SpecialForces> existingUnits =
