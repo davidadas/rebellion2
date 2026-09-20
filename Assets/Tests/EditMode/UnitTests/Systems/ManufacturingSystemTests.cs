@@ -5,7 +5,6 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -4662,7 +4661,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RetargetManufacturingDestination_QueuedLaneMovesEveryItem()
+        public void RetargetManufacturingDestination_QueuedLane_MovesEveryItem()
         {
             GameRoot game = CreateOrderTestGame();
             Planet producer = CreateOrderTestConstructionPlanet(game, "producer", "empire");
@@ -4772,7 +4771,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void EstimateCompletionTicks_IncludesEarlierQueuedWorkAndCurrentProgress()
+        public void EstimateCompletionTicks_Default_IncludesEarlierQueuedWorkAndCurrentProgress()
         {
             GameRoot game = CreateOrderTestGame();
             Planet planet = CreateOrderTestPlanet(game, "p1", "empire");

@@ -116,7 +116,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void SaveLoadPage_UsesAuthoredSaveListSubview()
+        public void SaveLoadPage_Default_UsesAuthoredSaveListSubview()
         {
             Assert.IsNotNull(_saveListView);
             Assert.AreSame(_saveListView, GetField<OptionsSaveListView>("_saveListView"));
@@ -301,7 +301,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void GeneratedLabels_UseGalaxyViewAndReturnWording()
+        public void GeneratedLabels_Default_UseGalaxyViewAndReturnWording()
         {
             TextMeshProUGUI[] fields = _root.GetComponentsInChildren<TextMeshProUGUI>(true);
             string[] labels = fields.Select(field => field.text).ToArray();

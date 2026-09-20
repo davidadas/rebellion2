@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Game.Movement;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Units
@@ -8,8 +8,12 @@ namespace Rebellion.Game.Units
     /// <summary>
     /// Represents a starfighter squadron that can be stationed on a planet or capital ship.
     /// </summary>
-    public class Starfighter : LeafNode, IManufacturable, IMovable
+    public class Starfighter : LeafNode, IManufacturable, IMovable, IEncyclopediaSource
     {
+        public string EncyclopediaImagePath { get; set; }
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
+            new List<EncyclopediaEntryStat>();
+        public string EncyclopediaDescription { get; set; }
         public string BattleResultImagePath { get; set; }
         public string BattleResultInTransitImagePath { get; set; }
         public string BattleResultDamagedImagePath { get; set; }
@@ -69,6 +73,7 @@ namespace Rebellion.Game.Units
         {
             base.CopyStateTo(destination);
             Starfighter copy = (Starfighter)destination;
+            ((IEncyclopediaSource)this).CopyEncyclopediaStateTo(copy);
             copy.BattleResultImagePath = BattleResultImagePath;
             copy.BattleResultInTransitImagePath = BattleResultInTransitImagePath;
             copy.BattleResultDamagedImagePath = BattleResultDamagedImagePath;

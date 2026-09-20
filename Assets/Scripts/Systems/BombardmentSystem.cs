@@ -8,27 +8,11 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Logging;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Systems
 {
-    public enum BombardmentType
-    {
-        Military,
-        Civilian,
-        General,
-        DestroyPlanet,
-    }
-
-    public enum BombardmentTargetType
-    {
-        Regiment,
-        Building,
-        Headquarters,
-        EnergyCapacity,
-        AllocatedEnergy,
-    }
-
     /// <summary>
     /// Resolves orbital bombardment against planets.
     /// </summary>
@@ -872,14 +856,6 @@ namespace Rebellion.Systems
             }
 
             result.SuccessfulStrikes++;
-            result.Strikes.Add(
-                new BombardmentStrikeEvent
-                {
-                    TargetType = target.Type,
-                    Target = target.Entity,
-                    TargetName = GetTargetName(target),
-                }
-            );
         }
 
         /// <summary>
@@ -894,22 +870,6 @@ namespace Rebellion.Systems
             if (!string.IsNullOrEmpty(defenderId))
                 _game.GetFactionByOwnerInstanceID(defenderId).HQInstanceID = null;
             result.HeadquartersDestroyed = true;
-        }
-
-        /// <summary>
-        /// Returns the display name used to report a bombardment target.
-        /// </summary>
-        /// <param name="target">Target to describe.</param>
-        /// <returns>The target's report display name.</returns>
-        private static string GetTargetName(BombardmentTarget target)
-        {
-            return target.Type switch
-            {
-                BombardmentTargetType.Headquarters => "Headquarters",
-                BombardmentTargetType.EnergyCapacity => "Energy Capacity",
-                BombardmentTargetType.AllocatedEnergy => "Allocated Energy",
-                _ => target.Entity?.GetDisplayName(),
-            };
         }
 
         /// <summary>
@@ -1373,6 +1333,15 @@ namespace Rebellion.Systems
             public IGameEntity Entity;
             public int Resistance;
             public bool IsCivilian;
+        }
+
+        private enum BombardmentTargetType
+        {
+            Regiment,
+            Building,
+            Headquarters,
+            EnergyCapacity,
+            AllocatedEnergy,
         }
     }
 }

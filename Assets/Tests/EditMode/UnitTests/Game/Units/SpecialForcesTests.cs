@@ -1,6 +1,5 @@
 using NUnit.Framework;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Units
@@ -254,17 +253,17 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void CanPerformMission_AllowedType_ReturnsTrue()
         {
-            _specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
+            _specialForces.AllowedMissionTypeIDs.Add(EspionageMission.MissionTypeID);
 
-            Assert.IsTrue(_specialForces.CanPerformMission(MissionTypeIDs.Espionage));
+            Assert.IsTrue(_specialForces.CanPerformMission(EspionageMission.MissionTypeID));
         }
 
         [Test]
         public void CanPerformMission_DisallowedType_ReturnsFalse()
         {
-            _specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
+            _specialForces.AllowedMissionTypeIDs.Add(EspionageMission.MissionTypeID);
 
-            Assert.IsFalse(_specialForces.CanPerformMission(MissionTypeIDs.Sabotage));
+            Assert.IsFalse(_specialForces.CanPerformMission(SabotageMission.MissionTypeID));
         }
 
         [Test]

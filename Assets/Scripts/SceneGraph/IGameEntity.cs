@@ -1,4 +1,3 @@
-using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.SceneGraph
@@ -19,7 +18,6 @@ namespace Rebellion.SceneGraph
     /// </remarks>
     public interface IGameEntity
     {
-        [CloneIgnore]
         [PersistableIgnore]
         public string InstanceID { get; set; }
         public string TypeID { get; set; }
@@ -33,7 +31,6 @@ namespace Rebellion.SceneGraph
         public string DamagedSmallImagePath { get; set; }
         public string CapturedOverlayImagePath { get; set; }
         public string InjuredImagePath { get; set; }
-        public string EncyclopediaImagePath { get; set; }
         public string Description { get; set; }
 
         /// <summary>

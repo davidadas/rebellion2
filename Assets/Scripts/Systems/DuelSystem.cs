@@ -6,7 +6,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Systems
 {

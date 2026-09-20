@@ -7,7 +7,6 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -64,8 +63,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
             _missionChoices = new List<StrategyMissionChoice>
             {
-                CreateChoice(MissionTypeIDs.Diplomacy, "Diplomacy"),
-                CreateChoice(MissionTypeIDs.Espionage, "Espionage"),
+                CreateChoice(DiplomacyMission.MissionTypeID, "Diplomacy"),
+                CreateChoice(EspionageMission.MissionTypeID, "Espionage"),
             };
             _projector = new MissionCreateWindowProjector(() => _uiContext);
         }
@@ -184,13 +183,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             Officer primary = CreateOfficer("primary", "Primary", false);
             Officer decoy = CreateOfficer("decoy", "Decoy", false);
-            List<MissionStartRequest> requests = new List<MissionStartRequest>();
+            List<MissionContext> contexts = new List<MissionContext>();
             MissionCreateWindowProjector projector = new MissionCreateWindowProjector(
                 () => _uiContext,
-                request =>
+                context =>
                 {
-                    requests.Add(request);
-                    return request.MissionTypeID == MissionTypeIDs.Diplomacy
+                    contexts.Add(context);
+                    return context.MissionTypeID == DiplomacyMission.MissionTypeID
                         ? new MissionOdds(80, 25)
                         : new MissionOdds(50, 10);
                 }
@@ -211,12 +210,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(25, data.DropdownItems[0].MissionOdds.FoilPercent);
             Assert.AreEqual(45, data.DropdownItems[1].MissionOdds.OverallSuccessPercent);
             Assert.AreEqual(10, data.DropdownItems[1].MissionOdds.FoilPercent);
-            Assert.AreEqual(2, requests.Count);
+            Assert.AreEqual(2, contexts.Count);
             Assert.IsTrue(
-                requests.All(request => request.MainParticipants.SequenceEqual(new[] { primary }))
+                contexts.All(context => context.MainParticipants.SequenceEqual(new[] { primary }))
             );
             Assert.IsTrue(
-                requests.All(request => request.DecoyParticipants.SequenceEqual(new[] { decoy }))
+                contexts.All(context => context.DecoyParticipants.SequenceEqual(new[] { decoy }))
             );
         }
 
@@ -234,12 +233,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 OwnerInstanceID = "FNEMP1",
             };
             latestPlanet.AddChild(fleet);
-            MissionStartRequest capturedRequest = null;
+            MissionContext capturedContext = null;
             MissionCreateWindowProjector projector = new MissionCreateWindowProjector(
                 () => _uiContext,
-                request =>
+                context =>
                 {
-                    capturedRequest = request;
+                    capturedContext = context;
                     return new MissionOdds(50, 20);
                 },
                 planetInstanceId =>
@@ -252,11 +251,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
             projector.Build(session, _window);
 
-            Assert.AreSame(latestPlanet, capturedRequest.Location);
-            Assert.AreSame(latestPlanet, capturedRequest.SelectedTarget);
+            Assert.AreSame(latestPlanet, capturedContext.Location);
+            Assert.AreSame(latestPlanet, capturedContext.SelectedTarget);
             Assert.AreSame(
                 fleet,
-                ((Planet)capturedRequest.Location).GetChildren<GameFleet>().Single()
+                ((Planet)capturedContext.Location).GetChildren<GameFleet>().Single()
             );
         }
 
@@ -282,7 +281,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 new[]
                 {
                     CreateChoice(
-                        MissionTypeIDs.Assassination,
+                        AssassinationMission.MissionTypeID,
                         "Assassination",
                         MissionTargetKind.Officer
                     ),
@@ -412,7 +411,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 new[]
                 {
                     CreateChoice(
-                        MissionTypeIDs.Assassination,
+                        AssassinationMission.MissionTypeID,
                         "Assassination",
                         MissionTargetKind.Officer
                     ),

@@ -8,7 +8,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Systems
 {

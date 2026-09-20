@@ -6,13 +6,11 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Systems
 {
@@ -100,7 +98,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreSame(destination, fleet.GetParent());
             Assert.AreSame(ship, captive.GetParent());
-            Assert.AreSame(fleet.Movement, captive.GetTransitMovement());
+            Assert.AreSame(fleet.Movement, ((IMovable)captive).GetTransitMovement());
             Assert.AreEqual(
                 capturePlanet.InstanceID,
                 game.GetFactionByOwnerInstanceID(captive.OwnerInstanceID).Fog.EntityLastSeenAt[

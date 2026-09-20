@@ -28,7 +28,7 @@ namespace Rebellion.Tests.AI.Phases
             game.AttachNode(officer, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             context.AddProposal(
-                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, planet)
+                new AIMissionProposal(new[] { officer }, DiplomacyMission.MissionTypeID, planet)
             );
 
             new AIScoringPhase().Execute(context);

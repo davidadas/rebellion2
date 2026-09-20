@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Movement;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -36,8 +36,12 @@ namespace Rebellion.Game.Units
     /// <summary>
     /// Represents a capital ship in the game.
     /// </summary>
-    public class CapitalShip : ContainerNode, IManufacturable, IMovable
+    public class CapitalShip : ContainerNode, IManufacturable, IMovable, IEncyclopediaSource
     {
+        public string EncyclopediaImagePath { get; set; }
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
+            new List<EncyclopediaEntryStat>();
+        public string EncyclopediaDescription { get; set; }
         public static IReadOnlyList<PrimaryWeaponArc> PrimaryWeaponArcs { get; } =
             Array.AsReadOnly((PrimaryWeaponArc[])Enum.GetValues(typeof(PrimaryWeaponArc)));
 
@@ -146,6 +150,7 @@ namespace Rebellion.Game.Units
         {
             base.CopyStateTo(destination);
             CapitalShip copy = (CapitalShip)destination;
+            ((IEncyclopediaSource)this).CopyEncyclopediaStateTo(copy);
             copy.BattleResultImagePath = BattleResultImagePath;
             copy.BattleResultInTransitImagePath = BattleResultInTransitImagePath;
             copy.BattleResultDamagedImagePath = BattleResultDamagedImagePath;

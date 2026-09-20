@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using Rebellion.Game.Advisor;
+using Rebellion.Game.Messages;
 
 namespace Rebellion.Tests.UI.Runtime.Themes
 {

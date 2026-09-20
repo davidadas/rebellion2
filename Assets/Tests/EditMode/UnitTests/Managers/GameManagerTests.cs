@@ -174,6 +174,7 @@ namespace Rebellion.Tests.Managers
             Faction faction = new Faction
             {
                 InstanceID = factionId,
+                GarrisonTroopTypeID = regimentTypeId,
                 ManageGarrisons = true,
                 ManageProduction = false,
             };
@@ -1298,9 +1299,9 @@ namespace Rebellion.Tests.Managers
             GameManager manager = TestContent.CreateGameManager(game);
             Assert.IsTrue(
                 manager.MissionSystem.InitiateMission(
-                    new MissionStartRequest
+                    new MissionContext
                     {
-                        MissionTypeID = MissionTypeIDs.Diplomacy,
+                        MissionTypeID = DiplomacyMission.MissionTypeID,
                         Location = planet,
                         MainParticipants = new List<IMissionParticipant> { diplomat },
                     }
@@ -1636,20 +1637,7 @@ namespace Rebellion.Tests.Managers
             string regimentTypeId
         )
         {
-            GameGenerationConfig generationConfig = new GameGenerationConfig
-            {
-                GalaxyClassification = new GalaxyClassificationSection
-                {
-                    FactionSetups = new List<FactionSetup>
-                    {
-                        new FactionSetup
-                        {
-                            FactionID = factionId,
-                            GarrisonTroopTypeID = regimentTypeId,
-                        },
-                    },
-                },
-            };
+            GameGenerationConfig generationConfig = new GameGenerationConfig();
             Regiment garrison = new Regiment
             {
                 TypeID = regimentTypeId,

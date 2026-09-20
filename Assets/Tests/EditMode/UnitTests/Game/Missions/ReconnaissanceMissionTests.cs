@@ -10,7 +10,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -267,7 +267,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Reconnaissance,
+                ReconnaissanceMission.MissionTypeID,
                 game,
                 owner,
                 target,
@@ -288,7 +288,7 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "sf1",
                 OwnerInstanceID = owner,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
+                AllowedMissionTypeIDs = new List<string> { ReconnaissanceMission.MissionTypeID },
             };
         }
 

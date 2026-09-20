@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 

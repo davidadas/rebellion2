@@ -9,7 +9,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -729,7 +728,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 game,
                 owner,
                 target,

@@ -4,11 +4,9 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Projects game entities into status-window domain information.
@@ -840,7 +838,7 @@ internal sealed class StrategyStatusInfoBuilder
             return "Captured";
         if (officer.InjuryPoints > 0)
             return "Injured";
-        if (officer.GetTransitMovement() != null)
+        if (((IMovable)officer).GetTransitMovement() != null)
             return "Enroute";
         if (officer.IsOnMission())
             return "On Mission";

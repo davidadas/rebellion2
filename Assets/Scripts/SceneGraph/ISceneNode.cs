@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.SceneGraph
@@ -22,22 +21,17 @@ namespace Rebellion.SceneGraph
     public interface ISceneNode : IGameEntity
     {
         // Parent Info.
-        [CloneIgnore]
         public string ParentInstanceID { get; set; }
 
-        [CloneIgnore]
         public string LastParentInstanceID { get; set; }
 
-        [CloneIgnore]
         [PersistableIgnore]
         public ISceneNode ParentNode { get; set; }
 
-        [CloneIgnore]
         [PersistableIgnore]
         public ISceneNode LastParentNode { get; set; }
 
         // Owner Info.
-        [CloneIgnore]
         public string OwnerInstanceID { get; set; }
 
         /// <summary>

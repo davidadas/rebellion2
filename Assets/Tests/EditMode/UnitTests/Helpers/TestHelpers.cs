@@ -17,7 +17,7 @@ using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 /// <summary>

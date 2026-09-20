@@ -5,7 +5,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -13,7 +12,7 @@ namespace Rebellion.Tests.Game.Missions
     public class InciteUprisingMissionTests
     {
         [Test]
-        public void RollParticipantSuccess_GarrisonedRegimentDoesNotAffectScore()
+        public void RollParticipantSuccess_GarrisonedRegiment_DoesNotAffectScore()
         {
             (
                 GameRoot game,
@@ -171,7 +170,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void DisplayName_IsHumanReadable()
+        public void DisplayName_Default_IsHumanReadable()
         {
             (
                 GameRoot game,
@@ -261,7 +260,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.InciteUprising,
+                InciteUprisingMission.MissionTypeID,
                 null,
                 ownerInstanceId,
                 target,

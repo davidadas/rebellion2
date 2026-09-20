@@ -8,7 +8,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -28,6 +28,7 @@ namespace Rebellion.Tests.Game.Missions
                 "Should not emit ownership change when support <= 60"
             );
             Assert.AreEqual("empire", planet.OwnerInstanceID, "Owner should be unchanged");
+            Assert.AreEqual(1, GetSupportShift(results).Shift);
         }
 
         [Test]
@@ -42,11 +43,8 @@ namespace Rebellion.Tests.Game.Missions
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
                 "Mission should not emit ownership change; PlanetaryControlSystem handles transfers"
             );
-            Assert.AreEqual(
-                61,
-                planet.GetPopularSupport("empire"),
-                "Support should still increment"
-            );
+            Assert.AreEqual(60, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(1, GetSupportShift(results).Shift);
         }
 
         [Test]
@@ -64,18 +62,15 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_PlanetAlreadyOwned_IncrementsSupportWithoutChangingOwner()
+        public void ResolveObjective_PlanetAlreadyOwned_ReportsShiftWithoutChangingOwner()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 61, planetOwner: "empire");
             Mission mission = CreateAndAttachMission(game, planet);
 
-            ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
+            List<GameResult> results = ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
-            Assert.AreEqual(
-                62,
-                planet.GetPopularSupport("empire"),
-                "Support should still increment"
-            );
+            Assert.AreEqual(61, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(1, GetSupportShift(results).Shift);
             Assert.AreEqual("empire", planet.OwnerInstanceID, "Owner should remain empire");
         }
 
@@ -100,9 +95,9 @@ namespace Rebellion.Tests.Game.Missions
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 1;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
 
-            ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
+            List<GameResult> results = ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
-            Assert.AreEqual(51, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(1, GetSupportShift(results).Shift);
         }
 
         [Test]
@@ -113,9 +108,13 @@ namespace Rebellion.Tests.Game.Missions
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 5;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 10;
 
-            ExecuteDiplomacySuccess(mission, game, new SequenceRNG(new[] { 7 }));
+            List<GameResult> results = ExecuteDiplomacySuccess(
+                mission,
+                game,
+                new SequenceRNG(new[] { 7 })
+            );
 
-            Assert.AreEqual(62, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(12, GetSupportShift(results).Shift);
         }
 
         [Test]
@@ -126,13 +125,17 @@ namespace Rebellion.Tests.Game.Missions
             game.Config.SupportShift.DiplomacyNeutralPlanetSupportBase = 2;
             game.Config.SupportShift.DiplomacyNeutralPlanetSupportRange = 4;
 
-            ExecuteDiplomacySuccess(mission, game, new SequenceRNG(new[] { 4 }));
+            List<GameResult> results = ExecuteDiplomacySuccess(
+                mission,
+                game,
+                new SequenceRNG(new[] { 4 })
+            );
 
-            Assert.AreEqual(56, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(6, GetSupportShift(results).Shift);
         }
 
         [Test]
-        public void ResolveObjective_CoreSectorWeakSupport_AppliesConfiguredDivisor()
+        public void ResolveObjective_CoreSectorWeakSupport_ReportsUnadjustedShift()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             planet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
@@ -143,9 +146,9 @@ namespace Rebellion.Tests.Game.Missions
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 6;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
 
-            ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
+            List<GameResult> results = ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
-            Assert.AreEqual(53, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(6, GetSupportShift(results).Shift);
         }
 
         [Test]
@@ -405,7 +408,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Diplomacy,
+                DiplomacyMission.MissionTypeID,
                 null,
                 ownerInstanceId,
                 target,
@@ -449,6 +452,16 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(planet, planetSector);
             return game;
+        }
+
+        /// <summary>
+        /// Gets the single popular-support shift emitted by a diplomacy resolution.
+        /// </summary>
+        /// <param name="results">The mission results.</param>
+        /// <returns>The emitted popular-support shift.</returns>
+        private static PopularSupportShiftResult GetSupportShift(IEnumerable<GameResult> results)
+        {
+            return results.OfType<PopularSupportShiftResult>().Single();
         }
 
         /// <summary>

@@ -5,7 +5,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Game.Missions
 {
     /// <summary>
-    /// Bundles all inputs needed to create a mission.
+    /// Describes the participants, target, and game state used to evaluate and create a mission.
     /// </summary>
     public class MissionContext
     {

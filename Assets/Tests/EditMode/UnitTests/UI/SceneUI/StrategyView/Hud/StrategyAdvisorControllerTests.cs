@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;

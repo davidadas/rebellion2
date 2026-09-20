@@ -1,6 +1,6 @@
 using System.Collections.Generic;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Units
@@ -18,8 +18,18 @@ namespace Rebellion.Game.Units
     /// <summary>
     /// Represents a special forces unit that can be used in missions.
     /// </summary>
-    public class SpecialForces : LeafNode, IMissionParticipant, IManufacturable, IMovable
+    public class SpecialForces
+        : LeafNode,
+            IMissionParticipant,
+            IManufacturable,
+            IMovable,
+            IEncyclopediaSource
     {
+        public string EncyclopediaImagePath { get; set; }
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
+            new List<EncyclopediaEntryStat>();
+        public string EncyclopediaDescription { get; set; }
+
         // Construction Info.
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }
@@ -78,6 +88,7 @@ namespace Rebellion.Game.Units
         {
             base.CopyStateTo(destination);
             SpecialForces copy = (SpecialForces)destination;
+            ((IEncyclopediaSource)this).CopyEncyclopediaStateTo(copy);
             copy.ConstructionCost = ConstructionCost;
             copy.MaintenanceCost = MaintenanceCost;
             copy.BaseBuildSpeed = BaseBuildSpeed;

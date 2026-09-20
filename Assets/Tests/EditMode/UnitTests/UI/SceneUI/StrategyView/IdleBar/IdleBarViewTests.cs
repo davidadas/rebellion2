@@ -71,7 +71,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void PrefabProperties_IdleBarIsTopLevelNonWindowFeature()
+        public void PrefabProperties_IdleBar_IsTopLevelNonWindowFeature()
         {
             Transform windows = _view.transform.parent.Find("Windows");
 
@@ -126,7 +126,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void PointerHover_ExpandsPortraitWithinFixedSlot()
+        public void PointerHover_Default_ExpandsPortraitWithinFixedSlot()
         {
             _view.Render(
                 new IdleBarRenderData(

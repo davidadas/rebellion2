@@ -139,7 +139,7 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
-        public void SetOwnerInstanceID_SetsCurrentOwner()
+        public void SetOwnerInstanceID_Default_SetsCurrentOwner()
         {
             Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID("Owner1"));
             Assert.AreEqual("Owner1", _childNode1.OwnerInstanceID);
@@ -279,16 +279,6 @@ namespace Rebellion.Tests.SceneGraph
             Assert.IsNull(copy.GetLastParent());
             Assert.IsEmpty(copy.GetChildren(includeDisabled: true));
             Assert.AreEqual(1, _rootNode.GetChildren().Count);
-        }
-
-        [Test]
-        public void CreateCopy_NullEncyclopediaStats_PreservesNullStats()
-        {
-            _rootNode.EncyclopediaStats = null;
-
-            MockSceneNode copy = (MockSceneNode)_rootNode.CreateCopy();
-
-            Assert.IsNull(copy.EncyclopediaStats);
         }
 
         [Test]

@@ -5,7 +5,6 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>

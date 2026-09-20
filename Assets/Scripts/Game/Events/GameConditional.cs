@@ -1,7 +1,7 @@
 using System;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events

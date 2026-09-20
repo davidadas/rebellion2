@@ -6,7 +6,6 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -67,7 +66,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _mission = new TestMission
             {
                 InstanceID = "mission",
-                ConfigKey = MissionTypeIDs.Diplomacy,
+                ConfigKey = DiplomacyMission.MissionTypeID,
                 DisplayName = "Diplomacy Mission",
                 OwnerInstanceID = _playerFactionId,
                 LocationInstanceID = _target.InstanceID,

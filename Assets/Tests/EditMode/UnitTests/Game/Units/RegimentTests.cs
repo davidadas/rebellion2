@@ -1,5 +1,4 @@
 using NUnit.Framework;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Units

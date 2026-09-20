@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
@@ -223,8 +222,12 @@ namespace Rebellion.Game.Units
     /// <summary>
     /// Represents an officer that can be used in missions.
     /// </summary>
-    public class Officer : LeafNode, IMissionParticipant, IMovable
+    public class Officer : LeafNode, IMissionParticipant, IMovable, IEncyclopediaSource
     {
+        public string EncyclopediaImagePath { get; set; }
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
+            new List<EncyclopediaEntryStat>();
+        public string EncyclopediaDescription { get; set; }
         private const int _ratingPercentScale = 100;
 
         // Research Info.
@@ -339,7 +342,7 @@ namespace Rebellion.Game.Units
         /// <param name="missionTypeId">The mission type ID to inspect.</param>
         /// <returns>True if the officer can perform the mission type.</returns>
         public bool CanPerformMission(string missionTypeId) =>
-            missionTypeId != MissionTypeIDs.Reconnaissance;
+            missionTypeId != ReconnaissanceMission.MissionTypeID;
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -356,6 +359,7 @@ namespace Rebellion.Game.Units
         {
             base.CopyStateTo(destination);
             Officer copy = (Officer)destination;
+            ((IEncyclopediaSource)this).CopyEncyclopediaStateTo(copy);
             copy.ShipResearch = ShipResearch;
             copy.TroopResearch = TroopResearch;
             copy.FacilityResearch = FacilityResearch;
@@ -518,7 +522,7 @@ namespace Rebellion.Game.Units
                 || IsCaptured
                 || IsKilled
                 || IsOnMission()
-                || this.GetTransitMovement() != null
+                || ((IMovable)this).GetTransitMovement() != null
             )
                 return false;
 

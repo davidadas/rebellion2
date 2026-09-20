@@ -4,7 +4,6 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -392,7 +391,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void RollParticipantSuccess_UsesAverageOfEspionageAndCombat()
+        public void RollParticipantSuccess_Default_UsesAverageOfEspionageAndCombat()
         {
             (
                 GameRoot game,
@@ -512,7 +511,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Sabotage,
+                SabotageMission.MissionTypeID,
                 null,
                 ownerInstanceId,
                 target,

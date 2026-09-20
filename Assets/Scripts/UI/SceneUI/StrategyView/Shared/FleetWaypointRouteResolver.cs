@@ -5,7 +5,6 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Represents one fleet route resolved for strategy-map presentation.
@@ -226,7 +225,9 @@ internal static class FleetWaypointRouteResolver
 
         Planet originPlanet = ResolveOriginPlanet(game, fleet);
         Point originPosition =
-            fleet.Movement?.OriginPosition ?? originPlanet?.GetPosition() ?? fleet.GetPosition();
+            fleet.Movement?.OriginPosition
+            ?? originPlanet?.GetPosition()
+            ?? ((IMovable)fleet).GetPosition();
         routes.Add(new FleetWaypointRoute(fleet, originPlanet, originPosition, stops));
     }
 

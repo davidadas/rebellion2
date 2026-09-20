@@ -7,17 +7,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
     [TestFixture]
     public class MissionIconKeysTests
     {
-        [TestCase(MissionTypeIDs.Diplomacy, MissionIconKeys.Diplomacy)]
-        [TestCase(MissionTypeIDs.Rescue, MissionIconKeys.Rescue)]
-        [TestCase(MissionTypeIDs.Sabotage, MissionIconKeys.Sabotage)]
-        [TestCase(MissionTypeIDs.Espionage, MissionIconKeys.Espionage)]
-        [TestCase(MissionTypeIDs.Reconnaissance, MissionIconKeys.Reconnaissance)]
-        [TestCase(MissionTypeIDs.Recruitment, MissionIconKeys.Recruitment)]
-        [TestCase(MissionTypeIDs.Abduction, MissionIconKeys.Abduction)]
-        [TestCase(MissionTypeIDs.InciteUprising, MissionIconKeys.InciteUprising)]
-        [TestCase(MissionTypeIDs.JediTraining, MissionIconKeys.JediTraining)]
-        [TestCase(MissionTypeIDs.SubdueUprising, MissionIconKeys.SubdueUprising)]
-        [TestCase(MissionTypeIDs.Assassination, MissionIconKeys.Assassination)]
+        [TestCase(DiplomacyMission.MissionTypeID, MissionIconKeys.Diplomacy)]
+        [TestCase(RescueMission.MissionTypeID, MissionIconKeys.Rescue)]
+        [TestCase(SabotageMission.MissionTypeID, MissionIconKeys.Sabotage)]
+        [TestCase(EspionageMission.MissionTypeID, MissionIconKeys.Espionage)]
+        [TestCase(ReconnaissanceMission.MissionTypeID, MissionIconKeys.Reconnaissance)]
+        [TestCase(RecruitmentMission.MissionTypeID, MissionIconKeys.Recruitment)]
+        [TestCase(AbductionMission.MissionTypeID, MissionIconKeys.Abduction)]
+        [TestCase(InciteUprisingMission.MissionTypeID, MissionIconKeys.InciteUprising)]
+        [TestCase(JediTrainingMission.MissionTypeID, MissionIconKeys.JediTraining)]
+        [TestCase(SubdueUprisingMission.MissionTypeID, MissionIconKeys.SubdueUprising)]
+        [TestCase(AssassinationMission.MissionTypeID, MissionIconKeys.Assassination)]
         public void GetMissionIconKey_ConfiguredMissionType_ReturnsMatchingIconKey(
             string missionTypeId,
             string expected
@@ -36,7 +36,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             string expected
         )
         {
-            string iconKey = MissionIconKeys.GetMissionIconKey(MissionTypeIDs.Research, discipline);
+            string iconKey = MissionIconKeys.GetMissionIconKey(
+                ResearchMission.MissionTypeID,
+                discipline
+            );
 
             Assert.AreEqual(expected, iconKey);
         }
@@ -44,7 +47,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         [Test]
         public void GetMissionIconKey_MissingResearchDiscipline_ReturnsShipDesignIconKey()
         {
-            string iconKey = MissionIconKeys.GetMissionIconKey(MissionTypeIDs.Research);
+            string iconKey = MissionIconKeys.GetMissionIconKey(ResearchMission.MissionTypeID);
 
             Assert.AreEqual(MissionIconKeys.ResearchShipDesign, iconKey);
         }

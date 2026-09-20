@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;

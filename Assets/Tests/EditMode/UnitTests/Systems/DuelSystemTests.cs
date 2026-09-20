@@ -9,7 +9,6 @@ using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Sectors
 {

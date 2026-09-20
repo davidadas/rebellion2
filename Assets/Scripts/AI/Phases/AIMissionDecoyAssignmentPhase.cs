@@ -96,7 +96,7 @@ namespace Rebellion.AI.Phases
                 if (!personnelLossProbability.HasValue)
                 {
                     MissionOdds odds = context.Missions.GetMissionOdds(
-                        mission.CreateRequest(),
+                        mission.CreateContext(),
                         context.Assessment.GetMissionDetectorCandidates(mission.TargetPlanet)
                     );
                     personnelLossProbability = odds?.PersonnelLossProbability;

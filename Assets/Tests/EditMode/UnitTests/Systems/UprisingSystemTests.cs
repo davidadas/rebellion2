@@ -5,11 +5,10 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Systems
 {
@@ -190,7 +189,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_IncidentExcludesIncompleteFacility()
+        public void ProcessTick_Incident_ExcludesIncompleteFacility()
         {
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
@@ -208,7 +207,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_IncidentExcludesEnrouteRegiment()
+        public void ProcessTick_Incident_ExcludesEnrouteRegiment()
         {
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
@@ -232,7 +231,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_IncidentCapturesOnlyUsableOfficer()
+        public void ProcessTick_Incident_CapturesOnlyUsableOfficer()
         {
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
@@ -343,7 +342,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_IncidentIgnoresHostileFleetPresence()
+        public void ProcessTick_Incident_IgnoresHostileFleetPresence()
         {
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
@@ -363,7 +362,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_IncidentAppliesInciteAndSubdueLeadershipAdjustments()
+        public void ProcessTick_Incident_AppliesInciteAndSubdueLeadershipAdjustments()
         {
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
@@ -386,7 +385,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_IncidentExcludesMissionParticipantsInTransit()
+        public void ProcessTick_Incident_ExcludesMissionParticipantsInTransit()
         {
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
@@ -646,7 +645,7 @@ namespace Rebellion.Tests.Systems
                 { 90, 100 },
             };
             Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.InciteUprising,
+                InciteUprisingMission.MissionTypeID,
                 game,
                 "rebels",
                 planet,

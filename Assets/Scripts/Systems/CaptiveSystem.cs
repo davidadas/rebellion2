@@ -8,8 +8,8 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Logging;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Systems
 {
@@ -150,7 +150,7 @@ namespace Rebellion.Systems
                 if (
                     custodyContext == null
                     || planet == null
-                    || officer.GetTransitMovement() != null
+                    || ((IMovable)officer).GetTransitMovement() != null
                 )
                     continue;
 
@@ -228,7 +228,7 @@ namespace Rebellion.Systems
                     )
                     && planet.CanAcceptChild(officer)
                 )
-                .OrderBy(planet => planet.GetRawDistanceTo(officer.GetPosition()))
+                .OrderBy(planet => planet.GetRawDistanceTo(((IMovable)officer).GetPosition()))
                 .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
                 .FirstOrDefault();
         }

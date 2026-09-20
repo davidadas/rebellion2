@@ -560,14 +560,14 @@ public sealed class MissionCreateWindowController
         if (target?.Planet?.Planet == null)
             return choices;
 
-        MissionStartRequest request = new MissionStartRequest
+        MissionContext context = new MissionContext
         {
             Location = target.Planet.Planet,
             SelectedTarget = target.Item,
             MainParticipants = participants.ToList(),
             DecoyParticipants = new List<IMissionParticipant>(),
         };
-        foreach (MissionOption option in getMissionSystem().GetAvailableMissionOptions(request))
+        foreach (MissionOption option in getMissionSystem().GetAvailableMissionOptions(context))
             choices.Add(new StrategyMissionChoice(option));
 
         return choices;
@@ -585,13 +585,13 @@ public sealed class MissionCreateWindowController
         if (choice == null || session.Agents.Count == 0 || missionPlanet == null)
             return false;
 
-        MissionStartRequest request = session.CreateMissionRequest(
+        MissionContext context = session.CreateMissionContext(
             choice,
             missionPlanet,
             session.Target.Item
         );
         MissionSystem missionSystem = getMissionSystem();
-        if (!missionSystem.CanCreateMission(request) || !missionSystem.InitiateMission(request))
+        if (!missionSystem.CanCreateMission(context) || !missionSystem.InitiateMission(context))
             return false;
 
         PlayMissionStartVoice(session.Agents, session.Decoys);
@@ -790,13 +790,13 @@ internal sealed class MissionCreateWindowSession
     }
 
     /// <summary>
-    /// Builds the mission request shared by planning estimates and final submission.
+    /// Builds the mission context shared by planning estimates and final submission.
     /// </summary>
     /// <param name="choice">The mission option to request.</param>
     /// <param name="planet">The authoritative or observed mission planet.</param>
     /// <param name="target">The authoritative or observed mission target.</param>
-    /// <returns>A request containing the session's current participant roles.</returns>
-    public MissionStartRequest CreateMissionRequest(
+    /// <returns>A context containing the session's current participant roles.</returns>
+    public MissionContext CreateMissionContext(
         StrategyMissionChoice choice,
         Planet planet,
         ISceneNode target
@@ -805,7 +805,7 @@ internal sealed class MissionCreateWindowSession
         if (choice == null)
             throw new ArgumentNullException(nameof(choice));
 
-        return new MissionStartRequest
+        return new MissionContext
         {
             MissionTypeID = choice.MissionTypeID,
             Location = planet,

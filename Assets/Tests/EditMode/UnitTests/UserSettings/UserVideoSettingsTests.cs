@@ -97,7 +97,7 @@ namespace Rebellion.Tests.UserSettings
         [TestCase(3840, 1600, false)]
         [TestCase(1366, 768, true)]
         [TestCase(1920, 1200, false)]
-        public void IsSixteenByNine_AcceptsOnlySixteenByNineModes(
+        public void IsSixteenByNine_Default_AcceptsOnlySixteenByNineModes(
             int width,
             int height,
             bool expected

@@ -14,7 +14,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Game.Events
 {
@@ -1352,7 +1352,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 OfficerInstanceID = luke.InstanceID,
                 Rating = OfficerRating.Combat,
-                ProbabilityTable = MissionTypeIDs.Rescue,
+                ProbabilityTable = RescueMission.MissionTypeID,
                 OnSuccess = new List<GameAction>
                 {
                     new SetEventVariableAction
@@ -1390,7 +1390,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 OfficerInstanceID = luke.InstanceID,
                 Rating = OfficerRating.Combat,
-                ProbabilityTable = MissionTypeIDs.Rescue,
+                ProbabilityTable = RescueMission.MissionTypeID,
                 OnSuccess = new List<GameAction>(),
                 OnFailure = new List<GameAction>
                 {
@@ -1425,7 +1425,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 OfficerInstanceID = luke.InstanceID,
                 Rating = OfficerRating.Combat,
-                ProbabilityTable = MissionTypeIDs.Rescue,
+                ProbabilityTable = RescueMission.MissionTypeID,
                 OnFailure = new List<GameAction>
                 {
                     new SetEventVariableAction { Key = "failed", Operand = 1 },
@@ -1453,7 +1453,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 OfficerInstanceID = han.InstanceID,
                 Rating = OfficerRating.Combat,
-                ProbabilityTable = MissionTypeIDs.Abduction,
+                ProbabilityTable = AbductionMission.MissionTypeID,
                 RatingMultiplier = -1,
                 OnSuccess = new List<GameAction>
                 {
@@ -1475,7 +1475,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 OfficerInstanceID = "missing",
                 Rating = OfficerRating.Combat,
-                ProbabilityTable = MissionTypeIDs.Rescue,
+                ProbabilityTable = RescueMission.MissionTypeID,
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
@@ -1562,7 +1562,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ChangeRawResourceNodes_IncreasesExplicitAmount()
+        public void ChangeRawResourceNodes_Default_IncreasesExplicitAmount()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 4;
@@ -1652,7 +1652,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ChangePopularSupport_IncreaseRebalancesOtherFaction()
+        public void ChangePopularSupport_Increase_RebalancesOtherFaction()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.SetPopularSupport("empire", 60);

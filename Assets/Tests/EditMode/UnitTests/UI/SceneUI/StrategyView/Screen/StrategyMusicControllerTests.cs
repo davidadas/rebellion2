@@ -65,7 +65,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Resume_FirstTrackUsesStrategicState()
+        public void Resume_FirstTrack_UsesStrategicState()
         {
             AddColonizedPlanets(_playerFaction, 3);
             AddColonizedPlanets(_opponentFaction, 1);
@@ -76,7 +76,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Selection_AfterStrategicTrackPlaysThreeNeutralTracks()
+        public void Selection_AfterStrategicTrack_PlaysThreeNeutralTracks()
         {
             AddColonizedPlanets(_playerFaction, 3);
             AddColonizedPlanets(_opponentFaction, 1);
@@ -108,7 +108,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Selection_TwoToOnePlanetRatioUsesAdvantageTrack()
+        public void Selection_TwoToOnePlanetRatio_UsesAdvantageTrack()
         {
             AddColonizedPlanets(_playerFaction, 2);
             AddColonizedPlanets(_opponentFaction, 1);
@@ -118,7 +118,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Selection_OneToTwoPlanetRatioUsesDisadvantageTrack()
+        public void Selection_OneToTwoPlanetRatio_UsesDisadvantageTrack()
         {
             AddColonizedPlanets(_playerFaction, 1);
             AddColonizedPlanets(_opponentFaction, 2);
@@ -128,7 +128,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Selection_OneToThreePlanetRatioUsesDisadvantageTrack()
+        public void Selection_OneToThreePlanetRatio_UsesDisadvantageTrack()
         {
             AddColonizedPlanets(_playerFaction, 1);
             AddColonizedPlanets(_opponentFaction, 3);
@@ -138,7 +138,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Selection_MiddlePlanetRatioUsesRandomNeutralTrack()
+        public void Selection_MiddlePlanetRatio_UsesRandomNeutralTrack()
         {
             AddColonizedPlanets(_playerFaction, 1);
             AddColonizedPlanets(_opponentFaction, 1);
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Selection_NoOpponentPlanetsUsesConfiguredMultiplier()
+        public void Selection_NoOpponentPlanets_UsesConfiguredMultiplier()
         {
             AddColonizedPlanets(_playerFaction, 20);
             _controller.Resume();
@@ -158,7 +158,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Selection_UncolonizedPlanetsDoNotAffectRatio()
+        public void Selection_UncolonizedPlanets_DoNotAffectRatio()
         {
             AddColonizedPlanets(_playerFaction, 2);
             AddColonizedPlanets(_opponentFaction, 1);
@@ -169,7 +169,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Reset_StopsMusicAndRestartsCadenceWithStrategicTrack()
+        public void Reset_Default_StopsMusicAndRestartsCadenceWithStrategicTrack()
         {
             AddColonizedPlanets(_playerFaction, 3);
             AddColonizedPlanets(_opponentFaction, 1);

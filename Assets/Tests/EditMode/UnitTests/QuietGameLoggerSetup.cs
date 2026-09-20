@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using Rebellion.Util.Common;
+using Rebellion.Util.Logging;
 
 [SetUpFixture]
 public sealed class QuietGameLoggerSetup

@@ -6,13 +6,11 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Systems
 {
@@ -2357,7 +2355,7 @@ namespace Rebellion.Systems
                     .Where(ship =>
                         ship.GetOwnerInstanceID() == ownerInstanceID
                         && ship.ManufacturingStatus == ManufacturingStatus.Complete
-                        && ship.GetTransitMovement() == null
+                        && ((IMovable)ship).GetTransitMovement() == null
                         && ship.CanAcceptChild(unit)
                     )
                     .Select(ship => new

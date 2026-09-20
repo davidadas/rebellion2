@@ -92,7 +92,7 @@ namespace Rebellion.Tests.Game.Missions
             _planet.OwnerInstanceID = "rebels";
 
             Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.Research,
+                ResearchMission.MissionTypeID,
                 _game,
                 "empire",
                 _planet,
@@ -110,7 +110,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 0);
 
             Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.Research,
+                ResearchMission.MissionTypeID,
                 _game,
                 "empire",
                 _planet,
@@ -130,7 +130,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<ResearchCatalogEntry>();
 
             Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.Research,
+                ResearchMission.MissionTypeID,
                 _game,
                 "empire",
                 _planet,
@@ -240,7 +240,7 @@ namespace Rebellion.Tests.Game.Missions
             _game.DetachNode(requiredFacility);
 
             Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.Research,
+                ResearchMission.MissionTypeID,
                 _game,
                 "empire",
                 _planet,
@@ -276,7 +276,7 @@ namespace Rebellion.Tests.Game.Missions
             _game.AttachNode(secondOfficer, _planet);
 
             Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.Research,
+                ResearchMission.MissionTypeID,
                 _game,
                 "empire",
                 _planet,
@@ -481,7 +481,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.Research,
+                ResearchMission.MissionTypeID,
                 _game,
                 "empire",
                 _planet,

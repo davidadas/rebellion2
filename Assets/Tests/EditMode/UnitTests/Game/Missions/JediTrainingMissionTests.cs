@@ -7,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -309,7 +308,7 @@ namespace Rebellion.Tests.Game.Missions
             planet ??= _planet;
 
             Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.JediTraining,
+                JediTrainingMission.MissionTypeID,
                 _game,
                 "rebels",
                 planet,

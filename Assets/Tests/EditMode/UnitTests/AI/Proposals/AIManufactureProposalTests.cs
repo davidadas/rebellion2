@@ -9,7 +9,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;

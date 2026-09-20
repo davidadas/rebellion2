@@ -8,7 +8,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -381,7 +380,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Recruitment,
+                RecruitmentMission.MissionTypeID,
                 game,
                 ownerInstanceId,
                 target,

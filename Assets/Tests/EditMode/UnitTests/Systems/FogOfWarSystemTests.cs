@@ -6,7 +6,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -2033,7 +2032,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void CaptureSnapshot_ParticipantSeenElsewherePreservesRecordedMissionIdentity()
+        public void CaptureSnapshot_ParticipantSeenElsewhere_PreservesRecordedMissionIdentity()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             vader.DisplayName = "Darth Vader";
@@ -2726,7 +2725,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void RecordEspionageSnapshot_MissionCompletionPreservesParticipantIntelligence()
+        public void RecordEspionageSnapshot_MissionCompletion_PreservesParticipantIntelligence()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             vader.DisplayName = "Darth Vader";
@@ -2820,7 +2819,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void PlanetSnapshot_MissionParticipantIntelligenceSurvivesSerializationRoundTrip()
+        public void PlanetSnapshot_Default_MissionParticipantIntelligenceSurvivesSerializationRoundTrip()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             vader.DisplayName = "Darth Vader";

@@ -9,12 +9,25 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Factions
 {
+    /// <summary>
+    /// Defines one faction-specific pool of ship names and its fallback pool.
+    /// </summary>
+    [PersistableObject(Name = "NamePool")]
+    public class FactionNamePool
+    {
+        public string NamePoolID { get; set; }
+        public string FallbackNamePoolID { get; set; }
+
+        [PersistableCollectionItem(Name = "Name")]
+        public List<string> Names { get; set; } = new List<string>();
+        public int NextNameIndex { get; set; }
+    }
+
     /// <summary>
     /// Represents a faction in the game, managing its resources, technologies, and owned entities.
     /// </summary>
@@ -52,6 +65,7 @@ namespace Rebellion.Game.Factions
             set => _settings = value ?? new FactionSettings();
         }
         public string HQInstanceID { get; set; }
+        public string GarrisonTroopTypeID { get; set; }
 
         // Messages and Notifications.
         public Dictionary<MessageType, List<Message>> Messages = new Dictionary<

@@ -153,7 +153,7 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
-        public void SetContentHeight_FirstLayoutStartsAtTopThenPreservesPosition()
+        public void SetContentHeight_FirstLayout_StartsAtTopThenPreservesPosition()
         {
             _contentRoot.sizeDelta = new Vector2(100, 200);
             _rootObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 0f;

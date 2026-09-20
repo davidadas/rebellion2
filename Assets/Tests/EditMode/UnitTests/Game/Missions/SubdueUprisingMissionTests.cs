@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Game.Missions
     public class SubdueUprisingMissionTests
     {
         [Test]
-        public void RollParticipantSuccess_GarrisonedRegimentDoesNotAffectScore()
+        public void RollParticipantSuccess_GarrisonedRegiment_DoesNotAffectScore()
         {
             (
                 GameRoot game,
@@ -48,7 +48,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void DisplayName_IsHumanReadable()
+        public void DisplayName_Default_IsHumanReadable()
         {
             (
                 GameRoot game,
@@ -397,7 +397,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.SubdueUprising,
+                SubdueUprisingMission.MissionTypeID,
                 null,
                 ownerInstanceId,
                 target,

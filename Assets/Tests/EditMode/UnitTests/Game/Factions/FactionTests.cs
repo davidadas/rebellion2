@@ -7,7 +7,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -638,7 +637,7 @@ namespace Rebellion.Tests.Game.Factions
                 InstanceID = "SPECOPS1",
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Sabotage },
+                AllowedMissionTypeIDs = new List<string> { SabotageMission.MissionTypeID },
             };
 
             SpecialForces buildingSpecialForces = new SpecialForces
@@ -646,7 +645,7 @@ namespace Rebellion.Tests.Game.Factions
                 InstanceID = "SPECOPS2",
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Building,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Sabotage },
+                AllowedMissionTypeIDs = new List<string> { SabotageMission.MissionTypeID },
             };
 
             SpecialForces unqualifiedSpecialForces = new SpecialForces
@@ -742,7 +741,7 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void SerializeAndDeserialize_MaintainsState()
+        public void SerializeAndDeserialize_Default_MaintainsState()
         {
             _faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, 3);
             _faction.AddOwnedUnit(_planet1);

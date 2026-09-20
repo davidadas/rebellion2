@@ -141,7 +141,6 @@ namespace Rebellion.Tests.Content
     <FactionSetups>
       <FactionSetup>
         <FactionID>FACTION</FactionID>
-        <GarrisonTroopTypeID>REGIMENT_TYPE</GarrisonTroopTypeID>
         <StartingPlanets>
           <StartingPlanet>
             <PlanetTypeID>PLANET_TYPE</PlanetTypeID>

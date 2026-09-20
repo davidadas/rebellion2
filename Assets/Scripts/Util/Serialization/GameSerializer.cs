@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Xml;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Util.Serialization
 {
@@ -961,6 +960,28 @@ namespace Rebellion.Util.Serialization
                     }
                     else if (inlineCollectionMember != null)
                     {
+                        PersistableAttributes inlineElementAttributes = new PersistableAttributes
+                        {
+                            IncludeAttributes = (PersistableIncludeAttribute[])
+                                Attribute.GetCustomAttributes(
+                                    inlineCollectionMember,
+                                    typeof(PersistableIncludeAttribute)
+                                ),
+                        };
+                        if (
+                            settings.IgnoreUnknownElements
+                            && !CanResolveActualType(
+                                inlineElementType,
+                                elementName,
+                                inlineElementAttributes
+                            )
+                        )
+                        {
+                            settings.UnknownElementSkipped?.Invoke(actualType, elementName);
+                            reader.Skip();
+                            continue;
+                        }
+
                         object item = ReadValue(inlineElementType, reader, settings);
                         inlineCollection.Add(item);
                     }
@@ -1029,6 +1050,38 @@ namespace Rebellion.Util.Serialization
             }
 
             return resolvedType;
+        }
+
+        /// <summary>
+        /// Returns whether an XML element identifies a concrete type assignable to the declared type.
+        /// </summary>
+        /// <param name="objType">The declared object type.</param>
+        /// <param name="actualTypeName">The XML element name.</param>
+        /// <param name="objAttributes">The persistable attributes.</param>
+        /// <returns>True when the element identifies a compatible concrete type.</returns>
+        private static bool CanResolveActualType(
+            Type objType,
+            string actualTypeName,
+            PersistableAttributes objAttributes
+        )
+        {
+            if (!objType.IsInterface && !objType.IsAbstract)
+                return true;
+
+            if (
+                objAttributes.IncludeAttributes?.Any(includeAttribute =>
+                    includeAttribute.PersistableType.Name == actualTypeName
+                    || ReflectionHelper.GetPersistableElementName(includeAttribute.PersistableType)
+                        == actualTypeName
+                ) == true
+            )
+            {
+                return true;
+            }
+
+            return ReflectionHelper
+                .GetPersistableTypes(actualTypeName)
+                .Any(objType.IsAssignableFrom);
         }
 
         /// <summary>

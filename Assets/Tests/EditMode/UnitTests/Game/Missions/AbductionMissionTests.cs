@@ -4,7 +4,6 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -640,7 +639,7 @@ namespace Rebellion.Tests.Game.Missions
                 DisplayName = "sf1",
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Abduction },
+                AllowedMissionTypeIDs = new List<string> { AbductionMission.MissionTypeID },
             };
             game.AttachNode(commando, empirePlanet);
             commando.MissionReturnParentInstanceID = empirePlanet.InstanceID;
@@ -758,7 +757,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void RollParticipantSuccess_SubtractsTargetCombatFromParticipantCombat()
+        public void RollParticipantSuccess_Default_SubtractsTargetCombatFromParticipantCombat()
         {
             (
                 GameRoot game,
@@ -821,7 +820,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Abduction,
+                AbductionMission.MissionTypeID,
                 game,
                 ownerInstanceId,
                 target,

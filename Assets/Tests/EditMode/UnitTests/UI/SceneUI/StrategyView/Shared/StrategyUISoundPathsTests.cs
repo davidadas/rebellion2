@@ -1,6 +1,6 @@
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.Game.Advisor;
+using Rebellion.Game.Messages;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 {

@@ -5,8 +5,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Missions
@@ -852,7 +851,8 @@ namespace Rebellion.Game.Missions
                 || candidate is IMovable movable && movable.GetTransitMovement() != null
                 || candidate.GetParentOfType<CapitalShip>()
                     is IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete }
-                || candidate.GetParentOfType<Fleet>()?.GetTransitMovement() != null
+                || candidate.GetParentOfType<Fleet>() is IMovable fleet
+                    && fleet.GetTransitMovement() != null
             )
                 return false;
 

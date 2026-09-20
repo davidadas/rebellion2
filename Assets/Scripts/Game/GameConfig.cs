@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game
