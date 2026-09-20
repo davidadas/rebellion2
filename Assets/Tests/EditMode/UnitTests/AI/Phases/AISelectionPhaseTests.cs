@@ -4,6 +4,7 @@ using Rebellion.AI.Director;
 using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scoring;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -647,7 +648,12 @@ namespace Rebellion.Tests.AI.Phases
 
             Assert.AreEqual(2, selected.Count);
             Assert.AreSame(preferredProposal, selected[0]);
-            Assert.AreSame(fallbackProducer, ((AIManufactureProposal)selected[1]).ProducerPlanet);
+            AIManufactureProposal selectedFallback = (AIManufactureProposal)selected[1];
+            Assert.AreSame(fallbackProducer, selectedFallback.ProducerPlanet);
+            Assert.AreEqual(
+                new AIProductionProposalScorer().Score(context, selectedFallback),
+                selectedFallback.Score
+            );
             Assert.AreSame(preferredProducer, flexibleProposal.ProducerPlanet);
         }
 

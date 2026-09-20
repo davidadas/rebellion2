@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scoring;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
@@ -15,6 +16,7 @@ namespace Rebellion.AI.Phases
     internal sealed class AIProposalSelectionPolicy
     {
         private const string _mixedProductType = "*";
+        private static readonly AIProductionProposalScorer _productionScorer = new();
 
         // Selection State.
         private readonly HashSet<string> _claimedKeys = new HashSet<string>(StringComparer.Ordinal);
@@ -67,7 +69,16 @@ namespace Rebellion.AI.Phases
             )
                 return false;
 
-            return TrySelectCore(context, selectedProposal);
+            if (!TrySelectCore(context, selectedProposal))
+                return false;
+
+            if (
+                selectedProposal is AIManufactureProposal
+                && !ReferenceEquals(selectedProposal, proposal)
+            )
+                selectedProposal.SetScore(_productionScorer.Score(context, selectedProposal));
+
+            return true;
         }
 
         /// <summary>
