@@ -48,23 +48,26 @@ namespace Rebellion.AI.Phases
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal being considered.</param>
+        /// <param name="selectedProposal">The exact proposal selected for execution.</param>
         /// <returns>True when the proposal is valid and its resources were reserved.</returns>
-        internal bool TrySelect(AITurnContext context, AIProposal proposal)
+        internal bool TrySelect(
+            AITurnContext context,
+            AIProposal proposal,
+            out AIProposal selectedProposal
+        )
         {
-            AIManufactureProposal manufactureProposal = proposal as AIManufactureProposal;
-            AIManufactureOption priorOption =
-                manufactureProposal != null
-                    ? new AIManufactureOption(
-                        manufactureProposal.Demand,
-                        manufactureProposal.ProducerPlanet
-                    )
-                    : default;
+            selectedProposal = proposal;
+            if (
+                proposal is AIManufactureProposal manufactureProposal
+                && !TryResolveManufactureProposal(
+                    context,
+                    manufactureProposal,
+                    out selectedProposal
+                )
+            )
+                return false;
 
-            if (TrySelectCore(context, proposal))
-                return true;
-
-            manufactureProposal?.SelectOption(priorOption);
-            return false;
+            return TrySelectCore(context, selectedProposal);
         }
 
         /// <summary>
@@ -75,7 +78,7 @@ namespace Rebellion.AI.Phases
         /// <returns>True when the proposal is valid and its resources were reserved.</returns>
         private bool TrySelectCore(AITurnContext context, AIProposal proposal)
         {
-            if (!TrySelectOption(context, proposal))
+            if (!CanSelect(context, proposal))
                 return false;
 
             if (WouldExceedMaintenanceHeadroom(context, proposal))
@@ -99,25 +102,40 @@ namespace Rebellion.AI.Phases
         /// <param name="proposal">The proposal to inspect.</param>
         /// <param name="selectedProposal">The exact producer option selected for validation.</param>
         /// <returns>True when the proposal has a selectable option.</returns>
-        private bool TrySelectOption(AITurnContext context, AIProposal proposal)
+        private bool TryResolveManufactureProposal(
+            AITurnContext context,
+            AIManufactureProposal proposal,
+            out AIProposal selectedProposal
+        )
         {
-            if (proposal is not AIManufactureProposal manufactureProposal)
-                return CanSelect(context, proposal);
-
-            foreach (Planet producerPlanet in manufactureProposal.ProducerPlanets)
+            int equivalentProducerCount = proposal.ManufacturingCount;
+            foreach (Planet producerPlanet in proposal.ProducerPlanets)
             {
-                manufactureProposal.SelectProducer(producerPlanet);
-                if (TrySelectManufacturePrefix(context, manufactureProposal))
+                AIManufactureProposal candidate = proposal.ResolveOption(
+                    proposal.Demand,
+                    producerPlanet
+                );
+                if (equivalentProducerCount < candidate.ManufacturingCount)
+                    candidate = candidate.WithManufacturingCount(equivalentProducerCount);
+                if (TrySelectManufacturePrefix(context, candidate, out selectedProposal))
+                    return true;
+
+                equivalentProducerCount = (
+                    (AIManufactureProposal)selectedProposal
+                ).ManufacturingCount;
+            }
+
+            foreach (AIManufactureOption option in proposal.ProducerOptions)
+            {
+                AIManufactureProposal candidate = proposal.ResolveOption(
+                    option.Demand,
+                    option.ProducerPlanet
+                );
+                if (TrySelectManufacturePrefix(context, candidate, out selectedProposal))
                     return true;
             }
 
-            foreach (AIManufactureOption option in manufactureProposal.ProducerOptions)
-            {
-                manufactureProposal.SelectOption(option);
-                if (TrySelectManufacturePrefix(context, manufactureProposal))
-                    return true;
-            }
-
+            selectedProposal = proposal;
             return false;
         }
 
@@ -130,19 +148,27 @@ namespace Rebellion.AI.Phases
         /// <returns>True when at least one item can be selected.</returns>
         private bool TrySelectManufacturePrefix(
             AITurnContext context,
-            AIManufactureProposal proposal
+            AIManufactureProposal proposal,
+            out AIProposal selectedProposal
         )
         {
             int requestedCount = proposal.GetManufacturingCount();
             if (requestedCount <= 1)
+            {
+                selectedProposal = proposal;
                 return CanSelectManufactureProposal(context, proposal);
+            }
 
             int maximumCount = GetAvailableManufacturingCount(context, proposal, requestedCount);
             if (maximumCount <= 0)
+            {
+                selectedProposal = proposal;
                 return false;
+            }
 
-            proposal.SelectManufacturingCount(maximumCount);
-            return CanSelectManufactureProposal(context, proposal);
+            AIManufactureProposal accepted = proposal.WithManufacturingCount(maximumCount);
+            selectedProposal = accepted;
+            return CanSelectManufactureProposal(context, accepted);
         }
 
         /// <summary>
