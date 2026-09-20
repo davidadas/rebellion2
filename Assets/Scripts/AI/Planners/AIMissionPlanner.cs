@@ -1068,7 +1068,7 @@ namespace Rebellion.AI.Planners
                 .MissionPlanning
                 .Utility
                 .Diplomacy;
-            AIUtilityScore score = context.Assessment.GetDiplomacyTargetStrategicUtility(planet);
+            AIUtilityScore score = GetDiplomacyStrategicUtility(context, planet, utility);
             score.Add(IsCoreWorld(planet) ? 1 : 0, utility.CoreWorld);
 
             if (context.Assessment.IsOwnedPlanet(planet))
@@ -1093,6 +1093,58 @@ namespace Rebellion.AI.Planners
                 utility.SupportDeficit
             );
             return score.Value;
+        }
+
+        /// <summary>
+        /// Scores the production and economic value of diplomatically securing a planet.
+        /// </summary>
+        /// <param name="context">The current AI turn.</param>
+        /// <param name="planet">The prospective diplomacy target.</param>
+        /// <param name="utility">The configured diplomacy considerations.</param>
+        /// <returns>The accumulated diplomacy utility.</returns>
+        private static AIUtilityScore GetDiplomacyStrategicUtility(
+            AITurnContext context,
+            Planet planet,
+            GameConfig.AIDiplomacyUtilityConfig utility
+        )
+        {
+            AIUtilityScore score = new AIUtilityScore();
+            if (context?.Assessment == null || planet == null || utility == null)
+                return score;
+
+            score.Add(
+                AIUtility.Fulfillment(
+                    planet.GetProductionFacilityCount(ManufacturingType.Building),
+                    AIUtilityDomain.DiplomacyFacilityCount
+                ),
+                utility.ConstructionFacility
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    planet.GetProductionFacilityCount(ManufacturingType.Ship),
+                    AIUtilityDomain.DiplomacyFacilityCount
+                ),
+                utility.Shipyard
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    planet.GetProductionFacilityCount(ManufacturingType.Troop),
+                    AIUtilityDomain.DiplomacyFacilityCount
+                ),
+                utility.TrainingFacility
+            );
+
+            int maintenanceReserve = context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
+            if (context.Assessment.ProjectedMaintenanceHeadroom < maintenanceReserve)
+                score.Add(
+                    AIUtility.Fulfillment(
+                        planet.GetRawResourceNodes(),
+                        AIUtilityDomain.DiplomacyResourceNodeCount
+                    ),
+                    utility.ResourceNode
+                );
+
+            return score;
         }
 
         /// <summary>

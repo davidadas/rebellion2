@@ -8,6 +8,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.Systems;
 using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Planners
@@ -83,6 +84,15 @@ namespace Rebellion.AI.Planners
             string,
             bool
         >(StringComparer.Ordinal);
+        private readonly Dictionary<
+            (
+                string ProducerPlanetId,
+                string DestinationFleetId,
+                string ProductTypeId,
+                int Quantity
+            ),
+            int
+        > _reinforcementArrivalTicks = new();
 
         /// <summary>
         /// Returns production proposals for the current AI turn.
@@ -108,6 +118,7 @@ namespace Rebellion.AI.Planners
             _fleetUnitCounts.Clear();
             _fleetHasIonStarfighters.Clear();
             _fleetHasTorpedoStarfighters.Clear();
+            _reinforcementArrivalTicks.Clear();
         }
 
         /// <summary>
@@ -1446,7 +1457,7 @@ namespace Rebellion.AI.Planners
         /// <param name="producer">The candidate producer.</param>
         /// <param name="destinationPlanet">The destination planet, when available.</param>
         /// <returns>Estimated arrival ticks for fleet reinforcements, otherwise raw distance.</returns>
-        private static double GetProducerFulfillmentTicks(
+        private double GetProducerFulfillmentTicks(
             AITurnContext context,
             AIDemand demand,
             IManufacturable product,
@@ -1457,7 +1468,8 @@ namespace Rebellion.AI.Planners
         {
             if (demand.DestinationFleet != null && product is IMovable movable)
             {
-                return context.ReinforcementArrivalForecast.GetArrivalTicks(
+                return GetReinforcementArrivalTicks(
+                    context,
                     producer,
                     demand.DestinationFleet,
                     product,
@@ -1467,6 +1479,87 @@ namespace Rebellion.AI.Planners
             }
 
             return destinationPlanet == null ? 0 : destinationPlanet.GetRawDistanceTo(producer);
+        }
+
+        /// <summary>
+        /// Estimates when a manufactured reinforcement will reach its destination fleet.
+        /// </summary>
+        /// <param name="context">The active AI turn.</param>
+        /// <param name="producer">The planet manufacturing the reinforcement.</param>
+        /// <param name="destinationFleet">The fleet receiving the reinforcement.</param>
+        /// <param name="product">The manufactured product.</param>
+        /// <param name="movable">The product movement characteristics.</param>
+        /// <param name="quantity">The appended product quantity.</param>
+        /// <returns>Production plus transit ticks, or <see cref="int.MaxValue"/> when unavailable.</returns>
+        private int GetReinforcementArrivalTicks(
+            AITurnContext context,
+            Planet producer,
+            Fleet destinationFleet,
+            IManufacturable product,
+            IMovable movable,
+            int quantity
+        )
+        {
+            if (producer == null || destinationFleet == null || product == null || movable == null)
+                return int.MaxValue;
+
+            (
+                string ProducerPlanetId,
+                string DestinationFleetId,
+                string ProductTypeId,
+                int Quantity
+            ) key = (
+                producer.InstanceID,
+                destinationFleet.InstanceID,
+                product.GetTypeID(),
+                quantity
+            );
+            if (_reinforcementArrivalTicks.TryGetValue(key, out int cachedTicks))
+                return cachedTicks;
+
+            int manufacturingTicks =
+                ManufacturingSystem.EstimateAppendedCompletionTicks(producer, product, quantity)
+                ?? int.MaxValue;
+            if (manufacturingTicks == int.MaxValue || context.Movement == null)
+                return CacheReinforcementArrival(key, int.MaxValue);
+
+            if (
+                !context.Movement.TryEstimateManufacturedTransitTicks(
+                    movable,
+                    producer,
+                    destinationFleet,
+                    out int transitTicks
+                )
+            )
+            {
+                return CacheReinforcementArrival(key, int.MaxValue);
+            }
+
+            long arrivalTicks = (long)manufacturingTicks + transitTicks;
+            return CacheReinforcementArrival(
+                key,
+                arrivalTicks >= int.MaxValue ? int.MaxValue : (int)arrivalTicks
+            );
+        }
+
+        /// <summary>
+        /// Stores and returns one reinforcement-arrival estimate.
+        /// </summary>
+        /// <param name="key">The producer, fleet, product, and quantity identity.</param>
+        /// <param name="ticks">The estimated arrival duration.</param>
+        /// <returns>The supplied duration.</returns>
+        private int CacheReinforcementArrival(
+            (
+                string ProducerPlanetId,
+                string DestinationFleetId,
+                string ProductTypeId,
+                int Quantity
+            ) key,
+            int ticks
+        )
+        {
+            _reinforcementArrivalTicks[key] = ticks;
+            return ticks;
         }
 
         /// <summary>

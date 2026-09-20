@@ -494,69 +494,6 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns the production and economic value gained by diplomatically securing a planet.
-        /// </summary>
-        /// <param name="planet">The prospective diplomacy target.</param>
-        /// <returns>The diplomacy target's strategic value.</returns>
-        public double GetDiplomacyTargetStrategicValue(Planet planet)
-        {
-            return GetDiplomacyTargetStrategicUtility(planet).Value;
-        }
-
-        /// <summary>
-        /// Returns the weighted considerations describing a diplomacy target's strategic value.
-        /// </summary>
-        /// <param name="planet">The prospective diplomacy target.</param>
-        /// <returns>The accumulated diplomacy utility.</returns>
-        internal AIUtilityScore GetDiplomacyTargetStrategicUtility(Planet planet)
-        {
-            if (planet == null || _context?.Game?.Config?.AI?.MissionPlanning == null)
-                return new AIUtilityScore();
-
-            GameConfig.AIDiplomacyUtilityConfig utility = _context
-                .Game
-                .Config
-                .AI
-                .MissionPlanning
-                .Utility
-                .Diplomacy;
-            AIUtilityScore score = new AIUtilityScore();
-            score.Add(
-                AIUtility.Fulfillment(
-                    planet.GetProductionFacilityCount(ManufacturingType.Building),
-                    AIUtilityDomain.DiplomacyFacilityCount
-                ),
-                utility.ConstructionFacility
-            );
-            score.Add(
-                AIUtility.Fulfillment(
-                    planet.GetProductionFacilityCount(ManufacturingType.Ship),
-                    AIUtilityDomain.DiplomacyFacilityCount
-                ),
-                utility.Shipyard
-            );
-            score.Add(
-                AIUtility.Fulfillment(
-                    planet.GetProductionFacilityCount(ManufacturingType.Troop),
-                    AIUtilityDomain.DiplomacyFacilityCount
-                ),
-                utility.TrainingFacility
-            );
-
-            int maintenanceReserve = _context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
-            if (ProjectedMaintenanceHeadroom < maintenanceReserve)
-                score.Add(
-                    AIUtility.Fulfillment(
-                        planet.GetRawResourceNodes(),
-                        AIUtilityDomain.DiplomacyResourceNodeCount
-                    ),
-                    utility.ResourceNode
-                );
-
-            return score;
-        }
-
-        /// <summary>
         /// Returns the highest enemy planet value.
         /// </summary>
         /// <returns>The highest enemy planet value.</returns>

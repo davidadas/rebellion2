@@ -30,8 +30,6 @@ namespace Rebellion.AI.Director
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
         public AIStrategicPlan StrategicPlan { get; }
-        public AIReinforcementArrivalForecast ReinforcementArrivalForecast =>
-            _reinforcementArrivalForecast ??= new AIReinforcementArrivalForecast(this);
         public int AvailableProjectedMaintenanceHeadroom
         {
             get
@@ -54,7 +52,6 @@ namespace Rebellion.AI.Director
         private readonly Dictionary<SpecialForces, SpecialForcesIntent> _specialForcesIntents =
             new Dictionary<SpecialForces, SpecialForcesIntent>();
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
-        private AIReinforcementArrivalForecast _reinforcementArrivalForecast;
         private long _committedManufacturingMaintenance;
 
         /// <summary>

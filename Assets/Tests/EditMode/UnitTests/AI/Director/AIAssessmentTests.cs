@@ -108,47 +108,6 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
-        public void GetDiplomacyTargetStrategicValue_WithHealthyMaintenance_IgnoresResources()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet target = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "target",
-                null,
-                rawResourceNodes: 5
-            );
-            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
-
-            double value = assessment.GetDiplomacyTargetStrategicValue(target);
-
-            Assert.AreEqual(0, value);
-        }
-
-        [Test]
-        public void GetDiplomacyTargetStrategicValue_WithMaintenancePressure_ValuesResources()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet target = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "target",
-                null,
-                rawResourceNodes: 5
-            );
-            game.Config.AI.Selection.MaintenanceHeadroomReserve = 1;
-            game.Config.AI.MissionPlanning.Utility.Diplomacy.ResourceNode.Weight = 1;
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
-
-            double value = assessment.GetDiplomacyTargetStrategicValue(target);
-
-            Assert.AreEqual(2.0 / 9, value, 0.000001);
-        }
-
-        [Test]
         public void GetOffensiveSupportLeverage_WithFavoredTargetAndExposedPlanet_ReturnsBoth()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

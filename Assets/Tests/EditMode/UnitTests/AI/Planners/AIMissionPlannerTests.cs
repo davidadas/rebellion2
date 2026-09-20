@@ -1176,6 +1176,44 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithHealthyMaintenance_DoesNotPrioritizeDiplomacyResources()
+        {
+            GameRoot game = CreateDiplomacyPriorityScene(
+                maintenanceReserve: 0,
+                out Faction empire,
+                out Planet lexicalTarget,
+                out Planet _
+            );
+
+            Planet firstTarget = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .First(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy)
+                .TargetPlanet;
+
+            Assert.AreSame(lexicalTarget, firstTarget);
+        }
+
+        [Test]
+        public void Plan_WithMaintenancePressure_PrioritizesDiplomacyResources()
+        {
+            GameRoot game = CreateDiplomacyPriorityScene(
+                maintenanceReserve: 1,
+                out Faction empire,
+                out Planet _,
+                out Planet resourceTarget
+            );
+
+            Planet firstTarget = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .First(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy)
+                .TargetPlanet;
+
+            Assert.AreSame(resourceTarget, firstTarget);
+        }
+
+        [Test]
         public void Plan_WithQualifiedDiplomatAndValidTarget_OffersOnlyDiplomacy()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -1213,6 +1251,46 @@ namespace Rebellion.Tests.AI.Planners
                 .ToArray();
 
             CollectionAssert.AreEqual(new[] { MissionTypeIDs.Diplomacy }, missionTypeIds);
+        }
+
+        /// <summary>
+        /// Creates two otherwise equal diplomacy targets whose identifiers and resource values
+        /// expose whether maintenance pressure affects candidate priority.
+        /// </summary>
+        /// <param name="maintenanceReserve">The maintenance reserve used by AI selection.</param>
+        /// <param name="empire">The AI faction created for the scene.</param>
+        /// <param name="lexicalTarget">The target favored by the stable identifier tie-breaker.</param>
+        /// <param name="resourceTarget">The target favored when resources have strategic value.</param>
+        /// <returns>The configured game scene.</returns>
+        private static GameRoot CreateDiplomacyPriorityScene(
+            int maintenanceReserve,
+            out Faction empire,
+            out Planet lexicalTarget,
+            out Planet resourceTarget
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = maintenanceReserve;
+            game.Config.AI.MissionPlanning.RetainedAlternativesPerMission = 1;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            origin.SetPopularSupport(empire.InstanceID, 100);
+            lexicalTarget = AITestSceneBuilder.AddPlanet(game, system, "a-target", null);
+            resourceTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "z-resource-target",
+                null,
+                rawResourceNodes: 15
+            );
+            lexicalTarget.SetPopularSupport(empire.InstanceID, 50);
+            resourceTarget.SetPopularSupport(empire.InstanceID, 50);
+            Officer diplomat = EntityFactory.CreateOfficer("diplomat", empire.InstanceID);
+            diplomat.Ratings[OfficerRating.Diplomacy] = 100;
+            game.AttachNode(diplomat, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, lexicalTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, resourceTarget);
+            return game;
         }
 
         /// <summary>
