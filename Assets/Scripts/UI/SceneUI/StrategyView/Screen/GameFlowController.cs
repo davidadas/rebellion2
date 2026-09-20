@@ -7,7 +7,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Generation;
-using Rebellion.Util.Common;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -251,8 +251,16 @@ public sealed class GameFlowController : MonoBehaviour
         AppBootstrap bootstrap = AppBootstrap.Instance;
         ContentPack contentPack = bootstrap.GetContentPack();
         GameStartupTrace.Log("Building encyclopedia catalog.");
+        GameDataCatalog gameData = contentPack.GameData;
         EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build(
-            contentPack.GameData
+            gameData.EncyclopediaEntries,
+            gameData.PlanetSectors,
+            gameData.Buildings,
+            gameData.CapitalShips,
+            gameData.Starfighters,
+            gameData.Regiments,
+            gameData.SpecialForces,
+            gameData.Officers
         );
         GameStartupTrace.Log("Encyclopedia catalog complete; creating UI context.");
         uiContext = new UIContext(

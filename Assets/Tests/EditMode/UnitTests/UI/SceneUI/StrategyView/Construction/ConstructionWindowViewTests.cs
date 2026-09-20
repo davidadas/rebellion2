@@ -225,7 +225,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
-        public void BuildCountInput_TextRectIsInsetWithinField()
+        public void BuildCountInput_TextRect_IsInsetWithinField()
         {
             TMP_InputField input = FindComponent<TMP_InputField>("BuildCountInputField");
 

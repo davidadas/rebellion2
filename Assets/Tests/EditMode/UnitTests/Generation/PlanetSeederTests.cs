@@ -3,7 +3,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Generation;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Generation
 {
@@ -28,7 +28,6 @@ namespace Rebellion.Tests.Generation
                     new FactionSetup
                     {
                         FactionID = "FNALL1",
-                        GarrisonTroopTypeID = "REAL002",
                         StartingPlanets = new List<StartingPlanet>
                         {
                             new StartingPlanet { PlanetTypeID = "PLSUM06", Loyalty = 100 },
@@ -43,7 +42,6 @@ namespace Rebellion.Tests.Generation
                     new FactionSetup
                     {
                         FactionID = "FNEMP1",
-                        GarrisonTroopTypeID = "REEM002",
                         StartingPlanets = new List<StartingPlanet>
                         {
                             new StartingPlanet

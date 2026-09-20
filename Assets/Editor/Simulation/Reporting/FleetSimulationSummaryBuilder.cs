@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using Rebellion.Systems.Combat;
 
 public static partial class HeadlessSimulationRunner
 {

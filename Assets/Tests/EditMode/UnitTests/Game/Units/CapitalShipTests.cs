@@ -590,7 +590,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void ConfiguredCapitalShip_PreservesCombatAndMovementStatistics()
+        public void ConfiguredCapitalShip_Default_PreservesCombatAndMovementStatistics()
         {
             Assert.AreEqual(12, _capitalShip.WeaponRecharge);
             Assert.AreEqual(20, _capitalShip.Bombardment);

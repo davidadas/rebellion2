@@ -1,6 +1,5 @@
 using NUnit.Framework;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Units
@@ -32,10 +31,10 @@ namespace Rebellion.Tests.Game.Units
                 MissionReturnLocationInstanceID = "return-location",
             };
 
-            _specialForces.Ratings[OfficerRating.Diplomacy] = 10;
-            _specialForces.Ratings[OfficerRating.Espionage] = 20;
-            _specialForces.Ratings[OfficerRating.Combat] = 30;
-            _specialForces.Ratings[OfficerRating.Leadership] = 15;
+            _specialForces.Ratings[SkillRating.Diplomacy] = 10;
+            _specialForces.Ratings[SkillRating.Espionage] = 20;
+            _specialForces.Ratings[SkillRating.Combat] = 30;
+            _specialForces.Ratings[SkillRating.Leadership] = 15;
         }
 
         [Test]
@@ -49,9 +48,9 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void SetBaseRating_ValidRating_SetsValue()
         {
-            _specialForces.SetBaseRating(OfficerRating.Combat, 99);
+            _specialForces.SetBaseRating(SkillRating.Combat, 99);
 
-            Assert.AreEqual(99, _specialForces.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(99, _specialForces.GetBaseRating(SkillRating.Combat));
         }
 
         [Test]
@@ -111,7 +110,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void GetBaseRating_Diplomacy_ReturnsCorrectValue()
         {
-            int ratingValue = _specialForces.GetBaseRating(OfficerRating.Diplomacy);
+            int ratingValue = _specialForces.GetBaseRating(SkillRating.Diplomacy);
 
             Assert.AreEqual(10, ratingValue, "Diplomacy rating should return the correct value");
         }
@@ -119,7 +118,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void GetBaseRating_Espionage_ReturnsCorrectValue()
         {
-            int ratingValue = _specialForces.GetBaseRating(OfficerRating.Espionage);
+            int ratingValue = _specialForces.GetBaseRating(SkillRating.Espionage);
 
             Assert.AreEqual(20, ratingValue, "Espionage rating should return the correct value");
         }
@@ -127,7 +126,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void GetBaseRating_Combat_ReturnsCorrectValue()
         {
-            int ratingValue = _specialForces.GetBaseRating(OfficerRating.Combat);
+            int ratingValue = _specialForces.GetBaseRating(SkillRating.Combat);
 
             Assert.AreEqual(30, ratingValue, "Combat rating should return the correct value");
         }
@@ -135,7 +134,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void GetBaseRating_Leadership_ReturnsCorrectValue()
         {
-            int ratingValue = _specialForces.GetBaseRating(OfficerRating.Leadership);
+            int ratingValue = _specialForces.GetBaseRating(SkillRating.Leadership);
 
             Assert.AreEqual(15, ratingValue, "Leadership rating should return the correct value");
         }
@@ -144,19 +143,19 @@ namespace Rebellion.Tests.Game.Units
         public void Ratings_WhenSet_StoresCorrectValues()
         {
             SpecialForces newSpecialForces = new SpecialForces();
-            newSpecialForces.Ratings[OfficerRating.Diplomacy] = 50;
-            newSpecialForces.Ratings[OfficerRating.Espionage] = 60;
+            newSpecialForces.Ratings[SkillRating.Diplomacy] = 50;
+            newSpecialForces.Ratings[SkillRating.Espionage] = 60;
 
-            Assert.AreEqual(50, newSpecialForces.Ratings[OfficerRating.Diplomacy]);
-            Assert.AreEqual(60, newSpecialForces.Ratings[OfficerRating.Espionage]);
+            Assert.AreEqual(50, newSpecialForces.Ratings[SkillRating.Diplomacy]);
+            Assert.AreEqual(60, newSpecialForces.Ratings[SkillRating.Espionage]);
         }
 
         [Test]
         public void Ratings_WhenUpdated_StoresNewValue()
         {
-            _specialForces.Ratings[OfficerRating.Combat] = 100;
+            _specialForces.Ratings[SkillRating.Combat] = 100;
 
-            int ratingValue = _specialForces.Ratings[OfficerRating.Combat];
+            int ratingValue = _specialForces.Ratings[SkillRating.Combat];
 
             Assert.AreEqual(100, ratingValue, "Combat rating should update correctly");
         }
@@ -254,17 +253,17 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void CanPerformMission_AllowedType_ReturnsTrue()
         {
-            _specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
+            _specialForces.AllowedMissionTypeIDs.Add(EspionageMission.MissionTypeID);
 
-            Assert.IsTrue(_specialForces.CanPerformMission(MissionTypeIDs.Espionage));
+            Assert.IsTrue(_specialForces.CanPerformMission(EspionageMission.MissionTypeID));
         }
 
         [Test]
         public void CanPerformMission_DisallowedType_ReturnsFalse()
         {
-            _specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
+            _specialForces.AllowedMissionTypeIDs.Add(EspionageMission.MissionTypeID);
 
-            Assert.IsFalse(_specialForces.CanPerformMission(MissionTypeIDs.Sabotage));
+            Assert.IsFalse(_specialForces.CanPerformMission(SabotageMission.MissionTypeID));
         }
 
         [Test]
@@ -338,23 +337,23 @@ namespace Rebellion.Tests.Game.Units
                 "ManufacturingQueueSequence should be correctly deserialized."
             );
             Assert.AreEqual(
-                _specialForces.Ratings[OfficerRating.Diplomacy],
-                deserialized.Ratings[OfficerRating.Diplomacy],
+                _specialForces.Ratings[SkillRating.Diplomacy],
+                deserialized.Ratings[SkillRating.Diplomacy],
                 "Diplomacy rating should be correctly deserialized."
             );
             Assert.AreEqual(
-                _specialForces.Ratings[OfficerRating.Espionage],
-                deserialized.Ratings[OfficerRating.Espionage],
+                _specialForces.Ratings[SkillRating.Espionage],
+                deserialized.Ratings[SkillRating.Espionage],
                 "Espionage rating should be correctly deserialized."
             );
             Assert.AreEqual(
-                _specialForces.Ratings[OfficerRating.Combat],
-                deserialized.Ratings[OfficerRating.Combat],
+                _specialForces.Ratings[SkillRating.Combat],
+                deserialized.Ratings[SkillRating.Combat],
                 "Combat rating should be correctly deserialized."
             );
             Assert.AreEqual(
-                _specialForces.Ratings[OfficerRating.Leadership],
-                deserialized.Ratings[OfficerRating.Leadership],
+                _specialForces.Ratings[SkillRating.Leadership],
+                deserialized.Ratings[SkillRating.Leadership],
                 "Leadership rating should be correctly deserialized."
             );
         }

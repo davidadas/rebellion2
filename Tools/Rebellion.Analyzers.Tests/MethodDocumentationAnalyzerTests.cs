@@ -104,7 +104,7 @@ class Example
         }
 
         [Test]
-        public async Task Method_Inheritdoc_DoesNotReportDiagnosticAsync()
+        public async Task Method_Inheritdoc_ReportsInheritdocDiagnosticAsync()
         {
             const string source =
                 @"
@@ -116,7 +116,23 @@ class Example
 
             ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
 
-            Assert.IsEmpty(diagnostics);
+            AssertDiagnostic(diagnostics, MethodDocumentationAnalyzer.InheritdocDiagnosticId);
+        }
+
+        [Test]
+        public async Task Method_NestedInheritdoc_ReportsInheritdocDiagnosticAsync()
+        {
+            const string source =
+                @"
+class Example
+{
+    /// <summary><inheritdoc cref=""object.ToString""/></summary>
+    public override string ToString() { return ""Example""; }
+}";
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
+
+            AssertDiagnostic(diagnostics, MethodDocumentationAnalyzer.InheritdocDiagnosticId);
         }
 
         [Test]

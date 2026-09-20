@@ -5,7 +5,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -24,7 +23,7 @@ namespace Rebellion.Tests.Game.Missions
             bool created = factory.TryCreateMission(
                 CreateContext(
                     game,
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     "empire",
                     officer,
                     planet,
@@ -34,7 +33,7 @@ namespace Rebellion.Tests.Game.Missions
             );
 
             Assert.IsTrue(created);
-            Assert.AreEqual(MissionTypeIDs.Sabotage, mission.ConfigKey);
+            Assert.AreEqual(SabotageMission.MissionTypeID, mission.ConfigKey);
         }
 
         [Test]
@@ -47,7 +46,7 @@ namespace Rebellion.Tests.Game.Missions
             bool created = factory.TryCreateMission(
                 CreateContext(
                     game,
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     "empire",
                     officer,
                     planet,
@@ -84,7 +83,7 @@ namespace Rebellion.Tests.Game.Missions
             bool created = factory.TryCreateMission(
                 CreateContext(
                     game,
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     "empire",
                     officer,
                     planet,
@@ -103,12 +102,12 @@ namespace Rebellion.Tests.Game.Missions
             Regiment target = CreateSabotageTarget(game, planet);
             game.GetFactions()
                 .Find(f => f.InstanceID == "empire")
-                .DisallowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
+                .DisallowedMissionTypeIDs.Add(SabotageMission.MissionTypeID);
 
             bool created = factory.TryCreateMission(
                 CreateContext(
                     game,
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     "empire",
                     officer,
                     planet,
@@ -129,7 +128,7 @@ namespace Rebellion.Tests.Game.Missions
             bool created = factory.TryCreateMission(
                 CreateContext(
                     game,
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     "unknown",
                     officer,
                     planet,
@@ -151,7 +150,7 @@ namespace Rebellion.Tests.Game.Missions
             bool created = factory.TryCreateMission(
                 CreateContext(
                     game,
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     "empire",
                     officer,
                     planet,
@@ -171,7 +170,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer rebelOfficer = EntityFactory.CreateOfficer("o2", "rebels");
             MissionContext context = CreateContext(
                 game,
-                MissionTypeIDs.Sabotage,
+                SabotageMission.MissionTypeID,
                 "empire",
                 officer,
                 planet,
@@ -192,7 +191,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer rebelDecoy = EntityFactory.CreateOfficer("o2", "rebels");
             MissionContext context = CreateContext(
                 game,
-                MissionTypeIDs.Sabotage,
+                SabotageMission.MissionTypeID,
                 "empire",
                 officer,
                 planet,
@@ -215,7 +214,7 @@ namespace Rebellion.Tests.Game.Missions
             bool created = factory.TryCreateMission(
                 CreateContext(
                     game,
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     "empire",
                     officer,
                     planet,
@@ -237,7 +236,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(decoy, planet);
             MissionContext context = CreateContext(
                 game,
-                MissionTypeIDs.Sabotage,
+                SabotageMission.MissionTypeID,
                 "empire",
                 officer,
                 planet,
@@ -257,7 +256,7 @@ namespace Rebellion.Tests.Game.Missions
             Regiment target = CreateSabotageTarget(game, planet);
             MissionContext context = CreateContext(
                 game,
-                MissionTypeIDs.Sabotage,
+                SabotageMission.MissionTypeID,
                 "empire",
                 officer,
                 planet,
@@ -275,7 +274,7 @@ namespace Rebellion.Tests.Game.Missions
             Regiment target = CreateSabotageTarget(game, planet);
             MissionContext context = CreateContext(
                 game,
-                MissionTypeIDs.Sabotage,
+                SabotageMission.MissionTypeID,
                 "empire",
                 officer,
                 planet,
@@ -303,7 +302,7 @@ namespace Rebellion.Tests.Game.Missions
             bool created = factory.TryCreateMission(
                 CreateContext(
                     game,
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     "empire",
                     officer,
                     planet,
@@ -325,7 +324,7 @@ namespace Rebellion.Tests.Game.Missions
             bool created = factory.TryCreateMission(
                 CreateContext(
                     game,
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     "empire",
                     officer,
                     planet,
@@ -355,7 +354,7 @@ namespace Rebellion.Tests.Game.Missions
             game.MoveNode(officer, ship);
 
             bool created = factory.TryCreateMission(
-                CreateContext(game, MissionTypeIDs.Diplomacy, "empire", officer, planet),
+                CreateContext(game, DiplomacyMission.MissionTypeID, "empire", officer, planet),
                 out _
             );
 
@@ -369,7 +368,7 @@ namespace Rebellion.Tests.Game.Missions
             Regiment target = CreateSabotageTarget(game, planet);
             MissionContext context = CreateContext(
                 game,
-                MissionTypeIDs.Sabotage,
+                SabotageMission.MissionTypeID,
                 "empire",
                 officer,
                 planet,
@@ -393,12 +392,12 @@ namespace Rebellion.Tests.Game.Missions
             game.GetUnrecruitedOfficers().Add(CreateUnrecruitedOfficer("empire"));
 
             bool created = factory.TryCreateMission(
-                CreateContext(game, MissionTypeIDs.Recruitment, "empire", officer, planet),
+                CreateContext(game, RecruitmentMission.MissionTypeID, "empire", officer, planet),
                 out Mission mission
             );
 
             Assert.IsTrue(created);
-            Assert.AreEqual(MissionTypeIDs.Recruitment, mission.ConfigKey);
+            Assert.AreEqual(RecruitmentMission.MissionTypeID, mission.ConfigKey);
         }
 
         [Test]
@@ -408,7 +407,7 @@ namespace Rebellion.Tests.Game.Missions
             officer.IsMain = true;
 
             bool created = factory.TryCreateMission(
-                CreateContext(game, MissionTypeIDs.Recruitment, "empire", officer, planet),
+                CreateContext(game, RecruitmentMission.MissionTypeID, "empire", officer, planet),
                 out _
             );
 
@@ -425,7 +424,7 @@ namespace Rebellion.Tests.Game.Missions
             bool created = factory.TryCreateMission(
                 CreateContext(
                     game,
-                    MissionTypeIDs.Research,
+                    ResearchMission.MissionTypeID,
                     "empire",
                     officer,
                     planet,
@@ -435,7 +434,7 @@ namespace Rebellion.Tests.Game.Missions
             );
 
             Assert.IsTrue(created);
-            Assert.AreEqual(MissionTypeIDs.Research, mission.ConfigKey);
+            Assert.AreEqual(ResearchMission.MissionTypeID, mission.ConfigKey);
             Assert.AreEqual(ResearchDiscipline.ShipDesign, ((ResearchMission)mission).Discipline);
         }
 
@@ -445,7 +444,7 @@ namespace Rebellion.Tests.Game.Missions
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                CreateContext(game, MissionTypeIDs.Research, "empire", officer, planet),
+                CreateContext(game, ResearchMission.MissionTypeID, "empire", officer, planet),
                 out _
             );
 
@@ -461,8 +460,10 @@ namespace Rebellion.Tests.Game.Missions
 
             List<MissionOption> options = factory.GetAvailableMissionOptions(context);
 
-            Assert.IsTrue(options.Any(option => option.MissionTypeID == MissionTypeIDs.Diplomacy));
-            Assert.AreEqual(MissionTypeIDs.Espionage, options.Last().MissionTypeID);
+            Assert.IsTrue(
+                options.Any(option => option.MissionTypeID == DiplomacyMission.MissionTypeID)
+            );
+            Assert.AreEqual(EspionageMission.MissionTypeID, options.Last().MissionTypeID);
         }
 
         [Test]
@@ -489,7 +490,9 @@ namespace Rebellion.Tests.Game.Missions
 
             List<MissionOption> options = factory.GetAvailableMissionOptions(context);
 
-            Assert.IsTrue(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
+            Assert.IsTrue(
+                options.Any(option => option.MissionTypeID == SabotageMission.MissionTypeID)
+            );
             Assert.IsTrue(options.All(option => option.TargetKind != MissionTargetKind.Planet));
         }
 
@@ -524,7 +527,7 @@ namespace Rebellion.Tests.Game.Missions
                 List<MissionOption> options = factory.GetAvailableMissionOptions(context);
 
                 Assert.AreEqual(1, options.Count);
-                Assert.AreEqual(MissionTypeIDs.Sabotage, options[0].MissionTypeID);
+                Assert.AreEqual(SabotageMission.MissionTypeID, options[0].MissionTypeID);
             }
         }
 
@@ -555,7 +558,7 @@ namespace Rebellion.Tests.Game.Missions
             List<MissionOption> options = factory.GetAvailableMissionOptions(context);
 
             CollectionAssert.AreEquivalent(
-                new[] { MissionTypeIDs.Abduction, MissionTypeIDs.Assassination },
+                new[] { AbductionMission.MissionTypeID, AssassinationMission.MissionTypeID },
                 options.Select(option => option.MissionTypeID)
             );
         }
@@ -605,7 +608,9 @@ namespace Rebellion.Tests.Game.Missions
 
             List<MissionOption> options = factory.GetAvailableMissionOptions(context);
 
-            Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
+            Assert.IsFalse(
+                options.Any(option => option.MissionTypeID == SabotageMission.MissionTypeID)
+            );
         }
 
         [Test]
@@ -625,7 +630,7 @@ namespace Rebellion.Tests.Game.Missions
         public void GetAvailableMissionOptions_DisallowedEntityMission_ExcludesMission()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
-            game.GetFactions()[0].DisallowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
+            game.GetFactions()[0].DisallowedMissionTypeIDs.Add(SabotageMission.MissionTypeID);
             CapitalShip target = new CapitalShip
             {
                 InstanceID = "target",
@@ -646,7 +651,9 @@ namespace Rebellion.Tests.Game.Missions
 
             List<MissionOption> options = factory.GetAvailableMissionOptions(context);
 
-            Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
+            Assert.IsFalse(
+                options.Any(option => option.MissionTypeID == SabotageMission.MissionTypeID)
+            );
         }
 
         [Test]
@@ -661,10 +668,10 @@ namespace Rebellion.Tests.Game.Missions
             List<MissionOption> options = factory.GetAvailableMissionOptions(context);
 
             int recruitmentIndex = options.FindIndex(option =>
-                option.MissionTypeID == MissionTypeIDs.Recruitment
+                option.MissionTypeID == RecruitmentMission.MissionTypeID
             );
             int diplomacyIndex = options.FindIndex(option =>
-                option.MissionTypeID == MissionTypeIDs.Diplomacy
+                option.MissionTypeID == DiplomacyMission.MissionTypeID
             );
             Assert.GreaterOrEqual(recruitmentIndex, 0);
             Assert.Greater(diplomacyIndex, recruitmentIndex);
@@ -704,11 +711,11 @@ namespace Rebellion.Tests.Game.Missions
             List<MissionOption> options = factory.GetAvailableMissionOptions(context);
 
             int diplomacyIndex = options.FindIndex(option =>
-                option.MissionTypeID == MissionTypeIDs.Diplomacy
+                option.MissionTypeID == DiplomacyMission.MissionTypeID
             );
             List<int> researchIndexes = options
                 .Select((option, index) => (option, index))
-                .Where(entry => entry.option.MissionTypeID == MissionTypeIDs.Research)
+                .Where(entry => entry.option.MissionTypeID == ResearchMission.MissionTypeID)
                 .Select(entry => entry.index)
                 .ToList();
             Assert.IsNotEmpty(researchIndexes);

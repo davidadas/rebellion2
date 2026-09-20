@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;

@@ -5,7 +5,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Generation;
 
 namespace Rebellion.Systems
 {
@@ -381,19 +380,14 @@ namespace Rebellion.Systems
         /// <returns>The selected regiment template, or null.</returns>
         private Regiment GetAvailableRegiment(Faction faction)
         {
-            FactionSetup factionSetup =
-                _gameData.GenerationConfig.GalaxyClassification.FactionSetups.FirstOrDefault(
-                    setup =>
-                        string.Equals(setup.FactionID, faction.InstanceID, StringComparison.Ordinal)
-                );
-            if (string.IsNullOrEmpty(factionSetup?.GarrisonTroopTypeID))
+            if (string.IsNullOrEmpty(faction.GarrisonTroopTypeID))
                 return null;
 
             int unlockedOrder = faction.GetHighestUnlockedOrder(ManufacturingType.Troop);
             return _gameData.Regiments.FirstOrDefault(template =>
                 string.Equals(
                     template.TypeID,
-                    factionSetup.GarrisonTroopTypeID,
+                    faction.GarrisonTroopTypeID,
                     StringComparison.Ordinal
                 )
                 && IManufacturable.CanBeManufacturedBy(template, faction.InstanceID)

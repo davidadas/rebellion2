@@ -2,10 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Tests.Game.Units
 {
@@ -204,7 +202,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void FindShipForStarfighter_SkipsUnavailableShips()
+        public void FindShipForStarfighter_Default_SkipsUnavailableShips()
         {
             _capitalShip1.ManufacturingStatus = ManufacturingStatus.Building;
             _capitalShip2.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -229,7 +227,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void FindShipForRegiment_SkipsUnavailableShips()
+        public void FindShipForRegiment_Default_SkipsUnavailableShips()
         {
             _capitalShip1.ManufacturingStatus = ManufacturingStatus.Complete;
             _capitalShip1.Movement = new MovementState();
@@ -287,13 +285,13 @@ namespace Rebellion.Tests.Game.Units
                 "MovementStatus should be correctly deserialized."
             );
             Assert.AreEqual(
-                _fleet.GetPosition().X,
-                deserialized.GetPosition().X,
+                ((IMovable)_fleet).GetPosition().X,
+                ((IMovable)deserialized).GetPosition().X,
                 "PositionX should be correctly deserialized."
             );
             Assert.AreEqual(
-                _fleet.GetPosition().Y,
-                deserialized.GetPosition().Y,
+                ((IMovable)_fleet).GetPosition().Y,
+                ((IMovable)deserialized).GetPosition().Y,
                 "PositionY should be correctly deserialized."
             );
             Assert.AreEqual(
@@ -502,7 +500,7 @@ namespace Rebellion.Tests.Game.Units
                 OwnerInstanceID = "empire",
                 CurrentRank = OfficerRank.General,
             };
-            general.SetBaseRating(OfficerRating.Leadership, 50);
+            general.SetBaseRating(SkillRating.Leadership, 50);
             ship.AddChild(general);
 
             // (50 / 10 + 1) * 100 = 6 * 100 = 600
@@ -528,7 +526,7 @@ namespace Rebellion.Tests.Game.Units
                 OwnerInstanceID = "empire",
                 CurrentRank = OfficerRank.Admiral,
             };
-            admiral.SetBaseRating(OfficerRating.Leadership, 50);
+            admiral.SetBaseRating(SkillRating.Leadership, 50);
             ship.AddChild(admiral);
 
             // Admiral's Leadership does not count — only Generals contribute assault personnel.

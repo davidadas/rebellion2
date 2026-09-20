@@ -238,7 +238,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void DismissPointerDown_PlaysControlSoundBeforeSelectorCloses()
+        public void DismissPointerDown_Default_PlaysControlSoundBeforeSelectorCloses()
         {
             _controller.Show();
             PointerEventData eventData = new PointerEventData(null)

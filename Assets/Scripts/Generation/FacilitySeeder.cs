@@ -2,8 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Generation
 {
@@ -150,7 +149,8 @@ namespace Rebellion.Generation
                 if (planet.GetAvailableEnergy() <= 0)
                     break;
 
-                Building building = template.GetDeepCopy();
+                Building building = (Building)template.CreateCopy();
+                building.InstanceID = null;
                 building.SetOwnerInstanceID(planet.OwnerInstanceID);
                 building.SetManufacturingStatus(ManufacturingStatus.Complete);
                 building.Movement = null;
@@ -327,7 +327,8 @@ namespace Rebellion.Generation
                 if (!templateMap.TryGetValue(typeID, out Building template))
                     continue;
 
-                Building building = template.GetDeepCopy();
+                Building building = (Building)template.CreateCopy();
+                building.InstanceID = null;
                 building.SetOwnerInstanceID(planet.OwnerInstanceID);
                 building.SetManufacturingStatus(ManufacturingStatus.Complete);
                 building.Movement = null;

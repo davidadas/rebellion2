@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -33,7 +33,7 @@ namespace Rebellion.Game.Events
 
         public List<GameEventBinding> Bindings { get; set; } = new List<GameEventBinding>();
         public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
-        public GameEventScheduler Schedule { get; set; }
+        public GameEventSchedule Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 

@@ -6,7 +6,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.AI.Proposals
 {
@@ -96,13 +95,13 @@ namespace Rebellion.AI.Proposals
         /// <param name="claimKeys">The claim list to update.</param>
         private void AddMissionSpecificClaims(List<string> claimKeys)
         {
-            if (MissionTypeID == MissionTypeIDs.Recruitment)
+            if (MissionTypeID == RecruitmentMission.MissionTypeID)
             {
                 claimKeys.Add(AIClaimKeys.MissionRecruitment(Participant.OwnerInstanceID));
                 return;
             }
 
-            if (MissionTypeID == MissionTypeIDs.Research && Discipline.HasValue)
+            if (MissionTypeID == ResearchMission.MissionTypeID && Discipline.HasValue)
             {
                 claimKeys.Add(
                     AIClaimKeys.MissionResearch(Participant.OwnerInstanceID, Discipline.Value)
@@ -173,7 +172,7 @@ namespace Rebellion.AI.Proposals
             if (context?.Missions == null || !IsStillValid())
                 return false;
 
-            return context.Missions.CanCreateMission(CreateRequest());
+            return context.Missions.CanCreateMission(CreateContext());
         }
 
         /// <summary>
@@ -185,7 +184,7 @@ namespace Rebellion.AI.Proposals
             if (!CanExecute(context))
                 return;
 
-            context.Missions.InitiateMission(CreateRequest());
+            context.Missions.InitiateMission(CreateContext());
         }
 
         /// <summary>
@@ -243,13 +242,13 @@ namespace Rebellion.AI.Proposals
                     return false;
             }
 
-            if (MissionTypeID == MissionTypeIDs.Research && !Discipline.HasValue)
+            if (MissionTypeID == ResearchMission.MissionTypeID && !Discipline.HasValue)
                 return false;
 
             if (RequiresTargetOfficer() && TargetOfficer == null)
                 return false;
 
-            if (MissionTypeID == MissionTypeIDs.Sabotage && SelectedTarget == null)
+            if (MissionTypeID == SabotageMission.MissionTypeID && SelectedTarget == null)
                 return false;
 
             return IsTargetOfficerAvailable();
@@ -261,16 +260,16 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission requires an officer target.</returns>
         private bool RequiresTargetOfficer()
         {
-            return MissionTypeID == MissionTypeIDs.Abduction
-                || MissionTypeID == MissionTypeIDs.Assassination
-                || MissionTypeID == MissionTypeIDs.Rescue;
+            return MissionTypeID == AbductionMission.MissionTypeID
+                || MissionTypeID == AssassinationMission.MissionTypeID
+                || MissionTypeID == RescueMission.MissionTypeID;
         }
 
-        /// <summary>Creates the mission-start request represented by the proposal.</summary>
-        /// <returns>The mission-start request.</returns>
-        internal MissionStartRequest CreateRequest()
+        /// <summary>Creates the mission context represented by the proposal.</summary>
+        /// <returns>The mission context.</returns>
+        internal MissionContext CreateContext()
         {
-            return new MissionStartRequest
+            return new MissionContext
             {
                 MissionTypeID = MissionTypeID,
                 Location = TargetPlanet,
@@ -319,7 +318,7 @@ namespace Rebellion.AI.Proposals
             if (TargetOfficer.IsKilled)
                 return false;
 
-            return MissionTypeID == MissionTypeIDs.Rescue
+            return MissionTypeID == RescueMission.MissionTypeID
                 ? TargetOfficer.IsCaptured
                 : !TargetOfficer.IsCaptured;
         }

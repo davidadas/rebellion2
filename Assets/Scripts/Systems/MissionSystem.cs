@@ -9,7 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Systems
 {
@@ -178,50 +178,51 @@ namespace Rebellion.Systems
         {
             return result?.Mission?.OwnerInstanceID == faction.InstanceID
                 && (
-                    result.MissionTypeID == MissionTypeIDs.Recruitment
-                    || result.Mission.ConfigKey == MissionTypeIDs.Recruitment
+                    result.MissionTypeID == RecruitmentMission.MissionTypeID
+                    || result.Mission.ConfigKey == RecruitmentMission.MissionTypeID
                 );
         }
 
         /// <summary>
-        /// Returns whether the supplied request can create a mission.
+        /// Returns whether the supplied context can create a mission.
         /// </summary>
-        /// <param name="request">The mission start request to resolve and evaluate.</param>
+        /// <param name="context">The mission context to resolve and evaluate.</param>
         /// <returns>True when the mission can be created.</returns>
-        public bool CanCreateMission(MissionStartRequest request)
+        public bool CanCreateMission(MissionContext context)
         {
-            MissionContext context = ResolveMissionContext(request);
-            return context != null && _missionFactory.TryCreateMission(context, out _);
+            MissionContext resolvedContext = ResolveMissionContext(context);
+            return resolvedContext != null
+                && _missionFactory.TryCreateMission(resolvedContext, out _);
         }
 
         /// <summary>
-        /// Creates a mission from a request without starting it.
+        /// Creates a mission from a context without starting it.
         /// </summary>
-        /// <param name="request">The mission request to resolve.</param>
+        /// <param name="context">The mission context to resolve.</param>
         /// <param name="mission">The created mission when successful.</param>
-        /// <returns>True when the request creates a valid mission.</returns>
-        public bool TryCreateMission(MissionStartRequest request, out Mission mission)
+        /// <returns>True when the context creates a valid mission.</returns>
+        public bool TryCreateMission(MissionContext context, out Mission mission)
         {
-            MissionContext context = ResolveMissionContext(request);
-            if (context == null)
+            MissionContext resolvedContext = ResolveMissionContext(context);
+            if (resolvedContext == null)
             {
                 mission = null;
                 return false;
             }
 
-            return _missionFactory.TryCreateMission(context, out mission);
+            return _missionFactory.TryCreateMission(resolvedContext, out mission);
         }
 
         /// <summary>
-        /// Returns the mission options available for the supplied mission start request.
+        /// Returns the mission options available for the supplied context.
         /// </summary>
-        /// <param name="request">The mission start request to resolve and evaluate.</param>
-        /// <returns>The mission options that can be created from the resolved request.</returns>
-        public List<MissionOption> GetAvailableMissionOptions(MissionStartRequest request)
+        /// <param name="context">The mission context to resolve and evaluate.</param>
+        /// <returns>The mission options that can be created from the resolved context.</returns>
+        public List<MissionOption> GetAvailableMissionOptions(MissionContext context)
         {
-            MissionContext context = ResolveMissionContext(request);
-            return context != null
-                ? _missionFactory.GetAvailableMissionOptions(context)
+            MissionContext resolvedContext = ResolveMissionContext(context);
+            return resolvedContext != null
+                ? _missionFactory.GetAvailableMissionOptions(resolvedContext)
                 : new List<MissionOption>();
         }
 
@@ -247,26 +248,26 @@ namespace Rebellion.Systems
         /// outcome. Hidden betrayal and state changes produced during uprising resolution are
         /// intentionally excluded. Foiling uses the caller's observed planet state.
         /// </summary>
-        /// <param name="request">The mission configuration to evaluate.</param>
+        /// <param name="context">The mission configuration to evaluate.</param>
         /// <param name="observedDetectors">
         /// Optional detector snapshot already filtered for the mission owner.
         /// </param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
         public MissionOdds GetMissionOdds(
-            MissionStartRequest request,
+            MissionContext context,
             IReadOnlyList<ISceneNode> observedDetectors = null
         )
         {
-            if (!TryCreateMission(request, out Mission mission))
+            if (!TryCreateMission(context, out Mission mission))
                 return null;
 
             double objectiveSuccessProbability = mission.GetObjectiveSuccessProbability(
                 mission.GetMainParticipants(),
                 _game,
-                request.Location as Planet,
-                request.SelectedTarget
+                context.Location as Planet,
+                context.SelectedTarget
             );
-            Planet observedPlanet = request.Location as Planet;
+            Planet observedPlanet = context.Location as Planet;
             IReadOnlyList<ISceneNode> detectors =
                 observedPlanet == null
                     ? Array.Empty<ISceneNode>()
@@ -285,14 +286,14 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Creates, attaches, and starts a mission from the supplied request.
+        /// Creates, attaches, and starts a mission from the supplied context.
         /// </summary>
-        /// <param name="request">The mission start request to resolve and start.</param>
+        /// <param name="context">The mission context to resolve and start.</param>
         /// <returns>True when the mission was started.</returns>
-        public bool InitiateMission(MissionStartRequest request)
+        public bool InitiateMission(MissionContext context)
         {
-            MissionContext context = ResolveMissionContext(request);
-            return context != null && CreateAndBeginMission(context);
+            MissionContext resolvedContext = ResolveMissionContext(context);
+            return resolvedContext != null && CreateAndBeginMission(resolvedContext);
         }
 
         /// <summary>
@@ -372,23 +373,23 @@ namespace Rebellion.Systems
         /// <summary>
         /// Resolves mission participants while preserving the caller's observed target state.
         /// </summary>
-        /// <param name="request">The mission start request to resolve.</param>
+        /// <param name="context">The mission context to resolve.</param>
         /// <returns>The resolved mission context, or null when any required object is missing.</returns>
-        private MissionContext ResolveMissionContext(MissionStartRequest request)
+        private MissionContext ResolveMissionContext(MissionContext context)
         {
             if (
-                request == null
-                || request.MainParticipants == null
-                || request.MainParticipants.Count == 0
-                || request.Location == null
+                context == null
+                || context.MainParticipants == null
+                || context.MainParticipants.Count == 0
+                || context.Location == null
             )
                 return null;
 
             List<IMissionParticipant> mainParticipants = ResolveMissionParticipants(
-                request.MainParticipants
+                context.MainParticipants
             );
             List<IMissionParticipant> decoyParticipants = ResolveMissionParticipants(
-                request.DecoyParticipants ?? new List<IMissionParticipant>()
+                context.DecoyParticipants ?? new List<IMissionParticipant>()
             );
 
             if (mainParticipants == null || decoyParticipants == null)
@@ -397,13 +398,13 @@ namespace Rebellion.Systems
             return new MissionContext
             {
                 Game = _game,
-                MissionTypeID = request.MissionTypeID,
+                MissionTypeID = context.MissionTypeID,
                 OwnerInstanceId = mainParticipants[0].GetOwnerInstanceID(),
-                Location = request.Location,
-                SelectedTarget = request.SelectedTarget,
+                Location = context.Location,
+                SelectedTarget = context.SelectedTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
-                Discipline = request.Discipline,
+                Discipline = context.Discipline,
             };
         }
 
@@ -808,8 +809,8 @@ namespace Rebellion.Systems
             var decoyGroups = decoys
                 .GroupBy(decoy => new
                 {
-                    Espionage = decoy.GetEffectiveRating(OfficerRating.Espionage),
-                    Combat = decoy.GetEffectiveRating(OfficerRating.Combat),
+                    Espionage = decoy.GetEffectiveRating(SkillRating.Espionage),
+                    Combat = decoy.GetEffectiveRating(SkillRating.Combat),
                     CanBeRemoved = decoy is Officer or SpecialForces,
                 })
                 .Select(group => new { Decoy = group.First(), Count = group.Count() })
@@ -974,8 +975,8 @@ namespace Rebellion.Systems
                 return 1d;
 
             Officer commander = mission.FindDetectorCommander(detector);
-            int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
-            int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
+            int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
+            int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
             return Math.Clamp(GetEvasionProbability(score) / 100d, 0, 1);
         }
 
@@ -1022,7 +1023,7 @@ namespace Rebellion.Systems
             return participants.Count == 0
                 ? 0
                 : participants.Sum(participant =>
-                    participant.GetEffectiveRating(OfficerRating.Espionage)
+                    participant.GetEffectiveRating(SkillRating.Espionage)
                 ) / participants.Count;
         }
 
@@ -1034,7 +1035,7 @@ namespace Rebellion.Systems
         /// <returns>The scaled commander contribution.</returns>
         private static int GetScaledCommanderEspionage(Officer commander, int scalingPercent)
         {
-            return (commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
+            return (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
                 * scalingPercent
                 / 100;
         }
@@ -1126,8 +1127,8 @@ namespace Rebellion.Systems
         )
         {
             Officer commander = mission.FindDetectorCommander(detector);
-            int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
-            int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
+            int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
+            int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
             bool evaded = _provider.NextDouble() * 100 < GetEvasionProbability(score);
             if (evaded)
                 return;

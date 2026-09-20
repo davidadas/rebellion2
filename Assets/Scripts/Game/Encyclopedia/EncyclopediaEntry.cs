@@ -82,7 +82,4 @@ namespace Rebellion.Game.Encyclopedia
             return builder.ToString();
         }
     }
-
-    [PersistableObject]
-    public sealed class EncyclopediaEntries : List<EncyclopediaEntry> { }
 }

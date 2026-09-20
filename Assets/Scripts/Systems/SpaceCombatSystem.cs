@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Systems.Combat;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Systems
 {
@@ -1218,7 +1218,7 @@ namespace Rebellion.Systems
                     planet,
                     defenderOwnerInstanceId
                 );
-            SpaceCombatAutoResult autoResult = _autoResolver.Resolve(
+            SpaceCombatResult result = _autoResolver.Resolve(
                 attackerShips,
                 attackerFighters,
                 defenderShips,
@@ -1226,257 +1226,15 @@ namespace Rebellion.Systems
                 attackerWithdrawalGroups,
                 defenderWithdrawalGroups
             );
-            withdrawnUnits = autoResult
-                .Ships.Where(outcome => outcome.Withdrew)
-                .Select(outcome => (ISceneNode)outcome.Ship)
-                .Concat(
-                    autoResult
-                        .Fighters.Where(outcome => outcome.Withdrew)
-                        .Select(outcome => (ISceneNode)outcome.Fighter)
-                )
-                .ToHashSet();
-            List<ShipSnap> attackerShipSnapshots = CreateShipSnapshots(
-                attackerShips,
-                autoResult.Ships
-            );
-            List<ShipSnap> defenderShipSnapshots = CreateShipSnapshots(
-                defenderShips,
-                autoResult.Ships
-            );
-            List<FighterSnap> attackerFighterSnapshots = CreateFighterSnapshots(
-                attackerFighters,
-                autoResult.Fighters
-            );
-            List<FighterSnap> defenderFighterSnapshots = CreateFighterSnapshots(
-                defenderFighters,
-                autoResult.Fighters
-            );
-
-            SpaceCombatResult result = BuildSpaceResult(
-                GetRepresentativeFleet(attackerFleets),
-                GetRepresentativeFleet(defenderFleets),
-                attackerOwnerInstanceId,
-                defenderOwnerInstanceId,
-                planet,
-                attackerShipSnapshots,
-                defenderShipSnapshots,
-                attackerFighterSnapshots,
-                defenderFighterSnapshots,
-                tick
-            );
-            result.AttackerOutcome = autoResult.AttackerOutcome;
-            result.DefenderOutcome = autoResult.DefenderOutcome;
-            result.Winner = DetermineWinner(
-                result.AttackerOutcome,
-                result.DefenderOutcome,
-                attackerShipSnapshots,
-                defenderShipSnapshots,
-                attackerFighterSnapshots,
-                defenderFighterSnapshots
-            );
+            result.AttackerFleet = GetRepresentativeFleet(attackerFleets);
+            result.DefenderFleet = GetRepresentativeFleet(defenderFleets);
+            result.AttackerOwnerInstanceID = attackerOwnerInstanceId;
+            result.DefenderOwnerInstanceID = defenderOwnerInstanceId;
+            result.Planet = planet;
+            result.PlanetOwnerInstanceID = planet.OwnerInstanceID;
+            result.Tick = tick;
+            withdrawnUnits = result.WithdrawnUnits.ToHashSet();
             return result;
-        }
-
-        /// <summary>
-        /// Creates result snapshots for the supplied capital ships.
-        /// </summary>
-        /// <param name="ships">The capital ships on one combat side.</param>
-        /// <param name="outcomes">All resolved capital-ship outcomes.</param>
-        /// <returns>The result snapshots for the supplied ships.</returns>
-        private static List<ShipSnap> CreateShipSnapshots(
-            IReadOnlyList<CapitalShip> ships,
-            IReadOnlyList<SpaceCombatAutoShipOutcome> outcomes
-        )
-        {
-            Dictionary<CapitalShip, SpaceCombatAutoShipOutcome> outcomeByShip =
-                outcomes.ToDictionary(outcome => outcome.Ship);
-            return ships
-                .Select(ship => outcomeByShip[ship])
-                .Select(outcome => new ShipSnap
-                {
-                    Ship = outcome.Ship,
-                    HullInitial = outcome.HullBefore,
-                    HullCurrent = outcome.HullAfter,
-                    HullMax = outcome.Ship.MaxHullStrength,
-                    Alive = outcome.HullAfter > 0,
-                })
-                .ToList();
-        }
-
-        /// <summary>
-        /// Creates result snapshots for the supplied fighter squadrons.
-        /// </summary>
-        /// <param name="fighters">The fighter squadrons on one combat side.</param>
-        /// <param name="outcomes">All resolved fighter outcomes.</param>
-        /// <returns>The result snapshots for the supplied squadrons.</returns>
-        private static List<FighterSnap> CreateFighterSnapshots(
-            IReadOnlyList<Starfighter> fighters,
-            IReadOnlyList<SpaceCombatAutoFighterOutcome> outcomes
-        )
-        {
-            Dictionary<Starfighter, SpaceCombatAutoFighterOutcome> outcomeByFighter =
-                outcomes.ToDictionary(outcome => outcome.Fighter);
-            return fighters
-                .Select(fighter => outcomeByFighter[fighter])
-                .Select(outcome => new FighterSnap
-                {
-                    Fighter = outcome.Fighter,
-                    InitialSquadronSize = outcome.SquadronSizeBefore,
-                    CurrentSquadronSize = outcome.SquadronSizeAfter,
-                })
-                .ToList();
-        }
-
-        /// <summary>
-        /// Determines the winning side after destruction and withdrawal are resolved.
-        /// </summary>
-        /// <param name="attackerOutcome">The attacker's final outcome.</param>
-        /// <param name="defenderOutcome">The defender's final outcome.</param>
-        /// <param name="attackerShips">The attacking ship snapshots.</param>
-        /// <param name="defenderShips">The defending ship snapshots.</param>
-        /// <param name="attackerFighters">The attacking fighter snapshots.</param>
-        /// <param name="defenderFighters">The defending fighter snapshots.</param>
-        /// <returns>The winning side, or a draw when both outcomes match.</returns>
-        private static CombatSide DetermineWinner(
-            SpaceCombatSideOutcome attackerOutcome,
-            SpaceCombatSideOutcome defenderOutcome,
-            List<ShipSnap> attackerShips,
-            List<ShipSnap> defenderShips,
-            List<FighterSnap> attackerFighters,
-            List<FighterSnap> defenderFighters
-        )
-        {
-            bool attackerActive = attackerOutcome == SpaceCombatSideOutcome.Active;
-            bool defenderActive = defenderOutcome == SpaceCombatSideOutcome.Active;
-            if (attackerActive != defenderActive)
-                return attackerActive ? CombatSide.Attacker : CombatSide.Defender;
-
-            return DetermineWinner(
-                attackerShips,
-                defenderShips,
-                attackerFighters,
-                defenderFighters
-            );
-        }
-
-        /// <summary>
-        /// Determines the combat winner by counting surviving capital ships and fighter squadrons
-        /// on each side. Returns Draw if both sides have survivors or both are wiped out.
-        /// </summary>
-        /// <param name="atkShips">Attacker ship snapshots.</param>
-        /// <param name="defShips">Defender ship snapshots.</param>
-        /// <param name="atkFighters">Attacker fighter snapshots.</param>
-        /// <param name="defFighters">Defender fighter snapshots.</param>
-        /// <returns>The winning side, or Draw.</returns>
-        private static CombatSide DetermineWinner(
-            List<ShipSnap> atkShips,
-            List<ShipSnap> defShips,
-            List<FighterSnap> atkFighters,
-            List<FighterSnap> defFighters
-        )
-        {
-            bool atkAlive = atkShips.Any(s => s.Alive) || atkFighters.Any(fighter => fighter.Alive);
-            bool defAlive = defShips.Any(s => s.Alive) || defFighters.Any(fighter => fighter.Alive);
-
-            if (atkAlive && !defAlive)
-                return CombatSide.Attacker;
-            if (!atkAlive && defAlive)
-                return CombatSide.Defender;
-            return CombatSide.Draw;
-        }
-
-        /// <summary>
-        /// Builds a SpaceCombatResult from the final snapshots and initial fighter counts,
-        /// recording per-ship damage and per-squadron losses.
-        /// </summary>
-        /// <param name="attackerFleet">Attacker fleet.</param>
-        /// <param name="defenderFleet">Defender fleet.</param>
-        /// <param name="attackerOwnerInstanceId">Attacking owner identifier.</param>
-        /// <param name="defenderOwnerInstanceId">Defending owner identifier.</param>
-        /// <param name="planet">Planet where combat occurred.</param>
-        /// <param name="atkShips">Post-combat attacker ship snapshots.</param>
-        /// <param name="defShips">Post-combat defender ship snapshots.</param>
-        /// <param name="atkFighters">Post-combat attacker fighter snapshots.</param>
-        /// <param name="defFighters">Post-combat defender fighter snapshots.</param>
-        /// <param name="tick">Game tick when combat occurred.</param>
-        /// <returns>The populated combat result.</returns>
-        private static SpaceCombatResult BuildSpaceResult(
-            Fleet attackerFleet,
-            Fleet defenderFleet,
-            string attackerOwnerInstanceId,
-            string defenderOwnerInstanceId,
-            Planet planet,
-            List<ShipSnap> atkShips,
-            List<ShipSnap> defShips,
-            List<FighterSnap> atkFighters,
-            List<FighterSnap> defFighters,
-            int tick
-        )
-        {
-            SpaceCombatResult result = new SpaceCombatResult
-            {
-                AttackerFleet = attackerFleet,
-                DefenderFleet = defenderFleet,
-                AttackerOwnerInstanceID = attackerOwnerInstanceId,
-                DefenderOwnerInstanceID = defenderOwnerInstanceId,
-                Planet = planet,
-                PlanetOwnerInstanceID = planet.OwnerInstanceID,
-                Winner = DetermineWinner(atkShips, defShips, atkFighters, defFighters),
-                AttackerOutcome = GetResolvedCombatSideOutcome(atkShips, atkFighters),
-                DefenderOutcome = GetResolvedCombatSideOutcome(defShips, defFighters),
-                Tick = tick,
-            };
-
-            CollectShipDamage(result.ShipDamage, atkShips);
-            CollectShipDamage(result.ShipDamage, defShips);
-            CollectFighterLosses(result.FighterLosses, atkFighters);
-            CollectFighterLosses(result.FighterLosses, defFighters);
-            result.AttackingUnits.AddRange(CaptureCombatUnits(atkShips, atkFighters));
-            result.DefendingUnits.AddRange(CaptureCombatUnits(defShips, defFighters));
-
-            return result;
-        }
-
-        /// <summary>
-        /// Captures the ships, fighters, and carried units present in one combat force.
-        /// </summary>
-        /// <param name="ships">The participating capital ships.</param>
-        /// <param name="fighters">The participating fighter squadrons.</param>
-        /// <returns>The detached unit snapshots for the force.</returns>
-        private static List<CombatUnitSnapshot> CaptureCombatUnits(
-            List<ShipSnap> ships,
-            List<FighterSnap> fighters
-        )
-        {
-            List<CombatUnitSnapshot> units = ships
-                .SelectMany(ship =>
-                    new[] { ship.Ship }
-                        .Cast<ISceneNode>()
-                        .Concat(ship.Ship.GetChildren<ISceneNode>(recursive: true))
-                )
-                .Concat(fighters.Select(fighter => fighter.Fighter))
-                .Where(unit => unit != null)
-                .Distinct()
-                .Select(unit => new CombatUnitSnapshot(unit))
-                .ToList();
-            IEnumerable<ISceneNode> damagedUnits = ships
-                .Where(ship => ship.HullCurrent < ship.HullMax)
-                .Select(ship => (ISceneNode)ship.Ship)
-                .Concat(
-                    fighters
-                        .Where(fighter => fighter.CurrentSquadronSize < fighter.InitialSquadronSize)
-                        .Select(fighter => fighter.Fighter)
-                );
-            IEnumerable<ISceneNode> destroyedUnits = ships
-                .Where(ship => ship.HullCurrent <= 0)
-                .Select(ship => (ISceneNode)ship.Ship)
-                .Concat(
-                    fighters
-                        .Where(fighter => fighter.CurrentSquadronSize <= 0)
-                        .Select(fighter => fighter.Fighter)
-                );
-            CombatUnitSnapshot.RecordOutcomes(units, damagedUnits, destroyedUnits);
-            return units;
         }
 
         /// <summary>
@@ -1523,88 +1281,6 @@ namespace Rebellion.Systems
                 );
             CombatUnitSnapshot.RecordOutcomes(units, damagedUnits, Enumerable.Empty<ISceneNode>());
             return units;
-        }
-
-        /// <summary>
-        /// Resolves a combat side's outcome from completed tactical unit snapshots.
-        /// </summary>
-        /// <param name="ships">The side's resolved ship snapshots.</param>
-        /// <param name="fighters">The side's resolved fighter snapshots.</param>
-        /// <returns>The side's resolved outcome.</returns>
-        private static SpaceCombatSideOutcome GetResolvedCombatSideOutcome(
-            List<ShipSnap> ships,
-            List<FighterSnap> fighters
-        )
-        {
-            return
-                ships.Any(ship => ship.HullCurrent > 0)
-                || fighters.Any(fighter => fighter.CurrentSquadronSize > 0)
-                ? SpaceCombatSideOutcome.Active
-                : SpaceCombatSideOutcome.Destroyed;
-        }
-
-        /// <summary>
-        /// Appends a ShipDamageResult for each ship that took hull damage during the battle.
-        /// </summary>
-        /// <param name="results">List to append damage entries to.</param>
-        /// <param name="ships">Post-combat ship snapshots.</param>
-        private static void CollectShipDamage(List<ShipDamageResult> results, List<ShipSnap> ships)
-        {
-            for (int i = 0; i < ships.Count; i++)
-            {
-                int hullAfter = GetCommittedHullStrength(ships[i]);
-                if (hullAfter < ships[i].HullInitial)
-                {
-                    results.Add(
-                        new ShipDamageResult
-                        {
-                            Ship = ships[i].Ship,
-                            HullBefore = ships[i].HullInitial,
-                            HullAfter = hullAfter,
-                        }
-                    );
-                }
-            }
-        }
-
-        /// <summary>
-        /// Converts a capital ship's simulated hull strength into its committed integer value.
-        /// </summary>
-        /// <param name="ship">The capital-ship snapshot to inspect.</param>
-        /// <returns>Zero for a destroyed ship; otherwise at least one hull point.</returns>
-        private static int GetCommittedHullStrength(ShipSnap ship)
-        {
-            if (!ship.Alive)
-                return 0;
-
-            double survivingHullStrength = Math.Max(ship.HullCurrent, 1);
-            return (int)Math.Round(survivingHullStrength, MidpointRounding.ToEven);
-        }
-
-        /// <summary>
-        /// Appends a FighterLossResult for each squadron that took casualties.
-        /// </summary>
-        /// <param name="results">List to append loss entries to.</param>
-        /// <param name="fighters">Post-combat fighter snapshots.</param>
-        private static void CollectFighterLosses(
-            List<FighterLossResult> results,
-            List<FighterSnap> fighters
-        )
-        {
-            for (int i = 0; i < fighters.Count; i++)
-            {
-                if (fighters[i].CurrentSquadronSize < fighters[i].InitialSquadronSize)
-                {
-                    results.Add(
-                        new FighterLossResult
-                        {
-                            Fighter = fighters[i].Fighter,
-                            SquadsBefore = fighters[i].InitialSquadronSize,
-                            SquadsAfter = fighters[i].CurrentSquadronSize,
-                        }
-                    );
-                }
-            }
         }
 
         /// <summary>
@@ -1740,30 +1416,6 @@ namespace Rebellion.Systems
             );
             _game.DeleteNode(fleet);
             GameLogger.Log($"Fleet destroyed: {fleet.GetDisplayName()}");
-        }
-
-        /// <summary>
-        /// Contains one capital ship's detached automatic-combat outcome.
-        /// </summary>
-        private class ShipSnap
-        {
-            public CapitalShip Ship;
-            public int HullInitial;
-            public double HullCurrent;
-            public int HullMax;
-            public bool Alive;
-        }
-
-        /// <summary>
-        /// Contains one fighter squadron's detached automatic-combat outcome.
-        /// </summary>
-        private class FighterSnap
-        {
-            public Starfighter Fighter;
-            public int InitialSquadronSize;
-            public int CurrentSquadronSize;
-
-            public bool Alive => CurrentSquadronSize > 0;
         }
     }
 }

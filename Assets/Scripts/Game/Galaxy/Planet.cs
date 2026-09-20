@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -42,7 +43,7 @@ namespace Rebellion.Game.Galaxy
     /// officers, regiments, missions, and buildings. It also has a popular support rating,
     /// which is a measure of how much the planet's population supports a given faction.
     /// </summary>
-    public class Planet : ContainerNode
+    public class Planet : ContainerNode, IEncyclopediaSource
     {
         private const int _maximumPopularSupport = 100;
         private const int _maximumProductionModifier = 100;
@@ -58,6 +59,10 @@ namespace Rebellion.Game.Galaxy
 
         // Planet Asset Info.
         public string PlanetIconPath { get; set; }
+        public string EncyclopediaImagePath { get; set; }
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
+            new List<EncyclopediaEntryStat>();
+        public string EncyclopediaDescription { get; set; }
 
         // Planet Status.
         [PersistableIgnore]
@@ -145,6 +150,7 @@ namespace Rebellion.Game.Galaxy
             copy.PositionX = PositionX;
             copy.PositionY = PositionY;
             copy.PlanetIconPath = PlanetIconPath;
+            ((IEncyclopediaSource)this).CopyEncyclopediaStateTo(copy);
             copy.IsUnexploredView = IsUnexploredView;
             copy.IsDestroyed = IsDestroyed;
             copy.IsHeadquarters = IsHeadquarters;
@@ -1144,7 +1150,12 @@ namespace Rebellion.Game.Galaxy
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns whether the planet can accept a child alongside other planned additions.
+        /// </summary>
+        /// <param name="child">The candidate child node.</param>
+        /// <param name="plannedChildren">The children already planned for addition.</param>
+        /// <returns>True when the child can be accepted without exceeding capacity.</returns>
         internal override bool CanAcceptChild(
             ISceneNode child,
             IReadOnlyCollection<ISceneNode> plannedChildren

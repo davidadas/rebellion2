@@ -31,7 +31,7 @@ namespace Rebellion.Tests.AI.Phases
             planet.AddVisitor(empire.InstanceID);
             planet.SetPopularSupport(empire.InstanceID, 50);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
-            officer.Ratings[OfficerRating.Diplomacy] = game.Config.AI.DiplomacyMinimumSkill;
+            officer.Ratings[SkillRating.Diplomacy] = game.Config.AI.DiplomacyMinimumSkill;
             game.AttachNode(officer, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -40,7 +40,7 @@ namespace Rebellion.Tests.AI.Phases
             Assert.IsTrue(
                 context
                     .Proposals.OfType<AIMissionProposal>()
-                    .Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy)
+                    .Any(proposal => proposal.MissionTypeID == DiplomacyMission.MissionTypeID)
             );
         }
 

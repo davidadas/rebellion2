@@ -6,7 +6,7 @@ namespace Rebellion.Tests.UI.Runtime
     public class CancelStackTests
     {
         [Test]
-        public void TryCancel_UsesMostRecentlyRegisteredCancelableFirst()
+        public void TryCancel_Default_UsesMostRecentlyRegisteredCancelableFirst()
         {
             CancelStack stack = new CancelStack();
             TestCancelable first = new TestCancelable(true);
@@ -21,7 +21,7 @@ namespace Rebellion.Tests.UI.Runtime
         }
 
         [Test]
-        public void TryCancel_FallsThroughWhenCancelableDoesNotConsume()
+        public void TryCancel_FallsThroughWhenCancelable_DoesNotConsume()
         {
             CancelStack stack = new CancelStack();
             TestCancelable first = new TestCancelable(true);
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.UI.Runtime
         }
 
         [Test]
-        public void Unregister_RemovesCancelableFromStack()
+        public void Unregister_Default_RemovesCancelableFromStack()
         {
             CancelStack stack = new CancelStack();
             TestCancelable first = new TestCancelable(true);

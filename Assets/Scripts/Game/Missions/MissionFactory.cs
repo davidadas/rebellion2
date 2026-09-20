@@ -4,10 +4,61 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game.Missions
 {
+    /// <summary>
+    /// Identifies the kind of target accepted by a mission option.
+    /// </summary>
+    public enum MissionTargetKind
+    {
+        Planet,
+        Manufacturable,
+        Officer,
+    }
+
+    /// <summary>
+    /// Represents a selectable mission option exposed to planning or UI code.
+    /// </summary>
+    public sealed class MissionOption
+    {
+        public string MissionTypeID { get; }
+        public string DisplayName { get; }
+        public SkillRating ParticipantRating { get; }
+        public SkillRating DecoyParticipantRating { get; }
+        public ResearchDiscipline? Discipline { get; }
+        public MissionTargetKind TargetKind { get; }
+
+        /// <summary>
+        /// Creates a selectable mission option.
+        /// </summary>
+        /// <param name="missionTypeID">The mission type ID used to start the mission.</param>
+        /// <param name="displayName">The display name for this option.</param>
+        /// <param name="participantRating">The rating primary participants use for the mission.</param>
+        /// <param name="targetKind">The kind of target accepted by the mission.</param>
+        /// <param name="decoyParticipantRating">The rating decoy participants use for the mission.</param>
+        /// <param name="discipline">The research discipline used by research options.</param>
+        public MissionOption(
+            string missionTypeID,
+            string displayName,
+            SkillRating participantRating,
+            MissionTargetKind targetKind,
+            SkillRating decoyParticipantRating = SkillRating.None,
+            ResearchDiscipline? discipline = null
+        )
+        {
+            if (string.IsNullOrEmpty(missionTypeID))
+                throw new ArgumentException("Mission type ID is required.", nameof(missionTypeID));
+
+            MissionTypeID = missionTypeID;
+            DisplayName = displayName ?? missionTypeID;
+            ParticipantRating = participantRating;
+            TargetKind = targetKind;
+            DecoyParticipantRating = decoyParticipantRating;
+            Discipline = discipline;
+        }
+    }
+
     /// <summary>
     /// Thin router that delegates mission creation to each Mission subclass's TryCreate method.
     /// Handles shared validation (faction restrictions, participant eligibility) before routing.
@@ -20,96 +71,96 @@ namespace Rebellion.Game.Missions
             new MissionOption(
                 ResearchMission.MissionTypeID,
                 "Ship Design Research",
-                OfficerRating.ShipResearch,
+                SkillRating.ShipResearch,
                 MissionTargetKind.Planet,
                 discipline: ResearchDiscipline.ShipDesign
             ),
             new MissionOption(
                 ResearchMission.MissionTypeID,
                 "Troop Training Research",
-                OfficerRating.TroopResearch,
+                SkillRating.TroopResearch,
                 MissionTargetKind.Planet,
                 discipline: ResearchDiscipline.TroopTraining
             ),
             new MissionOption(
                 ResearchMission.MissionTypeID,
                 "Facility Design Research",
-                OfficerRating.FacilityResearch,
+                SkillRating.FacilityResearch,
                 MissionTargetKind.Planet,
                 discipline: ResearchDiscipline.FacilityDesign
             ),
             new MissionOption(
                 RecruitmentMission.MissionTypeID,
                 "Recruitment",
-                OfficerRating.Leadership,
+                SkillRating.Leadership,
                 MissionTargetKind.Planet
             ),
             new MissionOption(
                 DiplomacyMission.MissionTypeID,
                 "Diplomacy",
-                OfficerRating.Diplomacy,
+                SkillRating.Diplomacy,
                 MissionTargetKind.Planet
             ),
             new MissionOption(
                 RescueMission.MissionTypeID,
                 "Rescue",
-                OfficerRating.Combat,
+                SkillRating.Combat,
                 MissionTargetKind.Officer,
-                OfficerRating.Espionage
+                SkillRating.Espionage
             ),
             new MissionOption(
                 SabotageMission.MissionTypeID,
                 "Sabotage",
-                OfficerRating.Combat,
+                SkillRating.Combat,
                 MissionTargetKind.Manufacturable,
-                OfficerRating.Espionage
+                SkillRating.Espionage
             ),
             new MissionOption(
                 AbductionMission.MissionTypeID,
                 "Abduction",
-                OfficerRating.Combat,
+                SkillRating.Combat,
                 MissionTargetKind.Officer,
-                OfficerRating.Espionage
+                SkillRating.Espionage
             ),
             new MissionOption(
                 SubdueUprisingMission.MissionTypeID,
                 "Subdue Uprising",
-                OfficerRating.Leadership,
+                SkillRating.Leadership,
                 MissionTargetKind.Planet
             ),
             new MissionOption(
                 AssassinationMission.MissionTypeID,
                 "Assassination",
-                OfficerRating.Combat,
+                SkillRating.Combat,
                 MissionTargetKind.Officer,
-                OfficerRating.Espionage
+                SkillRating.Espionage
             ),
             new MissionOption(
                 InciteUprisingMission.MissionTypeID,
                 "Incite Uprising",
-                OfficerRating.Leadership,
+                SkillRating.Leadership,
                 MissionTargetKind.Planet,
-                OfficerRating.Espionage
+                SkillRating.Espionage
             ),
             new MissionOption(
                 ReconnaissanceMission.MissionTypeID,
                 "Reconnaissance",
-                OfficerRating.Espionage,
+                SkillRating.Espionage,
                 MissionTargetKind.Planet,
-                OfficerRating.Espionage
+                SkillRating.Espionage
             ),
             new MissionOption(
                 JediTrainingMission.MissionTypeID,
                 "Jedi Training",
-                OfficerRating.Diplomacy,
+                SkillRating.Diplomacy,
                 MissionTargetKind.Planet
             ),
             new MissionOption(
                 EspionageMission.MissionTypeID,
                 "Espionage",
-                OfficerRating.Espionage,
+                SkillRating.Espionage,
                 MissionTargetKind.Planet,
-                OfficerRating.Espionage
+                SkillRating.Espionage
             ),
         };
 

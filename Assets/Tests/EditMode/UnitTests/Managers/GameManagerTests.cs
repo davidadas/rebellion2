@@ -174,6 +174,7 @@ namespace Rebellion.Tests.Managers
             Faction faction = new Faction
             {
                 InstanceID = factionId,
+                GarrisonTroopTypeID = regimentTypeId,
                 ManageGarrisons = true,
                 ManageProduction = false,
             };
@@ -279,7 +280,7 @@ namespace Rebellion.Tests.Managers
                     new GameEvent
                     {
                         InstanceID = "EVENT_RESEARCH_EXHAUSTED",
-                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                         Actions = new List<GameAction>
                         {
                             new EmitResultAction(
@@ -428,7 +429,7 @@ namespace Rebellion.Tests.Managers
                     new GameEvent
                     {
                         InstanceID = "CAPTURE_OFFICER",
-                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                         Actions = new List<GameAction>
                         {
                             new SetCaptureStatusAction
@@ -511,7 +512,7 @@ namespace Rebellion.Tests.Managers
                     new GameEvent
                     {
                         InstanceID = "EVENT_PLANETARY_ASSAULT",
-                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                         Actions = new List<GameAction>
                         {
                             new EmitResultAction(new PlanetaryAssaultResult()),
@@ -536,7 +537,7 @@ namespace Rebellion.Tests.Managers
                     new GameEvent
                     {
                         InstanceID = "EVENT_VICTORY",
-                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                         Actions = new List<GameAction>
                         {
                             new EmitResultAction(new VictoryResult()),
@@ -701,7 +702,7 @@ namespace Rebellion.Tests.Managers
                     new GameEvent
                     {
                         InstanceID = "EVENT_SABOTAGE",
-                        Schedule = new GameEventScheduler { At = new AtTick { Tick = 1 } },
+                        Schedule = new GameEventSchedule { At = new AtTick { Tick = 1 } },
                         Actions = new List<GameAction>
                         {
                             new EmitResultAction(
@@ -1304,9 +1305,9 @@ namespace Rebellion.Tests.Managers
             GameManager manager = TestContent.CreateGameManager(game);
             Assert.IsTrue(
                 manager.MissionSystem.InitiateMission(
-                    new MissionStartRequest
+                    new MissionContext
                     {
-                        MissionTypeID = MissionTypeIDs.Diplomacy,
+                        MissionTypeID = DiplomacyMission.MissionTypeID,
                         Location = planet,
                         MainParticipants = new List<IMissionParticipant> { diplomat },
                     }
@@ -1642,20 +1643,7 @@ namespace Rebellion.Tests.Managers
             string regimentTypeId
         )
         {
-            GameGenerationConfig generationConfig = new GameGenerationConfig
-            {
-                GalaxyClassification = new GalaxyClassificationSection
-                {
-                    FactionSetups = new List<FactionSetup>
-                    {
-                        new FactionSetup
-                        {
-                            FactionID = factionId,
-                            GarrisonTroopTypeID = regimentTypeId,
-                        },
-                    },
-                },
-            };
+            GameGenerationConfig generationConfig = new GameGenerationConfig();
             Regiment garrison = new Regiment
             {
                 TypeID = regimentTypeId,

@@ -5,7 +5,8 @@ using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
+using Rebellion.Util.Logging;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Systems
 {
@@ -197,7 +198,7 @@ namespace Rebellion.Systems
         /// <param name="gameEvent">The event whose authored schedule is validated.</param>
         private static void ValidateSchedule(GameEvent gameEvent)
         {
-            GameEventScheduler schedule = gameEvent.Schedule;
+            GameEventSchedule schedule = gameEvent.Schedule;
             if (schedule == null)
                 return;
 

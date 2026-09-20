@@ -7,7 +7,7 @@ using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Systems
 {
@@ -16,6 +16,7 @@ namespace Rebellion.Systems
     /// </summary>
     public class PlanetaryControlSystem
         : IGameResultHandler<PlanetGarrisonChangedResult>,
+            IGameResultHandler<PopularSupportShiftResult>,
             IGameRequestHandler<OwnershipChangeRequest>
     {
         private readonly GameRoot _game;
@@ -221,6 +222,67 @@ namespace Rebellion.Systems
                 controlResults.AddRange(ReconcilePlanet(planet));
 
             return controlResults;
+        }
+
+        /// <summary>
+        /// Applies requested popular-support shifts and reports their resulting state changes.
+        /// </summary>
+        /// <param name="results">The requested popular-support shifts.</param>
+        /// <returns>The completed stat and ownership changes.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<PopularSupportShiftResult> results)
+        {
+            List<GameResult> reactions = new List<GameResult>();
+            if (results == null)
+                return reactions;
+
+            foreach (PopularSupportShiftResult result in results)
+            {
+                Planet planet = result?.Planet;
+                Faction faction = result?.Faction;
+                if (planet == null || faction == null || result.Shift == 0)
+                    continue;
+
+                int shift = ApplyCoreSupportResistance(
+                    planet,
+                    faction,
+                    result.Shift,
+                    _game.Config.SupportShift.WeakSupportPenaltyDivisor
+                );
+                int oldSupport = planet.GetPopularSupport(faction.InstanceID);
+                ShiftPopularSupport(planet, faction, shift);
+                int newSupport = planet.GetPopularSupport(faction.InstanceID);
+                if (oldSupport == newSupport)
+                    continue;
+
+                reactions.Add(
+                    new PlanetStatChangedResult
+                    {
+                        Planet = planet,
+                        Faction = faction,
+                        Category = PlanetChangeCategory.Loyalty,
+                        OldValue = oldSupport,
+                        NewValue = newSupport,
+                        Tick = result.Tick,
+                    }
+                );
+
+                Faction newController = GetPlanetController(planet);
+                if (planet.OwnerInstanceID == newController?.InstanceID)
+                    continue;
+
+                PlanetOwnershipChangedResult ownershipChange = ChangePlanetControl(
+                    planet,
+                    newController
+                );
+                if (ownershipChange == null)
+                    continue;
+
+                ownershipChange.Reason = PlanetOwnershipChangeReason.PopularSupport;
+                ownershipChange.Tick = result.Tick;
+                reactions.Add(ownershipChange);
+            }
+
+            return reactions;
         }
 
         /// <summary>

@@ -8,11 +8,10 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
-using Rebellion.Util.Common;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Tests.AI.Planners
 {
@@ -2635,7 +2634,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
             {
@@ -2660,15 +2659,15 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces expensiveTemplate = AITestSceneBuilder.CreateSpecialForces(
                 "expensive-commandos",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage,
-                MissionTypeIDs.InciteUprising
+                SabotageMission.MissionTypeID,
+                InciteUprisingMission.MissionTypeID
             );
             expensiveTemplate.ConstructionCost = 2;
             SpecialForces cheapTemplate = AITestSceneBuilder.CreateSpecialForces(
                 "cheap-commandos",
                 empire.InstanceID,
-                MissionTypeIDs.InciteUprising,
-                MissionTypeIDs.Sabotage
+                InciteUprisingMission.MissionTypeID,
+                SabotageMission.MissionTypeID
             );
             empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
             {
@@ -2681,7 +2680,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 target.InstanceID
             );
-            mission.ConfigKey = MissionTypeIDs.Sabotage;
+            mission.ConfigKey = SabotageMission.MissionTypeID;
             game.AttachNode(mission, target);
             game.AttachNode(officer, mission);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -2704,7 +2703,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
             {
@@ -2721,7 +2720,7 @@ namespace Rebellion.Tests.AI.Planners
                     empire.InstanceID,
                     target.InstanceID
                 );
-                mission.ConfigKey = MissionTypeIDs.Sabotage;
+                mission.ConfigKey = SabotageMission.MissionTypeID;
                 game.AttachNode(mission, target);
                 game.AttachNode(officer, mission);
             }
@@ -2749,7 +2748,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
             {
@@ -2758,7 +2757,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces busyUnit = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             busyUnit.InstanceID = "busy-commandos";
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
@@ -2767,7 +2766,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 target.InstanceID
             );
-            mission.ConfigKey = MissionTypeIDs.Sabotage;
+            mission.ConfigKey = SabotageMission.MissionTypeID;
             game.AttachNode(mission, target);
             game.AttachNode(officer, mission);
             mission.AddDecoyParticipant(busyUnit);
@@ -2794,7 +2793,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
             {
@@ -2806,13 +2805,13 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 target.InstanceID
             );
-            mission.ConfigKey = MissionTypeIDs.Sabotage;
+            mission.ConfigKey = SabotageMission.MissionTypeID;
             game.AttachNode(mission, target);
             game.AttachNode(officer, mission);
             SpecialForces buildingUnit = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             buildingUnit.InstanceID = "building-commandos";
             buildingUnit.ManufacturingStatus = ManufacturingStatus.Building;

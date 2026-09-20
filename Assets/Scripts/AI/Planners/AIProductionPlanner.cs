@@ -8,7 +8,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Planners
 {

@@ -2081,7 +2081,10 @@ public sealed class StrategyController
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Processes advisor automation for the supplied faction and refreshes strategy state.
+    /// </summary>
+    /// <param name="faction">The faction whose automation should be processed.</param>
     void IStrategyHudActions.ProcessAdvisorAutomation(Faction faction)
     {
         gameManager?.ProcessFactionAutomation(faction);

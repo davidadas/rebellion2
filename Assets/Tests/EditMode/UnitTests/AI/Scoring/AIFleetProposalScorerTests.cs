@@ -6,7 +6,6 @@ using Rebellion.AI.Scoring;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
 
