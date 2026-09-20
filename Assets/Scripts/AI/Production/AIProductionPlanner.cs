@@ -101,7 +101,7 @@ namespace Rebellion.AI.Planners
         public List<AIProposal> Plan(AITurnContext context)
         {
             ResetPlanningCache();
-            List<AIProductionRequirement> demands = _demandGenerator.Generate(context);
+            List<AIProductionRequirement> demands = _demandGenerator.BuildRequirements(context);
             return GenerateProposals(context, demands);
         }
 
@@ -124,7 +124,7 @@ namespace Rebellion.AI.Planners
         /// Generates manufacture proposals for demand items.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">Demand items to satisfy.</param>
+        /// <param name="demands">Requirement items to satisfy.</param>
         /// <returns>Manufacture proposals generated for the demands.</returns>
         private List<AIProposal> GenerateProposals(
             AITurnContext context,
@@ -147,7 +147,7 @@ namespace Rebellion.AI.Planners
         /// Adds manufacture proposals for one demand item.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="demand">Demand item to satisfy.</param>
+        /// <param name="demand">Requirement item to satisfy.</param>
         /// <param name="proposals">The proposal list to update.</param>
         private void AddManufactureProposal(
             AITurnContext context,
@@ -159,13 +159,13 @@ namespace Rebellion.AI.Planners
             if (product == null)
                 return;
 
-            bool distributesDemand = IsDistributedProductionDemand(demand);
+            bool distributesRequirement = IsDistributedProductionRequirement(demand);
             int remainingQuantity = GetRequestedManufacturingCount(
                 context,
                 demand,
                 product.GetReference()
             );
-            if (distributesDemand)
+            if (distributesRequirement)
             {
                 remainingQuantity = Math.Min(
                     remainingQuantity,
@@ -184,9 +184,9 @@ namespace Rebellion.AI.Planners
                 .ToList();
             if (producerPlanets.Count == 0)
                 return;
-            if (!distributesDemand)
+            if (!distributesRequirement)
             {
-                if (IsFacilityExpansionDemand(demand))
+                if (IsFacilityExpansionRequirement(demand))
                     AddProducerSpecificProposal(
                         context,
                         demand,
@@ -223,11 +223,11 @@ namespace Rebellion.AI.Planners
                     proposalDemand,
                     producerPlanet,
                     product,
-                    distributesDemand
+                    distributesRequirement
                 );
 
                 proposals.Add(proposal);
-                if (distributesDemand)
+                if (distributesRequirement)
                 {
                     remainingQuantity -= proposalDemand.QuantityNeeded;
                     if (remainingQuantity <= 0)
@@ -240,7 +240,7 @@ namespace Rebellion.AI.Planners
         /// Adds one proposal that can select from equivalent producer alternatives.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="demand">Demand item to satisfy.</param>
+        /// <param name="demand">Requirement item to satisfy.</param>
         /// <param name="product">Technology selected for manufacture.</param>
         /// <param name="remainingQuantity">Quantity still required.</param>
         /// <param name="producerPlanets">Ranked producer alternatives.</param>
@@ -272,7 +272,7 @@ namespace Rebellion.AI.Planners
                     proposalDemand,
                     producerPlanets,
                     product,
-                    distributesDemand: false
+                    distributesRequirement: false
                 )
             );
         }
@@ -281,7 +281,7 @@ namespace Rebellion.AI.Planners
         /// Adds one proposal whose alternatives require producer-specific demand values.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="demand">Demand item to satisfy.</param>
+        /// <param name="demand">Requirement item to satisfy.</param>
         /// <param name="product">Technology selected for manufacture.</param>
         /// <param name="remainingQuantity">Quantity still required.</param>
         /// <param name="producerPlanets">Ranked producer alternatives.</param>
@@ -311,7 +311,7 @@ namespace Rebellion.AI.Planners
                             candidateDemand,
                             producerPlanet,
                             product,
-                            distributesDemand: false
+                            distributesRequirement: false
                         );
                 })
                 .Where(candidate => candidate != null)
@@ -326,7 +326,7 @@ namespace Rebellion.AI.Planners
         /// Returns the unlocked technology that can satisfy a demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="demand">Demand item to satisfy.</param>
+        /// <param name="demand">Requirement item to satisfy.</param>
         /// <returns>The selected technology, or null.</returns>
         private Technology GetUnlockedTechnology(
             AITurnContext context,
@@ -407,7 +407,7 @@ namespace Rebellion.AI.Planners
 
             GameConfig.AISelectionConfig selectionConfig = context.Game.Config.AI.Selection;
             int maintenanceBudget = GetBuildingMaintenanceBudget(context, demand);
-            if (IsFacilityExpansionDemand(demand) && maintenanceBudget <= 0)
+            if (IsFacilityExpansionRequirement(demand) && maintenanceBudget <= 0)
                 return null;
 
             return GetUnlockedTechnologies(context, ManufacturingType.Building)
@@ -474,7 +474,7 @@ namespace Rebellion.AI.Planners
             AIProductionRequirement demand
         )
         {
-            if (IsFacilityExpansionDemand(demand))
+            if (IsFacilityExpansionRequirement(demand))
                 return GetFacilityMaintenanceBudget(context);
 
             if (demand.UsesDefensiveReserve)
@@ -521,7 +521,7 @@ namespace Rebellion.AI.Planners
             if (demand.Kind == AIProductionRequirementKind.BuildingUpgrade)
                 return demand;
 
-            if (IsDistributedProductionDemand(demand))
+            if (IsDistributedProductionRequirement(demand))
             {
                 int distributedQuantity = GetDistributedBatchSize(
                     context,
@@ -530,15 +530,15 @@ namespace Rebellion.AI.Planners
                     remainingQuantity
                 );
                 return distributedQuantity > 0
-                    ? CreateProposalDemand(demand, distributedQuantity)
+                    ? CreateProposalRequirement(demand, distributedQuantity)
                     : null;
             }
 
-            if (!IsFacilityExpansionDemand(demand) && !demand.UsesDefensiveReserve)
+            if (!IsFacilityExpansionRequirement(demand) && !demand.UsesDefensiveReserve)
                 return demand;
 
             int quantity;
-            if (IsFacilityExpansionDemand(demand))
+            if (IsFacilityExpansionRequirement(demand))
             {
                 if (product.GetReference() is not Building building)
                     return null;
@@ -553,7 +553,7 @@ namespace Rebellion.AI.Planners
             if (quantity <= 0)
                 return null;
 
-            return CreateProposalDemand(demand, quantity);
+            return CreateProposalRequirement(demand, quantity);
         }
 
         /// <summary>
@@ -562,7 +562,7 @@ namespace Rebellion.AI.Planners
         /// <param name="demand">The production demand.</param>
         /// <param name="quantity">The requested quantity.</param>
         /// <returns>The copied demand.</returns>
-        private static AIProductionRequirement CreateProposalDemand(
+        private static AIProductionRequirement CreateProposalRequirement(
             AIProductionRequirement demand,
             int quantity
         )
@@ -588,7 +588,7 @@ namespace Rebellion.AI.Planners
                 return Math.Min(1, Math.Max(0, demand.QuantityNeeded));
             }
 
-            if (!IsDistributedProductionDemand(demand))
+            if (!IsDistributedProductionRequirement(demand))
                 return Math.Max(0, demand.QuantityNeeded);
 
             int requestedCount =
@@ -900,7 +900,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="demand">The production demand.</param>
         /// <returns>True for construction-facility, shipyard, and training-facility demand.</returns>
-        private static bool IsFacilityExpansionDemand(AIProductionRequirement demand)
+        private static bool IsFacilityExpansionRequirement(AIProductionRequirement demand)
         {
             return demand?.Kind
                 is AIProductionRequirementKind.ConstructionFacility
@@ -913,7 +913,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="demand">The production demand.</param>
         /// <returns>True when separate producers may manufacture portions of the demand.</returns>
-        private static bool IsDistributedProductionDemand(AIProductionRequirement demand)
+        private static bool IsDistributedProductionRequirement(AIProductionRequirement demand)
         {
             return demand?.Kind
                 is AIProductionRequirementKind.FleetCapitalShip
@@ -957,7 +957,7 @@ namespace Rebellion.AI.Planners
         /// Returns the unlocked unit technology for a demand item.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="demand">Demand item to satisfy.</param>
+        /// <param name="demand">Requirement item to satisfy.</param>
         /// <returns>The selected technology, or null.</returns>
         private Technology GetUnlockedUnitTechnology(
             AITurnContext context,
@@ -1396,7 +1396,7 @@ namespace Rebellion.AI.Planners
         /// Returns producer planets eligible for a demand item.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="demand">Demand item to satisfy.</param>
+        /// <param name="demand">Requirement item to satisfy.</param>
         /// <param name="product">The product to manufacture.</param>
         /// <param name="quantity">The quantity required by the demand.</param>
         /// <returns>Eligible producer planets in fulfillment order.</returns>
@@ -1412,8 +1412,8 @@ namespace Rebellion.AI.Planners
 
             Planet destinationPlanet = GetDestinationPlanet(context, demand);
             ProducerMode mode =
-                IsFacilityExpansionDemand(demand) ? ProducerMode.FacilityExpansion
-                : IsDistributedProductionDemand(demand) ? ProducerMode.Distributed
+                IsFacilityExpansionRequirement(demand) ? ProducerMode.FacilityExpansion
+                : IsDistributedProductionRequirement(demand) ? ProducerMode.Distributed
                 : ProducerMode.AvailableCapacity;
             (
                 string DestinationId,
@@ -1682,7 +1682,7 @@ namespace Rebellion.AI.Planners
         /// Returns the destination planet for a demand item.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="demand">Demand item to inspect.</param>
+        /// <param name="demand">Requirement item to inspect.</param>
         /// <returns>The destination planet, or null.</returns>
         private Planet GetDestinationPlanet(AITurnContext context, AIProductionRequirement demand)
         {

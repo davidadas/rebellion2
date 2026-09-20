@@ -769,7 +769,7 @@ namespace Rebellion.AI.Planners
         /// <param name="demands">The demand list to update.</param>
         /// <param name="placementScorer">The turn-scoped infrastructure placement scorer.</param>
         /// <param name="facilityPortfolio">The turn-scoped facility portfolio.</param>
-        internal void AddProductionFacilityDemands(
+        internal void AddProductionFacilityRequirements(
             AITurnContext context,
             List<AIProductionRequirement> demands,
             AIInfrastructurePlacementScorer placementScorer,
@@ -814,7 +814,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
-        internal void AddProductionFacilityUpgradeDemands(
+        internal void AddProductionFacilityUpgradeRequirements(
             AITurnContext context,
             List<AIProductionRequirement> demands
         )

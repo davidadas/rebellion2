@@ -49,7 +49,7 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionRequirement
     {
-        // Demand Identity.
+        // Requirement Identity.
         public string Id { get; }
         public AIProductionRequirementKind Kind { get; }
 
@@ -92,12 +92,12 @@ namespace Rebellion.AI.Planners
         /// Creates a production demand.
         /// </summary>
         /// <param name="id">Stable demand identifier.</param>
-        /// <param name="kind">Demand kind.</param>
+        /// <param name="kind">Requirement kind.</param>
         /// <param name="manufacturingType">Manufacturing type required for the demand.</param>
         /// <param name="buildingType">Building type required for building demands.</param>
         /// <param name="destination">Container receiving the produced item.</param>
         /// <param name="quantityNeeded">Amount of demand still needed.</param>
-        /// <param name="pressure">Demand pressure used for scoring.</param>
+        /// <param name="pressure">Requirement pressure used for scoring.</param>
         /// <param name="productTypeId">Exact product type required by the demand.</param>
         /// <param name="capitalShipRole">Capital ship role required by the demand.</param>
         /// <param name="buildingToReplace">Existing building replaced by an upgrade.</param>

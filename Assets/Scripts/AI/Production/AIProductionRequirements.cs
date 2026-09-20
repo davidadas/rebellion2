@@ -1,19 +1,12 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Scoring;
-using Rebellion.Game;
-using Rebellion.Game.Galaxy;
-using Rebellion.Game.Units;
-using Rebellion.Systems;
-using Rebellion.Util.Common;
 using FacilityPortfolio = Rebellion.AI.Planners.AIInfrastructureRequirements.FacilityPortfolio;
 
 namespace Rebellion.AI.Planners
 {
     /// <summary>
-    /// Builds production demand from faction state and current force needs.
+    /// Builds production requirements from faction state and current force needs.
     /// </summary>
     public sealed class AIProductionRequirements
     {
@@ -23,43 +16,46 @@ namespace Rebellion.AI.Planners
         private readonly AIInfrastructureRequirements _infrastructureRequirements = new();
 
         /// <summary>
-        /// Returns production demand for the current AI turn.
+        /// Builds production requirements for the current AI turn.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>Production demand generated for this faction.</returns>
-        public List<AIProductionRequirement> Generate(AITurnContext context)
+        /// <returns>Production requirements generated for this faction.</returns>
+        public List<AIProductionRequirement> BuildRequirements(AITurnContext context)
         {
-            List<AIProductionRequirement> demands = new List<AIProductionRequirement>();
+            List<AIProductionRequirement> requirements = new List<AIProductionRequirement>();
 
             if (context?.Game == null || context.Faction == null || context.Assessment == null)
-                return demands;
+                return requirements;
 
             FacilityPortfolio facilityPortfolio = _infrastructureRequirements.BuildPortfolio(
                 context
             );
-            _economyRequirements.AddColonyRequirements(context, demands);
-            _economyRequirements.AddResourceRequirements(context, demands);
+            _economyRequirements.AddColonyRequirements(context, requirements);
+            _economyRequirements.AddResourceRequirements(context, requirements);
             _infrastructureRequirements.AddPlanetaryDefenseRequirements(
                 context,
-                demands,
+                requirements,
                 facilityPortfolio
             );
-            _infrastructureRequirements.AddPlanetaryStarfighterRequirements(context, demands);
-            _forceRequirements.AddFleetSeedDemand(context, demands);
-            _forceRequirements.AddColonizationFleetSeedDemand(context, demands);
-            _forceRequirements.AddFleetReinforcementDemands(context, demands);
-            _infrastructureRequirements.AddGarrisonRequirements(context, demands);
-            _specialForcesRequirements.AddRequirements(context, demands);
-            _infrastructureRequirements.AddProductionFacilityDemands(
+            _infrastructureRequirements.AddPlanetaryStarfighterRequirements(context, requirements);
+            _forceRequirements.AddFleetSeedRequirements(context, requirements);
+            _forceRequirements.AddColonizationFleetSeedRequirements(context, requirements);
+            _forceRequirements.AddFleetReinforcementRequirements(context, requirements);
+            _infrastructureRequirements.AddGarrisonRequirements(context, requirements);
+            _specialForcesRequirements.AddRequirements(context, requirements);
+            _infrastructureRequirements.AddProductionFacilityRequirements(
                 context,
-                demands,
+                requirements,
                 new AIInfrastructurePlacementScorer(context),
                 facilityPortfolio
             );
-            _infrastructureRequirements.AddProductionFacilityUpgradeDemands(context, demands);
-            _infrastructureRequirements.AddIdleShipyardRequirements(context, demands);
+            _infrastructureRequirements.AddProductionFacilityUpgradeRequirements(
+                context,
+                requirements
+            );
+            _infrastructureRequirements.AddIdleShipyardRequirements(context, requirements);
 
-            return demands;
+            return requirements;
         }
     }
 }

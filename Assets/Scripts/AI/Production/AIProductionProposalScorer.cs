@@ -50,7 +50,7 @@ namespace Rebellion.AI.Scoring
             AIManufactureProposal proposal
         )
         {
-            double demandPressure = proposal?.Demand?.Pressure ?? 0;
+            double demandPressure = proposal?.Requirement?.Pressure ?? 0;
             int maintenanceCost = proposal?.GetUnitMaintenanceCost() ?? 0;
             if (context?.Game == null || context.Faction == null || proposal == null)
                 return AIUtility.Fulfillment(
@@ -66,7 +66,7 @@ namespace Rebellion.AI.Scoring
                 config.DemandUtility
             );
             double colonyFoundationInput = GetColonyFoundationInput(context, proposal);
-            if (proposal.Demand.BuildingType == BuildingType.ConstructionFacility)
+            if (proposal.Requirement.BuildingType == BuildingType.ConstructionFacility)
                 score.Add(colonyFoundationInput, utility.ColonyFoundation);
             score.AddCost(
                 AIUtility.Fulfillment(GetTravelCost(context, proposal), AIUtilityDomain.TravelCost),
@@ -77,7 +77,7 @@ namespace Rebellion.AI.Scoring
                 context.Assessment.ProjectedMaintenanceHeadroom - maintenanceCost;
             if (
                 maintenanceCost > 0
-                && proposal.Demand.RestoresMaintenanceCapacity == false
+                && proposal.Requirement.RestoresMaintenanceCapacity == false
                 && projectedHeadroom < proposal.GetMinimumMaintenanceHeadroom(context)
             )
                 return 0;
@@ -107,7 +107,7 @@ namespace Rebellion.AI.Scoring
             AIManufactureProposal proposal
         )
         {
-            Planet destination = proposal?.Demand?.DestinationPlanet;
+            Planet destination = proposal?.Requirement?.DestinationPlanet;
             if (
                 destination?.GetParentOfType<PlanetSector>()?.SectorType
                 != PlanetSectorType.OuterRim
@@ -133,7 +133,7 @@ namespace Rebellion.AI.Scoring
         /// <returns>The travel penalty.</returns>
         private double GetTravelCost(AITurnContext context, AIManufactureProposal proposal)
         {
-            if (proposal?.Demand?.Destination is not Fleet destinationFleet)
+            if (proposal?.Requirement?.Destination is not Fleet destinationFleet)
                 return 0;
 
             Planet producerPlanet = proposal.ProducerPlanet;

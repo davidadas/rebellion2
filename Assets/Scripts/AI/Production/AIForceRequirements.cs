@@ -20,7 +20,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
-        internal void AddFleetSeedDemand(
+        internal void AddFleetSeedRequirements(
             AITurnContext context,
             List<AIProductionRequirement> demands
         )
@@ -65,7 +65,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
-        internal void AddColonizationFleetSeedDemand(
+        internal void AddColonizationFleetSeedRequirements(
             AITurnContext context,
             List<AIProductionRequirement> demands
         )
@@ -168,7 +168,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
-        internal void AddFleetReinforcementDemands(
+        internal void AddFleetReinforcementRequirements(
             AITurnContext context,
             List<AIProductionRequirement> demands
         )
@@ -584,7 +584,7 @@ namespace Rebellion.AI.Planners
         /// Creates a fleet unit production demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="kind">Demand kind.</param>
+        /// <param name="kind">Requirement kind.</param>
         /// <param name="manufacturingType">Manufacturing type required.</param>
         /// <param name="fleet">Fleet receiving the unit.</param>
         /// <param name="deficit">Current deficit.</param>
@@ -630,7 +630,7 @@ namespace Rebellion.AI.Planners
         /// Returns pressure for fleet production demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="kind">Demand kind.</param>
+        /// <param name="kind">Requirement kind.</param>
         /// <param name="fleet">Fleet receiving production.</param>
         /// <param name="deficit">Current deficit.</param>
         /// <param name="targetCount">Target count.</param>
@@ -720,7 +720,7 @@ namespace Rebellion.AI.Planners
         /// Returns extra pressure from fleet readiness gaps.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="kind">Demand kind.</param>
+        /// <param name="kind">Requirement kind.</param>
         /// <param name="fleet">Fleet receiving production.</param>
         /// <param name="targetPlanet">Fleet attack target.</param>
         /// <returns>The fleet readiness pressure.</returns>

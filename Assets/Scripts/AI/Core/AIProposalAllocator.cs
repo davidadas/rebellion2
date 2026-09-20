@@ -208,7 +208,7 @@ namespace Rebellion.AI.Phases
                 if (!_availableProducerCapacity.TryGetValue(capacityKey, out int availableCapacity))
                 {
                     availableCapacity = proposal.ProducerPlanet.GetAvailableManufacturingCapacity(
-                        proposal.Demand.ManufacturingType
+                        proposal.Requirement.ManufacturingType
                     );
                     _availableProducerCapacity[capacityKey] = availableCapacity;
                 }
@@ -297,7 +297,10 @@ namespace Rebellion.AI.Phases
             if (
                 proposal
                     .ProducerPlanet.GetManufacturingQueue()
-                    .TryGetValue(proposal.Demand.ManufacturingType, out List<IManufacturable> queue)
+                    .TryGetValue(
+                        proposal.Requirement.ManufacturingType,
+                        out List<IManufacturable> queue
+                    )
                 && queue != null
             )
             {
@@ -356,7 +359,7 @@ namespace Rebellion.AI.Phases
             if (!_availableProducerCapacity.TryGetValue(capacityKey, out int availableCapacity))
             {
                 availableCapacity = proposal.ProducerPlanet.GetAvailableManufacturingCapacity(
-                    proposal.Demand.ManufacturingType
+                    proposal.Requirement.ManufacturingType
                 );
                 _availableProducerCapacity[capacityKey] = availableCapacity;
             }
@@ -404,7 +407,7 @@ namespace Rebellion.AI.Phases
         {
             if (
                 proposal?.Product?.GetReference() is not Building
-                || proposal.Demand?.Kind == AIProductionRequirementKind.BuildingUpgrade
+                || proposal.Requirement?.Kind == AIProductionRequirementKind.BuildingUpgrade
                 || proposal.Destination is not Planet destination
             )
             {
@@ -429,7 +432,8 @@ namespace Rebellion.AI.Phases
             if (
                 proposal is not AIManufactureProposal manufactureProposal
                 || manufactureProposal.Product?.GetReference() is not Building
-                || manufactureProposal.Demand?.Kind == AIProductionRequirementKind.BuildingUpgrade
+                || manufactureProposal.Requirement?.Kind
+                    == AIProductionRequirementKind.BuildingUpgrade
                 || manufactureProposal.Destination is not Planet destination
             )
             {
@@ -456,7 +460,7 @@ namespace Rebellion.AI.Phases
         {
             if (
                 proposal is AIManufactureProposal recoveryProposal
-                && recoveryProposal.Demand?.RestoresMaintenanceCapacity == true
+                && recoveryProposal.Requirement?.RestoresMaintenanceCapacity == true
             )
             {
                 return false;

@@ -568,7 +568,7 @@ namespace Rebellion.Tests.AI.Proposals
                 demand,
                 planet,
                 new Technology(template),
-                distributesDemand: true
+                distributesRequirement: true
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -615,7 +615,7 @@ namespace Rebellion.Tests.AI.Proposals
                 demand,
                 planet,
                 new Technology(template),
-                distributesDemand: true
+                distributesRequirement: true
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -666,7 +666,7 @@ namespace Rebellion.Tests.AI.Proposals
                 demand,
                 planet,
                 new Technology(template),
-                distributesDemand: true
+                distributesRequirement: true
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
