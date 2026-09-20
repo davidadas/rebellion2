@@ -323,8 +323,9 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { proposal }, selected);
-            Assert.AreEqual(2, proposal.GetManufacturingCount());
+            Assert.AreEqual(1, selected.Count);
+            Assert.AreEqual(2, ((AIManufactureProposal)selected[0]).GetManufacturingCount());
+            Assert.AreEqual(4, proposal.GetManufacturingCount());
         }
 
         [Test]
@@ -641,11 +642,10 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(
-                new AIProposal[] { preferredProposal, flexibleProposal },
-                selected
-            );
-            Assert.AreSame(fallbackProducer, flexibleProposal.ProducerPlanet);
+            Assert.AreEqual(2, selected.Count);
+            Assert.AreSame(preferredProposal, selected[0]);
+            Assert.AreSame(fallbackProducer, ((AIManufactureProposal)selected[1]).ProducerPlanet);
+            Assert.AreSame(preferredProducer, flexibleProposal.ProducerPlanet);
         }
 
         [Test]
