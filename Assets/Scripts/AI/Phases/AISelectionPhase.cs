@@ -42,10 +42,10 @@ namespace Rebellion.AI.Phases
                 )
                     continue;
 
-                if (!selectionPolicy.TrySelect(context, proposal, out AIProposal selectedProposal))
+                if (!selectionPolicy.TrySelect(context, proposal))
                     continue;
 
-                selectedProposals.Add(selectedProposal);
+                selectedProposals.Add(proposal);
             }
 
             return selectedProposals;

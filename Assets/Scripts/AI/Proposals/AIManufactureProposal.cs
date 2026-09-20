@@ -38,9 +38,9 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIManufactureProposal : AIProposal
     {
-        public AIDemand Demand { get; }
+        public AIDemand Demand { get; private set; }
 
-        public Planet ProducerPlanet { get; }
+        public Planet ProducerPlanet { get; private set; }
 
         internal IReadOnlyList<AIManufactureOption> ProducerOptions { get; }
 
@@ -130,39 +130,28 @@ namespace Rebellion.AI.Proposals
         {
             ProducerOptions = producerOptions ?? System.Array.Empty<AIManufactureOption>();
             ProducerPlanets = System.Array.Empty<Planet>();
-            AIManufactureOption firstOption = ProducerOptions.FirstOrDefault();
-            Demand = firstOption.Demand;
-            ProducerPlanet = firstOption.ProducerPlanet;
+            SelectOption(ProducerOptions.FirstOrDefault());
             Product = product;
             DistributesDemand = distributesDemand;
         }
 
         /// <summary>
-        /// Creates an exact manufacturing proposal from one ranked alternative.
+        /// Selects the producer option used when validating and executing this proposal.
         /// </summary>
-        /// <param name="demand">The producer-specific demand.</param>
-        /// <param name="producerPlanet">The exact producer.</param>
-        /// <param name="count">The exact manufacturing count.</param>
-        /// <returns>The exact proposal to validate and execute.</returns>
-        internal AIManufactureProposal Resolve(AIDemand demand, Planet producerPlanet, int count)
+        /// <param name="option">The producer option to use.</param>
+        internal void SelectOption(AIManufactureOption option)
         {
-            if (
-                ReferenceEquals(demand, Demand)
-                && ReferenceEquals(producerPlanet, ProducerPlanet)
-                && count == ManufacturingCount
-            )
-                return this;
+            Demand = option.Demand;
+            ProducerPlanet = option.ProducerPlanet;
+        }
 
-            AIDemand resolvedDemand = demand?.WithQuantity(count);
-            AIManufactureProposal resolved = new AIManufactureProposal(
-                resolvedDemand,
-                producerPlanet,
-                Product,
-                DistributesDemand
-            );
-            if (HasScore)
-                resolved.SetScore(Score);
-            return resolved;
+        /// <summary>
+        /// Selects an equivalent producer while retaining the current demand.
+        /// </summary>
+        /// <param name="producerPlanet">The producer to use.</param>
+        internal void SelectProducer(Planet producerPlanet)
+        {
+            ProducerPlanet = producerPlanet;
         }
 
         /// <summary>
@@ -384,6 +373,18 @@ namespace Rebellion.AI.Proposals
                 return maintenanceCost;
 
             return Math.Max(0, maintenanceCost - Demand.BuildingToReplace.MaintenanceCost);
+        }
+
+        /// <summary>
+        /// Reduces a counted manufacturing proposal to an affordable prefix.
+        /// </summary>
+        /// <param name="count">The accepted manufacturing count.</param>
+        internal void SelectManufacturingCount(int count)
+        {
+            if (!IsCountedManufacturingDemand() || Demand == null)
+                return;
+
+            Demand = Demand.WithQuantity(Math.Max(0, Math.Min(count, Demand.QuantityNeeded)));
         }
 
         /// <summary>
