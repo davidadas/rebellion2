@@ -723,7 +723,7 @@ namespace Rebellion.AI.Planners
             return _sabotageCandidates ??= GetFreshEnemyPlanets(context)
                 .Concat(
                     context.Assessment.EnemyPlanets.Where(
-                        context.Assessment.IsAttackTargetBlockedByShields
+                        context.AttackRequirements.IsTargetBlockedByShields
                     )
                 )
                 .GroupBy(planet => planet.InstanceID, StringComparer.Ordinal)

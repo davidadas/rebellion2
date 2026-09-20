@@ -1059,9 +1059,9 @@ namespace Rebellion.Tests.AI.Director
             );
             Fleet fleet = CreateAssaultFleet(game, origin, "attacker", empire.InstanceID, 4);
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(fleet, target));
+            Assert.AreEqual(4, context.AttackRequirements.GetRegimentCount(fleet, target));
         }
 
         [Test]
@@ -1082,9 +1082,9 @@ namespace Rebellion.Tests.AI.Director
             );
             Fleet fleet = CreateAssaultFleet(game, origin, "attacker", empire.InstanceID, 3);
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(3, assessment.GetRequiredAttackRegimentCount(fleet, target));
+            Assert.AreEqual(3, context.AttackRequirements.GetRegimentCount(fleet, target));
         }
 
         [Test]
@@ -1101,9 +1101,9 @@ namespace Rebellion.Tests.AI.Director
             target.SetPopularSupport(empire.InstanceID, 20);
             Fleet fleet = CreateAssaultFleet(game, origin, "attacker", empire.InstanceID, 4);
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(fleet, target));
+            Assert.AreEqual(4, context.AttackRequirements.GetRegimentCount(fleet, target));
         }
 
         [Test]
@@ -1171,9 +1171,9 @@ namespace Rebellion.Tests.AI.Director
                 attackerShip
             );
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(10, assessment.GetRequiredAttackRegimentCount(enemy));
+            Assert.AreEqual(10, context.AttackRequirements.GetRegimentCount(enemy));
         }
 
         [Test]
@@ -1260,13 +1260,13 @@ namespace Rebellion.Tests.AI.Director
             Planet secondTarget = assessment.GetKnownPlanet(secondEnemy.InstanceID);
 
             Assert.AreEqual(300, context.AttackRequirements.GetCombatStrength(firstTarget));
-            Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(firstTarget));
-            Assert.AreEqual(20, assessment.GetRequiredAttackRegimentStrength(firstTarget));
-            Assert.AreEqual(2, assessment.GetRequiredBombardmentStrength(firstTarget));
+            Assert.AreEqual(4, context.AttackRequirements.GetRegimentCount(firstTarget));
+            Assert.AreEqual(20, context.AttackRequirements.GetRegimentStrength(firstTarget));
+            Assert.AreEqual(2, context.AttackRequirements.GetBombardmentStrength(firstTarget));
             Assert.AreEqual(300, context.AttackRequirements.GetCombatStrength(secondTarget));
-            Assert.AreEqual(3, assessment.GetRequiredAttackRegimentCount(secondTarget));
-            Assert.AreEqual(20, assessment.GetRequiredAttackRegimentStrength(secondTarget));
-            Assert.AreEqual(0, assessment.GetRequiredBombardmentStrength(secondTarget));
+            Assert.AreEqual(3, context.AttackRequirements.GetRegimentCount(secondTarget));
+            Assert.AreEqual(20, context.AttackRequirements.GetRegimentStrength(secondTarget));
+            Assert.AreEqual(0, context.AttackRequirements.GetBombardmentStrength(secondTarget));
         }
 
         [Test]

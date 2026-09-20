@@ -68,8 +68,6 @@ namespace Rebellion.AI.Director
             string,
             int
         >(StringComparer.Ordinal);
-        private readonly Dictionary<string, int> _planetRequiredAttackRegimentCounts =
-            new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _strongestHostileFleetStrengths = new Dictionary<
             string,
             int
@@ -1622,102 +1620,6 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns regiment strength required to capture a planet.
-        /// </summary>
-        /// <param name="planet">Target planet.</param>
-        /// <returns>The required regiment strength.</returns>
-        public int GetRequiredAttackRegimentStrength(Planet planet)
-        {
-            if (planet == null || _context?.Game?.Config == null)
-                return 0;
-
-            return Math.Max(
-                1,
-                IntegerMath.ScaleByPercent(
-                    GetDefendingRegimentDefenseStrength(planet),
-                    _context.Game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense
-                )
-            );
-        }
-
-        /// <summary>
-        /// Returns the ground strength required after accounting for the fleet's bombardment.
-        /// </summary>
-        /// <param name="fleet">Fleet assigned to the attack.</param>
-        /// <param name="planet">Planet being attacked.</param>
-        /// <returns>The required regiment attack strength.</returns>
-        public int GetRequiredAttackRegimentStrength(Fleet fleet, Planet planet)
-        {
-            return CanBombardDefendingRegiments(fleet, planet, projected: false)
-                ? 0
-                : GetRequiredAttackRegimentStrength(planet);
-        }
-
-        /// <summary>
-        /// Returns the projected ground strength requirement after bombardment.
-        /// </summary>
-        /// <param name="fleet">Fleet assigned to the attack.</param>
-        /// <param name="planet">Planet being attacked.</param>
-        /// <returns>The projected required regiment attack strength.</returns>
-        public int GetProjectedRequiredAttackRegimentStrength(Fleet fleet, Planet planet)
-        {
-            return CanBombardDefendingRegiments(fleet, planet, projected: true)
-                ? 0
-                : GetRequiredAttackRegimentStrength(planet);
-        }
-
-        /// <summary>
-        /// Returns bombardment strength required to penetrate planetary shields.
-        /// </summary>
-        /// <param name="planet">Target planet.</param>
-        /// <returns>The required bombardment strength.</returns>
-        public int GetRequiredBombardmentStrength(Planet planet)
-        {
-            if (!IsAssaultBlockedByShields(planet))
-                return 0;
-
-            return GetBombardmentShieldResistance(planet) + 1;
-        }
-
-        /// <summary>
-        /// Returns whether planetary shields currently block an assault.
-        /// </summary>
-        /// <param name="planet">Target planet.</param>
-        /// <returns>True when shields block the assault.</returns>
-        public bool IsAssaultBlockedByShields(Planet planet)
-        {
-            if (planet == null || _context?.Game?.Config == null)
-                return false;
-
-            return PlanetaryAssaultResolver.IsBlockedByShields(
-                planet,
-                _context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
-            );
-        }
-
-        /// <summary>
-        /// Returns whether a fleet cannot penetrate shields that prevent its ground assault.
-        /// </summary>
-        /// <param name="fleet">Fleet assigned to the attack.</param>
-        /// <param name="planet">Target planet.</param>
-        /// <returns>True when the fleet must wait for sabotage or choose another target.</returns>
-        public bool IsBlockedByShields(Fleet fleet, Planet planet)
-        {
-            return IsAssaultBlockedByShields(planet)
-                && GetFleetBombardmentStrength(fleet) < GetRequiredBombardmentStrength(planet);
-        }
-
-        /// <summary>
-        /// Returns whether shields block a planet selected for attack preparation.
-        /// </summary>
-        /// <param name="planet">Target planet.</param>
-        /// <returns>True when the target is blocked.</returns>
-        public bool IsAttackTargetBlockedByShields(Planet planet)
-        {
-            return IsAssaultBlockedByShields(planet) && IsAttackPreparationTarget(planet);
-        }
-
-        /// <summary>
         /// Returns whether a planet belongs to an active attack campaign.
         /// </summary>
         /// <param name="planet">Planet to inspect.</param>
@@ -1725,103 +1627,6 @@ namespace Rebellion.AI.Director
         public bool IsAttackPreparationTarget(Planet planet)
         {
             return planet != null && _attackPreparationTargetIds.Contains(planet.InstanceID);
-        }
-
-        /// <summary>
-        /// Returns regiment count required to attack a planet.
-        /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>The required attack regiment count.</returns>
-        public int GetRequiredAttackRegimentCount(Planet planet)
-        {
-            if (planet == null || _context?.Game?.Config == null)
-                return 0;
-
-            return GetOrAdd(
-                _planetRequiredAttackRegimentCounts,
-                planet.InstanceID,
-                () =>
-                    GetRequiredCombatRegimentCount(planet)
-                    + GetRequiredOccupationRegimentCount(planet)
-            );
-        }
-
-        /// <summary>
-        /// Returns the regiment count required after accounting for the fleet's bombardment.
-        /// </summary>
-        /// <param name="fleet">Fleet assigned to the attack.</param>
-        /// <param name="planet">Planet being attacked.</param>
-        /// <returns>The required regiment count.</returns>
-        public int GetRequiredAttackRegimentCount(Fleet fleet, Planet planet)
-        {
-            return CanBombardDefendingRegiments(fleet, planet, projected: false)
-                ? GetRequiredOccupationRegimentCount(planet)
-                : GetRequiredAttackRegimentCount(planet);
-        }
-
-        /// <summary>
-        /// Returns the projected regiment count requirement after bombardment.
-        /// </summary>
-        /// <param name="fleet">Fleet assigned to the attack.</param>
-        /// <param name="planet">Planet being attacked.</param>
-        /// <returns>The projected required regiment count.</returns>
-        public int GetProjectedRequiredAttackRegimentCount(Fleet fleet, Planet planet)
-        {
-            return CanBombardDefendingRegiments(fleet, planet, projected: true)
-                ? GetRequiredOccupationRegimentCount(planet)
-                : GetRequiredAttackRegimentCount(planet);
-        }
-
-        /// <summary>
-        /// Returns the regiment count needed to defeat the target's current ground force.
-        /// </summary>
-        /// <param name="planet">Planet being attacked.</param>
-        /// <returns>The required combat regiment count.</returns>
-        private int GetRequiredCombatRegimentCount(Planet planet)
-        {
-            int defenderCount = GetDefendingRegimentCount(planet);
-            return defenderCount == 0 ? 0 : defenderCount + 1;
-        }
-
-        /// <summary>
-        /// Returns the force needed to hold a planet after its defenders are removed.
-        /// </summary>
-        /// <param name="planet">Planet being occupied.</param>
-        /// <returns>The required occupation regiment count.</returns>
-        private int GetRequiredOccupationRegimentCount(Planet planet)
-        {
-            if (planet == null || _context?.Game?.Config == null)
-                return 0;
-
-            int minimum = Math.Max(
-                1,
-                _context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount
-            );
-            int stabilityRequirement = UprisingSystem.CalculateGarrisonRequirement(
-                planet,
-                _context.Faction,
-                _context.Game.Config.AI.Garrison
-            );
-            int landingCapacity = _context.Game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount;
-            return Math.Max(minimum, Math.Min(stabilityRequirement, landingCapacity));
-        }
-
-        /// <summary>
-        /// Returns whether a fleet can penetrate the target's shields and bombard its garrison.
-        /// </summary>
-        /// <param name="fleet">Fleet assigned to the attack.</param>
-        /// <param name="planet">Planet being attacked.</param>
-        /// <param name="projected">Whether queued fleet strength is included.</param>
-        /// <returns>True when military bombardment can reach defending regiments.</returns>
-        private bool CanBombardDefendingRegiments(Fleet fleet, Planet planet, bool projected)
-        {
-            if (fleet == null || planet == null || GetDefendingRegimentCount(planet) == 0)
-                return false;
-
-            int bombardmentStrength = projected
-                ? GetProjectedFleetBombardmentStrength(fleet)
-                : GetFleetBombardmentStrength(fleet);
-            return bombardmentStrength > GetBombardmentShieldResistance(planet);
         }
 
         /// <summary>
@@ -1913,9 +1718,17 @@ namespace Rebellion.AI.Director
         {
             int requiredCombat = _context.AttackRequirements.GetCombatStrength(targetPlanet);
             int availableCombat = GetReadyFleetCombatValue(fleet);
-            int requiredRegiments = GetRequiredAttackRegimentCount(fleet, targetPlanet);
-            int requiredRegimentStrength = GetRequiredAttackRegimentStrength(fleet, targetPlanet);
-            int requiredBombardment = GetRequiredBombardmentStrength(targetPlanet);
+            int requiredRegiments = _context.AttackRequirements.GetRegimentCount(
+                fleet,
+                targetPlanet
+            );
+            int requiredRegimentStrength = _context.AttackRequirements.GetRegimentStrength(
+                fleet,
+                targetPlanet
+            );
+            int requiredBombardment = _context.AttackRequirements.GetBombardmentStrength(
+                targetPlanet
+            );
             return fleet?.HasOperationalCapitalShips() == true
                 && availableCombat > 0
                 && availableCombat >= requiredCombat
@@ -1964,13 +1777,13 @@ namespace Rebellion.AI.Director
             if (CanBombardMilitaryTargets(fleet, targetPlanet))
                 return true;
 
-            if (IsAssaultBlockedByShields(targetPlanet))
+            if (_context.AttackRequirements.IsAssaultBlockedByShields(targetPlanet))
                 return false;
 
             return GetReadyFleetRegimentCount(fleet)
-                    >= GetRequiredAttackRegimentCount(fleet, targetPlanet)
+                    >= _context.AttackRequirements.GetRegimentCount(fleet, targetPlanet)
                 && GetReadyFleetRegimentAttackStrength(fleet)
-                    >= GetRequiredAttackRegimentStrength(fleet, targetPlanet)
+                    >= _context.AttackRequirements.GetRegimentStrength(fleet, targetPlanet)
                 && GetPlanetaryAssaultSuccessPercent(fleet, targetPlanet)
                     >= _context
                         .Game
@@ -2057,9 +1870,13 @@ namespace Rebellion.AI.Director
         {
             int requiredCombat = _context.AttackRequirements.GetCombatStrength(targetPlanet);
             int availableCombat = GetProjectedFleetCombatValue(fleet);
-            int requiredRegiments = GetRequiredAttackRegimentCount(targetPlanet);
-            int requiredRegimentStrength = GetRequiredAttackRegimentStrength(targetPlanet);
-            int requiredBombardment = GetRequiredBombardmentStrength(targetPlanet);
+            int requiredRegiments = _context.AttackRequirements.GetRegimentCount(targetPlanet);
+            int requiredRegimentStrength = _context.AttackRequirements.GetRegimentStrength(
+                targetPlanet
+            );
+            int requiredBombardment = _context.AttackRequirements.GetBombardmentStrength(
+                targetPlanet
+            );
             return fleet?.GetChildren<CapitalShip>().Any(capitalShip => capitalShip != null) == true
                 && availableCombat > 0
                 && availableCombat >= requiredCombat
@@ -2078,9 +1895,17 @@ namespace Rebellion.AI.Director
         public int CountCurrentAttackRequirementsMet(Fleet fleet, Planet targetPlanet)
         {
             int requiredCombat = _context.AttackRequirements.GetCombatStrength(targetPlanet);
-            int requiredRegiments = GetRequiredAttackRegimentCount(fleet, targetPlanet);
-            int requiredRegimentStrength = GetRequiredAttackRegimentStrength(fleet, targetPlanet);
-            int requiredBombardment = GetRequiredBombardmentStrength(targetPlanet);
+            int requiredRegiments = _context.AttackRequirements.GetRegimentCount(
+                fleet,
+                targetPlanet
+            );
+            int requiredRegimentStrength = _context.AttackRequirements.GetRegimentStrength(
+                fleet,
+                targetPlanet
+            );
+            int requiredBombardment = _context.AttackRequirements.GetBombardmentStrength(
+                targetPlanet
+            );
             int gateCount = 0;
 
             if (fleet?.HasOperationalCapitalShips() == true)
@@ -2114,9 +1939,13 @@ namespace Rebellion.AI.Director
         public int CountTargetAttackRequirementsMet(Fleet fleet, Planet targetPlanet)
         {
             int requiredCombat = _context.AttackRequirements.GetCombatStrength(targetPlanet);
-            int requiredRegiments = GetRequiredAttackRegimentCount(targetPlanet);
-            int requiredRegimentStrength = GetRequiredAttackRegimentStrength(targetPlanet);
-            int requiredBombardment = GetRequiredBombardmentStrength(targetPlanet);
+            int requiredRegiments = _context.AttackRequirements.GetRegimentCount(targetPlanet);
+            int requiredRegimentStrength = _context.AttackRequirements.GetRegimentStrength(
+                targetPlanet
+            );
+            int requiredBombardment = _context.AttackRequirements.GetBombardmentStrength(
+                targetPlanet
+            );
             int gateCount = 0;
 
             if (fleet?.HasOperationalCapitalShips() == true)

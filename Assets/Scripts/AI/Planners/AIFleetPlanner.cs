@@ -241,7 +241,10 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
-            bool mayLeaveCampaign = context.Assessment.IsBlockedByShields(fleet, targetPlanet);
+            bool mayLeaveCampaign = context.AttackRequirements.IsBlockedByShields(
+                fleet,
+                targetPlanet
+            );
             if (!mayLeaveCampaign)
                 proposals.Add(continuation);
 
@@ -806,24 +809,26 @@ namespace Rebellion.AI.Planners
             )
                 return false;
 
-            int requiredCount = context.Assessment.GetProjectedRequiredAttackRegimentCount(
+            int requiredCount = context.AttackRequirements.GetRegimentCount(
                 fleet,
-                targetPlanet
+                targetPlanet,
+                projected: true
             );
             int currentCount = context.Assessment.GetFleetLoadedRegimentCount(fleet);
             bool needsRegiments =
                 currentCount < requiredCount
                 || context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
-                    < context.Assessment.GetProjectedRequiredAttackRegimentStrength(
+                    < context.AttackRequirements.GetRegimentStrength(
                         fleet,
-                        targetPlanet
+                        targetPlanet,
+                        projected: true
                     );
             return needsRegiments
                 && context.Assessment.GetFleetRegimentCapacity(fleet) > currentCount
                 && context.Assessment.GetProjectedFleetCombatValue(fleet)
                     >= context.AttackRequirements.GetCombatStrength(targetPlanet)
                 && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                    >= context.Assessment.GetRequiredBombardmentStrength(targetPlanet);
+                    >= context.AttackRequirements.GetBombardmentStrength(targetPlanet);
         }
 
         /// <summary>
@@ -1262,11 +1267,11 @@ namespace Rebellion.AI.Planners
             }
 
             int requiredCombat = context.AttackRequirements.GetCombatStrength(targetPlanet);
-            int requiredRegiments = context.Assessment.GetRequiredAttackRegimentCount(targetPlanet);
-            int requiredRegimentStrength = context.Assessment.GetRequiredAttackRegimentStrength(
+            int requiredRegiments = context.AttackRequirements.GetRegimentCount(targetPlanet);
+            int requiredRegimentStrength = context.AttackRequirements.GetRegimentStrength(
                 targetPlanet
             );
-            int requiredBombardment = context.Assessment.GetRequiredBombardmentStrength(
+            int requiredBombardment = context.AttackRequirements.GetBombardmentStrength(
                 targetPlanet
             );
 
