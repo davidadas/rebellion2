@@ -13,7 +13,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Planners
 {
     [TestFixture]
-    public sealed class AIMissionCandidateSelectorTests
+    public sealed class AIMissionCandidatePoolTests
     {
         [Test]
         public void TryAdd_ExecutableProposalWithZeroScore_DoesNotRetainProposal()
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.AI.Planners
             );
             List<AIProposal> proposals = new List<AIProposal>();
 
-            new AIMissionCandidateSelector().TryAdd(context, proposals, proposal);
+            new AIMissionCandidatePool().TryAdd(context, proposals, proposal);
 
             Assert.IsTrue(proposal.CanExecute(context));
             Assert.IsEmpty(proposals);

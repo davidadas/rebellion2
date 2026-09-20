@@ -10,7 +10,7 @@ namespace Rebellion.AI.Planners
     /// <summary>
     /// Retains the strongest bounded set of mission alternatives for each participant and mission.
     /// </summary>
-    internal sealed class AIMissionCandidateSelector
+    internal sealed class AIMissionCandidatePool
     {
         // Candidate State.
         private readonly AIMissionProposalScorer _scorer = new AIMissionProposalScorer();

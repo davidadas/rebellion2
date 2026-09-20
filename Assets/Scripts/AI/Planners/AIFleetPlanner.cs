@@ -17,8 +17,7 @@ namespace Rebellion.AI.Planners
     {
         // Specialized Planners.
         private readonly AIFleetDefensePlanner _defensePlanner = new AIFleetDefensePlanner();
-        private readonly AIFleetAttackCandidateSelector _attackCandidateSelector =
-            new AIFleetAttackCandidateSelector();
+        private readonly AIFleetAttackPlanner _attackCandidateSelector = new AIFleetAttackPlanner();
 
         /// <summary>
         /// Returns fleet proposals for the current AI turn.

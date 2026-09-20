@@ -13,7 +13,7 @@ namespace Rebellion.AI.Phases
     /// <summary>
     /// Tracks claims, production capacity, and economic reservations while proposals are selected.
     /// </summary>
-    internal sealed class AIProposalSelectionPolicy
+    internal sealed class AIProposalAllocator
     {
         private const string _mixedProductType = "*";
         private static readonly AIProductionProposalScorer _productionScorer = new();

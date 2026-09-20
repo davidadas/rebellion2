@@ -12,7 +12,7 @@ namespace Rebellion.AI.Planners
     /// <summary>
     /// Selects the highest-value attack candidate for an idle fleet.
     /// </summary>
-    internal sealed class AIFleetAttackCandidateSelector
+    internal sealed class AIFleetAttackPlanner
     {
         // Candidate Scoring.
         private readonly AIFleetProposalScorer _scorer = new AIFleetProposalScorer();

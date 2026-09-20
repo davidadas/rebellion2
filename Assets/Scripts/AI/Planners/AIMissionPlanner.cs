@@ -49,8 +49,7 @@ namespace Rebellion.AI.Planners
             | PlanetIntelligenceCategory.Officers;
 
         // Planning State.
-        private readonly AIMissionCandidateSelector _candidateSelector =
-            new AIMissionCandidateSelector();
+        private readonly AIMissionCandidatePool _candidateSelector = new AIMissionCandidatePool();
         private readonly Dictionary<string, List<IManufacturable>> _sabotageTargets =
             new Dictionary<string, List<IManufacturable>>(StringComparer.Ordinal);
         private readonly HashSet<string> _activeMissionTypes = new HashSet<string>(

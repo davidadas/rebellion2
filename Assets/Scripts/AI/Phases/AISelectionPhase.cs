@@ -31,7 +31,7 @@ namespace Rebellion.AI.Phases
             if (context?.Proposals == null)
                 return selectedProposals;
 
-            AIProposalSelectionPolicy selectionPolicy = new AIProposalSelectionPolicy();
+            AIProposalAllocator selectionPolicy = new AIProposalAllocator();
             float minimumSelectableScore = GetMinimumSelectableScore(context);
             foreach (AIProposal proposal in GetSortedProposals(context))
             {
