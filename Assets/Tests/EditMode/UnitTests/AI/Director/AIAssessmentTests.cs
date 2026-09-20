@@ -26,7 +26,8 @@ namespace Rebellion.Tests.AI.Director
             AITestSceneBuilder.RevealPlanet(game, empire, enemy);
             AITestSceneBuilder.RevealPlanet(game, empire, neutral);
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIAssessment assessment = context.Assessment;
 
             CollectionAssert.Contains(assessment.OwnedPlanets, owned);
             CollectionAssert.Contains(
@@ -52,7 +53,8 @@ namespace Rebellion.Tests.AI.Director
             );
             game.AttachNode(starfighter, planet);
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIAssessment assessment = context.Assessment;
             int cachedHeadroom = assessment.ProjectedMaintenanceHeadroom;
             int cachedSupply = assessment.RefinedMaterialSupply;
             int cachedStockpile = assessment.RefinedMaterialStockpile;
@@ -1252,76 +1254,19 @@ namespace Rebellion.Tests.AI.Director
             AddShield(game, firstEnemy, "shield-2", rebels.InstanceID, 5);
             AITestSceneBuilder.RevealPlanet(game, empire, firstEnemy);
             AITestSceneBuilder.RevealPlanet(game, empire, secondEnemy);
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIAssessment assessment = context.Assessment;
             Planet firstTarget = assessment.GetKnownPlanet(firstEnemy.InstanceID);
             Planet secondTarget = assessment.GetKnownPlanet(secondEnemy.InstanceID);
 
-            Assert.AreEqual(300, assessment.GetRequiredAttackCombatStrength(firstTarget));
+            Assert.AreEqual(300, context.AttackRequirements.GetCombatStrength(firstTarget));
             Assert.AreEqual(4, assessment.GetRequiredAttackRegimentCount(firstTarget));
             Assert.AreEqual(20, assessment.GetRequiredAttackRegimentStrength(firstTarget));
             Assert.AreEqual(2, assessment.GetRequiredBombardmentStrength(firstTarget));
-            Assert.AreEqual(300, assessment.GetRequiredAttackCombatStrength(secondTarget));
+            Assert.AreEqual(300, context.AttackRequirements.GetCombatStrength(secondTarget));
             Assert.AreEqual(3, assessment.GetRequiredAttackRegimentCount(secondTarget));
             Assert.AreEqual(20, assessment.GetRequiredAttackRegimentStrength(secondTarget));
             Assert.AreEqual(0, assessment.GetRequiredBombardmentStrength(secondTarget));
-        }
-
-        [Test]
-        public void GetRequiredAttackCombatStrength_WithoutOrbitalDefenders_ReturnsMinimumStrength()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1400;
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
-            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
-            AITestSceneBuilder.RevealPlanet(game, empire, target);
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
-
-            Assert.AreEqual(
-                1400,
-                assessment.GetRequiredAttackCombatStrength(
-                    assessment.GetKnownPlanet(target.InstanceID)
-                )
-            );
-        }
-
-        [Test]
-        public void GetRequiredAttackCombatStrength_WithStaleIntelligence_IncreasesRequirement()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1000;
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
-            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
-            AITestSceneBuilder.RevealPlanet(game, empire, target);
-            game.CurrentTick =
-                game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks * 3;
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
-
-            Assert.Greater(
-                assessment.GetRequiredAttackCombatStrength(
-                    assessment.GetKnownPlanet(target.InstanceID)
-                ),
-                1000
-            );
-        }
-
-        [Test]
-        public void GetRequiredAttackCombatStrength_WithExtremelyStaleIntelligence_CapsRequirement()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1000;
-            game.Config.AI.FleetDeployment.StaleIntelMaximumAttackStrengthPercent = 250;
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
-            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
-            AITestSceneBuilder.RevealPlanet(game, empire, target);
-            game.CurrentTick = 10000;
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
-
-            Assert.AreEqual(
-                2500,
-                assessment.GetRequiredAttackCombatStrength(
-                    assessment.GetKnownPlanet(target.InstanceID)
-                )
-            );
         }
 
         [Test]

@@ -2485,7 +2485,7 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.AreSame(reserveFleet, proposal.Fleet);
             Assert.AreSame(targetPlanet, proposal.TargetPlanet);
-            Assert.AreEqual(0, context.Assessment.GetRequiredOrbitalStrength(targetPlanet));
+            Assert.AreEqual(0, context.AttackRequirements.GetOrbitalStrength(targetPlanet));
             Assert.AreEqual(625, context.Assessment.GetRequiredPlanetDefenseStrength(targetPlanet));
         }
 

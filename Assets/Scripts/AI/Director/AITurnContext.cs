@@ -29,6 +29,7 @@ namespace Rebellion.AI.Director
         public PlanetaryAssaultSystem PlanetaryAssault { get; }
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
+        public AIAttackRequirements AttackRequirements { get; }
         public AIStrategicPlan StrategicPlan { get; }
         public int AvailableProjectedMaintenanceHeadroom
         {
@@ -99,6 +100,7 @@ namespace Rebellion.AI.Director
                     .ToHashSet(StringComparer.Ordinal)
                 ?? new HashSet<string>(StringComparer.Ordinal);
             Assessment = new AIAssessment(this);
+            AttackRequirements = new AIAttackRequirements(this);
             StrategicPlan = new AIStrategicPlan(this);
         }
 

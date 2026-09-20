@@ -821,7 +821,7 @@ namespace Rebellion.AI.Planners
             return needsRegiments
                 && context.Assessment.GetFleetRegimentCapacity(fleet) > currentCount
                 && context.Assessment.GetProjectedFleetCombatValue(fleet)
-                    >= context.Assessment.GetRequiredAttackCombatStrength(targetPlanet)
+                    >= context.AttackRequirements.GetCombatStrength(targetPlanet)
                 && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
                     >= context.Assessment.GetRequiredBombardmentStrength(targetPlanet);
         }
@@ -1261,7 +1261,7 @@ namespace Rebellion.AI.Planners
                 );
             }
 
-            int requiredCombat = context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredCombat = context.AttackRequirements.GetCombatStrength(targetPlanet);
             int requiredRegiments = context.Assessment.GetRequiredAttackRegimentCount(targetPlanet);
             int requiredRegimentStrength = context.Assessment.GetRequiredAttackRegimentStrength(
                 targetPlanet

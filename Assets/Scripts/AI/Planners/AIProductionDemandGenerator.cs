@@ -1476,7 +1476,7 @@ namespace Rebellion.AI.Planners
             );
             double readiness = GetFulfillmentRatio(
                 assessment.GetProjectedFleetCombatValue(fleet),
-                assessment.GetRequiredAttackCombatStrength(target)
+                context.AttackRequirements.GetCombatStrength(target)
             );
             readiness = Math.Min(
                 readiness,
@@ -1571,8 +1571,7 @@ namespace Rebellion.AI.Planners
 
             int projectedCombat = context.Assessment.GetProjectedFleetCombatValue(fleet);
             int targetCombat =
-                targetPlanet != null
-                    ? context.Assessment.GetRequiredAttackCombatStrength(targetPlanet)
+                targetPlanet != null ? context.AttackRequirements.GetCombatStrength(targetPlanet)
                 : defenseTarget != null
                     ? context.Assessment.GetRequiredDefenseStrength(defenseTarget)
                 : isColonizationFleet || isColonizationOrder ? projectedCombat
@@ -2406,7 +2405,7 @@ namespace Rebellion.AI.Planners
                 .Infrastructure
                 .DemandUtility
                 .FleetReadiness;
-            int requiredCombat = context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredCombat = context.AttackRequirements.GetCombatStrength(targetPlanet);
             int requiredRegiments = context.Assessment.GetProjectedRequiredAttackRegimentCount(
                 fleet,
                 targetPlanet
@@ -2461,7 +2460,7 @@ namespace Rebellion.AI.Planners
             if (deficit > config.FleetFinalReadinessGateUnitCount)
                 return 0;
 
-            int requiredCombat = context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredCombat = context.AttackRequirements.GetCombatStrength(targetPlanet);
             int requiredRegiments = context.Assessment.GetProjectedRequiredAttackRegimentCount(
                 fleet,
                 targetPlanet

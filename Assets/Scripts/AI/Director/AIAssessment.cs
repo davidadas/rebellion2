@@ -68,10 +68,6 @@ namespace Rebellion.AI.Director
             string,
             int
         >(StringComparer.Ordinal);
-        private readonly Dictionary<string, int> _planetRequiredAttackCombatStrengths =
-            new Dictionary<string, int>(StringComparer.Ordinal);
-        private readonly Dictionary<string, int> _systemRequiredAttackCombatStrengths =
-            new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _planetRequiredAttackRegimentCounts =
             new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _strongestHostileFleetStrengths = new Dictionary<
@@ -616,6 +612,20 @@ namespace Rebellion.AI.Director
                         .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
                         .ToList()
             );
+        }
+
+        /// <summary>
+        /// Returns all known planets in a system.
+        /// </summary>
+        /// <param name="systemId">System instance identifier.</param>
+        /// <returns>The indexed known planets, or an empty collection.</returns>
+        internal IReadOnlyList<Planet> GetKnownSystemPlanets(string systemId)
+        {
+            return
+                !string.IsNullOrEmpty(systemId)
+                && _knownPlanetsBySystemId.TryGetValue(systemId, out IReadOnlyList<Planet> planets)
+                ? planets
+                : Array.Empty<Planet>();
         }
 
         /// <summary>
@@ -1378,104 +1388,6 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns combat strength required to attack a planet.
-        /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>The required attack combat strength.</returns>
-        public int GetRequiredAttackCombatStrength(Planet planet)
-        {
-            if (planet == null || _context?.Game?.Config == null)
-                return 0;
-
-            return GetOrAdd(
-                _planetRequiredAttackCombatStrengths,
-                planet.InstanceID,
-                () =>
-                    IntegerMath.ScaleByPercent(
-                        Math.Max(
-                            _context.Game.Config.AI.FleetDeployment.MinimumAttackStrength,
-                            GetRequiredSystemOrbitalStrength(planet)
-                        ),
-                        GetAttackIntelReservePercent(planet)
-                    )
-            );
-        }
-
-        /// <summary>
-        /// Returns the bounded combat reserve applied as attack-target intelligence ages.
-        /// </summary>
-        /// <param name="planet">Attack target whose intelligence age is evaluated.</param>
-        /// <returns>Required combat percentage, where one hundred means no stale-intel reserve.</returns>
-        public int GetAttackIntelReservePercent(Planet planet)
-        {
-            if (planet == null || _context?.Game?.Config == null)
-                return 100;
-
-            int maximumAge = Math.Max(
-                1,
-                _context.Game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks
-            );
-            int age = GetPlanetIntelAge(planet);
-            if (age <= maximumAge)
-                return 100;
-
-            GameConfig.AIFleetDeploymentConfig config = _context.Game.Config.AI.FleetDeployment;
-            int maximumPercent = Math.Max(100, config.StaleIntelMaximumAttackStrengthPercent);
-            int saturationAge =
-                maximumAge * Math.Max(1, config.StaleIntelReserveSaturationIntervals);
-            int staleAge = Math.Min(age - maximumAge, saturationAge - maximumAge);
-            int staleRange = Math.Max(1, saturationAge - maximumAge);
-            return 100 + (maximumPercent - 100) * staleAge / staleRange;
-        }
-
-        /// <summary>
-        /// Returns the strength required against the strongest known orbital opposition in a system.
-        /// </summary>
-        /// <param name="targetPlanet">Planet identifying the target system.</param>
-        /// <returns>The largest orbital strength requirement in the system.</returns>
-        private int GetRequiredSystemOrbitalStrength(Planet targetPlanet)
-        {
-            string systemId = GetPlanetSystemId(targetPlanet);
-            if (
-                string.IsNullOrEmpty(systemId)
-                || !_knownPlanetsBySystemId.TryGetValue(systemId, out IReadOnlyList<Planet> planets)
-            )
-                return GetRequiredOrbitalStrength(targetPlanet);
-
-            return GetOrAdd(
-                _systemRequiredAttackCombatStrengths,
-                systemId,
-                () => planets.Select(GetRequiredOrbitalStrength).DefaultIfEmpty().Max()
-            );
-        }
-
-        /// <summary>
-        /// Returns the orbital strength required to defeat known forces at a planet.
-        /// </summary>
-        /// <param name="planet">Planet to inspect.</param>
-        /// <returns>The required orbital strength.</returns>
-        public int GetRequiredOrbitalStrength(Planet planet)
-        {
-            if (planet == null || _context?.Game?.Config == null)
-                return 0;
-
-            int hostileStrength =
-                GetStrongestHostileFleetStrength(planet)
-                + GetHostilePlanetaryStarfighterStrength(planet);
-            return hostileStrength > 0
-                ? IntegerMath.ScaleByPercent(
-                    hostileStrength,
-                    _context
-                        .Game
-                        .Config
-                        .AI
-                        .FleetDeployment
-                        .AttackStrengthPercentOfStrongestHostileFleet
-                )
-                : 0;
-        }
-
-        /// <summary>
         /// Returns the known hostile planetary starfighter strength.
         /// </summary>
         /// <param name="planet">Planet to inspect.</param>
@@ -1690,7 +1602,7 @@ namespace Rebellion.AI.Director
         /// <returns>True when the fleet has sufficient strength.</returns>
         public bool CanWinOrbitalCombat(Fleet fleet, Planet planet)
         {
-            int requiredStrength = GetRequiredOrbitalStrength(planet);
+            int requiredStrength = _context.AttackRequirements.GetOrbitalStrength(planet);
             return requiredStrength > 0
                 && fleet?.HasOperationalCapitalShips() == true
                 && GetReadyFleetCombatValue(fleet) >= requiredStrength;
@@ -1705,7 +1617,7 @@ namespace Rebellion.AI.Director
         /// <returns>True when projected fleet strength is sufficient.</returns>
         public bool CanWinProjectedOrbitalCombat(Fleet fleet, Planet planet)
         {
-            int requiredStrength = GetRequiredOrbitalStrength(planet);
+            int requiredStrength = _context.AttackRequirements.GetOrbitalStrength(planet);
             return requiredStrength > 0 && GetProjectedFleetCombatValue(fleet) >= requiredStrength;
         }
 
@@ -1999,7 +1911,7 @@ namespace Rebellion.AI.Director
         /// <returns>True if the fleet is ready to attack.</returns>
         public bool IsFleetReadyToAttack(Fleet fleet, Planet targetPlanet)
         {
-            int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredCombat = _context.AttackRequirements.GetCombatStrength(targetPlanet);
             int availableCombat = GetReadyFleetCombatValue(fleet);
             int requiredRegiments = GetRequiredAttackRegimentCount(fleet, targetPlanet);
             int requiredRegimentStrength = GetRequiredAttackRegimentStrength(fleet, targetPlanet);
@@ -2143,7 +2055,7 @@ namespace Rebellion.AI.Director
         /// <returns>True when projected strength is sufficient.</returns>
         public bool WillMeetAttackRequirements(Fleet fleet, Planet targetPlanet)
         {
-            int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredCombat = _context.AttackRequirements.GetCombatStrength(targetPlanet);
             int availableCombat = GetProjectedFleetCombatValue(fleet);
             int requiredRegiments = GetRequiredAttackRegimentCount(targetPlanet);
             int requiredRegimentStrength = GetRequiredAttackRegimentStrength(targetPlanet);
@@ -2165,7 +2077,7 @@ namespace Rebellion.AI.Director
         /// <returns>The satisfied readiness gate count.</returns>
         public int CountCurrentAttackRequirementsMet(Fleet fleet, Planet targetPlanet)
         {
-            int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredCombat = _context.AttackRequirements.GetCombatStrength(targetPlanet);
             int requiredRegiments = GetRequiredAttackRegimentCount(fleet, targetPlanet);
             int requiredRegimentStrength = GetRequiredAttackRegimentStrength(fleet, targetPlanet);
             int requiredBombardment = GetRequiredBombardmentStrength(targetPlanet);
@@ -2201,7 +2113,7 @@ namespace Rebellion.AI.Director
         /// <returns>The satisfied requirement count.</returns>
         public int CountTargetAttackRequirementsMet(Fleet fleet, Planet targetPlanet)
         {
-            int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredCombat = _context.AttackRequirements.GetCombatStrength(targetPlanet);
             int requiredRegiments = GetRequiredAttackRegimentCount(targetPlanet);
             int requiredRegimentStrength = GetRequiredAttackRegimentStrength(targetPlanet);
             int requiredBombardment = GetRequiredBombardmentStrength(targetPlanet);
