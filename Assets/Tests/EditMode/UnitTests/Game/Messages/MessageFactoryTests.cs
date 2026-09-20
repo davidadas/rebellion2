@@ -1922,9 +1922,6 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(mainCharacter.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
         }
 
-        /// <summary>
-        /// Verifies create messages automatic mission cancellation uses failure voice.
-        /// </summary>
         [Test]
         public void CreateMessages_AutomaticallyCanceledMission_UsesFailureVoice()
         {
