@@ -22,7 +22,7 @@ namespace Rebellion.AI.Scoring
             int availableStrength
         )
         {
-            int requiredStrength = context.Assessment.GetRequiredDefenseStrength(targetPlanet);
+            int requiredStrength = context.StrategicPlan.GetDefenseStrength(targetPlanet);
             int strengthGap = Math.Max(0, requiredStrength - availableStrength);
             return AIUtility.Evaluate(
                 AIUtility.Fulfillment(strengthGap, AIUtilityDomain.DefenseStrengthGap),

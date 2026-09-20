@@ -383,9 +383,7 @@ namespace Rebellion.AI.Planners
                         config.InteriorStarfighterBaselinePercent
                     );
             }
-            int requiredDefenseStrength = context.Assessment.GetRequiredPlanetDefenseStrength(
-                planet
-            );
+            int requiredDefenseStrength = context.StrategicPlan.GetPlanetDefenseStrength(planet);
             int fighterStrength = GetStrongestAvailableStarfighterStrength(context);
             int threatReinforcement =
                 fighterStrength > 0
@@ -1573,8 +1571,7 @@ namespace Rebellion.AI.Planners
             int projectedCombat = context.Assessment.GetProjectedFleetCombatValue(fleet);
             int targetCombat =
                 targetPlanet != null ? context.AttackRequirements.GetCombatStrength(targetPlanet)
-                : defenseTarget != null
-                    ? context.Assessment.GetRequiredDefenseStrength(defenseTarget)
+                : defenseTarget != null ? context.StrategicPlan.GetDefenseStrength(defenseTarget)
                 : isColonizationFleet || isColonizationOrder ? projectedCombat
                 : context.StrategicPlan.AssemblyFleetCombatStrength;
             int combatDeficit = targetCombat - projectedCombat;
@@ -2562,7 +2559,7 @@ namespace Rebellion.AI.Planners
             Planet target = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
             return
                 context.Assessment.IsOwnedPlanet(target)
-                && context.Assessment.GetRequiredDefenseStrength(target) > 0
+                && context.StrategicPlan.GetDefenseStrength(target) > 0
                 ? target
                 : null;
         }

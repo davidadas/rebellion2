@@ -1261,36 +1261,10 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns the fleet strength required to defend a headquarters planet.
-        /// </summary>
-        /// <param name="planet">Headquarters planet to inspect.</param>
-        /// <returns>The required defense strength.</returns>
-        public int GetRequiredHeadquartersDefenseStrength(Planet planet)
-        {
-            if (!IsPriorityDefensePlanet(planet) || _context?.Game?.Config == null)
-                return 0;
-
-            GameConfig.AIFleetDeploymentConfig config = _context.Game.Config.AI.FleetDeployment;
-            int hostileFleetRequirement = IntegerMath.ScaleByPercent(
-                GetStrongestKnownHostileFleetStrength(),
-                config.AttackStrengthPercentOfStrongestHostileFleet
-            );
-            int affordableDefense = IntegerMath.ScaleByPercent(
-                GetTotalFleetCombatStrength(),
-                config.HeadquartersDefenseCombatPercent
-            );
-            int defenseTarget = Math.Min(
-                hostileFleetRequirement,
-                Math.Max(config.MinimumDefenseStrength, affordableDefense)
-            );
-            return Math.Max(config.MinimumDefenseStrength, defenseTarget);
-        }
-
-        /// <summary>
         /// Returns the strongest hostile fleet visible to the faction.
         /// </summary>
         /// <returns>The hostile fleet strength.</returns>
-        private int GetStrongestKnownHostileFleetStrength()
+        internal int GetStrongestKnownHostileFleetStrength()
         {
             if (!_strongestKnownHostileFleetStrength.HasValue)
             {
@@ -1308,7 +1282,7 @@ namespace Rebellion.AI.Director
         /// Returns the faction's total fleet combat strength.
         /// </summary>
         /// <returns>Total fleet combat strength.</returns>
-        private int GetTotalFleetCombatStrength()
+        internal int GetTotalFleetCombatStrength()
         {
             if (!_totalFleetCombatStrength.HasValue)
                 _totalFleetCombatStrength = OwnedFleets.Sum(GetFleetCombatValue);
@@ -1456,56 +1430,6 @@ namespace Rebellion.AI.Director
                 .ToHashSet(StringComparer.Ordinal);
 
             return _hostileSectorIds.Contains(sectorId);
-        }
-
-        /// <summary>
-        /// Returns the fleet strength required to defend an ordinary planet.
-        /// </summary>
-        /// <param name="planet">Planet to inspect.</param>
-        /// <returns>The required defense strength.</returns>
-        public int GetRequiredPlanetDefenseStrength(Planet planet)
-        {
-            if (!IsOwnedPlanet(planet) || _context?.Game?.Config == null)
-                return 0;
-
-            int hostileStrength = GetPlanetDefenseThreatStrength(planet);
-            return hostileStrength > 0
-                ? IntegerMath.ScaleByPercent(
-                    hostileStrength,
-                    _context
-                        .Game
-                        .Config
-                        .AI
-                        .FleetDeployment
-                        .AttackStrengthPercentOfStrongestHostileFleet
-                )
-                : 0;
-        }
-
-        /// <summary>
-        /// Returns the fleet strength required to defend a planet.
-        /// </summary>
-        /// <param name="planet">Planet to inspect.</param>
-        /// <returns>The required defense strength.</returns>
-        public int GetRequiredDefenseStrength(Planet planet)
-        {
-            return IsPriorityDefensePlanet(planet)
-                ? GetRequiredHeadquartersDefenseStrength(planet)
-                : GetRequiredPlanetDefenseStrength(planet);
-        }
-
-        /// <summary>
-        /// Returns whether a fleet can satisfy a planet's defense requirement.
-        /// </summary>
-        /// <param name="fleet">Candidate defense fleet.</param>
-        /// <param name="planet">Planet to defend.</param>
-        /// <returns>True when the fleet is sufficient.</returns>
-        public bool CanDefendPlanet(Fleet fleet, Planet planet)
-        {
-            int requiredStrength = GetRequiredDefenseStrength(planet);
-            return requiredStrength > 0
-                && fleet?.HasOperationalCapitalShips() == true
-                && GetReadyFleetCombatValue(fleet) >= requiredStrength;
         }
 
         /// <summary>

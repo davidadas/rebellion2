@@ -66,7 +66,7 @@ namespace Rebellion.AI.Planners
                 return primaryFleet;
             }
 
-            int requiredDefense = context.Assessment.GetRequiredHeadquartersDefenseStrength(
+            int requiredDefense = context.StrategicPlan.GetHeadquartersDefenseStrength(
                 headquarters
             );
             Fleet inboundFleet = context
@@ -108,7 +108,7 @@ namespace Rebellion.AI.Planners
                 Planet targetPlanet in context
                     .Assessment.OwnedPlanets.Where(planet =>
                         !context.Assessment.IsFactionHeadquarters(planet)
-                        && context.Assessment.GetRequiredPlanetDefenseStrength(planet) > 0
+                        && context.StrategicPlan.GetPlanetDefenseStrength(planet) > 0
                         && !HasDefenseOrder(context, planet)
                     )
                     .OrderByDescending(planet =>
@@ -143,7 +143,7 @@ namespace Rebellion.AI.Planners
                 .Assessment.OwnedFleets.Where(fleet =>
                     !assignedFleets.Contains(fleet)
                     && CanAssignPlanetDefense(context, fleet)
-                    && context.Assessment.CanDefendPlanet(fleet, targetPlanet)
+                    && context.StrategicPlan.CanDefend(fleet, targetPlanet)
                 )
                 .OrderByDescending(fleet =>
                     AIFleetProposalScorer.ScoreDefenseAssignment(context, fleet, targetPlanet)

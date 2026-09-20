@@ -1345,9 +1345,7 @@ namespace Rebellion.Tests.AI.Planners
                     && item.DestinationPlanet == planet
                 );
 
-            int requiredDefenseStrength = context.Assessment.GetRequiredPlanetDefenseStrength(
-                planet
-            );
+            int requiredDefenseStrength = context.StrategicPlan.GetPlanetDefenseStrength(planet);
             int expectedThreatReinforcement = (requiredDefenseStrength + 9) / 10;
             Assert.AreEqual(expectedThreatReinforcement, demand.QuantityNeeded);
         }

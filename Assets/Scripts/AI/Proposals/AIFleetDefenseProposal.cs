@@ -142,7 +142,7 @@ namespace Rebellion.AI.Proposals
 
             if (
                 !context.Assessment.IsPriorityDefensePlanet(TargetPlanet)
-                && context.Assessment.GetRequiredPlanetDefenseStrength(TargetPlanet) <= 0
+                && context.StrategicPlan.GetPlanetDefenseStrength(TargetPlanet) <= 0
             )
                 return false;
 

@@ -190,7 +190,7 @@ namespace Rebellion.AI.Scoring
             );
             score.Add(
                 AIUtility.Fulfillment(
-                    context.Assessment.GetRequiredDefenseStrength(targetPlanet),
+                    context.StrategicPlan.GetDefenseStrength(targetPlanet),
                     AIUtilityDomain.DefenseStrengthGap
                 ),
                 utility.DefenseNeed
@@ -263,7 +263,7 @@ namespace Rebellion.AI.Scoring
         )
         {
             int fleetStrength = context.Assessment.GetFleetCombatValue(fleet);
-            int requiredStrength = context.Assessment.GetRequiredDefenseStrength(targetPlanet);
+            int requiredStrength = context.StrategicPlan.GetDefenseStrength(targetPlanet);
             return AIUtility.Fulfillment(requiredStrength, fleetStrength);
         }
 
@@ -733,7 +733,7 @@ namespace Rebellion.AI.Scoring
         {
             if (targetFleet?.Order?.OrderType == FleetOrderType.Defend)
             {
-                int requiredDefense = context.Assessment.GetRequiredDefenseStrength(targetPlanet);
+                int requiredDefense = context.StrategicPlan.GetDefenseStrength(targetPlanet);
                 double defenseBefore = GetFulfillmentRatio(
                     context.Assessment.GetProjectedFleetCombatValue(targetFleet),
                     requiredDefense
@@ -1144,7 +1144,7 @@ namespace Rebellion.AI.Scoring
 
             if (order.OrderType == FleetOrderType.Defend)
                 return context.Assessment.IsOwnedPlanet(proposal.TargetPlanet)
-                    && context.Assessment.GetRequiredDefenseStrength(proposal.TargetPlanet) > 0;
+                    && context.StrategicPlan.GetDefenseStrength(proposal.TargetPlanet) > 0;
 
             string targetOwnerId = proposal.TargetPlanet.GetOwnerInstanceID();
             return order.OrderType == FleetOrderType.Attack

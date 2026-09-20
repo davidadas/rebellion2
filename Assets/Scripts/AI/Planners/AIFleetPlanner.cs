@@ -542,7 +542,7 @@ namespace Rebellion.AI.Planners
             if (
                 !context.Assessment.IsOwnedPlanet(targetPlanet)
                 || !context.Assessment.IsPriorityDefensePlanet(targetPlanet)
-                    && context.Assessment.GetRequiredPlanetDefenseStrength(targetPlanet) <= 0
+                    && context.StrategicPlan.GetPlanetDefenseStrength(targetPlanet) <= 0
             )
             {
                 proposals.Add(new AIClearFleetOrderProposal(fleet, order));
@@ -992,7 +992,7 @@ namespace Rebellion.AI.Planners
             {
                 return
                     context.Assessment.IsOwnedPlanet(targetPlanet)
-                    && context.Assessment.GetRequiredDefenseStrength(targetPlanet) > 0
+                    && context.StrategicPlan.GetDefenseStrength(targetPlanet) > 0
                     ? targetPlanet
                     : null;
             }
@@ -1033,7 +1033,7 @@ namespace Rebellion.AI.Planners
             {
                 return context.Assessment.IsOwnedPlanet(targetPlanet)
                     && context.Assessment.GetProjectedFleetCombatValue(targetFleet)
-                        < context.Assessment.GetRequiredDefenseStrength(targetPlanet);
+                        < context.StrategicPlan.GetDefenseStrength(targetPlanet);
             }
 
             return targetFleet.Order?.OrderType == FleetOrderType.Attack
@@ -1165,8 +1165,8 @@ namespace Rebellion.AI.Planners
                 return false;
 
             int requiredDefense = context.Assessment.IsPriorityDefensePlanet(sourcePlanet)
-                ? context.Assessment.GetRequiredHeadquartersDefenseStrength(sourcePlanet)
-                : context.Assessment.GetRequiredPlanetDefenseStrength(sourcePlanet);
+                ? context.StrategicPlan.GetHeadquartersDefenseStrength(sourcePlanet)
+                : context.StrategicPlan.GetPlanetDefenseStrength(sourcePlanet);
             if (requiredDefense <= 0)
                 return true;
 
@@ -1231,7 +1231,7 @@ namespace Rebellion.AI.Planners
             if (targetFleet.Order?.OrderType == FleetOrderType.Defend)
             {
                 return context.Assessment.GetProjectedFleetCombatValue(targetFleet)
-                        < context.Assessment.GetRequiredDefenseStrength(targetPlanet)
+                        < context.StrategicPlan.GetDefenseStrength(targetPlanet)
                     && context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip) > 0;
             }
 
@@ -1255,7 +1255,7 @@ namespace Rebellion.AI.Planners
         {
             if (targetFleet.Order?.OrderType == FleetOrderType.Defend)
             {
-                int requiredDefense = context.Assessment.GetRequiredDefenseStrength(targetPlanet);
+                int requiredDefense = context.StrategicPlan.GetDefenseStrength(targetPlanet);
                 int defenseGap = Math.Max(
                     0,
                     requiredDefense - context.Assessment.GetProjectedFleetCombatValue(targetFleet)

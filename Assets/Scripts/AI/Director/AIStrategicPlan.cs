@@ -38,6 +38,85 @@ namespace Rebellion.AI.Director
                 : 0;
 
         /// <summary>
+        /// Returns the fleet strength allocated to defend a planet.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>The required defense strength.</returns>
+        public int GetDefenseStrength(Planet planet)
+        {
+            return _context.Assessment.IsPriorityDefensePlanet(planet)
+                ? GetHeadquartersDefenseStrength(planet)
+                : GetPlanetDefenseStrength(planet);
+        }
+
+        /// <summary>
+        /// Returns the fleet strength allocated to defend a headquarters planet.
+        /// </summary>
+        /// <param name="planet">Headquarters planet to inspect.</param>
+        /// <returns>The required defense strength.</returns>
+        public int GetHeadquartersDefenseStrength(Planet planet)
+        {
+            if (
+                !_context.Assessment.IsPriorityDefensePlanet(planet)
+                || _context?.Game?.Config == null
+            )
+                return 0;
+
+            var config = _context.Game.Config.AI.FleetDeployment;
+            int hostileFleetRequirement = IntegerMath.ScaleByPercent(
+                _context.Assessment.GetStrongestKnownHostileFleetStrength(),
+                config.AttackStrengthPercentOfStrongestHostileFleet
+            );
+            int affordableDefense = IntegerMath.ScaleByPercent(
+                _context.Assessment.GetTotalFleetCombatStrength(),
+                config.HeadquartersDefenseCombatPercent
+            );
+            int defenseTarget = Math.Min(
+                hostileFleetRequirement,
+                Math.Max(config.MinimumDefenseStrength, affordableDefense)
+            );
+            return Math.Max(config.MinimumDefenseStrength, defenseTarget);
+        }
+
+        /// <summary>
+        /// Returns the fleet strength allocated to defend an ordinary planet.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>The required defense strength.</returns>
+        public int GetPlanetDefenseStrength(Planet planet)
+        {
+            if (!_context.Assessment.IsOwnedPlanet(planet) || _context?.Game?.Config == null)
+                return 0;
+
+            int hostileStrength = _context.Assessment.GetPlanetDefenseThreatStrength(planet);
+            return hostileStrength > 0
+                ? IntegerMath.ScaleByPercent(
+                    hostileStrength,
+                    _context
+                        .Game
+                        .Config
+                        .AI
+                        .FleetDeployment
+                        .AttackStrengthPercentOfStrongestHostileFleet
+                )
+                : 0;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet satisfies a planet's defense allocation.
+        /// </summary>
+        /// <param name="fleet">Candidate defense fleet.</param>
+        /// <param name="planet">Planet to defend.</param>
+        /// <returns>True when the fleet is sufficient.</returns>
+        public bool CanDefend(Fleet fleet, Planet planet)
+        {
+            int required = GetDefenseStrength(planet);
+            return required > 0
+                && fleet?.HasOperationalCapitalShips() == true
+                && _context.Assessment.GetReadyFleetCombatValue(fleet) >= required;
+        }
+
+        /// <summary>
         /// Builds the allocations shared by one faction AI turn.
         /// </summary>
         /// <param name="context">The turn context and cached assessment facts.</param>
@@ -120,9 +199,7 @@ namespace Rebellion.AI.Director
                     < _context.Game.Config.AI.Garrison.SupportThreshold
                 && !_context.Assessment.HasFullShields(planet)
                 && _context.Assessment.GetDefensiveSupportRisk(planet) > 1;
-            int requiredStrength = _context.Assessment.GetRequiredHeadquartersDefenseStrength(
-                planet
-            );
+            int requiredStrength = GetHeadquartersDefenseStrength(planet);
             commitment = new AIPlanetDefenseCommitment(holdAllLocalFleets, requiredStrength);
             _defenseByPlanetId[planet.InstanceID] = commitment;
             return commitment;

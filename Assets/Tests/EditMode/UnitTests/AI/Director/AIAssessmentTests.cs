@@ -444,9 +444,12 @@ namespace Rebellion.Tests.AI.Director
             );
             AITestSceneBuilder.RevealPlanet(game, empire, enemyPlanet);
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(1400, assessment.GetRequiredHeadquartersDefenseStrength(headquarters));
+            Assert.AreEqual(
+                1400,
+                context.StrategicPlan.GetHeadquartersDefenseStrength(headquarters)
+            );
         }
 
         [Test]
@@ -538,9 +541,12 @@ namespace Rebellion.Tests.AI.Director
             );
             AITestSceneBuilder.RevealPlanet(game, empire, enemyPlanet);
 
-            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            Assert.AreEqual(1000, assessment.GetRequiredHeadquartersDefenseStrength(headquarters));
+            Assert.AreEqual(
+                1000,
+                context.StrategicPlan.GetHeadquartersDefenseStrength(headquarters)
+            );
         }
 
         [Test]
