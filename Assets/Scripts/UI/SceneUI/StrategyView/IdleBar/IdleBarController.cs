@@ -341,7 +341,12 @@ public sealed class IdleBarController
         actions.RequestIdleBarRender();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Reports whether one planetary manufacturing lane appears in the idle bar.
+    /// </summary>
+    /// <param name="planet">The planet containing the manufacturing lane.</param>
+    /// <param name="type">The manufacturing lane type.</param>
+    /// <returns><see langword="true"/> when the lane is tracked.</returns>
     public bool IsIdleBarTracked(Planet planet, ManufacturingType type)
     {
         return !string.IsNullOrEmpty(planet?.InstanceID)
@@ -349,7 +354,11 @@ public sealed class IdleBarController
             && !ContainsIgnoredItem(ignoredItems, planet.InstanceID, type.ToString());
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Changes whether one planetary manufacturing lane appears in the idle bar.
+    /// </summary>
+    /// <param name="planet">The planet containing the manufacturing lane.</param>
+    /// <param name="type">The manufacturing lane type.</param>
     public void ToggleIdleBarTracking(Planet planet, ManufacturingType type)
     {
         if (string.IsNullOrEmpty(planet?.InstanceID) || !IsTrackedManufacturingType(type))
