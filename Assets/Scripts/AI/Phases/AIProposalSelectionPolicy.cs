@@ -393,7 +393,7 @@ namespace Rebellion.AI.Phases
         {
             if (
                 proposal?.Product?.GetReference() is not Building
-                || proposal.Demand?.Kind == AIDemandKind.BuildingUpgrade
+                || proposal.Demand?.Kind == AIProductionRequirementKind.BuildingUpgrade
                 || proposal.Destination is not Planet destination
             )
             {
@@ -418,7 +418,7 @@ namespace Rebellion.AI.Phases
             if (
                 proposal is not AIManufactureProposal manufactureProposal
                 || manufactureProposal.Product?.GetReference() is not Building
-                || manufactureProposal.Demand?.Kind == AIDemandKind.BuildingUpgrade
+                || manufactureProposal.Demand?.Kind == AIProductionRequirementKind.BuildingUpgrade
                 || manufactureProposal.Destination is not Planet destination
             )
             {

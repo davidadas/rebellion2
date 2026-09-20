@@ -20,7 +20,10 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand collection to update.</param>
-        internal void AddColonyRequirements(AITurnContext context, ICollection<AIDemand> demands)
+        internal void AddColonyRequirements(
+            AITurnContext context,
+            ICollection<AIProductionRequirement> demands
+        )
         {
             int plannedMines = context.Faction.GetTotalRawMinedResources();
             int plannedRefineries = context.Faction.GetTotalRawRefinementCapacity();
@@ -39,13 +42,13 @@ namespace Rebellion.AI.Planners
                     plannedRefineries
                 );
                 demands.Add(
-                    new AIDemand(
-                        AIDemand.CreateId(
+                    new AIProductionRequirement(
+                        AIProductionRequirement.CreateId(
                             context.Faction.InstanceID,
-                            AIDemandKind.Colony,
+                            AIProductionRequirementKind.Colony,
                             planet.InstanceID
                         ),
-                        AIDemandKind.Colony,
+                        AIProductionRequirementKind.Colony,
                         ManufacturingType.Building,
                         buildingType,
                         planet,
@@ -110,7 +113,10 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand collection to update.</param>
-        internal void AddRequirements(AITurnContext context, ICollection<AIDemand> demands)
+        internal void AddRequirements(
+            AITurnContext context,
+            ICollection<AIProductionRequirement> demands
+        )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             List<SpecialForces> existingUnits =
@@ -173,13 +179,13 @@ namespace Rebellion.AI.Planners
                     return;
 
                 demands.Add(
-                    new AIDemand(
-                        AIDemand.CreateId(
+                    new AIProductionRequirement(
+                        AIProductionRequirement.CreateId(
                             context.Faction.InstanceID,
-                            AIDemandKind.SpecialForces,
+                            AIProductionRequirementKind.SpecialForces,
                             template.GetTypeID()
                         ),
-                        AIDemandKind.SpecialForces,
+                        AIProductionRequirementKind.SpecialForces,
                         ManufacturingType.Troop,
                         BuildingType.None,
                         destination,

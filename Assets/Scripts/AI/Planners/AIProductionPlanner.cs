@@ -24,7 +24,7 @@ namespace Rebellion.AI.Planners
             new Dictionary<ManufacturingType, List<Technology>>();
         private readonly Dictionary<
             (
-                AIDemandKind Kind,
+                AIProductionRequirementKind Kind,
                 BuildingType BuildingType,
                 string DestinationId,
                 string ProductTypeId,
@@ -34,7 +34,7 @@ namespace Rebellion.AI.Planners
         > _selectedTechnologies =
             new Dictionary<
                 (
-                    AIDemandKind Kind,
+                    AIProductionRequirementKind Kind,
                     BuildingType BuildingType,
                     string DestinationId,
                     string ProductTypeId,
@@ -47,7 +47,7 @@ namespace Rebellion.AI.Planners
                 string DestinationId,
                 ManufacturingType ManufacturingType,
                 ProducerMode Mode,
-                AIDemandKind DemandKind,
+                AIProductionRequirementKind DemandKind,
                 string ProductTypeId,
                 int Quantity
             ),
@@ -58,7 +58,7 @@ namespace Rebellion.AI.Planners
                     string DestinationId,
                     ManufacturingType ManufacturingType,
                     ProducerMode Mode,
-                    AIDemandKind DemandKind,
+                    AIProductionRequirementKind DemandKind,
                     string ProductTypeId,
                     int Quantity
                 ),
@@ -102,7 +102,7 @@ namespace Rebellion.AI.Planners
         public List<AIProposal> Plan(AITurnContext context)
         {
             ResetPlanningCache();
-            List<AIDemand> demands = _demandGenerator.Generate(context);
+            List<AIProductionRequirement> demands = _demandGenerator.Generate(context);
             return GenerateProposals(context, demands);
         }
 
@@ -127,13 +127,16 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">Demand items to satisfy.</param>
         /// <returns>Manufacture proposals generated for the demands.</returns>
-        private List<AIProposal> GenerateProposals(AITurnContext context, List<AIDemand> demands)
+        private List<AIProposal> GenerateProposals(
+            AITurnContext context,
+            List<AIProductionRequirement> demands
+        )
         {
             List<AIProposal> proposals = new List<AIProposal>();
             if (context?.Faction == null || demands == null || demands.Count == 0)
                 return proposals;
 
-            foreach (AIDemand demand in demands)
+            foreach (AIProductionRequirement demand in demands)
             {
                 AddManufactureProposal(context, demand, proposals);
             }
@@ -149,7 +152,7 @@ namespace Rebellion.AI.Planners
         /// <param name="proposals">The proposal list to update.</param>
         private void AddManufactureProposal(
             AITurnContext context,
-            AIDemand demand,
+            AIProductionRequirement demand,
             List<AIProposal> proposals
         )
         {
@@ -207,7 +210,7 @@ namespace Rebellion.AI.Planners
 
             foreach (Planet producerPlanet in producerPlanets)
             {
-                AIDemand proposalDemand = GetProposalDemand(
+                AIProductionRequirement proposalDemand = GetProposalDemand(
                     context,
                     demand,
                     producerPlanet,
@@ -245,7 +248,7 @@ namespace Rebellion.AI.Planners
         /// <param name="proposals">The proposal list to update.</param>
         private void AddEquivalentProducerProposal(
             AITurnContext context,
-            AIDemand demand,
+            AIProductionRequirement demand,
             Technology product,
             int remainingQuantity,
             IReadOnlyList<Planet> producerPlanets,
@@ -255,7 +258,7 @@ namespace Rebellion.AI.Planners
             if (producerPlanets.Count == 0)
                 return;
 
-            AIDemand proposalDemand = GetProposalDemand(
+            AIProductionRequirement proposalDemand = GetProposalDemand(
                 context,
                 demand,
                 producerPlanets[0],
@@ -286,7 +289,7 @@ namespace Rebellion.AI.Planners
         /// <param name="proposals">The proposal list to update.</param>
         private void AddProducerSpecificProposal(
             AITurnContext context,
-            AIDemand demand,
+            AIProductionRequirement demand,
             Technology product,
             int remainingQuantity,
             IReadOnlyList<Planet> producerPlanets,
@@ -312,21 +315,24 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">Demand item to satisfy.</param>
         /// <returns>The selected technology, or null.</returns>
-        private Technology GetUnlockedTechnology(AITurnContext context, AIDemand demand)
+        private Technology GetUnlockedTechnology(
+            AITurnContext context,
+            AIProductionRequirement demand
+        )
         {
             if (demand == null)
                 return null;
 
             if (
                 demand.Kind
-                is AIDemandKind.FleetCapitalShip
-                    or AIDemandKind.FleetSeedCapitalShip
-                    or AIDemandKind.ColonizationFleetSeedCapitalShip
+                is AIProductionRequirementKind.FleetCapitalShip
+                    or AIProductionRequirementKind.FleetSeedCapitalShip
+                    or AIProductionRequirementKind.ColonizationFleetSeedCapitalShip
             )
                 return GetUnlockedCapitalShipTechnology(context, demand);
 
             (
-                AIDemandKind Kind,
+                AIProductionRequirementKind Kind,
                 BuildingType BuildingType,
                 string DestinationId,
                 string ProductTypeId,
@@ -334,7 +340,9 @@ namespace Rebellion.AI.Planners
             ) key = (
                 demand.Kind,
                 demand.BuildingType,
-                demand.Kind is AIDemandKind.FleetStarfighter or AIDemandKind.FleetRegiment
+                demand.Kind
+                    is AIProductionRequirementKind.FleetStarfighter
+                        or AIProductionRequirementKind.FleetRegiment
                     ? demand.Destination?.InstanceID
                     : null,
                 demand.ProductTypeId,
@@ -345,19 +353,25 @@ namespace Rebellion.AI.Planners
 
             selectedTechnology = demand.Kind switch
             {
-                AIDemandKind.Colony
-                or AIDemandKind.Mine
-                or AIDemandKind.Refinery
-                or AIDemandKind.ConstructionFacility
-                or AIDemandKind.Shipyard
-                or AIDemandKind.TrainingFacility
-                or AIDemandKind.BuildingUpgrade
-                or AIDemandKind.PlanetaryDefense => GetUnlockedBuildingTechnology(context, demand),
-                AIDemandKind.FleetStarfighter
-                or AIDemandKind.PlanetaryStarfighterReserve
-                or AIDemandKind.FleetRegiment
-                or AIDemandKind.GarrisonRegimentReserve
-                or AIDemandKind.SpecialForces => GetUnlockedUnitTechnology(context, demand),
+                AIProductionRequirementKind.Colony
+                or AIProductionRequirementKind.Mine
+                or AIProductionRequirementKind.Refinery
+                or AIProductionRequirementKind.ConstructionFacility
+                or AIProductionRequirementKind.Shipyard
+                or AIProductionRequirementKind.TrainingFacility
+                or AIProductionRequirementKind.BuildingUpgrade
+                or AIProductionRequirementKind.PlanetaryDefense => GetUnlockedBuildingTechnology(
+                    context,
+                    demand
+                ),
+                AIProductionRequirementKind.FleetStarfighter
+                or AIProductionRequirementKind.PlanetaryStarfighterReserve
+                or AIProductionRequirementKind.FleetRegiment
+                or AIProductionRequirementKind.GarrisonRegimentReserve
+                or AIProductionRequirementKind.SpecialForces => GetUnlockedUnitTechnology(
+                    context,
+                    demand
+                ),
                 _ => null,
             };
             _selectedTechnologies.Add(key, selectedTechnology);
@@ -370,7 +384,10 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">Building demand to satisfy.</param>
         /// <returns>The selected technology, or null.</returns>
-        private Technology GetUnlockedBuildingTechnology(AITurnContext context, AIDemand demand)
+        private Technology GetUnlockedBuildingTechnology(
+            AITurnContext context,
+            AIProductionRequirement demand
+        )
         {
             if (context?.Faction == null || demand?.BuildingType == BuildingType.None)
                 return null;
@@ -404,9 +421,12 @@ namespace Rebellion.AI.Planners
         /// <param name="demand">The production demand.</param>
         /// <param name="building">The building to evaluate.</param>
         /// <returns>True when no replacement is required or the building is its declared upgrade.</returns>
-        private static bool IsEligibleBuildingUpgrade(AIDemand demand, Building building)
+        private static bool IsEligibleBuildingUpgrade(
+            AIProductionRequirement demand,
+            Building building
+        )
         {
-            return demand.Kind != AIDemandKind.BuildingUpgrade
+            return demand.Kind != AIProductionRequirementKind.BuildingUpgrade
                 || demand.BuildingToReplace.CanUpgradeTo(building);
         }
 
@@ -416,9 +436,15 @@ namespace Rebellion.AI.Planners
         /// <param name="demand">The production demand.</param>
         /// <param name="building">The building to evaluate.</param>
         /// <returns>The net maintenance cost.</returns>
-        private static int GetBuildingMaintenanceCost(AIDemand demand, Building building)
+        private static int GetBuildingMaintenanceCost(
+            AIProductionRequirement demand,
+            Building building
+        )
         {
-            if (demand.Kind != AIDemandKind.BuildingUpgrade || demand.BuildingToReplace == null)
+            if (
+                demand.Kind != AIProductionRequirementKind.BuildingUpgrade
+                || demand.BuildingToReplace == null
+            )
                 return building.MaintenanceCost;
 
             return Math.Max(0, building.MaintenanceCost - demand.BuildingToReplace.MaintenanceCost);
@@ -430,7 +456,10 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
         /// <returns>The available maintenance budget.</returns>
-        private int GetBuildingMaintenanceBudget(AITurnContext context, AIDemand demand)
+        private int GetBuildingMaintenanceBudget(
+            AITurnContext context,
+            AIProductionRequirement demand
+        )
         {
             if (IsFacilityExpansionDemand(demand))
                 return GetFacilityMaintenanceBudget(context);
@@ -468,15 +497,15 @@ namespace Rebellion.AI.Planners
         /// <param name="product">The manufacturable product.</param>
         /// <param name="remainingQuantity">The remaining requested quantity.</param>
         /// <returns>The adjusted demand, or null when this producer cannot accept a batch.</returns>
-        private AIDemand GetProposalDemand(
+        private AIProductionRequirement GetProposalDemand(
             AITurnContext context,
-            AIDemand demand,
+            AIProductionRequirement demand,
             Planet producerPlanet,
             Technology product,
             int remainingQuantity
         )
         {
-            if (demand.Kind == AIDemandKind.BuildingUpgrade)
+            if (demand.Kind == AIProductionRequirementKind.BuildingUpgrade)
                 return demand;
 
             if (IsDistributedProductionDemand(demand))
@@ -520,7 +549,10 @@ namespace Rebellion.AI.Planners
         /// <param name="demand">The production demand.</param>
         /// <param name="quantity">The requested quantity.</param>
         /// <returns>The copied demand.</returns>
-        private static AIDemand CreateProposalDemand(AIDemand demand, int quantity)
+        private static AIProductionRequirement CreateProposalDemand(
+            AIProductionRequirement demand,
+            int quantity
+        )
         {
             return demand.WithQuantity(quantity);
         }
@@ -534,11 +566,11 @@ namespace Rebellion.AI.Planners
         /// <returns>The requested unit count.</returns>
         private int GetRequestedManufacturingCount(
             AITurnContext context,
-            AIDemand demand,
+            AIProductionRequirement demand,
             IManufacturable product
         )
         {
-            if (demand.Kind == AIDemandKind.PlanetaryStarfighterReserve)
+            if (demand.Kind == AIProductionRequirementKind.PlanetaryStarfighterReserve)
             {
                 return Math.Min(1, Math.Max(0, demand.QuantityNeeded));
             }
@@ -547,7 +579,7 @@ namespace Rebellion.AI.Planners
                 return Math.Max(0, demand.QuantityNeeded);
 
             int requestedCount =
-                demand.Kind == AIDemandKind.FleetCapitalShip
+                demand.Kind == AIProductionRequirementKind.FleetCapitalShip
                     ? GetCapitalShipCount(context, demand, product as CapitalShip)
                     : demand.QuantityNeeded;
 
@@ -569,7 +601,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The calculated value.</returns>
         private int GetCapitalShipCount(
             AITurnContext context,
-            AIDemand demand,
+            AIProductionRequirement demand,
             CapitalShip capitalShip
         )
         {
@@ -671,7 +703,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The calculated value.</returns>
         private int GetFleetUnitDiversityLimit(
             AITurnContext context,
-            AIDemand demand,
+            AIProductionRequirement demand,
             IManufacturable product
         )
         {
@@ -752,7 +784,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The calculated value.</returns>
         private int GetDefensiveBatchSize(
             AITurnContext context,
-            AIDemand demand,
+            AIProductionRequirement demand,
             IManufacturable product
         )
         {
@@ -812,7 +844,7 @@ namespace Rebellion.AI.Planners
         /// <returns>The calculated value.</returns>
         private int GetFacilityBatchSize(
             AITurnContext context,
-            AIDemand demand,
+            AIProductionRequirement demand,
             Planet producerPlanet,
             Building building
         )
@@ -827,7 +859,7 @@ namespace Rebellion.AI.Planners
                 ManufacturingType.Building
             );
             int laneReserve =
-                demand.Kind == AIDemandKind.ConstructionFacility
+                demand.Kind == AIProductionRequirementKind.ConstructionFacility
                     ? 0
                     : Math.Max(
                         0,
@@ -855,12 +887,12 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="demand">The production demand.</param>
         /// <returns>True for construction-facility, shipyard, and training-facility demand.</returns>
-        private static bool IsFacilityExpansionDemand(AIDemand demand)
+        private static bool IsFacilityExpansionDemand(AIProductionRequirement demand)
         {
             return demand?.Kind
-                is AIDemandKind.ConstructionFacility
-                    or AIDemandKind.Shipyard
-                    or AIDemandKind.TrainingFacility;
+                is AIProductionRequirementKind.ConstructionFacility
+                    or AIProductionRequirementKind.Shipyard
+                    or AIProductionRequirementKind.TrainingFacility;
         }
 
         /// <summary>
@@ -868,14 +900,14 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="demand">The production demand.</param>
         /// <returns>True when separate producers may manufacture portions of the demand.</returns>
-        private static bool IsDistributedProductionDemand(AIDemand demand)
+        private static bool IsDistributedProductionDemand(AIProductionRequirement demand)
         {
             return demand?.Kind
-                is AIDemandKind.FleetCapitalShip
-                    or AIDemandKind.FleetStarfighter
-                    or AIDemandKind.PlanetaryStarfighterReserve
-                    or AIDemandKind.FleetRegiment
-                    or AIDemandKind.SpecialForces;
+                is AIProductionRequirementKind.FleetCapitalShip
+                    or AIProductionRequirementKind.FleetStarfighter
+                    or AIProductionRequirementKind.PlanetaryStarfighterReserve
+                    or AIProductionRequirementKind.FleetRegiment
+                    or AIProductionRequirementKind.SpecialForces;
         }
 
         /// <summary>
@@ -914,31 +946,36 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">Demand item to satisfy.</param>
         /// <returns>The selected technology, or null.</returns>
-        private Technology GetUnlockedUnitTechnology(AITurnContext context, AIDemand demand)
+        private Technology GetUnlockedUnitTechnology(
+            AITurnContext context,
+            AIProductionRequirement demand
+        )
         {
             if (context?.Faction == null || demand == null)
                 return null;
 
             return demand.Kind switch
             {
-                AIDemandKind.FleetCapitalShip => GetUnlockedCapitalShipTechnology(context, demand),
-                AIDemandKind.FleetSeedCapitalShip
-                or AIDemandKind.ColonizationFleetSeedCapitalShip =>
+                AIProductionRequirementKind.FleetCapitalShip => GetUnlockedCapitalShipTechnology(
+                    context,
+                    demand
+                ),
+                AIProductionRequirementKind.FleetSeedCapitalShip
+                or AIProductionRequirementKind.ColonizationFleetSeedCapitalShip =>
                     GetUnlockedCapitalShipTechnology(context, demand),
-                AIDemandKind.FleetStarfighter => GetUnlockedStarfighterTechnology(
+                AIProductionRequirementKind.FleetStarfighter => GetUnlockedStarfighterTechnology(
                     context,
                     demand.DestinationFleet
                 ),
-                AIDemandKind.PlanetaryStarfighterReserve =>
+                AIProductionRequirementKind.PlanetaryStarfighterReserve =>
                     GetUnlockedPlanetaryStarfighterTechnology(context),
-                AIDemandKind.FleetRegiment => GetUnlockedRegimentTechnology(
+                AIProductionRequirementKind.FleetRegiment => GetUnlockedRegimentTechnology(
                     context,
                     demand.DestinationFleet
                 ),
-                AIDemandKind.GarrisonRegimentReserve => GetUnlockedGarrisonRegimentTechnology(
-                    context
-                ),
-                AIDemandKind.SpecialForces => GetUnlockedSpecialForcesTechnology(
+                AIProductionRequirementKind.GarrisonRegimentReserve =>
+                    GetUnlockedGarrisonRegimentTechnology(context),
+                AIProductionRequirementKind.SpecialForces => GetUnlockedSpecialForcesTechnology(
                     context,
                     demand.ProductTypeId
                 ),
@@ -977,7 +1014,10 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
         /// <returns>The selected technology, or null when no eligible ship is affordable.</returns>
-        private Technology GetUnlockedCapitalShipTechnology(AITurnContext context, AIDemand demand)
+        private Technology GetUnlockedCapitalShipTechnology(
+            AITurnContext context,
+            AIProductionRequirement demand
+        )
         {
             if (context?.Faction == null || demand == null)
                 return null;
@@ -1349,7 +1389,7 @@ namespace Rebellion.AI.Planners
         /// <returns>Eligible producer planets in fulfillment order.</returns>
         private IEnumerable<Planet> FindProducerPlanets(
             AITurnContext context,
-            AIDemand demand,
+            AIProductionRequirement demand,
             IManufacturable product,
             int quantity
         )
@@ -1366,7 +1406,7 @@ namespace Rebellion.AI.Planners
                 string DestinationId,
                 ManufacturingType ManufacturingType,
                 ProducerMode Mode,
-                AIDemandKind DemandKind,
+                AIProductionRequirementKind DemandKind,
                 string ProductTypeId,
                 int Quantity
             ) key = (
@@ -1459,7 +1499,7 @@ namespace Rebellion.AI.Planners
         /// <returns>Estimated arrival ticks for fleet reinforcements, otherwise raw distance.</returns>
         private double GetProducerFulfillmentTicks(
             AITurnContext context,
-            AIDemand demand,
+            AIProductionRequirement demand,
             IManufacturable product,
             int quantity,
             Planet producer,
@@ -1572,7 +1612,7 @@ namespace Rebellion.AI.Planners
         private static bool CanAllocateProducerToDemand(
             AITurnContext context,
             Planet producer,
-            AIDemand demand
+            AIProductionRequirement demand
         )
         {
             return CanUseShipProducerForDemand(context, producer, demand);
@@ -1590,7 +1630,7 @@ namespace Rebellion.AI.Planners
         private static bool CanUseShipProducerForDemand(
             AITurnContext context,
             Planet producer,
-            AIDemand demand
+            AIProductionRequirement demand
         )
         {
             if (demand?.ManufacturingType != ManufacturingType.Ship)
@@ -1604,7 +1644,7 @@ namespace Rebellion.AI.Planners
                 1,
                 context.Game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount
             );
-            return demand.Kind == AIDemandKind.PlanetaryStarfighterReserve
+            return demand.Kind == AIProductionRequirementKind.PlanetaryStarfighterReserve
                 ? shipyardCount == 1
                 : shipyardCount >= fleetProductionMinimum;
         }
@@ -1631,7 +1671,7 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">Demand item to inspect.</param>
         /// <returns>The destination planet, or null.</returns>
-        private Planet GetDestinationPlanet(AITurnContext context, AIDemand demand)
+        private Planet GetDestinationPlanet(AITurnContext context, AIProductionRequirement demand)
         {
             if (demand?.Destination is Planet planet)
                 return planet;

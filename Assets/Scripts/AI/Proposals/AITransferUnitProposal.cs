@@ -78,7 +78,7 @@ namespace Rebellion.AI.Proposals
                     else if (Unit is Regiment)
                         claimKeys.Add(
                             AIClaimKeys.FleetReinforcement(
-                                AIDemandKind.FleetRegiment,
+                                AIProductionRequirementKind.FleetRegiment,
                                 targetFleet.InstanceID
                             )
                         );

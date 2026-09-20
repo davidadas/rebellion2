@@ -69,14 +69,14 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal higher = CreateBuildingProposal(
                 destination,
                 firstProducer,
-                AIDemandKind.Mine,
+                AIProductionRequirementKind.Mine,
                 BuildingType.Mine,
                 100
             );
             AIManufactureProposal lower = CreateBuildingProposal(
                 destination,
                 secondProducer,
-                AIDemandKind.Refinery,
+                AIProductionRequirementKind.Refinery,
                 BuildingType.Refinery,
                 90
             );
@@ -201,9 +201,9 @@ namespace Rebellion.Tests.AI.Phases
                 ManufacturingType.Ship
             );
             shipyard.MaintenanceCost = 10;
-            AIDemand demand = new AIDemand(
+            AIProductionRequirement demand = new AIProductionRequirement(
                 "shipyard-demand",
-                AIDemandKind.Shipyard,
+                AIProductionRequirementKind.Shipyard,
                 ManufacturingType.Building,
                 BuildingType.Shipyard,
                 planet,
@@ -223,10 +223,10 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(0, selected.Count);
         }
 
-        [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
-        [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
+        [TestCase(AIProductionRequirementKind.Mine, BuildingType.Mine)]
+        [TestCase(AIProductionRequirementKind.Refinery, BuildingType.Refinery)]
         public void Select_WithEconomyRecoveryBelowMaintenanceReserve_SelectsProposal(
-            AIDemandKind kind,
+            AIProductionRequirementKind kind,
             BuildingType buildingType
         )
         {
@@ -256,7 +256,7 @@ namespace Rebellion.Tests.AI.Phases
             );
             economyBuilding.MaintenanceCost = 10;
             AIManufactureProposal proposal = new AIManufactureProposal(
-                new AIDemand(
+                new AIProductionRequirement(
                     $"{kind}-demand",
                     kind,
                     ManufacturingType.Building,
@@ -335,7 +335,7 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal proposal = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.PlanetaryDefense,
+                AIProductionRequirementKind.PlanetaryDefense,
                 BuildingType.Defense
             );
             context.AddProposal(proposal);
@@ -345,11 +345,11 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
-        [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
-        [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
-        [TestCase(AIDemandKind.ColonizationFleetSeedCapitalShip, BuildingType.None)]
+        [TestCase(AIProductionRequirementKind.Mine, BuildingType.Mine)]
+        [TestCase(AIProductionRequirementKind.Refinery, BuildingType.Refinery)]
+        [TestCase(AIProductionRequirementKind.ColonizationFleetSeedCapitalShip, BuildingType.None)]
         public void Select_WithStrategicReserveExemptionBelowRefinedReserve_SelectsProposal(
-            AIDemandKind demandKind,
+            AIProductionRequirementKind demandKind,
             BuildingType buildingType
         )
         {
@@ -367,13 +367,13 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
-        [TestCase(AIDemandKind.FleetCapitalShip)]
-        [TestCase(AIDemandKind.FleetSeedCapitalShip)]
-        [TestCase(AIDemandKind.FleetStarfighter)]
-        [TestCase(AIDemandKind.FleetRegiment)]
-        [TestCase(AIDemandKind.GarrisonRegimentReserve)]
+        [TestCase(AIProductionRequirementKind.FleetCapitalShip)]
+        [TestCase(AIProductionRequirementKind.FleetSeedCapitalShip)]
+        [TestCase(AIProductionRequirementKind.FleetStarfighter)]
+        [TestCase(AIProductionRequirementKind.FleetRegiment)]
+        [TestCase(AIProductionRequirementKind.GarrisonRegimentReserve)]
         public void Select_WithMilitaryProductionBelowRefinedReserve_SelectsProposal(
-            AIDemandKind demandKind
+            AIProductionRequirementKind demandKind
         )
         {
             AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
@@ -390,11 +390,14 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
-        [TestCase(AIDemandKind.ConstructionFacility, BuildingType.ConstructionFacility)]
-        [TestCase(AIDemandKind.Shipyard, BuildingType.Shipyard)]
-        [TestCase(AIDemandKind.TrainingFacility, BuildingType.TrainingFacility)]
+        [TestCase(
+            AIProductionRequirementKind.ConstructionFacility,
+            BuildingType.ConstructionFacility
+        )]
+        [TestCase(AIProductionRequirementKind.Shipyard, BuildingType.Shipyard)]
+        [TestCase(AIProductionRequirementKind.TrainingFacility, BuildingType.TrainingFacility)]
         public void Select_WithStrategicFacilityBelowRefinedReserve_SelectsProposal(
-            AIDemandKind demandKind,
+            AIProductionRequirementKind demandKind,
             BuildingType buildingType
         )
         {
@@ -419,14 +422,14 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal defense = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.PlanetaryDefense,
+                AIProductionRequirementKind.PlanetaryDefense,
                 BuildingType.Defense,
                 score: 100
             );
             AIManufactureProposal shipyard = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.Shipyard,
+                AIProductionRequirementKind.Shipyard,
                 BuildingType.Shipyard,
                 score: 1
             );
@@ -445,7 +448,7 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal higherScore = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.PlanetaryDefense,
+                AIProductionRequirementKind.PlanetaryDefense,
                 BuildingType.Defense,
                 constructionCost: 30,
                 score: 100
@@ -453,7 +456,7 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal lowerScore = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.Shipyard,
+                AIProductionRequirementKind.Shipyard,
                 BuildingType.Shipyard,
                 constructionCost: 30,
                 score: 90
@@ -473,7 +476,7 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal higherTotalCost = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.PlanetaryDefense,
+                AIProductionRequirementKind.PlanetaryDefense,
                 BuildingType.Defense,
                 constructionCost: 60,
                 score: 100
@@ -481,7 +484,7 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal affordable = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.Shipyard,
+                AIProductionRequirementKind.Shipyard,
                 BuildingType.Shipyard,
                 constructionCost: 40,
                 score: 90
@@ -501,7 +504,7 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal proposal = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.PlanetaryDefense,
+                AIProductionRequirementKind.PlanetaryDefense,
                 BuildingType.Defense,
                 constructionCost: 400,
                 score: 100
@@ -520,14 +523,14 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal replacement = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.Shipyard,
+                AIProductionRequirementKind.Shipyard,
                 BuildingType.Shipyard,
                 score: 200
             );
             AIManufactureProposal continuation = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.PlanetaryDefense,
+                AIProductionRequirementKind.PlanetaryDefense,
                 BuildingType.Defense,
                 score: 100
             );
@@ -546,14 +549,14 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal continuation = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.PlanetaryDefense,
+                AIProductionRequirementKind.PlanetaryDefense,
                 BuildingType.Defense,
                 score: 200
             );
             AIManufactureProposal replacement = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.Shipyard,
+                AIProductionRequirementKind.Shipyard,
                 BuildingType.Shipyard,
                 score: 100
             );
@@ -605,18 +608,18 @@ namespace Rebellion.Tests.AI.Phases
                 BuildingType.Mine,
                 ManufacturingType.Building
             );
-            AIDemand preferredDemand = new AIDemand(
+            AIProductionRequirement preferredDemand = new AIProductionRequirement(
                 "preferred-demand",
-                AIDemandKind.Mine,
+                AIProductionRequirementKind.Mine,
                 ManufacturingType.Building,
                 BuildingType.Mine,
                 preferredProducer,
                 1,
                 100
             );
-            AIDemand flexibleDemand = new AIDemand(
+            AIProductionRequirement flexibleDemand = new AIProductionRequirement(
                 "flexible-demand",
-                AIDemandKind.Mine,
+                AIProductionRequirementKind.Mine,
                 ManufacturingType.Building,
                 BuildingType.Mine,
                 fallbackProducer,
@@ -824,7 +827,7 @@ namespace Rebellion.Tests.AI.Phases
         private static AIManufactureProposal CreateBuildingProposal(
             Planet destination,
             Planet producer,
-            AIDemandKind kind,
+            AIProductionRequirementKind kind,
             BuildingType buildingType,
             double score
         )
@@ -836,7 +839,7 @@ namespace Rebellion.Tests.AI.Phases
             );
             building.MaintenanceCost = 0;
             AIManufactureProposal proposal = new AIManufactureProposal(
-                new AIDemand(
+                new AIProductionRequirement(
                     $"{kind}-demand",
                     kind,
                     ManufacturingType.Building,
@@ -865,7 +868,7 @@ namespace Rebellion.Tests.AI.Phases
         private static AIManufactureProposal CreateManufactureProposal(
             AITurnContext context,
             Planet producer,
-            AIDemandKind kind,
+            AIProductionRequirementKind kind,
             BuildingType buildingType,
             int constructionCost = 10,
             double score = 100
@@ -876,24 +879,24 @@ namespace Rebellion.Tests.AI.Phases
             Rebellion.SceneGraph.ContainerNode destination = producer;
             switch (kind)
             {
-                case AIDemandKind.FleetCapitalShip:
-                case AIDemandKind.FleetSeedCapitalShip:
-                case AIDemandKind.ColonizationFleetSeedCapitalShip:
+                case AIProductionRequirementKind.FleetCapitalShip:
+                case AIProductionRequirementKind.FleetSeedCapitalShip:
+                case AIProductionRequirementKind.ColonizationFleetSeedCapitalShip:
                     product = AITestSceneBuilder.CreateCapitalShip(
                         $"reserve-{kind}",
                         context.Faction.InstanceID
                     );
                     manufacturingType = ManufacturingType.Ship;
                     break;
-                case AIDemandKind.FleetStarfighter:
+                case AIProductionRequirementKind.FleetStarfighter:
                     product = AITestSceneBuilder.CreateStarfighter(
                         $"reserve-{kind}",
                         context.Faction.InstanceID
                     );
                     manufacturingType = ManufacturingType.Ship;
                     break;
-                case AIDemandKind.FleetRegiment:
-                case AIDemandKind.GarrisonRegimentReserve:
+                case AIProductionRequirementKind.FleetRegiment:
+                case AIProductionRequirementKind.GarrisonRegimentReserve:
                     product = AITestSceneBuilder.CreateRegiment(
                         $"reserve-{kind}",
                         context.Faction.InstanceID
@@ -915,9 +918,9 @@ namespace Rebellion.Tests.AI.Phases
 
             if (
                 kind
-                is AIDemandKind.FleetCapitalShip
-                    or AIDemandKind.FleetStarfighter
-                    or AIDemandKind.FleetRegiment
+                is AIProductionRequirementKind.FleetCapitalShip
+                    or AIProductionRequirementKind.FleetStarfighter
+                    or AIProductionRequirementKind.FleetRegiment
             )
             {
                 Fleet fleet = EntityFactory.CreateFleet(
@@ -934,7 +937,7 @@ namespace Rebellion.Tests.AI.Phases
                 context.Game.AttachNode(carrier, fleet);
                 destination = fleet;
             }
-            AIDemand demand = new AIDemand(
+            AIProductionRequirement demand = new AIProductionRequirement(
                 $"reserve-{kind}",
                 kind,
                 manufacturingType,
@@ -1037,9 +1040,9 @@ namespace Rebellion.Tests.AI.Phases
             int quantity = 1
         )
         {
-            AIDemand demand = new AIDemand(
+            AIProductionRequirement demand = new AIProductionRequirement(
                 $"shipyard-{planet.InstanceID}",
-                AIDemandKind.Shipyard,
+                AIProductionRequirementKind.Shipyard,
                 ManufacturingType.Building,
                 BuildingType.Shipyard,
                 planet,

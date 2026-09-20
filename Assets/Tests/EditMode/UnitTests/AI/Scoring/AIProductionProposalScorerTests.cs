@@ -84,9 +84,9 @@ namespace Rebellion.Tests.AI.Scoring
             );
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
             game.AttachNode(fleet, fleetPlanet);
-            AIDemand demand = new AIDemand(
+            AIProductionRequirement demand = new AIProductionRequirement(
                 "fleet-regiment-demand",
-                AIDemandKind.FleetRegiment,
+                AIProductionRequirementKind.FleetRegiment,
                 ManufacturingType.Troop,
                 BuildingType.None,
                 fleet,
@@ -112,10 +112,10 @@ namespace Rebellion.Tests.AI.Scoring
             Assert.Zero(farScore);
         }
 
-        [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
-        [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
+        [TestCase(AIProductionRequirementKind.Mine, BuildingType.Mine)]
+        [TestCase(AIProductionRequirementKind.Refinery, BuildingType.Refinery)]
         public void Score_WithEconomyRecoveryBelowMaintenanceReserve_ReturnsPositiveScore(
-            AIDemandKind kind,
+            AIProductionRequirementKind kind,
             BuildingType buildingType
         )
         {
@@ -141,7 +141,7 @@ namespace Rebellion.Tests.AI.Scoring
             );
             template.MaintenanceCost = 10;
             AIManufactureProposal proposal = new AIManufactureProposal(
-                new AIDemand(
+                new AIProductionRequirement(
                     $"{kind}-demand",
                     kind,
                     ManufacturingType.Building,
@@ -178,9 +178,9 @@ namespace Rebellion.Tests.AI.Scoring
                 ManufacturingType.None
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
-                new AIDemand(
+                new AIProductionRequirement(
                     "refinery-demand",
-                    AIDemandKind.Refinery,
+                    AIProductionRequirementKind.Refinery,
                     ManufacturingType.Building,
                     BuildingType.Refinery,
                     destination,
@@ -213,9 +213,9 @@ namespace Rebellion.Tests.AI.Scoring
         )
         {
             return new AIManufactureProposal(
-                new AIDemand(
+                new AIProductionRequirement(
                     $"building-{pressure}",
-                    AIDemandKind.ConstructionFacility,
+                    AIProductionRequirementKind.ConstructionFacility,
                     ManufacturingType.Building,
                     BuildingType.ConstructionFacility,
                     producer,
