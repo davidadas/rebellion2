@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
+using FacilityPortfolio = Rebellion.AI.Planners.AIInfrastructureRequirements.FacilityPortfolio;
 
 namespace Rebellion.AI.Planners
 {
@@ -16,36 +17,6 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionDemandGenerator
     {
-        private readonly struct FacilityPortfolio
-        {
-            public int ConstructionFacilities { get; }
-            public int Shipyards { get; }
-            public int TrainingFacilities { get; }
-            public int StaticDefenses { get; }
-            public int Total =>
-                ConstructionFacilities + Shipyards + TrainingFacilities + StaticDefenses;
-
-            /// <summary>
-            /// Creates a facility portfolio snapshot.
-            /// </summary>
-            /// <param name="constructionFacilities">The constructionFacilities value.</param>
-            /// <param name="shipyards">The shipyards value.</param>
-            /// <param name="trainingFacilities">The trainingFacilities value.</param>
-            /// <param name="staticDefenses">The staticDefenses value.</param>
-            public FacilityPortfolio(
-                int constructionFacilities,
-                int shipyards,
-                int trainingFacilities,
-                int staticDefenses
-            )
-            {
-                ConstructionFacilities = constructionFacilities;
-                Shipyards = shipyards;
-                TrainingFacilities = trainingFacilities;
-                StaticDefenses = staticDefenses;
-            }
-        }
-
         private static readonly AIEconomyRequirements _economyRequirements = new();
         private static readonly AISpecialForcesRequirements _specialForcesRequirements = new();
         private readonly AIInfrastructureRequirements _infrastructureRequirements = new();
@@ -62,15 +33,21 @@ namespace Rebellion.AI.Planners
             if (context?.Game == null || context.Faction == null || context.Assessment == null)
                 return demands;
 
-            FacilityPortfolio facilityPortfolio = BuildFacilityPortfolio(context);
+            FacilityPortfolio facilityPortfolio = _infrastructureRequirements.BuildPortfolio(
+                context
+            );
             _economyRequirements.AddColonyRequirements(context, demands);
             _economyRequirements.AddResourceRequirements(context, demands);
-            AddPlanetaryDefenseDemands(context, demands, facilityPortfolio);
+            _infrastructureRequirements.AddPlanetaryDefenseRequirements(
+                context,
+                demands,
+                facilityPortfolio
+            );
             _infrastructureRequirements.AddPlanetaryStarfighterRequirements(context, demands);
             AddFleetSeedDemand(context, demands);
             AddColonizationFleetSeedDemand(context, demands);
             AddFleetReinforcementDemands(context, demands);
-            AddPlanetaryGarrisonDemands(context, demands);
+            _infrastructureRequirements.AddGarrisonRequirements(context, demands);
             _specialForcesRequirements.AddRequirements(context, demands);
             AddProductionFacilityDemands(
                 context,
@@ -82,146 +59,6 @@ namespace Rebellion.AI.Planners
             _infrastructureRequirements.AddIdleShipyardRequirements(context, demands);
 
             return demands;
-        }
-
-        /// <summary>
-        /// Adds static-defense demands for owned planets.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        /// <param name="facilityPortfolio">The faction's current strategic-facility mix.</param>
-        private void AddPlanetaryDefenseDemands(
-            AITurnContext context,
-            List<AIProductionRequirement> demands,
-            FacilityPortfolio facilityPortfolio
-        )
-        {
-            foreach (
-                Planet planet in context
-                    .Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet)
-                    .OrderByDescending(context.Assessment.GetPlanetValue)
-                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
-            )
-                AddPlanetaryDefenseDemands(context, demands, planet, facilityPortfolio);
-        }
-
-        /// <summary>
-        /// Adds static-defense demands for one planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        /// <param name="planet">The planet to evaluate.</param>
-        /// <param name="facilityPortfolio">The faction's current strategic-facility mix.</param>
-        private void AddPlanetaryDefenseDemands(
-            AITurnContext context,
-            List<AIProductionRequirement> demands,
-            Planet planet,
-            FacilityPortfolio facilityPortfolio
-        )
-        {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            int availableEnergy = planet.GetAvailableEnergy();
-            int shieldTarget = _infrastructureRequirements.GetPlanetaryShieldCount(context, planet);
-            int shieldCount = context
-                .Assessment.GetPlanetBuildings(planet)
-                .Count(building =>
-                    building.GetOwnerInstanceID() == context.Faction.InstanceID
-                    && building.IsPlanetaryShieldGenerator()
-                );
-            int shieldDeficit = Math.Max(0, shieldTarget - shieldCount);
-            int shieldQuantity = Math.Min(shieldDeficit, availableEnergy);
-
-            if (shieldQuantity > 0)
-            {
-                demands.Add(
-                    CreatePlanetaryDefenseBuildingDemand(
-                        context,
-                        planet,
-                        BuildingType.Defense,
-                        shieldQuantity,
-                        shieldTarget,
-                        config.PlanetaryShieldDemandPercent,
-                        shieldCount == 0,
-                        facilityPortfolio
-                    )
-                );
-                availableEnergy -= shieldQuantity;
-            }
-
-            int weaponCount = context
-                .Assessment.GetPlanetBuildings(planet)
-                .Count(building =>
-                    building.GetOwnerInstanceID() == context.Faction.InstanceID
-                    && building.GetBuildingType() == BuildingType.Weapon
-                );
-            int weaponTarget = _infrastructureRequirements.GetPlanetaryWeaponCount(
-                context,
-                planet,
-                weaponCount
-            );
-            int weaponDeficit = weaponTarget - weaponCount;
-            if (weaponDeficit <= 0 || availableEnergy <= 0)
-                return;
-
-            demands.Add(
-                CreatePlanetaryDefenseBuildingDemand(
-                    context,
-                    planet,
-                    BuildingType.Weapon,
-                    Math.Min(weaponDeficit, availableEnergy),
-                    weaponTarget,
-                    config.PlanetaryWeaponDemandPercent,
-                    false,
-                    facilityPortfolio
-                )
-            );
-        }
-
-        /// <summary>
-        /// Creates one planetary-defense building demand.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The destination planet.</param>
-        /// <param name="buildingType">The requested defense type.</param>
-        /// <param name="deficit">The remaining unit deficit.</param>
-        /// <param name="targetCount">The desired unit count.</param>
-        /// <param name="baseDemandPercent">The base demand pressure.</param>
-        /// <param name="isInitialShield">Whether this establishes the first shield.</param>
-        /// <param name="facilityPortfolio">The faction's current strategic-facility mix.</param>
-        /// <returns>The defense demand.</returns>
-        private AIProductionRequirement CreatePlanetaryDefenseBuildingDemand(
-            AITurnContext context,
-            Planet planet,
-            BuildingType buildingType,
-            int deficit,
-            int targetCount,
-            int baseDemandPercent,
-            bool isInitialShield,
-            FacilityPortfolio facilityPortfolio
-        )
-        {
-            return new AIProductionRequirement(
-                AIProductionRequirement.CreateId(
-                    context.Faction.InstanceID,
-                    AIProductionRequirementKind.PlanetaryDefense,
-                    buildingType,
-                    planet.InstanceID
-                ),
-                AIProductionRequirementKind.PlanetaryDefense,
-                ManufacturingType.Building,
-                buildingType,
-                planet,
-                deficit,
-                GetPlanetaryDefensePressure(
-                    context,
-                    planet,
-                    baseDemandPercent,
-                    deficit,
-                    targetCount,
-                    isInitialShield,
-                    facilityPortfolio
-                )
-            );
         }
 
         /// <summary>
@@ -952,51 +789,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Captures the projected strategic-facility mix once for this production turn.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>Counts for productive and static-defense facilities.</returns>
-        private static FacilityPortfolio BuildFacilityPortfolio(AITurnContext context)
-        {
-            int constructionFacilities = 0;
-            int shipyards = 0;
-            int trainingFacilities = 0;
-            int staticDefenses = 0;
-            foreach (Planet planet in context.Assessment.OwnedPlanets)
-            {
-                foreach (Building building in context.Assessment.GetPlanetBuildings(planet))
-                {
-                    if (building.GetOwnerInstanceID() != context.Faction.InstanceID)
-                        continue;
-
-                    switch (building.GetBuildingType())
-                    {
-                        case BuildingType.ConstructionFacility:
-                            constructionFacilities++;
-                            break;
-                        case BuildingType.Shipyard:
-                            shipyards++;
-                            break;
-                        case BuildingType.TrainingFacility:
-                            trainingFacilities++;
-                            break;
-                        case BuildingType.Defense:
-                        case BuildingType.Weapon:
-                            staticDefenses++;
-                            break;
-                    }
-                }
-            }
-
-            return new FacilityPortfolio(
-                constructionFacilities,
-                shipyards,
-                trainingFacilities,
-                staticDefenses
-            );
-        }
-
-        /// <summary>
         /// Returns signed demand pressure based on a facility category's target portfolio share.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -1065,63 +857,6 @@ namespace Rebellion.AI.Planners
                         || building.Movement != null
                     )
                 );
-        }
-
-        /// <summary>
-        /// Adds planetary garrison-regiment demands.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        private void AddPlanetaryGarrisonDemands(
-            AITurnContext context,
-            List<AIProductionRequirement> demands
-        )
-        {
-            foreach (Planet planet in context.Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet))
-                AddGarrisonRegimentReserveDemand(context, demands, planet);
-        }
-
-        /// <summary>
-        /// Adds local garrison regiment demand for a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        /// <param name="planet">The planet to inspect.</param>
-        private void AddGarrisonRegimentReserveDemand(
-            AITurnContext context,
-            List<AIProductionRequirement> demands,
-            Planet planet
-        )
-        {
-            int minimumTargetCount = GetTargetGarrisonRegimentReserveCount(context, planet);
-            int currentCount = context
-                .Assessment.GetPlanetRegiments(planet)
-                .Count(regiment => regiment.GetOwnerInstanceID() == context.Faction.InstanceID);
-            int deficit = minimumTargetCount - currentCount;
-            if (deficit <= 0)
-                return;
-
-            demands.Add(
-                new AIProductionRequirement(
-                    AIProductionRequirement.CreateId(
-                        context.Faction.InstanceID,
-                        AIProductionRequirementKind.GarrisonRegimentReserve,
-                        planet.InstanceID
-                    ),
-                    AIProductionRequirementKind.GarrisonRegimentReserve,
-                    ManufacturingType.Troop,
-                    BuildingType.None,
-                    planet,
-                    deficit,
-                    GetPlanetaryDefensePressure(
-                        context,
-                        planet,
-                        context.Game.Config.AI.Infrastructure.PlanetaryGarrisonDemandPercent,
-                        deficit,
-                        minimumTargetCount
-                    )
-                )
-            );
         }
 
         /// <summary>
@@ -1633,79 +1368,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns production pressure for a planet's defensive requirement.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The planet requiring defense.</param>
-        /// <param name="baseDemandPercent">Base pressure for the demand.</param>
-        /// <param name="deficit">Current defense deficit.</param>
-        /// <param name="targetCount">Target defense count.</param>
-        /// <param name="isInitialShield">Whether the demand establishes the first shield.</param>
-        /// <param name="facilityPortfolio">The faction's current strategic-facility mix.</param>
-        /// <returns>The defense pressure.</returns>
-        private double GetPlanetaryDefensePressure(
-            AITurnContext context,
-            Planet planet,
-            int baseDemandPercent,
-            int deficit,
-            int targetCount,
-            bool isInitialShield = false,
-            FacilityPortfolio facilityPortfolio = default
-        )
-        {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            GameConfig.AIProductionDemandUtilityConfig utility = config.DemandUtility;
-            double highestPlanetValue = context.Assessment.GetHighestOwnedPlanetValue();
-            double pressure =
-                baseDemandPercent
-                + AIUtility.EvaluateDiscretePressure(
-                    deficit / (double)Math.Max(1, targetCount),
-                    utility.DefenseDeficit
-                );
-
-            if (highestPlanetValue > 0)
-            {
-                pressure += AIUtility.EvaluatePressure(
-                    context.Assessment.GetPlanetValue(planet) / highestPlanetValue,
-                    utility.DefenseValue
-                );
-            }
-
-            pressure += AIUtility.EvaluatePressure(
-                context.Assessment.IsFactionHeadquarters(planet) ? 1 : 0,
-                utility.DefenseHeadquarters
-            );
-            pressure += AIUtility.EvaluatePressure(
-                context.Assessment.GetPlanetDefenseThreatStrength(planet) > 0 ? 1 : 0,
-                utility.DefenseThreat
-            );
-            if (facilityPortfolio.Total > 0)
-            {
-                pressure += GetFacilityPortfolioPressure(
-                    context,
-                    AIProductionRequirementKind.PlanetaryDefense,
-                    facilityPortfolio
-                );
-            }
-
-            double boundedPressure = ClampPressure(pressure);
-            return isInitialShield
-                ? boundedPressure
-                    + AIUtility.EvaluatePressure(
-                        planet.GetOpposingPopularSupport(context.Faction.InstanceID) / 100.0,
-                        utility.ShieldSupport
-                    )
-                    + AIUtility.EvaluatePressure(
-                        AIUtility.Fulfillment(
-                            context.Assessment.GetDefensiveSupportRisk(planet),
-                            AIUtilityDomain.SectorSupport
-                        ),
-                        utility.ShieldSectorRisk
-                    )
-                : boundedPressure;
-        }
-
-        /// <summary>
         /// Returns pressure for fleet production demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -2072,35 +1734,6 @@ namespace Rebellion.AI.Planners
             }
 
             return fillTarget;
-        }
-
-        /// <summary>
-        /// Returns garrison regiment reserve target for a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">Planet to inspect.</param>
-        /// <returns>The target garrison regiment reserve count.</returns>
-        private int GetTargetGarrisonRegimentReserveCount(AITurnContext context, Planet planet)
-        {
-            int stabilityTarget = UprisingSystem.CalculateGarrisonRequirement(
-                planet,
-                context.Faction,
-                context.Game.Config.AI.Garrison
-            );
-            int sabotageResilientTarget = stabilityTarget > 0 ? stabilityTarget + 1 : 0;
-            if (context.Assessment.HasEnemyControlSupport(planet))
-                sabotageResilientTarget = Math.Max(sabotageResilientTarget, 2);
-
-            int captureFloor = context.Game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount;
-            if (!planet.IsHeadquarters && !context.Assessment.IsPlanetThreatened(planet))
-            {
-                captureFloor = IntegerMath.ScaleByPercent(
-                    captureFloor,
-                    context.Game.Config.AI.Garrison.InteriorCaptureFloorPercent
-                );
-            }
-
-            return Math.Max(sabotageResilientTarget, Math.Max(captureFloor, stabilityTarget));
         }
 
         /// <summary>
