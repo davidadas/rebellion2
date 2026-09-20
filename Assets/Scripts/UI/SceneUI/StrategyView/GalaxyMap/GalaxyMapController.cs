@@ -112,7 +112,7 @@ public sealed class GalaxyMapController
         visibleGalaxyMap = null;
         if (playerFaction != null)
         {
-            visibleGalaxyMap = gameManager.GetFogOfWarSystem().BuildFactionView(playerFaction);
+            visibleGalaxyMap = gameManager.BuildFactionView(playerFaction);
             IReadOnlyList<PlanetSector> visibleSectors =
                 visibleGalaxyMap?.GetChildren<PlanetSector>();
             foreach (PlanetSector sector in visibleSectors ?? Array.Empty<PlanetSector>())

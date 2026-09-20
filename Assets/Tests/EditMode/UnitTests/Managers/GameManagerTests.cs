@@ -714,7 +714,7 @@ namespace Rebellion.Tests.Managers
 
             manager.ProcessTick();
 
-            GalaxyMap view = manager.GetFogOfWarSystem().BuildFactionView(alliance);
+            GalaxyMap view = manager.BuildFactionView(alliance);
             Planet viewedPlanet = view.GetChildren<PlanetSector>()
                 .Single(s => s.InstanceID == "SECTOR1")
                 .GetChildren<Planet>()

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.UIState;
@@ -200,10 +201,11 @@ public sealed class GameManager
     }
 
     /// <summary>
-    /// Returns the fog of war system for building faction-specific galaxy views.
+    /// Builds the faction-filtered galaxy view.
     /// </summary>
-    /// <returns>The active FogOfWarSystem instance.</returns>
-    public FogOfWarSystem GetFogOfWarSystem() => _fogOfWarSystem;
+    /// <param name="faction">The faction whose knowledge determines the view.</param>
+    /// <returns>The faction-filtered galaxy view.</returns>
+    public GalaxyMap BuildFactionView(Faction faction) => _fogOfWarSystem.BuildFactionView(faction);
 
     /// <summary>
     /// Immediately applies the current advisor automation choices for one faction.
