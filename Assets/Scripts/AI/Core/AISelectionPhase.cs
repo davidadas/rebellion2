@@ -31,7 +31,8 @@ namespace Rebellion.AI.Phases
             if (context?.Proposals == null)
                 return selectedProposals;
 
-            AIProposalAllocator selectionPolicy = new AIProposalAllocator();
+            AIProposalAllocator allocation = new AIProposalAllocator();
+            AIProductionSelector productionSelector = new AIProductionSelector(allocation);
             float minimumSelectableScore = GetMinimumSelectableScore(context);
             foreach (AIProposal proposal in GetSortedProposals(context))
             {
@@ -42,9 +43,25 @@ namespace Rebellion.AI.Phases
                 )
                     continue;
 
-                if (!selectionPolicy.TrySelect(context, proposal, out AIProposal selectedProposal))
+                AIProposal selectedProposal = proposal;
+                if (proposal is AIManufactureProposal manufactureProposal)
+                {
+                    if (
+                        !productionSelector.TryResolve(
+                            context,
+                            manufactureProposal,
+                            out AIManufactureProposal selectedManufactureProposal
+                        )
+                    )
+                        continue;
+                    selectedProposal = selectedManufactureProposal;
+                }
+
+                if (!allocation.TrySelect(context, selectedProposal))
                     continue;
 
+                if (proposal is AIManufactureProposal)
+                    productionSelector.ScoreResolved(context, proposal, selectedProposal);
                 selectedProposals.Add(selectedProposal);
             }
 

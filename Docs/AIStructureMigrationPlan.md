@@ -20,10 +20,10 @@ execution order.
 - `AIPlanningPhase` invokes six top-level planners in a fixed order.
 - `AIScoringPhase` scores only proposals without a score. Mission and new-attack planning already
   perform bounded scoring while enumerating candidates.
-- `AISelectionPhase` globally orders proposals and delegates claims and reservations to
-  `AIProposalSelectionPolicy`.
-- `AIProposalSelectionPolicy` also changes production producer, demand, and quantity after the
-  proposal has been scored.
+- `AISelectionPhase` globally orders proposals, delegates production-choice resolution to
+  `AIProductionSelector`, and delegates claims and reservations to `AIProposalAllocator`.
+- `AIProductionSelector` preserves the characterized producer and quantity fallback order at the
+  production decision's existing global position.
 - `AIAssessment` is a turn-scoped cache and index, but also owns weighted diplomacy utility,
   attack requirements, readiness policy, and defense policy.
 - `AIDemand` is used only for production. It is rebuilt every turn and is not a persistent AI goal.
@@ -57,9 +57,14 @@ execution order.
 
 ### Proposals
 
-- A proposal's action identity is immutable after construction.
-- Action identity includes actor, target, product, producer, destination, and requested quantity
-  whenever those values affect scoring or execution.
+- A proposal's decision identity is immutable after construction.
+- An exact-action proposal includes actor, target, product, producer, destination, and requested
+  quantity whenever those values affect scoring or execution.
+- A domain may instead emit one immutable ordered choice when its exact action depends on resources
+  reserved by earlier globally ranked proposals. The domain selector, not global allocation,
+  resolves that choice at its existing global position and returns an exact executable proposal.
+- Production is the only characterized ordered-choice domain. Its preferred action determines the
+  decision's global score; fallback resolution does not retroactively reorder the decision.
 - `Score` may be attached after construction; it is decision metadata, not action identity.
 - `CanSelect` and `CanExecute` revalidate rules. They do not redesign the action.
 - A proposal may execute itself. A second command hierarchy is not introduced unless execution is
@@ -67,7 +72,8 @@ execution order.
 
 ### Scoring
 
-- A scorer evaluates the exact action represented by the proposal.
+- A scorer evaluates the exact action represented by a proposal, or the preferred exact action of
+  an explicitly modeled ordered choice.
 - Scorers do not mutate action identity.
 - Utility weights and curves live with the domain scorer, not in `AIAssessment`.
 - Feasibility remains a typed rule, not an oversized score weight.
@@ -77,8 +83,8 @@ execution order.
 - Global allocation may accept or reject a proposal and reserve claims, capacity, energy, and
   maintenance.
 - Allocation may not replace the producer, demand, destination, target, or product.
-- Quantity reduction is permitted only if quantity is explicitly modeled as an allocatable range
-  and the score is quantity-invariant. Otherwise each selectable quantity is a concrete proposal.
+- Allocation-dependent producer and quantity resolution belongs to the domain selector and must
+  complete before the exact action reaches global allocation.
 - Equal-score randomization must consume exactly the same RNG calls during behavior-preserving
   slices.
 
@@ -101,7 +107,9 @@ command, decision-source, or behavior-tree hierarchies.
 - `IAITurnPhase`, `IAIIncrementalTurnPhase`: phase contracts.
 - `AIPlanningPhase`, `AIScoringPhase`, `AISelectionPhase`,
   `AIMissionDecoyAssignmentPhase`, `AIExecutionPhase`: pipeline.
-- `AIProposalAllocator`: renamed `AIProposalSelectionPolicy`; claims and resource reservations only.
+- `AIProposalAllocator`: claims and resource reservations only.
+- `AIProductionSelector`: resolves the existing ordered producer/count choice at its globally ranked
+  position and returns the exact manufacturing action passed to allocation and execution.
 - `AIProposal`, `AIProposalPriority`, `AIClaimKeys`: common proposal contract.
 - `IAIProposalPlanner`, `IAIProposalScorer`: extension contracts.
 - `AIUtility`, `AIUtilityScore`, `AIUtilityDomain`: shared utility math.
@@ -259,15 +267,15 @@ equivalence gate before the next begins.
    - Count reduced by capacity.
    - Count reduced by maintenance.
 2. Record candidate counts and the selected producer/count for representative late-game saves.
-3. Introduce exact immutable manufacturing proposals while preserving current producer ordering.
-4. Emit alternatives in the same preference order and give alternatives for one requirement the
-   same production-demand claim.
-5. Preserve the number and order of proposals entering every equal-score group. If exact candidates
-   would change tie-group cardinality, perform deterministic domain allocation before global
-   proposal insertion instead of relying on global random tie resolution.
-6. Remove producer/demand/count mutation from `AIProposalAllocator` only after all characterization
-   tests pass.
-7. Re-score and select the exact proposal that will execute.
+3. Preserve one globally scored production decision and its ordered immutable producer options.
+4. Add `AIProductionSelector` to resolve producer and quantity at that decision's existing global
+   position using the shared allocation ledger.
+5. Preserve the number and order of proposals entering every equal-score group and consume no new
+   random values.
+6. Remove producer/demand/count resolution from `AIProposalAllocator`; it accepts or rejects only
+   the exact action returned by `AIProductionSelector`.
+7. Preserve the resolved-action score as execution metadata without retroactively changing the
+   production decision's global position.
 8. Delete `AIManufactureOption` and mutable selection methods.
 9. Require exact seed-12345 state, report, and RNG-index equality.
 

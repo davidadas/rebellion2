@@ -4,7 +4,6 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
-using Rebellion.AI.Scoring;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
@@ -16,7 +15,6 @@ namespace Rebellion.AI.Phases
     internal sealed class AIProposalAllocator
     {
         private const string _mixedProductType = "*";
-        private static readonly AIProductionProposalScorer _productionScorer = new();
 
         // Selection State.
         private readonly HashSet<string> _claimedKeys = new HashSet<string>(StringComparer.Ordinal);
@@ -46,48 +44,12 @@ namespace Rebellion.AI.Phases
         private int _selectedMaintenanceCost;
 
         /// <summary>
-        /// Selects a valid proposal option and reserves the resources it consumes.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal being considered.</param>
-        /// <param name="selectedProposal">The exact proposal selected for execution.</param>
-        /// <returns>True when the proposal is valid and its resources were reserved.</returns>
-        internal bool TrySelect(
-            AITurnContext context,
-            AIProposal proposal,
-            out AIProposal selectedProposal
-        )
-        {
-            selectedProposal = proposal;
-            if (
-                proposal is AIManufactureProposal manufactureProposal
-                && !TryResolveManufactureProposal(
-                    context,
-                    manufactureProposal,
-                    out selectedProposal
-                )
-            )
-                return false;
-
-            if (!TrySelectCore(context, selectedProposal))
-                return false;
-
-            if (
-                selectedProposal is AIManufactureProposal
-                && !ReferenceEquals(selectedProposal, proposal)
-            )
-                selectedProposal.SetScore(_productionScorer.Score(context, selectedProposal));
-
-            return true;
-        }
-
-        /// <summary>
-        /// Selects a proposal option and reserves resources without restoring on failure.
+        /// Selects an exact proposal and reserves the resources it consumes.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal being considered.</param>
         /// <returns>True when the proposal is valid and its resources were reserved.</returns>
-        private bool TrySelectCore(AITurnContext context, AIProposal proposal)
+        internal bool TrySelect(AITurnContext context, AIProposal proposal)
         {
             if (!CanSelect(context, proposal))
                 return false;
@@ -107,89 +69,13 @@ namespace Rebellion.AI.Phases
         }
 
         /// <summary>
-        /// Selects the first viable producer option and validates its proposal claims.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal to inspect.</param>
-        /// <param name="selectedProposal">The exact producer option selected for validation.</param>
-        /// <returns>True when the proposal has a selectable option.</returns>
-        private bool TryResolveManufactureProposal(
-            AITurnContext context,
-            AIManufactureProposal proposal,
-            out AIProposal selectedProposal
-        )
-        {
-            int equivalentProducerCount = proposal.ManufacturingCount;
-            AIManufactureProposal primary = proposal;
-            if (TrySelectManufacturePrefix(context, primary, out selectedProposal))
-                return true;
-
-            if (proposal.CarriesReducedCountAcrossAlternatives)
-                equivalentProducerCount = (
-                    (AIManufactureProposal)selectedProposal
-                ).ManufacturingCount;
-
-            foreach (AIManufactureProposal alternative in proposal.ProducerAlternatives)
-            {
-                AIManufactureProposal candidate = alternative;
-                if (
-                    proposal.CarriesReducedCountAcrossAlternatives
-                    && equivalentProducerCount < candidate.ManufacturingCount
-                )
-                    candidate = alternative.WithManufacturingCount(equivalentProducerCount);
-                if (TrySelectManufacturePrefix(context, candidate, out selectedProposal))
-                    return true;
-
-                if (proposal.CarriesReducedCountAcrossAlternatives)
-                    equivalentProducerCount = (
-                        (AIManufactureProposal)selectedProposal
-                    ).ManufacturingCount;
-            }
-
-            selectedProposal = proposal;
-            return false;
-        }
-
-        /// <summary>
-        /// Selects the largest affordable prefix of a counted manufacturing proposal.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The manufacturing proposal to adjust.</param>
-        /// <param name="selectedProposal">The exact affordable proposal prefix.</param>
-        /// <returns>True when at least one item can be selected.</returns>
-        private bool TrySelectManufacturePrefix(
-            AITurnContext context,
-            AIManufactureProposal proposal,
-            out AIProposal selectedProposal
-        )
-        {
-            int requestedCount = proposal.GetManufacturingCount();
-            if (requestedCount <= 1)
-            {
-                selectedProposal = proposal;
-                return CanSelectManufactureProposal(context, proposal);
-            }
-
-            int maximumCount = GetAvailableManufacturingCount(context, proposal, requestedCount);
-            if (maximumCount <= 0)
-            {
-                selectedProposal = proposal;
-                return false;
-            }
-
-            AIManufactureProposal accepted = proposal.WithManufacturingCount(maximumCount);
-            selectedProposal = accepted;
-            return CanSelectManufactureProposal(context, accepted);
-        }
-
-        /// <summary>
         /// Returns the count allowed by remaining producer capacity and maintenance headroom.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal being considered.</param>
         /// <param name="requestedCount">The proposal's requested count.</param>
         /// <returns>The maximum count worth validating against domain constraints.</returns>
-        private int GetAvailableManufacturingCount(
+        internal int GetAvailableManufacturingCount(
             AITurnContext context,
             AIManufactureProposal proposal,
             int requestedCount
@@ -242,7 +128,7 @@ namespace Rebellion.AI.Phases
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The manufacturing proposal to inspect.</param>
         /// <returns>True when the selected producer option is available.</returns>
-        private bool CanSelectManufactureProposal(
+        internal bool CanSelectManufactureProposal(
             AITurnContext context,
             AIManufactureProposal proposal
         )
