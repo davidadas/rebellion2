@@ -4,11 +4,9 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Projects game entities into status-window domain information.
@@ -377,25 +375,25 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow(
                 "Diplomacy Rating:",
-                GetRatingText(specialForces, OfficerRating.Diplomacy)
+                GetRatingText(specialForces, SkillRating.Diplomacy)
             )
         );
         info.Rows.Add(
             new StrategyStatusRow(
                 "Espionage Rating:",
-                GetRatingText(specialForces, OfficerRating.Espionage)
+                GetRatingText(specialForces, SkillRating.Espionage)
             )
         );
         info.Rows.Add(
             new StrategyStatusRow(
                 "Combat Rating:",
-                GetRatingText(specialForces, OfficerRating.Combat)
+                GetRatingText(specialForces, SkillRating.Combat)
             )
         );
         info.Rows.Add(
             new StrategyStatusRow(
                 "Leadership Rating:",
-                GetRatingText(specialForces, OfficerRating.Leadership)
+                GetRatingText(specialForces, SkillRating.Leadership)
             )
         );
         return info;
@@ -423,22 +421,22 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow(
                 "Diplomacy Rating:",
-                GetRatingText(officer, OfficerRating.Diplomacy)
+                GetRatingText(officer, SkillRating.Diplomacy)
             )
         );
         info.Rows.Add(
             new StrategyStatusRow(
                 "Espionage Rating:",
-                GetRatingText(officer, OfficerRating.Espionage)
+                GetRatingText(officer, SkillRating.Espionage)
             )
         );
         info.Rows.Add(
-            new StrategyStatusRow("Combat Rating:", GetRatingText(officer, OfficerRating.Combat))
+            new StrategyStatusRow("Combat Rating:", GetRatingText(officer, SkillRating.Combat))
         );
         info.Rows.Add(
             new StrategyStatusRow(
                 "Leadership Rating:",
-                GetRatingText(officer, OfficerRating.Leadership)
+                GetRatingText(officer, SkillRating.Leadership)
             )
         );
         info.Rows.Add(new StrategyStatusRow("Research Capabilities:", " "));
@@ -820,7 +818,7 @@ internal sealed class StrategyStatusInfoBuilder
     /// <param name="participant">The mission participant.</param>
     /// <param name="rating">The requested rating category.</param>
     /// <returns>The displayed effective rating.</returns>
-    private static string GetRatingText(IMissionParticipant participant, OfficerRating rating)
+    private static string GetRatingText(IMissionParticipant participant, SkillRating rating)
     {
         return participant.GetEffectiveRating(rating).ToString();
     }
@@ -840,7 +838,7 @@ internal sealed class StrategyStatusInfoBuilder
             return "Captured";
         if (officer.InjuryPoints > 0)
             return "Injured";
-        if (officer.GetTransitMovement() != null)
+        if (((IMovable)officer).GetTransitMovement() != null)
             return "Enroute";
         if (officer.IsOnMission())
             return "On Mission";

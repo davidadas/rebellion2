@@ -6,7 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Game.Events
 {
@@ -53,12 +53,12 @@ namespace Rebellion.Tests.Game.Events
                 NumRawResourceNodes = 7,
             };
             Officer officer = EntityFactory.CreateOfficer("officer", faction.InstanceID);
-            officer.SetBaseRating(OfficerRating.Combat, 82);
+            officer.SetBaseRating(SkillRating.Combat, 82);
             officer.ForceValue = 41;
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(planet, sector);
             game.AttachNode(officer, planet);
-            int expectedCombatRating = officer.GetEffectiveRating(OfficerRating.Combat);
+            int expectedCombatRating = officer.GetEffectiveRating(SkillRating.Combat);
             int expectedForceRank = officer.ForceRank;
             GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
@@ -71,10 +71,10 @@ namespace Rebellion.Tests.Game.Events
                 As = "combat",
                 Sources = new List<GameEventBindingSource>
                 {
-                    new OfficerRatingBindingSource
+                    new SkillRatingBindingSource
                     {
                         OfficerInstanceID = officer.InstanceID,
-                        Rating = OfficerRating.Combat,
+                        Rating = SkillRating.Combat,
                     },
                 },
             }.Bind(game, random, context);
@@ -133,13 +133,13 @@ namespace Rebellion.Tests.Game.Events
                 IsColonized = true,
             };
             Officer officer = EntityFactory.CreateOfficer("officer", faction.InstanceID);
-            officer.SetBaseRating(OfficerRating.Combat, 82);
+            officer.SetBaseRating(SkillRating.Combat, 82);
             officer.ForceValue = 41;
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(planet, sector);
             game.AttachNode(officer, planet);
             officer.IsEnabled = false;
-            int expectedCombatRating = officer.GetEffectiveRating(OfficerRating.Combat);
+            int expectedCombatRating = officer.GetEffectiveRating(SkillRating.Combat);
             int expectedForceRank = officer.ForceRank;
             GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
@@ -152,10 +152,10 @@ namespace Rebellion.Tests.Game.Events
                 As = "combat",
                 Sources = new List<GameEventBindingSource>
                 {
-                    new OfficerRatingBindingSource
+                    new SkillRatingBindingSource
                     {
                         OfficerInstanceID = officer.InstanceID,
-                        Rating = OfficerRating.Combat,
+                        Rating = SkillRating.Combat,
                     },
                 },
             }.Bind(game, random, context);
@@ -246,10 +246,10 @@ namespace Rebellion.Tests.Game.Events
                         As = "combat",
                         Sources = new List<GameEventBindingSource>
                         {
-                            new OfficerRatingBindingSource
+                            new SkillRatingBindingSource
                             {
                                 OfficerInstanceID = "officer",
-                                Rating = OfficerRating.Combat,
+                                Rating = SkillRating.Combat,
                             },
                         },
                     },
@@ -274,11 +274,11 @@ namespace Rebellion.Tests.Game.Events
             GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
 
             StringAssert.Contains(
-                "<OfficerRating OfficerInstanceID=\"officer\" Rating=\"Combat\" />",
+                "<SkillRating OfficerInstanceID=\"officer\" Rating=\"Combat\" />",
                 xml
             );
             StringAssert.Contains("<SelectionCount>", xml);
-            Assert.IsInstanceOf<OfficerRatingBindingSource>(restored.Bindings[0].Sources[0]);
+            Assert.IsInstanceOf<SkillRatingBindingSource>(restored.Bindings[0].Sources[0]);
             Assert.IsInstanceOf<SelectionCountBindingSource>(restored.Bindings[1].Sources[0]);
         }
     }

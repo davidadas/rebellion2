@@ -7,6 +7,7 @@ ROSLYNATOR_ANALYZERS="${ROSLYNATOR_ANALYZERS:-$HOME/.nuget/packages/roslynator.a
 MEMBER_ORDER_ANALYZER_PROJECT="${MEMBER_ORDER_ANALYZER_PROJECT:-Tools/Rebellion.Analyzers/Rebellion.Analyzers.csproj}"
 MEMBER_ORDER_ANALYZER="${MEMBER_ORDER_ANALYZER:-Tools/Rebellion.Analyzers/bin/Release/netstandard2.0/Rebellion.Analyzers.dll}"
 MEMBER_ORDER_ANALYZER_TEST_PROJECT="${MEMBER_ORDER_ANALYZER_TEST_PROJECT:-Tools/Rebellion.Analyzers.Tests/Rebellion.Analyzers.Tests.csproj}"
+ARCHITECTURE_TEST_PROJECT="${ARCHITECTURE_TEST_PROJECT:-Tools/Rebellion.Architecture.Tests/Rebellion.Architecture.Tests.csproj}"
 MEMBER_ORDER_LINT_PROJECT="${MEMBER_ORDER_LINT_PROJECT:-MemberOrder.Lint.csproj}"
 GAME_LINT_PROJECT="${GAME_LINT_PROJECT:-GameAssembly.Lint.csproj}"
 EDITOR_LINT_PROJECT="${EDITOR_LINT_PROJECT:-EditorAssembly.Lint.csproj}"
@@ -139,15 +140,9 @@ do_lint() {
         echo "=== GameAssembly ==="
         dotnet build GameAssembly.csproj -verbosity:normal "${extra_args[@]}"
         echo ""
-        for test_project in UnitTests.csproj; do
-            if [ ! -f "$test_project" ]; then
-                continue
-            fi
-
-            echo "=== ${test_project%.csproj} ==="
-            dotnet build "$test_project" -verbosity:normal "${extra_args[@]}"
-            echo ""
-        done
+        echo "=== Architecture Tests ==="
+        dotnet test "$ARCHITECTURE_TEST_PROJECT" --configuration Debug --verbosity quiet
+        echo ""
     fi
 
     echo "=== Format Rules ==="
@@ -189,7 +184,7 @@ do_lint() {
         --analyzer-assemblies "$MEMBER_ORDER_ANALYZER" \
         --ignore-analyzer-references \
         --ignore-compiler-diagnostics \
-        --supported-diagnostics REB0001 REB0002 REB0003 REB0004 REB0005 REB0006 \
+        --supported-diagnostics REB0001 REB0002 REB0003 REB0004 REB0005 REB0006 REB0007 REB0008 \
         --severity-level error
     echo ""
     echo "Lint complete."

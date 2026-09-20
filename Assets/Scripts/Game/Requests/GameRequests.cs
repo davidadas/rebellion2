@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -15,7 +14,6 @@ namespace Rebellion.Game.Requests
     {
         public int Tick { get; set; }
         public string SourceEventInstanceID { get; set; }
-        public string MissionInstanceID { get; set; }
     }
 
     /// <summary>
@@ -64,6 +62,7 @@ namespace Rebellion.Game.Requests
         public string EventLocationInstanceID { get; set; }
         public string NavigationTargetInstanceID { get; set; }
         public string NavigationSecondaryTargetInstanceID { get; set; }
+        public string MissionInstanceID { get; set; }
         public Message Message { get; set; }
     }
 

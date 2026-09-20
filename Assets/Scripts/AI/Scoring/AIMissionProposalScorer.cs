@@ -44,7 +44,7 @@ namespace Rebellion.AI.Scoring
                 return 0;
 
             MissionOdds odds = context.Missions.GetMissionOdds(
-                missionProposal.CreateRequest(),
+                missionProposal.CreateContext(),
                 context.Assessment.GetMissionDetectorCandidates(missionProposal.TargetPlanet)
             );
             if (odds == null)
@@ -80,8 +80,8 @@ namespace Rebellion.AI.Scoring
         )
         {
             if (
-                proposal.MissionTypeID != MissionTypeIDs.InciteUprising
-                && proposal.MissionTypeID != MissionTypeIDs.SubdueUprising
+                proposal.MissionTypeID != InciteUprisingMission.MissionTypeID
+                && proposal.MissionTypeID != SubdueUprisingMission.MissionTypeID
             )
                 return true;
 
@@ -121,11 +121,20 @@ namespace Rebellion.AI.Scoring
         {
             return proposal.MissionTypeID switch
             {
-                MissionTypeIDs.Diplomacy => ScoreDiplomacy(context, proposal, successProbability),
-                MissionTypeIDs.Sabotage => ScoreSabotage(context, proposal, successProbability),
-                MissionTypeIDs.Espionage => successProbability
+                DiplomacyMission.MissionTypeID => ScoreDiplomacy(
+                    context,
+                    proposal,
+                    successProbability
+                ),
+                SabotageMission.MissionTypeID => ScoreSabotage(
+                    context,
+                    proposal,
+                    successProbability
+                ),
+                EspionageMission.MissionTypeID => successProbability
                     + GetIntelAgeScore(context, proposal),
-                MissionTypeIDs.JediTraining => successProbability + GetJediTrainingValue(proposal),
+                JediTrainingMission.MissionTypeID => successProbability
+                    + GetJediTrainingValue(proposal),
                 _ => successProbability,
             };
         }
@@ -292,14 +301,14 @@ namespace Rebellion.AI.Scoring
         {
             return proposal.MissionTypeID switch
             {
-                MissionTypeIDs.Reconnaissance => config.ReconnaissancePriorityBonus,
-                MissionTypeIDs.Recruitment => config.RecruitmentPriorityBonus,
-                MissionTypeIDs.Rescue => config.RescuePriorityBonus,
-                MissionTypeIDs.SubdueUprising => config.SubdueUprisingPriorityBonus,
-                MissionTypeIDs.Research => config.ResearchPriorityBonus,
-                MissionTypeIDs.JediTraining => config.JediTrainingPriorityBonus,
-                MissionTypeIDs.Espionage => config.EspionagePriorityBonus,
-                MissionTypeIDs.Diplomacy => config.DiplomacyPriorityBonus,
+                ReconnaissanceMission.MissionTypeID => config.ReconnaissancePriorityBonus,
+                RecruitmentMission.MissionTypeID => config.RecruitmentPriorityBonus,
+                RescueMission.MissionTypeID => config.RescuePriorityBonus,
+                SubdueUprisingMission.MissionTypeID => config.SubdueUprisingPriorityBonus,
+                ResearchMission.MissionTypeID => config.ResearchPriorityBonus,
+                JediTrainingMission.MissionTypeID => config.JediTrainingPriorityBonus,
+                EspionageMission.MissionTypeID => config.EspionagePriorityBonus,
+                DiplomacyMission.MissionTypeID => config.DiplomacyPriorityBonus,
                 _ => 0,
             };
         }

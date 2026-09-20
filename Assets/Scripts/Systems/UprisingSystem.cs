@@ -8,7 +8,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Systems
 {
@@ -839,7 +839,7 @@ namespace Rebellion.Systems
                         : mission
                             .GetMainParticipants()
                             .Sum(participant =>
-                                participant.GetEffectiveRating(OfficerRating.Leadership)
+                                participant.GetEffectiveRating(SkillRating.Leadership)
                             ) / mission.GetMainParticipants().Count;
                 int missionAdjustment = averageLeadership / config.MissionLeadershipDivisor;
 

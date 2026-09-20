@@ -4,12 +4,11 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Logging;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Systems
 {
@@ -189,7 +188,7 @@ namespace Rebellion.Systems
                 if (
                     custodyContext == null
                     || planet == null
-                    || officer.GetTransitMovement() != null
+                    || ((IMovable)officer).GetTransitMovement() != null
                 )
                     continue;
 
@@ -267,7 +266,7 @@ namespace Rebellion.Systems
                     )
                     && planet.CanAcceptChild(officer)
                 )
-                .OrderBy(planet => planet.GetRawDistanceTo(officer.GetPosition()))
+                .OrderBy(planet => planet.GetRawDistanceTo(((IMovable)officer).GetPosition()))
                 .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
                 .FirstOrDefault();
         }
@@ -523,8 +522,8 @@ namespace Rebellion.Systems
         /// <returns>The officer escape score.</returns>
         private static int GetEscapeSkillScore(Officer officer)
         {
-            return officer.GetEffectiveRating(OfficerRating.Espionage)
-                + officer.GetEffectiveRating(OfficerRating.Combat);
+            return officer.GetEffectiveRating(SkillRating.Espionage)
+                + officer.GetEffectiveRating(SkillRating.Combat);
         }
 
         /// <summary>
@@ -549,7 +548,7 @@ namespace Rebellion.Systems
             if (guards.Count == 0)
                 return 0;
 
-            return guards.Sum(g => g.GetEffectiveRating(OfficerRating.Combat)) / guards.Count;
+            return guards.Sum(g => g.GetEffectiveRating(SkillRating.Combat)) / guards.Count;
         }
 
         /// <summary>

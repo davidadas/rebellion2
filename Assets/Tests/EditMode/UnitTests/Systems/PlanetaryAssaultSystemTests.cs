@@ -5,11 +5,9 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Systems
 {
@@ -140,7 +138,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Execute_EachTroopUsesGeneralFromItsOwnFleet()
+        public void Execute_EachTroop_UsesGeneralFromItsOwnFleet()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
@@ -154,7 +152,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 CurrentRank = OfficerRank.General,
             };
-            general.SetBaseRating(OfficerRating.Leadership, 60);
+            general.SetBaseRating(SkillRating.Leadership, 60);
             game.AttachNode(general, commandedFleet.GetChildren<CapitalShip>()[0]);
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(

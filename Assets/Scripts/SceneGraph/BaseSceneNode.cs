@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Encyclopedia;
-using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.SceneGraph
@@ -13,17 +11,13 @@ namespace Rebellion.SceneGraph
     public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     {
         // Parent Info.
-        [CloneIgnore]
         public string ParentInstanceID { get; set; }
 
-        [CloneIgnore]
         public string LastParentInstanceID { get; set; }
 
-        [CloneIgnore]
         [PersistableIgnore]
         public ISceneNode ParentNode { get; set; }
 
-        [CloneIgnore]
         [PersistableIgnore]
         public ISceneNode LastParentNode { get; set; }
 
@@ -35,7 +29,6 @@ namespace Rebellion.SceneGraph
         // Owner Info.
         private string _ownerInstanceId;
 
-        [CloneIgnore]
         public string OwnerInstanceID
         {
             get => _ownerInstanceId;
@@ -289,13 +282,6 @@ namespace Rebellion.SceneGraph
             copy.CapturedOverlayImagePath = CapturedOverlayImagePath;
             copy.InjuredImagePath = InjuredImagePath;
             copy.Description = Description;
-            copy.EncyclopediaImagePath = EncyclopediaImagePath;
-            copy.EncyclopediaDescription = EncyclopediaDescription;
-            copy.EncyclopediaStats = EncyclopediaStats?.ConvertAll(stat => new EncyclopediaEntryStat
-            {
-                Label = stat.Label,
-                Value = stat.Value,
-            });
             copy.OwnerInstanceID = OwnerInstanceID;
             copy.IsEnabled = IsEnabled;
         }

@@ -7,7 +7,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -296,7 +295,7 @@ namespace Rebellion.Tests.Systems
             Officer officer = EntityFactory.CreateOfficer("o1", "rebels");
 
             Mission diplomacyMission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.Diplomacy,
+                DiplomacyMission.MissionTypeID,
                 _game,
                 "rebels",
                 _targetPlanet,
@@ -603,7 +602,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_CancelsRemoteOrdersForDestinationAndPreservesOtherOrders()
+        public void TransferPlanet_MixedRemoteOrders_CancelsDestinationAndPreservesOthers()
         {
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.EnergyCapacity = 2;
@@ -647,7 +646,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_PreservesRegimentOrderAssignedToFriendlyFleet()
+        public void TransferPlanet_Default_PreservesRegimentOrderAssignedToFriendlyFleet()
         {
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             Fleet fleet = new Fleet(_empire.InstanceID, "Empire Fleet");
@@ -695,7 +694,7 @@ namespace Rebellion.Tests.Systems
 
             Officer officer = EntityFactory.CreateOfficer("diplomat", _rebels.InstanceID);
             Mission diplomacyMission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.Diplomacy,
+                DiplomacyMission.MissionTypeID,
                 _game,
                 _rebels.InstanceID,
                 _targetPlanet,
@@ -809,7 +808,7 @@ namespace Rebellion.Tests.Systems
 
             Officer officer = EntityFactory.CreateOfficer("diplomat", _empire.InstanceID);
             Mission diplomacyMission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.Diplomacy,
+                DiplomacyMission.MissionTypeID,
                 _game,
                 _empire.InstanceID,
                 _targetPlanet,
@@ -1199,6 +1198,70 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(result.PreviousOwner);
             Assert.AreEqual(_empire, result.NewOwner);
             Assert.AreEqual(PlanetOwnershipChangeReason.None, result.Reason);
+        }
+
+        [Test]
+        public void HandleResults_CorePopularSupportShift_AppliesResistanceAndReportsChange()
+        {
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _empire.InstanceID, 50 },
+                { _rebels.InstanceID, 50 },
+            };
+            _empire.Settings.SupportResistance = SupportChange.Increase;
+            _game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
+
+            List<GameResult> reactions = _ownershipSystem.HandleResults(
+                new[]
+                {
+                    new PopularSupportShiftResult
+                    {
+                        Planet = _targetPlanet,
+                        Faction = _empire,
+                        Shift = 6,
+                        Tick = 14,
+                    },
+                }
+            );
+
+            Assert.AreEqual(53, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+            PlanetStatChangedResult change = reactions.OfType<PlanetStatChangedResult>().Single();
+            Assert.AreEqual(PlanetChangeCategory.Loyalty, change.Category);
+            Assert.AreEqual(50, change.OldValue);
+            Assert.AreEqual(53, change.NewValue);
+            Assert.AreEqual(14, change.Tick);
+        }
+
+        [Test]
+        public void HandleResults_SupportCrossesThreshold_ReportsPopularSupportOwnershipChange()
+        {
+            _game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _empire.InstanceID, 59 },
+                { _rebels.InstanceID, 41 },
+            };
+
+            List<GameResult> reactions = _ownershipSystem.HandleResults(
+                new[]
+                {
+                    new PopularSupportShiftResult
+                    {
+                        Planet = _targetPlanet,
+                        Faction = _empire,
+                        Shift = 2,
+                        Tick = 18,
+                    },
+                }
+            );
+
+            Assert.AreEqual(_empire.InstanceID, _targetPlanet.GetOwnerInstanceID());
+            PlanetOwnershipChangedResult change = reactions
+                .OfType<PlanetOwnershipChangedResult>()
+                .Single();
+            Assert.AreEqual(PlanetOwnershipChangeReason.PopularSupport, change.Reason);
+            Assert.AreEqual(18, change.Tick);
         }
 
         /// <summary>

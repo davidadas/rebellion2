@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void EnumerateFileAddresses_LayersFilesAndRemovesDuplicateAddresses()
+        public void EnumerateFileAddresses_OverlappingFiles_LayersAndRemovesDuplicates()
         {
             WriteFile(packRoot, "UI/base.png", "base");
             WriteFile(packRoot, "UI/replaced.png", "base");

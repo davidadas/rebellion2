@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.SceneGraph;
+using Rebellion.Util.Random;
+using Rebellion.Util.Reflection;
 
 namespace Rebellion.Generation
 {
@@ -95,28 +97,54 @@ namespace Rebellion.Generation
         private GenerationContext LoadContext()
         {
             int galaxySize = (int)_summary.GalaxySize;
-            PlanetSector[] sectors = _gameData
-                .PlanetSectors.GetDeepCopy(CloneMode.Full)
+            PlanetSector[] sectors = CopyTemplates(
+                    _gameData.PlanetSectors,
+                    recursive: true,
+                    includeDisabled: true
+                )
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
 
             return new GenerationContext
             {
                 Summary = _summary,
-                Config = _gameData.GenerationConfig.GetDeepCopy(CloneMode.Full),
-                GameConfig = _gameData.GameConfig.GetDeepCopy(CloneMode.Full),
+                Config = _gameData.GenerationConfig.GetDeepCopy(),
+                GameConfig = _gameData.GameConfig.GetDeepCopy(),
                 Rng = _randomProvider,
 
                 Sectors = sectors,
-                Factions = _gameData.Factions.GetDeepCopy(CloneMode.Full),
-                Buildings = _gameData.Buildings.GetDeepCopy(CloneMode.Full),
-                CapitalShips = _gameData.CapitalShips.GetDeepCopy(CloneMode.Full),
-                Starfighters = _gameData.Starfighters.GetDeepCopy(CloneMode.Full),
-                Regiments = _gameData.Regiments.GetDeepCopy(CloneMode.Full),
-                SpecialForces = _gameData.SpecialForces.GetDeepCopy(CloneMode.Full),
-                Officers = _gameData.Officers.GetDeepCopy(CloneMode.Full),
-                Events = _gameData.GameEvents.GetDeepCopy(CloneMode.Full),
+                Factions = _gameData.Factions.GetDeepCopy(),
+                Buildings = CopyTemplates(_gameData.Buildings),
+                CapitalShips = CopyTemplates(_gameData.CapitalShips),
+                Starfighters = CopyTemplates(_gameData.Starfighters),
+                Regiments = CopyTemplates(_gameData.Regiments),
+                SpecialForces = CopyTemplates(_gameData.SpecialForces),
+                Officers = CopyTemplates(_gameData.Officers),
+                Events = _gameData.GameEvents.GetDeepCopy(),
             };
+        }
+
+        /// <summary>
+        /// Creates detached copies of authored scene nodes while preserving their identities.
+        /// </summary>
+        /// <typeparam name="T">The scene-node template type.</typeparam>
+        /// <param name="templates">The authored templates to copy.</param>
+        /// <param name="recursive">Whether descendants are copied.</param>
+        /// <param name="includeDisabled">Whether disabled descendants are copied.</param>
+        /// <returns>The detached scene-node copies.</returns>
+        private static T[] CopyTemplates<T>(
+            IEnumerable<T> templates,
+            bool recursive = false,
+            bool includeDisabled = false
+        )
+            where T : class, ISceneNode
+        {
+            return templates
+                .Select(template =>
+                {
+                    return (T)template.CreateCopy(recursive, includeDisabled);
+                })
+                .ToArray();
         }
 
         /// <summary>

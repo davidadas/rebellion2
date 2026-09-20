@@ -37,18 +37,22 @@ namespace Rebellion.Tests.AI.Scoring
             lowSupport.AddVisitor(empire.InstanceID);
             highSupport.AddVisitor(empire.InstanceID);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
-            officer.Ratings[OfficerRating.Diplomacy] = 100;
+            officer.Ratings[SkillRating.Diplomacy] = 100;
             game.AttachNode(officer, lowSupport);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
 
             double lowSupportScore = scorer.Score(
                 context,
-                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, lowSupport)
+                new AIMissionProposal(new[] { officer }, DiplomacyMission.MissionTypeID, lowSupport)
             );
             double highSupportScore = scorer.Score(
                 context,
-                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, highSupport)
+                new AIMissionProposal(
+                    new[] { officer },
+                    DiplomacyMission.MissionTypeID,
+                    highSupport
+                )
             );
 
             Assert.Greater(lowSupportScore, highSupportScore);
@@ -75,7 +79,7 @@ namespace Rebellion.Tests.AI.Scoring
             highSupport.SetPopularSupport(empire.InstanceID, 80);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
             officer.IsMain = true;
-            officer.Ratings[OfficerRating.Leadership] = 80;
+            officer.Ratings[SkillRating.Leadership] = 80;
             game.AttachNode(officer, lowSupport);
             Officer recruit = EntityFactory.CreateOfficer("recruit", null);
             recruit.RecruitingFactionInstanceIDs = new List<string> { empire.InstanceID };
@@ -85,11 +89,19 @@ namespace Rebellion.Tests.AI.Scoring
 
             double lowSupportScore = scorer.Score(
                 context,
-                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Recruitment, lowSupport)
+                new AIMissionProposal(
+                    new[] { officer },
+                    RecruitmentMission.MissionTypeID,
+                    lowSupport
+                )
             );
             double highSupportScore = scorer.Score(
                 context,
-                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Recruitment, highSupport)
+                new AIMissionProposal(
+                    new[] { officer },
+                    RecruitmentMission.MissionTypeID,
+                    highSupport
+                )
             );
 
             Assert.Greater(highSupportScore, lowSupportScore);
@@ -112,14 +124,14 @@ namespace Rebellion.Tests.AI.Scoring
                 "probe",
                 empire.InstanceID
             );
-            probe.AllowedMissionTypeIDs.Add(MissionTypeIDs.Reconnaissance);
-            probe.Ratings[OfficerRating.Espionage] = 30;
+            probe.AllowedMissionTypeIDs.Add(ReconnaissanceMission.MissionTypeID);
+            probe.Ratings[SkillRating.Espionage] = 30;
             game.AttachNode(probe, origin);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             double score = new AIMissionProposalScorer().Score(
                 context,
-                new AIMissionProposal(new[] { probe }, MissionTypeIDs.Reconnaissance, target)
+                new AIMissionProposal(new[] { probe }, ReconnaissanceMission.MissionTypeID, target)
             );
 
             Assert.Greater(score, 0);
@@ -142,8 +154,8 @@ namespace Rebellion.Tests.AI.Scoring
                 "participant",
                 empire.InstanceID
             );
-            participant.AllowedMissionTypeIDs.Add(MissionTypeIDs.SubdueUprising);
-            participant.Ratings[OfficerRating.Leadership] = 0;
+            participant.AllowedMissionTypeIDs.Add(SubdueUprisingMission.MissionTypeID);
+            participant.Ratings[SkillRating.Leadership] = 0;
             game.AttachNode(participant, planet);
             game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
             {
@@ -155,12 +167,12 @@ namespace Rebellion.Tests.AI.Scoring
 
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { participant },
-                MissionTypeIDs.SubdueUprising,
+                SubdueUprisingMission.MissionTypeID,
                 planet
             );
 
             Assert.IsTrue(proposal.CanExecute(context));
-            MissionOdds odds = context.Missions.GetMissionOdds(proposal.CreateRequest());
+            MissionOdds odds = context.Missions.GetMissionOdds(proposal.CreateContext());
             Assert.IsNotNull(odds);
             Assert.AreEqual(19, odds.ObjectiveSuccessProbability, 0.0001);
             double score = new AIMissionProposalScorer().Score(context, proposal);
@@ -180,13 +192,13 @@ namespace Rebellion.Tests.AI.Scoring
                 "participant",
                 empire.InstanceID
             );
-            participant.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
-            participant.Ratings[OfficerRating.Espionage] = 60;
+            participant.AllowedMissionTypeIDs.Add(EspionageMission.MissionTypeID);
+            participant.Ratings[SkillRating.Espionage] = 60;
             game.AttachNode(participant, origin);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { participant },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 target
             );
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
@@ -212,8 +224,8 @@ namespace Rebellion.Tests.AI.Scoring
                 "high-probe",
                 empire.InstanceID
             );
-            lowRatedProbe.Ratings[OfficerRating.Espionage] = 1;
-            highRatedProbe.Ratings[OfficerRating.Espionage] = 100;
+            lowRatedProbe.Ratings[SkillRating.Espionage] = 1;
+            highRatedProbe.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(lowRatedProbe, origin);
             game.AttachNode(highRatedProbe, origin);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -223,7 +235,7 @@ namespace Rebellion.Tests.AI.Scoring
                 context,
                 new AIMissionProposal(
                     new[] { lowRatedProbe },
-                    MissionTypeIDs.Reconnaissance,
+                    ReconnaissanceMission.MissionTypeID,
                     target
                 )
             );
@@ -231,7 +243,7 @@ namespace Rebellion.Tests.AI.Scoring
                 context,
                 new AIMissionProposal(
                     new[] { highRatedProbe },
-                    MissionTypeIDs.Reconnaissance,
+                    ReconnaissanceMission.MissionTypeID,
                     target
                 )
             );
@@ -255,10 +267,10 @@ namespace Rebellion.Tests.AI.Scoring
                 "second",
                 empire.InstanceID
             );
-            firstParticipant.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
-            secondParticipant.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
-            firstParticipant.Ratings[OfficerRating.Espionage] = 0;
-            secondParticipant.Ratings[OfficerRating.Espionage] = 0;
+            firstParticipant.AllowedMissionTypeIDs.Add(EspionageMission.MissionTypeID);
+            secondParticipant.AllowedMissionTypeIDs.Add(EspionageMission.MissionTypeID);
+            firstParticipant.Ratings[SkillRating.Espionage] = 0;
+            secondParticipant.Ratings[SkillRating.Espionage] = 0;
             game.AttachNode(firstParticipant, origin);
             game.AttachNode(secondParticipant, origin);
             game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
@@ -270,13 +282,17 @@ namespace Rebellion.Tests.AI.Scoring
 
             double singleParticipantScore = scorer.Score(
                 context,
-                new AIMissionProposal(new[] { firstParticipant }, MissionTypeIDs.Espionage, target)
+                new AIMissionProposal(
+                    new[] { firstParticipant },
+                    EspionageMission.MissionTypeID,
+                    target
+                )
             );
             double multipleParticipantScore = scorer.Score(
                 context,
                 new AIMissionProposal(
                     new[] { firstParticipant, secondParticipant },
-                    MissionTypeIDs.Espionage,
+                    EspionageMission.MissionTypeID,
                     target
                 )
             );
@@ -308,7 +324,7 @@ namespace Rebellion.Tests.AI.Scoring
             Officer mainParticipant = EntityFactory.CreateOfficer("main", empire.InstanceID);
             Officer nearDecoy = EntityFactory.CreateOfficer("near-decoy", empire.InstanceID);
             Officer distantDecoy = EntityFactory.CreateOfficer("distant-decoy", empire.InstanceID);
-            mainParticipant.Ratings[OfficerRating.Espionage] = 100;
+            mainParticipant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(mainParticipant, origin);
             game.AttachNode(nearDecoy, origin);
             game.AttachNode(distantDecoy, distantOrigin);
@@ -319,7 +335,7 @@ namespace Rebellion.Tests.AI.Scoring
                 context,
                 new AIMissionProposal(
                     new[] { mainParticipant },
-                    MissionTypeIDs.Espionage,
+                    EspionageMission.MissionTypeID,
                     target,
                     decoyParticipants: new[] { nearDecoy }
                 )
@@ -328,7 +344,7 @@ namespace Rebellion.Tests.AI.Scoring
                 context,
                 new AIMissionProposal(
                     new[] { mainParticipant },
-                    MissionTypeIDs.Espionage,
+                    EspionageMission.MissionTypeID,
                     target,
                     decoyParticipants: new[] { distantDecoy }
                 )
@@ -350,8 +366,8 @@ namespace Rebellion.Tests.AI.Scoring
             game.AttachNode(detector, target);
             Officer participant = EntityFactory.CreateOfficer("participant", empire.InstanceID);
             Officer decoy = EntityFactory.CreateOfficer("decoy", empire.InstanceID);
-            participant.Ratings[OfficerRating.Espionage] = 50;
-            decoy.Ratings[OfficerRating.Espionage] = 50;
+            participant.Ratings[SkillRating.Espionage] = 50;
+            decoy.Ratings[SkillRating.Espionage] = 50;
             game.AttachNode(participant, origin);
             game.AttachNode(decoy, origin);
             game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
@@ -370,13 +386,13 @@ namespace Rebellion.Tests.AI.Scoring
 
             double soloScore = scorer.Score(
                 context,
-                new AIMissionProposal(new[] { participant }, MissionTypeIDs.Espionage, target)
+                new AIMissionProposal(new[] { participant }, EspionageMission.MissionTypeID, target)
             );
             double decoyedScore = scorer.Score(
                 context,
                 new AIMissionProposal(
                     new[] { participant },
-                    MissionTypeIDs.Espionage,
+                    EspionageMission.MissionTypeID,
                     target,
                     decoyParticipants: new[] { decoy }
                 )
@@ -396,7 +412,7 @@ namespace Rebellion.Tests.AI.Scoring
             detector.DetectionRating = 100;
             game.AttachNode(detector, target);
             Officer participant = EntityFactory.CreateOfficer("participant", empire.InstanceID);
-            participant.Ratings[OfficerRating.Espionage] = 100;
+            participant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
@@ -412,7 +428,7 @@ namespace Rebellion.Tests.AI.Scoring
 
             double score = new AIMissionProposalScorer().Score(
                 context,
-                new AIMissionProposal(new[] { participant }, MissionTypeIDs.Espionage, target)
+                new AIMissionProposal(new[] { participant }, EspionageMission.MissionTypeID, target)
             );
 
             Assert.Greater(score, 0);
@@ -431,9 +447,9 @@ namespace Rebellion.Tests.AI.Scoring
             SpecialForces participant = AITestSceneBuilder.CreateSpecialForces(
                 "participant",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
-            participant.Ratings[OfficerRating.Espionage] = 100;
+            participant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
@@ -446,7 +462,7 @@ namespace Rebellion.Tests.AI.Scoring
 
             double score = new AIMissionProposalScorer().Score(
                 context,
-                new AIMissionProposal(new[] { participant }, MissionTypeIDs.Espionage, target)
+                new AIMissionProposal(new[] { participant }, EspionageMission.MissionTypeID, target)
             );
 
             Assert.Greater(score, 0);
@@ -480,8 +496,8 @@ namespace Rebellion.Tests.AI.Scoring
                 "saboteur",
                 empire.InstanceID
             );
-            participant.AllowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
-            participant.Ratings[OfficerRating.Combat] = 60;
+            participant.AllowedMissionTypeIDs.Add(SabotageMission.MissionTypeID);
+            participant.Ratings[SkillRating.Combat] = 60;
             game.AttachNode(participant, origin);
             game.Config.AI.MissionPlanning.SabotageShieldBonus = 123;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -491,7 +507,7 @@ namespace Rebellion.Tests.AI.Scoring
                 context,
                 new AIMissionProposal(
                     new[] { participant },
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     target,
                     selectedTarget: firstShield
                 )
@@ -500,7 +516,7 @@ namespace Rebellion.Tests.AI.Scoring
                 context,
                 new AIMissionProposal(
                     new[] { participant },
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     target,
                     selectedTarget: shipyard
                 )
@@ -554,7 +570,7 @@ namespace Rebellion.Tests.AI.Scoring
                 "saboteur",
                 empire.InstanceID
             );
-            participant.Ratings[OfficerRating.Combat] = 60;
+            participant.Ratings[SkillRating.Combat] = 60;
             game.AttachNode(participant, origin);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
@@ -611,7 +627,7 @@ namespace Rebellion.Tests.AI.Scoring
                 "saboteur",
                 empire.InstanceID
             );
-            participant.Ratings[OfficerRating.Combat] = 60;
+            participant.Ratings[SkillRating.Combat] = 60;
             game.AttachNode(participant, origin);
             game.Config.AI.MissionPlanning.SabotageFavoredSupportRegimentBonus = 37;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -649,11 +665,11 @@ namespace Rebellion.Tests.AI.Scoring
             );
             enemyPlanet.AddVisitor(empire.InstanceID);
             Officer actor = EntityFactory.CreateOfficer("actor", empire.InstanceID);
-            actor.Ratings[OfficerRating.Combat] = 100;
+            actor.Ratings[SkillRating.Combat] = 100;
             Officer weakTarget = EntityFactory.CreateOfficer("weak", rebels.InstanceID);
-            weakTarget.Ratings[OfficerRating.Combat] = 10;
+            weakTarget.Ratings[SkillRating.Combat] = 10;
             Officer strongTarget = EntityFactory.CreateOfficer("strong", rebels.InstanceID);
-            strongTarget.Ratings[OfficerRating.Combat] = 90;
+            strongTarget.Ratings[SkillRating.Combat] = 90;
             game.AttachNode(actor, origin);
             game.AttachNode(weakTarget, enemyPlanet);
             game.AttachNode(strongTarget, enemyPlanet);
@@ -665,7 +681,7 @@ namespace Rebellion.Tests.AI.Scoring
                 context,
                 new AIMissionProposal(
                     new[] { actor },
-                    MissionTypeIDs.Abduction,
+                    AbductionMission.MissionTypeID,
                     enemyPlanet,
                     selectedTarget: weakTarget,
                     targetOfficer: weakTarget
@@ -675,7 +691,7 @@ namespace Rebellion.Tests.AI.Scoring
                 context,
                 new AIMissionProposal(
                     new[] { actor },
-                    MissionTypeIDs.Abduction,
+                    AbductionMission.MissionTypeID,
                     enemyPlanet,
                     selectedTarget: strongTarget,
                     targetOfficer: strongTarget
@@ -700,15 +716,15 @@ namespace Rebellion.Tests.AI.Scoring
                 ManufacturingType.Ship
             );
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
-            officer.Ratings[OfficerRating.Combat] = 100;
-            officer.Ratings[OfficerRating.Espionage] = 100;
+            officer.Ratings[SkillRating.Combat] = 100;
+            officer.Ratings[SkillRating.Espionage] = 100;
             SpecialForces specialForces = AITestSceneBuilder.CreateSpecialForces(
                 "saboteur",
                 empire.InstanceID
             );
-            specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
-            specialForces.Ratings[OfficerRating.Combat] = 100;
-            specialForces.Ratings[OfficerRating.Espionage] = 100;
+            specialForces.AllowedMissionTypeIDs.Add(SabotageMission.MissionTypeID);
+            specialForces.Ratings[SkillRating.Combat] = 100;
+            specialForces.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(officer, origin);
             game.AttachNode(specialForces, origin);
             empire.RebuildResearchCatalog(new IManufacturable[] { specialForces });
@@ -719,7 +735,7 @@ namespace Rebellion.Tests.AI.Scoring
                 context,
                 new AIMissionProposal(
                     new[] { officer },
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     target,
                     selectedTarget: sabotageTarget
                 )
@@ -728,7 +744,7 @@ namespace Rebellion.Tests.AI.Scoring
                 context,
                 new AIMissionProposal(
                     new[] { specialForces },
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     target,
                     selectedTarget: sabotageTarget
                 )
@@ -746,13 +762,13 @@ namespace Rebellion.Tests.AI.Scoring
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             target.AddVisitor(empire.InstanceID);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
-            officer.Ratings[OfficerRating.Espionage] = 100;
+            officer.Ratings[SkillRating.Espionage] = 100;
             SpecialForces specialForces = AITestSceneBuilder.CreateSpecialForces(
                 "spy",
                 empire.InstanceID
             );
-            specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
-            specialForces.Ratings[OfficerRating.Espionage] = 100;
+            specialForces.AllowedMissionTypeIDs.Add(EspionageMission.MissionTypeID);
+            specialForces.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(officer, origin);
             game.AttachNode(specialForces, origin);
             empire.RebuildResearchCatalog(new IManufacturable[] { specialForces });
@@ -761,11 +777,15 @@ namespace Rebellion.Tests.AI.Scoring
 
             double officerScore = scorer.Score(
                 context,
-                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Espionage, target)
+                new AIMissionProposal(new[] { officer }, EspionageMission.MissionTypeID, target)
             );
             double specialForcesScore = scorer.Score(
                 context,
-                new AIMissionProposal(new[] { specialForces }, MissionTypeIDs.Espionage, target)
+                new AIMissionProposal(
+                    new[] { specialForces },
+                    EspionageMission.MissionTypeID,
+                    target
+                )
             );
 
             Assert.Greater(specialForcesScore, officerScore);
@@ -816,15 +836,15 @@ namespace Rebellion.Tests.AI.Scoring
         {
             if (
                 participant is SpecialForces specialForces
-                && !specialForces.AllowedMissionTypeIDs.Contains(MissionTypeIDs.Sabotage)
+                && !specialForces.AllowedMissionTypeIDs.Contains(SabotageMission.MissionTypeID)
             )
-                specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
+                specialForces.AllowedMissionTypeIDs.Add(SabotageMission.MissionTypeID);
 
             return scorer.Score(
                 context,
                 new AIMissionProposal(
                     new[] { participant },
-                    MissionTypeIDs.Sabotage,
+                    SabotageMission.MissionTypeID,
                     planet,
                     selectedTarget: target
                 )

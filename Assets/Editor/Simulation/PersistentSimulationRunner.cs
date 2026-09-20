@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
-using Rebellion.Util.Common;
+using Rebellion.Util.Logging;
 
 [UnityEditor.InitializeOnLoad]
 public static class PersistentSimulationRunner

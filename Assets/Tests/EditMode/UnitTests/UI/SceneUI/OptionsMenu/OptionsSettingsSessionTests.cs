@@ -106,7 +106,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void DisplayChanges_ApplyOnlyWhenCommitted()
+        public void DisplayChanges_Default_ApplyOnlyWhenCommitted()
         {
             _session.StepResolution(-1);
             _session.StepFullScreen(1);

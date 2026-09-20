@@ -17,7 +17,7 @@ using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 /// <summary>
@@ -250,7 +250,7 @@ public class StubMission : Mission
             locationInstanceId,
             new List<IMissionParticipant>(),
             new List<IMissionParticipant>(),
-            OfficerRating.Diplomacy
+            SkillRating.Diplomacy
         ) { }
 
     /// <summary>
@@ -677,12 +677,12 @@ public static class EntityFactory
             InstanceID = id,
             DisplayName = id,
             OwnerInstanceID = factionId,
-            Ratings = new Dictionary<OfficerRating, int>
+            Ratings = new Dictionary<SkillRating, int>
             {
-                { OfficerRating.Diplomacy, 50 },
-                { OfficerRating.Espionage, 50 },
-                { OfficerRating.Combat, 50 },
-                { OfficerRating.Leadership, 50 },
+                { SkillRating.Diplomacy, 50 },
+                { SkillRating.Espionage, 50 },
+                { SkillRating.Combat, 50 },
+                { SkillRating.Leadership, 50 },
             },
         };
     }

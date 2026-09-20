@@ -38,6 +38,7 @@ namespace Rebellion.Tests.Systems
             _faction = new Faction
             {
                 InstanceID = _factionId,
+                GarrisonTroopTypeID = _garrisonTypeId,
                 ManageGarrisons = true,
                 ManageProduction = true,
             };
@@ -241,20 +242,7 @@ namespace Rebellion.Tests.Systems
         /// <returns>The created game data.</returns>
         private static GameDataCatalog CreateGameData(GameConfig config)
         {
-            GameGenerationConfig generationConfig = new GameGenerationConfig
-            {
-                GalaxyClassification = new GalaxyClassificationSection
-                {
-                    FactionSetups = new List<FactionSetup>
-                    {
-                        new FactionSetup
-                        {
-                            FactionID = _factionId,
-                            GarrisonTroopTypeID = _garrisonTypeId,
-                        },
-                    },
-                },
-            };
+            GameGenerationConfig generationConfig = new GameGenerationConfig();
             List<string> manufacturingFactionIds = new List<string> { _factionId };
             Building mine = new Building
             {

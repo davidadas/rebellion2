@@ -421,7 +421,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Execute_StoresSelectedProposalsOnContext()
+        public void Execute_Default_StoresSelectedProposalsOnContext()
         {
             AITurnContext context = CreateEmptyContext();
             TestAIProposal proposal = new TestAIProposal("proposal", new[] { "claim" });

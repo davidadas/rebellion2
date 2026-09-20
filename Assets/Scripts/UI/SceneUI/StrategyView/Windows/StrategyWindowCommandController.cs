@@ -6,7 +6,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Executes and finalizes commands shared by strategy feature windows.

@@ -8,9 +8,11 @@ using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Logging;
+using Rebellion.Util.Random;
+using Rebellion.Util.Reflection;
 
 /// <summary>
 /// Coordinates all game systems each tick and routes results through domain reactions and observers.
@@ -560,6 +562,7 @@ public sealed class GameManager
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_captiveSystem);
         _resultProcessor.Subscribe<HeadquartersLostResult>(_victorySystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
+        _resultProcessor.Subscribe<PopularSupportShiftResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
         _resultProcessor.Subscribe<OfficerCaptureStateResult>(_missionSystem);
@@ -582,19 +585,35 @@ public sealed class GameManager
     /// </summary>
     private void RebuildDerivedState()
     {
-        IManufacturable[] templates = _gameData
-            .Buildings.GetDeepCopy()
+        IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
             .Cast<IManufacturable>()
-            .Concat(_gameData.CapitalShips.GetDeepCopy())
-            .Concat(_gameData.Starfighters.GetDeepCopy())
-            .Concat(_gameData.Regiments.GetDeepCopy())
-            .Concat(_gameData.SpecialForces.GetDeepCopy())
+            .Concat(CopyTemplates(_gameData.CapitalShips))
+            .Concat(CopyTemplates(_gameData.Starfighters))
+            .Concat(CopyTemplates(_gameData.Regiments))
+            .Concat(CopyTemplates(_gameData.SpecialForces))
             .ToArray();
 
         foreach (Faction faction in _game.GetFactions())
             faction.RebuildResearchCatalog(templates);
 
         _manufacturingSystem.RebuildQueues();
+    }
+
+    /// <summary>
+    /// Creates detached template copies with fresh runtime identities.
+    /// </summary>
+    /// <typeparam name="T">The scene-node template type.</typeparam>
+    /// <param name="templates">The templates to copy.</param>
+    /// <returns>Detached copies suitable for derived catalogs.</returns>
+    private static IEnumerable<T> CopyTemplates<T>(IEnumerable<T> templates)
+        where T : class, ISceneNode
+    {
+        foreach (T template in templates)
+        {
+            T copy = (T)template.CreateCopy();
+            copy.InstanceID = null;
+            yield return copy;
+        }
     }
 
     /// <summary>

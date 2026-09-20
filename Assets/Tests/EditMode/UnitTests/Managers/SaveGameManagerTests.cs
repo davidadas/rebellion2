@@ -289,7 +289,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessAutosaveTick_OnlyWritesAtConfiguredTickCadence()
+        public void ProcessAutosaveTick_ConfiguredCadence_WritesOnlyAtCadence()
         {
             GameRoot game = new GameRoot { Summary = new GameSummary(), CurrentTick = 99 };
             UserGameplaySettings settings = new UserGameplaySettings();
@@ -392,7 +392,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void MaxDisplayNameLength_Is64Characters()
+        public void MaxDisplayNameLength_Default_Is64Characters()
         {
             Assert.AreEqual(64, SaveGameManager.MaxDisplayNameLength);
         }
@@ -690,7 +690,7 @@ namespace Rebellion.Tests.Managers
             GameEvent event1 = new GameEvent
             {
                 InstanceID = "EVENT1",
-                Schedule = new GameEventScheduler
+                Schedule = new GameEventSchedule
                 {
                     RandomInterval = new RandomInterval { MinimumTicks = 300, MaximumTicks = 400 },
                 },

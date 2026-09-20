@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -10,7 +9,7 @@ using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -649,7 +648,7 @@ namespace Rebellion.Game.Events
 
         // Rating.
         [PersistableAttribute]
-        public OfficerRating Rating { get; set; }
+        public SkillRating Rating { get; set; }
 
         // Adjustment.
         public int? Amount { get; set; }
@@ -923,7 +922,7 @@ namespace Rebellion.Game.Events
         public string OfficerInstanceID { get; set; }
 
         [PersistableAttribute]
-        public OfficerRating Rating { get; set; }
+        public SkillRating Rating { get; set; }
 
         [PersistableAttribute]
         public string ProbabilityTable { get; set; }
@@ -948,7 +947,7 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     $"PerformSkillCheck could not resolve officer '{OfficerInstanceID}'."
                 );
-            if (Rating == OfficerRating.None)
+            if (Rating == SkillRating.None)
                 throw new InvalidOperationException("PerformSkillCheck requires a rating.");
             if (RatingMultiplier == 0)
                 throw new InvalidOperationException(

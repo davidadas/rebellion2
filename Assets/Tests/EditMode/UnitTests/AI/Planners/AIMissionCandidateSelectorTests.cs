@@ -32,8 +32,8 @@ namespace Rebellion.Tests.AI.Planners
                 "participant",
                 empire.InstanceID
             );
-            participant.AllowedMissionTypeIDs.Add(MissionTypeIDs.SubdueUprising);
-            participant.Ratings[OfficerRating.Leadership] = 0;
+            participant.AllowedMissionTypeIDs.Add(SubdueUprisingMission.MissionTypeID);
+            participant.Ratings[SkillRating.Leadership] = 0;
             game.AttachNode(participant, planet);
             game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
             {
@@ -44,7 +44,7 @@ namespace Rebellion.Tests.AI.Planners
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { participant },
-                MissionTypeIDs.SubdueUprising,
+                SubdueUprisingMission.MissionTypeID,
                 planet
             );
             List<AIProposal> proposals = new List<AIProposal>();

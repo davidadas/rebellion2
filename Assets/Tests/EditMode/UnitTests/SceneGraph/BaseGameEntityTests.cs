@@ -1,6 +1,5 @@
 using NUnit.Framework;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Tests.SceneGraph
 {
@@ -248,41 +247,6 @@ namespace Rebellion.Tests.SceneGraph
                 expectedDisplayName,
                 displayName,
                 "GetDisplayName should return the same value as DisplayName."
-            );
-        }
-
-        [Test]
-        public void GetDeepCopy_IgnoresInstanceID_WhenDeepCopying()
-        {
-            BaseGameEntity originalEntity = new BaseGameEntity
-            {
-                InstanceID = "originalInstanceID",
-                TypeID = "TestType",
-                DisplayName = "Test Entity",
-                Description = "This is a test description.",
-            };
-
-            BaseGameEntity clonedEntity = originalEntity.GetDeepCopy();
-
-            Assert.AreNotEqual(
-                originalEntity.InstanceID,
-                clonedEntity.InstanceID,
-                "InstanceID should not be copied during cloning."
-            );
-            Assert.AreEqual(
-                originalEntity.TypeID,
-                clonedEntity.TypeID,
-                "TypeID should be copied correctly during cloning."
-            );
-            Assert.AreEqual(
-                originalEntity.DisplayName,
-                clonedEntity.DisplayName,
-                "DisplayName should be copied correctly during cloning."
-            );
-            Assert.AreEqual(
-                originalEntity.Description,
-                clonedEntity.Description,
-                "Description should be copied correctly during cloning."
             );
         }
 

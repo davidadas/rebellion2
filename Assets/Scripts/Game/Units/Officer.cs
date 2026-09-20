@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
@@ -223,8 +222,12 @@ namespace Rebellion.Game.Units
     /// <summary>
     /// Represents an officer that can be used in missions.
     /// </summary>
-    public class Officer : LeafNode, IMissionParticipant, IMovable
+    public class Officer : LeafNode, IMissionParticipant, IMovable, IEncyclopediaSource
     {
+        public string EncyclopediaImagePath { get; set; }
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
+            new List<EncyclopediaEntryStat>();
+        public string EncyclopediaDescription { get; set; }
         private const int _ratingPercentScale = 100;
 
         // Research Info.
@@ -312,13 +315,13 @@ namespace Rebellion.Game.Units
         public OfficerImageSet ImageSet { get; set; } = new OfficerImageSet();
 
         // Mission rating info.
-        public Dictionary<OfficerRating, int> Ratings { get; set; } =
-            new Dictionary<OfficerRating, int>
+        public Dictionary<SkillRating, int> Ratings { get; set; } =
+            new Dictionary<SkillRating, int>
             {
-                { OfficerRating.Diplomacy, 0 },
-                { OfficerRating.Espionage, 0 },
-                { OfficerRating.Combat, 0 },
-                { OfficerRating.Leadership, 0 },
+                { SkillRating.Diplomacy, 0 },
+                { SkillRating.Espionage, 0 },
+                { SkillRating.Combat, 0 },
+                { SkillRating.Leadership, 0 },
             };
         public bool CanImproveMissionRating => true;
 
@@ -339,7 +342,7 @@ namespace Rebellion.Game.Units
         /// <param name="missionTypeId">The mission type ID to inspect.</param>
         /// <returns>True if the officer can perform the mission type.</returns>
         public bool CanPerformMission(string missionTypeId) =>
-            missionTypeId != MissionTypeIDs.Reconnaissance;
+            missionTypeId != ReconnaissanceMission.MissionTypeID;
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -356,6 +359,7 @@ namespace Rebellion.Game.Units
         {
             base.CopyStateTo(destination);
             Officer copy = (Officer)destination;
+            ((IEncyclopediaSource)this).CopyEncyclopediaStateTo(copy);
             copy.ShipResearch = ShipResearch;
             copy.TroopResearch = TroopResearch;
             copy.FacilityResearch = FacilityResearch;
@@ -400,7 +404,7 @@ namespace Rebellion.Game.Units
             copy.MissionReturnLocationInstanceID = MissionReturnLocationInstanceID;
             copy.VoiceSet = VoiceSet?.CreateCopy();
             copy.ImageSet = ImageSet?.CreateCopy();
-            copy.Ratings = new Dictionary<OfficerRating, int>(Ratings);
+            copy.Ratings = new Dictionary<SkillRating, int>(Ratings);
         }
 
         /// <summary>
@@ -408,14 +412,14 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="rating">The rating to query.</param>
         /// <returns>The stored rating value.</returns>
-        public int GetBaseRating(OfficerRating rating)
+        public int GetBaseRating(SkillRating rating)
         {
             return rating switch
             {
-                OfficerRating.ShipResearch => ShipResearch,
-                OfficerRating.TroopResearch => TroopResearch,
-                OfficerRating.FacilityResearch => FacilityResearch,
-                OfficerRating.None => 0,
+                SkillRating.ShipResearch => ShipResearch,
+                SkillRating.TroopResearch => TroopResearch,
+                SkillRating.FacilityResearch => FacilityResearch,
+                SkillRating.None => 0,
                 _ => Ratings.TryGetValue(rating, out int value) ? value : 0,
             };
         }
@@ -426,20 +430,20 @@ namespace Rebellion.Game.Units
         /// <param name="rating">The rating to update.</param>
         /// <param name="value">The new rating value.</param>
         /// <returns>The stored rating value.</returns>
-        public int SetBaseRating(OfficerRating rating, int value)
+        public int SetBaseRating(SkillRating rating, int value)
         {
             switch (rating)
             {
-                case OfficerRating.ShipResearch:
+                case SkillRating.ShipResearch:
                     ShipResearch = value;
                     return value;
-                case OfficerRating.TroopResearch:
+                case SkillRating.TroopResearch:
                     TroopResearch = value;
                     return value;
-                case OfficerRating.FacilityResearch:
+                case SkillRating.FacilityResearch:
                     FacilityResearch = value;
                     return value;
-                case OfficerRating.None:
+                case SkillRating.None:
                     return 0;
                 default:
                     Ratings[rating] = value;
@@ -452,17 +456,14 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="rating">The rating to query.</param>
         /// <returns>The rating value after officer-specific modifiers.</returns>
-        public int GetEffectiveRating(OfficerRating rating)
+        public int GetEffectiveRating(SkillRating rating)
         {
             int baseRating = GetBaseRating(rating);
             int officerRating = rating switch
             {
-                OfficerRating.Diplomacy => ApplyForceRatingBonus(baseRating),
-                OfficerRating.Espionage => ApplyForceRatingBonus(baseRating),
-                OfficerRating.Combat => Math.Max(
-                    0,
-                    ApplyForceRatingBonus(baseRating) - InjuryPoints
-                ),
+                SkillRating.Diplomacy => ApplyForceRatingBonus(baseRating),
+                SkillRating.Espionage => ApplyForceRatingBonus(baseRating),
+                SkillRating.Combat => Math.Max(0, ApplyForceRatingBonus(baseRating) - InjuryPoints),
                 _ => baseRating,
             };
             return officerRating;
@@ -473,7 +474,7 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="rating">The rating to increment.</param>
         /// <param name="amount">The amount to add.</param>
-        public void IncrementBaseRating(OfficerRating rating, int amount = 1)
+        public void IncrementBaseRating(SkillRating rating, int amount = 1)
         {
             SetBaseRating(rating, GetBaseRating(rating) + amount);
         }
@@ -518,7 +519,7 @@ namespace Rebellion.Game.Units
                 || IsCaptured
                 || IsKilled
                 || IsOnMission()
-                || this.GetTransitMovement() != null
+                || ((IMovable)this).GetTransitMovement() != null
             )
                 return false;
 
@@ -583,15 +584,15 @@ namespace Rebellion.Game.Units
         /// Maps a research discipline to the officer rating that stores its base value.
         /// </summary>
         /// <param name="discipline">The research discipline to map.</param>
-        /// <returns>The corresponding officer rating, or <see cref="OfficerRating.None"/>.</returns>
-        public static OfficerRating GetRatingForResearchDiscipline(ResearchDiscipline discipline)
+        /// <returns>The corresponding officer rating, or <see cref="SkillRating.None"/>.</returns>
+        public static SkillRating GetRatingForResearchDiscipline(ResearchDiscipline discipline)
         {
             return discipline switch
             {
-                ResearchDiscipline.ShipDesign => OfficerRating.ShipResearch,
-                ResearchDiscipline.FacilityDesign => OfficerRating.FacilityResearch,
-                ResearchDiscipline.TroopTraining => OfficerRating.TroopResearch,
-                _ => OfficerRating.None,
+                ResearchDiscipline.ShipDesign => SkillRating.ShipResearch,
+                ResearchDiscipline.FacilityDesign => SkillRating.FacilityResearch,
+                ResearchDiscipline.TroopTraining => SkillRating.TroopResearch,
+                _ => SkillRating.None,
             };
         }
 

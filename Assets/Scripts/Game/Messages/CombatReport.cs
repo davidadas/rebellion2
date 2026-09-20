@@ -3,7 +3,6 @@ using System.Linq;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Messages
@@ -83,17 +82,6 @@ namespace Rebellion.Game.Messages
     }
 
     /// <summary>
-    /// Stores one bombardment strike without retaining a live target reference.
-    /// </summary>
-    [PersistableObject]
-    public sealed class CombatReportStrike
-    {
-        public BombardmentTargetType TargetType { get; set; }
-        public string TargetInstanceID { get; set; }
-        public string TargetName { get; set; }
-    }
-
-    /// <summary>
     /// Represents a durable fleet-engagement, bombardment, or planetary-assault report.
     /// </summary>
     [PersistableObject]
@@ -132,7 +120,6 @@ namespace Rebellion.Game.Messages
             new List<CombatReportShipDamage>();
         public List<CombatReportFighterLoss> FighterLosses { get; set; } =
             new List<CombatReportFighterLoss>();
-        public List<CombatReportStrike> Strikes { get; set; } = new List<CombatReportStrike>();
 
         /// <summary>
         /// Captures a completed combat result as a durable report for faction message history.
@@ -254,15 +241,6 @@ namespace Rebellion.Game.Messages
                         UnitName = damage.Ship?.GetDisplayName(),
                         HullBefore = damage.HullBefore,
                         HullAfter = damage.HullAfter,
-                    })
-                    .ToList(),
-                Strikes = (result.Strikes ?? new List<BombardmentStrikeEvent>())
-                    .Where(strike => strike != null)
-                    .Select(strike => new CombatReportStrike
-                    {
-                        TargetType = strike.TargetType,
-                        TargetInstanceID = strike.Target?.GetInstanceID(),
-                        TargetName = strike.TargetName,
                     })
                     .ToList(),
             };

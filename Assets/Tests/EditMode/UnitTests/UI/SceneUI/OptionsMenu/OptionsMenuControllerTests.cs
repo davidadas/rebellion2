@@ -198,7 +198,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void GameplayActions_ToggleAutomaticPausingOption()
+        public void GameplayActions_Default_ToggleAutomaticPausingOption()
         {
             OptionsMenuView view = OpenAndRender();
             OptionsToggleRowView gameplayRow = GetField<OptionsToggleRowView[]>(
@@ -239,7 +239,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void UserInterfaceActions_ToggleIdleBarOptions()
+        public void UserInterfaceActions_Default_ToggleIdleBarOptions()
         {
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.Gameplay);
             bool initiallyVisible = _bootstrap
@@ -273,7 +273,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void GraphicsActions_ChangePreviewAndRestoreDefaultsAfterConfirmation()
+        public void GraphicsActions_Default_ChangePreviewAndRestoreDefaultsAfterConfirmation()
         {
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.Graphics);
             int initialDirtyCount = _dirtyCount;
@@ -346,7 +346,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void AudioActions_ChangeVolumeThenDiscardTabChange()
+        public void AudioActions_Default_ChangeVolumeThenDiscardTabChange()
         {
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.Audio);
             NormalizedSliderView slider = GetField<NormalizedSliderView[]>(view, "_volumeSliders")
@@ -367,7 +367,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void ControlsActions_RestoreBindingAndCancelRebind()
+        public void ControlsActions_Default_RestoreBindingAndCancelRebind()
         {
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.Controls);
             Button restore = view.GetComponentsInChildren<Button>(true)
@@ -495,7 +495,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void MainMenuFooter_BackToMainMenuClosesOverlay()
+        public void MainMenuFooter_Default_BackToMainMenuClosesOverlay()
         {
             OptionsMenuView view = OpenAndRender();
 
@@ -526,7 +526,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void DestroyedView_ClearsControllerWindowState()
+        public void DestroyedView_Default_ClearsControllerWindowState()
         {
             OptionsMenuView view = OpenAndRender();
 

@@ -10,7 +10,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -231,7 +231,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Reconnaissance",
                 DisplayName = "Reconnaissance",
                 LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.Espionage,
+                ParticipantRating = SkillRating.Espionage,
                 HasInitiated = true,
                 MaxProgress = 10,
                 CurrentProgress = 5,
@@ -243,7 +243,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Reconnaissance", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
-            Assert.AreEqual(OfficerRating.Espionage, deserialized.ParticipantRating);
+            Assert.AreEqual(SkillRating.Espionage, deserialized.ParticipantRating);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(10, deserialized.MaxProgress);
             Assert.AreEqual(5, deserialized.CurrentProgress);
@@ -267,7 +267,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Reconnaissance,
+                ReconnaissanceMission.MissionTypeID,
                 game,
                 owner,
                 target,
@@ -288,7 +288,7 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "sf1",
                 OwnerInstanceID = owner,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
+                AllowedMissionTypeIDs = new List<string> { ReconnaissanceMission.MissionTypeID },
             };
         }
 

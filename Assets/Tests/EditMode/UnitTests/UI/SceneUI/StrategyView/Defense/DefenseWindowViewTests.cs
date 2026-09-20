@@ -190,7 +190,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void AuthoredRegimentLabels_MatchSourceBounds()
+        public void AuthoredRegimentLabels_Default_MatchSourceBounds()
         {
             RectInt titleRect = UILayout.GetSourceRect(
                 FindComponent<TextMeshProUGUI>("TabTitleTextField").rectTransform
@@ -214,7 +214,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void ItemTemplate_StatusRendersAboveEntity()
+        public void ItemTemplate_Status_RendersAboveEntity()
         {
             StrategyUnitCardView itemTemplate = _viewObject
                 .GetComponentsInChildren<StrategyUnitCardView>(true)
@@ -352,7 +352,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void WindowBackgroundDrop_RoutesToPlanetDestination()
+        public void WindowBackgroundDrop_Default_RoutesToPlanetDestination()
         {
             PointerEventData eventData = new PointerEventData(null);
             PointerEventData received = null;

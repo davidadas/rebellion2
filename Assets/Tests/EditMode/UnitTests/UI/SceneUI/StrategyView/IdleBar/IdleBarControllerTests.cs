@@ -81,7 +81,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void SelectEntry_ResolvesAndRoutesEntity()
+        public void SelectEntry_ResolvableEntity_ResolvesAndRoutesEntity()
         {
             RenderOfficerDirectly();
 
@@ -94,7 +94,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void ToggleTracking_ChangesStateAndRequestsRender()
+        public void ToggleTracking_Default_ChangesStateAndRequestsRender()
         {
             Assert.IsTrue(_controller.IsIdleBarTracked(_officer));
 
@@ -110,7 +110,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void IgnoreButton_UntracksEntryAndRequestsRender()
+        public void IgnoreButton_Default_UntracksEntryAndRequestsRender()
         {
             RenderOfficerDirectly();
             IdleBarSlotView slot = _view.GetComponentInChildren<IdleBarSlotView>(false);
@@ -123,7 +123,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void SecondaryClick_ResolvesAndRoutesContextMenuWithoutUntracking()
+        public void SecondaryClick_ResolvableEntity_RoutesContextMenuWithoutUntracking()
         {
             RenderOfficerDirectly();
             IdleBarSlotView slot = _view.GetComponentInChildren<IdleBarSlotView>(false);
@@ -193,7 +193,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void ResetSession_PreservesIgnoredState()
+        public void ResetSession_Default_PreservesIgnoredState()
         {
             _controller.ToggleIdleBarTracking(_officer);
 
@@ -216,7 +216,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void RecreatedController_UsesPlayerUIState()
+        public void RecreatedController_Default_UsesPlayerUIState()
         {
             _controller.ToggleIdleBarTracking(_officer);
             IdleBarController recreated = new IdleBarController(
@@ -234,7 +234,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void ToggleTracking_PlanetPersistsEachManufacturingLane()
+        public void ToggleTracking_Default_PlanetPersistsEachManufacturingLane()
         {
             Planet planet = new Planet { InstanceID = "planet" };
 

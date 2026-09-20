@@ -1,7 +1,7 @@
+using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Game.Movement;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Units;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Tests.Game.Units
 {
@@ -418,6 +418,52 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void CreateCopy_WithEncyclopediaData_CopiesIndependentEncyclopediaData()
+        {
+            _starfighter.EncyclopediaImagePath = "encyclopedia/starfighter";
+            _starfighter.EncyclopediaDescription = "Starfighter description.";
+            _starfighter.EncyclopediaStats = new List<EncyclopediaEntryStat>
+            {
+                new EncyclopediaEntryStat { Label = "Agility", Value = "70" },
+            };
+
+            Starfighter copy = (Starfighter)_starfighter.CreateCopy();
+
+            Assert.AreEqual(_starfighter.EncyclopediaImagePath, copy.EncyclopediaImagePath);
+            Assert.AreEqual(_starfighter.EncyclopediaDescription, copy.EncyclopediaDescription);
+            Assert.AreNotSame(_starfighter.EncyclopediaStats, copy.EncyclopediaStats);
+            Assert.AreNotSame(_starfighter.EncyclopediaStats[0], copy.EncyclopediaStats[0]);
+            Assert.AreEqual("Agility", copy.EncyclopediaStats[0].Label);
+            Assert.AreEqual("70", copy.EncyclopediaStats[0].Value);
+        }
+
+        [Test]
+        public void SerializeAndDeserialize_WithEncyclopediaData_PreservesFields()
+        {
+            _starfighter.EncyclopediaImagePath = "encyclopedia/starfighter";
+            _starfighter.EncyclopediaDescription = "Starfighter description.";
+            _starfighter.EncyclopediaStats = new List<EncyclopediaEntryStat>
+            {
+                new EncyclopediaEntryStat { Label = "Agility", Value = "70" },
+            };
+
+            string serialized = SerializationHelper.Serialize(_starfighter);
+            Starfighter deserialized = SerializationHelper.Deserialize<Starfighter>(serialized);
+
+            StringAssert.Contains("<EncyclopediaImagePath>", serialized);
+            StringAssert.Contains("<EncyclopediaStats>", serialized);
+            StringAssert.Contains("<EncyclopediaDescription>", serialized);
+            Assert.AreEqual(_starfighter.EncyclopediaImagePath, deserialized.EncyclopediaImagePath);
+            Assert.AreEqual(
+                _starfighter.EncyclopediaDescription,
+                deserialized.EncyclopediaDescription
+            );
+            Assert.AreEqual(1, deserialized.EncyclopediaStats.Count);
+            Assert.AreEqual("Agility", deserialized.EncyclopediaStats[0].Label);
+            Assert.AreEqual("70", deserialized.EncyclopediaStats[0].Value);
+        }
+
+        [Test]
         public void SerializeAndDeserialize_WithPopulatedStarfighter_MaintainsState()
         {
             _starfighter.ManufacturingQueueSequence = 7;
@@ -550,13 +596,13 @@ namespace Rebellion.Tests.Game.Units
                 "ProducerOwnerID should be correctly deserialized."
             );
             Assert.AreEqual(
-                _starfighter.GetPosition().X,
-                deserialized.GetPosition().X,
+                ((IMovable)_starfighter).GetPosition().X,
+                ((IMovable)deserialized).GetPosition().X,
                 "PositionX should be correctly deserialized."
             );
             Assert.AreEqual(
-                _starfighter.GetPosition().Y,
-                deserialized.GetPosition().Y,
+                ((IMovable)_starfighter).GetPosition().Y,
+                ((IMovable)deserialized).GetPosition().Y,
                 "PositionY should be correctly deserialized."
             );
         }

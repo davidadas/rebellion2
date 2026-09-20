@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Game.Movement;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Units
@@ -33,8 +33,13 @@ namespace Rebellion.Game.Units
     /// <summary>
     /// Represents a building in the game, implementing both IManufacturable and IMovable interfaces.
     /// </summary>
-    public class Building : LeafNode, IManufacturable, IMovable
+    public class Building : LeafNode, IManufacturable, IMovable, IEncyclopediaSource
     {
+        public string EncyclopediaImagePath { get; set; }
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
+            new List<EncyclopediaEntryStat>();
+        public string EncyclopediaDescription { get; set; }
+
         // Construction Info.
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }
@@ -88,6 +93,7 @@ namespace Rebellion.Game.Units
         {
             base.CopyStateTo(destination);
             Building copy = (Building)destination;
+            ((IEncyclopediaSource)this).CopyEncyclopediaStateTo(copy);
             copy.ConstructionCost = ConstructionCost;
             copy.MaintenanceCost = MaintenanceCost;
             copy.BaseBuildSpeed = BaseBuildSpeed;

@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Game.Missions
     public class SubdueUprisingMissionTests
     {
         [Test]
-        public void RollParticipantSuccess_GarrisonedRegimentDoesNotAffectScore()
+        public void RollParticipantSuccess_GarrisonedRegiment_DoesNotAffectScore()
         {
             (
                 GameRoot game,
@@ -48,7 +48,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void DisplayName_IsHumanReadable()
+        public void DisplayName_Default_IsHumanReadable()
         {
             (
                 GameRoot game,
@@ -167,7 +167,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, empirePlanet);
             mission.Initiate(0);
-            int leadershipBefore = officer.GetBaseRating(OfficerRating.Leadership);
+            int leadershipBefore = officer.GetBaseRating(SkillRating.Leadership);
 
             List<GameResult> results = CreateMissionSystem(game, fog, new FixedRNG(0))
                 .UpdateMission(mission);
@@ -177,7 +177,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(empirePlanet.IsInUprising);
             Assert.AreEqual(11, empirePlanet.GetPopularSupport("empire"));
             Assert.IsEmpty(results.OfType<PlanetUprisingEndedResult>());
-            Assert.AreEqual(leadershipBefore, officer.GetBaseRating(OfficerRating.Leadership));
+            Assert.AreEqual(leadershipBefore, officer.GetBaseRating(SkillRating.Leadership));
         }
 
         [Test]
@@ -262,7 +262,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, empirePlanet);
             mission.Initiate(0);
-            int leadershipBefore = officer.GetBaseRating(OfficerRating.Leadership);
+            int leadershipBefore = officer.GetBaseRating(SkillRating.Leadership);
 
             List<GameResult> results = CreateMissionSystem(game, fog, new FixedRNG(0))
                 .UpdateMission(mission);
@@ -271,7 +271,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
             Assert.IsFalse(empirePlanet.IsInUprising);
             Assert.AreEqual(1, results.OfType<PlanetUprisingEndedResult>().Count());
-            Assert.AreEqual(leadershipBefore + 1, officer.GetBaseRating(OfficerRating.Leadership));
+            Assert.AreEqual(leadershipBefore + 1, officer.GetBaseRating(SkillRating.Leadership));
         }
 
         [Test]
@@ -363,7 +363,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "SubdueUprising",
                 DisplayName = "Subdue Uprising",
                 LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.Diplomacy,
+                ParticipantRating = SkillRating.Diplomacy,
                 HasInitiated = true,
                 MaxProgress = 3,
                 CurrentProgress = 2,
@@ -375,7 +375,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("SubdueUprising", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
-            Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
+            Assert.AreEqual(SkillRating.Diplomacy, deserialized.ParticipantRating);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(3, deserialized.MaxProgress);
             Assert.AreEqual(2, deserialized.CurrentProgress);
@@ -397,7 +397,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.SubdueUprising,
+                SubdueUprisingMission.MissionTypeID,
                 null,
                 ownerInstanceId,
                 target,

@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using Rebellion.Game.Encyclopedia;
-using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.SceneGraph
@@ -15,10 +12,8 @@ namespace Rebellion.SceneGraph
         private static readonly object _instanceIdLock = new object();
         private static Random _deterministicInstanceIdProvider;
 
-        [CloneIgnore]
         private string _instanceId;
 
-        [CloneIgnore]
         public string InstanceID
         {
             get => _instanceId ??= CreateInstanceId();
@@ -38,15 +33,6 @@ namespace Rebellion.SceneGraph
         public string CapturedOverlayImagePath { get; set; }
         public string InjuredImagePath { get; set; }
         public string Description { get; set; }
-        public string EncyclopediaImagePath { get; set; }
-        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
-            new List<EncyclopediaEntryStat>();
-        public string EncyclopediaDescription { get; set; }
-
-        public bool HasEncyclopediaData =>
-            !string.IsNullOrEmpty(EncyclopediaImagePath)
-            || !string.IsNullOrEmpty(EncyclopediaDescription)
-            || EncyclopediaStats?.Count > 0;
 
         /// <summary>Sets the deterministic instance-identifier seed.</summary>
         /// <param name="seed">The seed, or null to restore random identifiers.</param>

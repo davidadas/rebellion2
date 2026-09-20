@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Rebellion.Game.Advisor;
+using Rebellion.Game.Messages;
 
 /// <summary>
 /// Defines shared non-themed sound resource paths used by strategy UI features.

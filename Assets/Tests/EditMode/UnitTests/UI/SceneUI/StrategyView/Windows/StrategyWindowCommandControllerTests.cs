@@ -71,7 +71,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 InstanceID = "recon-team",
                 OwnerInstanceID = _playerFactionId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
+                AllowedMissionTypeIDs = new List<string> { ReconnaissanceMission.MissionTypeID },
             };
             _game.AttachNode(_officer, origin);
             _game.AttachNode(_specialForces, origin);
@@ -218,7 +218,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void TryExecuteMove_UnitInTransit_PlaysAdvisorRejection()
         {
-            _officer.Movement = new Rebellion.Game.Movement.MovementState { TransitTicks = 10 };
+            _officer.Movement = new Rebellion.Game.Units.MovementState { TransitTicks = 10 };
 
             bool moved = _controller.TryExecuteMove(
                 _sourceWindow,
