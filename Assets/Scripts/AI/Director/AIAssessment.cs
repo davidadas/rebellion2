@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Scoring;
-using Rebellion.Game;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
@@ -11,7 +9,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Director
 {

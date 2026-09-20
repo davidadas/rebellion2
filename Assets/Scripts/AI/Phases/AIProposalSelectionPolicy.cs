@@ -100,6 +100,7 @@ namespace Rebellion.AI.Phases
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to inspect.</param>
+        /// <param name="selectedProposal">The exact producer option selected for validation.</param>
         /// <returns>True when the proposal has a selectable option.</returns>
         private bool TryResolveManufactureProposal(
             AITurnContext context,
@@ -138,6 +139,7 @@ namespace Rebellion.AI.Phases
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The manufacturing proposal to adjust.</param>
+        /// <param name="selectedProposal">The exact affordable proposal prefix.</param>
         /// <returns>True when at least one item can be selected.</returns>
         private bool TrySelectManufacturePrefix(
             AITurnContext context,

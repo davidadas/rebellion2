@@ -73,6 +73,7 @@ public static partial class HeadlessSimulationRunner
                 {
                     List<string> blockers = GetBlockers(
                         assessment,
+                        context.AttackRequirements,
                         context.StrategicPlan,
                         fleet,
                         planets,
@@ -114,6 +115,7 @@ public static partial class HeadlessSimulationRunner
         /// Gets the readiness gates currently blocking an attack fleet.
         /// </summary>
         /// <param name="assessment">The faction's current strategic assessment.</param>
+        /// <param name="attackRequirements">The faction's current attack requirements.</param>
         /// <param name="strategicPlan">The faction's current strategic fleet targets.</param>
         /// <param name="fleet">The attack fleet to inspect.</param>
         /// <param name="planets">Known planets indexed by instance identifier.</param>
@@ -121,6 +123,7 @@ public static partial class HeadlessSimulationRunner
         /// <returns>The active readiness blocker names.</returns>
         private static List<string> GetBlockers(
             AIAssessment assessment,
+            AIAttackRequirements attackRequirements,
             AIStrategicPlan strategicPlan,
             Fleet fleet,
             IReadOnlyDictionary<string, Planet> planets,
@@ -141,7 +144,7 @@ public static partial class HeadlessSimulationRunner
                 blockers.Add("HeadquartersReserve");
             if (!fleet.HasOperationalCapitalShips())
                 blockers.Add("OperationalCapitalShips");
-            int requiredCombat = assessment.GetRequiredAttackCombatStrength(target);
+            int requiredCombat = attackRequirements.GetCombatStrength(target);
             if (assessment.GetReadyFleetCombatValue(fleet) < requiredCombat)
             {
                 blockers.Add(
@@ -152,22 +155,22 @@ public static partial class HeadlessSimulationRunner
             }
             if (
                 assessment.GetReadyFleetRegimentCount(fleet)
-                < assessment.GetRequiredAttackRegimentCount(target)
+                < attackRequirements.GetRegimentCount(target)
             )
                 blockers.Add("RegimentCount");
             if (
                 assessment.GetReadyFleetRegimentCapacity(fleet)
-                < assessment.GetRequiredAttackRegimentCount(target)
+                < attackRequirements.GetRegimentCount(target)
             )
                 blockers.Add("RegimentCapacity");
             if (
                 assessment.GetReadyFleetRegimentAttackStrength(fleet)
-                < assessment.GetRequiredAttackRegimentStrength(target)
+                < attackRequirements.GetRegimentStrength(target)
             )
                 blockers.Add("RegimentStrength");
             if (
                 assessment.GetFleetBombardmentStrength(fleet)
-                < assessment.GetRequiredBombardmentStrength(target)
+                < attackRequirements.GetBombardmentStrength(target)
             )
                 blockers.Add("BombardmentStrength");
 
