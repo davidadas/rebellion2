@@ -20,7 +20,7 @@ namespace Rebellion.Tests.Sectors
     public class MissionSystemTests
     {
         [Test]
-        public void UpdateMission_BetrayingOfficer_ProducesFoiledCompletion()
+        public void UpdateMission_BetrayingOfficer_ProducesFailedCompletion()
         {
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -34,8 +34,8 @@ namespace Rebellion.Tests.Sectors
             List<GameResult> results = system.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
-            Assert.AreEqual(MissionOutcome.Foiled, completed.Outcome);
-            Assert.AreEqual(MissionCompletionReason.Foiled, completed.CompletionReason);
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.Failure, completed.CompletionReason);
         }
 
         [Test]

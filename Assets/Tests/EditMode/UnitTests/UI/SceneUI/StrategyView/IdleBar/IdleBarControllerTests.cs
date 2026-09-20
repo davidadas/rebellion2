@@ -250,6 +250,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
+        public void ToggleIdleBarTracking_ManufacturingLane_ChangesOnlySelectedLane()
+        {
+            Planet planet = new Planet { InstanceID = "planet" };
+
+            _controller.ToggleIdleBarTracking(planet, ManufacturingType.Troop);
+
+            Assert.IsTrue(_controller.IsIdleBarTracked(planet, ManufacturingType.Ship));
+            Assert.IsFalse(_controller.IsIdleBarTracked(planet, ManufacturingType.Troop));
+            Assert.IsTrue(_controller.IsIdleBarTracked(planet, ManufacturingType.Building));
+            Assert.AreEqual(1, _actions.RenderRequestCount);
+
+            _controller.ToggleIdleBarTracking(planet, ManufacturingType.Troop);
+
+            Assert.IsTrue(_controller.IsIdleBarTracked(planet, ManufacturingType.Troop));
+            Assert.AreEqual(2, _actions.RenderRequestCount);
+        }
+
+        [Test]
         public void Render_DisabledFeature_HidesViewWithoutThemeData()
         {
             IdleBarController controller = new IdleBarController(
