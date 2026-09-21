@@ -59,6 +59,9 @@ namespace Rebellion.Tests.AI.Phases
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 null
             );
 
@@ -76,6 +79,9 @@ namespace Rebellion.Tests.AI.Phases
                 new IAIProposalPlanner[] { new TestPlanner(first), new TestPlanner(second) }
             );
             AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -31,7 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private int _dirtyCount;
         private int _selectionRouteRenderCount;
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _session;
         private GameFleet _fleet;
         private Officer _officer;
         private GalaxyMapPlanet _planet;
@@ -60,7 +60,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _fleet = CreateFleet("fleet", "First Fleet", out _officer);
             _planet.Planet.AddChild(_fleet);
             AttachFleetGraph(_planet.Planet, _fleet);
-            _gameManager = TestContent.CreateGameManager(_game);
+            _session = TestContent.CreateGameSession(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
@@ -576,10 +576,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private StrategyFleetCommandController CreateFleetCommandController()
         {
             return new StrategyFleetCommandController(
-                () => _gameManager.GetGame(),
-                () => _gameManager.FleetSystem,
-                () => _gameManager.BombardmentSystem,
-                () => _gameManager.PlanetaryAssaultSystem
+                () => _session.Game,
+                () => _session.FleetCommands,
+                () => _session.BombardmentCommands,
+                () => _session.PlanetaryAssaultCommands,
+                () => _session.PlanetaryAssaultQueries,
+                () => _session.BombardmentQueries
             );
         }
 

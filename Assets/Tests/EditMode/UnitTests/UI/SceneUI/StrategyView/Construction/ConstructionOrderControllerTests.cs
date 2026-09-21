@@ -5,7 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
@@ -46,17 +46,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             game.AttachNode(producer, sector);
             game.AttachNode(destination, sector);
             game.AttachNode(CreateConstructionFacility(ownerId), producer);
-            FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
-            ManufacturingSystem manufacturing = new ManufacturingSystem(
+            FogOfWarCommands fogOfWar = new FogOfWarCommands(game);
+            MovementCommands movement = new MovementCommands(
                 game,
-                new FleetSystem(game),
+                fogOfWar,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            ManufacturingCommands manufacturing = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game),
                 movement
             );
             ConstructionOrderController controller = new ConstructionOrderController(
                 () => game,
                 () => manufacturing,
-                () => movement
+                () => new MovementQueries(game),
+                () => new ManufacturingQueries(game)
             );
 
             bool started = controller.TryStartConstruction(
@@ -102,17 +110,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             owner.SetHighestUnlockedOrder(ManufacturingType.Ship, unlockedOrder);
             owner.RebuildResearchCatalog(templates.ToArray());
             game.GetFactions().Add(owner);
-            FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
-            ManufacturingSystem manufacturing = new ManufacturingSystem(
+            FogOfWarCommands fogOfWar = new FogOfWarCommands(game);
+            MovementCommands movement = new MovementCommands(
                 game,
-                new FleetSystem(game),
+                fogOfWar,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            ManufacturingCommands manufacturing = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game),
                 movement
             );
             ConstructionOrderController controller = new ConstructionOrderController(
                 () => game,
                 () => manufacturing,
-                () => movement
+                () => new MovementQueries(game),
+                () => new ManufacturingQueries(game)
             );
 
             IReadOnlyList<IManufacturable> selection = controller.GetBuildSelection(
@@ -161,16 +177,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
             owner.RebuildResearchCatalog(applicableTemplates);
             game.GetFactions().Add(owner);
-            FleetSystem fleetSystem = new FleetSystem(game);
-            MovementSystem movement = new MovementSystem(
+            FleetCommands fleetSystem = new FleetCommands(game);
+            MovementCommands movement = new MovementCommands(
                 game,
-                new FogOfWarSystem(game),
-                fleetSystem
+                new FogOfWarCommands(game),
+                fleetSystem,
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
             );
             ConstructionOrderController controller = new ConstructionOrderController(
                 () => game,
-                () => new ManufacturingSystem(game, fleetSystem, movement),
-                () => movement
+                () =>
+                    new ManufacturingCommands(
+                        game,
+                        fleetSystem,
+                        new ManufacturingQueries(game),
+                        movement
+                    ),
+                () => new MovementQueries(game),
+                () => new ManufacturingQueries(game)
             );
 
             IReadOnlyList<IManufacturable> selection = controller.GetBuildSelection(
@@ -202,16 +227,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Planet producer = CreatePlanet("producer", ownerId, 10);
             game.AttachNode(producer, sector);
             game.AttachNode(CreateConstructionFacility(ownerId), producer);
-            FleetSystem fleetSystem = new FleetSystem(game);
-            MovementSystem movement = new MovementSystem(
+            FleetCommands fleetSystem = new FleetCommands(game);
+            MovementCommands movement = new MovementCommands(
                 game,
-                new FogOfWarSystem(game),
-                fleetSystem
+                new FogOfWarCommands(game),
+                fleetSystem,
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
             );
             ConstructionOrderController controller = new ConstructionOrderController(
                 () => game,
-                () => new ManufacturingSystem(game, fleetSystem, movement),
-                () => movement
+                () =>
+                    new ManufacturingCommands(
+                        game,
+                        fleetSystem,
+                        new ManufacturingQueries(game),
+                        movement
+                    ),
+                () => new MovementQueries(game),
+                () => new ManufacturingQueries(game)
             );
             Building template = new Building
             {

@@ -6,7 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Evaluates and starts construction orders against the current game state.
@@ -14,19 +14,22 @@ using Rebellion.Systems;
 public sealed class ConstructionOrderController
 {
     private readonly Func<GameRoot> getGame;
-    private readonly Func<ManufacturingSystem> getManufacturingSystem;
-    private readonly Func<MovementSystem> getMovementSystem;
+    private readonly Func<ManufacturingCommands> getManufacturingSystem;
+    private readonly Func<MovementQueries> getMovementSystem;
+    private readonly Func<ManufacturingQueries> getManufacturingQueries;
 
     /// <summary>
     /// Creates a construction order controller.
     /// </summary>
     /// <param name="getGame">Returns the active game.</param>
     /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
-    /// <param name="getMovementSystem">Returns the active movement system.</param>
+    /// <param name="getMovementSystem">Returns the active movement delivery queries.</param>
+    /// <param name="getManufacturingQueries">Returns the active manufacturing eligibility rules.</param>
     public ConstructionOrderController(
         Func<GameRoot> getGame,
-        Func<ManufacturingSystem> getManufacturingSystem,
-        Func<MovementSystem> getMovementSystem
+        Func<ManufacturingCommands> getManufacturingSystem,
+        Func<MovementQueries> getMovementSystem,
+        Func<ManufacturingQueries> getManufacturingQueries
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
@@ -35,6 +38,9 @@ public sealed class ConstructionOrderController
             ?? throw new ArgumentNullException(nameof(getManufacturingSystem));
         this.getMovementSystem =
             getMovementSystem ?? throw new ArgumentNullException(nameof(getMovementSystem));
+        this.getManufacturingQueries =
+            getManufacturingQueries
+            ?? throw new ArgumentNullException(nameof(getManufacturingQueries));
     }
 
     /// <summary>
@@ -89,7 +95,7 @@ public sealed class ConstructionOrderController
         for (int index = 0; index < items.Count; index++)
         {
             if (
-                getManufacturingSystem()
+                getManufacturingQueries()
                     .CanStartManufacturing(
                         producer,
                         items[index],
@@ -195,7 +201,7 @@ public sealed class ConstructionOrderController
         int buildCount
     )
     {
-        return ManufacturingSystem.EstimateManufacturingTicks(producer, selected, buildCount);
+        return ManufacturingQueries.EstimateManufacturingTicks(producer, selected, buildCount);
     }
 
     /// <summary>

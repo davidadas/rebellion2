@@ -7,7 +7,7 @@ namespace Rebellion.Game.Units
     /// Encapsulates active movement state for IMovable units.
     /// Existence of this object means unit is in transit.
     /// Null = unit is not moving (replaces Idle status).
-    /// Only created and destroyed by MovementSystem.
+    /// Only created and destroyed by MovementCommands.
     /// </summary>
     [PersistableObject]
     public class MovementState

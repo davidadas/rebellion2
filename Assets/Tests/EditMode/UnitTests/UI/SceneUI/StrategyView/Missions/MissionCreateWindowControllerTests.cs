@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -29,7 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private MissionCreateWindowController _controller;
         private int _dirtyCount;
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _session;
         private GameObject _rootObject;
         private SpecialForces _specialForces;
         private bool _showMissionOdds;
@@ -50,7 +50,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _showMissionOdds = true;
             _showMissionOddsSaveCount = 0;
             _game = CreateGame(out Planet origin, out GalaxyMapPlanet targetPlanet);
-            _gameManager = TestContent.CreateGameManager(_game);
+            _session = TestContent.CreateGameSession(_game);
             _uiContext = TestContent.CreateUIContext(
                 _game,
                 TestContent.CreateThemeLibrary(),
@@ -94,7 +94,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.Throws<ArgumentNullException>(() =>
                 new MissionCreateWindowController(
                     null,
-                    () => _gameManager.MissionSystem,
+                    () => _session.MissionCommands,
+                    () => _session.MissionQueries,
                     () => _uiContext,
                     _ => { },
                     _windowLayer,
@@ -242,7 +243,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             return new MissionCreateWindowController(
                 () => _game,
-                () => _gameManager.MissionSystem,
+                () => _session.MissionCommands,
+                () => _session.MissionQueries,
                 () => _uiContext,
                 _ => { },
                 _windowLayer,

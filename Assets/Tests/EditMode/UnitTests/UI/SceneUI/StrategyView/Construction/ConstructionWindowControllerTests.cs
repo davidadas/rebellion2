@@ -7,7 +7,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using TMPro;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -24,7 +24,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         private TestActions _actions;
         private ConstructionWindowController _controller;
         private int _dirtyCount;
-        private GameManager _gameManager;
+        private GameSession _session;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private UIWindow _sourceWindow;
@@ -40,7 +40,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         {
             _dirtyCount = 0;
             GameRoot game = CreateGame();
-            _gameManager = TestContent.CreateGameManager(game);
+            _session = TestContent.CreateGameSession(game);
             _uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -72,15 +72,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.Throws<ArgumentNullException>(() =>
                 new ConstructionWindowController(
                     null,
-                    () => _gameManager.ManufacturingSystem,
-                    () => _gameManager.MovementSystem,
+                    () => _session.ManufacturingCommands,
+                    () => _session.MovementQueries,
                     () => _uiContext,
                     _windowLayer,
                     _windowManager,
                     (_, _) => Vector2Int.zero,
                     () => Vector2Int.zero,
                     _ => { },
-                    () => { }
+                    () => { },
+                    () => _session.ManufacturingQueries
                 )
             );
         }
@@ -258,16 +259,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         private ConstructionWindowController CreateController()
         {
             return new ConstructionWindowController(
-                () => _gameManager.GetGame(),
-                () => _gameManager.ManufacturingSystem,
-                () => _gameManager.MovementSystem,
+                () => _session.Game,
+                () => _session.ManufacturingCommands,
+                () => _session.MovementQueries,
                 () => _uiContext,
                 _windowLayer,
                 _windowManager,
                 (x, y) => new Vector2Int(x + 17, y + 19),
                 () => new Vector2Int(141, 73),
                 _ => { },
-                () => _dirtyCount++
+                () => _dirtyCount++,
+                () => _session.ManufacturingQueries
             );
         }
 

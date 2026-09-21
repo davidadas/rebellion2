@@ -9,28 +9,9 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public sealed class GameEventTests
     {
-        [Test]
-        public void CanActivate_MaximumActivationsReached_ReturnsFalse()
-        {
-            GameEvent gameEvent = new GameEvent { MaximumActivations = 3 };
-            GameEventState state = new GameEventState { ActivationCount = 3 };
-
-            bool result = gameEvent.CanActivate(state);
-
-            Assert.IsFalse(result);
-        }
-
-        [Test]
-        public void CanActivate_UnlimitedEvent_ReturnsTrue()
-        {
-            GameEvent gameEvent = new GameEvent();
-            GameEventState state = new GameEventState { ActivationCount = 100 };
-
-            bool result = gameEvent.CanActivate(state);
-
-            Assert.IsTrue(result);
-        }
-
+        /// <summary>
+        /// Verifies authored aliases round trip concrete types.
+        /// </summary>
         [Test]
         public void Conditionals_AuthoredAliases_RoundTripConcreteTypes()
         {
@@ -60,6 +41,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(ComparisonOperator.GreaterThan, conditional.Comparison);
         }
 
+        /// <summary>
+        /// Verifies authored node instance id round trips.
+        /// </summary>
         [Test]
         public void IsActive_AuthoredNodeInstanceID_RoundTrips()
         {
@@ -80,6 +64,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("DARTH_VADER", conditional.NodeInstanceID);
         }
 
+        /// <summary>
+        /// Verifies default round trip without collection wrappers.
+        /// </summary>
         [Test]
         public void CompositeConditionals_Default_RoundTripWithoutCollectionWrappers()
         {
@@ -124,6 +111,9 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(2, any.Conditionals.Count);
         }
 
+        /// <summary>
+        /// Verifies authored value round trips attribute.
+        /// </summary>
         [Test]
         public void MaximumActivations_AuthoredValue_RoundTripsAttribute()
         {

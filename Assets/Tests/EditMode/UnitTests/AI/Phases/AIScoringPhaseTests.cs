@@ -49,6 +49,9 @@ namespace Rebellion.Tests.AI.Phases
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 null
             );
             context.AddProposal(proposal);
@@ -66,6 +69,9 @@ namespace Rebellion.Tests.AI.Phases
         public void Execute_WithUnsupportedProposal_ThrowsInvalidOperationException()
         {
             AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

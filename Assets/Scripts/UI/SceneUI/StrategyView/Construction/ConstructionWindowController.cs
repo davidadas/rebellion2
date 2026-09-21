@@ -5,7 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 
 /// <summary>
@@ -59,7 +59,7 @@ public sealed class ConstructionWindowController
     /// </summary>
     /// <param name="getGame">Returns the active game.</param>
     /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
-    /// <param name="getMovementSystem">Returns the active movement system.</param>
+    /// <param name="getMovementSystem">Returns the active movement delivery queries.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="windowLayer">Provides the authored construction prefab and modal layer.</param>
     /// <param name="windowManager">Owns strategy-window creation, focus, and registration.</param>
@@ -67,17 +67,19 @@ public sealed class ConstructionWindowController
     /// <param name="getUtilityWindowPosition">Returns the authored advisor utility placement.</param>
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="getManufacturingQueries">Returns the active manufacturing eligibility rules.</param>
     public ConstructionWindowController(
         Func<GameRoot> getGame,
-        Func<ManufacturingSystem> getManufacturingSystem,
-        Func<MovementSystem> getMovementSystem,
+        Func<ManufacturingCommands> getManufacturingSystem,
+        Func<MovementQueries> getMovementSystem,
         Func<UIContext> getUIContext,
         StrategyWindowLayerView windowLayer,
         UIWindowManager windowManager,
         Func<int, int, Vector2Int> getConstructionWindowPosition,
         Func<Vector2Int> getUtilityWindowPosition,
         Action<UIWindow> closeWindow,
-        Action markDirty
+        Action markDirty,
+        Func<ManufacturingQueries> getManufacturingQueries
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
@@ -95,7 +97,8 @@ public sealed class ConstructionWindowController
         orderController = new ConstructionOrderController(
             getGame,
             getManufacturingSystem,
-            getMovementSystem
+            getMovementSystem,
+            getManufacturingQueries
         );
         projector = new ConstructionWindowProjector(getUIContext);
     }

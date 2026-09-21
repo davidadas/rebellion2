@@ -1,0 +1,178 @@
+using System.Collections.Generic;
+using System.Linq;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Util.Logging;
+using Rebellion.Util.Random;
+
+namespace Rebellion.Simulation
+{
+    /// <summary>
+    /// Manages blockade detection, transition events, and evacuation losses.
+    /// </summary>
+    public class BlockadeCommands
+    {
+        private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
+        private readonly HashSet<string> _blockadedPlanets;
+
+        /// <summary>
+        /// Creates a new BlockadeCommands.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="provider">Random number provider for evacuation rolls.</param>
+        public BlockadeCommands(GameRoot game, IRandomNumberProvider provider)
+        {
+            _game = game;
+            _provider = provider;
+            _blockadedPlanets = new HashSet<string>();
+        }
+
+        /// <summary>
+        /// Detects blockade start/end transitions and emits results.
+        /// </summary>
+        /// <returns>Blockade transition results generated this tick.</returns>
+        public List<GameResult> ProcessTick()
+        {
+            List<GameResult> results = new List<GameResult>();
+            HashSet<string> currentBlockades = DetectBlockadedPlanets();
+
+            ApplyBlockadeStatus(currentBlockades, results);
+            ClearBlockadeStatus(currentBlockades, results);
+
+            _blockadedPlanets.Clear();
+            _blockadedPlanets.UnionWith(currentBlockades);
+
+            return results;
+        }
+
+        /// <summary>
+        /// Rolls to determine if a regiment is destroyed while evacuating through a blockade.
+        /// </summary>
+        /// <returns>True if the regiment is destroyed.</returns>
+        public bool RollEvacuationLoss()
+        {
+            int threshold = _game.Config.Blockade.EvacuationLossPercent;
+            return _provider.NextInt(0, 100) < threshold;
+        }
+
+        /// <summary>
+        /// Applies evacuation losses when a unit departs through an opposing blockade.
+        /// Only regiments are currently subject to losses.
+        /// </summary>
+        /// <param name="unit">The unit attempting to leave.</param>
+        /// <param name="originPlanet">The planet the unit is departing from.</param>
+        /// <returns>Result describing the loss, or null if the unit survived.</returns>
+        public EvacuationLossesResult ApplyEvacuationLosses(IMovable unit, Planet originPlanet)
+        {
+            if (
+                !originPlanet.IsBlockadedFor(unit.GetOwnerInstanceID())
+                || originPlanet.HasOperationalIonCannon()
+            )
+                return null;
+
+            if (unit is Regiment regiment && RollEvacuationLoss())
+            {
+                Faction faction = _game
+                    .GetFactions()
+                    .FirstOrDefault(f => f.InstanceID == unit.GetOwnerInstanceID());
+                _game.DeleteNode(unit);
+                GameLogger.Log(
+                    $"{unit.GetDisplayName()} destroyed running blockade at {originPlanet.GetDisplayName()}"
+                );
+                return new EvacuationLossesResult
+                {
+                    Faction = faction,
+                    Location = originPlanet,
+                    LostRegiments = new List<Regiment> { regiment },
+                    Tick = _game.CurrentTick,
+                };
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Scans all planets and returns the set currently under blockade.
+        /// </summary>
+        /// <returns>Instance IDs of all currently blockaded planets.</returns>
+        private HashSet<string> DetectBlockadedPlanets()
+        {
+            HashSet<string> blockaded = new HashSet<string>();
+            foreach (PlanetSector sector in _game.GetGalaxyMap().GetChildren<PlanetSector>())
+            {
+                foreach (Planet planet in sector.GetChildren<Planet>())
+                {
+                    if (planet.IsBlockaded())
+                        blockaded.Add(planet.InstanceID);
+                }
+            }
+            return blockaded;
+        }
+
+        /// <summary>
+        /// Emits results for blockades that started since the last tick.
+        /// </summary>
+        /// <param name="currentBlockades">Planets blockaded this tick.</param>
+        /// <param name="results">Results list to append transitions to.</param>
+        private void ApplyBlockadeStatus(HashSet<string> currentBlockades, List<GameResult> results)
+        {
+            foreach (string planetId in currentBlockades)
+            {
+                if (_blockadedPlanets.Contains(planetId))
+                    continue;
+
+                Planet planet = _game.GetSceneNodeByInstanceID<Planet>(planetId);
+                if (planet == null)
+                    continue;
+
+                results.Add(
+                    new BlockadeChangedResult
+                    {
+                        Planet = planet,
+                        BlockadingFleet = planet
+                            .GetChildren<Fleet>()
+                            .FirstOrDefault(f =>
+                                f.Movement == null
+                                && f.OwnerInstanceID != planet.OwnerInstanceID
+                                && f.HasOperationalCapitalShips()
+                            ),
+                        Blockaded = true,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
+        }
+
+        /// <summary>
+        /// Emits results for blockades that ended since the last tick.
+        /// </summary>
+        /// <param name="currentBlockades">Planets blockaded this tick.</param>
+        /// <param name="results">Results list to append transitions to.</param>
+        private void ClearBlockadeStatus(HashSet<string> currentBlockades, List<GameResult> results)
+        {
+            foreach (string planetId in _blockadedPlanets)
+            {
+                if (currentBlockades.Contains(planetId))
+                    continue;
+
+                Planet planet = _game.GetSceneNodeByInstanceID<Planet>(planetId);
+                if (planet == null)
+                    continue;
+
+                results.Add(
+                    new BlockadeChangedResult
+                    {
+                        Planet = planet,
+                        BlockadingFleet = null,
+                        Blockaded = false,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
+        }
+    }
+}

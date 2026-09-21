@@ -5,7 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -43,7 +43,7 @@ public sealed class FacilityWindowController
     private readonly HashSet<FacilityWindowView> boundViews = new HashSet<FacilityWindowView>();
     private readonly ConstructionWindowController constructionWindowController;
     private readonly Func<GameRoot> getGame;
-    private readonly Func<ManufacturingSystem> getManufacturingSystem;
+    private readonly Func<ManufacturingCommands> getManufacturingSystem;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
     private readonly Action markDirty;
@@ -73,7 +73,7 @@ public sealed class FacilityWindowController
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public FacilityWindowController(
         Func<GameRoot> getGame,
-        Func<ManufacturingSystem> getManufacturingSystem,
+        Func<ManufacturingCommands> getManufacturingSystem,
         ConstructionWindowController constructionWindowController,
         Func<UIContext> getUIContext,
         TargetingController targetingController,
@@ -767,7 +767,7 @@ public sealed class FacilityWindowController
 
         Planet producer = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
         string playerFactionId = getGame()?.GetPlayerFaction()?.InstanceID;
-        ManufacturingSystem manufacturingSystem = getManufacturingSystem();
+        ManufacturingCommands manufacturingSystem = getManufacturingSystem();
         if (
             destination == null
             || producer == null

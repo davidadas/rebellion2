@@ -5,7 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Executes and finalizes commands shared by strategy feature windows.
@@ -17,11 +17,13 @@ public sealed class StrategyWindowCommandController
     private readonly MissionCreateWindowController missionCreateWindowController;
     private readonly ConfirmDialogWindowController confirmDialogWindowController;
     private readonly Func<GameRoot> getGame;
-    private readonly Func<MovementSystem> getMovementSystem;
-    private readonly Func<HeadquartersSystem> getHeadquartersSystem;
-    private readonly Func<MaintenanceSystem> getMaintenanceSystem;
-    private readonly Func<ManufacturingSystem> getManufacturingSystem;
-    private readonly Func<PersonnelSystem> getPersonnelSystem;
+    private readonly Func<MovementCommands> getMovementSystem;
+    private readonly Func<MovementQueries> getMovementQueries;
+    private readonly Func<HeadquartersCommands> getHeadquartersSystem;
+    private readonly Func<MaintenanceCommands> getMaintenanceSystem;
+    private readonly Func<ManufacturingCommands> getManufacturingSystem;
+    private readonly Func<PersonnelCommands> getPersonnelCommands;
+    private readonly Func<PersonnelQueries> getPersonnelQueries;
     private readonly Action<string> playSfx;
     private readonly Action<UIWindow> clearWindowSelection;
     private readonly Action rebuildSnapshot;
@@ -37,13 +39,15 @@ public sealed class StrategyWindowCommandController
     /// <param name="confirmDialogWindowController">Owns confirmation windows.</param>
     /// <param name="getGame">Returns the active game state.</param>
     /// <param name="getMovementSystem">Returns the active movement system.</param>
-    /// <param name="getMaintenanceSystem">Returns the active maintenance system.</param>
+    /// <param name="getMaintenanceSystem">Returns the active maintenance commands.</param>
     /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
-    /// <param name="getPersonnelSystem">Returns the active personnel system.</param>
+    /// <param name="getPersonnelCommands">Returns the active personnel commands.</param>
+    /// <param name="getPersonnelQueries">Returns the active personnel eligibility queries.</param>
     /// <param name="playSfx">Plays an optional officer response.</param>
     /// <param name="clearWindowSelection">Clears selection owned by a source window.</param>
     /// <param name="rebuildSnapshot">Rebuilds the visible strategy snapshot.</param>
     /// <param name="markDirty">Invalidates the strategy presentation.</param>
+    /// <param name="getMovementQueries">Returns movement eligibility and travel estimates.</param>
     /// <param name="getHeadquartersSystem">Returns the mobile-headquarters system.</param>
     /// <param name="playInvalidOrderRejected">Plays the advisor's invalid-order rejection.</param>
     /// <param name="playInTransitOrderRejected">Plays the advisor's in-transit rejection.</param>
@@ -52,15 +56,17 @@ public sealed class StrategyWindowCommandController
         MissionCreateWindowController missionCreateWindowController,
         ConfirmDialogWindowController confirmDialogWindowController,
         Func<GameRoot> getGame,
-        Func<MovementSystem> getMovementSystem,
-        Func<MaintenanceSystem> getMaintenanceSystem,
-        Func<ManufacturingSystem> getManufacturingSystem,
-        Func<PersonnelSystem> getPersonnelSystem,
+        Func<MovementCommands> getMovementSystem,
+        Func<MaintenanceCommands> getMaintenanceSystem,
+        Func<ManufacturingCommands> getManufacturingSystem,
+        Func<PersonnelCommands> getPersonnelCommands,
+        Func<PersonnelQueries> getPersonnelQueries,
         Action<string> playSfx,
         Action<UIWindow> clearWindowSelection,
         Action rebuildSnapshot,
         Action markDirty,
-        Func<HeadquartersSystem> getHeadquartersSystem = null,
+        Func<MovementQueries> getMovementQueries,
+        Func<HeadquartersCommands> getHeadquartersSystem = null,
         Action playInvalidOrderRejected = null,
         Action playInTransitOrderRejected = null,
         Action playUnitUnderConstructionOrderRejected = null
@@ -76,13 +82,17 @@ public sealed class StrategyWindowCommandController
         this.getMovementSystem =
             getMovementSystem ?? throw new ArgumentNullException(nameof(getMovementSystem));
         this.getHeadquartersSystem = getHeadquartersSystem;
+        this.getMovementQueries =
+            getMovementQueries ?? throw new ArgumentNullException(nameof(getMovementQueries));
         this.getMaintenanceSystem =
             getMaintenanceSystem ?? throw new ArgumentNullException(nameof(getMaintenanceSystem));
         this.getManufacturingSystem =
             getManufacturingSystem
             ?? throw new ArgumentNullException(nameof(getManufacturingSystem));
-        this.getPersonnelSystem =
-            getPersonnelSystem ?? throw new ArgumentNullException(nameof(getPersonnelSystem));
+        this.getPersonnelCommands =
+            getPersonnelCommands ?? throw new ArgumentNullException(nameof(getPersonnelCommands));
+        this.getPersonnelQueries =
+            getPersonnelQueries ?? throw new ArgumentNullException(nameof(getPersonnelQueries));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.clearWindowSelection =
             clearWindowSelection ?? throw new ArgumentNullException(nameof(clearWindowSelection));
@@ -177,15 +187,16 @@ public sealed class StrategyWindowCommandController
     {
         List<ISceneNode> sourceItems = CopyItems(items);
         ContainerNode destination = target?.GetMoveDestination() as ContainerNode;
-        MovementSystem movementSystem = getMovementSystem();
+        MovementCommands movementSystem = getMovementSystem();
         int transitTimeInDays =
             movementSystem != null
-            && movementSystem.TryGetSelectionTransitTicks(
-                sourceItems,
-                destination,
-                GetPlayerFactionID(),
-                out int transitTicks
-            )
+            && getMovementQueries()
+                .TryGetSelectionTransitTicks(
+                    sourceItems,
+                    destination,
+                    GetPlayerFactionID(),
+                    out int transitTicks
+                )
                 ? transitTicks
                 : -1;
         confirmDialogWindowController.OpenMove(
@@ -217,9 +228,10 @@ public sealed class StrategyWindowCommandController
         List<string> proposedWaypoints = source.WaypointPlanetIds.ToList();
         proposedWaypoints.Add(destination.InstanceID);
         if (
-            getMovementSystem()
+            getMovementSystem() == null
+            || getMovementQueries()
                 ?.CanSetFleetWaypointRoute(source.Items, proposedWaypoints, GetPlayerFactionID())
-            != true
+                != true
         )
             return false;
 
@@ -351,7 +363,7 @@ public sealed class StrategyWindowCommandController
             sourceItems,
             () =>
             {
-                if (getPersonnelSystem()?.Retire(sourceItems, GetPlayerFactionID()) == true)
+                if (getPersonnelCommands()?.Retire(sourceItems, GetPlayerFactionID()) == true)
                     RefreshAfterMutation(sourceWindow);
             }
         );
@@ -364,7 +376,7 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when every selected person may be retired.</returns>
     public bool CanRetire(IReadOnlyList<ISceneNode> items)
     {
-        return getPersonnelSystem()?.CanRetire(items, GetPlayerFactionID()) == true;
+        return getPersonnelQueries()?.CanRetire(items, GetPlayerFactionID()) == true;
     }
 
     /// <summary>

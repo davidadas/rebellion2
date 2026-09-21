@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -1342,6 +1343,67 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(70, _faction.GetTotalInProgressConstructionCost());
         }
 
+        /// <summary>Verifies calculates correctly when faction with planets.</summary>
+        [Test]
+        public void MaintenanceCapacity_FactionWithPlanets_CalculatesCorrectly()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.GetFactions().Add(empire);
+
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            game.AttachNode(CreateMine("mine1", "empire"), planet);
+            game.AttachNode(CreateMine("mine2", "empire"), planet);
+            game.AttachNode(CreateRefinery("ref1", "empire"), planet);
+
+            int capacity = empire.MaintenanceCapacity;
+
+            Assert.AreEqual(50, capacity);
+        }
+
+        /// <summary>Verifies does not change capacity when refinement multiplier.</summary>
+        [Test]
+        public void MaintenanceCapacity_RefinementMultiplier_DoesNotChangeCapacity()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            empire.Settings.RefinementMultiplier = 1;
+            game.GetFactions().Add(empire);
+
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            game.AttachNode(CreateMine("mine1", "empire"), planet);
+            game.AttachNode(CreateRefinery("ref1", "empire"), planet);
+
+            Assert.AreEqual(50, empire.MaintenanceCapacity);
+        }
+
+        /// <summary>Verifies calculates global pair when mine and refinery on different planets.</summary>
+        [Test]
+        public void MaintenanceCapacity_MineAndRefineryOnDifferentPlanets_CalculatesGlobalPair()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
+            Planet minePlanet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
+            Planet refineryPlanet = CreatePlanet("p2", "Kessel", empire.InstanceID);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(minePlanet, sector);
+            game.AttachNode(refineryPlanet, sector);
+            game.AttachNode(CreateMine("mine1", empire.InstanceID), minePlanet);
+            game.AttachNode(CreateRefinery("ref1", empire.InstanceID), refineryPlanet);
+
+            int capacity = empire.MaintenanceCapacity;
+
+            Assert.AreEqual(50, capacity);
+        }
+
         /// <summary>
         /// Creates operational fleet.
         /// </summary>
@@ -1380,6 +1442,88 @@ namespace Rebellion.Tests.Game.Factions
                 )
                 .ToArray();
             _faction.RebuildResearchCatalog(templates);
+        }
+
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
+        private GameRoot CreateGame()
+        {
+            return new GameRoot(TestConfig.Create());
+        }
+
+        /// <summary>
+        /// Creates faction.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The created faction.</returns>
+        private Faction CreateFaction(string id, string name)
+        {
+            Faction faction = new Faction { InstanceID = id, DisplayName = name };
+            faction.Settings.ResourceProcessingPointsPerFacility = 50;
+            return faction;
+        }
+
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="name">The name.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <returns>The created planet.</returns>
+        private Planet CreatePlanet(string id, string name, string ownerId)
+        {
+            return new Planet
+            {
+                InstanceID = id,
+                DisplayName = name,
+                OwnerInstanceID = ownerId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+                NumRawResourceNodes = 5,
+            };
+        }
+
+        /// <summary>
+        /// Creates mine.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <returns>The created mine.</returns>
+        private Building CreateMine(string id, string ownerId)
+        {
+            return new Building
+            {
+                InstanceID = id,
+                DisplayName = "Mine",
+                OwnerInstanceID = ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 0,
+                ConstructionCost = 1,
+                BuildingType = BuildingType.Mine,
+            };
+        }
+
+        /// <summary>
+        /// Creates refinery.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <returns>The created refinery.</returns>
+        private Building CreateRefinery(string id, string ownerId)
+        {
+            return new Building
+            {
+                InstanceID = id,
+                DisplayName = "Refinery",
+                OwnerInstanceID = ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 0,
+                ConstructionCost = 1,
+                BuildingType = BuildingType.Refinery,
+            };
         }
     }
 }

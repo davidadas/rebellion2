@@ -1,0 +1,196 @@
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Simulation;
+
+namespace Rebellion.Tests.Simulation
+{
+    [TestFixture]
+    public class OfficerLoyaltyCommandsTests
+    {
+        /// <summary>Verifies faction gains planet shifts only free living officer loyalty.</summary>
+        [Test]
+        public void ApplyControlShift_FactionGainsPlanet_ShiftsOnlyFreeLivingOfficerLoyalty()
+        {
+            GameRoot game = BuildScene(out Planet planet, out Officer empireOfficer);
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(alliance);
+            empireOfficer.Loyalty = 50;
+            Planet alliancePlanet = new Planet
+            {
+                InstanceID = "alliance-planet",
+                OwnerInstanceID = alliance.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(alliancePlanet, planet.GetParent());
+            Officer allianceOfficer = EntityFactory.CreateOfficer(
+                "alliance-free",
+                alliance.InstanceID
+            );
+            allianceOfficer.Loyalty = 50;
+            game.AttachNode(allianceOfficer, alliancePlanet);
+            Officer commander = EntityFactory.CreateOfficer(
+                "alliance-command",
+                alliance.InstanceID
+            );
+            commander.Loyalty = 50;
+            commander.CurrentRank = OfficerRank.General;
+            game.AttachNode(commander, alliancePlanet);
+            Officer captive = EntityFactory.CreateOfficer("empire-captive", "empire");
+            captive.Loyalty = 50;
+            captive.IsCaptured = true;
+            game.AttachNode(captive, alliancePlanet);
+            OfficerLoyaltyCommands system = new OfficerLoyaltyCommands(
+                game,
+                new SequenceRNG(new[] { 5 })
+            );
+
+            system.ApplyControlShift(alliance);
+
+            Assert.AreEqual(55, allianceOfficer.Loyalty);
+            Assert.AreEqual(45, empireOfficer.Loyalty);
+            Assert.AreEqual(50, commander.Loyalty);
+            Assert.AreEqual(50, captive.Loyalty);
+        }
+
+        /// <summary>Verifies low loyalty officer foils without revealing identity.</summary>
+        [Test]
+        public void TryResolveMissionBetrayal_LowLoyaltyOfficer_FoilsWithoutRevealingIdentity()
+        {
+            GameRoot game = BuildScene(out Planet planet, out Officer officer);
+            officer.CanBetray = true;
+            officer.Loyalty = 0;
+            StubMission mission = CreateMission(game, planet, officer);
+
+            bool betrayed = new OfficerLoyaltyCommands(
+                game,
+                new StubRNG()
+            ).TryResolveMissionBetrayal(mission, out List<GameResult> results);
+
+            Assert.IsTrue(betrayed);
+            Assert.IsEmpty(results);
+            Assert.IsFalse(officer.IsTraitor);
+        }
+
+        /// <summary>Verifies force capable companion discovers traitor.</summary>
+        [Test]
+        public void TryResolveMissionBetrayal_ForceCapableCompanion_DiscoversTraitor()
+        {
+            GameRoot game = BuildScene(out Planet planet, out Officer traitor);
+            traitor.CanBetray = true;
+            traitor.Loyalty = 0;
+            Officer discoverer = new Officer
+            {
+                InstanceID = "discoverer",
+                OwnerInstanceID = traitor.OwnerInstanceID,
+                ForceValue = 100,
+            };
+            game.AttachNode(discoverer, planet);
+            StubMission mission = CreateMission(game, planet, traitor);
+            mission.AddChild(discoverer);
+
+            bool betrayed = new OfficerLoyaltyCommands(
+                game,
+                new StubRNG()
+            ).TryResolveMissionBetrayal(mission, out List<GameResult> results);
+
+            TraitorDiscoveredResult result = results.OfType<TraitorDiscoveredResult>().Single();
+            Assert.IsTrue(betrayed);
+            Assert.IsTrue(traitor.IsTraitor);
+            Assert.AreSame(traitor, result.Officer);
+            Assert.AreSame(discoverer, result.DiscoveredBy);
+            Assert.AreSame(planet, result.Context);
+        }
+
+        /// <summary>Verifies boundary roll uses one hundred minus loyalty.</summary>
+        /// <param name="loyalty">The loyalty.</param>
+        /// <param name="roll">The roll.</param>
+        /// <param name="expectedBetrayal">The expected betrayal.</param>
+        [TestCase(80, 19, true)]
+        [TestCase(80, 20, false)]
+        public void TryResolveMissionBetrayal_BoundaryRoll_UsesOneHundredMinusLoyalty(
+            int loyalty,
+            int roll,
+            bool expectedBetrayal
+        )
+        {
+            GameRoot game = BuildScene(out Planet planet, out Officer officer);
+            officer.CanBetray = true;
+            officer.Loyalty = loyalty;
+            StubMission mission = CreateMission(game, planet, officer);
+
+            bool betrayed = new OfficerLoyaltyCommands(
+                game,
+                new SequenceRNG(new[] { roll })
+            ).TryResolveMissionBetrayal(mission, out _);
+
+            Assert.AreEqual(expectedBetrayal, betrayed);
+        }
+
+        /// <summary>Verifies command officer does not betray.</summary>
+        [Test]
+        public void TryResolveMissionBetrayal_CommandOfficer_DoesNotBetray()
+        {
+            GameRoot game = BuildScene(out Planet planet, out Officer officer);
+            officer.CanBetray = true;
+            officer.Loyalty = 0;
+            officer.CurrentRank = OfficerRank.Admiral;
+            StubMission mission = CreateMission(game, planet, officer);
+
+            bool betrayed = new OfficerLoyaltyCommands(
+                game,
+                new StubRNG()
+            ).TryResolveMissionBetrayal(mission, out _);
+
+            Assert.IsFalse(betrayed);
+        }
+
+        /// <summary>
+        /// Builds scene.
+        /// </summary>
+        /// <param name="planet">Receives the planet.</param>
+        /// <param name="officer">Receives the officer.</param>
+        /// <returns>The constructed scene.</returns>
+        private static GameRoot BuildScene(out Planet planet, out Officer officer)
+        {
+            GameConfig config = TestConfig.Create();
+            config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Minimum = 0;
+            config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Maximum = 5;
+            GameRoot game = new GameRoot(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            planet = new Planet
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            game.AttachNode(planet, sector);
+            officer = EntityFactory.CreateOfficer("officer", "empire");
+            game.AttachNode(officer, planet);
+            return game;
+        }
+
+        /// <summary>
+        /// Creates mission.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="officer">The officer.</param>
+        /// <returns>The created mission.</returns>
+        private static StubMission CreateMission(GameRoot game, Planet planet, Officer officer)
+        {
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            mission.AddChild(officer);
+            return mission;
+        }
+    }
+}

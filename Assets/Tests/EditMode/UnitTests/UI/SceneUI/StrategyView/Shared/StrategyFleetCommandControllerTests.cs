@@ -7,7 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
@@ -20,7 +20,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         private const string _playerFactionId = "player";
 
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _session;
         private Planet _planet;
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 NumRawResourceNodes = 10,
             };
             _game.AttachNode(_planet, planetSector);
-            _gameManager = TestContent.CreateGameManager(_game);
+            _session = TestContent.CreateGameSession(_game);
         }
 
         [Test]
@@ -54,9 +54,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.Throws<ArgumentNullException>(() =>
                 new StrategyFleetCommandController(
                     null,
-                    () => _gameManager.FleetSystem,
-                    () => _gameManager.BombardmentSystem,
-                    () => _gameManager.PlanetaryAssaultSystem
+                    () => _session.FleetCommands,
+                    () => _session.BombardmentCommands,
+                    () => _session.PlanetaryAssaultCommands,
+                    () => _session.PlanetaryAssaultQueries,
+                    () => _session.BombardmentQueries
                 )
             );
         }
@@ -295,10 +297,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         private StrategyFleetCommandController CreateController()
         {
             return new StrategyFleetCommandController(
-                () => _gameManager.GetGame(),
-                () => _gameManager.FleetSystem,
-                () => _gameManager.BombardmentSystem,
-                () => _gameManager.PlanetaryAssaultSystem
+                () => _session.Game,
+                () => _session.FleetCommands,
+                () => _session.BombardmentCommands,
+                () => _session.PlanetaryAssaultCommands,
+                () => _session.PlanetaryAssaultQueries,
+                () => _session.BombardmentQueries
             );
         }
 

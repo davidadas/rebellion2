@@ -1,0 +1,554 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Simulation;
+
+namespace Rebellion.Tests.Simulation
+{
+    [TestFixture]
+    public class PlanetaryAssaultCommandsTests : CombatTestBase
+    {
+        /// <summary>Verifies that direct execution does not release the immediate command batch.</summary>
+        [Test]
+        public void Execute_ValidAssault_DoesNotPublishResults()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            PlanetaryAssaultCommands system = MakePlanetaryAssault(game, new SequenceRNG());
+            int publications = 0;
+            system.ResultsProduced += _ => publications++;
+
+            PlanetaryAssaultResult result = system.Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsTrue(result.Success);
+            Assert.AreEqual(0, publications);
+        }
+
+        /// <summary>Verifies that rejected immediate assaults do not publish blocked-result reports.</summary>
+        [Test]
+        public void TryExecute_ShieldedPlanet_ReturnsNullWithoutPublishing()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            AddDefenseBuilding(game, planet, "shield1", shieldStrength: 1);
+            AddDefenseBuilding(game, planet, "shield2", shieldStrength: 1);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            PlanetaryAssaultCommands system = MakePlanetaryAssault(game, new ThrowingRNG());
+            int publications = 0;
+            system.ResultsProduced += _ => publications++;
+
+            PlanetaryAssaultResult result = system.TryExecute(new[] { fleet }, planet);
+
+            Assert.IsNull(result);
+            Assert.AreEqual(0, publications);
+            Assert.AreEqual("alliance", planet.OwnerInstanceID);
+        }
+
+        /// <summary>Verifies that delivery failures propagate after assault state has been applied.</summary>
+        [Test]
+        public void TryExecute_ListenerThrows_PreservesCompletedAssault()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            PlanetaryAssaultCommands system = MakePlanetaryAssault(game, new SequenceRNG());
+            InvalidOperationException failure = new InvalidOperationException("listener failed");
+            system.ResultsProduced += _ => throw failure;
+
+            InvalidOperationException actual = Assert.Throws<InvalidOperationException>(() =>
+                system.TryExecute(new[] { fleet }, planet)
+            );
+
+            Assert.AreSame(failure, actual);
+            Assert.AreEqual("empire", planet.OwnerInstanceID);
+            Assert.AreEqual(1, planet.GetAllRegiments().Count);
+            Assert.IsFalse(fleet.IsInCombat);
+        }
+
+        /// <summary>Verifies that the immediate command filters null fleets before checking eligibility.</summary>
+        [Test]
+        public void TryExecute_NullFleetAlongsideReadyFleet_ExecutesAssault()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
+                .TryExecute(new[] { null, fleet }, planet);
+
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.Success);
+        }
+
+        /// <summary>Verifies execute two shield generators block assault.</summary>
+        [Test]
+        public void Execute_TwoShieldGenerators_BlockAssault()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            AddDefenseBuilding(game, planet, "shield1", shieldStrength: 1);
+            AddDefenseBuilding(game, planet, "shield2", shieldStrength: 1);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
+                .Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsTrue(result.BlockedByShields);
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual("alliance", planet.GetOwnerInstanceID());
+        }
+
+        /// <summary>Verifies execute death star shield does not block assault.</summary>
+        [Test]
+        public void Execute_DeathStarShield_DoesNotBlockAssault()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            AddDefenseBuilding(game, planet, "shield", shieldStrength: 1);
+            AddDefenseBuilding(game, planet, "death-star-shield", protectedUnitTypeId: "CSEM015");
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
+                .Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsFalse(result.BlockedByShields);
+            Assert.IsTrue(result.Success);
+        }
+
+        /// <summary>Verifies execute attacking fleet with waypoints clears route.</summary>
+        [Test]
+        public void Execute_AttackingFleetWithWaypoints_ClearsRoute()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            AddDefender(game, planet, "defender");
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            fleet.Waypoints.Add("next-planet");
+
+            MakePlanetaryAssault(game, new SequenceRNG(intValues: new[] { 0, 6, 99 }))
+                .Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        /// <summary>Verifies execute defense fire uses initial attacker index range.</summary>
+        [Test]
+        public void Execute_DefenseFire_UsesInitialAttackerIndexRange()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            Building first = AddDefenseBuilding(
+                game,
+                planet,
+                "kdy",
+                weaponEffect: DefenseWeaponEffect.ShieldDamage
+            );
+            first.WeaponPower = 500;
+            Building second = AddDefenseBuilding(game, planet, "lnr");
+            second.WeaponPower = 500;
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 2);
+            Regiment attacker = fleet.GetChildren<CapitalShip>()[0].GetChildren<Regiment>()[0];
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0, 0, 0, 1 })
+                )
+                .Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.AreEqual(1, result.DestroyedAttackerRegiments.Count);
+            Assert.AreEqual(1, result.RemainingAttackerRegimentCount);
+            Assert.IsTrue(result.Success);
+            Assert.AreEqual("empire", result.AttackerOwnerInstanceID);
+            Assert.AreEqual("alliance", result.DefenderOwnerInstanceID);
+            CollectionAssert.Contains(
+                result.AttackingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                attacker.GetInstanceID()
+            );
+            CollectionAssert.Contains(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                first.GetInstanceID()
+            );
+            CollectionAssert.Contains(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                second.GetInstanceID()
+            );
+            Assert.IsTrue(
+                result
+                    .AttackingUnits.Single(unit =>
+                        unit.Unit.GetInstanceID() == attacker.GetInstanceID()
+                    )
+                    .Destroyed
+            );
+        }
+
+        /// <summary>Verifies execute contest score uses source thresholds.</summary>
+        /// <param name="contestRoll">The contest roll.</param>
+        /// <param name="defenderWins">The defender wins.</param>
+        /// <param name="attackerWins">The attacker wins.</param>
+        [TestCase(4, true, false)]
+        [TestCase(5, false, false)]
+        [TestCase(6, false, true)]
+        public void Execute_ContestScore_UsesSourceThresholds(
+            int contestRoll,
+            bool defenderWins,
+            bool attackerWins
+        )
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            Regiment defender = AddDefender(game, planet, "defender");
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            Regiment attacker = fleet.GetChildren<CapitalShip>()[0].GetChildren<Regiment>()[0];
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0, contestRoll, 99 })
+                )
+                .Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.AreEqual(defenderWins, result.DestroyedAttackerRegiments.Contains(attacker));
+            Assert.AreEqual(attackerWins, result.DestroyedDefenderRegiments.Contains(defender));
+            Assert.AreEqual(attackerWins, result.Success);
+        }
+
+        /// <summary>Verifies execute each troop uses general from its own fleet.</summary>
+        [Test]
+        public void Execute_EachTroop_UsesGeneralFromItsOwnFleet()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            Regiment firstDefender = AddDefender(game, planet, "defender1");
+            Regiment secondDefender = AddDefender(game, planet, "defender2");
+            Fleet uncommandedFleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            Fleet commandedFleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            Officer general = new Officer
+            {
+                InstanceID = "general",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.General,
+            };
+            general.SetBaseRating(SkillRating.Leadership, 60);
+            game.AttachNode(general, commandedFleet.GetChildren<CapitalShip>()[0]);
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0, 4, 0, 4, 99, 99 })
+                )
+                .Execute(new List<Fleet> { uncommandedFleet, commandedFleet }, planet);
+
+            Assert.AreEqual(1, result.DestroyedAttackerRegiments.Count);
+            Assert.AreEqual(1, result.DestroyedDefenderRegiments.Count);
+            CollectionAssert.Contains(result.DestroyedDefenderRegiments, firstDefender);
+            CollectionAssert.DoesNotContain(result.DestroyedDefenderRegiments, secondDefender);
+        }
+
+        /// <summary>Verifies execute collateral damage can destroy civilian facility and excludes headquarters.</summary>
+        [Test]
+        public void Execute_CollateralDamage_CanDestroyCivilianFacilityAndExcludesHeadquarters()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 2);
+            planet.IsHeadquarters = true;
+            Building mine = AddCollateralBuilding(game, planet, "mine");
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = "alliance",
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(headquarters, planet);
+            AddDefender(game, planet, "defender");
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0, 5, 0, 0 })
+                )
+                .Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsTrue(planet.IsHeadquarters);
+            Assert.AreSame(
+                headquarters,
+                game.GetSceneNodeByInstanceID<Building>(headquarters.InstanceID)
+            );
+            CollectionAssert.Contains(result.CollateralDestroyedBuildings, mine);
+            Assert.AreEqual(2, planet.EnergyCapacity);
+            Assert.IsFalse(result.Success);
+        }
+
+        /// <summary>Verifies execute collateral damage rolls all trials before selecting targets.</summary>
+        [Test]
+        public void Execute_CollateralDamage_RollsAllTrialsBeforeSelectingTargets()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 1);
+            AddDefender(game, planet, "defender1");
+            AddDefender(game, planet, "defender2");
+            Building mine = AddCollateralBuilding(game, planet, "mine");
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 2);
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0, 5, 0, 5, 0, 99, 0 })
+                )
+                .Execute(new List<Fleet> { fleet }, planet);
+
+            CollectionAssert.Contains(result.CollateralDestroyedBuildings, mine);
+            Assert.AreEqual(1, planet.EnergyCapacity);
+        }
+
+        /// <summary>Verifies execute capture lands at most required garrison.</summary>
+        [Test]
+        public void Execute_Capture_LandsAtMostRequiredGarrison()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 7);
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
+                .Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsTrue(result.Success);
+            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
+            Assert.AreEqual(6, result.LandedRegiments.Count);
+            Assert.AreEqual(6, planet.GetAllRegiments().Count);
+            Assert.AreEqual(1, fleet.GetChildren<CapitalShip>()[0].GetChildren<Regiment>().Count);
+            Assert.AreSame(
+                planet,
+                result.Events.OfType<PlanetGarrisonChangedResult>().Single().Planet
+            );
+        }
+
+        /// <summary>Verifies execute capture with fewer troops lands every survivor.</summary>
+        [Test]
+        public void Execute_CaptureWithFewerTroops_LandsEverySurvivor()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 2);
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
+                .Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsTrue(result.Success);
+            Assert.AreEqual(2, result.LandedRegiments.Count);
+            Assert.AreEqual(2, planet.GetAllRegiments().Count);
+        }
+
+        /// <summary>Verifies execute attackers destroyed does not capture planet.</summary>
+        [Test]
+        public void Execute_AttackersDestroyed_DoesNotCapturePlanet()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            AddDefender(game, planet, "defender");
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0, 4, 99 })
+                )
+                .Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual("alliance", planet.GetOwnerInstanceID());
+            Assert.IsNull(result.OwnershipChange);
+        }
+
+        /// <summary>Verifies execute rng failure clears fleet combat state.</summary>
+        [Test]
+        public void Execute_RngFailure_ClearsFleetCombatState()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            AddDefender(game, planet, "defender");
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            Fleet defenderFleet = AddAssaultFleet(game, planet, "alliance", regimentCount: 0);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                MakePlanetaryAssault(game, new ThrowingRNG())
+                    .Execute(new List<Fleet> { fleet }, planet)
+            );
+
+            Assert.IsFalse(fleet.IsInCombat);
+            Assert.IsFalse(defenderFleet.IsInCombat);
+        }
+
+        /// <summary>Verifies execute two ready and six moving regiments uses ready regiments.</summary>
+        [Test]
+        public void Execute_TwoReadyAndSixMovingRegiments_UsesReadyRegiments()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 8);
+            foreach (
+                Regiment regiment in fleet
+                    .GetChildren<CapitalShip>()[0]
+                    .GetChildren<Regiment>()
+                    .Skip(2)
+            )
+                regiment.Movement = new MovementState();
+            PlanetaryAssaultCommands system = MakePlanetaryAssault(game, new SequenceRNG());
+
+            PlanetaryAssaultResult result = system.Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.AreEqual(2, result.InitialAttackerRegimentCount);
+            Assert.IsTrue(result.Success);
+        }
+
+        /// <summary>Verifies try execute valid command publishes completed result batch.</summary>
+        [Test]
+        public void TryExecute_ValidCommand_PublishesCompletedResultBatch()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            PlanetaryAssaultCommands system = MakePlanetaryAssault(game, new SequenceRNG());
+            IReadOnlyList<GameResult> publishedResults = null;
+            system.ResultsProduced += results => publishedResults = results;
+
+            PlanetaryAssaultResult result = system.TryExecute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsNotNull(publishedResults);
+            Assert.AreSame(result, publishedResults[0]);
+            Assert.IsTrue(publishedResults.OfType<PlanetGarrisonChangedResult>().Any());
+            Assert.Contains(result.OwnershipChange, publishedResults.ToList());
+        }
+
+        /// <summary>
+        /// Adds assault fleet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <param name="regimentCount">The regiment count.</param>
+        /// <returns>The result of add assault fleet.</returns>
+        private static Fleet AddAssaultFleet(
+            GameRoot game,
+            Planet planet,
+            string ownerId,
+            int regimentCount
+        )
+        {
+            Fleet fleet = new Fleet
+            {
+                InstanceID = Guid.NewGuid().ToString(),
+                OwnerInstanceID = ownerId,
+            };
+            game.AttachNode(fleet, planet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = Guid.NewGuid().ToString(),
+                OwnerInstanceID = ownerId,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                RegimentCapacity = regimentCount,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+
+            for (int index = 0; index < regimentCount; index++)
+            {
+                game.AttachNode(
+                    new Regiment
+                    {
+                        InstanceID = Guid.NewGuid().ToString(),
+                        OwnerInstanceID = ownerId,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    ship
+                );
+            }
+
+            return fleet;
+        }
+
+        /// <summary>
+        /// Adds defender.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <returns>The result of add defender.</returns>
+        private static Regiment AddDefender(GameRoot game, Planet planet, string instanceId)
+        {
+            Regiment regiment = new Regiment
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = planet.GetOwnerInstanceID(),
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, planet);
+            return regiment;
+        }
+
+        /// <summary>
+        /// Adds defense building.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <param name="shieldStrength">The shield strength.</param>
+        /// <param name="weaponEffect">The weapon effect.</param>
+        /// <param name="protectedUnitTypeId">The protected unit type id.</param>
+        /// <returns>The result of add defense building.</returns>
+        private static Building AddDefenseBuilding(
+            GameRoot game,
+            Planet planet,
+            string instanceId,
+            int shieldStrength = 0,
+            DefenseWeaponEffect weaponEffect = DefenseWeaponEffect.HullDamage,
+            string protectedUnitTypeId = null
+        )
+        {
+            Building building = new Building
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = planet.GetOwnerInstanceID(),
+                BuildingType =
+                    shieldStrength > 0 || protectedUnitTypeId != null
+                        ? BuildingType.Defense
+                        : BuildingType.Weapon,
+                ShieldStrength = shieldStrength,
+                DefenseWeaponEffect = weaponEffect,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            if (protectedUnitTypeId != null)
+                building.ProtectedUnitTypeIDs.Add(protectedUnitTypeId);
+            game.AttachNode(building, planet);
+            return building;
+        }
+
+        /// <summary>
+        /// Adds collateral building.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planet">The planet.</param>
+        /// <param name="instanceId">The instance id.</param>
+        /// <returns>The result of add collateral building.</returns>
+        private static Building AddCollateralBuilding(
+            GameRoot game,
+            Planet planet,
+            string instanceId
+        )
+        {
+            Building building = new Building
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = planet.GetOwnerInstanceID(),
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, planet);
+            return building;
+        }
+    }
+}

@@ -25,6 +25,9 @@ namespace Rebellion.Tests.AI.Director
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 factionView
             );
 
@@ -35,6 +38,9 @@ namespace Rebellion.Tests.AI.Director
         public void AddProposal_WithNullProposal_DoesNotAddProposal()
         {
             AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -54,6 +60,9 @@ namespace Rebellion.Tests.AI.Director
         public void SetSelectedProposals_WithNewBatch_ReplacesExistingSelection()
         {
             AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -84,6 +93,9 @@ namespace Rebellion.Tests.AI.Director
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 null
             );
 
@@ -96,6 +108,9 @@ namespace Rebellion.Tests.AI.Director
         public void AddResults_WithResultBatch_AddsNonNullResults()
         {
             AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

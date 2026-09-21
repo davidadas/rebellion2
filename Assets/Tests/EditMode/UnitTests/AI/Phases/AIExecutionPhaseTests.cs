@@ -72,7 +72,19 @@ namespace Rebellion.Tests.AI.Phases
         /// <returns>The created context.</returns>
         private static AITurnContext CreateContext()
         {
-            return new AITurnContext(null, null, null, null, null, null, null, null);
+            return new AITurnContext(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
         }
     }
 }

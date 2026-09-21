@@ -709,6 +709,17 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>Verifies a new planet exposes an empty manufacturing queue.</summary>
+        [Test]
+        public void GetManufacturingQueue_NoItems_ReturnsEmptyDictionary()
+        {
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                _planet.GetManufacturingQueue();
+
+            Assert.IsNotNull(queue);
+            Assert.IsEmpty(queue);
+        }
+
         [Test]
         public void GetManufacturingQueue_EmptyQueue_ReturnsEmptyDictionary()
         {

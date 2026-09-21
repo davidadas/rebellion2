@@ -6,7 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Executes fleet mutations shared by fleet and planet-sector UI features.
@@ -14,22 +14,28 @@ using Rebellion.Systems;
 public sealed class StrategyFleetCommandController
 {
     private readonly Func<GameRoot> getGame;
-    private readonly Func<FleetSystem> getFleetSystem;
-    private readonly Func<BombardmentSystem> getBombardmentSystem;
-    private readonly Func<PlanetaryAssaultSystem> getPlanetaryAssaultSystem;
+    private readonly Func<FleetCommands> getFleetSystem;
+    private readonly Func<BombardmentCommands> getBombardmentSystem;
+    private readonly Func<BombardmentQueries> getBombardmentQueries;
+    private readonly Func<PlanetaryAssaultCommands> getPlanetaryAssaultSystem;
+    private readonly Func<PlanetaryAssaultQueries> getPlanetaryAssaultQueries;
 
     /// <summary>
     /// Creates a fleet command controller for the active game.
     /// </summary>
     /// <param name="getGame">Returns the active game state.</param>
     /// <param name="getFleetSystem">Returns the active fleet system.</param>
-    /// <param name="getBombardmentSystem">Returns the active bombardment system.</param>
-    /// <param name="getPlanetaryAssaultSystem">Returns the active planetary-assault system.</param>
+    /// <param name="getBombardmentSystem">Returns the active bombardment commands.</param>
+    /// <param name="getBombardmentQueries">Returns the active bombardment eligibility rules.</param>
+    /// <param name="getPlanetaryAssaultSystem">Returns the active planetary-assault commands.</param>
+    /// <param name="getPlanetaryAssaultQueries">Returns the active assault eligibility rules.</param>
     public StrategyFleetCommandController(
         Func<GameRoot> getGame,
-        Func<FleetSystem> getFleetSystem,
-        Func<BombardmentSystem> getBombardmentSystem,
-        Func<PlanetaryAssaultSystem> getPlanetaryAssaultSystem
+        Func<FleetCommands> getFleetSystem,
+        Func<BombardmentCommands> getBombardmentSystem,
+        Func<PlanetaryAssaultCommands> getPlanetaryAssaultSystem,
+        Func<PlanetaryAssaultQueries> getPlanetaryAssaultQueries,
+        Func<BombardmentQueries> getBombardmentQueries
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
@@ -40,6 +46,11 @@ public sealed class StrategyFleetCommandController
         this.getPlanetaryAssaultSystem =
             getPlanetaryAssaultSystem
             ?? throw new ArgumentNullException(nameof(getPlanetaryAssaultSystem));
+        this.getPlanetaryAssaultQueries =
+            getPlanetaryAssaultQueries
+            ?? throw new ArgumentNullException(nameof(getPlanetaryAssaultQueries));
+        this.getBombardmentQueries =
+            getBombardmentQueries ?? throw new ArgumentNullException(nameof(getBombardmentQueries));
     }
 
     /// <summary>
@@ -53,7 +64,7 @@ public sealed class StrategyFleetCommandController
             items?.Where(item => item != null).ToList() ?? new List<ISceneNode>();
         List<CapitalShip> ships = sourceItems.OfType<CapitalShip>().ToList();
         GameRoot game = getGame();
-        FleetSystem fleetSystem = getFleetSystem();
+        FleetCommands fleetSystem = getFleetSystem();
         string playerFactionId = game?.GetPlayerFaction()?.InstanceID;
         return game != null
             && fleetSystem != null
@@ -79,10 +90,11 @@ public sealed class StrategyFleetCommandController
             return false;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return getBombardmentSystem()?.CanExecute(fleets, liveTarget, type) == true;
+            return getBombardmentSystem() != null
+                && getBombardmentQueries()?.CanExecute(fleets, liveTarget, type) == true;
 
         return action == StrategyMenuAction.PlanetaryAssault
-            && getPlanetaryAssaultSystem()?.CanExecute(fleets, liveTarget) == true;
+            && getPlanetaryAssaultQueries()?.CanExecute(fleets, liveTarget) == true;
     }
 
     /// <summary>

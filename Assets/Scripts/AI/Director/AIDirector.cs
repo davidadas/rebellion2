@@ -1,10 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.AI.Phases;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 namespace Rebellion.AI.Director
@@ -15,45 +16,61 @@ namespace Rebellion.AI.Director
     public sealed class AIDirector
     {
         private readonly GameRoot _game;
+        private readonly FogOfWarQueries _fogOfWar;
         private readonly IRandomNumberProvider _random;
-        private readonly MissionSystem _missions;
-        private readonly MovementSystem _movement;
-        private readonly ManufacturingSystem _manufacturing;
-        private readonly MaintenanceSystem _maintenance;
-        private readonly BombardmentSystem _bombardment;
-        private readonly PlanetaryAssaultSystem _planetaryAssault;
+        private readonly MissionCommands _missions;
+        private readonly MissionQueries _missionQueries;
+        private readonly MovementCommands _movement;
+        private readonly ManufacturingCommands _manufacturing;
+        private readonly MaintenanceCommands _maintenance;
+        private readonly BombardmentCommands _bombardment;
+        private readonly BombardmentQueries _bombardmentQueries;
+        private readonly PlanetaryAssaultCommands _planetaryAssault;
+        private readonly PlanetaryAssaultQueries _planetaryAssaultQueries;
         private readonly IReadOnlyList<IAITurnPhase> _turnPhases;
 
         /// <summary>
         /// Creates an AI director using the current game systems.
         /// </summary>
         /// <param name="game">The game instance.</param>
-        /// <param name="missions">Mission system used by mission proposals.</param>
+        /// <param name="missions">Mission commands used by mission proposals.</param>
+        /// <param name="missionQueries">Mission eligibility and odds used by mission proposals.</param>
         /// <param name="movement">Movement system used by movement proposals.</param>
         /// <param name="manufacturing">Manufacturing system used by production proposals.</param>
-        /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
-        /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
+        /// <param name="bombardment">Bombardment commands used by fleet attack proposals.</param>
+        /// <param name="bombardmentQueries">Bombardment eligibility rules used by fleet attack proposals.</param>
+        /// <param name="planetaryAssault">Planetary-assault commands used by fleet attack proposals.</param>
+        /// <param name="planetaryAssaultQueries">Assault eligibility rules used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
-        /// <param name="maintenance">Maintenance system used to project production capacity.</param>
+        /// <param name="fogOfWar">Builds each faction's permitted view before its turn.</param>
+        /// <param name="maintenance">Maintenance commands used to scrap surplus facilities.</param>
         public AIDirector(
             GameRoot game,
-            MissionSystem missions,
-            MovementSystem movement,
-            ManufacturingSystem manufacturing,
-            BombardmentSystem bombardment,
-            PlanetaryAssaultSystem planetaryAssault,
+            MissionCommands missions,
+            MissionQueries missionQueries,
+            MovementCommands movement,
+            ManufacturingCommands manufacturing,
+            BombardmentCommands bombardment,
+            BombardmentQueries bombardmentQueries,
+            PlanetaryAssaultCommands planetaryAssault,
+            PlanetaryAssaultQueries planetaryAssaultQueries,
             IRandomNumberProvider random,
-            MaintenanceSystem maintenance = null
+            FogOfWarQueries fogOfWar,
+            MaintenanceCommands maintenance = null
         )
         {
             _game = game;
+            _fogOfWar = fogOfWar;
             _random = random;
             _missions = missions;
+            _missionQueries = missionQueries;
             _movement = movement;
             _manufacturing = manufacturing;
             _maintenance = maintenance;
             _bombardment = bombardment;
+            _bombardmentQueries = bombardmentQueries;
             _planetaryAssault = planetaryAssault;
+            _planetaryAssaultQueries = planetaryAssaultQueries;
             _turnPhases = new List<IAITurnPhase>
             {
                 new AISpecialForcesIntentPhase(),
@@ -63,6 +80,37 @@ namespace Rebellion.AI.Director
                 new AIMissionDecoyAssignmentPhase(),
                 new AIExecutionPhase(),
             };
+        }
+
+        /// <summary>
+        /// Processes AI turns for all AI-controlled factions.
+        /// </summary>
+        /// <returns>The results produced by AI actions.</returns>
+        public List<GameResult> ProcessTick()
+        {
+            List<GameResult> results = new List<GameResult>();
+            foreach (object _ in ProcessTickIncrementally(results)) { }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Processes eligible AI factions one phase at a time.
+        /// </summary>
+        /// <param name="results">The result list populated as faction turns complete.</param>
+        /// <returns>A sequence containing one step per completed AI phase.</returns>
+        internal IEnumerable<object> ProcessTickIncrementally(ICollection<GameResult> results)
+        {
+            int tickInterval = _game.Config.AI.TickInterval;
+            if (tickInterval <= 0 || _game.CurrentTick % tickInterval != 0)
+                yield break;
+
+            foreach (Faction faction in _game.GetFactions().Where(_game.IsFactionAIControlled))
+            {
+                GalaxyMap factionView = _fogOfWar.BuildFactionView(faction);
+                foreach (object step in ProcessFactionIncrementally(faction, factionView, results))
+                    yield return step;
+            }
         }
 
         /// <summary>
@@ -96,10 +144,13 @@ namespace Rebellion.AI.Director
                 _game,
                 faction,
                 _missions,
+                _missionQueries,
                 _movement,
                 _manufacturing,
                 _bombardment,
+                _bombardmentQueries,
                 _planetaryAssault,
+                _planetaryAssaultQueries,
                 _random,
                 factionView,
                 _maintenance
