@@ -33,7 +33,7 @@ namespace Rebellion.Generation
             UnitDeploymentSection config = ctx.Config.UnitDeployment;
             Dictionary<string, Planet> planetsByTypeId = BuildPlanetMapByTypeID(ctx.Sectors);
 
-            SeedLowSupportGarrisons(ctx.Sectors, config, ctx.Factions, factory);
+            SeedLowSupportGarrisons(ctx.Sectors, config, ctx.Config.GalaxyClassification, factory);
             DeployFixedGarrisons(
                 config.FixedGarrisons,
                 planetsByTypeId,
@@ -66,20 +66,20 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Places garrison troops on colonized planets where owner support is below the
-        /// uprising threshold. Troop type is determined by the owning faction.
+        /// uprising threshold. Troop type comes from the faction's generation setup.
         /// </summary>
         /// <param name="sectors">All planet sectors to scan.</param>
         /// <param name="config">Unit deployment config containing the uprising threshold.</param>
-        /// <param name="factions">Factions containing their standard garrison troop types.</param>
+        /// <param name="classification">Faction setups containing garrison troop types.</param>
         /// <param name="factory">Unit factory for creating troop instances.</param>
         private void SeedLowSupportGarrisons(
             PlanetSector[] sectors,
             UnitDeploymentSection config,
-            IEnumerable<Faction> factions,
+            GalaxyClassificationSection classification,
             UnitFactory factory
         )
         {
-            Dictionary<string, string> garrisonTroopMap = BuildGarrisonTroopMap(factions);
+            Dictionary<string, string> garrisonTroopMap = BuildGarrisonTroopMap(classification);
 
             foreach (PlanetSector sector in sectors)
             {
@@ -115,17 +115,19 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Builds a faction-to-garrison-troop lookup from faction data.
+        /// Builds a faction-to-garrison-troop lookup from generation data.
         /// </summary>
-        /// <param name="factions">Factions containing their standard garrison troop types.</param>
+        /// <param name="classification">Faction setups containing garrison troop types.</param>
         /// <returns>Garrison troop TypeIDs keyed by faction ID.</returns>
-        private Dictionary<string, string> BuildGarrisonTroopMap(IEnumerable<Faction> factions)
+        private Dictionary<string, string> BuildGarrisonTroopMap(
+            GalaxyClassificationSection classification
+        )
         {
             Dictionary<string, string> garrisonTroopMap = new Dictionary<string, string>();
-            foreach (Faction faction in factions)
+            foreach (FactionSetup setup in classification.FactionSetups)
             {
-                if (!string.IsNullOrEmpty(faction.GarrisonTroopTypeID))
-                    garrisonTroopMap[faction.InstanceID] = faction.GarrisonTroopTypeID;
+                if (!string.IsNullOrEmpty(setup.GarrisonTroopTypeID))
+                    garrisonTroopMap[setup.FactionID] = setup.GarrisonTroopTypeID;
             }
 
             return garrisonTroopMap;
