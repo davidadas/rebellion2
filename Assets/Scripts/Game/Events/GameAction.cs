@@ -36,6 +36,10 @@ namespace Rebellion.Game.Events
                 {
                     action.Execute(context);
                 }
+                catch (GameActionSystemException)
+                {
+                    throw;
+                }
                 catch (Exception exception)
                 {
                     string eventInstanceId = context?.Evaluation?.Event?.InstanceID ?? "unknown";
@@ -129,9 +133,46 @@ namespace Rebellion.Game.Events
         /// <param name="officers">The newly captured officers.</param>
         internal void InterruptMissionsForCapture(IReadOnlyList<Officer> officers)
         {
-            List<GameResult> interruptionResults = _captureMissionInterruptor?.Invoke(officers);
+            List<GameResult> interruptionResults;
+            try
+            {
+                interruptionResults = _captureMissionInterruptor?.Invoke(officers);
+            }
+            catch (Exception exception)
+            {
+                throw new GameActionSystemException(
+                    "Failed to interrupt missions for captured officers.",
+                    exception
+                );
+            }
             if (interruptionResults != null)
                 Results.AddRange(interruptionResults.Where(result => result != null));
         }
+    }
+
+    /// <summary>
+    /// Distinguishes failed system work from an invalid authored action so event execution stops.
+    /// </summary>
+    internal sealed class GameActionSystemException : Exception
+    {
+        /// <summary>
+        /// Initializes an exception raised by system work during an event action.
+        /// </summary>
+        internal GameActionSystemException() { }
+
+        /// <summary>
+        /// Initializes an exception raised by system work during an event action.
+        /// </summary>
+        /// <param name="message">The failure description.</param>
+        internal GameActionSystemException(string message)
+            : base(message) { }
+
+        /// <summary>
+        /// Initializes an exception raised by system work during an event action.
+        /// </summary>
+        /// <param name="message">The failure description.</param>
+        /// <param name="innerException">The underlying system failure.</param>
+        internal GameActionSystemException(string message, Exception innerException)
+            : base(message, innerException) { }
     }
 }
