@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 using Rebellion.Util.Reflection;
 
@@ -15,11 +16,13 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Constructs and connects runtime components for the active game graph.
     /// </summary>
-    public sealed class GameSession : IDisposable
+    public sealed class GameSession : IServiceLocator, IDisposable
     {
         private readonly GameDataCatalog _gameData;
         private readonly List<Action> _disconnect = new();
+        private readonly List<ServiceLocator> _retiredServiceScopes = new();
         private IRandomNumberProvider _randomProvider;
+        private ServiceLocator _serviceScope;
         private HeadquartersObserver _headquartersObserver;
         private VictoryObserver _victoryObserver;
         private JediObserver _jediObserver;
@@ -35,6 +38,20 @@ namespace Rebellion.Simulation
         public GameRoot Game { get; private set; }
         public GameResultPipeline Pipeline { get; }
         public GameTickProcessor Tick { get; }
+
+        /// <summary>
+        /// Resolves a command or query from the current game's service scope.
+        /// </summary>
+        /// <typeparam name="T">The requested command or query type.</typeparam>
+        /// <returns>The current game's service instance.</returns>
+        public T GetService<T>() => _serviceScope.GetService<T>();
+
+        /// <summary>
+        /// Resolves a command or query by its runtime type.
+        /// </summary>
+        /// <param name="serviceType">The requested command or query type.</param>
+        /// <returns>The current game's service instance.</returns>
+        public object GetService(Type serviceType) => _serviceScope.GetService(serviceType);
 
         internal MessageCommands MessageCommands { get; private set; }
         internal MessageObserver MessageObserver { get; private set; }
@@ -115,26 +132,9 @@ namespace Rebellion.Simulation
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
             Tick = new GameTickProcessor(
-                () => Game,
-                () => MessageCommands,
-                () => FactionAutomationCommands,
-                () => ResourceProductionCommands,
-                () => ManufacturingCommands,
-                () => MaintenanceCommands,
-                () => RecoveryCommands,
-                () => CaptiveCommands,
-                () => MovementCommands,
-                () => SpaceCombatCommands,
-                () => MissionCommands,
+                this,
                 () => GameEventExecutor,
-                () => NamingCommands,
                 () => AIDirector,
-                () => BlockadeCommands,
-                () => PlanetaryControlCommands,
-                () => UprisingCommands,
-                () => ResearchCommands,
-                () => JediCommands,
-                () => VictoryCommands,
                 (results, processMessages) => Pipeline.ProcessResults(results, processMessages),
                 results => Pipeline.ProcessMessageReactions(results)
             );
@@ -157,14 +157,28 @@ namespace Rebellion.Simulation
             Tick.Reset();
             _randomProvider = game.Random;
             Action[] previousConnections = _disconnect.ToArray();
-            InitializeComponents();
-            RebuildDerivedState();
+            ServiceLocator previousServiceScope = _serviceScope;
+            try
+            {
+                InitializeComponents();
+                RebuildDerivedState();
+            }
+            catch
+            {
+                if (previousServiceScope != null && previousServiceScope != _serviceScope)
+                    _retiredServiceScopes.Add(previousServiceScope);
+                throw;
+            }
 
             foreach (Action disconnect in previousConnections)
             {
                 disconnect();
                 _disconnect.Remove(disconnect);
             }
+            previousServiceScope?.Dispose();
+            foreach (ServiceLocator retiredScope in _retiredServiceScopes)
+                retiredScope.Dispose();
+            _retiredServiceScopes.Clear();
         }
 
         /// <summary>
@@ -175,6 +189,10 @@ namespace Rebellion.Simulation
             foreach (Action disconnect in _disconnect)
                 disconnect();
             _disconnect.Clear();
+            _serviceScope?.Dispose();
+            foreach (ServiceLocator retiredScope in _retiredServiceScopes)
+                retiredScope.Dispose();
+            _retiredServiceScopes.Clear();
         }
 
         /// <summary>
@@ -185,7 +203,13 @@ namespace Rebellion.Simulation
             MessageFactory messageFactory = new MessageFactory(
                 _gameData.MessageDefinitions.GetDeepCopy()
             );
-            MessageCommands = new MessageCommands(Game, messageFactory);
+            _serviceScope = GameServiceRegistration.Create(
+                Game,
+                _gameData,
+                _randomProvider,
+                messageFactory
+            );
+            MessageCommands = GetService<MessageCommands>();
             MessageObserver = new MessageObserver(Game, messageFactory, MessageCommands);
             UnitFactory unitFactory = new UnitFactory(
                 _gameData.Buildings,
@@ -194,112 +218,50 @@ namespace Rebellion.Simulation
                 _gameData.Regiments,
                 _gameData.SpecialForces
             );
-            FogOfWarCommands = new FogOfWarCommands(Game);
-            FogOfWarQueries = new FogOfWarQueries(Game);
+            FogOfWarCommands = GetService<FogOfWarCommands>();
+            FogOfWarQueries = GetService<FogOfWarQueries>();
             _fogOfWarObserver = new FogOfWarObserver(Game, FogOfWarCommands);
-            BlockadeCommands = new BlockadeCommands(Game, _randomProvider);
-            FleetCommands = new FleetCommands(Game);
-            PersonnelQueries = new PersonnelQueries(Game);
-            PersonnelCommands = new PersonnelCommands(PersonnelQueries);
-            DuelCommands = new DuelCommands(Game, _randomProvider);
-            MovementQueries = new MovementQueries(Game);
-            MovementCommands = new MovementCommands(
-                Game,
-                FogOfWarCommands,
-                FleetCommands,
-                FogOfWarQueries,
-                MovementQueries,
-                BlockadeCommands
-            );
+            BlockadeCommands = GetService<BlockadeCommands>();
+            FleetCommands = GetService<FleetCommands>();
+            PersonnelQueries = GetService<PersonnelQueries>();
+            PersonnelCommands = GetService<PersonnelCommands>();
+            DuelCommands = GetService<DuelCommands>();
+            MovementQueries = GetService<MovementQueries>();
+            MovementCommands = GetService<MovementCommands>();
             _movementObserver = new MovementObserver(MovementCommands);
-            HeadquartersQueries = new HeadquartersQueries(Game);
-            HeadquartersCommands = new HeadquartersCommands(
-                Game,
-                MovementCommands,
-                HeadquartersQueries,
-                MovementQueries
-            );
+            HeadquartersQueries = GetService<HeadquartersQueries>();
+            HeadquartersCommands = GetService<HeadquartersCommands>();
             _headquartersObserver = new HeadquartersObserver(HeadquartersCommands);
-            ManufacturingQueries = new ManufacturingQueries(Game);
-            ManufacturingCommands = new ManufacturingCommands(
-                Game,
-                FleetCommands,
-                ManufacturingQueries,
-                MovementCommands
-            );
+            ManufacturingQueries = GetService<ManufacturingQueries>();
+            ManufacturingCommands = GetService<ManufacturingCommands>();
             _manufacturingObserver = new ManufacturingObserver(ManufacturingCommands);
-            NamingCommands = new NamingCommands(Game);
-            RecoveryCommands = new RecoveryCommands(Game);
-            CaptiveCommands = new CaptiveCommands(
-                Game,
-                _randomProvider,
-                MovementCommands,
-                FogOfWarCommands
-            );
+            NamingCommands = GetService<NamingCommands>();
+            RecoveryCommands = GetService<RecoveryCommands>();
+            CaptiveCommands = GetService<CaptiveCommands>();
             _captiveObserver = new CaptiveObserver(Game, CaptiveCommands);
-            FactionAutomationCommands = new FactionAutomationCommands(
-                Game,
-                _gameData,
-                ManufacturingCommands
-            );
-            MaintenanceCommands = new MaintenanceCommands(Game, _randomProvider, FleetCommands);
-            ResourceProductionCommands = new ResourceProductionCommands(Game);
-            PlanetaryControlQueries = new PlanetaryControlQueries(Game);
-            PlanetaryControlCommands = new PlanetaryControlCommands(
-                Game,
-                MovementCommands,
-                ManufacturingCommands,
-                FogOfWarCommands,
-                PlanetaryControlQueries,
-                FogOfWarQueries
-            );
+            FactionAutomationCommands = GetService<FactionAutomationCommands>();
+            MaintenanceCommands = GetService<MaintenanceCommands>();
+            ResourceProductionCommands = GetService<ResourceProductionCommands>();
+            PlanetaryControlQueries = GetService<PlanetaryControlQueries>();
+            PlanetaryControlCommands = GetService<PlanetaryControlCommands>();
             _planetaryControlObserver = new PlanetaryControlObserver(PlanetaryControlCommands);
-            UprisingCommands = new UprisingCommands(
-                Game,
-                _randomProvider,
-                PlanetaryControlCommands
-            );
+            UprisingCommands = GetService<UprisingCommands>();
             _uprisingObserver = new UprisingObserver(UprisingCommands);
-            JediCommands = new JediCommands(Game, _randomProvider);
+            JediCommands = GetService<JediCommands>();
             _jediObserver = new JediObserver(JediCommands);
-            OfficerLoyaltyCommands = new OfficerLoyaltyCommands(Game, _randomProvider);
+            OfficerLoyaltyCommands = GetService<OfficerLoyaltyCommands>();
             _officerLoyaltyObserver = new OfficerLoyaltyObserver(OfficerLoyaltyCommands);
-            MissionQueries = new MissionQueries(Game);
-            MissionCommands = new MissionCommands(
-                Game,
-                _randomProvider,
-                MovementCommands,
-                UprisingCommands,
-                MissionQueries,
-                MovementQueries,
-                OfficerLoyaltyCommands,
-                PersonnelCommands
-            );
+            MissionQueries = GetService<MissionQueries>();
+            MissionCommands = GetService<MissionCommands>();
             _missionObserver = new MissionObserver(MissionCommands);
-            SpaceCombatQueries = new SpaceCombatQueries(Game, MovementQueries);
-            SpaceCombatCommands = new SpaceCombatCommands(
-                Game,
-                MovementCommands,
-                SpaceCombatQueries
-            );
-            BombardmentQueries = new BombardmentQueries(Game);
-            BombardmentCommands = new BombardmentCommands(
-                Game,
-                _randomProvider,
-                MovementCommands,
-                PlanetaryControlCommands,
-                BombardmentQueries,
-                PersonnelCommands
-            );
-            PlanetaryAssaultQueries = new PlanetaryAssaultQueries(Game);
-            PlanetaryAssaultCommands = new PlanetaryAssaultCommands(
-                Game,
-                _randomProvider,
-                PlanetaryControlCommands,
-                PlanetaryAssaultQueries
-            );
-            ResearchCommands = new ResearchCommands(Game, _randomProvider);
-            VictoryCommands = new VictoryCommands(Game);
+            SpaceCombatQueries = GetService<SpaceCombatQueries>();
+            SpaceCombatCommands = GetService<SpaceCombatCommands>();
+            BombardmentQueries = GetService<BombardmentQueries>();
+            BombardmentCommands = GetService<BombardmentCommands>();
+            PlanetaryAssaultQueries = GetService<PlanetaryAssaultQueries>();
+            PlanetaryAssaultCommands = GetService<PlanetaryAssaultCommands>();
+            ResearchCommands = GetService<ResearchCommands>();
+            VictoryCommands = GetService<VictoryCommands>();
             _victoryObserver = new VictoryObserver(VictoryCommands);
             GameEventExecutor = new GameEventExecutor(
                 Game,
@@ -311,20 +273,7 @@ namespace Rebellion.Simulation
                 MessageCommands
             );
             GameEventExecutor.ValidateEvents(Game.GetEventPool());
-            AIDirector = new AIDirector(
-                Game,
-                MissionCommands,
-                MissionQueries,
-                MovementCommands,
-                ManufacturingCommands,
-                BombardmentCommands,
-                BombardmentQueries,
-                PlanetaryAssaultCommands,
-                PlanetaryAssaultQueries,
-                _randomProvider,
-                FogOfWarQueries,
-                MaintenanceCommands
-            );
+            AIDirector = GetService<AIDirector>();
 
             ConnectResults();
         }

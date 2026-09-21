@@ -86,6 +86,7 @@ namespace Rebellion.Architecture.Tests
         [TestCase("Rebellion.Util.Random")]
         [TestCase("Rebellion.Util.Reflection")]
         [TestCase("Rebellion.Util.Serialization")]
+        [TestCase("Rebellion.Util.DependencyInjection")]
         public void UtilityArea_Dependencies_ReferenceOnlySameUtilityArea(string utilityNamespace)
         {
             string escapedNamespace = utilityNamespace.Replace(".", "\\.");

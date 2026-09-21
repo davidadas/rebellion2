@@ -151,32 +151,15 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
-        /// Connects tick scheduling to explicit current-runtime dependencies without a session lookup API.
+        /// Connects tick scheduling to the current session's services.
         /// </summary>
         /// <returns>The tick processor under test.</returns>
         private GameTickProcessor CreateTickProcessor()
         {
             return new GameTickProcessor(
-                () => _game,
-                () => _session.MessageCommands,
-                () => _session.FactionAutomationCommands,
-                () => _session.ResourceProductionCommands,
-                () => _session.ManufacturingCommands,
-                () => _session.MaintenanceCommands,
-                () => _session.RecoveryCommands,
-                () => _session.CaptiveCommands,
-                () => _session.MovementCommands,
-                () => _session.SpaceCombatCommands,
-                () => _session.MissionCommands,
+                _session,
                 () => _session.GameEventExecutor,
-                () => _session.NamingCommands,
                 () => _session.AIDirector,
-                () => _session.BlockadeCommands,
-                () => _session.PlanetaryControlCommands,
-                () => _session.UprisingCommands,
-                () => _session.ResearchCommands,
-                () => _session.JediCommands,
-                () => _session.VictoryCommands,
                 _processResults,
                 _ => { }
             );

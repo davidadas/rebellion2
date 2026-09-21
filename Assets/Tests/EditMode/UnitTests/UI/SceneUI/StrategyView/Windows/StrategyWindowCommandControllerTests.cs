@@ -110,18 +110,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _controller = new StrategyWindowCommandController(
                 _missionCreateController,
                 confirmController,
-                () => _session.Game,
-                () => _session.MovementCommands,
-                () => _session.MaintenanceCommands,
-                () => _session.ManufacturingCommands,
-                () => _session.PersonnelCommands,
-                () => _session.PersonnelQueries,
+                _session,
                 _ => _playedSfxCount++,
                 window => _clearedWindow = window,
                 () => _rebuildCount++,
                 () => _dirtyCount++,
-                () => _session.MovementQueries,
-                null,
                 () => _invalidOrderRejectionCount++,
                 () => _transitRejectionCount++,
                 () => _underConstructionRejectionCount++
@@ -154,17 +147,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 new StrategyWindowCommandController(
                     null,
                     confirmController,
-                    () => _session.Game,
-                    () => _session.MovementCommands,
-                    () => _session.MaintenanceCommands,
-                    () => _session.ManufacturingCommands,
-                    () => _session.PersonnelCommands,
-                    () => _session.PersonnelQueries,
+                    _session,
                     _ => { },
                     _ => { },
                     () => { },
-                    () => { },
-                    () => _session.MovementQueries
+                    () => { }
                 )
             );
         }

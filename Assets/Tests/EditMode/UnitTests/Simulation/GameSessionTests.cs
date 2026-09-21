@@ -18,6 +18,7 @@ using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
+using Rebellion.Util.DependencyInjection;
 
 namespace Rebellion.Tests.Simulation
 {
@@ -114,6 +115,36 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(1, batches);
+        }
+
+        /// <summary>
+        /// Verifies that callers resolve the same command instance used by the active session.
+        /// </summary>
+        [Test]
+        public void GetService_RegisteredCommand_ReturnsActiveSessionInstance()
+        {
+            IServiceLocator services = _session;
+
+            Assert.AreSame(_session.MovementCommands, services.GetService<MovementCommands>());
+            Assert.AreSame(
+                _session.MovementCommands,
+                services.GetService(typeof(MovementCommands))
+            );
+        }
+
+        /// <summary>
+        /// Verifies a previously injected locator resolves the replacement game's commands.
+        /// </summary>
+        [Test]
+        public void ReplaceGame_ExistingLocator_ResolvesReplacementCommand()
+        {
+            IServiceLocator services = _session;
+            MovementCommands previous = services.GetService<MovementCommands>();
+
+            _session.ReplaceGame(new GameRoot(_game.Config));
+
+            Assert.AreNotSame(previous, services.GetService<MovementCommands>());
+            Assert.AreSame(_session.MovementCommands, services.GetService<MovementCommands>());
         }
 
         /// <summary>
