@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
+using Rebellion.Util.DependencyInjection;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
@@ -60,12 +61,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 new ManufacturingQueries(game),
                 movement
             );
-            ConstructionOrderController controller = new ConstructionOrderController(
-                () => game,
-                () => manufacturing,
-                () => new MovementQueries(game),
-                () => new ManufacturingQueries(game)
-            );
+            ConstructionOrderController controller = CreateController(game, manufacturing);
 
             bool started = controller.TryStartConstruction(
                 producer,
@@ -124,12 +120,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 new ManufacturingQueries(game),
                 movement
             );
-            ConstructionOrderController controller = new ConstructionOrderController(
-                () => game,
-                () => manufacturing,
-                () => new MovementQueries(game),
-                () => new ManufacturingQueries(game)
-            );
+            ConstructionOrderController controller = CreateController(game, manufacturing);
 
             IReadOnlyList<IManufacturable> selection = controller.GetBuildSelection(
                 FacilityWindowTab.Shipyards,
@@ -185,17 +176,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 new FogOfWarQueries(game),
                 new MovementQueries(game)
             );
-            ConstructionOrderController controller = new ConstructionOrderController(
-                () => game,
-                () =>
-                    new ManufacturingCommands(
-                        game,
-                        fleetSystem,
-                        new ManufacturingQueries(game),
-                        movement
-                    ),
-                () => new MovementQueries(game),
-                () => new ManufacturingQueries(game)
+            ConstructionOrderController controller = CreateController(
+                game,
+                new ManufacturingCommands(
+                    game,
+                    fleetSystem,
+                    new ManufacturingQueries(game),
+                    movement
+                )
             );
 
             IReadOnlyList<IManufacturable> selection = controller.GetBuildSelection(
@@ -235,17 +223,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 new FogOfWarQueries(game),
                 new MovementQueries(game)
             );
-            ConstructionOrderController controller = new ConstructionOrderController(
-                () => game,
-                () =>
-                    new ManufacturingCommands(
-                        game,
-                        fleetSystem,
-                        new ManufacturingQueries(game),
-                        movement
-                    ),
-                () => new MovementQueries(game),
-                () => new ManufacturingQueries(game)
+            ConstructionOrderController controller = CreateController(
+                game,
+                new ManufacturingCommands(
+                    game,
+                    fleetSystem,
+                    new ManufacturingQueries(game),
+                    movement
+                )
             );
             Building template = new Building
             {
@@ -266,6 +251,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
             Assert.AreEqual(10, estimate.CompletionTicks);
             Assert.IsNull(estimate.DeploymentTicks);
+        }
+
+        /// <summary>
+        /// Creates a construction controller with the active test services.
+        /// </summary>
+        /// <param name="game">The game graph under test.</param>
+        /// <param name="manufacturing">The manufacturing commands under test.</param>
+        /// <returns>A construction controller using those services.</returns>
+        private static ConstructionOrderController CreateController(
+            GameRoot game,
+            ManufacturingCommands manufacturing
+        )
+        {
+            ServiceContainer container = new ServiceContainer();
+            container.AddSingletonInstance(game);
+            container.AddSingletonInstance(manufacturing);
+            container.AddSingletonInstance(new MovementQueries(game));
+            container.AddSingletonInstance(new ManufacturingQueries(game));
+            return new ConstructionOrderController(container.BuildServiceLocator());
         }
 
         /// <summary>

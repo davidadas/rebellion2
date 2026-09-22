@@ -247,7 +247,10 @@ namespace Rebellion.Tests.Util.DependencyInjection
             /// Creates the first side of a circular dependency.
             /// </summary>
             /// <param name="second">The other side of the cycle.</param>
-            public FirstCycleService(SecondCycleService second) { }
+            public FirstCycleService(SecondCycleService second)
+            {
+                _ = second ?? throw new ArgumentNullException(nameof(second));
+            }
         }
 
         private sealed class SecondCycleService
@@ -256,7 +259,10 @@ namespace Rebellion.Tests.Util.DependencyInjection
             /// Creates the second side of a circular dependency.
             /// </summary>
             /// <param name="first">The other side of the cycle.</param>
-            public SecondCycleService(FirstCycleService first) { }
+            public SecondCycleService(FirstCycleService first)
+            {
+                _ = first ?? throw new ArgumentNullException(nameof(first));
+            }
         }
 
         private sealed class FailingService

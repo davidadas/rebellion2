@@ -49,18 +49,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void Constructor_NullGameProvider_ThrowsArgumentNullException()
+        public void Constructor_NullServices_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() =>
-                new StrategyFleetCommandController(
-                    null,
-                    () => _session.FleetCommands,
-                    () => _session.BombardmentCommands,
-                    () => _session.PlanetaryAssaultCommands,
-                    () => _session.PlanetaryAssaultQueries,
-                    () => _session.BombardmentQueries
-                )
-            );
+            Assert.Throws<ArgumentNullException>(() => new StrategyFleetCommandController(null));
         }
 
         [Test]
@@ -296,14 +287,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         /// <returns>The created controller.</returns>
         private StrategyFleetCommandController CreateController()
         {
-            return new StrategyFleetCommandController(
-                () => _session.Game,
-                () => _session.FleetCommands,
-                () => _session.BombardmentCommands,
-                () => _session.PlanetaryAssaultCommands,
-                () => _session.PlanetaryAssaultQueries,
-                () => _session.BombardmentQueries
-            );
+            return new StrategyFleetCommandController(_session);
         }
 
         /// <summary>

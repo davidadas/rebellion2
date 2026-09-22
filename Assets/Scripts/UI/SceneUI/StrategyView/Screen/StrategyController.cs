@@ -366,12 +366,7 @@ public sealed class StrategyController
     {
         InitializeWindowInfrastructure();
         StrategyFleetCommandController fleetCommandController = new StrategyFleetCommandController(
-            () => session.Game,
-            () => session.FleetCommands,
-            () => session.BombardmentCommands,
-            () => session.PlanetaryAssaultCommands,
-            () => session.PlanetaryAssaultQueries,
-            () => session.BombardmentQueries
+            session
         );
         InitializeFeatureWindowControllers(fleetCommandController);
         InitializeSharedCommandControllers();
@@ -518,21 +513,17 @@ public sealed class StrategyController
             RenderFleetSelectionRoutes
         );
         constructionWindowController = new ConstructionWindowController(
-            () => session.Game,
-            () => session.ManufacturingCommands,
-            () => session.MovementQueries,
+            session,
             () => uiContext,
             strategyWindowLayerView,
             strategyWindowManager,
             windowPlacementController.GetConstructionWindowPosition,
             windowPlacementController.GetUtilityWindowPosition,
             CloseWindow,
-            MarkDirty,
-            () => session.ManufacturingQueries
+            MarkDirty
         );
         facilityWindowController = new FacilityWindowController(
-            () => session.Game,
-            () => session.ManufacturingCommands,
+            session,
             constructionWindowController,
             () => uiContext,
             targetingController,
@@ -646,7 +637,9 @@ public sealed class StrategyController
         WireStrategyInputActions();
         battleAlertWindowController = new BattleAlertWindowController(
             () =>
-                session.SpaceCombatCommands.TryGetPendingCombat(out PendingCombatResult pending)
+                session
+                    .GetService<SpaceCombatCommands>()
+                    .TryGetPendingCombat(out PendingCombatResult pending)
                     ? pending
                     : null,
             () => session.Tick.ResolveCombatRetreat(PlayerFactionId),
@@ -662,9 +655,7 @@ public sealed class StrategyController
             MarkDirty
         );
         missionCreateWindowController = new MissionCreateWindowController(
-            () => session.Game,
-            () => session.MissionCommands,
-            () => session.MissionQueries,
+            session,
             () => uiContext,
             PlaySfx,
             strategyWindowLayerView,
@@ -1011,9 +1002,9 @@ public sealed class StrategyController
         {
             dirty = true;
             if (
-                session.SpaceCombatCommands.TryGetPendingCombat(
-                    out PendingCombatResult pendingCombat
-                )
+                session
+                    .GetService<SpaceCombatCommands>()
+                    .TryGetPendingCombat(out PendingCombatResult pendingCombat)
                 && pendingCombat != null
             )
                 PauseForGameplayOption(UserGameplayOption.PauseWhenSpaceBattleBegins);
@@ -1327,7 +1318,7 @@ public sealed class StrategyController
     {
         galaxyMapController.RebuildSnapshot(
             session.Game.GetPlayerFaction(),
-            session.FogOfWarQueries
+            session.GetService<FogOfWarQueries>()
         );
         bookmarkController.ReconcilePlanets(Sectors);
         statusWindowController.ReconcileWindows(Sectors);
@@ -2103,8 +2094,8 @@ public sealed class StrategyController
     /// <param name="faction">The faction whose automation should be processed.</param>
     void IStrategyHudActions.ProcessAdvisorAutomation(Faction faction)
     {
-        session?.FactionAutomationCommands?.ProcessFaction(faction);
-        session?.NamingCommands?.ProcessFaction(faction);
+        session?.GetService<FactionAutomationCommands>()?.ProcessFaction(faction);
+        session?.GetService<NamingCommands>()?.ProcessFaction(faction);
         dirty = true;
     }
 
@@ -2357,7 +2348,7 @@ public sealed class StrategyController
                     OfficerVoiceLineType.MissionAbort,
                     game.Random
                 );
-                if (!session.MissionCommands.AbortMission(missionInstanceId))
+                if (!session.GetService<MissionCommands>().AbortMission(missionInstanceId))
                     return;
 
                 if (!string.IsNullOrEmpty(voicePath))

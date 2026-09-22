@@ -7,50 +7,22 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
+using Rebellion.Util.DependencyInjection;
 
 /// <summary>
 /// Executes fleet mutations shared by fleet and planet-sector UI features.
 /// </summary>
 public sealed class StrategyFleetCommandController
 {
-    private readonly Func<GameRoot> getGame;
-    private readonly Func<FleetCommands> getFleetSystem;
-    private readonly Func<BombardmentCommands> getBombardmentSystem;
-    private readonly Func<BombardmentQueries> getBombardmentQueries;
-    private readonly Func<PlanetaryAssaultCommands> getPlanetaryAssaultSystem;
-    private readonly Func<PlanetaryAssaultQueries> getPlanetaryAssaultQueries;
+    private readonly IServiceLocator services;
 
     /// <summary>
     /// Creates a fleet command controller for the active game.
     /// </summary>
-    /// <param name="getGame">Returns the active game state.</param>
-    /// <param name="getFleetSystem">Returns the active fleet system.</param>
-    /// <param name="getBombardmentSystem">Returns the active bombardment commands.</param>
-    /// <param name="getBombardmentQueries">Returns the active bombardment eligibility rules.</param>
-    /// <param name="getPlanetaryAssaultSystem">Returns the active planetary-assault commands.</param>
-    /// <param name="getPlanetaryAssaultQueries">Returns the active assault eligibility rules.</param>
-    public StrategyFleetCommandController(
-        Func<GameRoot> getGame,
-        Func<FleetCommands> getFleetSystem,
-        Func<BombardmentCommands> getBombardmentSystem,
-        Func<PlanetaryAssaultCommands> getPlanetaryAssaultSystem,
-        Func<PlanetaryAssaultQueries> getPlanetaryAssaultQueries,
-        Func<BombardmentQueries> getBombardmentQueries
-    )
+    /// <param name="services">Resolves services for the active game.</param>
+    public StrategyFleetCommandController(IServiceLocator services)
     {
-        this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getFleetSystem =
-            getFleetSystem ?? throw new ArgumentNullException(nameof(getFleetSystem));
-        this.getBombardmentSystem =
-            getBombardmentSystem ?? throw new ArgumentNullException(nameof(getBombardmentSystem));
-        this.getPlanetaryAssaultSystem =
-            getPlanetaryAssaultSystem
-            ?? throw new ArgumentNullException(nameof(getPlanetaryAssaultSystem));
-        this.getPlanetaryAssaultQueries =
-            getPlanetaryAssaultQueries
-            ?? throw new ArgumentNullException(nameof(getPlanetaryAssaultQueries));
-        this.getBombardmentQueries =
-            getBombardmentQueries ?? throw new ArgumentNullException(nameof(getBombardmentQueries));
+        this.services = services ?? throw new ArgumentNullException(nameof(services));
     }
 
     /// <summary>
@@ -63,8 +35,8 @@ public sealed class StrategyFleetCommandController
         List<ISceneNode> sourceItems =
             items?.Where(item => item != null).ToList() ?? new List<ISceneNode>();
         List<CapitalShip> ships = sourceItems.OfType<CapitalShip>().ToList();
-        GameRoot game = getGame();
-        FleetCommands fleetSystem = getFleetSystem();
+        GameRoot game = services.GetService<GameRoot>();
+        FleetCommands fleetSystem = services.GetService<FleetCommands>();
         string playerFactionId = game?.GetPlayerFaction()?.InstanceID;
         return game != null
             && fleetSystem != null
@@ -90,11 +62,13 @@ public sealed class StrategyFleetCommandController
             return false;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return getBombardmentSystem() != null
-                && getBombardmentQueries()?.CanExecute(fleets, liveTarget, type) == true;
+            return services.GetService<BombardmentCommands>() != null
+                && services.GetService<BombardmentQueries>()?.CanExecute(fleets, liveTarget, type)
+                    == true;
 
         return action == StrategyMenuAction.PlanetaryAssault
-            && getPlanetaryAssaultQueries()?.CanExecute(fleets, liveTarget) == true;
+            && services.GetService<PlanetaryAssaultQueries>()?.CanExecute(fleets, liveTarget)
+                == true;
     }
 
     /// <summary>
@@ -114,10 +88,10 @@ public sealed class StrategyFleetCommandController
             return null;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return getBombardmentSystem()?.TryExecute(fleets, liveTarget, type);
+            return services.GetService<BombardmentCommands>()?.TryExecute(fleets, liveTarget, type);
 
         return action == StrategyMenuAction.PlanetaryAssault
-            ? getPlanetaryAssaultSystem()?.TryExecute(fleets, liveTarget)
+            ? services.GetService<PlanetaryAssaultCommands>()?.TryExecute(fleets, liveTarget)
             : null;
     }
 
@@ -130,7 +104,7 @@ public sealed class StrategyFleetCommandController
     {
         return string.IsNullOrEmpty(planet?.InstanceID)
             ? null
-            : getGame()?.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+            : services.GetService<GameRoot>()?.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
     }
 
     /// <summary>
@@ -150,7 +124,7 @@ public sealed class StrategyFleetCommandController
     {
         fleets = new List<Fleet>();
         liveTarget = null;
-        GameRoot game = getGame();
+        GameRoot game = services.GetService<GameRoot>();
         if (game == null || items?.Count < 1 || string.IsNullOrEmpty(targetPlanet?.InstanceID))
             return false;
 

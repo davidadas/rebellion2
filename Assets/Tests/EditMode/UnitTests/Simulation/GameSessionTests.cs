@@ -111,7 +111,9 @@ namespace Rebellion.Tests.Simulation
             _session.Pipeline.ResultsResolved += _ => batches++;
 
             Assert.IsTrue(
-                _session.MaintenanceCommands.TryScrap(new[] { regiment }, _faction.InstanceID)
+                _session
+                    .GetService<MaintenanceCommands>()
+                    .TryScrap(new[] { regiment }, _faction.InstanceID)
             );
 
             Assert.AreEqual(1, batches);
@@ -125,9 +127,12 @@ namespace Rebellion.Tests.Simulation
         {
             IServiceLocator services = _session;
 
-            Assert.AreSame(_session.MovementCommands, services.GetService<MovementCommands>());
             Assert.AreSame(
-                _session.MovementCommands,
+                _session.GetService<MovementCommands>(),
+                services.GetService<MovementCommands>()
+            );
+            Assert.AreSame(
+                _session.GetService<MovementCommands>(),
                 services.GetService(typeof(MovementCommands))
             );
         }
@@ -144,7 +149,10 @@ namespace Rebellion.Tests.Simulation
             _session.ReplaceGame(new GameRoot(_game.Config));
 
             Assert.AreNotSame(previous, services.GetService<MovementCommands>());
-            Assert.AreSame(_session.MovementCommands, services.GetService<MovementCommands>());
+            Assert.AreSame(
+                _session.GetService<MovementCommands>(),
+                services.GetService<MovementCommands>()
+            );
         }
 
         /// <summary>
@@ -168,7 +176,7 @@ namespace Rebellion.Tests.Simulation
         public void ReplaceGame_ValidReplacement_DetachesPreviousProducer()
         {
             Regiment regiment = CreateRegiment();
-            MaintenanceCommands previousMaintenance = _session.MaintenanceCommands;
+            MaintenanceCommands previousMaintenance = _session.GetService<MaintenanceCommands>();
             int batches = 0;
             _session.Pipeline.ResultsResolved += _ => batches++;
             _session.ReplaceGame(new GameRoot(_game.Config));
@@ -217,13 +225,12 @@ namespace Rebellion.Tests.Simulation
         public void Dispose_ImmediateScrap_DoesNotForwardBatch()
         {
             Regiment regiment = CreateRegiment();
+            MaintenanceCommands maintenance = _session.GetService<MaintenanceCommands>();
             int batches = 0;
             _session.Pipeline.ResultsResolved += _ => batches++;
             _session.Dispose();
 
-            Assert.IsTrue(
-                _session.MaintenanceCommands.TryScrap(new[] { regiment }, _faction.InstanceID)
-            );
+            Assert.IsTrue(maintenance.TryScrap(new[] { regiment }, _faction.InstanceID));
 
             Assert.AreEqual(0, batches);
         }
@@ -290,12 +297,12 @@ namespace Rebellion.Tests.Simulation
         {
             GameRoot game = new(TestConfig.Create());
             GameSession manager = new(game, TestGameData.Create(game.Config));
-            MovementCommands movement = manager.MovementCommands;
+            MovementCommands movement = manager.GetService<MovementCommands>();
 
             Assert.Throws<InvalidOperationException>(() => manager.ReplaceGame(null));
 
             Assert.AreSame(game, manager.Game);
-            Assert.AreSame(movement, manager.MovementCommands);
+            Assert.AreSame(movement, manager.GetService<MovementCommands>());
         }
 
         /// <summary>
@@ -306,7 +313,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             GameSession manager = new(new GameRoot(config), TestGameData.Create(config));
-            MovementCommands movement = manager.MovementCommands;
+            MovementCommands movement = manager.GetService<MovementCommands>();
             GameRoot replacement = new(config);
             replacement
                 .GetEventPool()
@@ -314,7 +321,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.Throws<InvalidOperationException>(() => manager.ReplaceGame(replacement));
 
-            Assert.AreNotSame(movement, manager.MovementCommands);
+            Assert.AreNotSame(movement, manager.GetService<MovementCommands>());
         }
 
         /// <summary>Verifies contested player fleet and restores pending combat.</summary>
@@ -356,7 +363,7 @@ namespace Rebellion.Tests.Simulation
             manager.Tick.ReconcileLoadedState();
 
             Assert.AreEqual(40, game.CurrentTick);
-            Assert.IsTrue(manager.SpaceCombatCommands.HasPendingDecision);
+            Assert.IsTrue(manager.GetService<SpaceCombatCommands>().HasPendingDecision);
             Assert.IsFalse(manager.Tick.IsSettled);
             Assert.AreEqual(1, decisionsRequired);
 
@@ -394,8 +401,8 @@ namespace Rebellion.Tests.Simulation
             };
             faction.AddOwnedUnit(ship);
 
-            manager.FactionAutomationCommands.ProcessFaction(faction);
-            manager.NamingCommands.ProcessFaction(faction);
+            manager.GetService<FactionAutomationCommands>().ProcessFaction(faction);
+            manager.GetService<NamingCommands>().ProcessFaction(faction);
 
             Assert.AreEqual("Named Ship", ship.DisplayName);
             Assert.IsTrue(ship.HasAssignedName);
@@ -480,12 +487,9 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             Assert.IsTrue(
-                manager.ManufacturingCommands.Enqueue(
-                    producer,
-                    completingOrder,
-                    destination,
-                    ignoreCost: true
-                )
+                manager
+                    .GetService<ManufacturingCommands>()
+                    .Enqueue(producer, completingOrder, destination, ignoreCost: true)
             );
 
             manager.Tick.ProcessTick();
@@ -788,10 +792,9 @@ namespace Rebellion.Tests.Simulation
             IReadOnlyList<PlanetaryAssaultResult> observedResults = null;
             manager.Pipeline.PlanetaryAssaultsResolved += results => observedResults = results;
 
-            PlanetaryAssaultResult result = manager.PlanetaryAssaultCommands.TryExecute(
-                new[] { fleet },
-                planet
-            );
+            PlanetaryAssaultResult result = manager
+                .GetService<PlanetaryAssaultCommands>()
+                .TryExecute(new[] { fleet }, planet);
 
             Assert.IsNotNull(result);
             Assert.That(observedResults, Has.Count.EqualTo(1));
@@ -811,7 +814,7 @@ namespace Rebellion.Tests.Simulation
             manager.Pipeline.HeadquartersLost += _ => calls.Add("headquarters");
             manager.Pipeline.VictoryDeclared += _ => calls.Add("victory");
 
-            manager.PlanetaryAssaultCommands.TryExecute(new[] { fleet }, target);
+            manager.GetService<PlanetaryAssaultCommands>().TryExecute(new[] { fleet }, target);
 
             CollectionAssert.AreEqual(
                 new[]
@@ -837,7 +840,7 @@ namespace Rebellion.Tests.Simulation
             manager.Pipeline.ResultsResolved += _ => throw failure;
 
             InvalidOperationException actual = Assert.Throws<InvalidOperationException>(() =>
-                manager.PlanetaryAssaultCommands.TryExecute(new[] { fleet }, target)
+                manager.GetService<PlanetaryAssaultCommands>().TryExecute(new[] { fleet }, target)
             );
 
             Assert.AreSame(failure, actual);
@@ -861,7 +864,7 @@ namespace Rebellion.Tests.Simulation
             manager.Pipeline.VictoryDeclared += _ => calls.Add("victory");
 
             InvalidOperationException actual = Assert.Throws<InvalidOperationException>(() =>
-                manager.PlanetaryAssaultCommands.TryExecute(new[] { fleet }, target)
+                manager.GetService<PlanetaryAssaultCommands>().TryExecute(new[] { fleet }, target)
             );
 
             Assert.AreSame(failure, actual);
@@ -877,7 +880,7 @@ namespace Rebellion.Tests.Simulation
                 throw new InvalidOperationException("presentation failed");
 
             Assert.Throws<InvalidOperationException>(() =>
-                manager.PlanetaryAssaultCommands.TryExecute(new[] { fleet }, target)
+                manager.GetService<PlanetaryAssaultCommands>().TryExecute(new[] { fleet }, target)
             );
 
             Assert.AreEqual(
@@ -986,7 +989,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(starfighter, origin);
 
             GameSession manager = TestContent.CreateGameSession(game);
-            manager.MovementCommands.RequestMove(starfighter, destination);
+            manager.GetService<MovementCommands>().RequestMove(starfighter, destination);
 
             Fleet blockadingFleet = EntityFactory.CreateFleet(
                 "BLOCKADING_FLEET",
@@ -1086,7 +1089,7 @@ namespace Rebellion.Tests.Simulation
 
             manager.Tick.ProcessTick();
 
-            GalaxyMap view = manager.FogOfWarQueries.BuildFactionView(alliance);
+            GalaxyMap view = manager.GetService<FogOfWarQueries>().BuildFactionView(alliance);
             Planet viewedPlanet = view.GetChildren<PlanetSector>()
                 .Single(s => s.InstanceID == "SECTOR1")
                 .GetChildren<Planet>()
@@ -1151,7 +1154,9 @@ namespace Rebellion.Tests.Simulation
             defendingFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
             GameSession manager = TestContent.CreateGameSession(game);
-            manager.MovementCommands.RequestMove(new List<IMovable> { arrivingFleet }, destination);
+            manager
+                .GetService<MovementCommands>()
+                .RequestMove(new List<IMovable> { arrivingFleet }, destination);
 
             manager.Tick.ProcessTick();
 
@@ -1239,10 +1244,9 @@ namespace Rebellion.Tests.Simulation
                 GameSession initialManager = new GameSession(game, TestGameData.Create(config));
                 foreach (Fleet fleet in attackingFleets)
                 {
-                    initialManager.MovementCommands.RequestMove(
-                        new List<IMovable> { fleet },
-                        destination
-                    );
+                    initialManager
+                        .GetService<MovementCommands>()
+                        .RequestMove(new List<IMovable> { fleet }, destination);
                 }
 
                 HashSet<string> expectedShipIds = attackingFleets
@@ -1260,14 +1264,15 @@ namespace Rebellion.Tests.Simulation
                 );
                 for (
                     int tick = 0;
-                    tick < 100 && !loadedManager.SpaceCombatCommands.HasPendingDecision;
+                    tick < 100
+                        && !loadedManager.GetService<SpaceCombatCommands>().HasPendingDecision;
                     tick++
                 )
                 {
                     loadedManager.Tick.ProcessTick();
                 }
 
-                Assert.IsTrue(loadedManager.SpaceCombatCommands.HasPendingDecision);
+                Assert.IsTrue(loadedManager.GetService<SpaceCombatCommands>().HasPendingDecision);
                 SpaceCombatResult result = loadedManager.Tick.ResolveCombat(autoResolve: true);
                 HashSet<string> participatingShipIds = result
                     .AttackingUnits.Concat(result.DefendingUnits)
@@ -1361,12 +1366,16 @@ namespace Rebellion.Tests.Simulation
                 );
 
             GameSession manager = TestContent.CreateGameSession(game);
-            manager.MovementCommands.RequestMove(new List<IMovable> { arrivingFleet }, destination);
+            manager
+                .GetService<MovementCommands>()
+                .RequestMove(new List<IMovable> { arrivingFleet }, destination);
 
             manager.Tick.ProcessTick();
 
             Assert.IsTrue(
-                manager.SpaceCombatCommands.TryGetPendingCombat(out PendingCombatResult pending)
+                manager
+                    .GetService<SpaceCombatCommands>()
+                    .TryGetPendingCombat(out PendingCombatResult pending)
             );
             Assert.AreSame(arrivingFleet, pending.AttackerFleet);
             Assert.IsNull(pending.DefenderFleet);
@@ -1400,17 +1409,19 @@ namespace Rebellion.Tests.Simulation
             );
             GameSession manager = TestContent.CreateGameSession(game);
             Assert.IsTrue(
-                manager.MovementCommands.TrySetFleetWaypointRoute(
-                    new ISceneNode[] { fleet },
-                    new[] { waypoint.InstanceID, destination.InstanceID },
-                    alliance.InstanceID
-                )
+                manager
+                    .GetService<MovementCommands>()
+                    .TrySetFleetWaypointRoute(
+                        new ISceneNode[] { fleet },
+                        new[] { waypoint.InstanceID, destination.InstanceID },
+                        alliance.InstanceID
+                    )
             );
             fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
 
             manager.Tick.ProcessTick();
 
-            Assert.IsFalse(manager.SpaceCombatCommands.HasPendingDecision);
+            Assert.IsFalse(manager.GetService<SpaceCombatCommands>().HasPendingDecision);
             Assert.AreSame(destination, fleet.GetParent());
             Assert.IsNotNull(fleet.Movement);
             CollectionAssert.AreEqual(new[] { destination.InstanceID }, fleet.Waypoints);
@@ -1537,17 +1548,19 @@ namespace Rebellion.Tests.Simulation
             );
             GameSession manager = TestContent.CreateGameSession(game);
             Assert.IsTrue(
-                manager.MovementCommands.TrySetFleetWaypointRoute(
-                    new ISceneNode[] { routeFleet },
-                    new[] { waypoint.InstanceID, destination.InstanceID },
-                    alliance.InstanceID
-                )
+                manager
+                    .GetService<MovementCommands>()
+                    .TrySetFleetWaypointRoute(
+                        new ISceneNode[] { routeFleet },
+                        new[] { waypoint.InstanceID, destination.InstanceID },
+                        alliance.InstanceID
+                    )
             );
             routeFleet.Movement.TicksElapsed = routeFleet.Movement.TransitTicks - 1;
 
             manager.Tick.ProcessTick();
 
-            Assert.IsTrue(manager.SpaceCombatCommands.HasPendingDecision);
+            Assert.IsTrue(manager.GetService<SpaceCombatCommands>().HasPendingDecision);
             Assert.AreSame(waypoint, routeFleet.GetParent());
             Assert.IsNull(routeFleet.Movement);
             CollectionAssert.AreEqual(new[] { destination.InstanceID }, routeFleet.Waypoints);
@@ -1668,23 +1681,23 @@ namespace Rebellion.Tests.Simulation
 
             GameSession manager = TestContent.CreateGameSession(game);
             Assert.IsTrue(
-                manager.MissionCommands.InitiateMission(
-                    new MissionContext
-                    {
-                        MissionTypeID = DiplomacyMission.MissionTypeID,
-                        Location = planet,
-                        MainParticipants = new List<IMissionParticipant> { diplomat },
-                    }
-                )
+                manager
+                    .GetService<MissionCommands>()
+                    .InitiateMission(
+                        new MissionContext
+                        {
+                            MissionTypeID = DiplomacyMission.MissionTypeID,
+                            Location = planet,
+                            MainParticipants = new List<IMissionParticipant> { diplomat },
+                        }
+                    )
             );
             Assert.IsNotNull(diplomat.Movement);
 
             Assert.IsTrue(
-                manager.MovementCommands.TryRequestMove(
-                    new ISceneNode[] { departingRegiment },
-                    ship,
-                    owner.InstanceID
-                )
+                manager
+                    .GetService<MovementCommands>()
+                    .TryRequestMove(new ISceneNode[] { departingRegiment }, ship, owner.InstanceID)
             );
 
             Assert.AreEqual(0, game.CurrentTick);
@@ -1699,7 +1712,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             diplomat.Movement = null;
-            List<GameResult> missionResults = manager.MissionCommands.ProcessTick();
+            List<GameResult> missionResults = manager.GetService<MissionCommands>().ProcessTick();
 
             Assert.AreEqual(
                 MissionCompletionReason.Failure,
@@ -1760,11 +1773,9 @@ namespace Rebellion.Tests.Simulation
             GameSession manager = TestContent.CreateGameSession(game);
 
             Assert.IsTrue(
-                manager.MovementCommands.TryRequestMove(
-                    new ISceneNode[] { departingRegiment },
-                    ship,
-                    owner.InstanceID
-                )
+                manager
+                    .GetService<MovementCommands>()
+                    .TryRequestMove(new ISceneNode[] { departingRegiment }, ship, owner.InstanceID)
             );
 
             Assert.AreEqual(0, game.CurrentTick);
@@ -1812,10 +1823,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(regiment, planet);
             GameSession manager = TestContent.CreateGameSession(game);
 
-            bool scrapped = manager.MaintenanceCommands.TryScrap(
-                new IManufacturable[] { regiment },
-                owner.InstanceID
-            );
+            bool scrapped = manager
+                .GetService<MaintenanceCommands>()
+                .TryScrap(new IManufacturable[] { regiment }, owner.InstanceID);
 
             Assert.IsTrue(scrapped);
             Assert.IsNull(planet.GetOwnerInstanceID());

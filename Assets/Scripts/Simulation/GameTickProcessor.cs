@@ -27,7 +27,6 @@ namespace Rebellion.Simulation
 
         private readonly IServiceLocator _services;
         private readonly Func<GameEventExecutor> _getGameEventExecutor;
-        private readonly Func<AIDirector> _getAIDirector;
         private readonly Func<IEnumerable<GameResult>, bool, List<GameResult>> _processResults;
         private readonly Action<List<GameResult>> _processMessages;
         private readonly List<GameResult> _deferredMessageResults = new();
@@ -47,13 +46,11 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="services">Resolves commands and queries for the current game.</param>
         /// <param name="getGameEventExecutor">Returns the current game event runtime.</param>
-        /// <param name="getAIDirector">Returns the current ai runtime.</param>
         /// <param name="processResults">Resolves and presents one result batch at its existing release boundary.</param>
         /// <param name="processMessages">Releases the messages of an already resolved batch.</param>
         internal GameTickProcessor(
             IServiceLocator services,
             Func<GameEventExecutor> getGameEventExecutor,
-            Func<AIDirector> getAIDirector,
             Func<IEnumerable<GameResult>, bool, List<GameResult>> processResults,
             Action<List<GameResult>> processMessages
         )
@@ -62,8 +59,6 @@ namespace Rebellion.Simulation
             _getGameEventExecutor =
                 getGameEventExecutor
                 ?? throw new ArgumentNullException(nameof(getGameEventExecutor));
-            _getAIDirector =
-                getAIDirector ?? throw new ArgumentNullException(nameof(getAIDirector));
             _processResults =
                 processResults ?? throw new ArgumentNullException(nameof(processResults));
             _processMessages =
@@ -185,7 +180,11 @@ namespace Rebellion.Simulation
             );
             _services.GetService<NamingCommands>().ProcessTick();
             List<GameResult> aiResults = new List<GameResult>();
-            foreach (object step in _getAIDirector().ProcessTickIncrementally(aiResults))
+            foreach (
+                object step in _services
+                    .GetService<AIDirector>()
+                    .ProcessTickIncrementally(aiResults)
+            )
                 yield return step;
             ProcessResults(aiResults);
 

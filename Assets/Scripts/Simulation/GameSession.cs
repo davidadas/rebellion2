@@ -39,72 +39,9 @@ namespace Rebellion.Simulation
         public GameResultPipeline Pipeline { get; }
         public GameTickProcessor Tick { get; }
 
-        internal MessageCommands MessageCommands { get; private set; }
         internal MessageObserver MessageObserver { get; private set; }
 
         internal GameEventExecutor GameEventExecutor { get; private set; }
-
-        internal FogOfWarCommands FogOfWarCommands { get; private set; }
-        internal FogOfWarQueries FogOfWarQueries { get; private set; }
-
-        internal BlockadeCommands BlockadeCommands { get; private set; }
-
-        internal FleetCommands FleetCommands { get; private set; }
-
-        internal PersonnelCommands PersonnelCommands { get; private set; }
-
-        internal PersonnelQueries PersonnelQueries { get; private set; }
-
-        internal DuelCommands DuelCommands { get; private set; }
-
-        internal MovementCommands MovementCommands { get; private set; }
-        internal MovementQueries MovementQueries { get; private set; }
-
-        internal HeadquartersCommands HeadquartersCommands { get; private set; }
-
-        internal HeadquartersQueries HeadquartersQueries { get; private set; }
-
-        internal NamingCommands NamingCommands { get; private set; }
-
-        internal RecoveryCommands RecoveryCommands { get; private set; }
-
-        internal CaptiveCommands CaptiveCommands { get; private set; }
-
-        internal ManufacturingCommands ManufacturingCommands { get; private set; }
-        internal ManufacturingQueries ManufacturingQueries { get; private set; }
-
-        internal MaintenanceCommands MaintenanceCommands { get; private set; }
-
-        internal ResourceProductionCommands ResourceProductionCommands { get; private set; }
-
-        internal FactionAutomationCommands FactionAutomationCommands { get; private set; }
-
-        internal PlanetaryControlCommands PlanetaryControlCommands { get; private set; }
-        internal PlanetaryControlQueries PlanetaryControlQueries { get; private set; }
-
-        internal UprisingCommands UprisingCommands { get; private set; }
-
-        internal JediCommands JediCommands { get; private set; }
-
-        internal MissionCommands MissionCommands { get; private set; }
-        internal MissionQueries MissionQueries { get; private set; }
-
-        internal SpaceCombatCommands SpaceCombatCommands { get; private set; }
-        internal SpaceCombatQueries SpaceCombatQueries { get; private set; }
-
-        internal BombardmentCommands BombardmentCommands { get; private set; }
-        internal BombardmentQueries BombardmentQueries { get; private set; }
-
-        internal PlanetaryAssaultCommands PlanetaryAssaultCommands { get; private set; }
-        internal PlanetaryAssaultQueries PlanetaryAssaultQueries { get; private set; }
-
-        internal ResearchCommands ResearchCommands { get; private set; }
-
-        internal OfficerLoyaltyCommands OfficerLoyaltyCommands { get; private set; }
-
-        internal VictoryCommands VictoryCommands { get; private set; }
-
-        internal AIDirector AIDirector { get; private set; }
 
         internal GameResultBus Results { get; private set; }
 
@@ -120,7 +57,6 @@ namespace Rebellion.Simulation
             Tick = new GameTickProcessor(
                 this,
                 () => GameEventExecutor,
-                () => AIDirector,
                 (results, processMessages) => Pipeline.ProcessResults(results, processMessages),
                 results => Pipeline.ProcessMessageReactions(results)
             );
@@ -209,8 +145,13 @@ namespace Rebellion.Simulation
                 _randomProvider,
                 messageFactory
             );
-            MessageCommands = GetService<MessageCommands>();
-            MessageObserver = new MessageObserver(Game, messageFactory, MessageCommands);
+            // Preserve construction order: some services initialize movement policy or derived state.
+            GetService<MessageCommands>();
+            MessageObserver = new MessageObserver(
+                Game,
+                messageFactory,
+                GetService<MessageCommands>()
+            );
             UnitFactory unitFactory = new UnitFactory(
                 _gameData.Buildings,
                 _gameData.CapitalShips,
@@ -218,62 +159,66 @@ namespace Rebellion.Simulation
                 _gameData.Regiments,
                 _gameData.SpecialForces
             );
-            FogOfWarCommands = GetService<FogOfWarCommands>();
-            FogOfWarQueries = GetService<FogOfWarQueries>();
-            _fogOfWarObserver = new FogOfWarObserver(Game, FogOfWarCommands);
-            BlockadeCommands = GetService<BlockadeCommands>();
-            FleetCommands = GetService<FleetCommands>();
-            PersonnelQueries = GetService<PersonnelQueries>();
-            PersonnelCommands = GetService<PersonnelCommands>();
-            DuelCommands = GetService<DuelCommands>();
-            MovementQueries = GetService<MovementQueries>();
-            MovementCommands = GetService<MovementCommands>();
-            _movementObserver = new MovementObserver(MovementCommands);
-            HeadquartersQueries = GetService<HeadquartersQueries>();
-            HeadquartersCommands = GetService<HeadquartersCommands>();
-            _headquartersObserver = new HeadquartersObserver(HeadquartersCommands);
-            ManufacturingQueries = GetService<ManufacturingQueries>();
-            ManufacturingCommands = GetService<ManufacturingCommands>();
-            _manufacturingObserver = new ManufacturingObserver(ManufacturingCommands);
-            NamingCommands = GetService<NamingCommands>();
-            RecoveryCommands = GetService<RecoveryCommands>();
-            CaptiveCommands = GetService<CaptiveCommands>();
-            _captiveObserver = new CaptiveObserver(Game, CaptiveCommands);
-            FactionAutomationCommands = GetService<FactionAutomationCommands>();
-            MaintenanceCommands = GetService<MaintenanceCommands>();
-            ResourceProductionCommands = GetService<ResourceProductionCommands>();
-            PlanetaryControlQueries = GetService<PlanetaryControlQueries>();
-            PlanetaryControlCommands = GetService<PlanetaryControlCommands>();
-            _planetaryControlObserver = new PlanetaryControlObserver(PlanetaryControlCommands);
-            UprisingCommands = GetService<UprisingCommands>();
-            _uprisingObserver = new UprisingObserver(UprisingCommands);
-            JediCommands = GetService<JediCommands>();
-            _jediObserver = new JediObserver(JediCommands);
-            OfficerLoyaltyCommands = GetService<OfficerLoyaltyCommands>();
-            _officerLoyaltyObserver = new OfficerLoyaltyObserver(OfficerLoyaltyCommands);
-            MissionQueries = GetService<MissionQueries>();
-            MissionCommands = GetService<MissionCommands>();
-            _missionObserver = new MissionObserver(MissionCommands);
-            SpaceCombatQueries = GetService<SpaceCombatQueries>();
-            SpaceCombatCommands = GetService<SpaceCombatCommands>();
-            BombardmentQueries = GetService<BombardmentQueries>();
-            BombardmentCommands = GetService<BombardmentCommands>();
-            PlanetaryAssaultQueries = GetService<PlanetaryAssaultQueries>();
-            PlanetaryAssaultCommands = GetService<PlanetaryAssaultCommands>();
-            ResearchCommands = GetService<ResearchCommands>();
-            VictoryCommands = GetService<VictoryCommands>();
-            _victoryObserver = new VictoryObserver(VictoryCommands);
+            GetService<FogOfWarCommands>();
+            GetService<FogOfWarQueries>();
+            _fogOfWarObserver = new FogOfWarObserver(Game, GetService<FogOfWarCommands>());
+            GetService<BlockadeCommands>();
+            GetService<FleetCommands>();
+            GetService<PersonnelQueries>();
+            GetService<PersonnelCommands>();
+            GetService<DuelCommands>();
+            GetService<MovementQueries>();
+            GetService<MovementCommands>();
+            _movementObserver = new MovementObserver(GetService<MovementCommands>());
+            GetService<HeadquartersQueries>();
+            GetService<HeadquartersCommands>();
+            _headquartersObserver = new HeadquartersObserver(GetService<HeadquartersCommands>());
+            GetService<ManufacturingQueries>();
+            GetService<ManufacturingCommands>();
+            _manufacturingObserver = new ManufacturingObserver(GetService<ManufacturingCommands>());
+            GetService<NamingCommands>();
+            GetService<RecoveryCommands>();
+            GetService<CaptiveCommands>();
+            _captiveObserver = new CaptiveObserver(Game, GetService<CaptiveCommands>());
+            GetService<FactionAutomationCommands>();
+            GetService<MaintenanceCommands>();
+            GetService<ResourceProductionCommands>();
+            GetService<PlanetaryControlQueries>();
+            GetService<PlanetaryControlCommands>();
+            _planetaryControlObserver = new PlanetaryControlObserver(
+                GetService<PlanetaryControlCommands>()
+            );
+            GetService<UprisingCommands>();
+            _uprisingObserver = new UprisingObserver(GetService<UprisingCommands>());
+            GetService<JediCommands>();
+            _jediObserver = new JediObserver(GetService<JediCommands>());
+            GetService<OfficerLoyaltyCommands>();
+            _officerLoyaltyObserver = new OfficerLoyaltyObserver(
+                GetService<OfficerLoyaltyCommands>()
+            );
+            GetService<MissionQueries>();
+            GetService<MissionCommands>();
+            _missionObserver = new MissionObserver(GetService<MissionCommands>());
+            GetService<SpaceCombatQueries>();
+            GetService<SpaceCombatCommands>();
+            GetService<BombardmentQueries>();
+            GetService<BombardmentCommands>();
+            GetService<PlanetaryAssaultQueries>();
+            GetService<PlanetaryAssaultCommands>();
+            GetService<ResearchCommands>();
+            GetService<VictoryCommands>();
+            _victoryObserver = new VictoryObserver(GetService<VictoryCommands>());
             GameEventExecutor = new GameEventExecutor(
                 Game,
                 _randomProvider,
                 unitFactory,
-                MovementCommands,
-                PlanetaryControlCommands,
-                DuelCommands,
-                MessageCommands
+                GetService<MovementCommands>(),
+                GetService<PlanetaryControlCommands>(),
+                GetService<DuelCommands>(),
+                GetService<MessageCommands>()
             );
             GameEventExecutor.ValidateEvents(Game.GetEventPool());
-            AIDirector = GetService<AIDirector>();
+            GetService<AIDirector>();
 
             ConnectResults();
         }
@@ -360,16 +305,17 @@ namespace Rebellion.Simulation
                 Results.Observe<GameObjectSabotagedResult>(_fogOfWarObserver.ProcessResults).Dispose
             );
 
-            MovementCommands movementSystem = MovementCommands;
+            MovementCommands movementSystem = GetService<MovementCommands>();
             movementSystem.ResultsProduced += Pipeline.ProcessImmediate;
             _disconnect.Add(() => movementSystem.ResultsProduced -= Pipeline.ProcessImmediate);
-            MaintenanceCommands maintenanceSystem = MaintenanceCommands;
+            MaintenanceCommands maintenanceSystem = GetService<MaintenanceCommands>();
             maintenanceSystem.ResultsProduced += Pipeline.ProcessImmediate;
             _disconnect.Add(() => maintenanceSystem.ResultsProduced -= Pipeline.ProcessImmediate);
-            BombardmentCommands bombardmentSystem = BombardmentCommands;
+            BombardmentCommands bombardmentSystem = GetService<BombardmentCommands>();
             bombardmentSystem.ResultsProduced += Pipeline.ProcessImmediate;
             _disconnect.Add(() => bombardmentSystem.ResultsProduced -= Pipeline.ProcessImmediate);
-            PlanetaryAssaultCommands planetaryAssaultSystem = PlanetaryAssaultCommands;
+            PlanetaryAssaultCommands planetaryAssaultSystem =
+                GetService<PlanetaryAssaultCommands>();
             planetaryAssaultSystem.ResultsProduced += Pipeline.ProcessImmediate;
             _disconnect.Add(() =>
                 planetaryAssaultSystem.ResultsProduced -= Pipeline.ProcessImmediate
@@ -392,7 +338,7 @@ namespace Rebellion.Simulation
             foreach (Faction faction in Game.GetFactions())
                 faction.RebuildResearchCatalog(templates);
 
-            ManufacturingCommands.RebuildQueues();
+            GetService<ManufacturingCommands>().RebuildQueues();
         }
 
         /// <summary>

@@ -86,9 +86,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _sourceWindow = CreateSourceWindow();
             _missionCreateController = new MissionCreateWindowController(
-                () => _game,
-                () => _session.MissionCommands,
-                () => _session.MissionQueries,
+                _session,
                 () => _uiContext,
                 _ => { },
                 _windowLayer,

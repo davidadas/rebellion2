@@ -159,7 +159,6 @@ namespace Rebellion.Tests.Simulation
             return new GameTickProcessor(
                 _session,
                 () => _session.GameEventExecutor,
-                () => _session.AIDirector,
                 _processResults,
                 _ => { }
             );

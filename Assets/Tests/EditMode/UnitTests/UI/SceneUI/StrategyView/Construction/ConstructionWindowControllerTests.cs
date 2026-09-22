@@ -67,21 +67,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
-        public void Constructor_NullGameProvider_ThrowsArgumentNullException()
+        public void Constructor_NullServices_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new ConstructionWindowController(
                     null,
-                    () => _session.ManufacturingCommands,
-                    () => _session.MovementQueries,
                     () => _uiContext,
                     _windowLayer,
                     _windowManager,
                     (_, _) => Vector2Int.zero,
                     () => Vector2Int.zero,
                     _ => { },
-                    () => { },
-                    () => _session.ManufacturingQueries
+                    () => { }
                 )
             );
         }
@@ -259,17 +256,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         private ConstructionWindowController CreateController()
         {
             return new ConstructionWindowController(
-                () => _session.Game,
-                () => _session.ManufacturingCommands,
-                () => _session.MovementQueries,
+                _session,
                 () => _uiContext,
                 _windowLayer,
                 _windowManager,
                 (x, y) => new Vector2Int(x + 17, y + 19),
                 () => new Vector2Int(141, 73),
                 _ => { },
-                () => _dirtyCount++,
-                () => _session.ManufacturingQueries
+                () => _dirtyCount++
             );
         }
 

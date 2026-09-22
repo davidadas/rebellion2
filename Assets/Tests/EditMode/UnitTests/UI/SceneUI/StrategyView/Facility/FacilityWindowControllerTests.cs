@@ -81,29 +81,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
-        public void Constructor_NullGameProvider_ThrowsArgumentNullException()
+        public void Constructor_NullServices_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new FacilityWindowController(
-                    null,
-                    () => _session.ManufacturingCommands,
-                    _constructionController,
-                    () => _uiContext,
-                    _targetingController,
-                    _windowLayer,
-                    _windowManager,
-                    (_, _) => Vector2Int.zero,
-                    () => { }
-                )
-            );
-        }
-
-        [Test]
-        public void Constructor_NullManufacturingSystemProvider_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() =>
-                new FacilityWindowController(
-                    () => _game,
                     null,
                     _constructionController,
                     () => _uiContext,
@@ -369,8 +350,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private FacilityWindowController CreateController()
         {
             return new FacilityWindowController(
-                () => _game,
-                () => _session.ManufacturingCommands,
+                _session,
                 _constructionController,
                 () => _uiContext,
                 _targetingController,
@@ -388,17 +368,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private ConstructionWindowController CreateConstructionController()
         {
             return new ConstructionWindowController(
-                () => _game,
-                () => _session.ManufacturingCommands,
-                () => _session.MovementQueries,
+                _session,
                 () => _uiContext,
                 _windowLayer,
                 _windowManager,
                 (_, _) => Vector2Int.zero,
                 () => Vector2Int.zero,
                 _ => { },
-                () => { },
-                () => _session.ManufacturingQueries
+                () => { }
             );
         }
 

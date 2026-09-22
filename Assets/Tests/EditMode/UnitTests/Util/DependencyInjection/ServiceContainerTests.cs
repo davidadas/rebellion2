@@ -109,7 +109,10 @@ namespace Rebellion.Tests.Util.DependencyInjection
             /// Creates a service with a dependency.
             /// </summary>
             /// <param name="dependency">The dependency to receive.</param>
-            public AmbiguousService(SimpleService dependency) { }
+            public AmbiguousService(SimpleService dependency)
+            {
+                _ = dependency ?? throw new ArgumentNullException(nameof(dependency));
+            }
         }
     }
 }

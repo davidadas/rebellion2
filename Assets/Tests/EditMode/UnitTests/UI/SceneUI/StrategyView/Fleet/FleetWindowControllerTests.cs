@@ -575,14 +575,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// <returns>The created fleet command controller.</returns>
         private StrategyFleetCommandController CreateFleetCommandController()
         {
-            return new StrategyFleetCommandController(
-                () => _session.Game,
-                () => _session.FleetCommands,
-                () => _session.BombardmentCommands,
-                () => _session.PlanetaryAssaultCommands,
-                () => _session.PlanetaryAssaultQueries,
-                () => _session.BombardmentQueries
-            );
+            return new StrategyFleetCommandController(_session);
         }
 
         /// <summary>

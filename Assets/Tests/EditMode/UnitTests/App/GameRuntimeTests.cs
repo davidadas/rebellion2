@@ -199,7 +199,7 @@ namespace Rebellion.Tests.App
 
             bool saved = _runtime.SaveGame("pending_combat", "Pending Combat");
 
-            Assert.IsTrue(session.SpaceCombatCommands.HasPendingDecision);
+            Assert.IsTrue(session.GetService<SpaceCombatCommands>().HasPendingDecision);
             Assert.IsFalse(_runtime.CanSave);
             Assert.IsFalse(saved);
             Assert.IsFalse(File.Exists(_saveGameManager.GetSaveFilePath("pending_combat")));
@@ -351,7 +351,7 @@ namespace Rebellion.Tests.App
 
             Assert.Throws<InvalidOperationException>(() => _runtime.LoadGame("contested"));
 
-            Assert.IsFalse(session.SpaceCombatCommands.HasPendingDecision);
+            Assert.IsFalse(session.GetService<SpaceCombatCommands>().HasPendingDecision);
         }
 
         /// <summary>

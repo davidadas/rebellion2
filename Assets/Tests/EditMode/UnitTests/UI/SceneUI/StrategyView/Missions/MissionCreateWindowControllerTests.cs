@@ -89,13 +89,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         [Test]
-        public void Constructor_NullGameProvider_ThrowsArgumentNullException()
+        public void Constructor_NullServices_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new MissionCreateWindowController(
                     null,
-                    () => _session.MissionCommands,
-                    () => _session.MissionQueries,
                     () => _uiContext,
                     _ => { },
                     _windowLayer,
@@ -242,9 +240,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         private MissionCreateWindowController CreateController()
         {
             return new MissionCreateWindowController(
-                () => _game,
-                () => _session.MissionCommands,
-                () => _session.MissionQueries,
+                _session,
                 () => _uiContext,
                 _ => { },
                 _windowLayer,
