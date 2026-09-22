@@ -2570,6 +2570,188 @@ namespace Rebellion.Tests.Sectors
         }
 
         /// <summary>
+        /// Verifies that revealing a regiment at a planet preserves a previously revealed regiment there.
+        /// </summary>
+        [Test]
+        public void HandleResults_SelectedPlanetRegiment_PreservesPreviouslyObservedRegiment()
+        {
+            Regiment first = CreateRegiment("FIRST", _empire);
+            Regiment second = CreateRegiment("SECOND", _empire);
+            _game.AttachNode(first, _coruscant);
+            _game.AttachNode(second, _coruscant);
+
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 41,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { first },
+                    },
+                }
+            );
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { second },
+                    },
+                }
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            CollectionAssert.AreEquivalent(
+                new[] { "FIRST", "SECOND" },
+                snapshot.Regiments.Select(regiment => regiment.InstanceID)
+            );
+        }
+
+        /// <summary>
+        /// Verifies that revealing a starfighter at a planet preserves a previously revealed starfighter there.
+        /// </summary>
+        [Test]
+        public void HandleResults_SelectedPlanetStarfighter_PreservesPreviouslyObservedStarfighter()
+        {
+            Starfighter first = CreateStarfighter("FIRST", _empire);
+            Starfighter second = CreateStarfighter("SECOND", _empire);
+            _game.AttachNode(first, _coruscant);
+            _game.AttachNode(second, _coruscant);
+
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 41,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { first },
+                    },
+                }
+            );
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { second },
+                    },
+                }
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            CollectionAssert.AreEquivalent(
+                new[] { "FIRST", "SECOND" },
+                snapshot.Starfighters.Select(starfighter => starfighter.InstanceID)
+            );
+        }
+
+        /// <summary>
+        /// Verifies that revealing an embarked regiment uses available capacity without replacing remembered cargo.
+        /// </summary>
+        [Test]
+        public void HandleResults_SelectedNestedRegimentWithCapacity_PreservesRememberedRegiment()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "CARRIER");
+            ship.RegimentCapacity = 2;
+            Regiment first = CreateRegiment("FIRST", _empire);
+            Regiment second = CreateRegiment("SECOND", _empire);
+            _game.AttachNode(first, ship);
+            _game.AttachNode(second, ship);
+
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 41,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { first },
+                    },
+                }
+            );
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { second },
+                    },
+                }
+            );
+
+            CapitalShip knownShip = _alliance
+                .Fog.Snapshots["CORE_SECTOR"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single()
+                .GetChildren<CapitalShip>()
+                .Single();
+            CollectionAssert.AreEquivalent(
+                new[] { "FIRST", "SECOND" },
+                knownShip.GetChildren<Regiment>().Select(regiment => regiment.InstanceID)
+            );
+        }
+
+        /// <summary>
+        /// Verifies that revealing an embarked fighter uses available capacity without replacing remembered cargo.
+        /// </summary>
+        [Test]
+        public void HandleResults_SelectedNestedStarfighterWithCapacity_PreservesRememberedStarfighter()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "CARRIER");
+            ship.StarfighterCapacity = 2;
+            Starfighter first = CreateStarfighter("FIRST", _empire);
+            Starfighter second = CreateStarfighter("SECOND", _empire);
+            _game.AttachNode(first, ship);
+            _game.AttachNode(second, ship);
+
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 41,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { first },
+                    },
+                }
+            );
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { second },
+                    },
+                }
+            );
+
+            CapitalShip knownShip = _alliance
+                .Fog.Snapshots["CORE_SECTOR"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single()
+                .GetChildren<CapitalShip>()
+                .Single();
+            CollectionAssert.AreEquivalent(
+                new[] { "FIRST", "SECOND" },
+                knownShip.GetChildren<Starfighter>().Select(starfighter => starfighter.InstanceID)
+            );
+        }
+
+        /// <summary>
         /// Verifies that revealing an embarked regiment replaces only one absent remembered regiment.
         /// </summary>
         [Test]
