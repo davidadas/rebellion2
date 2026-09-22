@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
@@ -83,19 +85,22 @@ namespace Rebellion.Game.Events
         /// <param name="provider">Random number provider for stochastic actions.</param>
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
+        /// <param name="captureMissionInterruptor">Interrupts missions containing newly captured officers.</param>
         /// <returns>The context containing requests and results produced by the actions.</returns>
         internal GameActionContext ExecuteActions(
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventEvaluationContext context,
-            UnitFactory unitFactory = null
+            UnitFactory unitFactory = null,
+            Func<IReadOnlyList<Officer>, List<GameResult>> captureMissionInterruptor = null
         )
         {
             GameActionContext actionContext = new GameActionContext(
                 game,
                 provider,
                 context,
-                unitFactory
+                unitFactory,
+                captureMissionInterruptor
             );
             GameAction.ExecuteAll(Actions, actionContext);
             return actionContext;

@@ -36,6 +36,10 @@ namespace Rebellion.Game.Events
                 {
                     action.Execute(context);
                 }
+                catch (GameActionSystemException)
+                {
+                    throw;
+                }
                 catch (Exception exception)
                 {
                     string eventInstanceId = context?.Evaluation?.Event?.InstanceID ?? "unknown";
@@ -60,6 +64,7 @@ namespace Rebellion.Game.Events
         public UnitFactory UnitFactory { get; }
         internal List<GameRequest> Requests { get; } = new List<GameRequest>();
         internal List<GameResult> Results { get; } = new List<GameResult>();
+        private readonly Func<IReadOnlyList<Officer>, List<GameResult>> _captureMissionInterruptor;
 
         /// <summary>
         /// Initializes a new instance of the GameActionContext class.
@@ -68,17 +73,20 @@ namespace Rebellion.Game.Events
         /// <param name="random">The random.</param>
         /// <param name="evaluation">The evaluation.</param>
         /// <param name="unitFactory">The unit factory.</param>
+        /// <param name="captureMissionInterruptor">Interrupts missions containing newly captured officers.</param>
         public GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
             GameEventEvaluationContext evaluation = null,
-            UnitFactory unitFactory = null
+            UnitFactory unitFactory = null,
+            Func<IReadOnlyList<Officer>, List<GameResult>> captureMissionInterruptor = null
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
             Random = random ?? throw new ArgumentNullException(nameof(random));
             Evaluation = evaluation;
             UnitFactory = unitFactory;
+            _captureMissionInterruptor = captureMissionInterruptor;
         }
 
         /// <summary>
@@ -117,5 +125,54 @@ namespace Rebellion.Game.Events
             foreach (GameResult result in results ?? Enumerable.Empty<GameResult>())
                 Record(result);
         }
+
+        /// <summary>
+        /// Interrupts active missions containing newly captured officers before the next authored
+        /// action executes.
+        /// </summary>
+        /// <param name="officers">The newly captured officers.</param>
+        internal void InterruptMissionsForCapture(IReadOnlyList<Officer> officers)
+        {
+            List<GameResult> interruptionResults;
+            try
+            {
+                interruptionResults = _captureMissionInterruptor?.Invoke(officers);
+            }
+            catch (Exception exception)
+            {
+                throw new GameActionSystemException(
+                    "Failed to interrupt missions for captured officers.",
+                    exception
+                );
+            }
+            if (interruptionResults != null)
+                Results.AddRange(interruptionResults.Where(result => result != null));
+        }
+    }
+
+    /// <summary>
+    /// Distinguishes failed system work from an invalid authored action so event execution stops.
+    /// </summary>
+    internal sealed class GameActionSystemException : Exception
+    {
+        /// <summary>
+        /// Initializes an exception raised by system work during an event action.
+        /// </summary>
+        internal GameActionSystemException() { }
+
+        /// <summary>
+        /// Initializes an exception raised by system work during an event action.
+        /// </summary>
+        /// <param name="message">The failure description.</param>
+        internal GameActionSystemException(string message)
+            : base(message) { }
+
+        /// <summary>
+        /// Initializes an exception raised by system work during an event action.
+        /// </summary>
+        /// <param name="message">The failure description.</param>
+        /// <param name="innerException">The underlying system failure.</param>
+        internal GameActionSystemException(string message, Exception innerException)
+            : base(message, innerException) { }
     }
 }

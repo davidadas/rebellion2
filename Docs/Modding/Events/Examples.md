@@ -244,7 +244,7 @@ planet.
                        ProbabilityTable="Abduction"
                        RatingMultiplier="-1">
       <OnSuccess>
-        <!-- Capture state and gameplay activity are independent changes. -->
+        <!-- Capture completes before the following deactivation action executes. -->
         <SetCaptureStatus OfficerInstanceID="HAN_SOLO"
                           IsCaptured="true"
                           CaptorFactionInstanceID="FNEMP1"
