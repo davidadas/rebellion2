@@ -20,23 +20,20 @@ namespace Rebellion.Simulation
         private readonly HeadquartersQueries _queries;
 
         /// <summary>
-        /// Creates headquarters operations and registers their completed-building movement policy.
+        /// Creates headquarters operations.
         /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="movement">The movement implementation that executes relocation.</param>
-        /// <param name="movementQueries">The movement rules receiving the headquarters policy.</param>
         /// <param name="queries">The active game's headquarters eligibility queries.</param>
         public HeadquartersCommands(
             GameRoot game,
             MovementCommands movement,
-            HeadquartersQueries queries,
-            MovementQueries movementQueries
+            HeadquartersQueries queries
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
-            movementQueries.SetCompletedBuildingMovementPolicy(_queries.CanMove);
         }
 
         /// <summary>

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
@@ -145,8 +144,6 @@ namespace Rebellion.Simulation
                 _randomProvider,
                 messageFactory
             );
-            // Preserve construction order: some services initialize movement policy or derived state.
-            GetService<MessageCommands>();
             MessageObserver = new MessageObserver(
                 Game,
                 messageFactory,
@@ -159,54 +156,24 @@ namespace Rebellion.Simulation
                 _gameData.Regiments,
                 _gameData.SpecialForces
             );
-            GetService<FogOfWarCommands>();
-            GetService<FogOfWarQueries>();
             _fogOfWarObserver = new FogOfWarObserver(Game, GetService<FogOfWarCommands>());
-            GetService<BlockadeCommands>();
-            GetService<FleetCommands>();
-            GetService<PersonnelQueries>();
-            GetService<PersonnelCommands>();
-            GetService<DuelCommands>();
-            GetService<MovementQueries>();
-            GetService<MovementCommands>();
             _movementObserver = new MovementObserver(GetService<MovementCommands>());
-            GetService<HeadquartersQueries>();
-            GetService<HeadquartersCommands>();
+            GetService<MovementQueries>()
+                .SetCompletedBuildingMovementPolicy(GetService<HeadquartersQueries>().CanMove);
             _headquartersObserver = new HeadquartersObserver(GetService<HeadquartersCommands>());
-            GetService<ManufacturingQueries>();
-            GetService<ManufacturingCommands>();
             _manufacturingObserver = new ManufacturingObserver(GetService<ManufacturingCommands>());
-            GetService<NamingCommands>();
-            GetService<RecoveryCommands>();
-            GetService<CaptiveCommands>();
             _captiveObserver = new CaptiveObserver(Game, GetService<CaptiveCommands>());
-            GetService<FactionAutomationCommands>();
-            GetService<MaintenanceCommands>();
-            GetService<ResourceProductionCommands>();
-            GetService<PlanetaryControlQueries>();
-            GetService<PlanetaryControlCommands>();
             _planetaryControlObserver = new PlanetaryControlObserver(
                 GetService<PlanetaryControlCommands>()
             );
-            GetService<UprisingCommands>();
             _uprisingObserver = new UprisingObserver(GetService<UprisingCommands>());
-            GetService<JediCommands>();
             _jediObserver = new JediObserver(GetService<JediCommands>());
-            GetService<OfficerLoyaltyCommands>();
             _officerLoyaltyObserver = new OfficerLoyaltyObserver(
                 GetService<OfficerLoyaltyCommands>()
             );
-            GetService<MissionQueries>();
-            GetService<MissionCommands>();
             _missionObserver = new MissionObserver(GetService<MissionCommands>());
-            GetService<SpaceCombatQueries>();
-            GetService<SpaceCombatCommands>();
-            GetService<BombardmentQueries>();
-            GetService<BombardmentCommands>();
-            GetService<PlanetaryAssaultQueries>();
-            GetService<PlanetaryAssaultCommands>();
-            GetService<ResearchCommands>();
-            GetService<VictoryCommands>();
+            // Research timers must be seeded before the first tick and before AI consumes RNG.
+            GetService<ResearchCommands>().InitializeTimers();
             _victoryObserver = new VictoryObserver(GetService<VictoryCommands>());
             GameEventExecutor = new GameEventExecutor(
                 Game,
@@ -218,7 +185,6 @@ namespace Rebellion.Simulation
                 GetService<MessageCommands>()
             );
             GameEventExecutor.ValidateEvents(Game.GetEventPool());
-            GetService<AIDirector>();
 
             ConnectResults();
         }

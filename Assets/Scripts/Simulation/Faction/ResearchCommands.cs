@@ -26,7 +26,7 @@ namespace Rebellion.Simulation
         private readonly IRandomNumberProvider _provider;
 
         /// <summary>
-        /// Creates a new ResearchCommands.
+        /// Creates research operations.
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">The random number provider.</param>
@@ -34,14 +34,12 @@ namespace Rebellion.Simulation
         {
             _game = game;
             _provider = provider;
-
-            InitializeResearchTimers();
         }
 
         /// <summary>
         /// Initializes research timers for factions that do not already have one.
         /// </summary>
-        private void InitializeResearchTimers()
+        internal void InitializeTimers()
         {
             GameConfig.ResearchConfig config = _game.Config.Research;
             foreach (Faction faction in _game.GetFactions())

@@ -119,12 +119,9 @@ namespace Rebellion.Tests.Simulation
                 new FogOfWarQueries(game),
                 movementQueries
             );
-            return new HeadquartersCommands(
-                game,
-                movement,
-                new HeadquartersQueries(game),
-                movementQueries
-            );
+            HeadquartersQueries queries = new HeadquartersQueries(game);
+            movementQueries.SetCompletedBuildingMovementPolicy(queries.CanMove);
+            return new HeadquartersCommands(game, movement, queries);
         }
 
         /// <summary>Creates a faction with headquarters and two registered planets.</summary>

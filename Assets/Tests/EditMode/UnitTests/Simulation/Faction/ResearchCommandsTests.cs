@@ -43,6 +43,18 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(_planet, planetSector);
 
             _system = new ResearchCommands(_game, new StubRNG());
+            _system.InitializeTimers();
+        }
+
+        /// <summary>Verifies an unscheduled faction receives a research refresh timer.</summary>
+        [Test]
+        public void InitializeTimers_UnscheduledFaction_SchedulesRefresh()
+        {
+            _faction.ResearchState.NextRefreshTick = 0;
+
+            _system.InitializeTimers();
+
+            Assert.Greater(_faction.ResearchState.NextRefreshTick, _game.CurrentTick);
         }
 
         /// <summary>Verifies pulse not reached does not add capacity.</summary>

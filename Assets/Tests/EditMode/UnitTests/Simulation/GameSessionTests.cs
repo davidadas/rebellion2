@@ -90,6 +90,50 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
+        /// Verifies that session startup schedules research before the first tick.
+        /// </summary>
+        [Test]
+        public void Constructor_FactionWithoutResearchTimer_SchedulesRefresh()
+        {
+            Assert.Greater(_faction.ResearchState.NextRefreshTick, _game.CurrentTick);
+        }
+
+        /// <summary>
+        /// Verifies that session startup connects the mobile-headquarters movement rule.
+        /// </summary>
+        [Test]
+        public void Constructor_MobileHeadquarters_EnablesRelocation()
+        {
+            _faction.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            _faction.HQInstanceID = _planet.InstanceID;
+            _planet.EnergyCapacity = 1;
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _faction.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, _planet);
+            Planet destination = new Planet
+            {
+                InstanceID = "destination",
+                OwnerInstanceID = _faction.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 1,
+                PositionX = 100,
+            };
+            _game.AttachNode(destination, _planet.GetParent());
+
+            Assert.IsTrue(
+                _session.GetService<HeadquartersCommands>().TryRelocate(headquarters, destination)
+            );
+        }
+
+        /// <summary>
         /// Verifies that construction connects the existing popular-support reaction.
         /// </summary>
         [Test]
