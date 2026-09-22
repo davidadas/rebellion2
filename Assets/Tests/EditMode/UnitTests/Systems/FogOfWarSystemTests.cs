@@ -2504,6 +2504,63 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void HandleResults_CategoryRefresh_ReplacesStaleFleetCargo()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "CARRIER");
+            ship.RegimentCapacity = 2;
+            Regiment firstStale = CreateRegiment("FIRST_STALE", _empire);
+            Regiment secondStale = CreateRegiment("SECOND_STALE", _empire);
+            _game.AttachNode(firstStale, ship);
+            _game.AttachNode(secondStale, ship);
+            PlanetIntelligenceCategory categories =
+                PlanetIntelligenceCategory.CapitalShips | PlanetIntelligenceCategory.GroundForces;
+
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 41,
+                        Recipient = _alliance,
+                        Planet = _coruscant,
+                        Categories = categories,
+                    },
+                }
+            );
+
+            _game.DetachNode(firstStale);
+            _game.DetachNode(secondStale);
+            _game.AttachNode(CreateRegiment("FIRST_CURRENT", _empire), ship);
+            _game.AttachNode(CreateRegiment("SECOND_CURRENT", _empire), ship);
+
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Planet = _coruscant,
+                        Categories = categories,
+                    },
+                }
+            );
+
+            CapitalShip knownShip = _alliance
+                .Fog.Snapshots["CORE_SECTOR"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single()
+                .GetChildren<CapitalShip>()
+                .Single();
+            CollectionAssert.AreEquivalent(
+                new[] { "FIRST_CURRENT", "SECOND_CURRENT" },
+                knownShip.GetChildren<Regiment>().Select(regiment => regiment.InstanceID)
+            );
+        }
+
+        [Test]
         public void HandleResults_SelectedCapitalShip_RevealsPartialFleetWithoutSiblingsOrCargo()
         {
             Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);

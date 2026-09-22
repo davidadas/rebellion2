@@ -70,12 +70,30 @@ namespace Rebellion.Systems
         public List<GameResult> HandleResults(IReadOnlyList<IntelligenceRevealedResult> results)
         {
             foreach (IntelligenceRevealedResult result in results)
-                _recorder.RecordSelectedObservations(
-                    _game,
-                    result.Recipient,
-                    result.Observations,
-                    result.Tick
-                );
+            {
+                if (
+                    result.Planet?.GetParent() is PlanetSector sector
+                    && result.Categories != PlanetIntelligenceCategory.None
+                )
+                {
+                    _recorder.RecordIntelligenceSnapshot(
+                        result.Recipient,
+                        result.Planet,
+                        sector,
+                        result.Tick,
+                        result.Categories
+                    );
+                }
+                else
+                {
+                    _recorder.RecordSelectedObservations(
+                        _game,
+                        result.Recipient,
+                        result.Observations,
+                        result.Tick
+                    );
+                }
+            }
 
             return new List<GameResult>();
         }

@@ -748,6 +748,61 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void RevealPlanetIntelligence_CategoryChoices_EmitsSelectedCategory()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out _);
+            RevealPlanetIntelligenceAction action = new RevealPlanetIntelligenceAction
+            {
+                FactionInstanceID = "rebels",
+                PlanetBinding = "$planet",
+                Categories = new List<PlanetIntelligenceCategory>
+                {
+                    PlanetIntelligenceCategory.Planet,
+                    PlanetIntelligenceCategory.CapitalShips
+                        | PlanetIntelligenceCategory.GroundForces,
+                },
+            };
+            GameEventEvaluationContext context = new GameEventEvaluationContext(
+                new GameEvent { InstanceID = "INFORMANTS" },
+                new GameEventState()
+            );
+            context.Bind("$planet", empirePlanet);
+
+            IntelligenceRevealedResult intelligence = action
+                .Execute(game, new MaximumRNG(), context)
+                .OfType<IntelligenceRevealedResult>()
+                .Single();
+
+            Assert.AreEqual("rebels", intelligence.Recipient.InstanceID);
+            Assert.AreSame(empirePlanet, intelligence.Planet);
+            Assert.AreEqual(
+                PlanetIntelligenceCategory.CapitalShips | PlanetIntelligenceCategory.GroundForces,
+                intelligence.Categories
+            );
+            Assert.IsEmpty(intelligence.Observations);
+        }
+
+        [Test]
+        public void RevealPlanetIntelligence_CategoryElements_DeserializeFlags()
+        {
+            RevealPlanetIntelligenceAction action = (RevealPlanetIntelligenceAction)
+                SerializationHelper.Deserialize<GameAction>(
+                    "<RevealPlanetIntelligence FactionInstanceID=\"FNALL1\" PlanetBinding=\"$planet\"><Categories><Category>CapitalShips, GroundForces</Category></Categories></RevealPlanetIntelligence>"
+                );
+
+            Assert.AreEqual("FNALL1", action.FactionInstanceID);
+            Assert.AreEqual("$planet", action.PlanetBinding);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    PlanetIntelligenceCategory.CapitalShips
+                        | PlanetIntelligenceCategory.GroundForces,
+                },
+                action.Categories
+            );
+        }
+
+        [Test]
         public void SendMessage_ExplicitRecipient_EmitsResolvedResult()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);

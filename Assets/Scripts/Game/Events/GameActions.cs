@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -383,6 +384,45 @@ namespace Rebellion.Game.Events
                 {
                     Recipient = recipient,
                     Observations = observations,
+                    Tick = context.Game.CurrentTick,
+                }
+            );
+        }
+    }
+
+    /// <summary>
+    /// Supplies one randomly selected category of current planet intelligence to a faction.
+    /// </summary>
+    [PersistableObject(Name = "RevealPlanetIntelligence")]
+    public sealed class RevealPlanetIntelligenceAction : GameAction
+    {
+        [PersistableAttribute]
+        public string FactionInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
+        [PersistableCollectionItem(Name = "Category")]
+        public List<PlanetIntelligenceCategory> Categories { get; set; } =
+            new List<PlanetIntelligenceCategory>();
+
+        /// <summary>
+        /// Produces one category-limited planet observation for the recipient faction.
+        /// </summary>
+        /// <param name="context">The context.</param>
+        internal override void Execute(GameActionContext context)
+        {
+            Planet planet = context.Evaluation?.GetBindingReference<Planet>(PlanetBinding);
+            if (planet == null || Categories.Count == 0)
+                return;
+
+            Faction recipient = context.Game.GetFactionByOwnerInstanceID(FactionInstanceID);
+            context.Record(
+                new IntelligenceRevealedResult
+                {
+                    Recipient = recipient,
+                    Planet = planet,
+                    Categories = Categories[context.Random.NextInt(0, Categories.Count)],
                     Tick = context.Game.CurrentTick,
                 }
             );
