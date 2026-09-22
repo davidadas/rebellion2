@@ -161,6 +161,30 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetService_RegisteredMessageObserver_ReturnsConnectedInstance()
+        {
+            Assert.AreSame(_session.MessageObserver, _session.GetService<MessageObserver>());
+        }
+
+        [Test]
+        public void GetService_RegisteredGameEventExecutor_ReturnsConnectedInstance()
+        {
+            Assert.AreSame(_session.GameEventExecutor, _session.GetService<GameEventExecutor>());
+        }
+
+        [Test]
+        public void ReplaceGame_ExistingLocator_ResolvesReplacementObserver()
+        {
+            IServiceLocator services = _session;
+            MessageObserver previous = services.GetService<MessageObserver>();
+
+            _session.ReplaceGame(new GameRoot(_game.Config));
+
+            Assert.AreNotSame(previous, services.GetService<MessageObserver>());
+            Assert.AreSame(_session.MessageObserver, services.GetService<MessageObserver>());
+        }
+
+        [Test]
         public void ReplaceGame_ExistingLocator_ResolvesReplacementCommand()
         {
             IServiceLocator services = _session;

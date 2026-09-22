@@ -22,17 +22,6 @@ namespace Rebellion.Simulation
         private readonly List<ServiceLocator> _retiredServiceScopes = new();
         private IRandomNumberProvider _randomProvider;
         private ServiceLocator _serviceScope;
-        private HeadquartersObserver _headquartersObserver;
-        private VictoryObserver _victoryObserver;
-        private JediObserver _jediObserver;
-        private OfficerLoyaltyObserver _officerLoyaltyObserver;
-        private CaptiveObserver _captiveObserver;
-        private PlanetaryControlObserver _planetaryControlObserver;
-        private UprisingObserver _uprisingObserver;
-        private ManufacturingObserver _manufacturingObserver;
-        private MissionObserver _missionObserver;
-        private FogOfWarObserver _fogOfWarObserver;
-        private MovementObserver _movementObserver;
 
         public GameRoot Game { get; private set; }
         public GameResultPipeline Pipeline { get; }
@@ -144,46 +133,12 @@ namespace Rebellion.Simulation
                 _randomProvider,
                 messageFactory
             );
-            MessageObserver = new MessageObserver(
-                Game,
-                messageFactory,
-                GetService<MessageCommands>()
-            );
-            UnitFactory unitFactory = new UnitFactory(
-                _gameData.Buildings,
-                _gameData.CapitalShips,
-                _gameData.Starfighters,
-                _gameData.Regiments,
-                _gameData.SpecialForces
-            );
-            _fogOfWarObserver = new FogOfWarObserver(Game, GetService<FogOfWarCommands>());
-            _movementObserver = new MovementObserver(GetService<MovementCommands>());
+            MessageObserver = GetService<MessageObserver>();
             GetService<MovementQueries>()
                 .SetCompletedBuildingMovementPolicy(GetService<HeadquartersQueries>().CanMove);
-            _headquartersObserver = new HeadquartersObserver(GetService<HeadquartersCommands>());
-            _manufacturingObserver = new ManufacturingObserver(GetService<ManufacturingCommands>());
-            _captiveObserver = new CaptiveObserver(Game, GetService<CaptiveCommands>());
-            _planetaryControlObserver = new PlanetaryControlObserver(
-                GetService<PlanetaryControlCommands>()
-            );
-            _uprisingObserver = new UprisingObserver(GetService<UprisingCommands>());
-            _jediObserver = new JediObserver(GetService<JediCommands>());
-            _officerLoyaltyObserver = new OfficerLoyaltyObserver(
-                GetService<OfficerLoyaltyCommands>()
-            );
-            _missionObserver = new MissionObserver(GetService<MissionCommands>());
             // Research timers must be seeded before the first tick and before AI consumes RNG.
             GetService<ResearchCommands>().InitializeTimers();
-            _victoryObserver = new VictoryObserver(GetService<VictoryCommands>());
-            GameEventExecutor = new GameEventExecutor(
-                Game,
-                _randomProvider,
-                unitFactory,
-                GetService<MovementCommands>(),
-                GetService<PlanetaryControlCommands>(),
-                GetService<DuelCommands>(),
-                GetService<MessageCommands>()
-            );
+            GameEventExecutor = GetService<GameEventExecutor>();
             GameEventExecutor.ValidateEvents(Game.GetEventPool());
 
             ConnectResults();
@@ -197,78 +152,120 @@ namespace Rebellion.Simulation
             Results = new GameResultBus();
             _disconnect.Add(Results.Subscribe<GameResult>(GameEventExecutor.HandleResults).Dispose);
             _disconnect.Add(
-                Results.Subscribe<BlockadeChangedResult>(_movementObserver.HandleResults).Dispose
-            );
-            _disconnect.Add(
-                Results.Subscribe<UnitArrivedResult>(_headquartersObserver.HandleResults).Dispose
-            );
-            _disconnect.Add(
                 Results
-                    .Subscribe<PlanetOwnershipChangedResult>(_headquartersObserver.HandleResults)
+                    .Subscribe<BlockadeChangedResult>(GetService<MovementObserver>().HandleResults)
                     .Dispose
             );
             _disconnect.Add(
                 Results
-                    .Subscribe<PlanetOwnershipChangedResult>(_officerLoyaltyObserver.HandleResults)
+                    .Subscribe<UnitArrivedResult>(GetService<HeadquartersObserver>().HandleResults)
                     .Dispose
             );
             _disconnect.Add(
                 Results
-                    .Subscribe<PlanetOwnershipChangedResult>(_captiveObserver.HandleResults)
-                    .Dispose
-            );
-            _disconnect.Add(
-                Results.Subscribe<HeadquartersLostResult>(_victoryObserver.HandleResults).Dispose
-            );
-            _disconnect.Add(
-                Results
-                    .Subscribe<PlanetGarrisonChangedResult>(_planetaryControlObserver.HandleResults)
+                    .Subscribe<PlanetOwnershipChangedResult>(
+                        GetService<HeadquartersObserver>().HandleResults
+                    )
                     .Dispose
             );
             _disconnect.Add(
                 Results
-                    .Subscribe<PopularSupportShiftResult>(_planetaryControlObserver.HandleResults)
+                    .Subscribe<PlanetOwnershipChangedResult>(
+                        GetService<OfficerLoyaltyObserver>().HandleResults
+                    )
                     .Dispose
             );
             _disconnect.Add(
                 Results
-                    .Subscribe<PlanetGarrisonChangedResult>(_uprisingObserver.HandleResults)
-                    .Dispose
-            );
-            _disconnect.Add(
-                Results.Subscribe<MissionCompletedResult>(_jediObserver.HandleResults).Dispose
-            );
-            _disconnect.Add(
-                Results.Subscribe<OfficerCaptureStateResult>(_missionObserver.HandleResults).Dispose
-            );
-            _disconnect.Add(
-                Results.Subscribe<OfficerCaptureStateResult>(_captiveObserver.HandleResults).Dispose
-            );
-            _disconnect.Add(
-                Results
-                    .Subscribe<IntelligenceRevealedResult>(_fogOfWarObserver.HandleResults)
+                    .Subscribe<PlanetOwnershipChangedResult>(
+                        GetService<CaptiveObserver>().HandleResults
+                    )
                     .Dispose
             );
             _disconnect.Add(
                 Results
-                    .Subscribe<GameObjectDestroyedResult>(_manufacturingObserver.HandleResults)
+                    .Subscribe<HeadquartersLostResult>(GetService<VictoryObserver>().HandleResults)
                     .Dispose
             );
             _disconnect.Add(
                 Results
-                    .Subscribe<GameObjectScrappedResult>(_manufacturingObserver.HandleResults)
+                    .Subscribe<PlanetGarrisonChangedResult>(
+                        GetService<PlanetaryControlObserver>().HandleResults
+                    )
                     .Dispose
-            );
-            _disconnect.Add(
-                Results.Subscribe<BombardmentResult>(_manufacturingObserver.HandleResults).Dispose
             );
             _disconnect.Add(
                 Results
-                    .Subscribe<PlanetaryAssaultResult>(_manufacturingObserver.HandleResults)
+                    .Subscribe<PopularSupportShiftResult>(
+                        GetService<PlanetaryControlObserver>().HandleResults
+                    )
                     .Dispose
             );
             _disconnect.Add(
-                Results.Observe<GameObjectSabotagedResult>(_fogOfWarObserver.ProcessResults).Dispose
+                Results
+                    .Subscribe<PlanetGarrisonChangedResult>(
+                        GetService<UprisingObserver>().HandleResults
+                    )
+                    .Dispose
+            );
+            _disconnect.Add(
+                Results
+                    .Subscribe<MissionCompletedResult>(GetService<JediObserver>().HandleResults)
+                    .Dispose
+            );
+            _disconnect.Add(
+                Results
+                    .Subscribe<OfficerCaptureStateResult>(
+                        GetService<MissionObserver>().HandleResults
+                    )
+                    .Dispose
+            );
+            _disconnect.Add(
+                Results
+                    .Subscribe<OfficerCaptureStateResult>(
+                        GetService<CaptiveObserver>().HandleResults
+                    )
+                    .Dispose
+            );
+            _disconnect.Add(
+                Results
+                    .Subscribe<IntelligenceRevealedResult>(
+                        GetService<FogOfWarObserver>().HandleResults
+                    )
+                    .Dispose
+            );
+            _disconnect.Add(
+                Results
+                    .Subscribe<GameObjectDestroyedResult>(
+                        GetService<ManufacturingObserver>().HandleResults
+                    )
+                    .Dispose
+            );
+            _disconnect.Add(
+                Results
+                    .Subscribe<GameObjectScrappedResult>(
+                        GetService<ManufacturingObserver>().HandleResults
+                    )
+                    .Dispose
+            );
+            _disconnect.Add(
+                Results
+                    .Subscribe<BombardmentResult>(GetService<ManufacturingObserver>().HandleResults)
+                    .Dispose
+            );
+            _disconnect.Add(
+                Results
+                    .Subscribe<PlanetaryAssaultResult>(
+                        GetService<ManufacturingObserver>().HandleResults
+                    )
+                    .Dispose
+            );
+            _disconnect.Add(
+                Results
+                    .Observe<GameObjectSabotagedResult>(
+                        GetService<FogOfWarObserver>().ProcessResults
+                    )
+                    .Dispose
             );
 
             MovementCommands movementSystem = GetService<MovementCommands>();
