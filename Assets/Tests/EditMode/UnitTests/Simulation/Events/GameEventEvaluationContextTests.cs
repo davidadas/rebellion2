@@ -11,7 +11,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class GameEventEvaluationContextTests
     {
-        /// <summary>Verifies bind blank name throws argument exception.</summary>
         [Test]
         public void Bind_BlankName_ThrowsArgumentException()
         {
@@ -26,7 +25,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Throws<ArgumentException>(bind);
         }
 
-        /// <summary>Verifies bind duplicate name throws invalid operation exception.</summary>
         [Test]
         public void Bind_DuplicateName_ThrowsInvalidOperationException()
         {
@@ -42,7 +40,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Throws<InvalidOperationException>(bind);
         }
 
-        /// <summary>Verifies get binding reference exact opaque name returns value.</summary>
         [Test]
         public void GetBindingReference_ExactOpaqueName_ReturnsValue()
         {
@@ -58,7 +55,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(42, value);
         }
 
-        /// <summary>Verifies add result null result does not record result.</summary>
         [Test]
         public void AddResult_NullResult_DoesNotRecordResult()
         {
@@ -73,7 +69,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(context.Results);
         }
 
-        /// <summary>Verifies bind trigger argument exposes only authored value.</summary>
         [Test]
         public void Constructor_TriggerArgument_ExposesOnlyAuthoredValue()
         {

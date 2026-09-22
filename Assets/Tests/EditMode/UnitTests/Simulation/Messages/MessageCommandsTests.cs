@@ -13,7 +13,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class MessageCommandsTests
     {
-        /// <summary>Verifies that null batch input keeps its existing rejection contract.</summary>
         [Test]
         public void Deliver_NullBatch_ThrowsArgumentNullException()
         {
@@ -25,7 +24,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Throws<ArgumentNullException>(() => commands.Deliver(null));
         }
 
-        /// <summary>Verifies that all authored templates resolve before any message is persisted.</summary>
         [Test]
         public void Deliver_LaterTemplateFails_DoesNotDeliverEarlierMessage()
         {
@@ -48,7 +46,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(faction.Messages.Values.All(messages => messages.Count == 0));
         }
 
-        /// <summary>Verifies that failed batch preparation does not mutate a supplied combat report.</summary>
         [Test]
         public void Deliver_LaterTemplateFails_PreservesSuppliedReport()
         {
@@ -73,7 +70,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("Original", report.Body);
         }
 
-        /// <summary>Verifies that failed attachment stops delivery before a later report is modified.</summary>
         [Test]
         public void Deliver_FirstAttachmentFails_PreservesLaterReport()
         {
@@ -105,7 +101,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(17, report.CreatedTick);
         }
 
-        /// <summary>Verifies that delivery retains event provenance and uses the current game tick.</summary>
         [Test]
         public void DeliverAuthored_AuthoredMessage_PreservesProvenanceAndCurrentTick()
         {
@@ -132,7 +127,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(42, delivery.Message.CreatedTick);
         }
 
-        /// <summary>Verifies that a supplied combat report is the delivered message.</summary>
         [Test]
         public void Deliver_WithCombatReport_DeliversReportAsMessage()
         {
@@ -159,9 +153,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(42, report.CreatedTick);
         }
 
-        /// <summary>
-        /// Verifies messages older than retention removes expired messages.
-        /// </summary>
         [Test]
         public void ProcessTick_MessagesOlderThanRetention_RemovesExpiredMessages()
         {

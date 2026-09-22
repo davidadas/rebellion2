@@ -10,7 +10,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class HeadquartersQueriesTests
     {
-        /// <summary>Verifies that a valid relocation query leaves headquarters state unchanged.</summary>
         [Test]
         public void CanRelocate_FriendlyDestination_LeavesHeadquartersUnchanged()
         {
@@ -26,8 +25,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
         }
 
-        /// <summary>Verifies that an ineligible destination rejects relocation without mutation.</summary>
-        /// <param name="reason">The destination condition preventing relocation.</param>
         [TestCase("origin")]
         [TestCase("enemy")]
         [TestCase("destroyed")]
@@ -63,7 +60,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(hq.Movement);
         }
 
-        /// <summary>Verifies that an existing headquarters journey cannot be replaced.</summary>
         [Test]
         public void CanRelocate_HeadquartersInTransit_ReturnsFalse()
         {

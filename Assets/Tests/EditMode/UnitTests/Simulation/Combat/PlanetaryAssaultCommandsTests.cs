@@ -14,7 +14,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class PlanetaryAssaultCommandsTests : CombatTestBase
     {
-        /// <summary>Verifies that direct execution does not release the immediate command batch.</summary>
         [Test]
         public void Execute_ValidAssault_DoesNotPublishResults()
         {
@@ -31,7 +30,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, publications);
         }
 
-        /// <summary>Verifies that rejected immediate assaults do not publish blocked-result reports.</summary>
         [Test]
         public void TryExecute_ShieldedPlanet_ReturnsNullWithoutPublishing()
         {
@@ -51,7 +49,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance", planet.OwnerInstanceID);
         }
 
-        /// <summary>Verifies that delivery failures propagate after assault state has been applied.</summary>
         [Test]
         public void TryExecute_ListenerThrows_PreservesCompletedAssault()
         {
@@ -72,7 +69,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(fleet.IsInCombat);
         }
 
-        /// <summary>Verifies that the immediate command filters null fleets before checking eligibility.</summary>
         [Test]
         public void TryExecute_NullFleetAlongsideReadyFleet_ExecutesAssault()
         {
@@ -87,7 +83,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(result.Success);
         }
 
-        /// <summary>Verifies execute two shield generators block assault.</summary>
         [Test]
         public void Execute_TwoShieldGenerators_BlockAssault()
         {
@@ -105,7 +100,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance", planet.GetOwnerInstanceID());
         }
 
-        /// <summary>Verifies execute death star shield does not block assault.</summary>
         [Test]
         public void Execute_DeathStarShield_DoesNotBlockAssault()
         {
@@ -122,7 +116,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(result.Success);
         }
 
-        /// <summary>Verifies execute attacking fleet with waypoints clears route.</summary>
         [Test]
         public void Execute_AttackingFleetWithWaypoints_ClearsRoute()
         {
@@ -138,7 +131,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(fleet.Waypoints);
         }
 
-        /// <summary>Verifies execute defense fire uses initial attacker index range.</summary>
         [Test]
         public void Execute_DefenseFire_UsesInitialAttackerIndexRange()
         {
@@ -188,10 +180,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies execute contest score uses source thresholds.</summary>
-        /// <param name="contestRoll">The contest roll.</param>
-        /// <param name="defenderWins">The defender wins.</param>
-        /// <param name="attackerWins">The attacker wins.</param>
         [TestCase(4, true, false)]
         [TestCase(5, false, false)]
         [TestCase(6, false, true)]
@@ -218,7 +206,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(attackerWins, result.Success);
         }
 
-        /// <summary>Verifies execute each troop uses general from its own fleet.</summary>
         [Test]
         public void Execute_EachTroop_UsesGeneralFromItsOwnFleet()
         {
@@ -249,7 +236,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.DoesNotContain(result.DestroyedDefenderRegiments, secondDefender);
         }
 
-        /// <summary>Verifies execute collateral damage can destroy civilian facility and excludes headquarters.</summary>
         [Test]
         public void Execute_CollateralDamage_CanDestroyCivilianFacilityAndExcludesHeadquarters()
         {
@@ -284,7 +270,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(result.Success);
         }
 
-        /// <summary>Verifies execute collateral damage rolls all trials before selecting targets.</summary>
         [Test]
         public void Execute_CollateralDamage_RollsAllTrialsBeforeSelectingTargets()
         {
@@ -305,7 +290,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, planet.EnergyCapacity);
         }
 
-        /// <summary>Verifies execute capture lands at most required garrison.</summary>
         [Test]
         public void Execute_Capture_LandsAtMostRequiredGarrison()
         {
@@ -327,7 +311,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies execute capture with fewer troops lands every survivor.</summary>
         [Test]
         public void Execute_CaptureWithFewerTroops_LandsEverySurvivor()
         {
@@ -343,7 +326,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, planet.GetAllRegiments().Count);
         }
 
-        /// <summary>Verifies execute attackers destroyed does not capture planet.</summary>
         [Test]
         public void Execute_AttackersDestroyed_DoesNotCapturePlanet()
         {
@@ -363,7 +345,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(result.OwnershipChange);
         }
 
-        /// <summary>Verifies execute rng failure clears fleet combat state.</summary>
         [Test]
         public void Execute_RngFailure_ClearsFleetCombatState()
         {
@@ -382,7 +363,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(defenderFleet.IsInCombat);
         }
 
-        /// <summary>Verifies execute two ready and six moving regiments uses ready regiments.</summary>
         [Test]
         public void Execute_TwoReadyAndSixMovingRegiments_UsesReadyRegiments()
         {
@@ -404,7 +384,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(result.Success);
         }
 
-        /// <summary>Verifies try execute valid command publishes completed result batch.</summary>
         [Test]
         public void TryExecute_ValidCommand_PublishesCompletedResultBatch()
         {

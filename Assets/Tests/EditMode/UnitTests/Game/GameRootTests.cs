@@ -65,7 +65,6 @@ namespace Rebellion.Tests.Game
             _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
         }
 
-        /// <summary>Verifies attaching a building rejects a different planetary owner.</summary>
         [Test]
         public void AttachNode_DifferentOwner_ThrowsException()
         {

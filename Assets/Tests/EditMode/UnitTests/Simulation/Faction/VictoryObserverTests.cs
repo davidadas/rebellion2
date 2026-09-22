@@ -13,7 +13,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class VictoryObserverTests
     {
-        /// <summary>Verifies headquarters captured returns victory.</summary>
         [Test]
         public void HandleResults_HeadquartersCaptured_ReturnsVictory()
         {
@@ -43,7 +42,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(empire, victory.Loser);
         }
 
-        /// <summary>Verifies that the first valid headquarters loss wins and suppresses later declarations.</summary>
         [Test]
         public void HandleResults_MultipleHeadquartersLosses_DeclaresOnlyFirstVictory()
         {
@@ -86,7 +84,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies that an ineligible conquest loss does not suppress a later eligible loss.</summary>
         [Test]
         public void HandleResults_ConquestLossWithFreeLeader_AllowsNextEligibleDefeat()
         {
@@ -131,7 +128,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(otherDefender, results.OfType<VictoryResult>().Single().Loser);
         }
 
-        /// <summary>Verifies that a missing loss batch has no consequences.</summary>
         [Test]
         public void HandleResults_NullBatch_ReturnsEmpty()
         {

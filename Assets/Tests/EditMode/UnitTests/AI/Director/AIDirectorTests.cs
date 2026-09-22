@@ -15,7 +15,6 @@ namespace Rebellion.Tests.AI.Director
     [TestFixture]
     public class AIDirectorTests
     {
-        /// <summary>Verifies before configured interval does not process faction.</summary>
         [Test]
         public void ProcessTick_BeforeConfiguredInterval_DoesNotProcessFaction()
         {
@@ -27,7 +26,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.IsNull(fleet.Order);
         }
 
-        /// <summary>Verifies at configured interval processes faction.</summary>
         [Test]
         public void ProcessTick_AtConfiguredInterval_ProcessesFaction()
         {
@@ -40,7 +38,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
         }
 
-        /// <summary>Verifies at configured interval yields between work units.</summary>
         [Test]
         public void ProcessTickIncrementally_AtConfiguredInterval_YieldsBetweenWorkUnits()
         {
@@ -55,8 +52,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
         }
 
-        /// <summary>Verifies that a disabled AI interval produces no work units.</summary>
-        /// <param name="interval">The disabled tick interval.</param>
         [TestCase(0)]
         [TestCase(-1)]
         public void ProcessTickIncrementally_DisabledInterval_ProducesNoWork(int interval)
@@ -70,7 +65,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.IsNull(fleet.Order);
         }
 
-        /// <summary>Verifies that a human-controlled faction is not assigned AI orders.</summary>
         [Test]
         public void ProcessTick_HumanControlledFaction_DoesNotIssueOrders()
         {
@@ -90,7 +84,6 @@ namespace Rebellion.Tests.AI.Director
             Assert.IsNull(fleet.Order);
         }
 
-        /// <summary>Verifies that disposing after the context yield does not execute later phases.</summary>
         [Test]
         public void ProcessTickIncrementally_DisposedAfterFirstYield_DoesNotExecuteOrders()
         {

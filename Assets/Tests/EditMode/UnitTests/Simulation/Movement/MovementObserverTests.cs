@@ -19,9 +19,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class MovementObserverTests
     {
-        /// <summary>
-        /// Verifies independent inbound units reroute from current position.
-        /// </summary>
         [Test]
         public void HandleResults_IndependentInboundUnits_RerouteFromCurrentPosition()
         {
@@ -86,9 +83,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results.OfType<EvacuationLossesResult>());
         }
 
-        /// <summary>
-        /// Verifies excluded inbound units continue to destination.
-        /// </summary>
         [Test]
         public void HandleResults_ExcludedInboundUnits_ContinueToDestination()
         {
@@ -183,9 +177,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results.OfType<GameObjectDestroyedResult>());
         }
 
-        /// <summary>
-        /// Verifies in transit building is destroyed.
-        /// </summary>
         [Test]
         public void HandleResults_InTransitBuilding_IsDestroyed()
         {
@@ -215,9 +206,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(scene.blockadedDestination, destroyed.Context);
         }
 
-        /// <summary>
-        /// Verifies no valid fallback destroys autorouted unit.
-        /// </summary>
         [Test]
         public void HandleResults_NoValidFallback_DestroysAutoroutedUnit()
         {
@@ -250,9 +238,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(scene.blockadedDestination, destroyed.Context);
         }
 
-        /// <summary>
-        /// Verifies blockader owned inbound unit continues.
-        /// </summary>
         [Test]
         public void HandleResults_BlockaderOwnedInboundUnit_Continues()
         {
@@ -294,9 +279,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies nearer friendly carrier is preferred over owned planet.
-        /// </summary>
         [Test]
         public void HandleResults_NearerFriendlyCarrier_IsPreferredOverOwnedPlanet()
         {
@@ -341,9 +323,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(starfighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies blockaded fallback is skipped.
-        /// </summary>
         [Test]
         public void HandleResults_BlockadedFallback_IsSkipped()
         {

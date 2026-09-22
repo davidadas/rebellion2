@@ -35,9 +35,6 @@ namespace Rebellion.Tests.Simulation
             _system = new NamingCommands(_game);
         }
 
-        /// <summary>
-        /// Verifies aicontrolled faction: assigns name.
-        /// </summary>
         [Test]
         public void ProcessTick_AIControlledFaction_AssignsName()
         {
@@ -49,9 +46,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(ship.HasAssignedName);
         }
 
-        /// <summary>
-        /// Verifies eligible ships: assigns sequential names.
-        /// </summary>
         [Test]
         public void ProcessFaction_EligibleShips_AssignsSequentialNames()
         {
@@ -67,9 +61,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(secondShip.HasAssignedName);
         }
 
-        /// <summary>
-        /// Verifies player faction with management: assigns name.
-        /// </summary>
         [Test]
         public void ProcessFaction_PlayerFactionWithManagement_AssignsName()
         {
@@ -92,9 +83,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("First", ship.DisplayName);
         }
 
-        /// <summary>
-        /// Verifies exhausted pools: assigns generic name.
-        /// </summary>
         [Test]
         public void ProcessFaction_ExhaustedPools_AssignsGenericName()
         {
@@ -108,9 +96,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(ship.HasAssignedName);
         }
 
-        /// <summary>
-        /// Verifies more than ten eligible ships: assigns all names.
-        /// </summary>
         [Test]
         public void ProcessFaction_MoreThanTenEligibleShips_AssignsAllNames()
         {
@@ -129,9 +114,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(11, ships.Count(ship => ship.HasAssignedName));
         }
 
-        /// <summary>
-        /// Verifies ship under construction: does not assign name.
-        /// </summary>
         [Test]
         public void ProcessFaction_ShipUnderConstruction_DoesNotAssignName()
         {
@@ -143,9 +125,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(ship.HasAssignedName);
         }
 
-        /// <summary>
-        /// Verifies already named ship: does not replace name.
-        /// </summary>
         [Test]
         public void ProcessFaction_AlreadyNamedShip_DoesNotReplaceName()
         {
@@ -158,9 +137,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("Existing Name", ship.DisplayName);
         }
 
-        /// <summary>
-        /// Verifies ship without name pool: does not assign name.
-        /// </summary>
         [Test]
         public void ProcessFaction_ShipWithoutNamePool_DoesNotAssignName()
         {
@@ -173,9 +149,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(ship.HasAssignedName);
         }
 
-        /// <summary>
-        /// Verifies player faction without management: does not assign name.
-        /// </summary>
         [Test]
         public void ProcessFaction_PlayerFactionWithoutManagement_DoesNotAssignName()
         {
@@ -197,9 +170,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(ship.HasAssignedName);
         }
 
-        /// <summary>
-        /// Verifies null faction: throws argument null exception.
-        /// </summary>
         [Test]
         public void ProcessFaction_NullFaction_ThrowsArgumentNullException()
         {

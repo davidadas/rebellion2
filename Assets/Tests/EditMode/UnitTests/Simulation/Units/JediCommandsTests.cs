@@ -57,7 +57,6 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(_tatooine, planetSector);
         }
 
-        /// <summary>Verifies force rank above threshold enters discovering state.</summary>
         [Test]
         public void ProcessTick_ForceRankAboveThreshold_EntersDiscoveringState()
         {
@@ -74,7 +73,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(85, results[0].ForceRank);
         }
 
-        /// <summary>Verifies force rank exactly at threshold enters discovering state.</summary>
         [Test]
         public void ProcessTick_ForceRankExactlyAtThreshold_EntersDiscoveringState()
         {
@@ -90,7 +88,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, results.Count);
         }
 
-        /// <summary>Verifies force rank below threshold no discovery.</summary>
         [Test]
         public void ProcessTick_ForceRankBelowThreshold_NoDiscovery()
         {
@@ -105,7 +102,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies captured officer no discovering state.</summary>
         [Test]
         public void ProcessTick_CapturedOfficer_NoDiscoveringState()
         {
@@ -121,7 +117,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies already discovering no repeated event.</summary>
         [Test]
         public void ProcessTick_AlreadyDiscovering_NoRepeatedEvent()
         {
@@ -137,7 +132,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies force rank drops below threshold clears discovering state.</summary>
         [Test]
         public void ProcessTick_ForceRankDropsBelowThreshold_ClearsDiscoveringState()
         {
@@ -149,7 +143,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(luke.IsDiscoveringForceUser);
         }
 
-        /// <summary>Verifies non jedi officer clears discovering state.</summary>
         [Test]
         public void ProcessTick_NonJediOfficer_ClearsDiscoveringState()
         {
@@ -174,7 +167,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies non trainer jedi clears discovering state.</summary>
         [Test]
         public void ProcessTick_NonTrainerJedi_ClearsDiscoveringState()
         {
@@ -190,7 +182,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies force ineligible jedi clears discovering state.</summary>
         [Test]
         public void ProcessTick_ForceIneligibleJedi_ClearsDiscoveringState()
         {
@@ -207,7 +198,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies empty game no events.</summary>
         [Test]
         public void ProcessTick_EmptyGame_NoEvents()
         {
@@ -219,7 +209,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies multiple officers all processed.</summary>
         [Test]
         public void ProcessTick_MultipleOfficers_AllProcessed()
         {
@@ -236,7 +225,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, results.Count);
         }
 
-        /// <summary>Verifies officer with training adjustment includes adjustment in rank.</summary>
         [Test]
         public void ProcessTick_OfficerWithTrainingAdjustment_IncludesAdjustmentInRank()
         {
@@ -254,7 +242,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(85, results[0].ForceRank);
         }
 
-        /// <summary>Verifies discovering jedi with dormant candidate discovers dormant.</summary>
         [Test]
         public void ProcessTick_DiscoveringJediWithDormantCandidate_DiscoversDormant()
         {
@@ -277,7 +264,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(luke, results[0].Discoverer);
         }
 
-        /// <summary>Verifies enemy dormant candidate does not discover.</summary>
         [Test]
         public void ProcessTick_EnemyDormantCandidate_DoesNotDiscover()
         {
@@ -315,7 +301,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies non positive discovery chance does not discover.</summary>
         [Test]
         public void ProcessTick_NonPositiveDiscoveryChance_DoesNotDiscover()
         {
@@ -339,7 +324,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies below threshold jedi no scan.</summary>
         [Test]
         public void ProcessTick_BelowThresholdJedi_NoScan()
         {
@@ -360,7 +344,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies already eligible candidate skipped.</summary>
         [Test]
         public void ProcessTick_AlreadyEligibleCandidate_Skipped()
         {
@@ -379,7 +362,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies captured candidate skipped.</summary>
         [Test]
         public void ProcessTick_CapturedCandidate_Skipped()
         {
@@ -400,7 +382,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies on mission candidate skipped.</summary>
         [Test]
         public void ProcessTick_OnMissionCandidate_Skipped()
         {
@@ -425,7 +406,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies high roll discovery fails.</summary>
         [Test]
         public void ProcessTick_HighRoll_DiscoveryFails()
         {
@@ -446,7 +426,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies officer with template initializes force value.</summary>
         [Test]
         public void ProcessTick_OfficerWithTemplate_InitializesForceValue()
         {
@@ -465,7 +444,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(10, leia.ForceValue);
         }
 
-        /// <summary>Verifies dormant officer with story growth preserves higher force value.</summary>
         [Test]
         public void ProcessTick_DormantOfficerWithStoryGrowth_PreservesHigherForceValue()
         {
@@ -485,7 +463,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Zero(result.ExperienceGained);
         }
 
-        /// <summary>Verifies eligible officer grows force.</summary>
         [Test]
         public void ApplyForceGrowth_EligibleOfficer_GrowsForce()
         {
@@ -510,7 +487,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(before + growth, result.CurrentForceRank);
         }
 
-        /// <summary>Verifies not force eligible no growth.</summary>
         [Test]
         public void ApplyForceGrowth_NotForceEligible_NoGrowth()
         {

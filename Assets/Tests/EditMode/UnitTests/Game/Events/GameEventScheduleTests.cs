@@ -7,7 +7,6 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public class GameEventScheduleTests
     {
-        /// <summary>Verifies serialization random interval until conditions round trips.</summary>
         [Test]
         public void Serialization_RandomIntervalUntilConditions_RoundTrips()
         {
@@ -36,7 +35,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(100, condition.Ticks);
         }
 
-        /// <summary>Verifies serialization explicit after all dependencies preserves order.</summary>
         [Test]
         public void Serialization_ExplicitAfterAllDependencies_PreservesOrder()
         {

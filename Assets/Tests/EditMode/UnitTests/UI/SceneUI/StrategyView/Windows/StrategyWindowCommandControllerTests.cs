@@ -453,9 +453,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(1, _dirtyCount);
         }
 
-        /// <summary>
-        /// Verifies that capture after opening the dialog prevents retirement on confirmation.
-        /// </summary>
         [Test]
         public void OpenRetireConfirmWindow_OfficerCapturedBeforeConfirmation_PreservesOfficer()
         {
@@ -469,9 +466,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(0, _rebuildCount);
         }
 
-        /// <summary>
-        /// Verifies that an existing dialog resolves its selection against the replacement game.
-        /// </summary>
         [Test]
         public void OpenRetireConfirmWindow_GameReplacedBeforeConfirmation_RetiresReplacementOfficer()
         {

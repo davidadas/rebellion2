@@ -14,7 +14,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class UprisingObserverTests
     {
-        /// <summary>Verifies an absent garrison-result batch produces no reactions.</summary>
         [Test]
         public void HandleResults_NullBatch_ReturnsNoReactions()
         {
@@ -23,7 +22,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(system.HandleResults(null));
         }
 
-        /// <summary>Verifies a malformed later result does not undo the earlier uprising start.</summary>
         [Test]
         public void HandleResults_NullEntryAfterValidPlanet_ThrowsAfterStartingUprising()
         {
@@ -42,7 +40,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(planet.IsInUprising);
         }
 
-        /// <summary>Verifies starts uprising when garrison deficit.</summary>
         [Test]
         public void HandleResults_GarrisonDeficit_StartsUprising()
         {

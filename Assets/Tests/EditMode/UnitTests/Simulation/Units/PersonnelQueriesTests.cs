@@ -38,9 +38,6 @@ namespace Rebellion.Tests.Simulation
             _queries = new PersonnelQueries(_game);
         }
 
-        /// <summary>
-        /// Verifies that queries require an active game graph.
-        /// </summary>
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
@@ -51,9 +48,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("game", exception.ParamName);
         }
 
-        /// <summary>
-        /// Verifies that a mixed selection of eligible personnel may be retired.
-        /// </summary>
         [Test]
         public void CanRetire_OwnedOfficerAndSpecialForces_ReturnsTrue()
         {
@@ -70,9 +64,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(canRetire);
         }
 
-        /// <summary>
-        /// Verifies that captured, traveling, or unfinished personnel cannot be retired.
-        /// </summary>
         [Test]
         public void CanRetire_BlockedPersonnel_ReturnsFalse()
         {
@@ -91,9 +82,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_queries.CanRetire(new ISceneNode[] { buildingForces }, _ownerId));
         }
 
-        /// <summary>
-        /// Verifies that eligibility resolves snapshots to registered personnel.
-        /// </summary>
         [Test]
         public void CanRetire_SnapshotSelection_ResolvesLivePersonnel()
         {
@@ -108,9 +96,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(canRetire);
         }
 
-        /// <summary>
-        /// Verifies that checking eligibility does not retire eligible personnel.
-        /// </summary>
         [Test]
         public void CanRetire_EligibleSelection_LeavesPersonnelActive()
         {
@@ -123,9 +108,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsRetired);
         }
 
-        /// <summary>
-        /// Verifies that live capture state takes precedence over an eligible snapshot.
-        /// </summary>
         [Test]
         public void CanRetire_CapturedLiveOfficerWithEligibleSnapshot_ReturnsFalse()
         {

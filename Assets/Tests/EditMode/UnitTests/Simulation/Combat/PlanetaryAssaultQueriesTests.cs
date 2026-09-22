@@ -13,7 +13,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public sealed class PlanetaryAssaultQueriesTests
     {
-        /// <summary>Verifies that assault eligibility requires an active game.</summary>
         [Test]
         public void Constructor_NullGame_ThrowsArgumentNullException()
         {
@@ -24,7 +23,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("game", exception.ParamName);
         }
 
-        /// <summary>Verifies that direct eligibility rejects a fleet collection containing null.</summary>
         [Test]
         public void CanExecute_NullFleetAlongsideReadyFleet_ReturnsFalse()
         {
@@ -37,7 +35,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies can execute two ready and six moving regiments uses ready regiments.</summary>
         [Test]
         public void CanExecute_TwoReadyAndSixMovingRegiments_UsesReadyRegiments()
         {
@@ -56,7 +53,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(system.CanExecute(new List<Fleet> { fleet }, planet));
         }
 
-        /// <summary>Verifies can execute shielded target or no ready regiments returns false.</summary>
         [Test]
         public void CanExecute_ShieldedTargetOrNoReadyRegiments_ReturnsFalse()
         {
@@ -78,7 +74,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(noReadyRegiments);
         }
 
-        /// <summary>Verifies can execute neutral planet with ready regiment returns true.</summary>
         [Test]
         public void CanExecute_NeutralPlanetWithReadyRegiment_ReturnsTrue()
         {

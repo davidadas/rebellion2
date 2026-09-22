@@ -39,9 +39,6 @@ namespace Rebellion.Tests.Simulation
             _session.Dispose();
         }
 
-        /// <summary>
-        /// Verifies that a paused game does not advance through tick scheduling.
-        /// </summary>
         [Test]
         public void ProcessTick_PausedGame_DoesNotAdvanceTick()
         {
@@ -52,9 +49,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, _game.CurrentTick);
         }
 
-        /// <summary>
-        /// Verifies that completing the full phase sequence announces exactly one tick.
-        /// </summary>
         [Test]
         public void ProcessTick_CompletedTick_NotifiesOnce()
         {
@@ -67,9 +61,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, _game.CurrentTick);
         }
 
-        /// <summary>
-        /// Verifies that iterator disposal releases the busy guard without completing the remaining phases.
-        /// </summary>
         [Test]
         public void ProcessTickIncrementally_DisposedBeforeCompletion_ReleasesBusyGuard()
         {
@@ -83,9 +74,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(_tick.IsSettled);
         }
 
-        /// <summary>
-        /// Verifies that completion observer exceptions propagate while the tick's guard is released.
-        /// </summary>
         [Test]
         public void ProcessTick_CompletionObserverThrows_RestoresIdleState()
         {
@@ -101,9 +89,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(_tick.IsSettled);
         }
 
-        /// <summary>
-        /// Verifies that result-delivery failures retain their propagation and cleanup boundary.
-        /// </summary>
         [Test]
         public void ProcessTick_ResultDeliveryThrows_ReleasesBusyGuard()
         {
@@ -120,9 +105,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(_tick.IsSettled);
         }
 
-        /// <summary>
-        /// Verifies that replacement reset does not clear the guard owned by a suspended iterator.
-        /// </summary>
         [Test]
         public void Reset_SuspendedIterator_PreservesBusyGuardUntilDisposal()
         {
@@ -138,9 +120,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_tick.IsBusy);
         }
 
-        /// <summary>
-        /// Verifies that loaded combat reconciliation does not consume a game tick.
-        /// </summary>
         [Test]
         public void ReconcileLoadedState_NoEncounter_DoesNotAdvanceTick()
         {

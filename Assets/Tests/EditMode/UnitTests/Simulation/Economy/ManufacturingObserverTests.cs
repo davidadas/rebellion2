@@ -111,7 +111,6 @@ namespace Rebellion.Tests.Simulation
             _observer = new ManufacturingObserver(_manager);
         }
 
-        /// <summary>Verifies assault cancellation changes the queue without emitting extra reactions.</summary>
         [Test]
         public void HandleResults_AssaultDestroysLastProducer_CancelsWithoutNewResults()
         {
@@ -139,7 +138,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Checks last production building destroyed: cancels queued work.</summary>
         [Test]
         public void HandleResults_LastProductionBuildingDestroyed_CancelsQueuedWork()
         {
@@ -171,7 +169,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(mine.GetParent());
         }
 
-        /// <summary>Checks last production building scrapped: cancels queued work.</summary>
         [Test]
         public void HandleResults_LastProductionBuildingScrapped_CancelsQueuedWork()
         {
@@ -203,7 +200,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(mine.GetParent());
         }
 
-        /// <summary>Checks another production building survives: retains queued work.</summary>
         [Test]
         public void HandleResults_AnotherProductionBuildingSurvives_RetainsQueuedWork()
         {
@@ -246,7 +242,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(_coruscant, mine.GetParent());
         }
 
-        /// <summary>Checks bombardment destroys last producer: cancels queued work.</summary>
         [Test]
         public void HandleResults_BombardmentDestroysLastProducer_CancelsQueuedWork()
         {

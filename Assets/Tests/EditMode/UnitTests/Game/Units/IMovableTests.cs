@@ -9,9 +9,6 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class IMovableTests
     {
-        /// <summary>
-        /// Verifies that a unit's own movement takes precedence over inherited movement.
-        /// </summary>
         [Test]
         public void GetTransitMovement_WithDirectMovement_ReturnsDirectMovement()
         {
@@ -23,9 +20,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreSame(movement, result);
         }
 
-        /// <summary>
-        /// Verifies that a passenger inherits movement from its capital ship.
-        /// </summary>
         [Test]
         public void GetTransitMovement_AboardMovingCapitalShip_ReturnsCapitalShipMovement()
         {
@@ -39,9 +33,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreSame(movement, result);
         }
 
-        /// <summary>
-        /// Verifies that a passenger inherits movement from its fleet when its ship is stationary.
-        /// </summary>
         [Test]
         public void GetTransitMovement_AboardMovingFleet_ReturnsFleetMovement()
         {
@@ -57,9 +48,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreSame(movement, result);
         }
 
-        /// <summary>
-        /// Verifies that a stationary unit uses its containing planet's position.
-        /// </summary>
         [Test]
         public void GetPosition_StationaryAtPlanet_ReturnsPlanetPosition()
         {
@@ -72,9 +60,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(new Point(12, 34), result);
         }
 
-        /// <summary>
-        /// Verifies that a moving unit uses its movement state's current position.
-        /// </summary>
         [Test]
         public void GetPosition_InTransit_ReturnsCurrentPosition()
         {
@@ -88,9 +73,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(new Point(56, 78), result);
         }
 
-        /// <summary>
-        /// Verifies that a moving unit's current position can be updated.
-        /// </summary>
         [Test]
         public void SetPosition_InTransit_UpdatesCurrentPosition()
         {
@@ -101,9 +83,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(new Point(90, 123), movable.Movement.CurrentPosition);
         }
 
-        /// <summary>
-        /// Verifies that a stationary unit cannot be assigned an in-transit position.
-        /// </summary>
         [Test]
         public void SetPosition_WithoutMovement_ThrowsInvalidOperationException()
         {

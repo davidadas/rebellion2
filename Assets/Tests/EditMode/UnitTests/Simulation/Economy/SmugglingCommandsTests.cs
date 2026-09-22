@@ -42,7 +42,6 @@ namespace Rebellion.Tests.Simulation
             _system = new SmugglingCommands(_game);
         }
 
-        /// <summary>Verifies detached production cannot trigger a smuggling roll.</summary>
         [Test]
         public void ResolveProductionRecipient_DetachedFacility_ReturnsControllerWithoutRolling()
         {
@@ -53,7 +52,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(_controller, recipient);
         }
 
-        /// <summary>Verifies a facility without smuggling does not consume a random value.</summary>
         [Test]
         public void ResolveProductionRecipient_NoSmuggling_ReturnsControllerWithoutRolling()
         {
@@ -65,9 +63,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(_controller, recipient);
         }
 
-        /// <summary>Verifies diversion occurs only for rolls strictly below the percentage.</summary>
-        /// <param name="roll">The random fraction producing the percentage roll.</param>
-        /// <param name="recipientID">The expected recipient faction identifier.</param>
         [TestCase(0.74, "FACTION2")]
         [TestCase(0.75, "FACTION1")]
         public void ResolveProductionRecipient_ThresholdBoundary_ReturnsExpectedFaction(
@@ -85,7 +80,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(recipientID, recipient.InstanceID);
         }
 
-        /// <summary>Verifies low support starts smuggling at the configured percentage.</summary>
         [Test]
         public void ProcessTick_LowSupport_StartsConfiguredSmugglingLossPercentage()
         {
@@ -100,7 +94,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("FACTION2", changed.Beneficiary.InstanceID);
         }
 
-        /// <summary>Verifies reconstructed smuggling state does not repeat a start notification.</summary>
         [Test]
         public void ProcessTick_ExistingSmugglingState_DoesNotRepeatStartNotification()
         {
@@ -112,7 +105,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results.OfType<SmugglingChangedResult>());
         }
 
-        /// <summary>Verifies defending units reduce the diversion percentage.</summary>
         [Test]
         public void ProcessTick_GarrisonAndFleetPresence_ReduceSmugglingPercentage()
         {
@@ -135,7 +127,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(58, result.NewValue);
         }
 
-        /// <summary>Verifies a stationary planet-destroying ship suppresses smuggling.</summary>
         [Test]
         public void ProcessTick_PlanetDestroyingShipPresent_FullySuppressesSmuggling()
         {
@@ -158,7 +149,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies ownership changes end the previous relationship before starting its replacement.</summary>
         [Test]
         public void ProcessTick_ControlChanged_EndsOldSmugglingAndStartsNewRelationship()
         {
@@ -178,7 +168,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, changes[1].OldPercent);
         }
 
-        /// <summary>Verifies a percentage change does not repeat relationship notifications.</summary>
         [Test]
         public void ProcessTick_DiversionChangesWithinRelationship_OnlyReportsStatChange()
         {

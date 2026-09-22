@@ -16,7 +16,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public sealed class MissionObserverTests
     {
-        /// <summary>Verifies that a release fact does not interrupt an active mission.</summary>
         [Test]
         public void HandleResults_ReleasedParticipant_DoesNotInterruptMission()
         {
@@ -44,7 +43,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(mission, officer.GetParent());
         }
 
-        /// <summary>Verifies that a missing fact does not produce mission reactions.</summary>
         [Test]
         public void HandleResults_NullEntry_ReturnsNoResults()
         {
@@ -61,7 +59,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(observer.HandleResults(new OfficerCaptureStateResult[] { null }));
         }
 
-        /// <summary>Verifies that the observer requires its mission operations.</summary>
         [Test]
         public void Constructor_NullCommands_ThrowsArgumentNullException()
         {

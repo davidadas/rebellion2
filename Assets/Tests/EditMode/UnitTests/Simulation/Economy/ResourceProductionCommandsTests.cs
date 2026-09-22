@@ -47,7 +47,6 @@ namespace Rebellion.Tests.Simulation
             _system = new ResourceProductionCommands(_game);
         }
 
-        /// <summary>Verifies a mine produces only after completing its startup cycle.</summary>
         [Test]
         public void ProcessTick_MineStartupCycle_ProducesAfterStartupDuration()
         {
@@ -65,7 +64,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(mine.ResourceStartupCyclePending);
         }
 
-        /// <summary>Verifies smuggling redirects a completed mine output in the same tick.</summary>
         [Test]
         public void ProcessTick_SmugglingRoll_RedirectsCompletedResourceToBeneficiary()
         {
@@ -86,7 +84,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, beneficiary.RawMaterialStockpile);
         }
 
-        /// <summary>Verifies smuggling redirects a completed refinery output in the same tick.</summary>
         [Test]
         public void ProcessTick_SmugglingRoll_RedirectsCompletedRefinedResourceToBeneficiary()
         {
@@ -107,7 +104,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, beneficiary.RefinedMaterialStockpile);
         }
 
-        /// <summary>Verifies scarce raw material is delivered in pending-request order.</summary>
         [Test]
         public void ProcessTick_RefineriesWaitingForRawMaterial_AreServicedInRequestOrder()
         {
@@ -131,7 +127,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies queued production reserves newly available refined material.</summary>
         [Test]
         public void ProcessTick_PendingProductionFacility_ReceivesAvailableRefinedMaterial()
         {
@@ -160,7 +155,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
         }
 
-        /// <summary>Verifies a stale production request does not consume material.</summary>
         [Test]
         public void ProcessTick_PendingProductionFacilityWithoutQueue_DoesNotConsumeMaterial()
         {
@@ -180,7 +174,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
         }
 
-        /// <summary>Verifies suspension preserves material delivery without advancing the refinery.</summary>
         [Test]
         public void ProcessTick_SuspendedRefineryWithPendingRequest_ReservesAvailableRawMaterial()
         {
@@ -197,7 +190,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(_faction.PendingRawMaterialFacilityIDs);
         }
 
-        /// <summary>Verifies suspended production may reserve material without advancing.</summary>
         [Test]
         public void ProcessTick_SuspendedProductionFacilityWithPendingRequest_ReservesAvailableRefinedMaterial()
         {
@@ -228,7 +220,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
         }
 
-        /// <summary>Verifies completed mine output services a waiting refinery before the tick ends.</summary>
         [Test]
         public void ProcessTick_CompletedMineCycle_ServicesSuspendedRefineryInSameTick()
         {
@@ -255,7 +246,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, refinery.ProductionCycleProgress);
         }
 
-        /// <summary>Verifies completed refinery output services queued production before the tick ends.</summary>
         [Test]
         public void ProcessTick_CompletedRefineryCycle_ServicesProductionFacilityInSameTick()
         {
@@ -289,7 +279,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
         }
 
-        /// <summary>Verifies reduced support increases the resource cycle duration.</summary>
         [Test]
         public void ProcessTick_LowerPopularSupport_ExtendsResourceCycle()
         {
@@ -307,7 +296,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, _faction.RawMaterialStockpile);
         }
 
-        /// <summary>Verifies maintenance allocation increases the resource cycle duration.</summary>
         [Test]
         public void ProcessTick_MaintenanceAllocation_ExtendsResourceCycle()
         {
@@ -335,7 +323,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, _faction.RawMaterialStockpile);
         }
 
-        /// <summary>Verifies maintenance demand is allocated across available mines.</summary>
         [Test]
         public void ProcessTick_MaintenanceAllocationAcrossMultipleMines_ReachesDemand()
         {
@@ -358,7 +345,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(20, secondMine.ResourceMaintenanceAllocation);
         }
 
-        /// <summary>Verifies both resource lanes account for faction-wide maintenance demand.</summary>
         [Test]
         public void ProcessTick_MineAndRefineryOnDifferentPlanets_ShareMaintenanceDemand()
         {
@@ -388,7 +374,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(20, refinery.ResourceMaintenanceAllocation);
         }
 
-        /// <summary>Verifies blockade suspends resource cycles despite a shield-damaging defense.</summary>
         [Test]
         public void ProcessTick_BlockadedPlanetWithKdy_DoesNotAdvanceResourceCycle()
         {
@@ -419,7 +404,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
         }
 
-        /// <summary>Verifies an uprising suspends resource cycles.</summary>
         [Test]
         public void ProcessTick_PlanetInUprising_DoesNotAdvanceResourceCycle()
         {
@@ -434,7 +418,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
         }
 
-        /// <summary>Verifies a suspended resource facility retains its allocation and resumes progress.</summary>
         [Test]
         public void ProcessTick_SuspendedResourceFacility_PreservesAllocationAndResumesCycle()
         {

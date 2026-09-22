@@ -12,7 +12,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class ManufacturingQueriesTests
     {
-        /// <summary>Verifies queries reject a missing game.</summary>
         [Test]
         public void Constructor_NullGame_ThrowsArgumentNullException()
         {
@@ -23,7 +22,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("game", exception.ParamName);
         }
 
-        /// <summary>Verifies an absent manufacturing lane has no completion estimate.</summary>
         [Test]
         public void EstimateQueueCompletionTicks_NoQueuedWork_ReturnsNull()
         {
@@ -38,7 +36,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(estimate);
         }
 
-        /// <summary>Verifies a queue estimate reads remaining work and facility progress without advancing either.</summary>
         [Test]
         public void EstimateQueueCompletionTicks_PartiallyCompletedQueue_PreservesProductionState()
         {
@@ -74,7 +71,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, facility.ProductionCycleProgress);
         }
 
-        /// <summary>Verifies eligibility inspection leaves the existing project unchanged.</summary>
         [Test]
         public void CanStartManufacturing_DifferentProject_DoesNotCancelExistingWork()
         {
@@ -114,7 +110,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(producer, original.GetParent());
         }
 
-        /// <summary>Checks without maintenance headroom: returns true.</summary>
         [Test]
         public void CanAcceptManufacturingOrder_WithoutMaintenanceHeadroom_ReturnsTrue()
         {
@@ -147,7 +142,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Checks mixed facility rates: uses integer rate shares.</summary>
         [Test]
         public void EstimateManufacturingTicks_MixedFacilityRates_UsesIntegerRateShares()
         {
@@ -163,7 +157,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(3, estimate);
         }
 
-        /// <summary>Checks inactive facilities: do not contribute.</summary>
         [Test]
         public void EstimateManufacturingTicks_InactiveFacilities_DoNotContribute()
         {
@@ -185,7 +178,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(4, estimate);
         }
 
-        /// <summary>Checks default: includes earlier queued work and current progress.</summary>
         [Test]
         public void EstimateCompletionTicks_Default_IncludesEarlierQueuedWorkAndCurrentProgress()
         {
@@ -212,7 +204,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(42, estimate);
         }
 
-        /// <summary>Checks active facility cycle: uses remaining cycle time.</summary>
         [Test]
         public void EstimateCompletionTicks_ActiveFacilityCycle_UsesRemainingCycleTime()
         {

@@ -7,9 +7,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
     [TestFixture]
     public sealed class ServiceLocatorTests
     {
-        /// <summary>
-        /// Verifies a singleton is created only once within its locator.
-        /// </summary>
         [Test]
         public void GetService_SingletonRequestedTwice_ReturnsSameInstance()
         {
@@ -20,9 +17,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             Assert.AreSame(locator.GetService<Dependency>(), locator.GetService<Dependency>());
         }
 
-        /// <summary>
-        /// Verifies a runtime type resolves the same singleton as a generic request.
-        /// </summary>
         [Test]
         public void GetService_RuntimeType_ReturnsRegisteredSingleton()
         {
@@ -36,9 +30,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             );
         }
 
-        /// <summary>
-        /// Verifies null runtime types cannot be resolved.
-        /// </summary>
         [Test]
         public void GetService_NullType_ThrowsArgumentNullException()
         {
@@ -47,9 +38,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             Assert.Throws<ArgumentNullException>(() => locator.GetService(null));
         }
 
-        /// <summary>
-        /// Verifies a transient is constructed for every resolution.
-        /// </summary>
         [Test]
         public void GetService_TransientRequestedTwice_ReturnsDifferentInstances()
         {
@@ -60,9 +48,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             Assert.AreNotSame(locator.GetService<Dependency>(), locator.GetService<Dependency>());
         }
 
-        /// <summary>
-        /// Verifies registered constructor parameters are resolved recursively.
-        /// </summary>
         [Test]
         public void GetService_NestedDependencies_InjectsRegisteredInstance()
         {
@@ -75,9 +60,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             Assert.AreSame(dependency, locator.GetService<DependentService>().Dependency);
         }
 
-        /// <summary>
-        /// Verifies a missing constructor dependency fails clearly.
-        /// </summary>
         [Test]
         public void GetService_UnregisteredDependency_ThrowsInvalidOperationException()
         {
@@ -91,9 +73,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             StringAssert.Contains(nameof(Dependency), exception.Message);
         }
 
-        /// <summary>
-        /// Verifies a constructor cycle is rejected with its dependency path.
-        /// </summary>
         [Test]
         public void GetService_CircularDependency_ThrowsInvalidOperationException()
         {
@@ -109,9 +88,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             StringAssert.Contains(nameof(SecondCycleService), exception.Message);
         }
 
-        /// <summary>
-        /// Verifies an explicit factory may construct a service with additional arguments.
-        /// </summary>
         [Test]
         public void GetService_FactoryRegistration_CreatesExpectedService()
         {
@@ -128,9 +104,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             );
         }
 
-        /// <summary>
-        /// Verifies factories must return a service of their registered type.
-        /// </summary>
         [Test]
         public void GetService_FactoryReturnsNull_ThrowsInvalidOperationException()
         {
@@ -141,9 +114,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             Assert.Throws<InvalidOperationException>(() => locator.GetService<Dependency>());
         }
 
-        /// <summary>
-        /// Verifies constructor failures retain their original exception type.
-        /// </summary>
         [Test]
         public void GetService_ConstructorThrows_PropagatesOriginalException()
         {
@@ -154,9 +124,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             Assert.Throws<ArgumentException>(() => locator.GetService<FailingService>());
         }
 
-        /// <summary>
-        /// Verifies constructed services are disposed with their locator.
-        /// </summary>
         [Test]
         public void Dispose_ConstructedSingleton_DisposesService()
         {
@@ -170,9 +137,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             Assert.IsTrue(service.IsDisposed);
         }
 
-        /// <summary>
-        /// Verifies separately constructed transient services are each disposed.
-        /// </summary>
         [Test]
         public void Dispose_ConstructedTransients_DisposesEachInstance()
         {
@@ -188,9 +152,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             Assert.IsTrue(second.IsDisposed);
         }
 
-        /// <summary>
-        /// Verifies externally supplied instances remain owned by the caller.
-        /// </summary>
         [Test]
         public void Dispose_RegisteredInstance_DoesNotDisposeService()
         {
@@ -205,9 +166,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             Assert.IsFalse(service.IsDisposed);
         }
 
-        /// <summary>
-        /// Verifies a disposed locator cannot resolve further services.
-        /// </summary>
         [Test]
         public void GetService_DisposedLocator_ThrowsObjectDisposedException()
         {

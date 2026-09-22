@@ -8,7 +8,6 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public sealed class GameEventBindingTests
     {
-        /// <summary>Verifies round trip numeric ranges restores concrete rolls.</summary>
         [Test]
         public void RoundTrip_NumericRanges_RestoresConcreteRolls()
         {
@@ -40,7 +39,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(0.9, restored.Bindings[1].RollDouble.Maximum);
         }
 
-        /// <summary>Verifies round trip typed sources restores concrete sources.</summary>
         [Test]
         public void RoundTrip_TypedSources_RestoresConcreteSources()
         {

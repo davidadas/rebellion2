@@ -90,7 +90,6 @@ namespace Rebellion.Tests.Simulation
             _observer = new PlanetaryControlObserver(_commands);
         }
 
-        /// <summary>Verifies successive support shifts retain stat-before-ownership result order.</summary>
         [Test]
         public void HandleResults_SequentialSupportTransfers_PreservesResultOrderAndTicks()
         {
@@ -135,7 +134,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { 4, 4, 5, 5 }, results.Select(result => result.Tick));
         }
 
-        /// <summary>Verifies resistance that rounds a shift to zero does not reconcile ownership.</summary>
         [Test]
         public void HandleResults_ResistanceEliminatesShift_DoesNotReconcileOwnership()
         {
@@ -165,7 +163,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(_rebels.InstanceID, _targetPlanet.OwnerInstanceID);
         }
 
-        /// <summary>Verifies malformed later garrison entries do not undo an earlier control change.</summary>
         [Test]
         public void HandleResults_NullGarrisonEntryAfterChange_ThrowsAfterApplyingEarlierChange()
         {
@@ -184,7 +181,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(_empire.InstanceID, _targetPlanet.OwnerInstanceID);
         }
 
-        /// <summary>Verifies absent garrison batches produce no reactions.</summary>
         [Test]
         public void HandleResults_NullGarrisonBatch_ReturnsNoReactions()
         {
@@ -193,17 +189,12 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies absent support batches produce no reactions.</summary>
         [Test]
         public void HandleResults_NullSupportBatch_ReturnsNoReactions()
         {
             Assert.IsEmpty(_observer.HandleResults((IReadOnlyList<PopularSupportShiftResult>)null));
         }
 
-        /// <summary>Verifies reconciles control when last stationed regiment.</summary>
-        /// <param name="supportFactionId">The support faction id.</param>
-        /// <param name="support">The support.</param>
-        /// <param name="expectedOwnerId">The expected owner id.</param>
         [TestCase("empire", 60, "empire")]
         [TestCase("empire", 59, null)]
         [TestCase("rebels", 60, "rebels")]
@@ -268,7 +259,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies preserves mission for lifecycle validation when last stationed regiment.</summary>
         [Test]
         public void HandleResults_LastStationedRegiment_PreservesMissionForLifecycleValidation()
         {
@@ -317,7 +307,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(diplomacyMission, officer.GetParent());
         }
 
-        /// <summary>Verifies applies resistance and reports change when core popular support shift.</summary>
         [Test]
         public void HandleResults_CorePopularSupportShift_AppliesResistanceAndReportsChange()
         {
@@ -351,7 +340,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(14, change.Tick);
         }
 
-        /// <summary>Verifies reports popular support ownership change when support crosses threshold.</summary>
         [Test]
         public void HandleResults_SupportCrossesThreshold_ReportsPopularSupportOwnershipChange()
         {

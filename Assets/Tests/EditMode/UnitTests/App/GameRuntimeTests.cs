@@ -46,9 +46,6 @@ namespace Rebellion.Tests.App
                 Directory.Delete(_saveDirectoryPath, true);
         }
 
-        /// <summary>
-        /// Records that starting an invalid game ends the previous session before content validation.
-        /// </summary>
         [Test]
         public void StartGame_InvalidContent_EndsPreviousSession()
         {
@@ -61,9 +58,6 @@ namespace Rebellion.Tests.App
             Assert.IsFalse(_runtime.HasActiveGame);
         }
 
-        /// <summary>
-        /// Records that invalid loaded content is rejected before replacing the current manager.
-        /// </summary>
         [Test]
         public void LoadGame_InvalidContent_KeepsActiveManager()
         {
@@ -78,9 +72,6 @@ namespace Rebellion.Tests.App
             Assert.AreSame(manager, _runtime.GetActiveGameManager());
         }
 
-        /// <summary>
-        /// Verifies that successful hot loading retains the manager holding presentation subscriptions.
-        /// </summary>
         [Test]
         public void LoadGame_ValidSave_KeepsManagerIdentity()
         {
@@ -93,9 +84,6 @@ namespace Rebellion.Tests.App
             Assert.AreSame(manager, _runtime.GetActiveGameManager());
         }
 
-        /// <summary>
-        /// Records that an exception while announcing the pause leaves the current manager assigned.
-        /// </summary>
         [Test]
         public void EndGame_SpeedObserverThrows_KeepsActiveManager()
         {
@@ -115,9 +103,6 @@ namespace Rebellion.Tests.App
             }
         }
 
-        /// <summary>
-        /// Records that autosave is detached before the pause announcement can fail.
-        /// </summary>
         [Test]
         public void EndGame_SpeedObserverThrows_DetachesAutosave()
         {
@@ -149,7 +134,6 @@ namespace Rebellion.Tests.App
             );
         }
 
-        /// <summary>Verifies start game pending combat defers autosave until resolution.</summary>
         [Test]
         public void StartGame_PendingCombat_DefersAutosaveUntilResolution()
         {
@@ -173,7 +157,6 @@ namespace Rebellion.Tests.App
             Assert.IsTrue(_runtime.CanSave);
         }
 
-        /// <summary>Verifies quick save pending combat does not write save.</summary>
         [Test]
         public void QuickSave_PendingCombat_DoesNotWriteSave()
         {
@@ -188,7 +171,6 @@ namespace Rebellion.Tests.App
             );
         }
 
-        /// <summary>Verifies save game pending combat does not write save.</summary>
         [Test]
         public void SaveGame_PendingCombat_DoesNotWriteSave()
         {
@@ -206,7 +188,6 @@ namespace Rebellion.Tests.App
             Assert.AreEqual(40, game.CurrentTick);
         }
 
-        /// <summary>Verifies quick load after quick save replaces mutated game with saved state.</summary>
         [Test]
         public void QuickLoad_AfterQuickSave_ReplacesMutatedGameWithSavedState()
         {
@@ -227,7 +208,6 @@ namespace Rebellion.Tests.App
             Assert.AreEqual(123, replacement.CurrentTick);
         }
 
-        /// <summary>Verifies validate game content matching identity does not throw.</summary>
         [Test]
         public void ValidateGameContent_MatchingIdentity_DoesNotThrow()
         {
@@ -236,7 +216,6 @@ namespace Rebellion.Tests.App
             Assert.DoesNotThrow(() => _runtime.ValidateGameContent(game));
         }
 
-        /// <summary>Verifies validate game content missing identity throws invalid operation exception.</summary>
         [Test]
         public void ValidateGameContent_MissingIdentity_ThrowsInvalidOperationException()
         {
@@ -245,7 +224,6 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
-        /// <summary>Verifies validate game content different pack throws invalid operation exception.</summary>
         [Test]
         public void ValidateGameContent_DifferentPack_ThrowsInvalidOperationException()
         {
@@ -255,7 +233,6 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
-        /// <summary>Verifies validate game content different version throws invalid operation exception.</summary>
         [Test]
         public void ValidateGameContent_DifferentVersion_ThrowsInvalidOperationException()
         {
@@ -265,7 +242,6 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
-        /// <summary>Verifies validate game content different scenario throws invalid operation exception.</summary>
         [Test]
         public void ValidateGameContent_DifferentScenario_ThrowsInvalidOperationException()
         {
@@ -275,7 +251,6 @@ namespace Rebellion.Tests.App
             Assert.Throws<InvalidOperationException>(() => _runtime.ValidateGameContent(game));
         }
 
-        /// <summary>Verifies validate game content save has different mods throws invalid operation exception.</summary>
         [Test]
         public void ValidateGameContent_SaveHasDifferentMods_ThrowsInvalidOperationException()
         {
@@ -290,7 +265,6 @@ namespace Rebellion.Tests.App
             StringAssert.Contains("mods [] is active", exception.Message);
         }
 
-        /// <summary>Verifies failed runtime initialization does not announce a completed replacement.</summary>
         [Test]
         public void LoadGame_InvalidEvent_DoesNotNotifyPresentation()
         {
@@ -308,7 +282,6 @@ namespace Rebellion.Tests.App
             Assert.AreEqual(0, announcements);
         }
 
-        /// <summary>Verifies hot loading preserves the session holding presentation subscriptions.</summary>
         [Test]
         public void LoadGame_ValidSave_KeepsSessionIdentity()
         {
@@ -320,7 +293,6 @@ namespace Rebellion.Tests.App
             Assert.AreSame(session, _runtime.GetActiveGameSession());
         }
 
-        /// <summary>Verifies a replacement restores the clock before notifying presentation.</summary>
         [Test]
         public void LoadGame_ValidSave_ResetsClockBeforeNotification()
         {
@@ -340,7 +312,6 @@ namespace Rebellion.Tests.App
             Assert.IsFalse(ready);
         }
 
-        /// <summary>Verifies replacement callbacks still run before loaded combat reconciliation.</summary>
         [Test]
         public void LoadGame_PresentationThrows_LeavesReconciliationPending()
         {

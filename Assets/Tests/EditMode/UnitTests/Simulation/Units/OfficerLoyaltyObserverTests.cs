@@ -13,7 +13,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class OfficerLoyaltyObserverTests
     {
-        /// <summary>Verifies that ownership reactions consume rolls and clamp loyalty in input order.</summary>
         [Test]
         public void HandleResults_MultipleOwnershipChanges_AppliesRollsInBatchOrder()
         {
@@ -42,7 +41,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies that a missing ownership batch leaves the next random roll untouched.</summary>
         [Test]
         public void HandleResults_NullBatch_DoesNotConsumeRandomRoll()
         {

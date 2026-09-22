@@ -36,7 +36,6 @@ namespace Rebellion.Tests.Simulation
             _system = new GameEventExecutor(_game, new FixedRandomProvider(new[] { 0.5 }));
         }
 
-        /// <summary>Verifies that an absolute schedule is not offset by the current campaign tick.</summary>
         [Test]
         public void ProcessEvents_AbsoluteSchedule_StoresAbsoluteTick()
         {
@@ -53,7 +52,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(25, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
         }
 
-        /// <summary>Verifies that a fixed recurring schedule starts at its authored initial delay.</summary>
         [Test]
         public void ProcessEvents_FixedIntervalFirstActivation_UsesInitialDelay()
         {
@@ -72,9 +70,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(5, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
         }
 
-        /// <summary>Verifies both endpoints of the authored first-activation delay.</summary>
-        /// <param name="roll">The random fraction used to select the delay.</param>
-        /// <param name="expected">The expected first eligible tick.</param>
         [TestCase(0.0, 10)]
         [TestCase(0.9999, 30)]
         public void ProcessEvents_RandomFirstActivation_UsesInclusiveRangeEndpoints(
@@ -101,9 +96,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies both endpoints of the repeat delay measured from the activation tick.</summary>
-        /// <param name="roll">The random fraction used to select the delay.</param>
-        /// <param name="expected">The expected next eligible tick.</param>
         [TestCase(0.0, 50)]
         [TestCase(0.9999, 70)]
         public void ProcessEvents_RandomRepeat_UsesInclusiveRangeFromCurrentTick(
@@ -132,9 +124,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies deferred message templates observe mutations made by later authored actions.
-        /// </summary>
         [Test]
         public void ProcessEvents_MessageBeforeRename_ResolvesTemplateAfterLaterAction()
         {
@@ -152,9 +141,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(delivery.Message, faction.Messages[MessageType.Advice].Single());
         }
 
-        /// <summary>
-        /// Verifies missing deferred execution does not roll back earlier authored actions.
-        /// </summary>
         [Test]
         public void ProcessEvents_MissingCommands_PreservesActionsWithoutRecordingActivation()
         {
@@ -169,9 +155,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Contains(gameEvent, _game.GetEventPool());
         }
 
-        /// <summary>
-        /// Verifies a failed deferred message does not suppress the next request or activation history.
-        /// </summary>
         [Test]
         public void ProcessEvents_DeferredMessageFails_DeliversNextMessageAndRecordsActivation()
         {
@@ -203,7 +186,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
-        /// <summary>Verifies that one missing command does not suppress later configured operations.</summary>
         [Test]
         public void ProcessEvents_MissingDuelCommands_DeliversFollowingMessage()
         {
@@ -229,7 +211,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
-        /// <summary>Verifies that a failing deferred operation retains mutations but does not release its unfinished facts.</summary>
         [Test]
         public void ProcessEvents_DuelFailsAfterCapture_RetainsCaptureWithoutPublishingPartialResults()
         {
@@ -256,7 +237,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(gameEvent.InstanceID, results.Single().SourceEventInstanceID);
         }
 
-        /// <summary>Verifies that a later capture invalidates an earlier queued duel before it consumes randomness.</summary>
         [Test]
         public void ProcessEvents_DuelBeforeCapture_SkipsDeferredDuelWithoutRolling()
         {
@@ -297,7 +277,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(gameEvent.InstanceID, results.Single().SourceEventInstanceID);
         }
 
-        /// <summary>Verifies that deferred ownership keeps the selection made before a later action disables the officer.</summary>
         [Test]
         public void ProcessEvents_OwnershipBeforeDisabling_TransfersPreviouslySelectedOfficer()
         {
@@ -354,7 +333,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(gameEvent.InstanceID, ownership.SourceEventInstanceID);
         }
 
-        /// <summary>Verifies that local action results precede deferred results despite the reverse authored order.</summary>
         [Test]
         public void ProcessEvents_MessageBeforeLocalChange_ReturnsLocalFactBeforeDelivery()
         {
@@ -380,7 +358,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies that deferred placement finishes before a following transit order chooses its departure.</summary>
         [Test]
         public void ProcessEvents_PlacementBeforeTransit_UsesPlacedPlanetAsDeparture()
         {
@@ -435,9 +412,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(gameEvent.InstanceID, officer.Movement.SourceEventInstanceID);
         }
 
-        /// <summary>
-        /// Verifies multiple schedule modes throws invalid operation exception.
-        /// </summary>
         [Test]
         public void ValidateEvents_MultipleScheduleModes_ThrowsInvalidOperationException()
         {
@@ -456,9 +430,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Throws<InvalidOperationException>(validate);
         }
 
-        /// <summary>
-        /// Verifies one shot schedule without maximum activations does not throw.
-        /// </summary>
         [Test]
         public void ValidateEvents_OneShotScheduleWithoutMaximumActivations_DoesNotThrow()
         {
@@ -471,9 +442,6 @@ namespace Rebellion.Tests.Simulation
             Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
         }
 
-        /// <summary>
-        /// Verifies duplicate binding alias throws invalid operation exception.
-        /// </summary>
         [Test]
         public void ValidateEvents_DuplicateBindingAlias_ThrowsInvalidOperationException()
         {
@@ -501,9 +469,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("duplicate binding alias 'target'", exception.Message);
         }
 
-        /// <summary>
-        /// Verifies binding without alias throws invalid operation exception.
-        /// </summary>
         [Test]
         public void ValidateEvents_BindingWithoutAlias_ThrowsInvalidOperationException()
         {
@@ -527,9 +492,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("missing alias", exception.Message);
         }
 
-        /// <summary>
-        /// Verifies binding without source throws invalid operation exception.
-        /// </summary>
         [Test]
         public void ValidateEvents_BindingWithoutSource_ThrowsInvalidOperationException()
         {
@@ -547,9 +509,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("requires exactly one source", exception.Message);
         }
 
-        /// <summary>
-        /// Verifies multiple triggers with different aliases throws invalid operation exception.
-        /// </summary>
         [Test]
         public void ValidateEvents_MultipleTriggersWithDifferentAliases_ThrowsInvalidOperationException()
         {
@@ -569,9 +528,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("same trigger bindings and value types", exception.Message);
         }
 
-        /// <summary>
-        /// Verifies multiple filtered triggers with same alias does not throw.
-        /// </summary>
         [Test]
         public void ValidateEvents_MultipleFilteredTriggersWithSameAlias_DoesNotThrow()
         {
@@ -596,9 +552,6 @@ namespace Rebellion.Tests.Simulation
             Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
         }
 
-        /// <summary>
-        /// Verifies dependency completed and removed from pool does not throw.
-        /// </summary>
         [Test]
         public void ValidateEvents_DependencyCompletedAndRemovedFromPool_DoesNotThrow()
         {
@@ -615,9 +568,6 @@ namespace Rebellion.Tests.Simulation
             Assert.DoesNotThrow(() => _system.ValidateEvents(new[] { gameEvent }));
         }
 
-        /// <summary>
-        /// Verifies dependency missing from pool and not completed throws invalid operation exception.
-        /// </summary>
         [Test]
         public void ValidateEvents_DependencyMissingFromPoolAndNotCompleted_ThrowsInvalidOperationException()
         {
@@ -637,9 +587,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("references unknown event 'UNKNOWN_EVENT'", exception.Message);
         }
 
-        /// <summary>
-        /// Verifies unmet one shot event remains pending.
-        /// </summary>
         [Test]
         public void ProcessEvents_UnmetOneShotEvent_RemainsPending()
         {
@@ -653,9 +600,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
-        /// <summary>
-        /// Verifies met one shot event completes and leaves pool.
-        /// </summary>
         [Test]
         public void ProcessEvents_MetOneShotEvent_CompletesAndLeavesPool()
         {
@@ -669,9 +613,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
-        /// <summary>
-        /// Verifies met repeatable event completes and remains active.
-        /// </summary>
         [Test]
         public void ProcessEvents_MetRepeatableEvent_CompletesAndRemainsActive()
         {
@@ -685,9 +626,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
-        /// <summary>
-        /// Verifies recurring schedule until met completes and removes event.
-        /// </summary>
         [Test]
         public void ProcessEvents_RecurringScheduleUntilMet_CompletesAndRemovesEvent()
         {
@@ -717,9 +655,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
         }
 
-        /// <summary>
-        /// Verifies recurring schedule until met uses evaluation binding.
-        /// </summary>
         [Test]
         public void ProcessEvents_RecurringScheduleUntilMet_UsesEvaluationBinding()
         {
@@ -779,9 +714,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
         }
 
-        /// <summary>
-        /// Verifies maximum activations five activates five times.
-        /// </summary>
         [Test]
         public void ProcessEvents_MaximumActivationsFive_ActivatesFiveTimes()
         {
@@ -796,9 +728,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(5, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
-        /// <summary>
-        /// Verifies maximum activations three activates three times.
-        /// </summary>
         [Test]
         public void ProcessEvents_MaximumActivationsThree_ActivatesThreeTimes()
         {
@@ -813,9 +742,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(3, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
-        /// <summary>
-        /// Verifies random delay waits until rolled absolute tick.
-        /// </summary>
         [Test]
         public void ProcessEvents_RandomDelay_WaitsUntilRolledAbsoluteTick()
         {
@@ -840,9 +766,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies repeat delay prevents activation until cooldown expires.
-        /// </summary>
         [Test]
         public void ProcessEvents_RepeatDelay_PreventsActivationUntilCooldownExpires()
         {
@@ -861,9 +784,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
-        /// <summary>
-        /// Verifies after schedule delays from predecessor activation.
-        /// </summary>
         [Test]
         public void ProcessEvents_AfterSchedule_DelaysFromPredecessorActivation()
         {
@@ -887,9 +807,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
-        /// <summary>
-        /// Verifies after all schedule before final delay keeps event pending.
-        /// </summary>
         [Test]
         public void ProcessEvents_AfterAllScheduleBeforeFinalDelay_KeepsEventPending()
         {
@@ -902,9 +819,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Contains(pending, _game.GetEventPool());
         }
 
-        /// <summary>
-        /// Verifies after all schedule at final delay activates event.
-        /// </summary>
         [Test]
         public void ProcessEvents_AfterAllScheduleAtFinalDelay_ActivatesEvent()
         {
@@ -917,9 +831,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
-        /// <summary>
-        /// Verifies after any schedule before first delay keeps event pending.
-        /// </summary>
         [Test]
         public void ProcessEvents_AfterAnyScheduleBeforeFirstDelay_KeepsEventPending()
         {
@@ -932,9 +843,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Contains(pending, _game.GetEventPool());
         }
 
-        /// <summary>
-        /// Verifies after any schedule at first delay activates event.
-        /// </summary>
         [Test]
         public void ProcessEvents_AfterAnyScheduleAtFirstDelay_ActivatesEvent()
         {
@@ -947,9 +855,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
-        /// <summary>
-        /// Verifies result triggered event does not run during scheduled polling.
-        /// </summary>
         [Test]
         public void ProcessEvents_ResultTriggeredEvent_DoesNotRunDuringScheduledPolling()
         {
@@ -970,9 +875,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
         }
 
-        /// <summary>
-        /// Verifies targeted planet uses one persisted schedule.
-        /// </summary>
         [Test]
         public void ProcessEvents_TargetedPlanet_UsesOnePersistedSchedule()
         {
@@ -1030,9 +932,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(30, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
         }
 
-        /// <summary>
-        /// Verifies each owned planet target arms when neutral planet becomes owned.
-        /// </summary>
         [Test]
         public void ProcessEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
         {
@@ -1081,9 +980,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, state.ActivationCount);
         }
 
-        /// <summary>
-        /// Verifies each owned planet target rearms after neutral interval.
-        /// </summary>
         [Test]
         public void ProcessEvents_EachOwnedPlanetTarget_RearmsAfterNeutralInterval()
         {
@@ -1135,9 +1031,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, state.ActivationCount);
         }
 
-        /// <summary>
-        /// Verifies one shot target activates target once.
-        /// </summary>
         [Test]
         public void ProcessEvents_OneShotTarget_ActivatesTargetOnce()
         {
@@ -1170,9 +1063,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, planet.NumRawResourceNodes);
         }
 
-        /// <summary>
-        /// Verifies random target before scheduled tick does not select target.
-        /// </summary>
         [Test]
         public void ProcessEvents_RandomTargetBeforeScheduledTick_DoesNotSelectTarget()
         {
@@ -1217,9 +1107,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(10, state.NextEligibleTick);
         }
 
-        /// <summary>
-        /// Verifies matching encounter activates result triggered event once.
-        /// </summary>
         [Test]
         public void HandleResults_MatchingEncounter_ActivatesResultTriggeredEventOnce()
         {
@@ -1254,9 +1141,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
-        /// <summary>
-        /// Verifies stable trigger id activates without clr type name.
-        /// </summary>
         [Test]
         public void HandleResults_StableTriggerId_ActivatesWithoutClrTypeName()
         {
@@ -1325,9 +1209,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("arrival.triggered"));
         }
 
-        /// <summary>
-        /// Verifies second unit arrived alternative matches activates once.
-        /// </summary>
         [Test]
         public void HandleResults_SecondUnitArrivedAlternativeMatches_ActivatesOnce()
         {
@@ -1354,9 +1235,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
-        /// <summary>
-        /// Verifies matching optional source binding activates event.
-        /// </summary>
         [Test]
         public void HandleResults_MatchingOptionalSourceBinding_ActivatesEvent()
         {
@@ -1381,9 +1259,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("source.arrival.triggered"));
         }
 
-        /// <summary>
-        /// Verifies without suppression preserves trigger and sibling messages.
-        /// </summary>
         [Test]
         public void HandleResults_WithoutSuppression_PreservesTriggerAndSiblingMessages()
         {
@@ -1409,9 +1284,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(reactions);
         }
 
-        /// <summary>
-        /// Verifies repeatable encounter effect activates for every encounter.
-        /// </summary>
         [Test]
         public void HandleResults_RepeatableEncounterEffect_ActivatesForEveryEncounter()
         {
@@ -1452,9 +1324,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
-        /// <summary>
-        /// Verifies that reaching the activation limit prevents another activation.
-        /// </summary>
         [Test]
         public void ProcessEvents_MaximumActivationsReached_DoesNotActivate()
         {
@@ -1477,9 +1346,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(3, state.ActivationCount);
         }
 
-        /// <summary>
-        /// Verifies that an unlimited event can activate after many previous activations.
-        /// </summary>
         [Test]
         public void ProcessEvents_UnlimitedEvent_ActivatesAgain()
         {
@@ -1493,7 +1359,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(101, state.ActivationCount);
         }
 
-        /// <summary>Verifies that authored placement attaches the complete existing-and-spawned group.</summary>
         [Test]
         public void ProcessEvents_PlaceUnitsMixedSources_PlacesExistingAndSpawnedUnits()
         {
@@ -1557,7 +1422,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(units.All(unit => unit.OwnerInstanceID == "empire"));
         }
 
-        /// <summary>Verifies execute action place units inactive existing unit throws invalid operation exception.</summary>
         [Test]
         public void ExecuteAction_PlaceUnitsInactiveExistingUnit_ThrowsInvalidOperationException()
         {
@@ -1582,7 +1446,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("requires existing units to be active", exception.Message);
         }
 
-        /// <summary>Verifies that authored ownership selects and transfers the intended unit.</summary>
         [Test]
         public void ProcessEvents_ChangeOwnerUnitSelectors_TransfersSelectedUnit()
         {
@@ -1607,7 +1470,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("rebels", officer.OwnerInstanceID);
         }
 
-        /// <summary>Verifies execute action change owner with planets and units rejects ambiguous request.</summary>
         [Test]
         public void ExecuteAction_ChangeOwnerWithPlanetsAndUnits_RejectsAmbiguousRequest()
         {
@@ -1626,7 +1488,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("exactly one", exception.Message);
         }
 
-        /// <summary>Verifies execute action set node state inactive disables officer without detaching it.</summary>
         [Test]
         public void ExecuteAction_SetNodeStateInactive_DisablesOfficerWithoutDetachingIt()
         {
@@ -1644,7 +1505,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsActive());
         }
 
-        /// <summary>Verifies execute action set node state inactive mission participant throws invalid operation exception.</summary>
         [Test]
         public void ExecuteAction_SetNodeStateInactiveMissionParticipant_ThrowsInvalidOperationException()
         {
@@ -1673,7 +1533,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(officer.IsActive());
         }
 
-        /// <summary>Verifies execute action set node state selector disables every matching officer.</summary>
         [Test]
         public void ExecuteAction_SetNodeStateSelector_DisablesEveryMatchingOfficer()
         {
@@ -1696,7 +1555,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(second.IsActive());
         }
 
-        /// <summary>Verifies execute action set node state active enables officer at existing parent.</summary>
         [Test]
         public void ExecuteAction_SetNodeStateActive_EnablesOfficerAtExistingParent()
         {
@@ -1716,7 +1574,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(officer.IsActive());
         }
 
-        /// <summary>Verifies execute action set node state planet disables non movable node.</summary>
         [Test]
         public void ExecuteAction_SetNodeStatePlanet_DisablesNonMovableNode()
         {
@@ -1731,7 +1588,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(planet.IsActive());
         }
 
-        /// <summary>Verifies execute action set node state inactive officer selector enables matching officer.</summary>
         [Test]
         public void ExecuteAction_SetNodeStateInactiveOfficerSelector_EnablesMatchingOfficer()
         {
@@ -1760,7 +1616,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(officer.IsActive());
         }
 
-        /// <summary>Verifies that resolving valid references does not bypass the duel's location check.</summary>
         [Test]
         public void ProcessEvents_DuelOfficersAtDifferentPlanets_ReturnsNoDuel()
         {
@@ -1783,7 +1638,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies that the actual duel outcome retains the triggering participant's role.</summary>
         [Test]
         public void HandleResults_DuelSecondOfficerParticipated_ReversesAuthoredOrder()
         {
@@ -1820,7 +1674,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("encounter-voice", result.AudioPath);
         }
 
-        /// <summary>Verifies that an authored encounter resolves an eligible officer pair.</summary>
         [Test]
         public void ProcessEvents_DuelValidOfficers_ProducesDuelOutcome()
         {
@@ -1844,7 +1697,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, results.OfType<DuelResult>().Count());
         }
 
-        /// <summary>Verifies execute action reveal to faction selected officer emits concrete observation.</summary>
         [Test]
         public void ExecuteAction_RevealToFactionSelectedOfficer_EmitsConcreteObservation()
         {
@@ -1873,7 +1725,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { officer }, intelligence.Observations);
         }
 
-        /// <summary>Verifies delivery of an authored message with explicit recipient emits resolved result.</summary>
         [Test]
         public void ProcessEvents_SendMessageExplicitRecipient_EmitsResolvedResult()
         {
@@ -1902,7 +1753,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("Audio/Luke/dialogue", result.BackgroundAudioPath);
         }
 
-        /// <summary>Verifies delivery of an authored message with officer subject does not include subject image by default.</summary>
         [Test]
         public void ProcessEvents_SendMessageOfficerSubject_DoesNotIncludeSubjectImageByDefault()
         {
@@ -1924,7 +1774,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(result.OverlayImagePath);
         }
 
-        /// <summary>Verifies delivery of an authored message with show subject image includes officer message image.</summary>
         [Test]
         public void ProcessEvents_SendMessageShowSubjectImage_IncludesOfficerMessageImage()
         {
@@ -1947,7 +1796,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("Officers/Luke/message", result.OverlayImagePath);
         }
 
-        /// <summary>Verifies delivery of an authored message with explicit overlay image uses authored image.</summary>
         [Test]
         public void ProcessEvents_SendMessageExplicitOverlayImage_UsesAuthoredImage()
         {
@@ -1970,7 +1818,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("Story/portrait", result.OverlayImagePath);
         }
 
-        /// <summary>Verifies execute action send message recipient omitted throws exception.</summary>
         [Test]
         public void ExecuteAction_SendMessageRecipientOmitted_ThrowsException()
         {
@@ -1984,7 +1831,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("SendMessage requires RecipientFactionInstanceID.", exception.Message);
         }
 
-        /// <summary>Verifies delivery of an authored message with inactive subject emits resolved result.</summary>
         [Test]
         public void ProcessEvents_SendMessageInactiveSubject_EmitsResolvedResult()
         {
@@ -2010,7 +1856,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(rebelPlanet.InstanceID, result.EventLocationInstanceID);
         }
 
-        /// <summary>Verifies delivery of an authored message with audio binding uses trigger binding path.</summary>
         [Test]
         public void HandleResults_SendMessageAudioBinding_UsesTriggerBindingPath()
         {
@@ -2049,7 +1894,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("selected-encounter-voice", result.BackgroundAudioPath);
         }
 
-        /// <summary>Verifies delivery of an authored message with officer voice preset uses subject voice set.</summary>
         [Test]
         public void ProcessEvents_SendMessageOfficerVoicePreset_UsesSubjectVoiceSet()
         {
@@ -2079,7 +1923,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("luke-success", result.OfficerVoicePath);
         }
 
-        /// <summary>Verifies execute action send message multiple background sources throws exception.</summary>
         [Test]
         public void ExecuteAction_SendMessageMultipleBackgroundSources_ThrowsException()
         {
@@ -2100,7 +1943,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Throws<InvalidOperationException>(() => action.Execute(game));
         }
 
-        /// <summary>Verifies execute action if action event variable selects branch and persists mutation.</summary>
         [Test]
         public void ExecuteAction_IfActionEventVariable_SelectsBranchAndPersistsMutation()
         {
@@ -2139,7 +1981,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, game.EventRuntime.GetVariable("wrong"));
         }
 
-        /// <summary>Verifies that interpreting movement alone does not mutate the unit before deferred execution.</summary>
         [Test]
         public void ExecuteAction_SendUnitsValidReferences_DefersMovementUntilActivationCompletes()
         {
@@ -2158,7 +1999,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>Verifies execute action send units incompatible selector throws precise error.</summary>
         [Test]
         public void ExecuteAction_SendUnitsIncompatibleSelector_ThrowsPreciseError()
         {
@@ -2179,7 +2019,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("only movable units", exception.Message);
         }
 
-        /// <summary>Verifies that authored destination fallback tries the next candidate after rejection.</summary>
         [Test]
         public void ProcessEvents_SendUnitsFirstDestinationRejected_UsesNextCandidate()
         {
@@ -2215,7 +2054,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(officer.Movement);
         }
 
-        /// <summary>Verifies execute action set capture status incompatible selector throws precise error.</summary>
         [Test]
         public void ExecuteAction_SetCaptureStatusIncompatibleSelector_ThrowsPreciseError()
         {
@@ -2237,7 +2075,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("only officers", exception.Message);
         }
 
-        /// <summary>Verifies execute action set capture status normal capture allows escape.</summary>
         [Test]
         public void ExecuteAction_SetCaptureStatusNormalCapture_AllowsEscape()
         {
@@ -2262,7 +2099,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(officer, result.TargetOfficer);
         }
 
-        /// <summary>Verifies execute action set capture status authored non escaping capture disables escape.</summary>
         [Test]
         public void ExecuteAction_SetCaptureStatusAuthoredNonEscapingCapture_DisablesEscape()
         {
@@ -2282,7 +2118,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.CanEscape);
         }
 
-        /// <summary>Verifies execute action set capture status release clears captor and capture only state.</summary>
         [Test]
         public void ExecuteAction_SetCaptureStatusRelease_ClearsCaptorAndCaptureOnlyState()
         {
@@ -2306,7 +2141,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(officer.CanEscape);
         }
 
-        /// <summary>Verifies execute action set capture status recapture after release restores default escape state.</summary>
         [Test]
         public void ExecuteAction_SetCaptureStatusRecaptureAfterRelease_RestoresDefaultEscapeState()
         {
@@ -2333,7 +2167,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(officer.CanEscape);
         }
 
-        /// <summary>Verifies execute action set display name capital ship marks name as assigned.</summary>
         [Test]
         public void ExecuteAction_SetDisplayNameCapitalShip_MarksNameAsAssigned()
         {
@@ -2363,7 +2196,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(ship.HasAssignedName);
         }
 
-        /// <summary>Verifies execute action set officer images configured values updates officer.</summary>
         [Test]
         public void ExecuteAction_SetOfficerImagesConfiguredValues_UpdatesOfficer()
         {
@@ -2387,7 +2219,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("jedi-encyclopedia", luke.EncyclopediaImagePath);
         }
 
-        /// <summary>Verifies execute action set officer voice set configured values replaces selected voice pools.</summary>
         [Test]
         public void ExecuteAction_SetOfficerVoiceSetConfiguredValues_ReplacesSelectedVoicePools()
         {
@@ -2409,7 +2240,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies execute action increase force rank percent of effective rank adjusts force rating.</summary>
         [Test]
         public void ExecuteAction_IncreaseForceRankPercentOfEffectiveRank_AdjustsForceRating()
         {
@@ -2429,7 +2259,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(50, luke.ForceValue);
         }
 
-        /// <summary>Verifies execute action change officer rating amount adjusts stored rating.</summary>
         [Test]
         public void ExecuteAction_ChangeOfficerRatingAmount_AdjustsStoredRating()
         {
@@ -2450,7 +2279,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(45, luke.GetBaseRating(SkillRating.Diplomacy));
         }
 
-        /// <summary>Verifies execute action change officer rating percent of stored rating adjusts stored rating.</summary>
         [Test]
         public void ExecuteAction_ChangeOfficerRatingPercentOfStoredRating_AdjustsStoredRating()
         {
@@ -2469,7 +2297,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(30, luke.GetBaseRating(SkillRating.ShipResearch));
         }
 
-        /// <summary>Verifies execute action change officer rating multiple adjustment modes throws.</summary>
         [Test]
         public void ExecuteAction_ChangeOfficerRatingMultipleAdjustmentModes_Throws()
         {
@@ -2488,7 +2315,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies execute action perform skill check successful roll executes success actions.</summary>
         [Test]
         public void ExecuteAction_PerformSkillCheckSuccessfulRoll_ExecutesSuccessActions()
         {
@@ -2528,7 +2354,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, game.EventRuntime.GetVariable("result"));
         }
 
-        /// <summary>Verifies execute action perform skill check failed roll executes failure actions.</summary>
         [Test]
         public void ExecuteAction_PerformSkillCheckFailedRoll_ExecutesFailureActions()
         {
@@ -2559,7 +2384,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(-1, game.EventRuntime.GetVariable("result"));
         }
 
-        /// <summary>Verifies execute action perform skill check injured officer uses effective rating.</summary>
         [Test]
         public void ExecuteAction_PerformSkillCheckInjuredOfficer_UsesEffectiveRating()
         {
@@ -2589,7 +2413,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, game.EventRuntime.GetVariable("failed"));
         }
 
-        /// <summary>Verifies execute action perform skill check negative rating multiplier uses scaled score.</summary>
         [Test]
         public void ExecuteAction_PerformSkillCheckNegativeRatingMultiplier_UsesScaledScore()
         {
@@ -2620,7 +2443,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies execute action perform skill check missing officer throws invalid operation exception.</summary>
         [Test]
         public void ExecuteAction_PerformSkillCheckMissingOfficer_ThrowsInvalidOperationException()
         {
@@ -2639,7 +2461,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("could not resolve officer", exception.Message);
         }
 
-        /// <summary>Verifies execute action perform skill check missing probability table throws invalid operation exception.</summary>
         [Test]
         public void ExecuteAction_PerformSkillCheckMissingProbabilityTable_ThrowsInvalidOperationException()
         {
@@ -2660,7 +2481,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("could not resolve probability table", exception.Message);
         }
 
-        /// <summary>Verifies execute action set force eligible eligibility transition initializes force once.</summary>
         [Test]
         public void ExecuteAction_SetForceEligibleEligibilityTransition_InitializesForceOnce()
         {
@@ -2695,7 +2515,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(13, leia.ForceValue);
         }
 
-        /// <summary>Verifies execute action apply officer injury inclusive range applies rolled severity.</summary>
         [Test]
         public void ExecuteAction_ApplyOfficerInjuryInclusiveRange_AppliesRolledSeverity()
         {
@@ -2718,7 +2537,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(50, luke.InjuryPoints);
         }
 
-        /// <summary>Verifies execute action change raw resource nodes default increases explicit amount.</summary>
         [Test]
         public void ExecuteAction_ChangeRawResourceNodesDefault_IncreasesExplicitAmount()
         {
@@ -2745,7 +2563,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies execute action change raw resource nodes neutral planet reports no faction.</summary>
         [Test]
         public void ExecuteAction_ChangeRawResourceNodesNeutralPlanet_ReportsNoFaction()
         {
@@ -2773,7 +2590,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(5, planet.NumRawResourceNodes);
         }
 
-        /// <summary>Verifies execute action change raw resource nodes bound amount applies reused integer.</summary>
         [Test]
         public void ExecuteAction_ChangeRawResourceNodesBoundAmount_AppliesReusedInteger()
         {
@@ -2795,7 +2611,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, planet.NumRawResourceNodes);
         }
 
-        /// <summary>Verifies execute action change energy capacity rolled amount applies inclusive integer roll.</summary>
         [Test]
         public void ExecuteAction_ChangeEnergyCapacityRolledAmount_AppliesInclusiveIntegerRoll()
         {
@@ -2812,7 +2627,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(6, planet.EnergyCapacity);
         }
 
-        /// <summary>Verifies execute action change popular support increase rebalances other faction.</summary>
         [Test]
         public void ExecuteAction_ChangePopularSupportIncrease_RebalancesOtherFaction()
         {
@@ -2838,7 +2652,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies execute action set popular support absolute value preserves unallocated support.</summary>
         [Test]
         public void ExecuteAction_SetPopularSupportAbsoluteValue_PreservesUnallocatedSupport()
         {
@@ -2858,7 +2671,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(20, planet.GetPopularSupport("rebels"));
         }
 
-        /// <summary>Verifies execute action damage planet resources minimum loss guarantees one point loss.</summary>
         [Test]
         public void ExecuteAction_DamagePlanetResourcesMinimumLoss_GuaranteesOnePointLoss()
         {
@@ -2882,7 +2694,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, results.OfType<PlanetStatChangedResult>().Count());
         }
 
-        /// <summary>Verifies execute action damage planet resources na nprobability with no resources throws invalid operation exception.</summary>
         [Test]
         public void ExecuteAction_DamagePlanetResourcesNaNProbabilityWithNoResources_ThrowsInvalidOperationException()
         {
@@ -2900,7 +2711,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Throws<InvalidOperationException>(execute);
         }
 
-        /// <summary>Verifies execute action damage planet resources negative minimum loss with no resources throws invalid operation exception.</summary>
         [Test]
         public void ExecuteAction_DamagePlanetResourcesNegativeMinimumLossWithNoResources_ThrowsInvalidOperationException()
         {
@@ -2919,7 +2729,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Throws<InvalidOperationException>(execute);
         }
 
-        /// <summary>Verifies execute action roll chance rolled probability executes actions on success.</summary>
         [Test]
         public void ExecuteAction_RollChanceRolledProbability_ExecutesActionsOnSuccess()
         {
@@ -2938,7 +2747,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, game.EventRuntime.GetVariable("success"));
         }
 
-        /// <summary>Verifies execute action roll chance na nprobability throws invalid operation exception.</summary>
         [Test]
         public void ExecuteAction_RollChanceNaNProbability_ThrowsInvalidOperationException()
         {
@@ -2950,7 +2758,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Throws<InvalidOperationException>(execute);
         }
 
-        /// <summary>Verifies execute action roll chance failed probability does not execute actions.</summary>
         [Test]
         public void ExecuteAction_RollChanceFailedProbability_DoesNotExecuteActions()
         {
@@ -2969,7 +2776,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Zero(game.EventRuntime.GetVariable("failure"));
         }
 
-        /// <summary>Verifies execute action roll outcome weighted selection executes every action in selected outcome.</summary>
         [Test]
         public void ExecuteAction_RollOutcomeWeightedSelection_ExecutesEveryActionInSelectedOutcome()
         {
@@ -3005,7 +2811,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, game.EventRuntime.GetVariable("second"));
         }
 
-        /// <summary>Verifies execute action destroy units selected unit deletes unit from game.</summary>
         [Test]
         public void ExecuteAction_DestroyUnitsSelectedUnit_DeletesUnitFromGame()
         {
@@ -3031,7 +2836,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
-        /// <summary>Verifies execute action destroy units parent and child selected destroys subtree once.</summary>
         [Test]
         public void ExecuteAction_DestroyUnitsParentAndChildSelected_DestroysSubtreeOnce()
         {
@@ -3059,9 +2863,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that an invalid authored action does not suppress the surrounding actions.
-        /// </summary>
         [Test]
         public void ExecuteActions_ActionThrows_ExecutesRemainingActions()
         {
@@ -3099,7 +2900,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, game.EventRuntime.GetVariable("last"));
         }
 
-        /// <summary>Verifies that bindings are evaluated even before the scheduled activation tick.</summary>
         [Test]
         public void ProcessEvents_FutureActivation_EvaluatesBindingRoll()
         {
@@ -3126,7 +2926,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Zero(game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
-        /// <summary>Verifies that a binding failure propagates rather than continuing to the next event.</summary>
         [Test]
         public void ProcessEvents_BindingThrows_DoesNotExecuteFollowingEvent()
         {
@@ -3158,7 +2957,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Zero(game.EventRuntime.GetState(invalid.InstanceID).ActivationCount);
         }
 
-        /// <summary>Verifies that a null action is logged without suppressing the next action.</summary>
         [Test]
         public void ExecuteActions_NullAction_ExecutesFollowingAction()
         {
@@ -3178,7 +2976,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, game.EventRuntime.GetVariable("after"));
         }
 
-        /// <summary>Verifies that a later target failure does not roll back an action's earlier mutation.</summary>
         [Test]
         public void ExecuteActions_LaterTargetThrows_PreservesEarlierMutation()
         {
@@ -3221,9 +3018,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(assigned.IsEnabled);
         }
 
-        /// <summary>
-        /// Verifies that a nested action's result is available before the following action rolls.
-        /// </summary>
         [Test]
         public void ExecuteActions_NestedActions_RecordsResultBeforeNextRoll()
         {
@@ -3262,7 +3056,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, provider.ResultsAtRoll);
         }
 
-        /// <summary>Verifies that duplicate aliases fail after consuming the binding's random draw.</summary>
         [Test]
         public void Bind_DuplicateAlias_ConsumesRollBeforeRejectingAlias()
         {
@@ -3287,7 +3080,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(42, context.GetBinding<int>("count"));
         }
 
-        /// <summary>Verifies bind numeric ranges stores rolled values.</summary>
         [Test]
         public void Bind_NumericRanges_StoresRolledValues()
         {
@@ -3312,7 +3104,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0.5, context.GetBinding<double>("probability"), 0.0001);
         }
 
-        /// <summary>Verifies bind typed sources stores resolved values.</summary>
         [Test]
         public void Bind_TypedSources_StoresResolvedValues()
         {
@@ -3413,7 +3204,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, context.GetBinding<int>("officerCount"));
         }
 
-        /// <summary>Verifies bind typed officer sources with inactive officer stores resolved values.</summary>
         [Test]
         public void Bind_TypedOfficerSourcesWithInactiveOfficer_StoresResolvedValues()
         {
@@ -3476,7 +3266,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(expectedForceRank, context.GetBinding<int>("force"));
         }
 
-        /// <summary>Verifies bind planet stat with inactive planet stores resolved value.</summary>
         [Test]
         public void Bind_PlanetStatWithInactivePlanet_StoresResolvedValue()
         {
@@ -3507,7 +3296,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(7, context.GetBinding<int>("resources"));
         }
 
-        /// <summary>Verifies roll double extreme finite range returns finite value.</summary>
         [Test]
         public void Roll_ExtremeFiniteDoubleRange_ReturnsFiniteValue()
         {
@@ -3524,9 +3312,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, result);
         }
 
-        /// <summary>Verifies that short-circuiting compositions do not consume a later condition's random draw.</summary>
-        /// <param name="operation">The authored composition to evaluate.</param>
-        /// <param name="firstMatches">Whether the first condition matches.</param>
         [TestCase("All", false)]
         [TestCase("Any", true)]
         [TestCase("Not", true)]
@@ -3559,7 +3344,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0.25, game.Random.NextDouble());
         }
 
-        /// <summary>Verifies that XOR evaluates every operand even after two conditions match.</summary>
         [Test]
         public void IsMet_XorAlreadyHasTwoMatches_StillRollsFollowingCondition()
         {
@@ -3586,7 +3370,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0.75, game.Random.NextDouble());
         }
 
-        /// <summary>Verifies evaluate binding null binding returns false.</summary>
         [Test]
         public void IsMet_EvaluateBindingNullBinding_ReturnsFalse()
         {
@@ -3609,7 +3392,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(result);
         }
 
-        /// <summary>Verifies evaluate binding object binding throws invalid operation exception.</summary>
         [Test]
         public void IsMet_EvaluateBindingObjectBinding_ThrowsInvalidOperationException()
         {
@@ -3640,7 +3422,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("cannot be compared", exception.Message);
         }
 
-        /// <summary>Verifies evaluate binding different object binding throws invalid operation exception.</summary>
         [Test]
         public void IsMet_EvaluateBindingDifferentObjectBinding_ThrowsInvalidOperationException()
         {
@@ -3665,7 +3446,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("cannot be compared", exception.Message);
         }
 
-        /// <summary>Verifies evaluate binding compatible binding comparison returns true.</summary>
         [Test]
         public void IsMet_EvaluateBindingCompatibleBindingComparison_ReturnsTrue()
         {
@@ -3689,7 +3469,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(result);
         }
 
-        /// <summary>Verifies evaluate binding incompatible binding comparison throws invalid operation exception.</summary>
         [Test]
         public void IsMet_EvaluateBindingIncompatibleBindingComparison_ThrowsInvalidOperationException()
         {
@@ -3715,7 +3494,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("incompatible value types", exception.Message);
         }
 
-        /// <summary>Verifies evaluate binding enum literal comparison returns true.</summary>
         [Test]
         public void IsMet_EvaluateBindingEnumLiteralComparison_ReturnsTrue()
         {
@@ -3736,7 +3514,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(GameEventExecutor.IsMet(conditional, game, context));
         }
 
-        /// <summary>Verifies evaluate binding enum and string bindings throws invalid operation exception.</summary>
         [Test]
         public void IsMet_EvaluateBindingEnumAndStringBindings_ThrowsInvalidOperationException()
         {
@@ -3762,7 +3539,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("incompatible value types", exception.Message);
         }
 
-        /// <summary>Verifies evaluate binding ordered enum comparison throws invalid operation exception.</summary>
         [Test]
         public void IsMet_EvaluateBindingOrderedEnumComparison_ThrowsInvalidOperationException()
         {
@@ -3787,9 +3563,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains("ordered comparisons only for numeric values", exception.Message);
         }
 
-        /// <summary>Verifies evaluate binding null optional binding uses predicate semantics.</summary>
-        /// <param name="comparison">The authored comparison operator.</param>
-        /// <param name="expected">The expected match result.</param>
         [TestCase(ComparisonOperator.Equal, false)]
         [TestCase(ComparisonOperator.NotEqual, true)]
         [TestCase(ComparisonOperator.GreaterThan, false)]
@@ -3818,7 +3591,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(expected, GameEventExecutor.IsMet(conditional, game, context));
         }
 
-        /// <summary>Verifies has event activated activation recorded returns true.</summary>
         [Test]
         public void IsMet_HasEventActivatedActivationRecorded_ReturnsTrue()
         {
@@ -3832,7 +3604,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(GameEventExecutor.IsMet(conditional, game));
         }
 
-        /// <summary>Verifies is event complete persisted completion state returns true.</summary>
         [Test]
         public void IsMet_IsEventCompletePersistedCompletionState_ReturnsTrue()
         {
@@ -3848,7 +3619,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(isComplete);
         }
 
-        /// <summary>Verifies is event complete loaded unlimited event returns false.</summary>
         [Test]
         public void IsMet_IsEventCompleteLoadedUnlimitedEvent_ReturnsFalse()
         {
@@ -3865,7 +3635,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(isComplete);
         }
 
-        /// <summary>Verifies roll against popular support roll below support returns true.</summary>
         [Test]
         public void IsMet_RollAgainstPopularSupportRollBelowSupport_ReturnsTrue()
         {
@@ -3892,7 +3661,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(result);
         }
 
-        /// <summary>Verifies share parent different immediate parents does not match.</summary>
         [Test]
         public void IsMet_ShareParentDifferentImmediateParents_DoesNotMatch()
         {
@@ -3916,7 +3684,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(planet, fleet.GetParent());
         }
 
-        /// <summary>Verifies share ancestor same planet with different immediate parents matches.</summary>
         [Test]
         public void IsMet_ShareAncestorSamePlanetWithDifferentImmediateParents_Matches()
         {
@@ -3936,7 +3703,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(isMet);
         }
 
-        /// <summary>Verifies is captured with captor uncaptured officer with stale captor does not match.</summary>
         [Test]
         public void IsMet_IsCapturedWithCaptor_UncapturedOfficerWithStaleCaptorDoesNotMatch()
         {
@@ -3956,7 +3722,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(isMet);
         }
 
-        /// <summary>Verifies is captured optional captor qualifies captured officer when provided.</summary>
         [Test]
         public void IsMet_IsCapturedOptionalCaptor_QualifiesCapturedOfficerWhenProvided()
         {
@@ -3984,7 +3749,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies is killed inactive killed officer matches by registered identity.</summary>
         [Test]
         public void IsMet_IsKilledInactiveKilledOfficer_MatchesByRegisteredIdentity()
         {
@@ -4002,7 +3766,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(isMet);
         }
 
-        /// <summary>Verifies is active inactive officer returns false without losing identity.</summary>
         [Test]
         public void IsMet_IsActiveInactiveOfficer_ReturnsFalseWithoutLosingIdentity()
         {
@@ -4024,7 +3787,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies is active active officer returns true.</summary>
         [Test]
         public void IsMet_IsActiveActiveOfficer_ReturnsTrue()
         {
@@ -4041,7 +3803,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(isMet);
         }
 
-        /// <summary>Verifies has building type inactive planet with enabled building returns true.</summary>
         [Test]
         public void IsMet_HasBuildingTypeInactivePlanetWithEnabledBuilding_ReturnsTrue()
         {
@@ -4067,7 +3828,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(isMet);
         }
 
-        /// <summary>Verifies has building type disabled building returns false.</summary>
         [Test]
         public void IsMet_HasBuildingTypeDisabledBuilding_ReturnsFalse()
         {
@@ -4093,7 +3853,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(isMet);
         }
 
-        /// <summary>Verifies has force rank configured semantic rank uses configured minimum.</summary>
         [Test]
         public void IsMet_HasForceRankConfiguredSemanticRank_UsesConfiguredMinimum()
         {
@@ -4113,7 +3872,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(isMet);
         }
 
-        /// <summary>Verifies has force rank inactive officer uses configured minimum.</summary>
         [Test]
         public void IsMet_HasForceRankInactiveOfficer_UsesConfiguredMinimum()
         {
@@ -4134,7 +3892,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(isMet);
         }
 
-        /// <summary>Verifies that choosing the first match does not evaluate later selectors.</summary>
         [Test]
         public void Select_FirstCandidateMatches_DoesNotEvaluateLaterInvalidSelector()
         {
@@ -4151,7 +3908,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(planet, selected);
         }
 
-        /// <summary>Verifies that ordinary selection reads filter state when enumerated.</summary>
         [Test]
         public void Select_PlanetDestroyedBeforeEnumeration_ExcludesPlanet()
         {
@@ -4167,7 +3923,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(selected);
         }
 
-        /// <summary>Verifies that random selection rolls once per distinct candidate in identity order.</summary>
         [Test]
         public void Select_RandomCandidatesOutOfOrder_RollsInIdentityOrderBeforeEnumeration()
         {
@@ -4192,7 +3947,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { second }, selected);
         }
 
-        /// <summary>Verifies that selecting a spawn source rejects it before consuming randomness.</summary>
         [Test]
         public void Select_SpawnSource_RejectsWithoutRandomDraw()
         {
@@ -4206,7 +3960,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0.25, provider.NextDouble());
         }
 
-        /// <summary>Verifies select planets matching instance id returns planet.</summary>
         [Test]
         public void Select_PlanetsMatchingInstanceID_ReturnsPlanet()
         {
@@ -4221,7 +3974,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(planet, selected);
         }
 
-        /// <summary>Verifies select planets destroyed planet returns nothing.</summary>
         [Test]
         public void Select_PlanetsDestroyedPlanet_ReturnsNothing()
         {
@@ -4234,7 +3986,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(any);
         }
 
-        /// <summary>Verifies select planets no filters returns every surviving planet.</summary>
         [Test]
         public void Select_PlanetsNoFilters_ReturnsEverySurvivingPlanet()
         {
@@ -4251,7 +4002,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { firstPlanet, secondPlanet }, selected);
         }
 
-        /// <summary>Verifies select random filtered planet set returns requested count.</summary>
         [Test]
         public void Select_RandomFilteredPlanetSet_ReturnsRequestedCount()
         {
@@ -4278,7 +4028,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(rimPlanet, selected);
         }
 
-        /// <summary>Verifies select manufacturing orders matching planet returns queued product.</summary>
         [Test]
         public void Select_ManufacturingOrdersMatchingPlanet_ReturnsQueuedProduct()
         {
@@ -4308,7 +4057,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(building, selected);
         }
 
-        /// <summary>Verifies select capital ships include inactive returns capital ship.</summary>
         [Test]
         public void Select_CapitalShipsIncludeInactive_ReturnsCapitalShip()
         {
@@ -4335,7 +4083,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(ship, selected);
         }
 
-        /// <summary>Verifies select officers include inactive at current planet returns officer.</summary>
         [Test]
         public void Select_OfficersIncludeInactiveAtCurrentPlanet_ReturnsOfficer()
         {
@@ -4359,7 +4106,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new ISceneNode[] { officer }, selected);
         }
 
-        /// <summary>Verifies select binding stale reference with registered instance id returns canonical node.</summary>
         [Test]
         public void Select_BindingStaleReferenceWithRegisteredInstanceID_ReturnsCanonicalNode()
         {
@@ -4381,7 +4127,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(canonical, selected);
         }
 
-        /// <summary>Verifies select binding inactive registered node returns canonical node.</summary>
         [Test]
         public void Select_BindingInactiveRegisteredNode_ReturnsCanonicalNode()
         {
@@ -4403,7 +4148,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(officer, selected);
         }
 
-        /// <summary>Verifies select previous location inactive unit returns previous location.</summary>
         [Test]
         public void Select_PreviousLocationInactiveUnit_ReturnsPreviousLocation()
         {
@@ -4424,7 +4168,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(planet, selected);
         }
 
-        /// <summary>Verifies that a later invalid argument leaves earlier trigger bindings intact.</summary>
         [Test]
         public void Bind_LaterArgumentInvalid_RetainsEarlierBinding()
         {
@@ -4450,7 +4193,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(officer, context.GetBinding<Officer>("officer"));
         }
 
-        /// <summary>Verifies that a duplicate alias leaves its first trigger argument unchanged.</summary>
         [Test]
         public void Bind_DuplicateAlias_RetainsFirstArgument()
         {
@@ -4481,7 +4223,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(first, context.GetBinding<Officer>("officer"));
         }
 
-        /// <summary>Verifies matches planet ownership changed trigger applies ownership filters.</summary>
         [Test]
         public void Matches_PlanetOwnershipChangedTrigger_AppliesOwnershipFilters()
         {
@@ -4503,7 +4244,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
         }
 
-        /// <summary>Verifies matches intelligence revealed trigger applies recipient and observation filters.</summary>
         [Test]
         public void Matches_IntelligenceRevealedTrigger_AppliesRecipientAndObservationFilters()
         {
@@ -4523,7 +4263,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
         }
 
-        /// <summary>Verifies matches maintenance required trigger applies faction filter.</summary>
         [Test]
         public void Matches_MaintenanceRequiredTrigger_AppliesFactionFilter()
         {
@@ -4541,7 +4280,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
         }
 
-        /// <summary>Verifies matches officer capture changed trigger applies officer and state filters.</summary>
         [Test]
         public void Matches_OfficerCaptureChangedTrigger_AppliesOfficerAndStateFilters()
         {
@@ -4561,7 +4299,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
         }
 
-        /// <summary>Verifies matches force discovery changed trigger applies officer and event type filters.</summary>
         [Test]
         public void Matches_ForceDiscoveryChangedTrigger_AppliesOfficerAndEventTypeFilters()
         {
@@ -4581,7 +4318,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
         }
 
-        /// <summary>Verifies matches unit arrived trigger applies identity and destination filters.</summary>
         [Test]
         public void Matches_UnitArrivedTrigger_AppliesIdentityAndDestinationFilters()
         {
@@ -4601,9 +4337,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
         }
 
-        /// <summary>Verifies matches unit destroyed trigger covers every destruction path.</summary>
-        /// <param name="result">The destruction result to match.</param>
-        /// <param name="reason">The authored destruction-reason filter.</param>
         [TestCaseSource(nameof(UnitDestructionResults))]
         public void Matches_UnitDestroyedTrigger_CoversEveryDestructionPath(
             GameObjectDestroyedResult result,
@@ -4619,7 +4352,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
         }
 
-        /// <summary>Verifies matches duel completed trigger applies officer and source filters.</summary>
         [Test]
         public void Matches_DuelCompletedTrigger_AppliesOfficerAndSourceFilters()
         {
@@ -4641,7 +4373,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
         }
 
-        /// <summary>Verifies matches bombardment completed trigger applies outcome filters.</summary>
         [Test]
         public void Matches_BombardmentCompletedTrigger_AppliesOutcomeFilters()
         {

@@ -7,9 +7,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
     [TestFixture]
     public sealed class ServiceContainerTests
     {
-        /// <summary>
-        /// Verifies a service cannot silently replace an existing registration.
-        /// </summary>
         [Test]
         public void AddSingleton_DuplicateService_ThrowsInvalidOperationException()
         {
@@ -19,9 +16,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             Assert.Throws<InvalidOperationException>(() => container.AddSingleton<SimpleService>());
         }
 
-        /// <summary>
-        /// Verifies abstract registrations fail before service resolution.
-        /// </summary>
         [Test]
         public void AddSingleton_AbstractImplementation_ThrowsArgumentException()
         {
@@ -32,9 +26,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             );
         }
 
-        /// <summary>
-        /// Verifies null factories cannot be registered.
-        /// </summary>
         [Test]
         public void AddSingleton_NullFactory_ThrowsArgumentNullException()
         {
@@ -45,9 +36,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             );
         }
 
-        /// <summary>
-        /// Verifies an ambiguous implementation requires an explicit factory.
-        /// </summary>
         [Test]
         public void AddSingleton_MultiplePublicConstructors_ThrowsInvalidOperationException()
         {
@@ -58,9 +46,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             );
         }
 
-        /// <summary>
-        /// Verifies already constructed services cannot be null.
-        /// </summary>
         [Test]
         public void AddSingletonInstance_NullInstance_ThrowsArgumentNullException()
         {
@@ -71,9 +56,6 @@ namespace Rebellion.Tests.Util.DependencyInjection
             );
         }
 
-        /// <summary>
-        /// Verifies separate locators do not share constructed singleton instances.
-        /// </summary>
         [Test]
         public void BuildServiceLocator_TwoLocators_CachesSingletonsIndependently()
         {

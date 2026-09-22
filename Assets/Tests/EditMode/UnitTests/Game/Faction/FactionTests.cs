@@ -1343,7 +1343,6 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(70, _faction.GetTotalInProgressConstructionCost());
         }
 
-        /// <summary>Verifies calculates correctly when faction with planets.</summary>
         [Test]
         public void MaintenanceCapacity_FactionWithPlanets_CalculatesCorrectly()
         {
@@ -1364,7 +1363,6 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(50, capacity);
         }
 
-        /// <summary>Verifies does not change capacity when refinement multiplier.</summary>
         [Test]
         public void MaintenanceCapacity_RefinementMultiplier_DoesNotChangeCapacity()
         {
@@ -1383,7 +1381,6 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(50, empire.MaintenanceCapacity);
         }
 
-        /// <summary>Verifies calculates global pair when mine and refinery on different planets.</summary>
         [Test]
         public void MaintenanceCapacity_MineAndRefineryOnDifferentPlanets_CalculatesGlobalPair()
         {

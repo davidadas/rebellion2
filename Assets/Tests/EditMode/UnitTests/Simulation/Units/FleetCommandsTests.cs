@@ -39,9 +39,6 @@ namespace Rebellion.Tests.Simulation
             _fleetSystem = new FleetCommands(_game);
         }
 
-        /// <summary>
-        /// Verifies with null game: throws argument null exception.
-        /// </summary>
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
@@ -52,9 +49,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("game", exception.ParamName);
         }
 
-        /// <summary>
-        /// Verifies snapshot destination: creates fleet on live planet.
-        /// </summary>
         [Test]
         public void CreateAtPlanet_SnapshotDestination_CreatesFleetOnLivePlanet()
         {
@@ -68,9 +62,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(_ownerId, fleet.GetOwnerInstanceID());
         }
 
-        /// <summary>
-        /// Verifies invalid owner: does not create fleet.
-        /// </summary>
         [Test]
         public void CreateAtPlanet_InvalidOwner_DoesNotCreateFleet()
         {
@@ -80,9 +71,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(_planet.GetChildren<Fleet>());
         }
 
-        /// <summary>
-        /// Verifies partial source selection: preserves source fleet.
-        /// </summary>
         [Test]
         public void CreateFromCapitalShips_PartialSourceSelection_PreservesSourceFleet()
         {
@@ -104,9 +92,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies complete source selection: removes source fleet.
-        /// </summary>
         [Test]
         public void CreateFromCapitalShips_CompleteSourceSelection_RemovesSourceFleet()
         {
@@ -126,9 +111,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies snapshot selection: uses live ship.
-        /// </summary>
         [Test]
         public void CreateFromCapitalShips_SnapshotSelection_UsesLiveShip()
         {
@@ -146,9 +128,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(snapshot.GetParent());
         }
 
-        /// <summary>
-        /// Verifies unauthorized owner: preserves source graph.
-        /// </summary>
         [Test]
         public void CreateFromCapitalShips_UnauthorizedOwner_PreservesSourceGraph()
         {
@@ -164,9 +143,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetChildren<Fleet>().ToList());
         }
 
-        /// <summary>
-        /// Verifies completed ship in transit: preserves source graph.
-        /// </summary>
         [Test]
         public void CreateFromCapitalShips_CompletedShipInTransit_PreservesSourceGraph()
         {
@@ -183,9 +159,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetChildren<Fleet>().ToList());
         }
 
-        /// <summary>
-        /// Verifies ship under construction: changes delivery fleet.
-        /// </summary>
         [Test]
         public void CreateFromCapitalShips_ShipUnderConstruction_ChangesDeliveryFleet()
         {
@@ -204,9 +177,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(ManufacturingStatus.Building, ship.ManufacturingStatus);
         }
 
-        /// <summary>
-        /// Verifies populated fleet: preserves fleet.
-        /// </summary>
         [Test]
         public void RemoveIfEmpty_PopulatedFleet_PreservesFleet()
         {
@@ -218,9 +188,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(_planet, fleet.GetParent());
         }
 
-        /// <summary>
-        /// Verifies empty fleet: removes fleet.
-        /// </summary>
         [Test]
         public void RemoveIfEmpty_EmptyFleet_RemovesFleet()
         {

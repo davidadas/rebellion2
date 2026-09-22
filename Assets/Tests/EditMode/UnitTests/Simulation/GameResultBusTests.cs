@@ -10,9 +10,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class GameResultBusTests
     {
-        /// <summary>
-        /// Verifies that subscriptions filter types and preserve registration order.
-        /// </summary>
         [Test]
         public void Publish_MatchingResults_InvokesOnlyMatchingHandlersInRegistrationOrder()
         {
@@ -42,9 +39,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, unrelatedCalls);
         }
 
-        /// <summary>
-        /// Verifies that follow-up batches use breadth-first delivery in registration order.
-        /// </summary>
         [Test]
         public void Publish_ReactionResults_ProcessesBreadthFirstWavesInRegistrationOrder()
         {
@@ -97,9 +91,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that settled observers receive their matching facts after all reactions.
-        /// </summary>
         [Test]
         public void Publish_Observers_ReceiveMatchingResultsAfterAllReactionWaves()
         {
@@ -131,9 +122,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, results.Count);
         }
 
-        /// <summary>
-        /// Verifies that matching facts from one input batch reach a handler together.
-        /// </summary>
         [Test]
         public void Publish_MultipleMatchingResults_DeliversOneOrderedBatch()
         {
@@ -153,9 +141,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { first, second }, batches[0]);
         }
 
-        /// <summary>
-        /// Verifies that reactions from separate subscribers remain one subsequent batch.
-        /// </summary>
         [Test]
         public void Publish_ReactionsFromMultipleHandlers_CombinesNextWave()
         {
@@ -177,9 +162,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { first, second }, batches[0]);
         }
 
-        /// <summary>
-        /// Verifies that a reaction failure reaches the caller without wrapping or suppression.
-        /// </summary>
         [Test]
         public void Publish_HandlerThrows_PropagatesOriginalException()
         {
@@ -194,9 +176,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(failure, thrown);
         }
 
-        /// <summary>
-        /// Verifies that a failed reaction does not continue to later subscribers or observers.
-        /// </summary>
         [Test]
         public void Publish_HandlerThrows_StopsCurrentDelivery()
         {
@@ -219,9 +198,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(calls);
         }
 
-        /// <summary>
-        /// Verifies that observer failures are not converted into successful delivery.
-        /// </summary>
         [Test]
         public void Publish_ObserverThrows_PropagatesOriginalException()
         {
@@ -236,9 +212,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(failure, thrown);
         }
 
-        /// <summary>
-        /// Verifies that a failed pass neither poisons nor replays work into the next invocation.
-        /// </summary>
         [Test]
         public void Publish_AfterFailedDelivery_ProcessesOnlyNewBatch()
         {
@@ -262,9 +235,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { next }, batches[1]);
         }
 
-        /// <summary>
-        /// Verifies that nested publication waits until every subscriber finishes the current wave.
-        /// </summary>
         [Test]
         public void Publish_DuringReaction_DeliversFollowUpAfterCurrentWave()
         {
@@ -287,9 +257,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that explicitly published follow-ups from different callbacks stay one batch.
-        /// </summary>
         [Test]
         public void Publish_DuringMultipleReactions_CombinesFollowUpBatch()
         {
@@ -313,9 +280,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { first, second }, batches[0]);
         }
 
-        /// <summary>
-        /// Verifies that results published by a settled observer do not interrupt other observers.
-        /// </summary>
         [Test]
         public void Publish_DuringObservation_DeliversFollowUpAfterCurrentObservers()
         {
@@ -346,9 +310,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that disposing a subscription detaches only that callback.
-        /// </summary>
         [Test]
         public void Subscribe_DisposedHandle_DetachesOnlyItsCallback()
         {
@@ -366,9 +327,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { "retained" }, calls);
         }
 
-        /// <summary>
-        /// Verifies that an observer can detach independently of reaction subscribers.
-        /// </summary>
         [Test]
         public void Observe_DisposedHandle_DetachesObserver()
         {
@@ -384,9 +342,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, observations);
         }
 
-        /// <summary>
-        /// Verifies that detaching during notification prevents the removed callback from running.
-        /// </summary>
         [Test]
         public void Publish_SubscriptionDisposedDuringDelivery_SkipsDetachedSubscriber()
         {
@@ -402,9 +357,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { "retained" }, calls);
         }
 
-        /// <summary>
-        /// Verifies that separate running games cannot deliver results to each other's subscribers.
-        /// </summary>
         [Test]
         public void Publish_SeparateBus_DoesNotNotifyOtherGame()
         {
@@ -418,9 +370,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, calls);
         }
 
-        /// <summary>
-        /// Verifies that a failed delivery does not retain queued follow-ups for a later invocation.
-        /// </summary>
         [Test]
         public void Publish_HandlerThrowsAfterFollowUpQueued_DiscardsUnfinishedDelivery()
         {
@@ -441,9 +390,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, uprisingCalls);
         }
 
-        /// <summary>
-        /// Verifies that enumerating a failed input batch cannot leave partially queued facts.
-        /// </summary>
         [Test]
         public void Publish_InputEnumerationThrows_DoesNotRetainPartialBatch()
         {

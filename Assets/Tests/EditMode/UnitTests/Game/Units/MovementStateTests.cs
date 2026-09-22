@@ -7,9 +7,6 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public sealed class MovementStateTests
     {
-        /// <summary>
-        /// Verifies that serialization preserves movement progress and positions.
-        /// </summary>
         [Test]
         public void Serialize_TransitState_RoundTripsPositionsAndOrigin()
         {

@@ -26,9 +26,6 @@ namespace Rebellion.Tests.Simulation
             _queries = new FogOfWarQueries(_game);
         }
 
-        /// <summary>
-        /// Verifies planet with all entities creates accurate snapshot.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_PlanetWithAllEntities_CreatesAccurateSnapshot()
         {
@@ -67,9 +64,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(5, snapshot.NumRawResourceNodes);
         }
 
-        /// <summary>
-        /// Verifies deep copy modifying game does not affect snapshot.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_DeepCopy_ModifyingGameDoesNotAffectSnapshot()
         {
@@ -89,9 +83,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(50, snapshot.Officers[0].GetBaseRating(SkillRating.Diplomacy));
         }
 
-        /// <summary>
-        /// Verifies single entity copies entity with same instance id.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_SingleEntity_CopiesEntityWithSameInstanceID()
         {
@@ -107,9 +98,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreNotSame(vader, snapshot.Officers[0]);
         }
 
-        /// <summary>
-        /// Verifies unvisited planet marks planet visited.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_UnvisitedPlanet_MarksPlanetVisited()
         {
@@ -120,9 +108,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(_coruscant.WasVisitedBy(_alliance.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies entity moves removed from old planet snapshot.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_EntityMoves_RemovedFromOldPlanetSnapshot()
         {
@@ -148,9 +133,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("VADER", tatooineSnapshot.Officers[0].InstanceID);
         }
 
-        /// <summary>
-        /// Verifies multiple entities move invalidation independent per entity.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_MultipleEntitiesMove_InvalidationIndependentPerEntity()
         {
@@ -177,9 +159,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, coruscantSnapshot.Fleets.Count);
         }
 
-        /// <summary>
-        /// Verifies entity seen twice same planet does not duplicate.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_EntitySeenTwiceSamePlanet_DoesNotDuplicate()
         {
@@ -195,9 +174,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, snapshot.Officers.Count);
         }
 
-        /// <summary>
-        /// Verifies entity moves back to original planet handled correctly.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_EntityMovesBackToOriginalPlanet_HandledCorrectly()
         {
@@ -224,9 +200,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, tatooineSnapshot.Officers.Count);
         }
 
-        /// <summary>
-        /// Verifies vader rediscovered removes from old planet.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_VaderRediscovered_RemovesFromOldPlanet()
         {
@@ -256,9 +229,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, viewTatooine.GetChildren<Officer>().Count);
         }
 
-        /// <summary>
-        /// Verifies empty planet creates planet snapshot.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_EmptyPlanet_CreatesPlanetSnapshot()
         {
@@ -270,9 +240,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(snapshot);
         }
 
-        /// <summary>
-        /// Verifies nested entity observed elsewhere removes old fleet manifest entry.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_NestedEntityObservedElsewhere_RemovesOldFleetManifestEntry()
         {
@@ -310,9 +277,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies entity on planet updates last seen index.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_EntityOnPlanet_UpdatesLastSeenIndex()
         {
@@ -330,9 +294,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("TATOOINE", _alliance.Fog.EntityLastSeenAt["VADER"]);
         }
 
-        /// <summary>
-        /// Verifies planet in planet sector maps planet to sector.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_PlanetInPlanetSector_MapsPlanetToSector()
         {
@@ -345,9 +306,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("OUTERRIM", _alliance.Fog.PlanetToSector["TATOOINE"]);
         }
 
-        /// <summary>
-        /// Verifies planet visible snapshot not overwritten without explicit call.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_PlanetVisible_SnapshotNotOverwrittenWithoutExplicitCall()
         {
@@ -380,9 +338,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, snapshot.Officers.Count, "Snapshot should not include new entities");
         }
 
-        /// <summary>
-        /// Verifies invalidation removes only target entity.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_Invalidation_RemovesOnlyTargetEntity()
         {
@@ -435,9 +390,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies captured friendly officer includes detached officer.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_CapturedFriendlyOfficer_IncludesDetachedOfficer()
         {
@@ -456,9 +408,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(_empire.InstanceID, observed.CaptorInstanceID);
         }
 
-        /// <summary>
-        /// Verifies ordinary observation manufacturing remains hidden.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_OrdinaryObservation_ManufacturingRemainsHidden()
         {
@@ -474,9 +423,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies participant seen elsewhere preserves recorded mission identity.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_ParticipantSeenElsewhere_PreservesRecordedMissionIdentity()
         {
@@ -512,9 +458,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("Darth Vader", recordedParticipant.DisplayName);
         }
 
-        /// <summary>
-        /// Verifies after espionage preserves incoming enemy fleet.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_PreservesIncomingEnemyFleet()
         {
@@ -538,9 +481,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(viewFleet.Movement);
         }
 
-        /// <summary>
-        /// Verifies after espionage preserves mission intelligence.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_PreservesMissionIntelligence()
         {
@@ -558,9 +498,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(empireMission.InstanceID, snapshot.Missions[0].InstanceID);
         }
 
-        /// <summary>
-        /// Verifies after espionage preserves stale manufacturing intel.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_PreservesStaleManufacturingIntel()
         {
@@ -586,9 +523,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(25, queue[0].ManufacturingProgress);
         }
 
-        /// <summary>
-        /// Verifies after espionage removes absent manufacturing intel.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_RemovesAbsentManufacturingIntel()
         {
@@ -613,9 +547,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies after espionage removes absent cargo from preserved ship.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_RemovesAbsentCargoFromPreservedShip()
         {
@@ -648,9 +579,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(preservedShip.GetChildren<Regiment>());
         }
 
-        /// <summary>
-        /// Verifies after espionage preserves fleet containing only manufacturing ship.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_PreservesFleetContainingOnlyManufacturingShip()
         {
@@ -689,9 +617,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies after espionage removes absent fleet containing only manufacturing ship.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_AfterEspionage_RemovesAbsentFleetContainingOnlyManufacturingShip()
         {
@@ -720,9 +645,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(knownShip.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies enemy units in transit not recorded.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_EnemyUnitsInTransit_NotRecorded()
         {
@@ -754,9 +676,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(snapshot.Fleets);
         }
 
-        /// <summary>
-        /// Verifies empty fleet excluded from snapshot.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_EmptyFleet_ExcludedFromSnapshot()
         {
@@ -782,9 +701,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies fleet with ships included in snapshot.
-        /// </summary>
         [Test]
         public void CaptureSnapshot_FleetWithShips_IncludedInSnapshot()
         {

@@ -10,9 +10,6 @@ namespace Rebellion.Tests.Game.FogOfWar
     [TestFixture]
     public class PlanetSnapshotTests : FogOfWarTestBase
     {
-        /// <summary>
-        /// Verifies default mission participant intelligence survives serialization round trip.
-        /// </summary>
         [Test]
         public void PlanetSnapshot_Default_MissionParticipantIntelligenceSurvivesSerializationRoundTrip()
         {

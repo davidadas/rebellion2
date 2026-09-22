@@ -13,9 +13,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class BombardmentQueriesTests
     {
-        /// <summary>
-        /// Verifies can execute neutral planet with active capital ship returns true.
-        /// </summary>
         [Test]
         public void CanExecute_NeutralPlanetWithActiveCapitalShip_ReturnsTrue()
         {
@@ -32,9 +29,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(canExecute);
         }
 
-        /// <summary>
-        /// Verifies can execute damaged low bombardment ship returns true.
-        /// </summary>
         [Test]
         public void CanExecute_DamagedLowBombardmentShip_ReturnsTrue()
         {
@@ -57,10 +51,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(canExecute);
         }
 
-        /// <summary>
-        /// Verifies can execute ordinary bombardment without effective strength returns false.
-        /// </summary>
-        /// <param name="type">The type.</param>
         [TestCase(BombardmentType.Military)]
         [TestCase(BombardmentType.Civilian)]
         [TestCase(BombardmentType.General)]
@@ -81,9 +71,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(canExecute);
         }
 
-        /// <summary>
-        /// Verifies can execute embarked fighter supplies bombardment strength returns true.
-        /// </summary>
         [Test]
         public void CanExecute_EmbarkedFighterSuppliesBombardmentStrength_ReturnsTrue()
         {
@@ -114,9 +101,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(canExecute);
         }
 
-        /// <summary>
-        /// Verifies the raw eligibility query rejects a null fleet in the selection.
-        /// </summary>
         [Test]
         public void CanExecute_NullFleetAlongsideReadyFleet_ReturnsFalse()
         {
@@ -133,9 +117,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(accepted);
         }
 
-        /// <summary>
-        /// Verifies planet destruction requires a capable ship even when ordinary bombardment is possible.
-        /// </summary>
         [Test]
         public void CanExecute_NoPlanetDestroyingShip_ReturnsFalse()
         {
@@ -152,9 +133,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(accepted);
         }
 
-        /// <summary>
-        /// Verifies eligibility inspection does not clear a planned route or enter combat.
-        /// </summary>
         [Test]
         public void CanExecute_ReadyFleet_DoesNotChangeFleetState()
         {

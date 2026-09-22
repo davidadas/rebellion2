@@ -24,9 +24,6 @@ namespace Rebellion.Tests.Simulation
             _queries = new FogOfWarQueries(_game);
         }
 
-        /// <summary>
-        /// Verifies unexplored planet empty snapshot.
-        /// </summary>
         [Test]
         public void BuildFactionView_UnexploredPlanet_EmptySnapshot()
         {
@@ -52,9 +49,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, viewTatooine.GetChildren<Regiment>().Count);
         }
 
-        /// <summary>
-        /// Verifies unexplored owned planet hides status.
-        /// </summary>
         [Test]
         public void BuildFactionView_UnexploredOwnedPlanet_HidesStatus()
         {
@@ -93,9 +87,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies own fleet in transit to unexplored planet shows fleet without live planet data.
-        /// </summary>
         [Test]
         public void BuildFactionView_OwnFleetInTransitToUnexploredPlanet_ShowsFleetWithoutLivePlanetData()
         {
@@ -132,9 +123,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies unexplored outer rim and core both hidden without snapshot.
-        /// </summary>
         [Test]
         public void BuildFactionView_UnexploredOuterRimAndCore_BothHiddenWithoutSnapshot()
         {
@@ -151,9 +139,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, viewCoruscant.GetChildren<Officer>().Count);
         }
 
-        /// <summary>
-        /// Verifies snapshot planet returns visited view planet.
-        /// </summary>
         [Test]
         public void BuildFactionView_SnapshotPlanet_ReturnsVisitedViewPlanet()
         {
@@ -169,9 +154,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(viewCoruscant.IsUnexploredView);
         }
 
-        /// <summary>
-        /// Verifies visible planet uses live data.
-        /// </summary>
         [Test]
         public void BuildFactionView_VisiblePlanet_UsesLiveData()
         {
@@ -189,9 +171,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("LEIA", viewHoth.GetChildren<Officer>()[0].InstanceID);
         }
 
-        /// <summary>
-        /// Verifies live planet modifying view does not affect game.
-        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_ModifyingViewDoesNotAffectGame()
         {
@@ -210,9 +189,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, _hoth.GetChildren<Officer>().Count);
         }
 
-        /// <summary>
-        /// Verifies live planet buildings preserved.
-        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_BuildingsPreserved()
         {
@@ -231,9 +207,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, viewHoth.GetChildren<Building>().Count);
         }
 
-        /// <summary>
-        /// Verifies not visible with snapshot uses snapshot data.
-        /// </summary>
         [Test]
         public void BuildFactionView_NotVisibleWithSnapshot_UsesSnapshotData()
         {
@@ -253,9 +226,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("VADER", viewCoruscant.GetChildren<Officer>()[0].InstanceID);
         }
 
-        /// <summary>
-        /// Verifies snapshot modifying view does not affect snapshot.
-        /// </summary>
         [Test]
         public void BuildFactionView_Snapshot_ModifyingViewDoesNotAffectSnapshot()
         {
@@ -279,9 +249,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, snapshot.Officers.Count);
         }
 
-        /// <summary>
-        /// Verifies snapshot buildings visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_SnapshotBuildings_Visible()
         {
@@ -300,9 +267,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, viewCoruscant.GetChildren<Building>().Count);
         }
 
-        /// <summary>
-        /// Verifies unowned core planet uses current popular support.
-        /// </summary>
         [Test]
         public void BuildFactionView_UnownedCorePlanet_UsesCurrentPopularSupport()
         {
@@ -324,9 +288,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(8, viewCoruscant.EnergyCapacity);
         }
 
-        /// <summary>
-        /// Verifies unowned core planet uses current uprising state.
-        /// </summary>
         [Test]
         public void BuildFactionView_UnownedCorePlanet_UsesCurrentUprisingState()
         {
@@ -344,9 +305,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(viewCoruscant.IsInUprising);
         }
 
-        /// <summary>
-        /// Verifies snapshot preserves observed resources.
-        /// </summary>
         [Test]
         public void BuildFactionView_Snapshot_PreservesObservedResources()
         {
@@ -364,9 +322,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(5, viewCoruscant.NumRawResourceNodes);
         }
 
-        /// <summary>
-        /// Verifies fleet leaves uses snapshot.
-        /// </summary>
         [Test]
         public void BuildFactionView_FleetLeaves_UsesSnapshot()
         {
@@ -393,9 +348,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(5, viewCoruscant.NumRawResourceNodes);
         }
 
-        /// <summary>
-        /// Verifies fleet moves fleet not duplicated.
-        /// </summary>
         [Test]
         public void BuildFactionView_FleetMoves_FleetNotDuplicated()
         {
@@ -440,9 +392,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies own fleet in transit destination uses snapshot.
-        /// </summary>
         [Test]
         public void BuildFactionView_OwnFleetInTransit_DestinationUsesSnapshot()
         {
@@ -476,9 +425,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies own fleet arrived destination uses live.
-        /// </summary>
         [Test]
         public void BuildFactionView_OwnFleetArrived_DestinationUsesLive()
         {
@@ -517,9 +463,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies live planet stale snapshot friendly fleet not shown.
-        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_StaleSnapshotFriendlyFleet_NotShown()
         {
@@ -563,9 +506,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies vader moves without observation stale intel persists.
-        /// </summary>
         [Test]
         public void BuildFactionView_VaderMovesWithoutObservation_StaleIntelPersists()
         {
@@ -595,9 +535,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, viewTatooine.GetChildren<Officer>().Count);
         }
 
-        /// <summary>
-        /// Verifies planet with no entities handled correctly.
-        /// </summary>
         [Test]
         public void BuildFactionView_PlanetWithNoEntities_HandledCorrectly()
         {
@@ -614,9 +551,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, viewTatooine.GetChildren<Fleet>().Count);
         }
 
-        /// <summary>
-        /// Verifies sector with multiple planets mixed visibility handled correctly.
-        /// </summary>
         [Test]
         public void BuildFactionView_SectorWithMultiplePlanets_MixedVisibilityHandledCorrectly()
         {
@@ -641,9 +575,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, viewTatooine.GetChildren<Officer>().Count);
         }
 
-        /// <summary>
-        /// Verifies no snapshots anywhere all planets empty snapshots.
-        /// </summary>
         [Test]
         public void BuildFactionView_NoSnapshotsAnywhere_AllPlanetsEmptySnapshots()
         {
@@ -657,9 +588,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, viewHoth.GetChildren<Officer>().Count);
         }
 
-        /// <summary>
-        /// Verifies planets with shared entities no duplicate entities across planets.
-        /// </summary>
         [Test]
         public void BuildFactionView_PlanetsWithSharedEntities_NoDuplicateEntitiesAcrossPlanets()
         {
@@ -684,9 +612,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, vaderCount);
         }
 
-        /// <summary>
-        /// Verifies entities on multiple planets preserves instance ids.
-        /// </summary>
         [Test]
         public void BuildFactionView_EntitiesOnMultiplePlanets_PreservesInstanceIDs()
         {
@@ -731,9 +656,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies captured friendly officer on visible planet returns officer.
-        /// </summary>
         [Test]
         public void BuildFactionView_CapturedFriendlyOfficerOnVisiblePlanet_ReturnsOfficer()
         {
@@ -759,9 +681,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies captured friendly officer on snapshot planet does not reveal officer.
-        /// </summary>
         [Test]
         public void BuildFactionView_CapturedFriendlyOfficerOnSnapshotPlanet_DoesNotRevealOfficer()
         {
@@ -783,9 +702,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(viewCoruscant.GetChildren<Officer>().Any(o => o.InstanceID == "LEIA"));
         }
 
-        /// <summary>
-        /// Verifies captured friendly officer on unexplored planet does not reveal officer.
-        /// </summary>
         [Test]
         public void BuildFactionView_CapturedFriendlyOfficerOnUnexploredPlanet_DoesNotRevealOfficer()
         {
@@ -803,9 +719,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(viewCoruscant.GetChildren<Officer>().Any(o => o.InstanceID == "LEIA"));
         }
 
-        /// <summary>
-        /// Verifies own planet manufacturing queue visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_OwnPlanet_ManufacturingQueueVisible()
         {
@@ -823,9 +736,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies fleet at enemy planet manufacturing remains hidden.
-        /// </summary>
         [Test]
         public void BuildFactionView_FleetAtEnemyPlanet_ManufacturingRemainsHidden()
         {
@@ -848,9 +758,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(viewCoruscant.ManufacturingQueue);
         }
 
-        /// <summary>
-        /// Verifies own planet enemy missions not visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_OwnPlanet_EnemyMissionsNotVisible()
         {
@@ -873,9 +780,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies own planet own missions visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_OwnPlanet_OwnMissionsVisible()
         {
@@ -907,9 +811,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(vader.InstanceID, viewParticipant.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies live planet espionage mission intelligence remains visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_EspionageMissionIntelligenceRemainsVisible()
         {
@@ -945,9 +846,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies fleet at enemy planet enemy missions still hidden.
-        /// </summary>
         [Test]
         public void BuildFactionView_FleetAtEnemyPlanet_EnemyMissionsStillHidden()
         {
@@ -974,9 +872,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies fleet at enemy planet enemy officer visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_FleetAtEnemyPlanet_EnemyOfficerVisible()
         {
@@ -1005,9 +900,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("PALPATINE", viewCoruscant.GetChildren<Officer>()[0].InstanceID);
         }
 
-        /// <summary>
-        /// Verifies snapshot planet entity added after snapshot not visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_SnapshotPlanet_EntityAddedAfterSnapshot_NotVisible()
         {
@@ -1032,9 +924,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies snapshot planet building queued after snapshot not visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_SnapshotPlanet_BuildingQueuedAfterSnapshot_NotVisible()
         {
@@ -1078,9 +967,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies snapshot queued building on full live planet skips ghost building.
-        /// </summary>
         [Test]
         public void BuildFactionView_SnapshotQueuedBuildingOnFullLivePlanet_SkipsGhostBuilding()
         {
@@ -1129,9 +1015,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies live planet stale own snapshot units not visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_StaleOwnSnapshotUnits_NotVisible()
         {
@@ -1158,9 +1041,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies live planet removes absent enemy units from snapshot.
-        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_RemovesAbsentEnemyUnitsFromSnapshot()
         {
@@ -1245,9 +1125,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(_alliance.Fog.EntityLastSeenAt);
         }
 
-        /// <summary>
-        /// Verifies planet captured from enemy uses only live units.
-        /// </summary>
         [Test]
         public void BuildFactionView_PlanetCapturedFromEnemy_UsesOnlyLiveUnits()
         {
@@ -1297,9 +1174,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies own mission on enemy planet visible without snapshot or fleet.
-        /// </summary>
         [Test]
         public void BuildFactionView_OwnMission_OnEnemyPlanet_VisibleWithoutSnapshotOrFleet()
         {
@@ -1324,9 +1198,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("M1", viewCoruscant.GetChildren<Mission>()[0].InstanceID);
         }
 
-        /// <summary>
-        /// Verifies own mission on neutral planet visible without snapshot or fleet.
-        /// </summary>
         [Test]
         public void BuildFactionView_OwnMission_OnNeutralPlanet_VisibleWithoutSnapshotOrFleet()
         {
@@ -1350,9 +1221,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("M1", viewTatooine.GetChildren<Mission>()[0].InstanceID);
         }
 
-        /// <summary>
-        /// Verifies own fleet at enemy planet planet live without snapshot.
-        /// </summary>
         [Test]
         public void BuildFactionView_OwnFleet_AtEnemyPlanet_PlanetLiveWithoutSnapshot()
         {
@@ -1380,9 +1248,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("FLEET1", viewCoruscant.GetChildren<Fleet>()[0].InstanceID);
         }
 
-        /// <summary>
-        /// Verifies blockaded own planet shows only present completed enemy ships.
-        /// </summary>
         [Test]
         public void BuildFactionView_BlockadedOwnPlanet_ShowsOnlyPresentCompletedEnemyShips()
         {
@@ -1450,9 +1315,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies blockaded own planet enemy fleet in transit not visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_BlockadedOwnPlanet_EnemyFleetInTransit_NotVisible()
         {
@@ -1478,9 +1340,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies live enemy planet enemy units in transit not visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_LiveEnemyPlanet_EnemyUnitsInTransit_NotVisible()
         {
@@ -1528,9 +1387,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(viewCoruscant.GetChildren<Building>());
         }
 
-        /// <summary>
-        /// Verifies live enemy fleet in transit manifest not visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_LiveEnemyFleet_InTransitManifestNotVisible()
         {
@@ -1591,9 +1447,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(viewFleet.GetChildren<CapitalShip>()[0].GetChildren<Starfighter>());
         }
 
-        /// <summary>
-        /// Verifies own fleet in transit is visible.
-        /// </summary>
         [Test]
         public void BuildFactionView_OwnFleetInTransit_IsVisible()
         {
@@ -1621,9 +1474,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("FLEET1", viewHoth.GetChildren<Fleet>()[0].InstanceID);
         }
 
-        /// <summary>
-        /// Verifies live planet orbing enemy fleet not duplicated from snapshot.
-        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_OrbingEnemyFleet_NotDuplicatedFromSnapshot()
         {
@@ -1658,9 +1508,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies live planet espionage snapshot enemy mission is surfaced.
-        /// </summary>
         [Test]
         public void BuildFactionView_LivePlanet_EspionageSnapshotEnemyMission_IsSurfaced()
         {
@@ -1688,9 +1535,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies outer rim snapshot preserves observed popular support.
-        /// </summary>
         [Test]
         public void BuildFactionView_OuterRimSnapshot_PreservesObservedPopularSupport()
         {
@@ -1710,9 +1554,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(40, viewTatooine.PopularSupport["FNALL1"]);
         }
 
-        /// <summary>
-        /// Verifies outer rim snapshot preserves observed uprising state.
-        /// </summary>
         [Test]
         public void BuildFactionView_OuterRimSnapshot_PreservesObservedUprisingState()
         {
@@ -1731,9 +1572,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(viewTatooine.IsInUprising);
         }
 
-        /// <summary>
-        /// Verifies own officer retains live reference without reparenting or recording.
-        /// </summary>
         [Test]
         public void BuildFactionView_OwnOfficer_RetainsLiveReferenceWithoutReparentingOrRecording()
         {
@@ -1751,9 +1589,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(_alliance.Fog.Snapshots);
         }
 
-        /// <summary>
-        /// Verifies owned planet returns true.
-        /// </summary>
         [Test]
         public void IsPlanetVisible_OwnedPlanet_ReturnsTrue()
         {
@@ -1762,9 +1597,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(visible);
         }
 
-        /// <summary>
-        /// Verifies fleet present returns true.
-        /// </summary>
         [Test]
         public void IsPlanetVisible_FleetPresent_ReturnsTrue()
         {
@@ -1777,9 +1609,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(visible);
         }
 
-        /// <summary>
-        /// Verifies own fleet without ships returns false.
-        /// </summary>
         [Test]
         public void IsPlanetVisible_OwnFleetWithoutShips_ReturnsFalse()
         {
@@ -1791,9 +1620,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(visible);
         }
 
-        /// <summary>
-        /// Verifies no ownership no fleet returns false.
-        /// </summary>
         [Test]
         public void IsPlanetVisible_NoOwnershipNoFleet_ReturnsFalse()
         {
@@ -1802,9 +1628,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(visible);
         }
 
-        /// <summary>
-        /// Verifies captured friendly officer present returns false.
-        /// </summary>
         [Test]
         public void IsPlanetVisible_CapturedFriendlyOfficerPresent_ReturnsFalse()
         {
@@ -1818,9 +1641,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(visible);
         }
 
-        /// <summary>
-        /// Verifies multiple fleets different factions only own faction counts.
-        /// </summary>
         [Test]
         public void IsPlanetVisible_MultipleFleetsDifferentFactions_OnlyOwnFactionCounts()
         {
@@ -1835,9 +1655,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(empireVisible);
         }
 
-        /// <summary>
-        /// Verifies own fleet in transit does not grant visibility.
-        /// </summary>
         [Test]
         public void IsPlanetVisible_OwnFleetInTransit_DoesNotGrantVisibility()
         {
@@ -1854,9 +1671,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies own capital ship in transit does not grant visibility.
-        /// </summary>
         [Test]
         public void IsPlanetVisible_OwnCapitalShipInTransit_DoesNotGrantVisibility()
         {
@@ -1874,9 +1688,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_queries.IsPlanetVisible(_coruscant, _alliance));
         }
 
-        /// <summary>
-        /// Verifies espionage snapshot enemy manufacturing reveals manufacturing.
-        /// </summary>
         [Test]
         public void BuildFactionView_EspionageSnapshotEnemyManufacturing_RevealsManufacturing()
         {
@@ -1902,9 +1713,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies espionage snapshot enemy missions reveals missions.
-        /// </summary>
         [Test]
         public void BuildFactionView_EspionageSnapshotEnemyMissions_RevealsMissions()
         {
@@ -1927,9 +1735,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies espionage snapshot incoming enemy fleet reveals fleet.
-        /// </summary>
         [Test]
         public void BuildFactionView_EspionageSnapshotIncomingEnemyFleet_RevealsFleet()
         {

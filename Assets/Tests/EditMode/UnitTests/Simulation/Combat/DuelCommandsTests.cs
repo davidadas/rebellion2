@@ -14,7 +14,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class DuelCommandsTests
     {
-        /// <summary>Verifies that already captured officers do not consume duel rolls.</summary>
         [Test]
         public void Resolve_CapturedOfficer_ReturnsNoResultsWithoutRolling()
         {
@@ -25,7 +24,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(system.Resolve(encountered, opposing));
         }
 
-        /// <summary>Verifies that a completed capture invalidates the next duel for the same pair.</summary>
         [Test]
         public void Resolve_RepeatedPairAfterCapture_ResolvesOnlyFirstDuel()
         {
@@ -48,7 +46,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(results.All(result => result.SourceEventInstanceID == "first"));
         }
 
-        /// <summary>Verifies that capture precedes the duel report and uses the resolution tick.</summary>
         [Test]
         public void Resolve_Capture_EmitsOrderedResultsAtCurrentTick()
         {
@@ -79,7 +76,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("audio", outcome.AudioPath);
         }
 
-        /// <summary>Verifies that failed avoidance captures the encountered officer.</summary>
         [Test]
         public void Resolve_FailedAvoidance_CapturesEncounteredOfficer()
         {
@@ -108,7 +104,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(results.OfType<DuelResult>().Single().EncounteredOfficerCaptured);
         }
 
-        /// <summary>Verifies that injuries reward the other officer's combat rating.</summary>
         [Test]
         public void Resolve_Injuries_RewardTheOtherOfficersCombat()
         {
@@ -128,7 +123,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, results.OfType<OfficerInjuredResult>().Count());
         }
 
-        /// <summary>Verifies that officers on different planets cannot duel.</summary>
         [Test]
         public void Resolve_OfficersOnDifferentPlanets_RejectsDuel()
         {
@@ -148,8 +142,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies that either missing participant rejects the encounter before drawing randomness.</summary>
-        /// <param name="missingEncountered">Whether to omit the encountered officer rather than the opponent.</param>
         [TestCase(true)]
         [TestCase(false)]
         public void Resolve_MissingOfficer_ReturnsNoResultsWithoutRolling(bool missingEncountered)

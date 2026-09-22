@@ -10,9 +10,6 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public class GameManagerTests
     {
-        /// <summary>Verifies each configured speed through elapsed-time readiness.</summary>
-        /// <param name="speed">The selected game speed.</param>
-        /// <param name="interval">The configured interval in seconds.</param>
         [TestCase(TickSpeed.Fast, 2.5f)]
         [TestCase(TickSpeed.Medium, 12.5f)]
         [TestCase(TickSpeed.Slow, 90.5f)]
@@ -36,7 +33,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(manager.TryAdvanceTickTimer(interval / 2f));
         }
 
-        /// <summary>Verifies completed interval and processes tick and raises tick completed.</summary>
         [Test]
         public void TryAdvanceTickTimer_CompletedInterval_ProcessesTickAndRaisesTickCompleted()
         {
@@ -56,7 +52,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(1, completedTicks);
         }
 
-        /// <summary>Verifies below completed interval and does not process tick.</summary>
         [Test]
         public void TryAdvanceTickTimer_BelowCompletedInterval_DoesNotProcessTick()
         {
@@ -75,9 +70,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, completedTicks);
         }
 
-        /// <summary>
-        /// Verifies that completion observers see a saveable state without permitting a nested tick.
-        /// </summary>
         [Test]
         public void TryAdvanceTickTimer_InsideTickCompleted_RejectsTickWhileStateIsSettled()
         {
@@ -101,9 +93,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsFalse(timerReady);
         }
 
-        /// <summary>
-        /// Verifies that creating an iterator does not enter the tick until it is advanced.
-        /// </summary>
         [Test]
         public void TryAdvanceTickTimer_UnstartedIterator_DoesNotBlockClock()
         {
@@ -120,9 +109,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, game.CurrentTick);
         }
 
-        /// <summary>
-        /// Records that replacement clears scheduling state but leaves an active iterator's guard intact.
-        /// </summary>
         [Test]
         public void Reset_SuspendedTick_KeepsClockBlockedUntilIteratorDisposal()
         {

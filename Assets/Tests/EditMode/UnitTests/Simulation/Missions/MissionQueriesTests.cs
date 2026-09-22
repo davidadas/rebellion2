@@ -18,7 +18,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public sealed class MissionQueriesTests
     {
-        /// <summary>Verifies that an absent context cannot create a preview mission.</summary>
         [Test]
         public void TryCreateMission_NullContext_ReturnsFalseAndNoMission()
         {
@@ -30,7 +29,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(mission);
         }
 
-        /// <summary>Verifies that objective odds require a mission to evaluate.</summary>
         [Test]
         public void GetObjectiveSuccessProbability_NullMission_ThrowsArgumentNullException()
         {
@@ -70,9 +68,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(50, odds.FoilProbability, 0.001);
         }
 
-        /// <summary>
-        /// Verifies that an explicitly empty observation does not reveal live planetary detectors.
-        /// </summary>
         [Test]
         public void GetMissionOdds_EmptyObservedDetectors_DoesNotUseLiveDetectors()
         {
@@ -91,9 +86,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(100, live.FoilProbability);
         }
 
-        /// <summary>
-        /// Verifies that previewing a valid mission leaves its participants and graph unchanged.
-        /// </summary>
         [Test]
         public void GetMissionOdds_ValidMission_DoesNotStartMission()
         {
@@ -116,7 +108,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(returnLocation, spy.MissionReturnLocationInstanceID);
         }
 
-        /// <summary>Verifies get mission odds default tracks which decoy survives each detector.</summary>
         [Test]
         public void GetMissionOdds_Default_TracksWhichDecoySurvivesEachDetector()
         {
@@ -152,7 +143,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(52.777, odds.FoilProbability, 0.001);
         }
 
-        /// <summary>Verifies get mission odds default includes stationary fleet detectors.</summary>
         [Test]
         public void GetMissionOdds_Default_IncludesStationaryFleetDetectors()
         {
@@ -180,7 +170,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(100, odds.FoilProbability, 0.001);
         }
 
-        /// <summary>Verifies get mission odds with multiple officers combines personnel loss probability.</summary>
         [Test]
         public void GetMissionOdds_WithMultipleOfficers_CombinesPersonnelLossProbability()
         {
@@ -206,7 +195,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(75, odds.PersonnelLossProbability, 0.001);
         }
 
-        /// <summary>Verifies get mission odds diplomacy uses observed planet support.</summary>
         [Test]
         public void GetMissionOdds_Diplomacy_UsesObservedPlanetSupport()
         {
@@ -230,7 +218,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(90, odds.ObjectiveSuccessProbability, 0.001);
         }
 
-        /// <summary>Verifies get mission odds default does not expose hidden betrayal state.</summary>
         [Test]
         public void GetMissionOdds_Default_DoesNotExposeHiddenBetrayalState()
         {
@@ -262,7 +249,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(loyalOdds.FoilProbability, betrayalOdds.FoilProbability, 0.001);
         }
 
-        /// <summary>Verifies get mission odds reconnaissance uses its guaranteed completion rule.</summary>
         [Test]
         public void GetMissionOdds_Reconnaissance_UsesItsGuaranteedCompletionRule()
         {
@@ -288,9 +274,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(100, odds.OverallSuccessProbability, 0.001);
         }
 
-        /// <summary>Verifies get mission odds officer target mission uses observed target rating.</summary>
-        /// <param name="missionTypeId">The mission type id.</param>
-        /// <param name="expectedProbability">The expected probability.</param>
         [TestCase(AbductionMission.MissionTypeID, 80)]
         [TestCase(AssassinationMission.MissionTypeID, 20)]
         public void GetMissionOdds_OfficerTargetMission_UsesObservedTargetRating(
@@ -337,7 +320,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(expectedProbability, odds.ObjectiveSuccessProbability, 0.001);
         }
 
-        /// <summary>Verifies get mission odds assassination of main character cannot report success.</summary>
         [Test]
         public void GetMissionOdds_AssassinationOfMainCharacter_CannotReportSuccess()
         {
@@ -367,7 +349,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, odds.OverallSuccessProbability, 0.001);
         }
 
-        /// <summary>Verifies get mission odds assassination combines hit and kill checks per participant.</summary>
         [Test]
         public void GetMissionOdds_Assassination_CombinesHitAndKillChecksPerParticipant()
         {
@@ -404,7 +385,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(43.75, odds.OverallSuccessProbability, 0.001);
         }
 
-        /// <summary>Verifies get available mission options own planet research returns research options.</summary>
         [Test]
         public void GetAvailableMissionOptions_OwnPlanetResearch_ReturnsResearchOptions()
         {
@@ -434,7 +414,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies get available mission options research with single matching rating returns matching research option.</summary>
         [Test]
         public void GetAvailableMissionOptions_ResearchWithSingleMatchingRating_ReturnsMatchingResearchOption()
         {
@@ -454,7 +433,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(ResearchDiscipline.ShipDesign, researchOptions.Single().Discipline);
         }
 
-        /// <summary>Verifies get available mission options exhausted research excludes research option.</summary>
         [Test]
         public void GetAvailableMissionOptions_ExhaustedResearch_ExcludesResearchOption()
         {
@@ -477,7 +455,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies get available mission options troop training without facility excludes research option.</summary>
         [Test]
         public void GetAvailableMissionOptions_TroopTrainingWithoutFacility_ExcludesResearchOption()
         {
@@ -494,7 +471,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies get available mission options research without matching rating excludes research options.</summary>
         [Test]
         public void GetAvailableMissionOptions_ResearchWithoutMatchingRating_ExcludesResearchOptions()
         {
@@ -510,7 +486,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies get available mission options disallowed research excludes research options.</summary>
         [Test]
         public void GetAvailableMissionOptions_DisallowedResearch_ExcludesResearchOptions()
         {
@@ -531,7 +506,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies get available mission options enemy planet recruitment excludes recruitment option.</summary>
         [Test]
         public void GetAvailableMissionOptions_EnemyPlanetRecruitment_ExcludesRecruitmentOption()
         {
@@ -562,7 +536,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies get available mission options planet only sabotage target excludes sabotage option.</summary>
         [Test]
         public void GetAvailableMissionOptions_PlanetOnlySabotageTarget_ExcludesSabotageOption()
         {
@@ -586,7 +559,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies get available mission options manufacturable sabotage target returns sabotage option.</summary>
         [Test]
         public void GetAvailableMissionOptions_ManufacturableSabotageTarget_ReturnsSabotageOption()
         {
@@ -610,7 +582,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies get available mission options selected trainer without student excludes jedi training option.</summary>
         [Test]
         public void GetAvailableMissionOptions_SelectedTrainerWithoutStudent_ExcludesJediTrainingOption()
         {
@@ -630,7 +601,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies get available mission options reconnaissance special forces returns reconnaissance option.</summary>
         [Test]
         public void GetAvailableMissionOptions_ReconnaissanceSpecialForces_ReturnsReconnaissanceOption()
         {
@@ -685,7 +655,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(ReconnaissanceMission.MissionTypeID, options.Single().MissionTypeID);
         }
 
-        /// <summary>Verifies can create mission stale completed view target returns true.</summary>
         [Test]
         public void CanCreateMission_StaleCompletedViewTarget_ReturnsTrue()
         {
@@ -719,7 +688,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>Verifies can create mission stale stationary officer view with live transit returns true.</summary>
         [Test]
         public void CanCreateMission_StaleStationaryOfficerViewWithLiveTransit_ReturnsTrue()
         {
@@ -749,7 +717,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
-        /// <summary>Verifies can create mission inactive officer returns false.</summary>
         [Test]
         public void CanCreateMission_InactiveOfficer_ReturnsFalse()
         {

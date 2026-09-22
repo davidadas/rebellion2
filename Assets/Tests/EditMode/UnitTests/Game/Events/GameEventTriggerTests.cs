@@ -8,7 +8,6 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public class GameEventTriggerTests
     {
-        /// <summary>Verifies triggers authored contracts round trip concrete types and bindings.</summary>
         [Test]
         public void Triggers_AuthoredContracts_RoundTripConcreteTypesAndBindings()
         {

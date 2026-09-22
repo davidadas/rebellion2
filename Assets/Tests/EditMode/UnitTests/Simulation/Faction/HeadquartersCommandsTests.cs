@@ -12,7 +12,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class HeadquartersCommandsTests
     {
-        /// <summary>Verifies that departure clears the mobile headquarters marker.</summary>
         [Test]
         public void TryRelocate_MobileHeadquarters_DepartsAndClearsPlanetMarker()
         {
@@ -26,7 +25,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(faction.HQInstanceID);
         }
 
-        /// <summary>Verifies that a fixed headquarters remains at its origin.</summary>
         [Test]
         public void TryRelocate_FixedHeadquarters_IsRejected()
         {
@@ -38,7 +36,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
         }
 
-        /// <summary>Verifies that arrival assigns the mobile headquarters destination.</summary>
         [Test]
         public void Arrive_HeadquartersArrival_AssignsDestination()
         {
@@ -53,7 +50,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(destination.InstanceID, faction.HQInstanceID);
         }
 
-        /// <summary>Verifies that capture clears a fixed headquarters marker without losing its location.</summary>
         [Test]
         public void UpdateOwnership_FixedHeadquartersCaptured_ClearsMarkerAndPreservesLocation()
         {
@@ -73,7 +69,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(attacker, captured.Attacker);
         }
 
-        /// <summary>Verifies that recapture restores the fixed headquarters marker.</summary>
         [Test]
         public void UpdateOwnership_FixedHeadquartersRecaptured_RestoresMarker()
         {
@@ -90,7 +85,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies that a hostile takeover destroys mobile headquarters.</summary>
         [Test]
         public void UpdateOwnership_HostilePlanetCapture_DestroysMobileHeadquarters()
         {

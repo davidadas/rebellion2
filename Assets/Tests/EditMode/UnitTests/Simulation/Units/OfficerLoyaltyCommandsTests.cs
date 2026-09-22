@@ -14,7 +14,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class OfficerLoyaltyCommandsTests
     {
-        /// <summary>Verifies faction gains planet shifts only free living officer loyalty.</summary>
         [Test]
         public void ApplyControlShift_FactionGainsPlanet_ShiftsOnlyFreeLivingOfficerLoyalty()
         {
@@ -59,7 +58,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(50, captive.Loyalty);
         }
 
-        /// <summary>Verifies low loyalty officer foils without revealing identity.</summary>
         [Test]
         public void TryResolveMissionBetrayal_LowLoyaltyOfficer_FoilsWithoutRevealingIdentity()
         {
@@ -78,7 +76,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsTraitor);
         }
 
-        /// <summary>Verifies force capable companion discovers traitor.</summary>
         [Test]
         public void TryResolveMissionBetrayal_ForceCapableCompanion_DiscoversTraitor()
         {
@@ -108,10 +105,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(planet, result.Context);
         }
 
-        /// <summary>Verifies boundary roll uses one hundred minus loyalty.</summary>
-        /// <param name="loyalty">The loyalty.</param>
-        /// <param name="roll">The roll.</param>
-        /// <param name="expectedBetrayal">The expected betrayal.</param>
         [TestCase(80, 19, true)]
         [TestCase(80, 20, false)]
         public void TryResolveMissionBetrayal_BoundaryRoll_UsesOneHundredMinusLoyalty(
@@ -133,7 +126,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(expectedBetrayal, betrayed);
         }
 
-        /// <summary>Verifies command officer does not betray.</summary>
         [Test]
         public void TryResolveMissionBetrayal_CommandOfficer_DoesNotBetray()
         {

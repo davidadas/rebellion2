@@ -12,7 +12,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class HeadquartersObserverTests
     {
-        /// <summary>Verifies that a missing arrival batch has no consequences.</summary>
         [Test]
         public void HandleResults_NullArrivals_ReturnsNoResults()
         {
@@ -22,7 +21,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(observer.HandleResults((IReadOnlyList<UnitArrivedResult>)null));
         }
 
-        /// <summary>Verifies that a missing ownership batch has no consequences.</summary>
         [Test]
         public void HandleResults_NullOwnershipChanges_ReturnsNoResults()
         {
@@ -34,7 +32,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies that the last arrival determines the headquarters location.</summary>
         [Test]
         public void HandleResults_MultipleArrivals_AppliesInBatchOrder()
         {
@@ -57,7 +54,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies that capture and recapture consequences retain the input batch order.</summary>
         [Test]
         public void HandleResults_RepeatedOwnershipChanges_ReturnsOrderedCaptureResults()
         {

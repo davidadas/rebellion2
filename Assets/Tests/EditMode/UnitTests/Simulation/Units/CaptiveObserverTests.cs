@@ -17,7 +17,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class CaptiveObserverTests
     {
-        /// <summary>Verifies duplicate captures retain the first observation tick in a batch.</summary>
         [Test]
         public void HandleResults_DuplicateCaptureInBatch_RetainsFirstObservation()
         {
@@ -32,7 +31,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(4, GetOfficerOwnerSnapshot(game, captive, planet).TickCaptured);
         }
 
-        /// <summary>Verifies duplicate suppression ends at the result-batch boundary.</summary>
         [Test]
         public void HandleResults_CaptureInSeparateBatches_RefreshesObservation()
         {
@@ -46,7 +44,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(9, GetOfficerOwnerSnapshot(game, captive, planet).TickCaptured);
         }
 
-        /// <summary>Verifies a release result resets scheduling even between duplicate captures.</summary>
         [Test]
         public void HandleResults_ReleaseBetweenDuplicateCaptures_LeavesScheduleCleared()
         {
@@ -67,8 +64,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, captive.NextEscapeAttemptTick);
         }
 
-        /// <summary>Verifies owner resolution still fails before release or capture eligibility checks.</summary>
-        /// <param name="capturedResult">Whether the incoming result reports capture.</param>
         [TestCase(false)]
         [TestCase(true)]
         public void HandleResults_MissingOwnerOnFreeOfficer_ThrowsBeforeEligibilityCheck(
@@ -95,7 +90,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies null capture batches produce no reactions.</summary>
         [Test]
         public void HandleResults_NullCaptureBatch_ReturnsNoReactions()
         {
@@ -106,7 +100,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(system.HandleResults((IReadOnlyList<OfficerCaptureStateResult>)null));
         }
 
-        /// <summary>Verifies an ownership release retains the incoming tick instead of the current tick.</summary>
         [Test]
         public void HandleResults_OwnershipChangeFromEarlierTick_PreservesReleaseTick()
         {
@@ -130,7 +123,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(4, results.OfType<OfficerCaptureStateResult>().Single().Tick);
         }
 
-        /// <summary>Verifies records immediate custody when capture at captor planet.</summary>
         [Test]
         public void HandleResults_CaptureAtCaptorPlanet_RecordsImmediateCustody()
         {
@@ -151,7 +143,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(observed.Movement);
         }
 
-        /// <summary>Verifies moves to planet when capture inside foreign container at captor planet.</summary>
         [Test]
         public void HandleResults_CaptureInsideForeignContainerAtCaptorPlanet_MovesToPlanet()
         {
@@ -172,7 +163,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(captive.Movement);
         }
 
-        /// <summary>Verifies boards capturing ship when capture by ship away from captor planet.</summary>
         [Test]
         public void HandleResults_CaptureByShipAwayFromCaptorPlanet_BoardsCapturingShip()
         {
@@ -225,7 +215,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies places at custody destination when capture without physical captor.</summary>
         [Test]
         public void HandleResults_CaptureWithoutPhysicalCaptor_PlacesAtCustodyDestination()
         {
@@ -254,7 +243,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies uses fallback destination when capture at uncolonized captor planet.</summary>
         [Test]
         public void HandleResults_CaptureAtUncolonizedCaptorPlanet_UsesFallbackDestination()
         {
@@ -272,7 +260,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(captive.Movement);
         }
 
-        /// <summary>Verifies moves with escort when capture by officer away from captor planet.</summary>
         [Test]
         public void HandleResults_CaptureByOfficerAwayFromCaptorPlanet_MovesWithEscort()
         {
@@ -311,7 +298,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies preserves transfer when capture with established transfer.</summary>
         [Test]
         public void HandleResults_CaptureWithEstablishedTransfer_PreservesTransfer()
         {
@@ -340,7 +326,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("return-group", observed.Movement.MovementGroupID);
         }
 
-        /// <summary>Verifies places at custody destination when inactive capture away from captor planet.</summary>
         [Test]
         public void HandleResults_InactiveCaptureAwayFromCaptorPlanet_PlacesAtCustodyDestination()
         {
@@ -363,7 +348,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(observed.Movement);
         }
 
-        /// <summary>Verifies does not refresh capture snapshot when custody transfer arrives.</summary>
         [Test]
         public void HandleResults_CustodyTransferArrives_DoesNotRefreshCaptureSnapshot()
         {
@@ -399,7 +383,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, observed.Movement.TicksElapsed);
         }
 
-        /// <summary>Verifies removes capture snapshot when released officer.</summary>
         [Test]
         public void HandleResults_ReleasedOfficer_RemovesCaptureSnapshot()
         {
@@ -427,7 +410,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies releases officer when owner recaptures captive planet.</summary>
         [Test]
         public void HandleResults_OwnerRecapturesCaptivePlanet_ReleasesOfficer()
         {

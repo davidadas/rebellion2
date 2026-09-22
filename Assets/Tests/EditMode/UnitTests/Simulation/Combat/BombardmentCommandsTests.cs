@@ -14,9 +14,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class BombardmentCommandsTests : CombatTestBase
     {
-        /// <summary>
-        /// Verifies try execute valid command publishes completed result batch.
-        /// </summary>
         [Test]
         public void TryExecute_ValidCommand_PublishesCompletedResultBatch()
         {
@@ -42,9 +39,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(publishedResults.OfType<PlanetGarrisonChangedResult>().Any());
         }
 
-        /// <summary>
-        /// Verifies execute military bombardment targets defenders only.
-        /// </summary>
         [Test]
         public void Execute_MilitaryBombardment_TargetsDefendersOnly()
         {
@@ -92,9 +86,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(10, planet.EnergyCapacity);
         }
 
-        /// <summary>
-        /// Verifies execute attacking fleet with waypoints clears route.
-        /// </summary>
         [Test]
         public void Execute_AttackingFleetWithWaypoints_ClearsRoute()
         {
@@ -110,9 +101,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(fleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies execute civilian bombardment applies core support penalties.
-        /// </summary>
         [Test]
         public void Execute_CivilianBombardment_AppliesCoreSupportPenalties()
         {
@@ -144,9 +132,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(74, secondPlanet.GetPopularSupport("empire"));
         }
 
-        /// <summary>
-        /// Verifies execute civilian bombardment support flip carries notification context.
-        /// </summary>
         [Test]
         public void Execute_CivilianBombardment_SupportFlipCarriesNotificationContext()
         {
@@ -174,9 +159,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies execute empire civilian bombardment halves core target penalty.
-        /// </summary>
         [Test]
         public void Execute_EmpireCivilianBombardment_HalvesCoreTargetPenalty()
         {
@@ -194,13 +176,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(83, planet.GetPopularSupport("alliance"));
         }
 
-        /// <summary>
-        /// Verifies execute civilian bombardment applies outer rim support penalties.
-        /// </summary>
-        /// <param name="attackerId">The attacker id.</param>
-        /// <param name="defenderId">The defender id.</param>
-        /// <param name="expectedTargetSupport">The expected target support.</param>
-        /// <param name="expectedPlanetSupport">The expected planet support.</param>
         [TestCase("alliance", "empire", 8, 28)]
         [TestCase("empire", "alliance", 9, 29)]
         public void Execute_CivilianBombardment_AppliesOuterRimSupportPenalties(
@@ -233,9 +208,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(expectedPlanetSupport, secondPlanet.GetPopularSupport(attackerId));
         }
 
-        /// <summary>
-        /// Verifies execute general bombardment can damage both energy pools.
-        /// </summary>
         [Test]
         public void Execute_GeneralBombardment_CanDamageBothEnergyPools()
         {
@@ -256,9 +228,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Zero(planet.AllocatedEnergy);
         }
 
-        /// <summary>
-        /// Verifies execute planetary shield strength uses bombardment scale.
-        /// </summary>
         [Test]
         public void Execute_PlanetaryShieldStrength_UsesBombardmentScale()
         {
@@ -280,9 +249,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, result.StrikeAttempts);
         }
 
-        /// <summary>
-        /// Verifies execute death star shield does not reduce bombardment.
-        /// </summary>
         [Test]
         public void Execute_DeathStarShield_DoesNotReduceBombardment()
         {
@@ -308,9 +274,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, result.StrikeAttempts);
         }
 
-        /// <summary>
-        /// Verifies execute damaged ship and fighter use effective bombardment.
-        /// </summary>
         [Test]
         public void Execute_DamagedShipAndFighter_UseEffectiveBombardment()
         {
@@ -350,9 +313,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(20, result.BombardmentStrength);
         }
 
-        /// <summary>
-        /// Verifies execute kdy and lnr resolve shield before hull damage.
-        /// </summary>
         [Test]
         public void Execute_KdyAndLnr_ResolveShieldBeforeHullDamage()
         {
@@ -394,9 +354,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies execute defense fire determines surviving bombardment strength.
-        /// </summary>
         [Test]
         public void Execute_DefenseFire_DeterminesSurvivingBombardmentStrength()
         {
@@ -429,9 +386,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, result.EnergyCapacityDamage);
         }
 
-        /// <summary>
-        /// Verifies execute strike resistance must be lower than roll.
-        /// </summary>
         [Test]
         public void Execute_StrikeResistance_MustBeLowerThanRoll()
         {
@@ -451,9 +405,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.Contains(result.DestroyedBuildings, mine);
         }
 
-        /// <summary>
-        /// Verifies execute military collateral can destroy civilian target.
-        /// </summary>
         [Test]
         public void Execute_MilitaryCollateral_CanDestroyCivilianTarget()
         {
@@ -477,9 +428,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(result.OwnershipChange);
         }
 
-        /// <summary>
-        /// Verifies execute alliance headquarters can be destroyed.
-        /// </summary>
         [Test]
         public void Execute_AllianceHeadquarters_CanBeDestroyed()
         {
@@ -501,9 +449,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(planet.IsDestroyed);
         }
 
-        /// <summary>
-        /// Verifies execute empire headquarters is not amilitary target.
-        /// </summary>
         [Test]
         public void Execute_EmpireHeadquarters_IsNotAMilitaryTarget()
         {
@@ -521,9 +466,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Zero(result.SuccessfulStrikes);
         }
 
-        /// <summary>
-        /// Verifies execute destroy planet with death star destroys planet and minor personnel.
-        /// </summary>
         [Test]
         public void Execute_DestroyPlanetWithDeathStar_DestroysPlanetAndMinorPersonnel()
         {
@@ -578,9 +520,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(result.Events.OfType<OfficerAssassinatedResult>());
         }
 
-        /// <summary>
-        /// Verifies execute destroy planet minor personnel survives death roll remains injured.
-        /// </summary>
         [Test]
         public void Execute_DestroyPlanetMinorPersonnelSurvivesDeathRoll_RemainsInjured()
         {
@@ -609,9 +548,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(result.Events.OfType<OfficerKilledResult>());
         }
 
-        /// <summary>
-        /// Verifies execute destroy planet defense fire cannot prevent destruction.
-        /// </summary>
         [Test]
         public void Execute_DestroyPlanet_DefenseFireCannotPreventDestruction()
         {
@@ -641,9 +577,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Zero(result.StrikeAttempts);
         }
 
-        /// <summary>
-        /// Verifies execute destroy planet penalizes outer rim support below threshold.
-        /// </summary>
         [Test]
         public void Execute_DestroyPlanet_PenalizesOuterRimSupportBelowThreshold()
         {
@@ -684,9 +617,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(90, thresholdPlanet.GetPopularSupport("alliance"));
         }
 
-        /// <summary>
-        /// Verifies execute destroy planet without death star does not bombard.
-        /// </summary>
         [Test]
         public void Execute_DestroyPlanetWithoutDeathStar_DoesNotBombard()
         {
@@ -709,9 +639,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, planet.EnergyCapacity);
         }
 
-        /// <summary>
-        /// Verifies execute destroyed garrison can transfer planet by support.
-        /// </summary>
         [Test]
         public void Execute_DestroyedGarrison_CanTransferPlanetBySupport()
         {
@@ -750,9 +677,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance", result.OwnershipChange.NewOwner.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies execute destroyed garrison can leave planet neutral.
-        /// </summary>
         [Test]
         public void Execute_DestroyedGarrison_CanLeavePlanetNeutral()
         {
@@ -783,9 +707,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(result.OwnershipChange.NewOwner);
         }
 
-        /// <summary>
-        /// Verifies execute destroyed garrison support shift can transfer planet.
-        /// </summary>
         [Test]
         public void Execute_DestroyedGarrison_SupportShiftCanTransferPlanet()
         {
@@ -806,9 +727,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance", result.OwnershipChange.NewOwner.InstanceID);
         }
 
-        /// <summary>
-        /// Verifies execute remote or mixed fleets do not attack.
-        /// </summary>
         [Test]
         public void Execute_RemoteOrMixedFleets_DoNotAttack()
         {
@@ -831,9 +749,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Zero(mixedResult.BombardmentStrength);
         }
 
-        /// <summary>
-        /// Verifies direct execution leaves result delivery to its caller.
-        /// </summary>
         [Test]
         public void Execute_ValidBombardment_DoesNotPublishResults()
         {
@@ -857,9 +772,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Zero(publications);
         }
 
-        /// <summary>
-        /// Verifies a rejected command neither rolls nor publishes an outcome.
-        /// </summary>
         [Test]
         public void TryExecute_NoBombardmentStrength_ReturnsNullWithoutPublishing()
         {
@@ -881,9 +793,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, planet.EnergyCapacity);
         }
 
-        /// <summary>
-        /// Verifies listener failure propagates after the completed bombardment is retained.
-        /// </summary>
         [Test]
         public void TryExecute_ListenerThrows_PreservesCompletedBombardment()
         {
@@ -906,9 +815,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(fleet.IsInCombat);
         }
 
-        /// <summary>
-        /// Verifies a failed strike roll still clears the combat state without restoring the route.
-        /// </summary>
         [Test]
         public void Execute_RandomProviderThrows_ClearsCombatState()
         {
@@ -927,9 +833,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, planet.EnergyCapacity);
         }
 
-        /// <summary>
-        /// Verifies command selection normalization removes null fleets before validation.
-        /// </summary>
         [Test]
         public void TryExecute_NullFleetAlongsideReadyFleet_ExecutesBombardment()
         {
@@ -946,9 +849,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, result.EnergyCapacityDamage);
         }
 
-        /// <summary>
-        /// Verifies publication preserves the primary result, follow-ups, and ownership ordering.
-        /// </summary>
         [Test]
         public void TryExecute_GarrisonDestroyed_PublishesOrderedCompletedBatch()
         {

@@ -10,9 +10,6 @@ namespace Rebellion.Tests.Game.FogOfWar
     [TestFixture]
     public class FogOfWarRecorderTests : FogOfWarTestBase
     {
-        /// <summary>
-        /// Verifies capital ships does not leak ship cargo.
-        /// </summary>
         [Test]
         public void RecordIntelligenceSnapshot_CapitalShips_DoesNotLeakShipCargo()
         {
@@ -72,9 +69,6 @@ namespace Rebellion.Tests.Game.FogOfWar
             );
         }
 
-        /// <summary>
-        /// Verifies enemy fleet does not retain waypoints.
-        /// </summary>
         [Test]
         public void RecordIntelligenceSnapshot_EnemyFleet_DoesNotRetainWaypoints()
         {
@@ -98,9 +92,6 @@ namespace Rebellion.Tests.Game.FogOfWar
             Assert.IsEmpty(knownFleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies mission completion preserves participant intelligence.
-        /// </summary>
         [Test]
         public void RecordEspionageSnapshot_MissionCompletion_PreservesParticipantIntelligence()
         {
@@ -146,9 +137,6 @@ namespace Rebellion.Tests.Game.FogOfWar
             Assert.AreEqual("Grand Moff Tarkin", recordedDecoy.DisplayName);
         }
 
-        /// <summary>
-        /// Verifies disabled mission participant preserves participant.
-        /// </summary>
         [Test]
         public void RecordEspionageSnapshot_DisabledMissionParticipant_PreservesParticipant()
         {

@@ -13,7 +13,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class VictoryCommandsTests
     {
-        /// <summary>Verifies hqnot configured returns empty.</summary>
         [Test]
         public void ProcessTick_HQNotConfigured_ReturnsEmpty()
         {
@@ -25,7 +24,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count, "No HQ configured should return no results");
         }
 
-        /// <summary>Verifies hqstill owned by defender returns empty.</summary>
         [Test]
         public void ProcessTick_HQStillOwnedByDefender_ReturnsEmpty()
         {
@@ -36,7 +34,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count, "HQ held by defender should not trigger victory");
         }
 
-        /// <summary>Verifies hqcaptured headquarters mode returns victory result.</summary>
         [Test]
         public void ProcessTick_HQCapturedHeadquartersMode_ReturnsVictoryResult()
         {
@@ -53,7 +50,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(empire, victory.Loser);
         }
 
-        /// <summary>Verifies after victory declared does not declare victory again.</summary>
         [Test]
         public void ProcessTick_AfterVictoryDeclared_DoesNotDeclareVictoryAgain()
         {
@@ -66,7 +62,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(secondResults);
         }
 
-        /// <summary>Verifies hqcaptured conquest mode leaders free returns empty.</summary>
         [Test]
         public void ProcessTick_HQCapturedConquestMode_LeadersFree_ReturnsEmpty()
         {
@@ -103,7 +98,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies hqcaptured conquest mode all leaders captured returns victory result.</summary>
         [Test]
         public void ProcessTick_HQCapturedConquestMode_AllLeadersCaptured_ReturnsVictoryResult()
         {
@@ -129,7 +123,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(empire, victory.Loser);
         }
 
-        /// <summary>Verifies hqcaptured conquest mode no main characters returns victory result.</summary>
         [Test]
         public void ProcessTick_HQCapturedConquestMode_NoMainCharacters_ReturnsVictoryResult()
         {
@@ -145,7 +138,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(rebels, victory.Winner);
         }
 
-        /// <summary>Verifies mobile headquarters in transit returns empty.</summary>
         [Test]
         public void ProcessTick_MobileHeadquartersInTransit_ReturnsEmpty()
         {
@@ -176,7 +168,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies mobile headquarters missing returns empty.</summary>
         [Test]
         public void ProcessTick_MobileHeadquartersMissing_ReturnsEmpty()
         {
@@ -197,7 +188,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies mobile headquarters captured returns victory result.</summary>
         [Test]
         public void ProcessTick_MobileHeadquartersCaptured_ReturnsVictoryResult()
         {
@@ -236,7 +226,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(empire, victory.Loser);
         }
 
-        /// <summary>Verifies multiple mobile headquarters uses defender headquarters.</summary>
         [Test]
         public void ProcessTick_MultipleMobileHeadquarters_UsesDefenderHeadquarters()
         {

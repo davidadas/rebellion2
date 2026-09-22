@@ -8,7 +8,6 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public class GameActionsTests
     {
-        /// <summary>Verifies place units spawn sources round trips authored structure.</summary>
         [Test]
         public void PlaceUnits_SpawnSources_RoundTripsAuthoredStructure()
         {
@@ -57,7 +56,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("FNALL1", sources[1].OwnerFactionInstanceID);
         }
 
-        /// <summary>Verifies place units authored spawn sources deserializes structure.</summary>
         [Test]
         public void PlaceUnits_AuthoredSpawnSources_DeserializesStructure()
         {
@@ -84,7 +82,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("FNALL1", sources[1].OwnerFactionInstanceID);
         }
 
-        /// <summary>Verifies place units authored selectors deserializes structure.</summary>
         [Test]
         public void PlaceUnits_AuthoredSelectors_DeserializesStructure()
         {
@@ -119,7 +116,6 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
-        /// <summary>Verifies place units selectors round trips transfer structure.</summary>
         [Test]
         public void PlaceUnits_Selectors_RoundTripsTransferStructure()
         {
@@ -161,7 +157,6 @@ namespace Rebellion.Tests.Game.Events
             );
         }
 
-        /// <summary>Verifies change owner planet selectors round trips authored structure.</summary>
         [Test]
         public void ChangeOwner_PlanetSelectors_RoundTripsAuthoredStructure()
         {
@@ -183,7 +178,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsEmpty(restored.Units);
         }
 
-        /// <summary>Verifies set node state attributes deserialize state.</summary>
         [Test]
         public void SetNodeState_Attributes_DeserializeState()
         {
@@ -196,7 +190,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(SceneNodeState.Inactive, action.State);
         }
 
-        /// <summary>Verifies set node state inactive officer selector round trips selector.</summary>
         [Test]
         public void SetNodeState_InactiveOfficerSelector_RoundTripsSelector()
         {
@@ -225,7 +218,6 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(selector.IncludeInactive);
         }
 
-        /// <summary>Verifies reveal to faction targets deserialize selectors.</summary>
         [Test]
         public void RevealToFaction_Targets_DeserializeSelectors()
         {

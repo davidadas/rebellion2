@@ -15,7 +15,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class CaptiveCommandsTests
     {
-        /// <summary>Verifies frees officer when escape roll succeeds.</summary>
         [Test]
         public void ProcessTick_EscapeRollSucceeds_FreesOfficer()
         {
@@ -31,7 +30,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(captive.CanEscape, "CanEscape should be cleared after escape");
         }
 
-        /// <summary>Verifies schedules escape attempt when unscheduled captive.</summary>
         [Test]
         public void ProcessTick_UnscheduledCaptive_SchedulesEscapeAttempt()
         {
@@ -46,7 +44,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies schedules maximum interval when unscheduled captive uses maximum roll.</summary>
         [Test]
         public void ProcessTick_UnscheduledCaptiveUsesMaximumRoll_SchedulesMaximumInterval()
         {
@@ -59,7 +56,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1101, captive.NextEscapeAttemptTick);
         }
 
-        /// <summary>Verifies skips escape roll when escape attempt not due.</summary>
         [Test]
         public void ProcessTick_EscapeAttemptNotDue_SkipsEscapeRoll()
         {
@@ -73,7 +69,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
-        /// <summary>Verifies evaluates only due captive when captives with different schedules.</summary>
         [Test]
         public void ProcessTick_CaptivesWithDifferentSchedules_EvaluatesOnlyDueCaptive()
         {
@@ -96,7 +91,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, results.Count);
         }
 
-        /// <summary>Verifies reschedules escape attempt when escape roll fails.</summary>
         [Test]
         public void ProcessTick_EscapeRollFails_ReschedulesEscapeAttempt()
         {
@@ -109,7 +103,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(101, captive.NextEscapeAttemptTick);
         }
 
-        /// <summary>Verifies stays captured when escape roll fails.</summary>
         [Test]
         public void ProcessTick_EscapeRollFails_StaysCaptured()
         {
@@ -123,7 +116,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(captive.IsCaptured, "Officer should remain captured when escape fails");
         }
 
-        /// <summary>Verifies shifts loyalty when escape succeeds.</summary>
         [Test]
         public void ProcessTick_EscapeSucceeds_ShiftsLoyalty()
         {
@@ -137,7 +129,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(70, captive.Loyalty, "Loyalty should decrease by EscapeLoyaltyShift");
         }
 
-        /// <summary>Verifies emits capture state result when escape succeeds.</summary>
         [Test]
         public void ProcessTick_EscapeSucceeds_EmitsCaptureStateResult()
         {
@@ -163,7 +154,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies remains captured when escape succeeds without friendly destination.</summary>
         [Test]
         public void ProcessTick_EscapeSucceedsWithoutFriendlyDestination_RemainsCaptured()
         {
@@ -183,7 +173,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results.OfType<OfficerCaptureStateResult>());
         }
 
-        /// <summary>Verifies moves officer to fleet when escape succeeds with friendly fleet.</summary>
         [Test]
         public void ProcessTick_EscapeSucceedsWithFriendlyFleet_MovesOfficerToFleet()
         {
@@ -211,7 +200,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, results.OfType<OfficerCaptureStateResult>().Count());
         }
 
-        /// <summary>Verifies moves officer to operational ship when friendly fleet first ship unavailable.</summary>
         [Test]
         public void ProcessTick_FriendlyFleetFirstShipUnavailable_MovesOfficerToOperationalShip()
         {
@@ -244,7 +232,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, results.OfType<OfficerCaptureStateResult>().Count());
         }
 
-        /// <summary>Verifies skips escape attempt when can escape false.</summary>
         [Test]
         public void ProcessTick_CanEscapeFalse_SkipsEscapeAttempt()
         {
@@ -259,7 +246,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(captive.IsCaptured, "Officer with CanEscape=false should not escape");
         }
 
-        /// <summary>Verifies skips escape attempt when killed officer.</summary>
         [Test]
         public void ProcessTick_KilledOfficer_SkipsEscapeAttempt()
         {
@@ -274,7 +260,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(captive.IsCaptured, "Killed officer should not attempt escape");
         }
 
-        /// <summary>Verifies lower escape chance when strong garrison.</summary>
         [Test]
         public void ProcessTick_StrongGarrison_LowerEscapeChance()
         {
@@ -306,7 +291,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies higher escape chance when no garrison.</summary>
         [Test]
         public void ProcessTick_NoGarrison_HigherEscapeChance()
         {
@@ -325,7 +309,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies does not go negative when loyalty clamps to zero.</summary>
         [Test]
         public void ProcessTick_LoyaltyClampsToZero_DoesNotGoNegative()
         {
@@ -340,7 +323,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, captive.Loyalty, "Loyalty should clamp to 0, not go negative");
         }
 
-        /// <summary>Verifies uses captor fleet guards when captive aboard fleet.</summary>
         [Test]
         public void ProcessTick_CaptiveAboardFleet_UsesCaptorFleetGuards()
         {
@@ -371,7 +353,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(ship, captive.GetParent());
         }
 
-        /// <summary>Verifies ignores planet garrison when captive aboard fleet.</summary>
         [Test]
         public void ProcessTick_CaptiveAboardFleet_IgnoresPlanetGarrison()
         {
@@ -405,7 +386,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("empire", captive.GetParentOfType<Planet>()?.OwnerInstanceID);
         }
 
-        /// <summary>Verifies skips escape attempt when captive in transit.</summary>
         [Test]
         public void ProcessTick_CaptiveInTransit_SkipsEscapeAttempt()
         {
@@ -426,7 +406,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(ship, captive.GetParent());
         }
 
-        /// <summary>Verifies release clears custody without changing an existing movement order.</summary>
         [Test]
         public void ReleaseOfficer_OfficerAlreadyMoving_PreservesMovement()
         {
@@ -441,7 +420,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(transfer, captive.Movement);
         }
 
-        /// <summary>Verifies release itself does not apply the escape-only loyalty penalty.</summary>
         [Test]
         public void ReleaseOfficer_CaptiveReleased_PreservesLoyalty()
         {

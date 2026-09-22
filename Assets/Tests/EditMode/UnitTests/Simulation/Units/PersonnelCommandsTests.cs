@@ -38,9 +38,6 @@ namespace Rebellion.Tests.Simulation
             _commands = new PersonnelCommands(new PersonnelQueries(_game));
         }
 
-        /// <summary>
-        /// Verifies that commands require the active game's eligibility queries.
-        /// </summary>
         [Test]
         public void Constructor_NullQueries_ThrowsArgumentNullException()
         {
@@ -51,9 +48,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("queries", exception.ParamName);
         }
 
-        /// <summary>
-        /// Verifies that killing an officer preserves its identity and parent while disabling it.
-        /// </summary>
         [Test]
         public void KillOfficer_ActiveOfficer_MarksKilledAndRetainsIdentity()
         {
@@ -74,9 +68,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.DoesNotContain(_game.GetSceneNodesByType<Officer>(), officer);
         }
 
-        /// <summary>
-        /// Verifies that retirement disables the complete selection while retaining historical nodes.
-        /// </summary>
         [Test]
         public void Retire_OwnedPersonnel_RemovesCompleteSelection()
         {
@@ -96,9 +87,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(specialForces.IsRetired);
         }
 
-        /// <summary>
-        /// Verifies that an ineligible member prevents retirement of the whole selection.
-        /// </summary>
         [Test]
         public void Retire_InvalidMember_PreservesCompleteSelection()
         {
@@ -115,9 +103,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(_planet, mainOfficer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies that another faction cannot retire the selected personnel.
-        /// </summary>
         [Test]
         public void Retire_UnauthorizedOwner_PreservesPersonnel()
         {
@@ -131,9 +116,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies that killing a missing officer retains the argument failure contract.
-        /// </summary>
         [Test]
         public void KillOfficer_NullOfficer_ThrowsArgumentNullException()
         {
@@ -144,9 +126,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("officer", exception.ParamName);
         }
 
-        /// <summary>
-        /// Verifies that duplicate identities reject the selection before any retirement.
-        /// </summary>
         [Test]
         public void Retire_DuplicateIdentity_PreservesPersonnel()
         {
@@ -163,9 +142,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsRetired);
         }
 
-        /// <summary>
-        /// Verifies that a missing member prevents retirement of earlier valid members.
-        /// </summary>
         [Test]
         public void Retire_UnregisteredMember_PreservesCompleteSelection()
         {
@@ -182,9 +158,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsRetired);
         }
 
-        /// <summary>
-        /// Verifies that a snapshot selects the registered person rather than being mutated.
-        /// </summary>
         [Test]
         public void Retire_SnapshotSelection_RetiresOnlyLivePersonnel()
         {
@@ -199,9 +172,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(snapshot.IsRetired);
         }
 
-        /// <summary>
-        /// Verifies that retirement rechecks capture state after an earlier eligibility query.
-        /// </summary>
         [Test]
         public void Retire_OfficerCapturedAfterEligibilityCheck_PreservesPersonnel()
         {

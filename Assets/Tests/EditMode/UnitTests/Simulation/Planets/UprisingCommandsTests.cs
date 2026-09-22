@@ -15,14 +15,12 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class UprisingCommandsTests
     {
-        /// <summary>Verifies constructing uprising state does not consume random values.</summary>
         [Test]
         public void Constructor_OwnedPlanet_DoesNotConsumeRandomValues()
         {
             Assert.DoesNotThrow(() => BuildScene(rng: new ThrowingRNG()));
         }
 
-        /// <summary>Verifies timers are initialized in clear, support, then incident order.</summary>
         [Test]
         public void ProcessTick_UnscheduledActiveUprising_PreservesTimerInitializationOrder()
         {
@@ -62,7 +60,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies a clear timer wins a due-tick tie when it was registered first.</summary>
         [Test]
         public void ProcessTick_ClearTimerWinsTie_EndsUprisingWithoutFurtherRolls()
         {
@@ -87,7 +84,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsInstanceOf<PlanetUprisingEndedResult>(results.Single());
         }
 
-        /// <summary>Verifies overdue recurring pulses advance from their scheduled ticks.</summary>
         [Test]
         public void ProcessTick_OverdueSupportTimer_ProcessesEveryDuePulse()
         {
@@ -116,7 +112,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(3, rng.IntCallCount);
         }
 
-        /// <summary>Verifies no uprising when sufficient garrison.</summary>
         [Test]
         public void ProcessTick_SufficientGarrison_NoUprising()
         {
@@ -131,7 +126,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(planet.IsInUprising, "Sufficient garrison should prevent uprising");
         }
 
-        /// <summary>Verifies uprising starts when no garrison.</summary>
         [Test]
         public void ProcessTick_NoGarrison_UprisingStarts()
         {
@@ -152,7 +146,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
         }
 
-        /// <summary>Verifies no uprising when exact garrison.</summary>
         [Test]
         public void ProcessTick_ExactGarrison_NoUprising()
         {
@@ -170,7 +163,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies reports near uprising once when garrison falls to requirement.</summary>
         [Test]
         public void ProcessTick_GarrisonFallsToRequirement_ReportsNearUprisingOnce()
         {
@@ -188,7 +180,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(planet.IsInUprising);
         }
 
-        /// <summary>Verifies destroys facility when active uprising with facility.</summary>
         [Test]
         public void ProcessTick_ActiveUprisingWithFacility_DestroysFacility()
         {
@@ -218,7 +209,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(planet.IsInUprising, "Uprising should remain active after consequence");
         }
 
-        /// <summary>Verifies does not change control when active uprising last building destroyed.</summary>
         [Test]
         public void ProcessTick_ActiveUprisingLastBuildingDestroyed_DoesNotChangeControl()
         {
@@ -241,7 +231,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results.OfType<PlanetOwnershipChangedResult>());
         }
 
-        /// <summary>Verifies officer captured when active uprising.</summary>
         [Test]
         public void ProcessTick_ActiveUprising_OfficerCaptured()
         {
@@ -266,7 +255,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(results.OfType<OfficerCaptureStateResult>().Any(r => r.IsCaptured));
         }
 
-        /// <summary>Verifies captured officer freed when active uprising.</summary>
         [Test]
         public void ProcessTick_ActiveUprising_CapturedOfficerFreed()
         {
@@ -297,7 +285,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies excludes incomplete facility when incident.</summary>
         [Test]
         public void ProcessTick_Incident_ExcludesIncompleteFacility()
         {
@@ -316,7 +303,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
         }
 
-        /// <summary>Verifies excludes enroute regiment when incident.</summary>
         [Test]
         public void ProcessTick_Incident_ExcludesEnrouteRegiment()
         {
@@ -341,7 +327,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies captures only usable officer when incident.</summary>
         [Test]
         public void ProcessTick_Incident_CapturesOnlyUsableOfficer()
         {
@@ -376,7 +361,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(usable.IsCaptured);
         }
 
-        /// <summary>Verifies no uprising when high support.</summary>
         [Test]
         public void ProcessTick_HighSupport_NoUprising()
         {
@@ -393,7 +377,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(planet.IsInUprising, "High support should prevent uprising");
         }
 
-        /// <summary>Verifies zero troops planet goes neutral when active uprising.</summary>
         [Test]
         public void ProcessTick_ActiveUprising_ZeroTroops_PlanetGoesNeutral()
         {
@@ -415,7 +398,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(flip.NewOwner);
         }
 
-        /// <summary>Verifies transfers control when active uprising zero troops with opposing support.</summary>
         [Test]
         public void ProcessTick_ActiveUprisingZeroTroopsWithOpposingSupport_TransfersControl()
         {
@@ -437,7 +419,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("rebels", result.NewOwner?.InstanceID);
         }
 
-        /// <summary>Verifies clears only when timer expires when sufficient uprising garrison.</summary>
         [Test]
         public void ProcessTick_SufficientUprisingGarrison_ClearsOnlyWhenTimerExpires()
         {
@@ -457,7 +438,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, atTimer.OfType<PlanetUprisingEndedResult>().Count());
         }
 
-        /// <summary>Verifies ignores hostile fleet presence when incident.</summary>
         [Test]
         public void ProcessTick_Incident_IgnoresHostileFleetPresence()
         {
@@ -478,7 +458,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
         }
 
-        /// <summary>Verifies applies incite and subdue leadership adjustments when incident.</summary>
         [Test]
         public void ProcessTick_Incident_AppliesInciteAndSubdueLeadershipAdjustments()
         {
@@ -502,7 +481,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(92, planet.GetPopularSupport("rebels"));
         }
 
-        /// <summary>Verifies excludes mission participants in transit when incident.</summary>
         [Test]
         public void ProcessTick_Incident_ExcludesMissionParticipantsInTransit()
         {
@@ -531,7 +509,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(10, planet.GetPopularSupport("empire"));
         }
 
-        /// <summary>Verifies skipped when neutral planet.</summary>
         [Test]
         public void ProcessTick_NeutralPlanet_Skipped()
         {
@@ -576,7 +553,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(planet.IsInUprising, "Neutral planet should not revolt");
         }
 
-        /// <summary>Verifies halves requirement when empire garrison on core sector.</summary>
         [Test]
         public void ProcessTick_EmpireGarrisonOnCoreSector_HalvesRequirement()
         {
@@ -642,7 +618,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies no bonus when empire garrison on outer rim.</summary>
         [Test]
         public void ProcessTick_EmpireGarrisonOnOuterRim_NoBonus()
         {
@@ -708,7 +683,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies reports near uprising when captured planet at requirement.</summary>
         [Test]
         public void ReconcileGarrison_CapturedPlanetAtRequirement_ReportsNearUprising()
         {
@@ -731,7 +705,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(planet.IsInUprising);
         }
 
-        /// <summary>Verifies cancels clear timer when deficit returns before clear pulse.</summary>
         [Test]
         public void ReconcileGarrison_DeficitReturnsBeforeClearPulse_CancelsClearTimer()
         {
@@ -757,7 +730,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results.OfType<PlanetUprisingEndedResult>());
         }
 
-        /// <summary>Verifies attempts lowest score first when officers out of score order.</summary>
         [Test]
         public void TryExecuteMission_OfficersOutOfScoreOrder_AttemptsLowestScoreFirst()
         {

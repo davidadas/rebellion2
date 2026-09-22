@@ -18,9 +18,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class SpaceCombatCommandsTests : CombatTestBase
     {
-        /// <summary>
-        /// Verifies resolve two faction fleets runs space combat.
-        /// </summary>
         [Test]
         public void Resolve_TwoFactionFleets_RunsSpaceCombat()
         {
@@ -66,9 +63,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(results.OfType<GameObjectDamagedResult>().Any());
         }
 
-        /// <summary>
-        /// Verifies resolve completed encounter returns aggregate damage.
-        /// </summary>
         [Test]
         public void Resolve_CompletedEncounter_ReturnsAggregateDamage()
         {
@@ -121,9 +115,6 @@ namespace Rebellion.Tests.Simulation
             }
         }
 
-        /// <summary>
-        /// Verifies resolve no hostile fleets does not run combat.
-        /// </summary>
         [Test]
         public void Resolve_NoHostileFleets_DoesNotRunCombat()
         {
@@ -150,9 +141,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies resolve in transit capital ship attached to fleet does not take combat damage.
-        /// </summary>
         [Test]
         public void Resolve_InTransitCapitalShipAttachedToFleet_DoesNotTakeCombatDamage()
         {
@@ -197,9 +185,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1000, inTransitShip.CurrentHullStrength);
         }
 
-        /// <summary>
-        /// Verifies resolve in transit starfighter attached to fleet does not take combat losses.
-        /// </summary>
         [Test]
         public void Resolve_InTransitStarfighterAttachedToFleet_DoesNotTakeCombatLosses()
         {
@@ -246,9 +231,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(12, inTransitFighter.CurrentSquadronSize);
         }
 
-        /// <summary>
-        /// Verifies resolve single faction fleets does not run combat.
-        /// </summary>
         [Test]
         public void Resolve_SingleFactionFleets_DoesNotRunCombat()
         {
@@ -271,9 +253,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(100, fleet2.GetChildren<CapitalShip>()[0].CurrentHullStrength);
         }
 
-        /// <summary>
-        /// Verifies resolve multiple attacker fleets includes every fleet.
-        /// </summary>
         [Test]
         public void Resolve_MultipleAttackerFleets_IncludesEveryFleet()
         {
@@ -310,9 +289,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies resolve attacker destroys defender returns attacker victory.
-        /// </summary>
         [Test]
         public void Resolve_AttackerDestroysDefender_ReturnsAttackerVictory()
         {
@@ -340,9 +316,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f1"), "Attacker survives");
         }
 
-        /// <summary>
-        /// Verifies resolve defender destroys attacker returns defender victory.
-        /// </summary>
         [Test]
         public void Resolve_DefenderDestroysAttacker_ReturnsDefenderVictory()
         {
@@ -370,9 +343,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f2"), "Defender survives");
         }
 
-        /// <summary>
-        /// Verifies resolve mutual destruction removes both fleets.
-        /// </summary>
         [Test]
         public void Resolve_MutualDestruction_RemovesBothFleets()
         {
@@ -420,9 +390,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies resolve ship takes damage reduces current hull strength.
-        /// </summary>
         [Test]
         public void Resolve_ShipTakesDamage_ReducesCurrentHullStrength()
         {
@@ -451,9 +418,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies resolve ship destroyed removed from fleet.
-        /// </summary>
         [Test]
         public void Resolve_ShipDestroyed_RemovedFromFleet()
         {
@@ -481,9 +445,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies resolve fighter squadron takes losses reduces current squadron size.
-        /// </summary>
         [Test]
         public void Resolve_FighterSquadronTakesLosses_ReducesCurrentSquadronSize()
         {
@@ -512,9 +473,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Less(allianceFighter.CurrentSquadronSize, 10);
         }
 
-        /// <summary>
-        /// Verifies resolve empty fleet removed from scene.
-        /// </summary>
         [Test]
         public void Resolve_EmptyFleet_RemovedFromScene()
         {
@@ -548,9 +506,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(foundFleet, "Destroyed fleet should not be in planet's children");
         }
 
-        /// <summary>
-        /// Verifies resolve both sides zero weapons destroys fleets and records losses.
-        /// </summary>
         [Test]
         public void Resolve_BothSidesZeroWeapons_DestroysFleetsAndRecordsLosses()
         {
@@ -586,11 +541,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasOpposingReadyFleets(planet));
         }
 
-        /// <summary>
-        /// Verifies resolve only one unarmed side can evacuate reports surviving side victory.
-        /// </summary>
-        /// <param name="attackerCanEvacuate">The attacker can evacuate.</param>
-        /// <param name="expectedWinner">The expected winner.</param>
         [TestCase(true, CombatSide.Attacker)]
         [TestCase(false, CombatSide.Defender)]
         public void Resolve_OnlyOneUnarmedSideCanEvacuate_ReportsSurvivingSideVictory(
@@ -629,9 +579,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(destroyedFleet.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies resolve weapon fire damages targets.
-        /// </summary>
         [Test]
         public void Resolve_WeaponFire_DamagesTargets()
         {
@@ -659,9 +606,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(HasDamageFor(results, allianceShip));
         }
 
-        /// <summary>
-        /// Verifies resolve max shield strength absorbs damage before hull.
-        /// </summary>
         [Test]
         public void Resolve_MaxShieldStrength_AbsorbsDamageBeforeHull()
         {
@@ -707,9 +651,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasDamageFor(results, defenderShip));
         }
 
-        /// <summary>
-        /// Verifies resolve shield recharge rate restores shield strength between rounds.
-        /// </summary>
         [Test]
         public void Resolve_ShieldRechargeRate_RestoresShieldStrengthBetweenRounds()
         {
@@ -757,9 +698,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasDamageFor(results, defenderShip));
         }
 
-        /// <summary>
-        /// Verifies resolve depleted shield strength persists between rounds.
-        /// </summary>
         [Test]
         public void Resolve_DepletedShieldStrength_PersistsBetweenRounds()
         {
@@ -978,9 +916,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, defenderShip.CurrentHullStrength);
         }
 
-        /// <summary>
-        /// Verifies resolve fighter damage is absorbed by capital ship shields.
-        /// </summary>
         [Test]
         public void Resolve_FighterDamage_IsAbsorbedByCapitalShipShields()
         {
@@ -1019,9 +954,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasDamageFor(results, defenderShip));
         }
 
-        /// <summary>
-        /// Verifies resolve fighters attack capital ships reports damage.
-        /// </summary>
         [Test]
         public void Resolve_FightersAttackCapitalShips_ReportsDamage()
         {
@@ -1057,9 +989,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Less(damage.HullAfter, damage.HullBefore);
         }
 
-        /// <summary>
-        /// Verifies resolve empty fleets does not run combat.
-        /// </summary>
         [Test]
         public void Resolve_EmptyFleets_DoesNotRunCombat()
         {
@@ -1087,9 +1016,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(allianceFleet.IsInCombat);
         }
 
-        /// <summary>
-        /// Verifies resolve combat with survivors clears is in combat on surviving fleets.
-        /// </summary>
         [Test]
         public void Resolve_CombatWithSurvivors_ClearsIsInCombatOnSurvivingFleets()
         {
@@ -1125,9 +1051,6 @@ namespace Rebellion.Tests.Simulation
                 );
         }
 
-        /// <summary>
-        /// Verifies resolve defender wins on own planet does not change ownership.
-        /// </summary>
         [Test]
         public void Resolve_DefenderWinsOnOwnPlanet_DoesNotChangeOwnership()
         {
@@ -1162,9 +1085,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies process tick with in transit fleet ignores in transit fleet.
-        /// </summary>
         [Test]
         public void ProcessTick_WithInTransitFleet_IgnoresInTransitFleet()
         {
@@ -1190,9 +1110,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(allianceFleet.IsInCombat);
         }
 
-        /// <summary>
-        /// Verifies process tick fleets with only in transit ships does not run combat.
-        /// </summary>
         [Test]
         public void ProcessTick_FleetsWithOnlyInTransitShips_DoesNotRunCombat()
         {
@@ -1225,9 +1142,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(allianceFleet.IsInCombat);
         }
 
-        /// <summary>
-        /// Verifies process tick multiple encounters all ai resolves all.
-        /// </summary>
         [Test]
         public void ProcessTick_MultipleEncountersAllAI_ResolvesAll()
         {
@@ -1265,9 +1179,6 @@ namespace Rebellion.Tests.Simulation
             }
         }
 
-        /// <summary>
-        /// Verifies process tick weaker aifleet can retreat moves to friendly planet.
-        /// </summary>
         [Test]
         public void ProcessTick_WeakerAIFleetCanRetreat_MovesToFriendlyPlanet()
         {
@@ -1291,9 +1202,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
-        /// <summary>
-        /// Verifies process tick fleet withdrawal interrupted by victory keeps entire fleet at combat planet.
-        /// </summary>
         [Test]
         public void ProcessTick_FleetWithdrawalInterruptedByVictory_KeepsEntireFleetAtCombatPlanet()
         {
@@ -1342,9 +1250,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
-        /// <summary>
-        /// Verifies process tick weaker aifleet destroyed during withdrawal removes fleet.
-        /// </summary>
         [Test]
         public void ProcessTick_WeakerAIFleetDestroyedDuringWithdrawal_RemovesFleet()
         {
@@ -1374,9 +1279,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
-        /// <summary>
-        /// Verifies process tick weaker aifleet blocked by gravity well fights.
-        /// </summary>
         [Test]
         public void ProcessTick_WeakerAIFleetBlockedByGravityWell_Fights()
         {
@@ -1417,9 +1319,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
-        /// <summary>
-        /// Verifies process tick unarmed aifleets retreats both.
-        /// </summary>
         [Test]
         public void ProcessTick_UnarmedAIFleets_RetreatsBoth()
         {
@@ -1442,9 +1341,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
-        /// <summary>
-        /// Verifies process tick unarmed fleets without retreat destinations destroys and reports both.
-        /// </summary>
         [Test]
         public void ProcessTick_UnarmedFleetsWithoutRetreatDestinations_DestroysAndReportsBoth()
         {
@@ -1493,9 +1389,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies process tick multiple unarmed fleets with retreat destinations retreats every fleet.
-        /// </summary>
         [Test]
         public void ProcessTick_MultipleUnarmedFleetsWithRetreatDestinations_RetreatsEveryFleet()
         {
@@ -1525,9 +1418,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
-        /// <summary>
-        /// Verifies process tick multiple unarmed fleets without retreat destinations destroys every fleet and reports every ship.
-        /// </summary>
         [Test]
         public void ProcessTick_MultipleUnarmedFleetsWithoutRetreatDestinations_DestroysEveryFleetAndReportsEveryShip()
         {
@@ -1574,9 +1464,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
-        /// <summary>
-        /// Verifies process tick player involved encounter returns pending decision.
-        /// </summary>
         [Test]
         public void ProcessTick_PlayerInvolvedEncounter_ReturnsPendingDecision()
         {
@@ -1612,9 +1499,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotEmpty(resolvedResults);
         }
 
-        /// <summary>
-        /// Verifies process tick player involved encounter clears fleet waypoint routes.
-        /// </summary>
         [Test]
         public void ProcessTick_PlayerInvolvedEncounter_ClearsFleetWaypointRoutes()
         {
@@ -1641,9 +1525,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(allianceFleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies process tick player fleet against planetary starfighters returns pending decision.
-        /// </summary>
         [Test]
         public void ProcessTick_PlayerFleetAgainstPlanetaryStarfighters_ReturnsPendingDecision()
         {
@@ -1678,9 +1559,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(pending.DefenderCanRetreat);
         }
 
-        /// <summary>
-        /// Verifies process tick unfinished planetary starfighters do not trigger combat.
-        /// </summary>
         [Test]
         public void ProcessTick_UnfinishedPlanetaryStarfighters_DoNotTriggerCombat()
         {
@@ -1707,9 +1585,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(fleet.IsInCombat);
         }
 
-        /// <summary>
-        /// Verifies process tick player involved encounter sets retreat availability.
-        /// </summary>
         [Test]
         public void ProcessTick_PlayerInvolvedEncounter_SetsRetreatAvailability()
         {
@@ -1748,9 +1623,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(allianceCanRetreat);
         }
 
-        /// <summary>
-        /// Verifies resolve pending multiple colocated fleets includes every fleet.
-        /// </summary>
         [Test]
         public void ResolvePending_MultipleColocatedFleets_IncludesEveryFleet()
         {
@@ -1802,9 +1674,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasHostileFleets(planet));
         }
 
-        /// <summary>
-        /// Verifies resolve pending multiple colocated fleets destroys every losing fleet and reports every ship.
-        /// </summary>
         [Test]
         public void ResolvePending_MultipleColocatedFleets_DestroysEveryLosingFleetAndReportsEveryShip()
         {
@@ -1868,9 +1737,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasHostileFleets(planet));
         }
 
-        /// <summary>
-        /// Verifies resolve pending multiple colocated fleets excludes in transit sibling fleet.
-        /// </summary>
         [Test]
         public void ResolvePending_MultipleColocatedFleets_ExcludesInTransitSiblingFleet()
         {
@@ -1913,9 +1779,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(inTransitFleet.IsInCombat);
         }
 
-        /// <summary>
-        /// Verifies resolve pending planetary starfighters participate in combat.
-        /// </summary>
         [Test]
         public void ResolvePending_PlanetaryStarfighters_ParticipateInCombat()
         {
@@ -1957,9 +1820,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies resolve pending planetary hyperdrive fighters reach withdrawal threshold withdraws fighters.
-        /// </summary>
         [Test]
         public void ResolvePending_PlanetaryHyperdriveFightersReachWithdrawalThreshold_WithdrawsFighters()
         {
@@ -2016,9 +1876,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(fighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies resolve pending planetary non hyperdrive fighters reach withdrawal threshold destroys fighters.
-        /// </summary>
         [Test]
         public void ResolvePending_PlanetaryNonHyperdriveFightersReachWithdrawalThreshold_DestroysFighters()
         {
@@ -2067,9 +1924,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies resolve pending fleet and planetary non hyperdrive fighters withdraw destroys stranded fighters.
-        /// </summary>
         [Test]
         public void ResolvePending_FleetAndPlanetaryNonHyperdriveFightersWithdraw_DestroysStrandedFighters()
         {
@@ -2148,9 +2002,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(defenderFighter.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies resolve pending withdrawing fleet carries non hyperdrive fighter preserves fighter.
-        /// </summary>
         [Test]
         public void ResolvePending_WithdrawingFleetCarriesNonHyperdriveFighter_PreservesFighter()
         {
@@ -2236,9 +2087,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(defenderShip, defenderFighter.GetParent());
         }
 
-        /// <summary>
-        /// Verifies resolve pending carrier destroyed with recovery capacity reparents fighter and withdraws fleet.
-        /// </summary>
         [Test]
         public void ResolvePending_CarrierDestroyedWithRecoveryCapacity_ReparentsFighterAndWithdrawsFleet()
         {
@@ -2273,9 +2121,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(recoveryCarrier, fighter.GetParent());
         }
 
-        /// <summary>
-        /// Verifies resolve pending carrier destroyed without recovery capacity deletes stranded fighter.
-        /// </summary>
         [Test]
         public void ResolvePending_CarrierDestroyedWithoutRecoveryCapacity_DeletesStrandedFighter()
         {
@@ -2309,9 +2154,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies resolve pending carrier destroyed with partially occupied recovery capacity preserves only available fighters.
-        /// </summary>
         [Test]
         public void ResolvePending_CarrierDestroyedWithPartiallyOccupiedRecoveryCapacity_PreservesOnlyAvailableFighters()
         {
@@ -2345,9 +2187,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(strandedFighter.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies resolve pending in transit fighter occupies recovery carrier records stranded fighter loss.
-        /// </summary>
         [Test]
         public void ResolvePending_InTransitFighterOccupiesRecoveryCarrier_RecordsStrandedFighterLoss()
         {
@@ -2380,9 +2219,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, loss.SquadsAfter);
         }
 
-        /// <summary>
-        /// Verifies resolve pending carrier destroyed with limited capacity prioritizes non hyperdrive fighter.
-        /// </summary>
         [Test]
         public void ResolvePending_CarrierDestroyedWithLimitedCapacity_PrioritizesNonHyperdriveFighter()
         {
@@ -2415,9 +2251,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(hyperdriveFighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies resolve pending hyperdrive fighter occupies recovery carrier evacuates hyperdrive fighter and recovers non hyperdrive fighter.
-        /// </summary>
         [Test]
         public void ResolvePending_HyperdriveFighterOccupiesRecoveryCarrier_EvacuatesHyperdriveFighterAndRecoversNonHyperdriveFighter()
         {
@@ -2452,9 +2285,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(hyperdriveFighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies resolve pending automatic withdrawal fleet without hyperdrive destroys fleet.
-        /// </summary>
         [Test]
         public void ResolvePending_AutomaticWithdrawalFleetWithoutHyperdrive_DestroysFleet()
         {
@@ -2505,9 +2335,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(retreatingShip.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies resolve pending capital ship against planetary fighter destroys fighter.
-        /// </summary>
         [Test]
         public void ResolvePending_CapitalShipAgainstPlanetaryFighter_DestroysFighter()
         {
@@ -2556,9 +2383,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("alliance-fleet"));
         }
 
-        /// <summary>
-        /// Verifies resolve pending retreat player fleet moves to friendly planet.
-        /// </summary>
         [Test]
         public void ResolvePendingRetreat_PlayerFleet_MovesToFriendlyPlanet()
         {
@@ -2607,9 +2431,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies resolve pending retreat planetary hyperdrive fighter moves fighter and does not restart combat.
-        /// </summary>
         [Test]
         public void ResolvePendingRetreat_PlanetaryHyperdriveFighter_MovesFighterAndDoesNotRestartCombat()
         {
@@ -2659,9 +2480,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(manager.HasPendingDecision);
         }
 
-        /// <summary>
-        /// Verifies resolve pending retreat planetary hyperdrive fighter without fleet moves fighter and ends combat.
-        /// </summary>
         [Test]
         public void ResolvePendingRetreat_PlanetaryHyperdriveFighterWithoutFleet_MovesFighterAndEndsCombat()
         {
@@ -2707,9 +2525,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(manager.HasPendingDecision);
         }
 
-        /// <summary>
-        /// Verifies resolve pending retreat planetary non hyperdrive fighter does not move any forces.
-        /// </summary>
         [Test]
         public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighter_DoesNotMoveAnyForces()
         {
@@ -2750,9 +2565,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(fighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies resolve pending retreat fleet without hyperdrive does not move fleet.
-        /// </summary>
         [Test]
         public void ResolvePendingRetreat_FleetWithoutHyperdrive_DoesNotMoveFleet()
         {
@@ -2781,9 +2593,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(empireFleet.Movement);
         }
 
-        /// <summary>
-        /// Verifies resolve pending retreat multiple colocated fleets retreats every fleet and reports every ship.
-        /// </summary>
         [Test]
         public void ResolvePendingRetreat_MultipleColocatedFleets_RetreatsEveryFleetAndReportsEveryShip()
         {
@@ -2834,9 +2643,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
-        /// <summary>
-        /// Verifies resolve ship destroyed with surviving ship officer moved to surviving ship.
-        /// </summary>
         [Test]
         public void Resolve_ShipDestroyedWithSurvivingShip_OfficerMovedToSurvivingShip()
         {
@@ -2898,9 +2704,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies combat resolution evacuates an officer when the last ship is destroyed.
-        /// </summary>
         [Test]
         public void Resolve_LastShipDestroyed_OfficerEvacuatedToNearestFriendlyPlanet()
         {
@@ -2960,9 +2763,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies a missing pending encounter remains an exceptional resolution request.
-        /// </summary>
         [Test]
         public void ResolvePending_NoPendingEncounter_ThrowsInvalidOperationException()
         {
@@ -2971,9 +2771,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Throws<InvalidOperationException>(() => commands.ResolvePending(true));
         }
 
-        /// <summary>
-        /// Verifies retreat without a pending encounter preserves its rejection contract.
-        /// </summary>
         [Test]
         public void ResolvePendingRetreat_NoPendingEncounter_ThrowsInvalidOperationException()
         {
@@ -2984,9 +2781,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies resolver failure retains the pending decision after clearing combat flags.
-        /// </summary>
         [Test]
         public void ResolvePending_ResolverThrows_RetainsPendingDecision()
         {
@@ -3001,9 +2795,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(commands.ProcessTick());
         }
 
-        /// <summary>
-        /// Verifies a faction outside the encounter cannot clear the pending decision.
-        /// </summary>
         [Test]
         public void ResolvePendingRetreat_UnrelatedFaction_KeepsPendingDecision()
         {
@@ -3020,9 +2811,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(allianceFleet.Movement);
         }
 
-        /// <summary>
-        /// Verifies the existing manual-resolution placeholder clears the encounter without damage.
-        /// </summary>
         [Test]
         public void ResolvePending_ManualResolution_ClearsPendingWithoutDamage()
         {
@@ -3039,9 +2827,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(100, allianceFleet.GetChildren<CapitalShip>()[0].CurrentHullStrength);
         }
 
-        /// <summary>
-        /// Verifies pending presentation is rebuilt from current retreat eligibility and tick state.
-        /// </summary>
         [Test]
         public void TryGetPendingCombat_GravityWellActivated_RefreshesRetreatAvailability()
         {

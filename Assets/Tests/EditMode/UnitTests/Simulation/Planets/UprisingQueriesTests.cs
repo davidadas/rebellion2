@@ -10,9 +10,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class UprisingQueriesTests
     {
-        /// <summary>Verifies matches original formula when standard planet.</summary>
-        /// <param name="support">The support.</param>
-        /// <param name="expectedGarrison">The expected garrison.</param>
         [TestCase(80, 0)]
         [TestCase(60, 0)]
         [TestCase(55, 1)]
@@ -57,7 +54,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(expectedGarrison, garrison, $"Garrison for support={support}");
         }
 
-        /// <summary>Verifies halved when core world empire.</summary>
         [Test]
         public void CalculateGarrisonRequirement_CoreWorldEmpire_Halved()
         {
@@ -96,7 +92,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, garrison, "Empire core world should halve garrison");
         }
 
-        /// <summary>Verifies not halved when core world alliance.</summary>
         [Test]
         public void CalculateGarrisonRequirement_CoreWorldAlliance_NotHalved()
         {
@@ -135,7 +130,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(4, garrison, "Alliance core world should NOT halve garrison");
         }
 
-        /// <summary>Verifies requires one troop when efficient core faction below threshold.</summary>
         [Test]
         public void CalculateGarrisonRequirement_EfficientCoreFactionBelowThreshold_RequiresOneTroop()
         {

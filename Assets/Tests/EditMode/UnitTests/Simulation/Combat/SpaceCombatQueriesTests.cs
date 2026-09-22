@@ -13,9 +13,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class SpaceCombatQueriesTests : CombatTestBase
     {
-        /// <summary>
-        /// Verifies evacuation eligibility does not move forces or clear a fleet route.
-        /// </summary>
         [Test]
         public void CanRetreatForces_FriendlyDestination_DoesNotMoveForces()
         {
@@ -37,9 +34,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { "next-planet" }, fleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies a force without a friendly destination cannot withdraw.
-        /// </summary>
         [Test]
         public void CanRetreatForces_NoFriendlyDestination_ReturnsFalse()
         {
@@ -55,9 +49,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(canRetreat);
         }
 
-        /// <summary>
-        /// Verifies an active hostile gravity well prevents withdrawal.
-        /// </summary>
         [Test]
         public void CanRetreatForces_HostileGravityWell_ReturnsFalse()
         {
@@ -77,9 +68,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(canRetreat);
         }
 
-        /// <summary>
-        /// Verifies directly deployed fighters must also be capable of retreating.
-        /// </summary>
         [Test]
         public void CanRetreatForces_PlanetaryFighterWithoutHyperdrive_ReturnsFalse()
         {

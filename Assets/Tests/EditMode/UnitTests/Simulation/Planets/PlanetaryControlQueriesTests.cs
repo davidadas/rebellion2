@@ -33,7 +33,6 @@ namespace Rebellion.Tests.Simulation
             _queries = new PlanetaryControlQueries(_game);
         }
 
-        /// <summary>Verifies support ties retain faction-list ordering.</summary>
         [Test]
         public void GetPlanetController_EqualQualifyingSupport_ReturnsFirstFaction()
         {
@@ -47,7 +46,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(_rebels, _queries.GetPlanetController(_targetPlanet));
         }
 
-        /// <summary>Verifies support-based control can be queried without transferring ownership.</summary>
         [Test]
         public void GetPlanetController_OtherFactionHasControllingSupport_DoesNotChangeOwner()
         {
@@ -59,7 +57,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(_empire.InstanceID, _targetPlanet.OwnerInstanceID);
         }
 
-        /// <summary>Verifies an active garrison takes precedence over controlling support.</summary>
         [Test]
         public void GetPlanetController_ActiveGarrisonOpposesSupport_ReturnsGarrisonOwner()
         {
@@ -69,7 +66,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(_empire, _queries.GetPlanetController(_targetPlanet));
         }
 
-        /// <summary>Verifies unfinished and traveling regiments do not determine control.</summary>
         [Test]
         public void GetPlanetController_OnlyInactiveRegiments_ReturnsSupportController()
         {
@@ -80,7 +76,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(_rebels, _queries.GetPlanetController(_targetPlanet));
         }
 
-        /// <summary>Verifies opposing active garrisons prevent either faction controlling the planet.</summary>
         [Test]
         public void GetPlanetController_OpposingActiveGarrisons_ReturnsNoController()
         {
@@ -91,7 +86,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(_queries.GetPlanetController(_targetPlanet));
         }
 
-        /// <summary>Verifies outer-rim shifts bypass core-sector resistance.</summary>
         [Test]
         public void ApplyCoreSupportResistance_OuterRimPlanet_ReturnsUnadjustedShift()
         {
@@ -104,11 +98,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies configured support resistance preserves signed integer division.</summary>
-        /// <param name="resistance">The direction resisted by the faction.</param>
-        /// <param name="shift">The requested support shift.</param>
-        /// <param name="divisor">The configured divisor.</param>
-        /// <param name="expected">The adjusted shift.</param>
         [TestCase(SupportChange.Increase, 5, 2, 2)]
         [TestCase(SupportChange.Decrease, -5, 2, -2)]
         [TestCase(SupportChange.Increase, -5, 2, -5)]

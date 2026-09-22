@@ -23,7 +23,6 @@ namespace Rebellion.Tests.Simulation
             _observer = new JediObserver(new JediCommands(_game, new FixedRNG()));
         }
 
-        /// <summary>Verifies successful mission applies force growth.</summary>
         [Test]
         public void HandleResults_SuccessfulMission_AppliesForceGrowth()
         {
@@ -53,7 +52,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, results.OfType<ForceExperienceResult>().Count());
         }
 
-        /// <summary>Verifies that multiple successes grow the same participant in input order.</summary>
         [Test]
         public void HandleResults_RepeatedMissionSuccess_ReturnsSequentialGrowth()
         {
@@ -104,14 +102,12 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(results.All(result => result.Tick == 42));
         }
 
-        /// <summary>Verifies that a missing mission-result batch has no consequences.</summary>
         [Test]
         public void HandleResults_NullBatch_ReturnsEmpty()
         {
             Assert.IsEmpty(_observer.HandleResults(null));
         }
 
-        /// <summary>Verifies that a malformed null entry retains the existing exception behavior.</summary>
         [Test]
         public void HandleResults_NullEntry_ThrowsNullReferenceException()
         {

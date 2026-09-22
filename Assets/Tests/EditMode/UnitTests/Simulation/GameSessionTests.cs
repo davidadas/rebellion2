@@ -65,9 +65,6 @@ namespace Rebellion.Tests.Simulation
             _session.Dispose();
         }
 
-        /// <summary>
-        /// Verifies that constructing a session requires a content catalog.
-        /// </summary>
         [Test]
         public void Constructor_NullContent_ThrowsArgumentNullException()
         {
@@ -78,9 +75,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("gameData", exception.ParamName);
         }
 
-        /// <summary>
-        /// Verifies that constructing a session requires an active game.
-        /// </summary>
         [Test]
         public void Constructor_NullGame_ThrowsInvalidOperationException()
         {
@@ -89,18 +83,12 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that session startup schedules research before the first tick.
-        /// </summary>
         [Test]
         public void Constructor_FactionWithoutResearchTimer_SchedulesRefresh()
         {
             Assert.Greater(_faction.ResearchState.NextRefreshTick, _game.CurrentTick);
         }
 
-        /// <summary>
-        /// Verifies that session startup connects the mobile-headquarters movement rule.
-        /// </summary>
         [Test]
         public void Constructor_MobileHeadquarters_EnablesRelocation()
         {
@@ -133,9 +121,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that construction connects the existing popular-support reaction.
-        /// </summary>
         [Test]
         public void Constructor_ResultPublished_InvokesRegisteredReaction()
         {
@@ -144,9 +129,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(85, _planet.GetPopularSupport(_faction.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies that construction connects immediate-operation result producers.
-        /// </summary>
         [Test]
         public void Constructor_ImmediateScrap_ForwardsOneBatch()
         {
@@ -163,9 +145,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, batches);
         }
 
-        /// <summary>
-        /// Verifies that callers resolve the same command instance used by the active session.
-        /// </summary>
         [Test]
         public void GetService_RegisteredCommand_ReturnsActiveSessionInstance()
         {
@@ -181,9 +160,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies a previously injected locator resolves the replacement game's commands.
-        /// </summary>
         [Test]
         public void ReplaceGame_ExistingLocator_ResolvesReplacementCommand()
         {
@@ -199,9 +175,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that replacing a game removes the old bus's owned reactions.
-        /// </summary>
         [Test]
         public void ReplaceGame_ValidReplacement_DetachesPreviousBus()
         {
@@ -213,9 +186,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(80, _planet.GetPopularSupport(_faction.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies that previously held producers cannot deliver into a successfully replaced runtime.
-        /// </summary>
         [Test]
         public void ReplaceGame_ValidReplacement_DetachesPreviousProducer()
         {
@@ -230,9 +200,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, batches);
         }
 
-        /// <summary>
-        /// Verifies that failed event validation preserves the existing bus and its reactions.
-        /// </summary>
         [Test]
         public void ReplaceGame_InvalidEvent_PreservesPreviousBusConnections()
         {
@@ -249,9 +216,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(85, _planet.GetPopularSupport(_faction.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies that disposing the session detaches its registered gameplay reactions.
-        /// </summary>
         [Test]
         public void Dispose_PublishedResult_DoesNotInvokeOwnedReactions()
         {
@@ -262,9 +226,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(80, _planet.GetPopularSupport(_faction.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies that disposing the session detaches immediate-operation result producers.
-        /// </summary>
         [Test]
         public void Dispose_ImmediateScrap_DoesNotForwardBatch()
         {
@@ -279,7 +240,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, batches);
         }
 
-        /// <summary>Verifies with factions and rebuilds research catalogs.</summary>
         [Test]
         public void Constructor_WithFactions_RebuildsResearchCatalogs()
         {
@@ -308,9 +268,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Records the existing partial-replacement behavior when loaded events fail validation.
-        /// </summary>
         [Test]
         public void ReplaceGame_InvalidEvent_LeavesReplacementGameAssigned()
         {
@@ -333,9 +290,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(replacement, manager.Game);
         }
 
-        /// <summary>
-        /// Verifies that a null replacement fails before changing the active game or components.
-        /// </summary>
         [Test]
         public void ReplaceGame_NullGame_PreservesActiveRuntime()
         {
@@ -349,9 +303,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(movement, manager.GetService<MovementCommands>());
         }
 
-        /// <summary>
-        /// Records that event validation fails after earlier runtime components have been rebuilt.
-        /// </summary>
         [Test]
         public void ReplaceGame_InvalidEvent_RetainsEarlierComponentReplacement()
         {
@@ -368,7 +319,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreNotSame(movement, manager.GetService<MovementCommands>());
         }
 
-        /// <summary>Verifies contested player fleet and restores pending combat.</summary>
         [Test]
         public void Tick_ContestedPlayerFleet_RestoresPendingCombat()
         {
@@ -418,7 +368,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(manager.Tick.IsSettled);
         }
 
-        /// <summary>Verifies manage naming and assigns name immediately.</summary>
         [Test]
         public void FactionAutomationCommands_ManageNaming_AssignsNameImmediately()
         {
@@ -452,7 +401,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(ship.HasAssignedName);
         }
 
-        /// <summary>Verifies advisor order completes and refills released lane only.</summary>
         [Test]
         public void Tick_AdvisorOrderCompletes_RefillsReleasedLaneOnly()
         {
@@ -558,7 +506,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies authored injury results reach observers without creating automatic messages.</summary>
         [Test]
         public void Tick_EventResults_DoesNotAddAutomaticMessages()
         {
@@ -603,7 +550,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies fully recovered units and delivers recovery messages.</summary>
         [Test]
         public void Tick_FullyRecoveredUnits_DeliversRecoveryMessages()
         {
@@ -629,7 +575,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies injured officer at friendly planet and heals.</summary>
         [Test]
         public void Tick_InjuredOfficerAtFriendlyPlanet_Heals()
         {
@@ -657,7 +602,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, officer.InjuryPoints);
         }
 
-        /// <summary>Verifies captured officer with due escape attempt and frees officer.</summary>
         [Test]
         public void Tick_CapturedOfficerWithDueEscapeAttempt_FreesOfficer()
         {
@@ -688,7 +632,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(captive.IsCaptured);
         }
 
-        /// <summary>Verifies event captures mission participant and completes capture lifecycle.</summary>
         [Test]
         public void Tick_EventCapturesMissionParticipant_CompletesCaptureLifecycle()
         {
@@ -766,7 +709,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(observed.Movement);
         }
 
-        /// <summary>Verifies victory condition met and raises victory declared once.</summary>
         [Test]
         public void Tick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
         {
@@ -804,7 +746,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(empire, declarations[0].Loser);
         }
 
-        /// <summary>Verifies an immediate assault reaches the manager's resolved-assault notification.</summary>
         [Test]
         public void PlanetaryAssaultCommands_CompletedAssault_RaisesResolvedEvent()
         {
@@ -845,7 +786,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(result, observedResults[0]);
         }
 
-        /// <summary>Verifies the observable order of an immediate headquarters-capture result batch.</summary>
         [Test]
         public void PlanetaryAssaultCommands_HeadquartersCapture_PreservesNotificationOrder()
         {
@@ -875,7 +815,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies that a failed settled-result callback prevents later message delivery.</summary>
         [Test]
         public void PlanetaryAssaultCommands_ResolvedObserverThrows_DoesNotDeliverMessages()
         {
@@ -896,7 +835,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies that a failed message callback prevents the later headquarters and victory callbacks.</summary>
         [Test]
         public void PlanetaryAssaultCommands_MessageObserverThrows_SkipsLaterNotifications()
         {
@@ -915,7 +853,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(calls);
         }
 
-        /// <summary>Verifies that messages are already attached when their presentation callback fails.</summary>
         [Test]
         public void PlanetaryAssaultCommands_MessageObserverThrows_RetainsDeliveredMessages()
         {
@@ -936,7 +873,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies a tick-produced victory reaches the resolved-victory notification.</summary>
         [Test]
         public void Tick_VictoryResult_RaisesResolvedEvent()
         {
@@ -966,7 +902,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(winner, observedResults[0].Winner);
         }
 
-        /// <summary>Verifies expired message and removes message after tick advances.</summary>
         [Test]
         public void Tick_ExpiredMessage_RemovesMessageAfterTickAdvances()
         {
@@ -985,7 +920,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(faction.Messages[MessageType.Conflict]);
         }
 
-        /// <summary>Verifies blockade starts and reroutes inbound starfighter.</summary>
         [Test]
         public void Tick_BlockadeStarts_ReroutesInboundStarfighter()
         {
@@ -1054,7 +988,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(starfighter.Movement);
         }
 
-        /// <summary>Verifies successful sabotage removes the target from the acting faction's snapshot.</summary>
         [Test]
         public void Tick_SabotageResult_RemovesDestroyedObjectFromActorSnapshot()
         {
@@ -1141,7 +1074,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(viewedPlanet.GetChildren<Building>().Any(b => b.InstanceID == "MINE1"));
         }
 
-        /// <summary>Verifies fleet destroyed after arrival and adds fleet arrival and battle messages.</summary>
         [Test]
         public void Tick_FleetDestroyedAfterArrival_AddsFleetArrivalAndBattleMessages()
         {
@@ -1226,7 +1158,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies loaded converging multiple fleets and resolves single combined combat.</summary>
         [Test]
         public void Tick_LoadedConvergingMultipleFleets_ResolvesSingleCombinedCombat()
         {
@@ -1343,7 +1274,6 @@ namespace Rebellion.Tests.Simulation
             }
         }
 
-        /// <summary>Verifies fleet arrives at planetary starfighters and creates pending combat.</summary>
         [Test]
         public void Tick_FleetArrivesAtPlanetaryStarfighters_CreatesPendingCombat()
         {
@@ -1428,7 +1358,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(destination, pending.Planet);
         }
 
-        /// <summary>Verifies fleet reaches waypoint and starts next leg after combat detection.</summary>
         [Test]
         public void Tick_FleetReachesWaypoint_StartsNextLegAfterCombatDetection()
         {
@@ -1471,7 +1400,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { destination.InstanceID }, fleet.Waypoints);
         }
 
-        /// <summary>Verifies pending combat and completes tick after resolution.</summary>
         [Test]
         public void Tick_PendingCombat_CompletesTickAfterResolution()
         {
@@ -1533,7 +1461,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(manager.Tick.IsSettled);
         }
 
-        /// <summary>Verifies paused game and does not advance tick.</summary>
         [Test]
         public void Tick_PausedGame_DoesNotAdvanceTick()
         {
@@ -1546,7 +1473,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, game.CurrentTick);
         }
 
-        /// <summary>Verifies unrelated fleet reached waypoint and starts deferred next leg.</summary>
         [Test]
         public void Tick_UnrelatedFleetReachedWaypoint_StartsDeferredNextLeg()
         {
@@ -1616,7 +1542,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { destination.InstanceID }, routeFleet.Waypoints);
         }
 
-        /// <summary>Verifies disposed before completion and allows next tick.</summary>
         [Test]
         public void Tick_DisposedBeforeCompletion_AllowsNextTick()
         {
@@ -1632,9 +1557,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, game.CurrentTick);
         }
 
-        /// <summary>
-        /// Verifies that a completion observer failure propagates without retaining the tick guard.
-        /// </summary>
         [Test]
         public void Tick_CompletionObserverThrows_AllowsSubsequentTick()
         {
@@ -1655,7 +1577,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, game.CurrentTick);
         }
 
-        /// <summary>Verifies surface regiment creates garrison deficit and starts uprising immediately.</summary>
         [Test]
         public void MovementCommands_SurfaceRegimentCreatesGarrisonDeficit_StartsUprisingImmediately()
         {
@@ -1767,7 +1688,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(diplomat.Movement);
         }
 
-        /// <summary>Verifies last surface regiment neutralizes planet and reports immediately.</summary>
         [Test]
         public void MovementCommands_LastSurfaceRegimentNeutralizesPlanet_ReportsImmediately()
         {
@@ -1833,7 +1753,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies last surface regiment and reconciles planet immediately.</summary>
         [Test]
         public void MaintenanceCommands_LastSurfaceRegiment_ReconcilesPlanetImmediately()
         {

@@ -19,9 +19,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class MovementQueriesTests
     {
-        /// <summary>
-        /// Verifies valid destination does not move unit.
-        /// </summary>
         [Test]
         public void TryGetTransitTicks_ValidDestination_DoesNotMoveUnit()
         {
@@ -45,9 +42,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies fleet with unfinished slower ship ignores unfinished ship.
-        /// </summary>
         [Test]
         public void TryGetTransitTicks_FleetWithUnfinishedSlowerShip_IgnoresUnfinishedShip()
         {
@@ -90,9 +84,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(fleet.Movement);
         }
 
-        /// <summary>
-        /// Verifies valid destination does not assign movement.
-        /// </summary>
         [Test]
         public void TryEstimateManufacturedTransitTicks_ValidDestination_DoesNotAssignMovement()
         {
@@ -116,9 +107,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies view fleet destination uses live fleet location.
-        /// </summary>
         [Test]
         public void TryEstimateManufacturedTransitTicks_ViewFleetDestination_UsesLiveFleetLocation()
         {
@@ -147,9 +135,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies hostile planet destination returns false.
-        /// </summary>
         [Test]
         public void TryEstimateManufacturedTransitTicks_HostilePlanetDestination_ReturnsFalse()
         {
@@ -174,9 +159,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies starfighter to enemy blockaded planet returns false.
-        /// </summary>
         [Test]
         public void TryEstimateManufacturedTransitTicks_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
         {
@@ -201,9 +183,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(estimated);
         }
 
-        /// <summary>
-        /// Verifies valid route does not mutate fleet.
-        /// </summary>
         [Test]
         public void CanSetFleetWaypointRoute_ValidRoute_DoesNotMutateFleet()
         {
@@ -228,9 +207,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(fleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies capital ship does not change fleet membership.
-        /// </summary>
         [Test]
         public void CanSetFleetWaypointRoute_CapitalShip_DoesNotChangeFleetMembership()
         {
@@ -256,9 +232,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(fleet.Waypoints);
         }
 
-        /// <summary>
-        /// Verifies starfighter to enemy blockaded planet returns false.
-        /// </summary>
         [Test]
         public void TryGetSelectionTransitTicks_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
         {

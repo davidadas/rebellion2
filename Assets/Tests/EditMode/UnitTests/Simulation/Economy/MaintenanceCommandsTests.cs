@@ -15,7 +15,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class MaintenanceCommandsTests
     {
-        /// <summary>Verifies all selected units are validated before any unit is scrapped.</summary>
         [Test]
         public void TryScrap_LaterSelectionIsUnfinished_PreservesEarlierSelection()
         {
@@ -44,7 +43,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(first, game.GetSceneNodeByInstanceID<Building>(first.InstanceID));
         }
 
-        /// <summary>Verifies immediate scrapping notifies once after the complete selection is removed.</summary>
         [Test]
         public void TryScrap_MultipleUnits_NotifiesAfterAllRemovals()
         {
@@ -83,7 +81,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, deliveries);
         }
 
-        /// <summary>Verifies a notification failure propagates after the scrap has already committed.</summary>
         [Test]
         public void TryScrap_ListenerThrows_PropagatesAfterRemoval()
         {
@@ -114,7 +111,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
         }
 
-        /// <summary>Verifies throws argument null exception when with null game.</summary>
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
@@ -127,7 +123,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("game", exception.ParamName);
         }
 
-        /// <summary>Verifies throws argument null exception when with null fleet system.</summary>
         [Test]
         public void Constructor_WithNullFleetSystem_ThrowsArgumentNullException()
         {
@@ -140,7 +135,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("fleetSystem", exception.ParamName);
         }
 
-        /// <summary>Verifies does not scrap when no shortfall.</summary>
         [Test]
         public void ProcessTick_NoShortfall_DoesNotScrap()
         {
@@ -178,7 +172,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
 
-        /// <summary>Verifies after autoscrap interval scraps one unit when shortfall.</summary>
         [Test]
         public void ProcessTick_Shortfall_AfterAutoscrapInterval_ScrapsOneUnit()
         {
@@ -241,7 +234,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Greater(shortfall.Amount, 0);
         }
 
-        /// <summary>Verifies before autoscrap interval does not scrap again when shortfall.</summary>
         [Test]
         public void ProcessTick_Shortfall_BeforeAutoscrapInterval_DoesNotScrapAgain()
         {
@@ -293,7 +285,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, remaining);
         }
 
-        /// <summary>Verifies continues scrapping while over capacity when shortfall.</summary>
         [Test]
         public void ProcessTick_Shortfall_ContinuesScrappingWhileOverCapacity()
         {
@@ -340,7 +331,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, remaining);
         }
 
-        /// <summary>Verifies does not scrap when unit under construction.</summary>
         [Test]
         public void ProcessTick_UnitUnderConstruction_DoesNotScrap()
         {
@@ -381,7 +371,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(secondResults.OfType<GameObjectAutoscrappedResult>().Any());
         }
 
-        /// <summary>Verifies reserves maintenance when unit under construction.</summary>
         [Test]
         public void ProcessTick_UnitUnderConstruction_ReservesMaintenance()
         {
@@ -421,7 +410,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
 
-        /// <summary>Verifies remains eligible for autoscrap when unit in transit.</summary>
         [Test]
         public void ProcessTick_UnitInTransit_RemainsEligibleForAutoscrap()
         {
@@ -475,7 +463,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies scraps buildings when excess buildings over capacity.</summary>
         [Test]
         public void ProcessTick_ExcessBuildingsOverCapacity_ScrapsBuildings()
         {
@@ -515,7 +502,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(defense.InstanceID));
         }
 
-        /// <summary>Verifies scraps positive maintenance unit first when zero maintenance infrastructure present.</summary>
         [Test]
         public void ProcessTick_ZeroMaintenanceInfrastructurePresent_ScrapsPositiveMaintenanceUnitFirst()
         {
@@ -557,7 +543,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
-        /// <summary>Verifies refunds removes and reports garrison change when owned surface regiment.</summary>
         [Test]
         public void TryScrap_OwnedSurfaceRegiment_RefundsRemovesAndReportsGarrisonChange()
         {
@@ -597,7 +582,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(planet, results.OfType<PlanetGarrisonChangedResult>().Single().Planet);
         }
 
-        /// <summary>Verifies reports scrapped object and context when owned building.</summary>
         [Test]
         public void TryScrap_OwnedBuilding_ReportsScrappedObjectAndContext()
         {
@@ -637,7 +621,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(planet, scrappedResult.Context);
         }
 
-        /// <summary>Verifies preserves unit and materials when unit under construction.</summary>
         [Test]
         public void TryScrap_UnitUnderConstruction_PreservesUnitAndMaterials()
         {
@@ -676,7 +659,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(results);
         }
 
-        /// <summary>Verifies preserves unit when other faction unit.</summary>
         [Test]
         public void TryScrap_OtherFactionUnit_PreservesUnit()
         {

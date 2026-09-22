@@ -46,7 +46,6 @@ namespace Rebellion.Tests.Simulation
             _system.InitializeTimers();
         }
 
-        /// <summary>Verifies an unscheduled faction receives a research refresh timer.</summary>
         [Test]
         public void InitializeTimers_UnscheduledFaction_SchedulesRefresh()
         {
@@ -57,7 +56,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Greater(_faction.ResearchState.NextRefreshTick, _game.CurrentTick);
         }
 
-        /// <summary>Verifies pulse not reached does not add capacity.</summary>
         [Test]
         public void ProcessTick_PulseNotReached_DoesNotAddCapacity()
         {
@@ -72,7 +70,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies one core sector shipyard adds one capacity.</summary>
         [Test]
         public void ProcessTick_OneCoreSectorShipyard_AddsOneCapacity()
         {
@@ -88,7 +85,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, after - before, "One core-sector shipyard should add 1 capacity");
         }
 
-        /// <summary>Verifies multiple core sector facilities adds all.</summary>
         [Test]
         public void ProcessTick_MultipleCoreSectorFacilities_AddsAll()
         {
@@ -105,7 +101,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies busy facility still adds capacity.</summary>
         [Test]
         public void ProcessTick_BusyFacility_StillAddsCapacity()
         {
@@ -131,7 +126,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies facility under construction does not add capacity.</summary>
         [Test]
         public void ProcessTick_FacilityUnderConstruction_DoesNotAddCapacity()
         {
@@ -149,7 +143,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies facility in transit does not add capacity.</summary>
         [Test]
         public void ProcessTick_FacilityInTransit_DoesNotAddCapacity()
         {
@@ -167,7 +160,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies no facilities no capacity.</summary>
         [Test]
         public void ProcessTick_NoFacilities_NoCapacity()
         {
@@ -188,7 +180,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies outer rim facility does not add capacity.</summary>
         [Test]
         public void ProcessTick_OuterRimFacility_DoesNotAddCapacity()
         {
@@ -218,7 +209,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies core sector facility across multiple pulses accumulates capacity.</summary>
         [Test]
         public void ProcessTick_CoreSectorFacilityAcrossMultiplePulses_AccumulatesCapacity()
         {
@@ -238,7 +228,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies multiple factions independent capacity.</summary>
         [Test]
         public void ProcessTick_MultipleFactions_IndependentCapacity()
         {

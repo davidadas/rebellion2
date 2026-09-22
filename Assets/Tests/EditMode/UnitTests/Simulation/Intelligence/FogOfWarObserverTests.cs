@@ -25,9 +25,6 @@ namespace Rebellion.Tests.Simulation
             _observer = new FogOfWarObserver(_game, new FogOfWarCommands(_game));
         }
 
-        /// <summary>
-        /// Verifies sabotaged object removes object from actor snapshot.
-        /// </summary>
         [Test]
         public void ProcessResults_SabotagedObject_RemovesObjectFromActorSnapshot()
         {
@@ -58,9 +55,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(snapshot.Buildings.Any(b => b.InstanceID == "MINE1"));
         }
 
-        /// <summary>
-        /// Verifies observation for one faction updates only recipient at result tick.
-        /// </summary>
         [Test]
         public void HandleResults_ObservationForOneFaction_UpdatesOnlyRecipientAtResultTick()
         {
@@ -90,9 +84,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies null result after valid observation keeps earlier snapshot and throws.
-        /// </summary>
         [Test]
         public void HandleResults_NullResultAfterValidObservation_KeepsEarlierSnapshotAndThrows()
         {
@@ -125,9 +116,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_alliance.Fog.Snapshots.ContainsKey(_outerRim.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies sabotage observed by both factions preserves other faction snapshot.
-        /// </summary>
         [Test]
         public void ProcessResults_SabotageObservedByBothFactions_PreservesOtherFactionSnapshot()
         {
@@ -168,9 +156,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(_coruscant, mine.GetParent());
         }
 
-        /// <summary>
-        /// Verifies selected observation reveals only selected object.
-        /// </summary>
         [Test]
         public void HandleResults_SelectedObservation_RevealsOnlySelectedObject()
         {
@@ -205,9 +190,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreNotEqual(PlanetIntelligenceCategory.All, snapshot.RevealedCategories);
         }
 
-        /// <summary>
-        /// Verifies selected capital ship reveals partial fleet without siblings or cargo.
-        /// </summary>
         [Test]
         public void HandleResults_SelectedCapitalShip_RevealsPartialFleetWithoutSiblingsOrCargo()
         {
@@ -239,9 +221,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(knownShip.GetChildren<Officer>());
         }
 
-        /// <summary>
-        /// Verifies selected nested officer reveals ancestry without siblings.
-        /// </summary>
         [Test]
         public void HandleResults_SelectedNestedOfficer_RevealsAncestryWithoutSiblings()
         {
@@ -277,9 +256,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies selected manufacturing order reveals only selected order.
-        /// </summary>
         [Test]
         public void HandleResults_SelectedManufacturingOrder_RevealsOnlySelectedOrder()
         {

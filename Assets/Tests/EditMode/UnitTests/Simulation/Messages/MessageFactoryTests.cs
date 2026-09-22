@@ -22,7 +22,6 @@ namespace Rebellion.Tests.Simulation
         private static readonly Dictionary<MessageDelivery, Message> _messagesByDelivery =
             new Dictionary<MessageDelivery, Message>();
 
-        /// <summary>Verifies that resolved presentation fields reach a supplied report.</summary>
         [Test]
         public void CreateMessage_ResolvedPresentation_CopiesMessageFields()
         {
@@ -67,7 +66,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(content.MissionInstanceID, message.MissionInstanceID);
         }
 
-        /// <summary>Verifies that ordinary deliveries reuse the prepared message.</summary>
         [Test]
         public void CreateMessage_NoSuppliedReport_ReturnsPreparedMessage()
         {
@@ -80,7 +78,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(content, message);
         }
 
-        /// <summary>Verifies that preparing a message does not deliver it to the recipient.</summary>
         [Test]
         public void CreateMessage_RecipientProvided_DoesNotAttachMessage()
         {
@@ -96,7 +93,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(recipient.Messages.Values.All(messages => messages.Count == 0));
         }
 
-        /// <summary>Verifies that report creation retains its captured battle data and identity.</summary>
         [Test]
         public void CreateMessage_SuppliedReport_PreservesCombatData()
         {
@@ -124,7 +120,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { unit }, report.AttackingUnits);
         }
 
-        /// <summary>Verifies that materialization does not set the delivery timestamp.</summary>
         [Test]
         public void CreateMessage_ExistingTimestamp_LeavesDeliveryTickUnchanged()
         {
@@ -137,7 +132,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(17, report.CreatedTick);
         }
 
-        /// <summary>Verifies that absent presentation replaces stale fields on a supplied report.</summary>
         [Test]
         public void CreateMessage_EmptyPresentation_ClearsSuppliedReportFields()
         {
@@ -175,7 +169,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(report.MissionInstanceID);
         }
 
-        /// <summary>Verifies that preparing templates does not allocate scene identifiers.</summary>
         [Test]
         public void CreateAuthoredMessage_TemplatePreparation_DoesNotConsumeInstanceIdentifiers()
         {
@@ -199,7 +192,6 @@ namespace Rebellion.Tests.Simulation
             }
         }
 
-        /// <summary>Verifies that authored context selects text, navigation, and advisor presentation.</summary>
         [Test]
         public void CreateAuthoredMessage_ExplicitContext_UsesDataDefinedPresentation()
         {
@@ -243,7 +235,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(AdvisorSubjectNotification.Report, delivery.AdvisorSubjectNotification);
         }
 
-        /// <summary>Verifies gameplay result and produces automatic message.</summary>
         [Test]
         public void CreateMessages_GameplayResult_ProducesAutomaticMessage()
         {
@@ -273,7 +264,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("Captured", AsMessage(deliveries.Single()).Title);
         }
 
-        /// <summary>Verifies authored event result and does not apply delivery policy.</summary>
         [Test]
         public void CreateMessages_AuthoredEventResult_DoesNotApplyDeliveryPolicy()
         {
@@ -304,7 +294,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("Captured", AsMessage(deliveries.Single()).Title);
         }
 
-        /// <summary>Verifies fleet arrival and interpolates fleet and destination.</summary>
         [Test]
         public void CreateMessages_FleetArrival_InterpolatesFleetAndDestination()
         {
@@ -342,7 +331,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
         }
 
-        /// <summary>Verifies fleet waypoints completed and interpolates fleet and location.</summary>
         [Test]
         public void CreateMessages_FleetWaypointsCompleted_InterpolatesFleetAndLocation()
         {
@@ -378,7 +366,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
         }
 
-        /// <summary>Verifies with definition voice path and stores message audio data.</summary>
         [Test]
         public void CreateMessages_WithDefinitionVoicePath_StoresMessageAudioData()
         {
@@ -414,7 +401,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies with definition voice paths and uses faction audio data.</summary>
         [Test]
         public void CreateMessages_WithDefinitionVoicePaths_UsesFactionAudioData()
         {
@@ -452,7 +438,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("empire-voice", message.BackgroundAudioPath);
         }
 
-        /// <summary>Verifies detached fleet arrival and creates arrival delivery.</summary>
         [Test]
         public void CreateMessages_DetachedFleetArrival_CreatesArrivalDelivery()
         {
@@ -489,7 +474,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies ship arrivals with same movement group and groups ships.</summary>
         [Test]
         public void CreateMessages_ShipArrivalsWithSameMovementGroup_GroupsShips()
         {
@@ -549,7 +533,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(firstShip.InstanceID, message.NavigationTargetInstanceID);
         }
 
-        /// <summary>Verifies personnel arrival and uses reporting officer voice and groups personnel.</summary>
         [Test]
         public void CreateMessages_PersonnelArrival_UsesReportingOfficerVoiceAndGroupsPersonnel()
         {
@@ -612,9 +595,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(reporter.InstanceID, message.NavigationTargetInstanceID);
         }
 
-        /// <summary>Verifies personnel arrivals with same movement group and respects subject image setting.</summary>
-        /// <param name="showSubjectImage">Whether the authored definition requests a subject overlay.</param>
-        /// <param name="expectedOverlayImagePath">The expected overlay asset path.</param>
         [TestCase(true, "luke-card")]
         [TestCase(false, null)]
         public void CreateMessages_PersonnelArrivalsWithSameMovementGroup_RespectsSubjectImageSetting(
@@ -676,7 +656,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(expectedOverlayImagePath, message.OverlayImagePath);
         }
 
-        /// <summary>Verifies captured officer arrival and does not create delivery.</summary>
         [Test]
         public void CreateMessages_CapturedOfficerArrival_DoesNotCreateDelivery()
         {
@@ -708,7 +687,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(deliveries);
         }
 
-        /// <summary>Verifies special forces arrival and groups with reporting officer.</summary>
         [Test]
         public void CreateMessages_SpecialForcesArrival_GroupsWithReportingOfficer()
         {
@@ -762,7 +740,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("arrival-voice", message.OfficerVoicePath);
         }
 
-        /// <summary>Verifies combat unit arrivals with same movement group and use grouped units report.</summary>
         [Test]
         public void CreateMessages_CombatUnitArrivalsWithSameMovementGroup_UseGroupedUnitsReport()
         {
@@ -812,7 +789,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(AdvisorNotificationType.UnitsArrived, deliveries[0].NotificationType);
         }
 
-        /// <summary>Verifies headquarters arrival and uses special report.</summary>
         [Test]
         public void CreateMessages_HeadquartersArrival_UsesSpecialReport()
         {
@@ -847,7 +823,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(headquarters.InstanceID, message.NavigationTargetInstanceID);
         }
 
-        /// <summary>Verifies headquarters arrival and requires matching faction definition.</summary>
         [Test]
         public void CreateMessages_HeadquartersArrival_RequiresMatchingFactionDefinition()
         {
@@ -877,7 +852,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(deliveries);
         }
 
-        /// <summary>Verifies detached ship arrival and creates arrival delivery.</summary>
         [Test]
         public void CreateMessages_DetachedShipArrival_CreatesArrivalDelivery()
         {
@@ -926,7 +900,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies ship arrivals with different movement groups and returns separate messages.</summary>
         [Test]
         public void CreateMessages_ShipArrivalsWithDifferentMovementGroups_ReturnsSeparateMessages()
         {
@@ -983,7 +956,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(messages.Any(message => message.Body == "body:Corellian Corvette"));
         }
 
-        /// <summary>Verifies ship arrivals without movement group and returns separate messages.</summary>
         [Test]
         public void CreateMessages_ShipArrivalsWithoutMovementGroup_ReturnsSeparateMessages()
         {
@@ -1026,7 +998,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, deliveries.Count);
         }
 
-        /// <summary>Verifies capital ship repaired and reports ship and attachment.</summary>
         [Test]
         public void CreateMessages_CapitalShipRepaired_ReportsShipAndAttachment()
         {
@@ -1078,7 +1049,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(message.OverlayImagePath);
         }
 
-        /// <summary>Verifies capital ship repaired and uses unit encyclopedia image.</summary>
         [Test]
         public void CreateMessages_CapitalShipRepaired_UsesUnitEncyclopediaImage()
         {
@@ -1134,7 +1104,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(message.OverlayImagePath);
         }
 
-        /// <summary>Verifies starfighter repaired and reports squadron and attachment.</summary>
         [Test]
         public void CreateMessages_StarfighterRepaired_ReportsSquadronAndAttachment()
         {
@@ -1194,7 +1163,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(message.OverlayImagePath);
         }
 
-        /// <summary>Verifies deployed facility and uses building specific definition.</summary>
         [Test]
         public void CreateMessages_DeployedFacility_UsesBuildingSpecificDefinition()
         {
@@ -1233,7 +1201,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("mine-specific-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies deployed unit arrival and returns deployment instead of arrival.</summary>
         [Test]
         public void CreateMessages_DeployedUnitArrival_ReturnsDeploymentInsteadOfArrival()
         {
@@ -1272,7 +1239,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("Infantry Regiment Deployed to Yavin", AsMessage(deliveries[0]).Title);
         }
 
-        /// <summary>Verifies deployed facility without matching definition and returns no delivery.</summary>
         [Test]
         public void CreateMessages_DeployedFacilityWithoutMatchingDefinition_ReturnsNoDelivery()
         {
@@ -1304,7 +1270,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(deliveries);
         }
 
-        /// <summary>Verifies deployed combat units and use unit specific reports.</summary>
         [Test]
         public void CreateMessages_DeployedCombatUnits_UseUnitSpecificReports()
         {
@@ -1419,7 +1384,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies facility destroyed on arrival and returns facility lost report.</summary>
         [Test]
         public void CreateMessages_FacilityDestroyedOnArrival_ReturnsFacilityLostReport()
         {
@@ -1468,7 +1432,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies regiment destroyed on arrival and does not return facility lost report.</summary>
         [Test]
         public void CreateMessages_RegimentDestroyedOnArrival_DoesNotReturnFacilityLostReport()
         {
@@ -1500,7 +1463,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(deliveries);
         }
 
-        /// <summary>Verifies smuggling started and returns loss and benefit reports.</summary>
         [Test]
         public void CreateMessages_SmugglingStarted_ReturnsLossAndBenefitReports()
         {
@@ -1540,7 +1502,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(target.InstanceID, benefit.EventLocationInstanceID);
         }
 
-        /// <summary>Verifies smuggling ended and returns loss and benefit end reports.</summary>
         [Test]
         public void CreateMessages_SmugglingEnded_ReturnsLossAndBenefitEndReports()
         {
@@ -1577,7 +1538,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(benefitEnd.BackgroundAudioPath);
         }
 
-        /// <summary>Verifies manufacturing idle and uses queue type definition.</summary>
         [Test]
         public void CreateMessages_ManufacturingIdle_UsesQueueTypeDefinition()
         {
@@ -1613,7 +1573,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("construction-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies mission success and uses success report for actor.</summary>
         [Test]
         public void CreateMessages_MissionSuccess_UsesSuccessReportForActor()
         {
@@ -1655,7 +1614,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies espionage success and appends configured additional systems.</summary>
         [Test]
         public void CreateMessages_EspionageSuccess_AppendsConfiguredAdditionalSystems()
         {
@@ -1708,7 +1666,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies espionage success without additional systems and omits details.</summary>
         [Test]
         public void CreateMessages_EspionageSuccessWithoutAdditionalSystems_OmitsDetails()
         {
@@ -1751,7 +1708,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("Successful.  ", message.Body);
         }
 
-        /// <summary>Verifies recruitment success and uses recruiter voice and advisor subject.</summary>
         [Test]
         public void CreateMessages_RecruitmentSuccess_UsesRecruiterVoiceAndAdvisorSubject()
         {
@@ -1813,7 +1769,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(recruiter.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
         }
 
-        /// <summary>Verifies mission failure and uses reporter voice and advisor subject.</summary>
         [Test]
         public void CreateMessages_MissionFailure_UsesReporterVoiceAndAdvisorSubject()
         {
@@ -1865,8 +1820,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(reporter.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
         }
 
-        /// <summary>Verifies mission report and prefers main character reporter.</summary>
-        /// <param name="mainCharacterIsDecoy">Whether the main character participates as a decoy.</param>
         [TestCase(
             false,
             TestName = "CreateMessages_MissionReport_MainCharacterLaterInMainTeam_UsesMatchingImageAndVoice"
@@ -1967,7 +1920,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(mainCharacter.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
         }
 
-        /// <summary>Verifies target unavailable mission and uses abort voice.</summary>
         [Test]
         public void CreateMessages_TargetUnavailableMission_UsesAbortVoice()
         {
@@ -2016,7 +1968,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("abort-voice", message.OfficerVoicePath);
         }
 
-        /// <summary>Verifies continuing mission report and carries mission instance id.</summary>
         [Test]
         public void CreateMessages_ContinuingMissionReport_CarriesMissionInstanceID()
         {
@@ -2057,7 +2008,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(mission.InstanceID, message.MissionInstanceID);
         }
 
-        /// <summary>Verifies mission report and uses completion reason specific definition.</summary>
         [Test]
         public void CreateMessages_MissionReport_UsesCompletionReasonSpecificDefinition()
         {
@@ -2110,7 +2060,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("missing-body:Sabotage:Yavin", message.Body);
         }
 
-        /// <summary>Verifies mission report and does not fallback for detail only reports.</summary>
         [Test]
         public void CreateMessages_MissionReport_DoesNotFallbackForDetailOnlyReports()
         {
@@ -2149,7 +2098,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(deliveries.Any(delivery => delivery.Recipient == alliance));
         }
 
-        /// <summary>Verifies mission success and uses mission specific image.</summary>
         [Test]
         public void CreateMessages_MissionSuccess_UsesMissionSpecificImage()
         {
@@ -2198,7 +2146,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("diplomacy-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies assassination report with killed target and uses killed result officer name.</summary>
         [Test]
         public void CreateMessages_AssassinationReportWithKilledTarget_UsesKilledResultOfficerName()
         {
@@ -2255,7 +2202,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("body:Target Officer:has been eliminated", message.Body);
         }
 
-        /// <summary>Verifies assassination report with injured target and uses live officer name.</summary>
         [Test]
         public void CreateMessages_AssassinationReportWithInjuredTarget_UsesLiveOfficerName()
         {
@@ -2307,7 +2253,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("body:Target Officer:has been injured", message.Body);
         }
 
-        /// <summary>Verifies reconnaissance report with special forces and uses recon unit image overlay.</summary>
         [Test]
         public void CreateMessages_ReconnaissanceReportWithSpecialForces_UsesReconUnitImageOverlay()
         {
@@ -2358,7 +2303,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("recon-unit-image", message.OverlayImagePath);
         }
 
-        /// <summary>Verifies jedi training report and uses trainer as reporter.</summary>
         [Test]
         public void CreateMessages_JediTrainingReport_UsesTrainerAsReporter()
         {
@@ -2430,7 +2374,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("trainer-success", message.OfficerVoicePath);
         }
 
-        /// <summary>Verifies recruitment mission success and uses participant image overlay.</summary>
         [Test]
         public void CreateMessages_RecruitmentMissionSuccess_UsesParticipantImageOverlay()
         {
@@ -2489,7 +2432,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("participant-card", message.OverlayImagePath);
         }
 
-        /// <summary>Verifies recruitment mission exhausted and returns recruitment done report.</summary>
         [Test]
         public void CreateMessages_RecruitmentMissionExhausted_ReturnsRecruitmentDoneReport()
         {
@@ -2528,7 +2470,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(messages[0].OverlayImagePath);
         }
 
-        /// <summary>Verifies mission report without participant images and uses mission report image.</summary>
         [Test]
         public void CreateMessages_MissionReportWithoutParticipantImages_UsesMissionReportImage()
         {
@@ -2576,7 +2517,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(message.OverlayImagePath);
         }
 
-        /// <summary>Verifies foiled mission and returns foiled actor report and foiled target report.</summary>
         [Test]
         public void CreateMessages_FoiledMission_ReturnsFoiledActorReportAndFoiledTargetReport()
         {
@@ -2644,7 +2584,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies officer recruited and uses officer image override.</summary>
         [Test]
         public void CreateMessages_OfficerRecruited_UsesOfficerImageOverride()
         {
@@ -2688,7 +2627,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("agent-card", message.OverlayImagePath);
         }
 
-        /// <summary>Verifies officer capture and does not overlay target officer image.</summary>
         [Test]
         public void CreateMessages_OfficerCapture_DoesNotOverlayTargetOfficerImage()
         {
@@ -2737,7 +2675,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(message.OverlayImagePath);
         }
 
-        /// <summary>Verifies officer capture and notifies owner and captor.</summary>
         [Test]
         public void CreateMessages_OfficerCapture_NotifiesOwnerAndCaptor()
         {
@@ -2797,7 +2734,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(target.TypeID, DeliveryFor(captorMessage).AdvisorSubjectTypeID);
         }
 
-        /// <summary>Verifies officer release and notifies owner and former captor.</summary>
         [Test]
         public void CreateMessages_OfficerRelease_NotifiesOwnerAndFormerCaptor()
         {
@@ -2856,7 +2792,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies officer recovered and uses background and subject image.</summary>
         [Test]
         public void CreateMessages_OfficerRecovered_UsesBackgroundAndSubjectImage()
         {
@@ -2898,7 +2833,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("recovered-voice", message.OfficerVoicePath);
         }
 
-        /// <summary>Verifies officer killed and suppresses same batch injury.</summary>
         [Test]
         public void CreateMessages_OfficerKilled_SuppressesSameBatchInjury()
         {
@@ -2944,7 +2878,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(messages[0].OverlayImagePath);
         }
 
-        /// <summary>Verifies assassinated officer and returns assassination report.</summary>
         [Test]
         public void CreateMessages_AssassinatedOfficer_ReturnsAssassinationReport()
         {
@@ -3004,7 +2937,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(victim.InstanceID, message.NavigationTargetInstanceID);
         }
 
-        /// <summary>Verifies capture evasion death and uses generic killed report.</summary>
         [Test]
         public void CreateMessages_CaptureEvasionDeath_UsesGenericKilledReport()
         {
@@ -3067,7 +2999,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies force experience and returns force growth message.</summary>
         [Test]
         public void CreateMessages_ForceExperience_ReturnsForceGrowthMessage()
         {
@@ -3115,7 +3046,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("student-card", message.OverlayImagePath);
         }
 
-        /// <summary>Verifies force experience and without rank label change and does not return force growth message.</summary>
         [Test]
         public void CreateMessages_ForceExperience_WithoutRankLabelChange_DoesNotReturnForceGrowthMessage()
         {
@@ -3148,7 +3078,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(deliveries);
         }
 
-        /// <summary>Verifies force experience and reaches rank threshold and returns force growth message.</summary>
         [Test]
         public void CreateMessages_ForceExperience_ReachesRankThreshold_ReturnsForceGrowthMessage()
         {
@@ -3179,10 +3108,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, deliveries.Count);
         }
 
-        /// <summary>Verifies force user discovered and selects report by trainer qualification.</summary>
-        /// <param name="isJediTrainer">Whether the reporter has trainer qualification.</param>
-        /// <param name="rankOffset">The reporter's Force-rank offset from the configured threshold.</param>
-        /// <param name="expectedTitle">The expected report title.</param>
         [TestCase(true, 0, "qualified")]
         [TestCase(true, -1, "student")]
         [TestCase(false, 0, "student")]
@@ -3258,9 +3183,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("discoverer-card", message.OverlayImagePath);
         }
 
-        /// <summary>Verifies traitor discovered and respects subject image setting.</summary>
-        /// <param name="showSubjectImage">Whether the authored definition requests a subject overlay.</param>
-        /// <param name="expectedOverlayImagePath">The expected overlay asset path.</param>
         [TestCase(true, "luke-card")]
         [TestCase(false, null)]
         public void CreateMessages_TraitorDiscovered_RespectsSubjectImageSetting(
@@ -3329,7 +3251,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies force user discovered and does not use dialog.</summary>
         [Test]
         public void CreateMessages_ForceUserDiscovered_DoesNotUseDialog()
         {
@@ -3391,7 +3312,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(DeliveryFor(message).AdvisorSubjectTypeID);
         }
 
-        /// <summary>Verifies sabotage result and reports destroyed object to owner.</summary>
         [Test]
         public void CreateMessages_SabotageResult_ReportsDestroyedObjectToOwner()
         {
@@ -3434,7 +3354,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies sabotage results at same sector and use one combined report.</summary>
         [Test]
         public void CreateMessages_SabotageResultsAtSameSector_UseOneCombinedReport()
         {
@@ -3473,7 +3392,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies sabotage results with specific presentation and stay in separate reports.</summary>
         [Test]
         public void CreateMessages_SabotageResultsWithSpecificPresentation_StayInSeparateReports()
         {
@@ -3519,7 +3437,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies sabotaged configured unit type and uses specific definition.</summary>
         [Test]
         public void CreateMessages_SabotagedConfiguredUnitType_UsesSpecificDefinition()
         {
@@ -3560,7 +3477,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies research completed and uses discipline definition.</summary>
         [Test]
         public void CreateMessages_ResearchCompleted_UsesDisciplineDefinition()
         {
@@ -3598,7 +3514,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("research-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies research exhausted and uses discipline definition.</summary>
         [Test]
         public void CreateMessages_ResearchExhausted_UsesDisciplineDefinition()
         {
@@ -3633,7 +3548,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("research-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies uprising started and returns controller and instigator reports.</summary>
         [Test]
         public void CreateMessages_UprisingStarted_ReturnsControllerAndInstigatorReports()
         {
@@ -3659,7 +3573,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("started:Empire:Yavin", FirstMessageFor(deliveries, alliance).Title);
         }
 
-        /// <summary>Verifies near uprising and returns controller popular support report.</summary>
         [Test]
         public void CreateMessages_NearUprising_ReturnsControllerPopularSupportReport()
         {
@@ -3704,7 +3617,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(target.InstanceID, AsMessage(deliveries[0]).EventLocationInstanceID);
         }
 
-        /// <summary>Verifies uprising ended and uses controller image.</summary>
         [Test]
         public void CreateMessages_UprisingEnded_UsesControllerImage()
         {
@@ -3734,7 +3646,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies planet joined by support and reports new owner.</summary>
         [Test]
         public void CreateMessages_PlanetJoinedBySupport_ReportsNewOwner()
         {
@@ -3771,7 +3682,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies planet joined enemy by support and reports previous owner.</summary>
         [Test]
         public void CreateMessages_PlanetJoinedEnemyBySupport_ReportsPreviousOwner()
         {
@@ -3815,7 +3725,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies planet joined enemy by support and reports observer.</summary>
         [Test]
         public void CreateMessages_PlanetJoinedEnemyBySupport_ReportsObserver()
         {
@@ -3864,7 +3773,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies planet declared neutrality by support and reports previous owner.</summary>
         [Test]
         public void CreateMessages_PlanetDeclaredNeutralityBySupport_ReportsPreviousOwner()
         {
@@ -3902,7 +3810,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("neutral-audio", message.BackgroundAudioPath);
         }
 
-        /// <summary>Verifies observed planet neutrality without support reason and reports observer.</summary>
         [Test]
         public void CreateMessages_ObservedPlanetNeutralityWithoutSupportReason_ReportsObserver()
         {
@@ -3936,7 +3843,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("neutral:Yavin:Empire", message.Body);
         }
 
-        /// <summary>Verifies planet ownership change without support reason and does not report join.</summary>
         [Test]
         public void CreateMessages_PlanetOwnershipChangeWithoutSupportReason_DoesNotReportJoin()
         {
@@ -3965,7 +3871,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(deliveries);
         }
 
-        /// <summary>Verifies selected strategic planet capture and reports to both factions.</summary>
         [Test]
         public void CreateMessages_SelectedStrategicPlanetCapture_ReportsToBothFactions()
         {
@@ -4000,7 +3905,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies selected headquarters loss and reports to both factions.</summary>
         [Test]
         public void CreateMessages_SelectedHeadquartersLoss_ReportsToBothFactions()
         {
@@ -4039,7 +3943,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("headquarters destroyed", FirstMessageFor(deliveries, empire).Title);
         }
 
-        /// <summary>Verifies blockade started and uses target image for blockader report.</summary>
         [Test]
         public void CreateMessages_BlockadeStarted_UsesTargetImageForBlockaderReport()
         {
@@ -4086,7 +3989,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies neutral planet blockade and does not create messages.</summary>
         [Test]
         public void CreateMessages_NeutralPlanetBlockade_DoesNotCreateMessages()
         {
@@ -4124,7 +4026,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(deliveries);
         }
 
-        /// <summary>Verifies evacuation losses and joins lost unit names.</summary>
         [Test]
         public void CreateMessages_EvacuationLosses_JoinsLostUnitNames()
         {
@@ -4164,7 +4065,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies maintenance autoscrap and reports destroyed object.</summary>
         [Test]
         public void CreateMessages_MaintenanceAutoscrap_ReportsDestroyedObject()
         {
@@ -4206,7 +4106,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
-        /// <summary>Verifies maintenance autoscrap at different systems and uses separate reports.</summary>
         [Test]
         public void CreateMessages_MaintenanceAutoscrapAtDifferentSystems_UsesSeparateReports()
         {
@@ -4262,7 +4161,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies space battle and uses winner perspective.</summary>
         [Test]
         public void CreateMessages_SpaceBattle_UsesWinnerPerspective()
         {
@@ -4299,7 +4197,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies space battle and renders recorded fleet outcomes.</summary>
         [Test]
         public void CreateMessages_SpaceBattle_RendersRecordedFleetOutcomes()
         {
@@ -4326,7 +4223,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("Destroyed|Active||", FirstMessageFor(deliveries, empire).Body);
         }
 
-        /// <summary>Verifies space battle and retains detached completed outcome.</summary>
         [Test]
         public void CreateMessages_SpaceBattle_RetainsDetachedCompletedOutcome()
         {
@@ -4372,7 +4268,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(report.AttackingUnits.Single().Damaged);
         }
 
-        /// <summary>Verifies space battle and renders recorded retreat destination.</summary>
         [Test]
         public void CreateMessages_SpaceBattle_RendersRecordedRetreatDestination()
         {
@@ -4410,7 +4305,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies space battle with planetary starfighters and delivers to defender.</summary>
         [Test]
         public void CreateMessages_SpaceBattleWithPlanetaryStarfighters_DeliversToDefender()
         {
@@ -4450,7 +4344,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies bombardment and uses ownership and loss selectors.</summary>
         [Test]
         public void CreateMessages_Bombardment_UsesOwnershipAndLossSelectors()
         {
@@ -4488,7 +4381,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(empire.InstanceID, report.DefenderOwnerInstanceID);
         }
 
-        /// <summary>Verifies destroyed planet and uses planet destruction definition.</summary>
         [Test]
         public void CreateMessages_DestroyedPlanet_UsesPlanetDestructionDefinition()
         {
@@ -4530,7 +4422,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("The Death Star has destroyed the Empire system Yavin.", message.Body);
         }
 
-        /// <summary>Verifies planetary assault and uses ownership and outcome selectors.</summary>
         [Test]
         public void CreateMessages_PlanetaryAssault_UsesOwnershipAndOutcomeSelectors()
         {
@@ -4572,7 +4463,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(report.Success);
         }
 
-        /// <summary>Verifies invalid planetary combat results and do not create messages.</summary>
         [Test]
         public void CreateMessages_InvalidPlanetaryCombatResults_DoNotCreateMessages()
         {

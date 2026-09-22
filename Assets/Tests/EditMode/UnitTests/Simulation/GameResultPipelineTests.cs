@@ -25,7 +25,6 @@ namespace Rebellion.Tests.Simulation
             _pipeline = new GameResultPipeline(() => _bus, () => _messages);
         }
 
-        /// <summary>Verifies that settled presentation receives the entire reaction batch.</summary>
         [Test]
         public void ProcessResults_ReactionProduced_NotifiesSettledBatch()
         {
@@ -40,7 +39,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new GameResult[] { initial, reaction }, observed);
         }
 
-        /// <summary>Verifies the existing presentation order when messages are withheld.</summary>
         [Test]
         public void ProcessResults_MessagesDeferred_PreservesPresentationOrder()
         {
@@ -68,7 +66,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies that a presentation exception prevents later notifications.</summary>
         [Test]
         public void ProcessResults_PresentationThrows_SkipsLaterNotifications()
         {
@@ -86,7 +83,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, victories);
         }
 
-        /// <summary>Verifies that replacement is read at delivery time rather than construction time.</summary>
         [Test]
         public void ProcessResults_BusReplaced_UsesCurrentBus()
         {
@@ -102,7 +98,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, calls);
         }
 
-        /// <summary>Verifies that immediate bombardment notification follows result presentation.</summary>
         [Test]
         public void ProcessImmediate_Bombardment_NotifiesAfterSettledResults()
         {
@@ -117,7 +112,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { "results", "bombardment" }, calls);
         }
 
-        /// <summary>Verifies that processing an empty batch does not invent presentation callbacks.</summary>
         [Test]
         public void ProcessResults_EmptyBatch_DoesNotNotifyPresentation()
         {

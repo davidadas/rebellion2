@@ -15,7 +15,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class MessageObserverTests
     {
-        /// <summary>Verifies that all automatic templates resolve before any earlier message is persisted.</summary>
         [Test]
         public void ProcessResults_LaterTemplateFails_DoesNotDeliverEarlierMessage()
         {
@@ -62,9 +61,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(faction.Messages.Values.All(messages => messages.Count == 0));
         }
 
-        /// <summary>
-        /// Verifies that authored provenance suppresses only that result's automatic message.
-        /// </summary>
         [Test]
         public void ProcessResults_MixedAuthoredAndAutomaticResults_DeliversOnlyAutomaticMessage()
         {
@@ -117,9 +113,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(delivery.Message, faction.Messages[MessageType.Fleet].Single());
         }
 
-        /// <summary>
-        /// Verifies with message delivery request adds message to faction.
-        /// </summary>
         [Test]
         public void ProcessResults_WithFleetArrival_AddsMessageToFaction()
         {
@@ -172,9 +165,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(game.CurrentTick, message.CreatedTick);
         }
 
-        /// <summary>
-        /// Verifies without matching definition does not create message bucket.
-        /// </summary>
         [Test]
         public void ProcessResults_WithoutMatchingDefinition_DoesNotCreateMessageBucket()
         {
@@ -202,9 +192,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(faction.Messages.Values.All(messages => messages.Count == 0));
         }
 
-        /// <summary>
-        /// Verifies messages older than retention does not expire messages.
-        /// </summary>
         [Test]
         public void ProcessResults_MessagesOlderThanRetention_DoesNotExpireMessages()
         {

@@ -18,7 +18,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class BlockadeCommandsTests
     {
-        /// <summary>Verifies new blockade starts precede cleared blockades in a single tick.</summary>
         [Test]
         public void ProcessTick_StartedAndEndedBlockades_ReportsStartBeforeEnd()
         {
@@ -46,7 +45,6 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { 42, 42 }, results.Select(result => result.Tick));
         }
 
-        /// <summary>Verifies evacuation loss removes the regiment before returning its loss result.</summary>
         [Test]
         public void ApplyEvacuationLosses_HostileBlockade_RemovesRegimentAndReportsLoss()
         {
@@ -66,7 +64,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(42, result.Tick);
         }
 
-        /// <summary>Verifies officer evacuation does not roll the regiment-loss probability.</summary>
         [Test]
         public void ApplyEvacuationLosses_OfficerUnderBlockade_DoesNotConsumeRandomValues()
         {
@@ -82,7 +79,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(planet, officer.GetParent());
         }
 
-        /// <summary>Verifies a new blockade identifies the planet and hostile fleet.</summary>
         [Test]
         public void ProcessTick_NewBlockade_EmitsBlockadeStarted()
         {
@@ -98,7 +94,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(hostileFleet, result.BlockadingFleet);
         }
 
-        /// <summary>Verifies a new neutral-planet blockade emits its start result.</summary>
         [Test]
         public void ProcessTick_NewNeutralPlanetBlockade_EmitsBlockadeStarted()
         {
@@ -116,7 +111,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(blockadingFleet, result.BlockadingFleet);
         }
 
-        /// <summary>Verifies an arriving hostile fleet starts a blockade only after transit.</summary>
         [Test]
         public void ProcessTick_HostileFleetInTransit_EmitsBlockadeOnlyAfterArrival()
         {
@@ -134,7 +128,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(hostileFleet, result.BlockadingFleet);
         }
 
-        /// <summary>Verifies an unchanged blockade does not repeat its start result.</summary>
         [Test]
         public void ProcessTick_AlreadyBlockaded_NoRepeatedEvent()
         {
@@ -147,7 +140,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.OfType<BlockadeChangedResult>().Count());
         }
 
-        /// <summary>Verifies an arriving defender clears a previously reported blockade.</summary>
         [Test]
         public void ProcessTick_BlockadeEnds_EmitsBlockadeCleared()
         {
@@ -174,7 +166,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(planet, result.Planet);
         }
 
-        /// <summary>Verifies an unblocked planet produces no transition.</summary>
         [Test]
         public void ProcessTick_NeverBlockaded_NoEndEvent()
         {
@@ -192,7 +183,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, results.Count);
         }
 
-        /// <summary>Verifies blockade detection does not destroy defenders in transit.</summary>
         [Test]
         public void ProcessTick_NewBlockade_InTransitDefendersSurvive()
         {
@@ -215,7 +205,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Verifies transition detection reports only the blockaded planet.</summary>
         [Test]
         public void ProcessTick_MultiplePlanets_HandledIndependently()
         {
@@ -248,7 +237,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(blockaded, results.OfType<BlockadeChangedResult>().First().Planet);
         }
 
-        /// <summary>Verifies a roll below the configured threshold causes a loss.</summary>
         [Test]
         public void RollEvacuationLoss_RollBelowThreshold_ReturnsTrue()
         {
@@ -262,7 +250,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(system.RollEvacuationLoss());
         }
 
-        /// <summary>Verifies a roll above the configured threshold avoids a loss.</summary>
         [Test]
         public void RollEvacuationLoss_RollAboveThreshold_ReturnsFalse()
         {
@@ -276,7 +263,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(system.RollEvacuationLoss());
         }
 
-        /// <summary>Verifies a zero-percent threshold never causes a loss.</summary>
         [Test]
         public void RollEvacuationLoss_ZeroPercent_NeverDestroys()
         {
@@ -289,7 +275,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(system.RollEvacuationLoss());
         }
 
-        /// <summary>Verifies a hundred-percent threshold always causes a loss.</summary>
         [Test]
         public void RollEvacuationLoss_HundredPercent_AlwaysDestroys()
         {
@@ -302,7 +287,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(system.RollEvacuationLoss());
         }
 
-        /// <summary>Verifies the blockading faction does not suffer evacuation losses.</summary>
         [Test]
         public void ApplyEvacuationLosses_NeutralPlanetBlockadingFaction_ReturnsNoLoss()
         {
@@ -323,7 +307,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
-        /// <summary>Verifies an operational ion cannon protects an evacuating regiment.</summary>
         [Test]
         public void ApplyEvacuationLosses_OperationalIonCannon_PreventsLoss()
         {
