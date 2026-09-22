@@ -17,6 +17,16 @@ namespace Rebellion.Tests.Util.DependencyInjection
         }
 
         [Test]
+        public void AddSingleton_RuntimeType_ResolvesRegisteredService()
+        {
+            ServiceContainer container = new();
+            container.AddSingleton(typeof(SimpleService));
+            using ServiceLocator locator = container.BuildServiceLocator();
+
+            Assert.IsInstanceOf<SimpleService>(locator.GetService(typeof(SimpleService)));
+        }
+
+        [Test]
         public void AddSingleton_AbstractImplementation_ThrowsArgumentException()
         {
             ServiceContainer container = new();

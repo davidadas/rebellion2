@@ -7,16 +7,24 @@ using Rebellion.Game.Results;
 namespace Rebellion.Simulation
 {
     /// <summary>Selects missions interrupted by capture before custody changes participant parents.</summary>
-    public sealed class MissionObserver
+    public sealed class MissionObserver : IDisposable
     {
         private readonly MissionCommands _commands;
+        private readonly IDisposable _subscription;
 
         /// <summary>Creates the mission capture listener.</summary>
         /// <param name="commands">The operations that interrupt selected missions.</param>
-        public MissionObserver(MissionCommands commands)
+        /// <param name="results">The bus that delivers officer capture changes.</param>
+        public MissionObserver(MissionCommands commands, GameResultBus results)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _subscription = (
+                results ?? throw new ArgumentNullException(nameof(results))
+            ).Subscribe<OfficerCaptureStateResult>(HandleResults);
         }
+
+        /// <summary>Stops receiving officer capture changes.</summary>
+        public void Dispose() => _subscription.Dispose();
 
         /// <summary>
         /// Ends missions whose participants were captured by another simulation system.

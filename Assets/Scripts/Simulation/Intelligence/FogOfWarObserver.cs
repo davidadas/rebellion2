@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -10,20 +11,37 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Selects intelligence observations and sabotage invalidations from completed results.
     /// </summary>
-    public sealed class FogOfWarObserver
+    public sealed class FogOfWarObserver : IDisposable
     {
         private readonly GameRoot _game;
         private readonly FogOfWarCommands _commands;
+        private readonly IDisposable[] _subscriptions;
 
         /// <summary>
         /// Connects result observation to the commands that update faction intelligence.
         /// </summary>
         /// <param name="game">The game containing the observing factions.</param>
         /// <param name="commands">The commands that record and invalidate observations.</param>
-        public FogOfWarObserver(GameRoot game, FogOfWarCommands commands)
+        /// <param name="results">The bus that delivers intelligence and sabotage results.</param>
+        public FogOfWarObserver(GameRoot game, FogOfWarCommands commands, GameResultBus results)
         {
             _game = game;
             _commands = commands;
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+
+            _subscriptions = new IDisposable[]
+            {
+                results.Subscribe<IntelligenceRevealedResult>(HandleResults),
+                results.Observe<GameObjectSabotagedResult>(ProcessResults),
+            };
+        }
+
+        /// <summary>Stops receiving intelligence and sabotage results.</summary>
+        public void Dispose()
+        {
+            foreach (IDisposable subscription in _subscriptions)
+                subscription.Dispose();
         }
 
         /// <summary>

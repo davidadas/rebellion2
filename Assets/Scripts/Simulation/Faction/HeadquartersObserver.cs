@@ -8,17 +8,34 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Routes arrival and ownership result batches to headquarters operations.
     /// </summary>
-    public sealed class HeadquartersObserver
+    public sealed class HeadquartersObserver : IDisposable
     {
         private readonly HeadquartersCommands _commands;
+        private readonly IDisposable[] _subscriptions;
 
         /// <summary>
         /// Creates the headquarters result observer.
         /// </summary>
         /// <param name="commands">The headquarters operations for the active game.</param>
-        public HeadquartersObserver(HeadquartersCommands commands)
+        /// <param name="results">The bus that delivers arrivals and ownership changes.</param>
+        public HeadquartersObserver(HeadquartersCommands commands, GameResultBus results)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+
+            _subscriptions = new IDisposable[]
+            {
+                results.Subscribe<UnitArrivedResult>(HandleResults),
+                results.Subscribe<PlanetOwnershipChangedResult>(HandleResults),
+            };
+        }
+
+        /// <summary>Stops receiving arrivals and ownership changes.</summary>
+        public void Dispose()
+        {
+            foreach (IDisposable subscription in _subscriptions)
+                subscription.Dispose();
         }
 
         /// <summary>

@@ -7,16 +7,24 @@ using Rebellion.Game.Results;
 namespace Rebellion.Simulation
 {
     /// <summary>Routes garrison changes to uprising reconciliation in incoming planet order.</summary>
-    public sealed class UprisingObserver
+    public sealed class UprisingObserver : IDisposable
     {
         private readonly UprisingCommands _commands;
+        private readonly IDisposable _subscription;
 
         /// <summary>Creates the uprising garrison listener.</summary>
         /// <param name="commands">The uprising operations for this game.</param>
-        public UprisingObserver(UprisingCommands commands)
+        /// <param name="results">The bus that delivers garrison changes.</param>
+        public UprisingObserver(UprisingCommands commands, GameResultBus results)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _subscription = (
+                results ?? throw new ArgumentNullException(nameof(results))
+            ).Subscribe<PlanetGarrisonChangedResult>(HandleResults);
         }
+
+        /// <summary>Stops receiving garrison changes.</summary>
+        public void Dispose() => _subscription.Dispose();
 
         /// <summary>
         /// Reconciles uprising state for planets whose active garrisons changed.

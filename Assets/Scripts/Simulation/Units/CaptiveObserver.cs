@@ -10,18 +10,35 @@ using Rebellion.Game.Units;
 namespace Rebellion.Simulation
 {
     /// <summary>Routes capture and ownership changes to custody operations in batch order.</summary>
-    public sealed class CaptiveObserver
+    public sealed class CaptiveObserver : IDisposable
     {
         private readonly GameRoot _game;
         private readonly CaptiveCommands _commands;
+        private readonly IDisposable[] _subscriptions;
 
         /// <summary>Creates the custody listener for the active game.</summary>
         /// <param name="game">The authoritative game used to resolve officer ownership.</param>
         /// <param name="commands">The custody and release operations.</param>
-        public CaptiveObserver(GameRoot game, CaptiveCommands commands)
+        /// <param name="results">The bus that delivers capture and ownership changes.</param>
+        public CaptiveObserver(GameRoot game, CaptiveCommands commands, GameResultBus results)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+
+            _subscriptions = new IDisposable[]
+            {
+                results.Subscribe<PlanetOwnershipChangedResult>(HandleResults),
+                results.Subscribe<OfficerCaptureStateResult>(HandleResults),
+            };
+        }
+
+        /// <summary>Stops receiving capture and ownership changes.</summary>
+        public void Dispose()
+        {
+            foreach (IDisposable subscription in _subscriptions)
+                subscription.Dispose();
         }
 
         /// <summary>

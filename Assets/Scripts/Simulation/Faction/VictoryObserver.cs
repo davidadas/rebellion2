@@ -6,16 +6,24 @@ using Rebellion.Game.Results;
 namespace Rebellion.Simulation
 {
     /// <summary>Routes headquarters losses to victory resolution in batch order.</summary>
-    public sealed class VictoryObserver
+    public sealed class VictoryObserver : IDisposable
     {
         private readonly VictoryCommands _commands;
+        private readonly IDisposable _subscription;
 
         /// <summary>Creates the victory result listener.</summary>
         /// <param name="commands">The victory operations for this game.</param>
-        public VictoryObserver(VictoryCommands commands)
+        /// <param name="results">The bus that delivers headquarters losses.</param>
+        public VictoryObserver(VictoryCommands commands, GameResultBus results)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _subscription = (
+                results ?? throw new ArgumentNullException(nameof(results))
+            ).Subscribe<HeadquartersLostResult>(HandleResults);
         }
+
+        /// <summary>Stops receiving headquarters losses.</summary>
+        public void Dispose() => _subscription.Dispose();
 
         /// <summary>
         /// Applies the configured victory condition after a faction loses its headquarters.

@@ -23,7 +23,8 @@ namespace Rebellion.Tests.Simulation
             officer.Loyalty = 99;
             SequenceRNG random = new SequenceRNG(new[] { 5, 2, 4 });
             OfficerLoyaltyObserver observer = new OfficerLoyaltyObserver(
-                new OfficerLoyaltyCommands(game, random)
+                new OfficerLoyaltyCommands(game, random),
+                new GameResultBus()
             );
 
             List<GameResult> results = observer.HandleResults(
@@ -47,7 +48,8 @@ namespace Rebellion.Tests.Simulation
             GameRoot game = BuildScene(out _, out _);
             SequenceRNG random = new SequenceRNG(new[] { 5 });
             OfficerLoyaltyObserver observer = new OfficerLoyaltyObserver(
-                new OfficerLoyaltyCommands(game, random)
+                new OfficerLoyaltyCommands(game, random),
+                new GameResultBus()
             );
 
             Assert.IsEmpty(observer.HandleResults(null));

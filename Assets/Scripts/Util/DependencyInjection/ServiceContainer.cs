@@ -33,6 +33,18 @@ namespace Rebellion.Util.DependencyInjection
         }
 
         /// <summary>
+        /// Registers one concrete service by its runtime type for the lifetime of a locator.
+        /// </summary>
+        /// <param name="serviceType">The concrete service type to construct.</param>
+        internal void AddSingleton(Type serviceType)
+        {
+            if (serviceType == null)
+                throw new ArgumentNullException(nameof(serviceType));
+
+            Add(serviceType, Registration.ForType(serviceType, true));
+        }
+
+        /// <summary>
         /// Registers a service factory whose result is cached for one locator.
         /// </summary>
         /// <typeparam name="TService">The service type callers request.</typeparam>

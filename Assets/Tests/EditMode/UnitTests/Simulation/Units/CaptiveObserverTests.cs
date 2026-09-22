@@ -458,7 +458,8 @@ namespace Rebellion.Tests.Simulation
         {
             return new CaptiveObserver(
                 game,
-                new CaptiveCommands(game, provider, movement, new FogOfWarCommands(game))
+                new CaptiveCommands(game, provider, movement, new FogOfWarCommands(game)),
+                new GameResultBus()
             );
         }
 

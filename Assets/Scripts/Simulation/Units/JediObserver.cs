@@ -6,16 +6,24 @@ using Rebellion.Game.Results;
 namespace Rebellion.Simulation
 {
     /// <summary>Routes mission completions to Force growth in batch order.</summary>
-    public sealed class JediObserver
+    public sealed class JediObserver : IDisposable
     {
         private readonly JediCommands _commands;
+        private readonly IDisposable _subscription;
 
         /// <summary>Creates the jedi result listener.</summary>
         /// <param name="commands">The jedi operations for this game.</param>
-        public JediObserver(JediCommands commands)
+        /// <param name="results">The bus that delivers mission completions.</param>
+        public JediObserver(JediCommands commands, GameResultBus results)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _subscription = (
+                results ?? throw new ArgumentNullException(nameof(results))
+            ).Subscribe<MissionCompletedResult>(HandleResults);
         }
+
+        /// <summary>Stops receiving mission completions.</summary>
+        public void Dispose() => _subscription.Dispose();
 
         /// <summary>
         /// Applies Force growth for successful missions reported in a result batch.

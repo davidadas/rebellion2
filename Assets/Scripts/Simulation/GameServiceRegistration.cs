@@ -12,19 +12,36 @@ namespace Rebellion.Simulation
     /// </summary>
     internal static class GameServiceRegistration
     {
+        private static readonly Type[] _resultObserverTypes =
+        {
+            typeof(MovementObserver),
+            typeof(HeadquartersObserver),
+            typeof(OfficerLoyaltyObserver),
+            typeof(MissionObserver),
+            typeof(CaptiveObserver),
+            typeof(VictoryObserver),
+            typeof(PlanetaryControlObserver),
+            typeof(UprisingObserver),
+            typeof(JediObserver),
+            typeof(FogOfWarObserver),
+            typeof(ManufacturingObserver),
+        };
+
         /// <summary>
-        /// Creates a locator for one game without changing result subscription order.
+        /// Creates a locator for one game and its result bus.
         /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="gameData">The content catalog used by game services.</param>
         /// <param name="random">The active game's random provider.</param>
         /// <param name="messageFactory">The message factory configured for this game.</param>
-        /// <returns>A locator that owns this game's commands and queries.</returns>
+        /// <param name="results">The result bus shared by this game's observers.</param>
+        /// <returns>A locator that owns this game's runtime services.</returns>
         internal static ServiceLocator Create(
             GameRoot game,
             GameDataCatalog gameData,
             IRandomNumberProvider random,
-            MessageFactory messageFactory
+            MessageFactory messageFactory,
+            GameResultBus results
         )
         {
             if (game == null)
@@ -35,12 +52,15 @@ namespace Rebellion.Simulation
                 throw new ArgumentNullException(nameof(random));
             if (messageFactory == null)
                 throw new ArgumentNullException(nameof(messageFactory));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
 
             ServiceContainer services = new();
             services.AddSingletonInstance(game);
             services.AddSingletonInstance(gameData);
             services.AddSingletonInstance(random);
             services.AddSingletonInstance(messageFactory);
+            services.AddSingletonInstance(results);
             services.AddSingleton<UnitFactory>(locator =>
             {
                 GameDataCatalog content = locator.GetService<GameDataCatalog>();
@@ -90,20 +110,21 @@ namespace Rebellion.Simulation
             services.AddSingleton<VictoryCommands>();
             services.AddSingleton<AIDirector>();
             services.AddSingleton<MessageObserver>();
-            services.AddSingleton<FogOfWarObserver>();
-            services.AddSingleton<MovementObserver>();
-            services.AddSingleton<HeadquartersObserver>();
-            services.AddSingleton<ManufacturingObserver>();
-            services.AddSingleton<CaptiveObserver>();
-            services.AddSingleton<PlanetaryControlObserver>();
-            services.AddSingleton<UprisingObserver>();
-            services.AddSingleton<JediObserver>();
-            services.AddSingleton<OfficerLoyaltyObserver>();
-            services.AddSingleton<MissionObserver>();
-            services.AddSingleton<VictoryObserver>();
+            foreach (Type observerType in _resultObserverTypes)
+                services.AddSingleton(observerType);
             services.AddSingleton<GameEventExecutor>();
 
             return services.BuildServiceLocator();
+        }
+
+        /// <summary>
+        /// Constructs the registered observers so their subscriptions are active before results run.
+        /// </summary>
+        /// <param name="services">The active game's service scope.</param>
+        internal static void ActivateObservers(ServiceLocator services)
+        {
+            foreach (Type observerType in _resultObserverTypes)
+                services.GetService(observerType);
         }
     }
 }

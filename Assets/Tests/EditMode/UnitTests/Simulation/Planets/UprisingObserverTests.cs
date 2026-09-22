@@ -141,7 +141,7 @@ namespace Rebellion.Tests.Simulation
                 rng ?? new StubRNG(),
                 planetaryControl
             );
-            return (game, planet, new UprisingObserver(uprisingSystem));
+            return (game, planet, new UprisingObserver(uprisingSystem, new GameResultBus()));
         }
     }
 }

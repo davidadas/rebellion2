@@ -7,15 +7,32 @@ using Rebellion.Game.Results;
 namespace Rebellion.Simulation
 {
     /// <summary>Routes garrison and support changes to planetary control operations.</summary>
-    public sealed class PlanetaryControlObserver
+    public sealed class PlanetaryControlObserver : IDisposable
     {
         private readonly PlanetaryControlCommands _commands;
+        private readonly IDisposable[] _subscriptions;
 
         /// <summary>Creates the planetary control listener.</summary>
         /// <param name="commands">The ownership and support operations.</param>
-        public PlanetaryControlObserver(PlanetaryControlCommands commands)
+        /// <param name="results">The bus that delivers garrison and support changes.</param>
+        public PlanetaryControlObserver(PlanetaryControlCommands commands, GameResultBus results)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+
+            _subscriptions = new IDisposable[]
+            {
+                results.Subscribe<PlanetGarrisonChangedResult>(HandleResults),
+                results.Subscribe<PopularSupportShiftResult>(HandleResults),
+            };
+        }
+
+        /// <summary>Stops receiving garrison and support changes.</summary>
+        public void Dispose()
+        {
+            foreach (IDisposable subscription in _subscriptions)
+                subscription.Dispose();
         }
 
         /// <summary>

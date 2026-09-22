@@ -15,6 +15,7 @@ namespace Rebellion.Tests.Simulation
     public class FogOfWarObserverTests : FogOfWarTestBase
     {
         private FogOfWarObserver _observer;
+        private GameResultBus _results;
 
         /// <summary>
         /// Creates the subject for the arranged faction scene.
@@ -22,11 +23,12 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            _observer = new FogOfWarObserver(_game, new FogOfWarCommands(_game));
+            _results = new GameResultBus();
+            _observer = new FogOfWarObserver(_game, new FogOfWarCommands(_game), _results);
         }
 
         [Test]
-        public void ProcessResults_SabotagedObject_RemovesObjectFromActorSnapshot()
+        public void Constructor_SabotagedObject_RegistersSnapshotInvalidation()
         {
             _coruscant.EnergyCapacity = 1;
             Building mine = CreateBuilding("MINE1", _empire);
@@ -39,20 +41,34 @@ namespace Rebellion.Tests.Simulation
 
             _game.DetachNode(mine);
 
-            _observer.ProcessResults(
-                new List<GameObjectSabotagedResult>
+            _results.Publish(
+                new GameObjectSabotagedResult
                 {
-                    new GameObjectSabotagedResult
-                    {
-                        DestroyedObject = mine,
-                        DestroyedBy = han,
-                        Context = _coruscant,
-                    },
+                    DestroyedObject = mine,
+                    DestroyedBy = han,
+                    Context = _coruscant,
                 }
             );
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
             Assert.IsFalse(snapshot.Buildings.Any(b => b.InstanceID == "MINE1"));
+        }
+
+        [Test]
+        public void Dispose_IntelligenceResult_StopsRecordingObservations()
+        {
+            _observer.Dispose();
+
+            _results.Publish(
+                new IntelligenceRevealedResult
+                {
+                    Recipient = _alliance,
+                    Observations = new List<ISceneNode> { _coruscant },
+                    Tick = 12,
+                }
+            );
+
+            Assert.IsEmpty(_alliance.Fog.Snapshots);
         }
 
         [Test]

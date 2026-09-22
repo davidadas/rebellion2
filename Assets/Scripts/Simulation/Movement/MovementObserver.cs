@@ -7,18 +7,26 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Selects newly blockaded destinations and requests their inbound-unit reactions.
     /// </summary>
-    public sealed class MovementObserver
+    public sealed class MovementObserver : IDisposable
     {
         private readonly MovementCommands _commands;
+        private readonly IDisposable _subscription;
 
         /// <summary>
         /// Connects blockade observation to movement execution.
         /// </summary>
         /// <param name="commands">The movement operations that handle inbound units.</param>
-        public MovementObserver(MovementCommands commands)
+        /// <param name="results">The bus that delivers blockade changes.</param>
+        public MovementObserver(MovementCommands commands, GameResultBus results)
         {
-            _commands = commands;
+            _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _subscription = (
+                results ?? throw new ArgumentNullException(nameof(results))
+            ).Subscribe<BlockadeChangedResult>(HandleResults);
         }
+
+        /// <summary>Stops receiving blockade changes.</summary>
+        public void Dispose() => _subscription.Dispose();
 
         /// <summary>
         /// Applies movement reactions to newly started blockades.

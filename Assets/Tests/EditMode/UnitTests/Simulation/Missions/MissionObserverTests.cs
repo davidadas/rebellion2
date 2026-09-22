@@ -29,7 +29,7 @@ namespace Rebellion.Tests.Simulation
                 new ThrowingRNG(),
                 movement
             );
-            MissionObserver observer = new MissionObserver(commands);
+            MissionObserver observer = new MissionObserver(commands, new GameResultBus());
 
             List<GameResult> results = observer.HandleResults(
                 new[]
@@ -54,7 +54,7 @@ namespace Rebellion.Tests.Simulation
                 new ThrowingRNG(),
                 movement
             );
-            MissionObserver observer = new MissionObserver(commands);
+            MissionObserver observer = new MissionObserver(commands, new GameResultBus());
 
             Assert.IsEmpty(observer.HandleResults(new OfficerCaptureStateResult[] { null }));
         }
@@ -63,14 +63,14 @@ namespace Rebellion.Tests.Simulation
         public void Constructor_NullCommands_ThrowsArgumentNullException()
         {
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
-                new MissionObserver(null)
+                new MissionObserver(null, new GameResultBus())
             );
 
             Assert.AreEqual("commands", exception.ParamName);
         }
 
         [Test]
-        public void HandleResults_CapturedMissionParticipant_TearsDownMissionAtCurrentPlanet()
+        public void Constructor_CapturedMissionParticipant_RegistersInterruption()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -87,16 +87,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            MissionObserver observer = new MissionObserver(system);
-            observer.HandleResults(
-                new List<OfficerCaptureStateResult>
+            GameResultBus results = new GameResultBus();
+            MissionObserver observer = new MissionObserver(system, results);
+            results.Publish(
+                new OfficerCaptureStateResult
                 {
-                    new OfficerCaptureStateResult
-                    {
-                        TargetOfficer = officer,
-                        IsCaptured = true,
-                        Context = planet,
-                    },
+                    TargetOfficer = officer,
+                    IsCaptured = true,
+                    Context = planet,
                 }
             );
 
@@ -104,6 +102,37 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(planet, officer.GetParent());
             Assert.IsTrue(officer.IsCaptured);
             Assert.IsFalse(officer.IsEnabled);
+        }
+
+        [Test]
+        public void Dispose_CapturedMissionParticipant_StopsInterruption()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "rebels";
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+            GameResultBus results = new GameResultBus();
+            MissionObserver observer = new MissionObserver(commands, results);
+            observer.Dispose();
+
+            results.Publish(
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = officer,
+                    IsCaptured = true,
+                    Context = planet,
+                }
+            );
+
+            Assert.AreSame(mission, officer.GetParent());
         }
 
         /// <summary>
