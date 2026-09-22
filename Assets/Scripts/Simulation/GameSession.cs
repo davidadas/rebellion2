@@ -39,20 +39,6 @@ namespace Rebellion.Simulation
         public GameResultPipeline Pipeline { get; }
         public GameTickProcessor Tick { get; }
 
-        /// <summary>
-        /// Resolves a command or query from the current game's service scope.
-        /// </summary>
-        /// <typeparam name="T">The requested command or query type.</typeparam>
-        /// <returns>The current game's service instance.</returns>
-        public T GetService<T>() => _serviceScope.GetService<T>();
-
-        /// <summary>
-        /// Resolves a command or query by its runtime type.
-        /// </summary>
-        /// <param name="serviceType">The requested command or query type.</param>
-        /// <returns>The current game's service instance.</returns>
-        public object GetService(Type serviceType) => _serviceScope.GetService(serviceType);
-
         internal MessageCommands MessageCommands { get; private set; }
         internal MessageObserver MessageObserver { get; private set; }
 
@@ -140,6 +126,20 @@ namespace Rebellion.Simulation
             );
             ReplaceGame(game);
         }
+
+        /// <summary>
+        /// Resolves a command or query from the current game's service scope.
+        /// </summary>
+        /// <typeparam name="T">The requested command or query type.</typeparam>
+        /// <returns>The current game's service instance.</returns>
+        public T GetService<T>() => _serviceScope.GetService<T>();
+
+        /// <summary>
+        /// Resolves a command or query by its runtime type.
+        /// </summary>
+        /// <param name="serviceType">The requested command or query type.</param>
+        /// <returns>The current game's service instance.</returns>
+        public object GetService(Type serviceType) => _serviceScope.GetService(serviceType);
 
         /// <summary>
         /// Rebuilds components in place, preserving partial initialization on failure.
