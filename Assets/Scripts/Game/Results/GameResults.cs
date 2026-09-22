@@ -318,6 +318,7 @@ namespace Rebellion.Game.Results
     {
         public string MissionInstanceID { get; set; }
         public Officer TargetOfficer { get; set; }
+        public ISceneNode ParentAtCapture { get; set; }
         public bool IsCaptured { get; set; }
         public string CaptorInstanceID { get; set; }
         public ISceneNode CapturingUnit { get; set; }

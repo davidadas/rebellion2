@@ -60,6 +60,30 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void HandleResults_MissingOfficer_DoesNotInterruptRecordedMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+            MissionObserver observer = new MissionObserver(commands);
+
+            observer.HandleResults(
+                new[]
+                {
+                    new OfficerCaptureStateResult { IsCaptured = true, ParentAtCapture = mission },
+                }
+            );
+
+            Assert.AreSame(planet, mission.GetParent());
+        }
+
+        [Test]
         public void Constructor_NullCommands_ThrowsArgumentNullException()
         {
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
@@ -95,6 +119,7 @@ namespace Rebellion.Tests.Simulation
                 {
                     TargetOfficer = officer,
                     IsCaptured = true,
+                    ParentAtCapture = mission,
                     Context = planet,
                 }
             );
@@ -103,6 +128,41 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(planet, officer.GetParent());
             Assert.IsTrue(officer.IsCaptured);
             Assert.IsFalse(officer.IsEnabled);
+        }
+
+        [Test]
+        public void HandleResults_OfficerMovedBeforeDelivery_InterruptsRecordedMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            mission.Initiate(1);
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "rebels";
+            officer.IsEnabled = false;
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+            GameResultBus results = new GameResultBus();
+            results.Subscribe<OfficerCaptureStateResult>(_ => game.MoveNode(officer, planet));
+            new MissionObserver(commands).Connect(results);
+
+            results.Publish(
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = officer,
+                    IsCaptured = true,
+                    ParentAtCapture = mission,
+                    Context = planet,
+                }
+            );
+
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
         }
 
         [Test]

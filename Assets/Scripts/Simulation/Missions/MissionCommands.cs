@@ -745,6 +745,7 @@ namespace Rebellion.Simulation
                 {
                     TargetOfficer = officer,
                     IsCaptured = true,
+                    ParentAtCapture = officer.GetParent(),
                     CapturingUnit = capturingUnit,
                     Context = planet,
                     Tick = _game.CurrentTick,

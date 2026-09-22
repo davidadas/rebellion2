@@ -2100,6 +2100,29 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ExecuteAction_SetCaptureStatusMissionParticipant_RecordsParentAtCapture()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", planet.OwnerInstanceID);
+            DiplomacyMission mission = new DiplomacyMission { InstanceID = "mission" };
+            game.AttachNode(mission, planet);
+            game.AttachNode(officer, mission);
+            SetCaptureStatusAction action = new SetCaptureStatusAction
+            {
+                OfficerInstanceID = officer.InstanceID,
+                IsCaptured = true,
+                CaptorFactionInstanceID = "empire",
+            };
+
+            OfficerCaptureStateResult result = action
+                .Execute(game)
+                .OfType<OfficerCaptureStateResult>()
+                .Single();
+
+            Assert.AreSame(mission, result.ParentAtCapture);
+        }
+
+        [Test]
         public void ExecuteAction_SetCaptureStatusAuthoredNonEscapingCapture_DisablesEscape()
         {
             GameRoot game = BuildGame(out Planet planet, out _);

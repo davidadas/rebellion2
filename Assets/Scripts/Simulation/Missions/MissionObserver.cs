@@ -6,7 +6,7 @@ using Rebellion.Game.Results;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Selects missions interrupted by capture before custody changes participant parents.</summary>
+    /// <summary>Selects missions interrupted by capture from the recorded participant parent.</summary>
     public sealed class MissionObserver : IResultObserver, IDisposable
     {
         private readonly MissionCommands _commands;
@@ -42,9 +42,9 @@ namespace Rebellion.Simulation
         {
             List<GameResult> missionResults = new List<GameResult>();
             List<Mission> affectedMissions = results
-                .Where(result => result?.IsCaptured == true)
-                .Select(result => result.TargetOfficer?.GetParent() as Mission)
-                .Where(mission => mission != null)
+                .Where(result => result?.IsCaptured == true && result.TargetOfficer != null)
+                .Select(result => result.ParentAtCapture as Mission)
+                .Where(mission => mission?.GetParent() != null)
                 .Distinct()
                 .ToList();
 

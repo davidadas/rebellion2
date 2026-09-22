@@ -150,6 +150,7 @@ namespace Rebellion.Simulation
                     {
                         TargetOfficer = encountered,
                         IsCaptured = true,
+                        ParentAtCapture = encountered.GetParent(),
                         CapturingUnit = opposing,
                         CapturedOfficer = encountered,
                         LinkedOfficer = opposing,
