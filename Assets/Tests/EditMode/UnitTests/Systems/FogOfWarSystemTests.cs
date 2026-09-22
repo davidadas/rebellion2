@@ -2569,6 +2569,97 @@ namespace Rebellion.Tests.Sectors
             );
         }
 
+        /// <summary>
+        /// Verifies that revealing an embarked regiment replaces only one absent remembered regiment.
+        /// </summary>
+        [Test]
+        public void HandleResults_SelectedNestedRegiment_ReplacesOneAbsentRememberedRegiment()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "CARRIER");
+            ship.RegimentCapacity = 2;
+            Regiment firstStale = CreateRegiment("FIRST_STALE", _empire);
+            Regiment secondStale = CreateRegiment("SECOND_STALE", _empire);
+            _game.AttachNode(firstStale, ship);
+            _game.AttachNode(secondStale, ship);
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 41);
+            _game.DetachNode(firstStale);
+            Regiment current = CreateRegiment("CURRENT", _empire);
+            _game.AttachNode(current, ship);
+
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { current },
+                    },
+                }
+            );
+
+            CapitalShip knownShip = _alliance
+                .Fog.Snapshots["CORE_SECTOR"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single()
+                .GetChildren<CapitalShip>()
+                .Single();
+            CollectionAssert.AreEquivalent(
+                new[] { "SECOND_STALE", "CURRENT" },
+                knownShip.GetChildren<Regiment>().Select(regiment => regiment.InstanceID)
+            );
+        }
+
+        /// <summary>
+        /// Verifies that revealing multiple embarked fighters replaces only absent remembered fighters.
+        /// </summary>
+        [Test]
+        public void HandleResults_SelectedNestedStarfighters_ReplacesOnlyAbsentRememberedStarfighters()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "CARRIER");
+            ship.StarfighterCapacity = 3;
+            Starfighter firstStale = CreateStarfighter("FIRST_STALE", _empire);
+            Starfighter secondStale = CreateStarfighter("SECOND_STALE", _empire);
+            Starfighter retained = CreateStarfighter("RETAINED", _empire);
+            _game.AttachNode(firstStale, ship);
+            _game.AttachNode(secondStale, ship);
+            _game.AttachNode(retained, ship);
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 41);
+            _game.DetachNode(firstStale);
+            _game.DetachNode(secondStale);
+            Starfighter firstCurrent = CreateStarfighter("FIRST_CURRENT", _empire);
+            Starfighter secondCurrent = CreateStarfighter("SECOND_CURRENT", _empire);
+            _game.AttachNode(firstCurrent, ship);
+            _game.AttachNode(secondCurrent, ship);
+
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { firstCurrent, secondCurrent },
+                    },
+                }
+            );
+
+            CapitalShip knownShip = _alliance
+                .Fog.Snapshots["CORE_SECTOR"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single()
+                .GetChildren<CapitalShip>()
+                .Single();
+            CollectionAssert.AreEquivalent(
+                new[] { "RETAINED", "FIRST_CURRENT", "SECOND_CURRENT" },
+                knownShip.GetChildren<Starfighter>().Select(starfighter => starfighter.InstanceID)
+            );
+        }
+
         [Test]
         public void HandleResults_SelectedManufacturingOrder_RevealsOnlySelectedOrder()
         {
