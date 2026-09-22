@@ -1,8 +1,6 @@
 using System;
 using NUnit.Framework;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Tests.Game.Units
 {
@@ -400,8 +398,14 @@ namespace Rebellion.Tests.Game.Units
                 deserializedBuilding.ResourceStartupCyclePending
             );
             CollectionAssert.AreEqual(building.Upgrades, deserializedBuilding.Upgrades);
-            Assert.AreEqual(building.GetPosition().X, deserializedBuilding.GetPosition().X);
-            Assert.AreEqual(building.GetPosition().Y, deserializedBuilding.GetPosition().Y);
+            Assert.AreEqual(
+                ((IMovable)building).GetPosition().X,
+                ((IMovable)deserializedBuilding).GetPosition().X
+            );
+            Assert.AreEqual(
+                ((IMovable)building).GetPosition().Y,
+                ((IMovable)deserializedBuilding).GetPosition().Y
+            );
             Assert.AreEqual(building.Movement, deserializedBuilding.Movement);
         }
     }

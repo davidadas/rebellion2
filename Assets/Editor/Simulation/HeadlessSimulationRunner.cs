@@ -12,7 +12,8 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Logging;
+using Rebellion.Util.Random;
 
 public static partial class HeadlessSimulationRunner
 {

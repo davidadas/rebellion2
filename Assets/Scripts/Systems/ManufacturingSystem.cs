@@ -7,8 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Systems
 {
@@ -243,9 +242,12 @@ namespace Rebellion.Systems
 
             for (int index = 0; index < count; index++)
             {
-                IManufacturable item = template.GetDeepCopy();
-                if (item is not ISceneNode sceneNode)
+                if (template is not ISceneNode templateNode)
                     return started;
+
+                ISceneNode sceneNode = templateNode.CreateCopy();
+                sceneNode.InstanceID = null;
+                IManufacturable item = (IManufacturable)sceneNode;
 
                 sceneNode.OwnerInstanceID = producer.GetOwnerInstanceID();
                 item.ManufacturingStatus = ManufacturingStatus.Building;
@@ -1011,7 +1013,7 @@ namespace Rebellion.Systems
         private static bool IsManufacturingCarrierAvailable(CapitalShip ship)
         {
             return ship?.ManufacturingStatus == ManufacturingStatus.Complete
-                && ship.GetTransitMovement() == null;
+                && ((IMovable)ship).GetTransitMovement() == null;
         }
 
         /// <summary>

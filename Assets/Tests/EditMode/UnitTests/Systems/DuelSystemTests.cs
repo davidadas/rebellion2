@@ -9,7 +9,6 @@ using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Sectors
 {
@@ -58,8 +57,8 @@ namespace Rebellion.Tests.Sectors
             Assert.IsFalse(encountered.IsCaptured);
             Assert.AreEqual(1, encountered.InjuryPoints);
             Assert.AreEqual(1, opposing.InjuryPoints);
-            Assert.AreEqual(51, encountered.GetBaseRating(OfficerRating.Combat));
-            Assert.AreEqual(51, opposing.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(51, encountered.GetBaseRating(SkillRating.Combat));
+            Assert.AreEqual(51, opposing.GetBaseRating(SkillRating.Combat));
             Assert.AreEqual(2, results.OfType<OfficerInjuredResult>().Count());
         }
 
@@ -115,8 +114,8 @@ namespace Rebellion.Tests.Sectors
             game.AttachNode(planet, planetSector);
             Officer encountered = EntityFactory.CreateOfficer("luke", "rebels");
             Officer opposing = EntityFactory.CreateOfficer("vader", "empire");
-            encountered.SetBaseRating(OfficerRating.Combat, 50);
-            opposing.SetBaseRating(OfficerRating.Combat, 50);
+            encountered.SetBaseRating(SkillRating.Combat, 50);
+            opposing.SetBaseRating(SkillRating.Combat, 50);
             game.AttachNode(encountered, planet);
             opposing.IsCaptured = true;
             game.AttachNode(opposing, planet);

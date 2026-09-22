@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Advisor;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -708,7 +708,7 @@ namespace Rebellion.Game.Messages
             )
                 .Where(result =>
                     result.Outcome == MissionOutcome.Success
-                    && result.Mission?.ConfigKey == MissionTypeIDs.Recruitment
+                    && result.Mission?.ConfigKey == RecruitmentMission.MissionTypeID
                 )
                 .Select(result => GetMissionRelatedOfficerInstanceID(result.Mission))
                 .Where(id => !string.IsNullOrEmpty(id))
@@ -1441,7 +1441,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<GameObjectSabotagedResult> sabotageResults
         )
         {
-            if (result?.Mission?.ConfigKey != MissionTypeIDs.Sabotage)
+            if (result?.Mission?.ConfigKey != SabotageMission.MissionTypeID)
                 return string.Empty;
 
             string targetInstanceID = result.Mission is SabotageMission sabotage
@@ -1474,7 +1474,7 @@ namespace Rebellion.Game.Messages
         {
             if (
                 result?.Outcome != MissionOutcome.Success
-                || result.Mission?.ConfigKey != MissionTypeIDs.Assassination
+                || result.Mission?.ConfigKey != AssassinationMission.MissionTypeID
             )
             {
                 return string.Empty;
@@ -3033,7 +3033,7 @@ namespace Rebellion.Game.Messages
                     { "type", itemName },
                     { "system", destination?.GetDisplayName() ?? string.Empty },
                 },
-                imageOverride: unit.EncyclopediaImagePath
+                imageOverride: (unit as IEncyclopediaSource)?.EncyclopediaImagePath
             );
             SetDeploymentLocation(message, destination, unit as ISceneNode);
             return message;
@@ -3797,7 +3797,7 @@ namespace Rebellion.Game.Messages
                     { "item", unit.GetDisplayName() ?? string.Empty },
                     { "attachment", unit.GetParent()?.GetDisplayName() ?? string.Empty },
                 },
-                imageOverride: unit.EncyclopediaImagePath
+                imageOverride: (unit as IEncyclopediaSource)?.EncyclopediaImagePath
             );
             if (message != null)
             {

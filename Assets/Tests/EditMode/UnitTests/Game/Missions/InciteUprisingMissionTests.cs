@@ -5,7 +5,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -13,7 +12,7 @@ namespace Rebellion.Tests.Game.Missions
     public class InciteUprisingMissionTests
     {
         [Test]
-        public void RollParticipantSuccess_GarrisonedRegimentDoesNotAffectScore()
+        public void RollParticipantSuccess_GarrisonedRegiment_DoesNotAffectScore()
         {
             (
                 GameRoot game,
@@ -171,7 +170,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void DisplayName_IsHumanReadable()
+        public void DisplayName_Default_IsHumanReadable()
         {
             (
                 GameRoot game,
@@ -228,7 +227,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "InciteUprising",
                 DisplayName = "Incite Uprising",
                 LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.Diplomacy,
+                ParticipantRating = SkillRating.Diplomacy,
                 HasInitiated = false,
                 MaxProgress = 20,
                 CurrentProgress = 0,
@@ -240,7 +239,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("InciteUprising", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
-            Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
+            Assert.AreEqual(SkillRating.Diplomacy, deserialized.ParticipantRating);
             Assert.IsFalse(deserialized.HasInitiated);
             Assert.AreEqual(20, deserialized.MaxProgress);
         }
@@ -261,7 +260,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.InciteUprising,
+                InciteUprisingMission.MissionTypeID,
                 null,
                 ownerInstanceId,
                 target,

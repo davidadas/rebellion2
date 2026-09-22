@@ -36,7 +36,7 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
-        public void AuthoredPrefab_BlockerFillsHostAndDialogSurfaceRemainsCentered()
+        public void AuthoredPrefab_Blocker_FillsHostAndDialogSurfaceRemainsCentered()
         {
             RectTransform root = (RectTransform)_view.transform;
             RectTransform blocker = (RectTransform)root.Find("InputBlocker");

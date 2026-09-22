@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.Game.Advisor;
 using Rebellion.Game.Events;
 using Rebellion.Game.Messages;
 

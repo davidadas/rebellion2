@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<<< HEAD:Assets/Tests/EditMode/UnitTests/AI/Fleet.meta
 guid: acc4da77145be464abb18e679646cc19
+========
+guid: 94a2ea439166140b19c7705c87c0a381
+>>>>>>>> origin/master:Assets/Tests/EditMode/UnitTests/Util/Random.meta
 folderAsset: yes
 DefaultImporter:
   externalObjects: {}

@@ -6,13 +6,11 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Systems
 {
@@ -100,7 +98,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreSame(destination, fleet.GetParent());
             Assert.AreSame(ship, captive.GetParent());
-            Assert.AreSame(fleet.Movement, captive.GetTransitMovement());
+            Assert.AreSame(fleet.Movement, ((IMovable)captive).GetTransitMovement());
             Assert.AreEqual(
                 capturePlanet.InstanceID,
                 game.GetFactionByOwnerInstanceID(captive.OwnerInstanceID).Fog.EntityLastSeenAt[
@@ -596,7 +594,7 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
 
             Officer guard = EntityFactory.CreateOfficer("guard", "rebels");
-            guard.SetBaseRating(OfficerRating.Combat, 100);
+            guard.SetBaseRating(SkillRating.Combat, 100);
             game.AttachNode(guard, planet);
 
             for (int i = 0; i < 10; i++)
@@ -624,8 +622,8 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_NoGarrison_HigherEscapeChance()
         {
             (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
-            captive.SetBaseRating(OfficerRating.Espionage, 80);
-            captive.SetBaseRating(OfficerRating.Combat, 80);
+            captive.SetBaseRating(SkillRating.Espionage, 80);
+            captive.SetBaseRating(SkillRating.Combat, 80);
 
             CaptiveSystem system = CreateSystem(game, new FixedRNG(0.2), movement);
 
@@ -661,10 +659,10 @@ namespace Rebellion.Tests.Systems
                 CapitalShip ship,
                 MovementSystem movement
             ) = BuildFleetCustodyScene();
-            captive.SetBaseRating(OfficerRating.Espionage, 40);
-            captive.SetBaseRating(OfficerRating.Combat, 40);
+            captive.SetBaseRating(SkillRating.Espionage, 40);
+            captive.SetBaseRating(SkillRating.Combat, 40);
             Officer guard = EntityFactory.CreateOfficer("guard", "rebels");
-            guard.SetBaseRating(OfficerRating.Combat, 100);
+            guard.SetBaseRating(SkillRating.Combat, 100);
             game.AttachNode(guard, ship);
             for (int index = 0; index < 10; index++)
             {
@@ -691,10 +689,10 @@ namespace Rebellion.Tests.Systems
                 CapitalShip ship,
                 MovementSystem movement
             ) = BuildFleetCustodyScene();
-            captive.SetBaseRating(OfficerRating.Espionage, 40);
-            captive.SetBaseRating(OfficerRating.Combat, 40);
+            captive.SetBaseRating(SkillRating.Espionage, 40);
+            captive.SetBaseRating(SkillRating.Combat, 40);
             Officer planetGuard = EntityFactory.CreateOfficer("planet-guard", "empire");
-            planetGuard.SetBaseRating(OfficerRating.Combat, 100);
+            planetGuard.SetBaseRating(SkillRating.Combat, 100);
             game.AttachNode(planetGuard, planet);
             for (int index = 0; index < 10; index++)
             {

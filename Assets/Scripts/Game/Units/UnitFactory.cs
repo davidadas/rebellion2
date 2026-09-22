@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game.Units
 {
@@ -52,7 +51,7 @@ namespace Rebellion.Game.Units
                     $"Unit TypeID '{typeID}' is not a {typeof(T).Name}."
                 );
 
-            T unit = typedTemplate.GetDeepCopy();
+            T unit = (T)typedTemplate.CreateCopy();
             unit.InstanceID = null;
             unit.SetParent(null);
             unit.SetOwnerInstanceID(ownerInstanceID);

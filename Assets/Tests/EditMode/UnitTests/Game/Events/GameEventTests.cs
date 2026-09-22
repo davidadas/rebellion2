@@ -81,7 +81,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void CompositeConditionals_RoundTripWithoutCollectionWrappers()
+        public void CompositeConditionals_Default_RoundTripWithoutCollectionWrappers()
         {
             GameEvent gameEvent = new GameEvent
             {

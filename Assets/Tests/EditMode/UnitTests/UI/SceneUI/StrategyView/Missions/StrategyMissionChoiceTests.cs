@@ -2,6 +2,7 @@ using System;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
@@ -18,17 +19,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         public void Constructor_ResearchOption_PreservesMissionPresentation()
         {
             MissionOption option = new MissionOption(
-                MissionTypeIDs.Research,
+                ResearchMission.MissionTypeID,
                 "Research Facilities",
-                OfficerRating.FacilityResearch,
+                SkillRating.FacilityResearch,
                 MissionTargetKind.Planet,
-                OfficerRating.None,
+                SkillRating.None,
                 ResearchDiscipline.FacilityDesign
             );
 
             StrategyMissionChoice choice = new StrategyMissionChoice(option);
 
-            Assert.AreEqual(MissionTypeIDs.Research, choice.MissionTypeID);
+            Assert.AreEqual(ResearchMission.MissionTypeID, choice.MissionTypeID);
             Assert.AreEqual(ResearchDiscipline.FacilityDesign, choice.Discipline);
             Assert.AreEqual("Research Facilities", choice.Name);
             Assert.AreEqual(MissionIconKeys.ResearchFacilityDesign, choice.IconKey);

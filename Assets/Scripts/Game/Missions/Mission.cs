@@ -5,8 +5,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Missions
@@ -118,7 +117,7 @@ namespace Rebellion.Game.Missions
         private bool _hasCapturedMainParticipantIds;
 
         // Mission configuration.
-        public OfficerRating ParticipantRating { get; set; }
+        public SkillRating ParticipantRating { get; set; }
         public bool HasInitiated;
 
         // Mission progress.
@@ -155,7 +154,7 @@ namespace Rebellion.Game.Missions
             string locationInstanceId,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants,
-            OfficerRating participantRating,
+            SkillRating participantRating,
             string displayName = null
         )
         {
@@ -531,11 +530,11 @@ namespace Rebellion.Game.Missions
             GameRoot game
         )
         {
-            int decoyEspionage = decoy.GetEffectiveRating(OfficerRating.Espionage);
+            int decoyEspionage = decoy.GetEffectiveRating(SkillRating.Espionage);
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
             Officer commander = FindDetectorCommander(detector);
             int scaledDefender =
-                (commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
+                (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
                 * missionTables.DecoyDefenderScalingPercent
                 / _ratingPercentScale;
             int score = decoyEspionage - GetDetectorRating(detector) - scaledDefender;
@@ -743,7 +742,7 @@ namespace Rebellion.Game.Missions
             int injuryChance = Math.Max(
                 game.Config.DuelResolution.MinimumInjuryChance,
                 game.Config.DuelResolution.CaptureEvasionInjuryBaseChance
-                    - officer.GetEffectiveRating(OfficerRating.Combat)
+                    - officer.GetEffectiveRating(SkillRating.Combat)
             );
             if (provider.NextInt(0, 100) >= Math.Min(100, injuryChance))
                 return false;
@@ -859,7 +858,8 @@ namespace Rebellion.Game.Missions
                 || candidate is IMovable movable && movable.GetTransitMovement() != null
                 || candidate.GetParentOfType<CapitalShip>()
                     is IManufacturable { ManufacturingStatus: not ManufacturingStatus.Complete }
-                || candidate.GetParentOfType<Fleet>()?.GetTransitMovement() != null
+                || candidate.GetParentOfType<Fleet>() is IMovable fleet
+                    && fleet.GetTransitMovement() != null
             )
                 return false;
 
@@ -1032,7 +1032,9 @@ namespace Rebellion.Game.Missions
                 results.AddRange(OnFailed(game, provider));
             }
 
-            results.Add(BuildCompletedResult(outcome, completionReason, game));
+            results.Add(
+                BuildCompletedResult(outcome, completionReason, game, objectiveResults: results)
+            );
             return results;
         }
 
@@ -1092,11 +1094,13 @@ namespace Rebellion.Game.Missions
         /// <param name="outcome">The resolved mission outcome.</param>
         /// <param name="game">The current game state.</param>
         /// <param name="participants">Optional participant snapshot to include in the result.</param>
+        /// <param name="objectiveResults">The objective results awaiting system processing.</param>
         /// <returns>A populated MissionCompletedResult.</returns>
         protected internal MissionCompletedResult BuildCompletedResult(
             MissionOutcome outcome,
             GameRoot game,
-            List<IMissionParticipant> participants = null
+            List<IMissionParticipant> participants = null,
+            IReadOnlyList<GameResult> objectiveResults = null
         )
         {
             return new MissionCompletedResult
@@ -1110,7 +1114,7 @@ namespace Rebellion.Game.Missions
                 Participants = participants ?? GetAllParticipants(),
                 Outcome = outcome,
                 CompletionReason = GetDefaultCompletionReason(outcome),
-                CanContinue = ShouldRepeatAfterCompletion(game),
+                CanContinue = ShouldRepeatAfterCompletion(game, objectiveResults),
                 Tick = game.CurrentTick,
                 SourceEventInstanceID = SourceEventInstanceID,
             };
@@ -1123,18 +1127,36 @@ namespace Rebellion.Game.Missions
         /// <param name="completionReason">The completion reason to include.</param>
         /// <param name="game">The current game state.</param>
         /// <param name="participants">Optional participant snapshot to include in the result.</param>
+        /// <param name="objectiveResults">The objective results awaiting system processing.</param>
         /// <returns>A populated MissionCompletedResult.</returns>
         protected internal MissionCompletedResult BuildCompletedResult(
             MissionOutcome outcome,
             MissionCompletionReason completionReason,
             GameRoot game,
-            List<IMissionParticipant> participants = null
+            List<IMissionParticipant> participants = null,
+            IReadOnlyList<GameResult> objectiveResults = null
         )
         {
-            MissionCompletedResult result = BuildCompletedResult(outcome, game, participants);
+            MissionCompletedResult result = BuildCompletedResult(
+                outcome,
+                game,
+                participants,
+                objectiveResults
+            );
             result.CompletionReason = completionReason;
             return result;
         }
+
+        /// <summary>
+        /// Returns whether the mission should repeat after considering its unresolved objective results.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="objectiveResults">The objective results awaiting system processing.</param>
+        /// <returns>True when the mission remains eligible to repeat.</returns>
+        protected virtual bool ShouldRepeatAfterCompletion(
+            GameRoot game,
+            IReadOnlyList<GameResult> objectiveResults
+        ) => ShouldRepeatAfterCompletion(game);
 
         /// <summary>
         /// Builds a terminal mission result that cannot repeat.

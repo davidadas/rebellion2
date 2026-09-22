@@ -262,7 +262,7 @@ namespace Rebellion.AI.Selectors
                 if (!personnelLossProbability.HasValue)
                 {
                     MissionOdds odds = context.Missions.GetMissionOdds(
-                        mission.CreateRequest(),
+                        mission.CreateContext(),
                         context.Assessment.GetMissionDetectorCandidates(mission.TargetPlanet)
                     );
                     personnelLossProbability = odds?.PersonnelLossProbability;
@@ -424,8 +424,8 @@ namespace Rebellion.AI.Selectors
                 return candidateIsSpecialForces;
 
             int ratingComparison = candidate
-                .GetEffectiveRating(OfficerRating.Espionage)
-                .CompareTo(selected.GetEffectiveRating(OfficerRating.Espionage));
+                .GetEffectiveRating(SkillRating.Espionage)
+                .CompareTo(selected.GetEffectiveRating(SkillRating.Espionage));
             if (ratingComparison != 0)
                 return ratingComparison > 0;
 

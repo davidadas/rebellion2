@@ -1,7 +1,7 @@
 using System;
 using Rebellion.Game;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Demands
 {

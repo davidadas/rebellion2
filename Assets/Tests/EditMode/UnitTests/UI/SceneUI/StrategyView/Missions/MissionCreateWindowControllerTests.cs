@@ -62,7 +62,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 DisplayName = "Recon Team",
                 OwnerInstanceID = _playerFactionId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
+                AllowedMissionTypeIDs = new List<string> { ReconnaissanceMission.MissionTypeID },
             };
             _game.AttachNode(_specialForces, origin);
             _target = new StrategyMissionTarget(targetPlanet, targetPlanet.Planet);

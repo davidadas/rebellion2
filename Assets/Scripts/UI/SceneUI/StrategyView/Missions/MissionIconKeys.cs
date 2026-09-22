@@ -34,18 +34,18 @@ public static class MissionIconKeys
     {
         return missionTypeID switch
         {
-            MissionTypeIDs.Diplomacy => Diplomacy,
-            MissionTypeIDs.Rescue => Rescue,
-            MissionTypeIDs.Sabotage => Sabotage,
-            MissionTypeIDs.Espionage => Espionage,
-            MissionTypeIDs.Reconnaissance => Reconnaissance,
-            MissionTypeIDs.Recruitment => Recruitment,
-            MissionTypeIDs.Abduction => Abduction,
-            MissionTypeIDs.Research => GetResearchMissionIconKey(discipline),
-            MissionTypeIDs.InciteUprising => InciteUprising,
-            MissionTypeIDs.JediTraining => JediTraining,
-            MissionTypeIDs.SubdueUprising => SubdueUprising,
-            MissionTypeIDs.Assassination => Assassination,
+            DiplomacyMission.MissionTypeID => Diplomacy,
+            RescueMission.MissionTypeID => Rescue,
+            SabotageMission.MissionTypeID => Sabotage,
+            EspionageMission.MissionTypeID => Espionage,
+            ReconnaissanceMission.MissionTypeID => Reconnaissance,
+            RecruitmentMission.MissionTypeID => Recruitment,
+            AbductionMission.MissionTypeID => Abduction,
+            ResearchMission.MissionTypeID => GetResearchMissionIconKey(discipline),
+            InciteUprisingMission.MissionTypeID => InciteUprising,
+            JediTrainingMission.MissionTypeID => JediTraining,
+            SubdueUprisingMission.MissionTypeID => SubdueUprising,
+            AssassinationMission.MissionTypeID => Assassination,
             _ => null,
         };
     }

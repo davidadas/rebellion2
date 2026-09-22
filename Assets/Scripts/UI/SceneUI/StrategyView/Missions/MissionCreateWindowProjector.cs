@@ -5,7 +5,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
@@ -18,7 +17,7 @@ internal sealed class MissionCreateWindowProjector
 
     private readonly Func<string, Planet> getObservedPlanet;
     private readonly Func<UIContext> getUIContext;
-    private readonly Func<MissionStartRequest, MissionOdds> getMissionOdds;
+    private readonly Func<MissionContext, MissionOdds> getMissionOdds;
 
     /// <summary>
     /// Creates a Mission Create projector with access to the current presentation context.
@@ -28,7 +27,7 @@ internal sealed class MissionCreateWindowProjector
     /// <param name="getObservedPlanet">Returns the latest player-visible planet snapshot by ID.</param>
     public MissionCreateWindowProjector(
         Func<UIContext> getUIContext,
-        Func<MissionStartRequest, MissionOdds> getMissionOdds = null,
+        Func<MissionContext, MissionOdds> getMissionOdds = null,
         Func<string, Planet> getObservedPlanet = null
     )
     {
@@ -194,7 +193,7 @@ internal sealed class MissionCreateWindowProjector
         )
             return null;
 
-        MissionOdds odds = getMissionOdds(session.CreateMissionRequest(choice, planet, target));
+        MissionOdds odds = getMissionOdds(session.CreateMissionContext(choice, planet, target));
         return odds == null
             ? null
             : new MissionOddsRenderData(odds.OverallSuccessProbability, odds.FoilProbability);

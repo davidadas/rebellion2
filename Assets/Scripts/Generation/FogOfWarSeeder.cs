@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
-using Rebellion.Systems;
 
 namespace Rebellion.Generation
 {
@@ -32,7 +32,7 @@ namespace Rebellion.Generation
         /// <param name="config">The generation config (read for visibility overrides).</param>
         private void SeedVisibility(GameRoot game, GameGenerationConfig config)
         {
-            FogOfWarSystem fog = new FogOfWarSystem(game);
+            FogOfWarRecorder fog = new FogOfWarRecorder();
             HashSet<(string PlanetID, string ViewerFactionID)> visibilityOverrides =
                 CollectStartingVisibilityOverrides(game, config);
 
@@ -44,12 +44,12 @@ namespace Rebellion.Generation
                     {
                         if (IsForeignCorePlanet(sector, planet, faction))
                         {
-                            fog.CaptureSnapshot(faction, planet, sector, currentTick: 0);
+                            fog.RecordPlanetSnapshot(faction, planet, sector, currentTick: 0);
                         }
 
                         if (visibilityOverrides.Contains((planet.InstanceID, faction.InstanceID)))
                         {
-                            fog.CaptureSnapshot(faction, planet, sector, currentTick: 0);
+                            fog.RecordPlanetSnapshot(faction, planet, sector, currentTick: 0);
                         }
                     }
                 }

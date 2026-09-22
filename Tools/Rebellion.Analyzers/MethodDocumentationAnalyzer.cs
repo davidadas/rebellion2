@@ -15,6 +15,7 @@ namespace Rebellion.Analyzers
         public const string MissingParameterDiagnosticId = "REB0003";
         public const string MissingTypeParameterDiagnosticId = "REB0004";
         public const string MissingReturnsDiagnosticId = "REB0005";
+        public const string InheritdocDiagnosticId = "REB0007";
 
         private static readonly ImmutableHashSet<string> _testAttributeNames =
             ImmutableHashSet.Create("Test", "TestCase", "TestCaseSource", "UnityTest");
@@ -57,12 +58,22 @@ namespace Rebellion.Analyzers
             isEnabledByDefault: true
         );
 
+        private static readonly DiagnosticDescriptor _inheritdocRule = new DiagnosticDescriptor(
+            InheritdocDiagnosticId,
+            "Inherited documentation is not permitted",
+            "'{0}' must declare its XML documentation explicitly instead of using inheritdoc",
+            "Documentation",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true
+        );
+
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
             ImmutableArray.Create(
                 _missingSummaryRule,
                 _missingParameterRule,
                 _missingTypeParameterRule,
-                _missingReturnsRule
+                _missingReturnsRule,
+                _inheritdocRule
             );
 
         /// <summary>
@@ -106,7 +117,12 @@ namespace Rebellion.Analyzers
             }
 
             if (HasInheritdoc(documentation))
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(_inheritdocRule, declaration.GetLocation(), name)
+                );
                 return;
+            }
 
             if (!HasElement(documentation, "summary"))
             {
@@ -211,8 +227,13 @@ namespace Rebellion.Analyzers
         private static bool HasInheritdoc(DocumentationCommentTriviaSyntax documentation)
         {
             return documentation
-                .Content.OfType<XmlEmptyElementSyntax>()
-                .Any(element => element.Name.LocalName.ValueText == "inheritdoc");
+                .DescendantNodes()
+                .Any(node =>
+                    node is XmlEmptyElementSyntax emptyElement
+                        && emptyElement.Name.LocalName.ValueText == "inheritdoc"
+                    || node is XmlElementSyntax element
+                        && element.StartTag.Name.LocalName.ValueText == "inheritdoc"
+                );
         }
 
         /// <summary>

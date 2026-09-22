@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Rebellion.Game.Movement;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Units
@@ -7,8 +7,13 @@ namespace Rebellion.Game.Units
     /// <summary>
     /// Represents a regiment that can be stationed on a planet or capital ship.
     /// </summary>
-    public class Regiment : LeafNode, IManufacturable, IMovable
+    public class Regiment : LeafNode, IManufacturable, IMovable, IEncyclopediaSource
     {
+        public string EncyclopediaImagePath { get; set; }
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
+            new List<EncyclopediaEntryStat>();
+        public string EncyclopediaDescription { get; set; }
+
         // Construction Info.
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }
@@ -49,6 +54,7 @@ namespace Rebellion.Game.Units
         {
             base.CopyStateTo(destination);
             Regiment copy = (Regiment)destination;
+            ((IEncyclopediaSource)this).CopyEncyclopediaStateTo(copy);
             copy.ConstructionCost = ConstructionCost;
             copy.MaintenanceCost = MaintenanceCost;
             copy.BaseBuildSpeed = BaseBuildSpeed;

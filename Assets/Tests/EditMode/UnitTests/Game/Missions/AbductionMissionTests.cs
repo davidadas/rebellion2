@@ -4,7 +4,6 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -378,7 +377,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            target.SetBaseRating(OfficerRating.Combat, 100);
+            target.SetBaseRating(SkillRating.Combat, 100);
             game.AttachNode(target, enemyPlanet);
             MakeAbductionAlwaysSucceed(game);
             Mission mission = CreateAbductionMission(
@@ -408,7 +407,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer secondOfficer = EntityFactory.CreateOfficer("officer2", "empire");
             game.AttachNode(secondOfficer, empirePlanet);
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            target.SetBaseRating(OfficerRating.Combat, 100);
+            target.SetBaseRating(SkillRating.Combat, 100);
             game.AttachNode(target, enemyPlanet);
             MakeAbductionAlwaysSucceed(game);
             Mission mission = CreateAbductionMission(
@@ -511,7 +510,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
-            int originalCombat = officer.GetBaseRating(OfficerRating.Combat);
+            int originalCombat = officer.GetBaseRating(SkillRating.Combat);
 
             // Target moves to a different planet before mission executes
             game.MoveNode(target, anotherEnemyPlanet);
@@ -528,7 +527,7 @@ namespace Rebellion.Tests.Game.Missions
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
-            Assert.AreEqual(originalCombat, officer.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(originalCombat, officer.GetBaseRating(SkillRating.Combat));
         }
 
         [Test]
@@ -640,7 +639,7 @@ namespace Rebellion.Tests.Game.Missions
                 DisplayName = "sf1",
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Abduction },
+                AllowedMissionTypeIDs = new List<string> { AbductionMission.MissionTypeID },
             };
             game.AttachNode(commando, empirePlanet);
             commando.MissionReturnParentInstanceID = empirePlanet.InstanceID;
@@ -739,7 +738,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Abduction",
                 DisplayName = "Abduction",
                 LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.Espionage,
+                ParticipantRating = SkillRating.Espionage,
                 TargetOfficerInstanceID = "OFFICER2",
                 HasInitiated = false,
                 MaxProgress = 5,
@@ -752,13 +751,13 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Abduction", deserialized.ConfigKey);
             Assert.AreEqual("OFFICER2", ((AbductionMission)deserialized).TargetOfficerInstanceID);
-            Assert.AreEqual(OfficerRating.Espionage, deserialized.ParticipantRating);
+            Assert.AreEqual(SkillRating.Espionage, deserialized.ParticipantRating);
             Assert.IsFalse(deserialized.HasInitiated);
             Assert.AreEqual(5, deserialized.MaxProgress);
         }
 
         [Test]
-        public void RollParticipantSuccess_SubtractsTargetCombatFromParticipantCombat()
+        public void RollParticipantSuccess_Default_SubtractsTargetCombatFromParticipantCombat()
         {
             (
                 GameRoot game,
@@ -769,8 +768,8 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
-            officer.SetBaseRating(OfficerRating.Combat, 80);
-            target.SetBaseRating(OfficerRating.Combat, 60);
+            officer.SetBaseRating(SkillRating.Combat, 80);
+            target.SetBaseRating(SkillRating.Combat, 60);
             game.Config.ProbabilityTables.Mission.Abduction = new Dictionary<int, int>
             {
                 { 0, 0 },
@@ -790,7 +789,7 @@ namespace Rebellion.Tests.Game.Missions
                 new FixedRNG(0.5),
                 game
             );
-            target.SetBaseRating(OfficerRating.Combat, 80);
+            target.SetBaseRating(SkillRating.Combat, 80);
             bool equalCombatSucceeded = mission.RollParticipantSuccess(
                 officer,
                 new FixedRNG(0),
@@ -821,7 +820,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Abduction,
+                AbductionMission.MissionTypeID,
                 game,
                 ownerInstanceId,
                 target,

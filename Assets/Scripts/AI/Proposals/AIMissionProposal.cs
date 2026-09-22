@@ -5,7 +5,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.AI.Proposals
 {
@@ -122,7 +121,7 @@ namespace Rebellion.AI.Proposals
             if (context?.Missions == null || !IsStillValid())
                 return false;
 
-            return context.Missions.CanCreateMission(CreateRequest());
+            return context.Missions.CanCreateMission(CreateContext());
         }
 
         /// <summary>
@@ -134,7 +133,7 @@ namespace Rebellion.AI.Proposals
             if (!CanExecute(context))
                 return;
 
-            context.Missions.InitiateMission(CreateRequest());
+            context.Missions.InitiateMission(CreateContext());
         }
 
         /// <summary>
@@ -215,11 +214,11 @@ namespace Rebellion.AI.Proposals
                 || MissionTypeID == MissionTypeIDs.Rescue;
         }
 
-        /// <summary>Creates the mission-start request represented by the proposal.</summary>
-        /// <returns>The mission-start request.</returns>
-        internal MissionStartRequest CreateRequest()
+        /// <summary>Creates the mission context represented by the proposal.</summary>
+        /// <returns>The mission context.</returns>
+        internal MissionContext CreateContext()
         {
-            return new MissionStartRequest
+            return new MissionContext
             {
                 MissionTypeID = MissionTypeID,
                 Location = TargetPlanet,

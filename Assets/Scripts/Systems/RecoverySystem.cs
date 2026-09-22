@@ -5,7 +5,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Systems
 {
@@ -86,7 +85,7 @@ namespace Rebellion.Systems
                 if (
                     !ship.IsDamaged()
                     || ship.ManufacturingStatus != ManufacturingStatus.Complete
-                    || ship.GetTransitMovement() != null
+                    || ((IMovable)ship).GetTransitMovement() != null
                 )
                     continue;
 

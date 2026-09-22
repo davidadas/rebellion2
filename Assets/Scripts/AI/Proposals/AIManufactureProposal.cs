@@ -7,7 +7,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Logging;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Proposals
 {

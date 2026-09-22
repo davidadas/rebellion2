@@ -2,6 +2,7 @@ using System.IO;
 using System.Xml;
 using System.Xml.Schema;
 using NUnit.Framework;
+using Rebellion.Game.Units;
 using UnityEngine;
 
 namespace Rebellion.Tests.Game.Events
@@ -79,7 +80,7 @@ namespace Rebellion.Tests.Game.Events
   <GameEvent>
     <InstanceID>EVENT</InstanceID>
     <Bindings>
-      <Bind As=""combat""><OfficerRating OfficerInstanceID=""HAN_SOLO"" Rating=""Combat""/></Bind>
+      <Bind As=""combat""><SkillRating OfficerInstanceID=""HAN_SOLO"" Rating=""Combat""/></Bind>
       <Bind As=""force""><OfficerForce OfficerInstanceID=""DARTH_VADER""/></Bind>
       <Bind As=""resources""><PlanetStat PlanetInstanceID=""NABOO"" Stat=""RawResourceNodes""/></Bind>
       <Bind As=""fleetCount"">

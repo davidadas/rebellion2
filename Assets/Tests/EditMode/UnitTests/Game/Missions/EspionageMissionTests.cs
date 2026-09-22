@@ -9,7 +9,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -434,7 +433,7 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
-            int ratingBefore = officer.GetBaseRating(OfficerRating.Espionage);
+            int ratingBefore = officer.GetBaseRating(SkillRating.Espionage);
 
             Mission mission = CreateMission(
                 game,
@@ -450,7 +449,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual(
                 ratingBefore + 1,
-                officer.GetBaseRating(OfficerRating.Espionage),
+                officer.GetBaseRating(SkillRating.Espionage),
                 "Officer espionage rating should improve on successful espionage against another faction"
             );
         }
@@ -467,9 +466,9 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
-            officer.SetBaseRating(OfficerRating.Espionage, 0);
+            officer.SetBaseRating(SkillRating.Espionage, 0);
             Officer strongerOfficer = EntityFactory.CreateOfficer("o2", "empire");
-            strongerOfficer.SetBaseRating(OfficerRating.Espionage, 100);
+            strongerOfficer.SetBaseRating(SkillRating.Espionage, 100);
 
             Mission mission = CreateMission(
                 game,
@@ -508,11 +507,11 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
-            officer.SetBaseRating(OfficerRating.Espionage, 50);
+            officer.SetBaseRating(SkillRating.Espionage, 50);
             Officer strongerOfficer = EntityFactory.CreateOfficer("o2", "empire");
-            strongerOfficer.SetBaseRating(OfficerRating.Espionage, 100);
-            int officerRatingBefore = officer.GetBaseRating(OfficerRating.Espionage);
-            int strongerRatingBefore = strongerOfficer.GetBaseRating(OfficerRating.Espionage);
+            strongerOfficer.SetBaseRating(SkillRating.Espionage, 100);
+            int officerRatingBefore = officer.GetBaseRating(SkillRating.Espionage);
+            int strongerRatingBefore = strongerOfficer.GetBaseRating(SkillRating.Espionage);
 
             Mission mission = CreateMission(
                 game,
@@ -532,13 +531,10 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
-            Assert.AreEqual(
-                officerRatingBefore + 1,
-                officer.GetBaseRating(OfficerRating.Espionage)
-            );
+            Assert.AreEqual(officerRatingBefore + 1, officer.GetBaseRating(SkillRating.Espionage));
             Assert.AreEqual(
                 strongerRatingBefore + 1,
-                strongerOfficer.GetBaseRating(OfficerRating.Espionage)
+                strongerOfficer.GetBaseRating(SkillRating.Espionage)
             );
         }
 
@@ -555,7 +551,7 @@ namespace Rebellion.Tests.Game.Missions
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
-            int decoyRatingBefore = decoy.GetBaseRating(OfficerRating.Espionage);
+            int decoyRatingBefore = decoy.GetBaseRating(SkillRating.Espionage);
 
             Mission mission = CreateMission(
                 game,
@@ -571,7 +567,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual(
                 decoyRatingBefore,
-                decoy.GetBaseRating(OfficerRating.Espionage),
+                decoy.GetBaseRating(SkillRating.Espionage),
                 "Decoys should not improve from successful espionage execution"
             );
         }
@@ -588,7 +584,7 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             empirePlanet.VisitingFactionIDs.Add("empire");
-            int ratingBefore = officer.GetBaseRating(OfficerRating.Espionage);
+            int ratingBefore = officer.GetBaseRating(SkillRating.Espionage);
 
             Mission mission = CreateMission(
                 game,
@@ -604,7 +600,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual(
                 ratingBefore,
-                officer.GetBaseRating(OfficerRating.Espionage),
+                officer.GetBaseRating(SkillRating.Espionage),
                 "Officer espionage rating should not improve on successful espionage against an owned planet"
             );
         }
@@ -615,7 +611,7 @@ namespace Rebellion.Tests.Game.Missions
             var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
             enemyPlanet.OwnerInstanceID = null;
             enemyPlanet.VisitingFactionIDs.Add("empire");
-            int ratingBefore = officer.GetBaseRating(OfficerRating.Espionage);
+            int ratingBefore = officer.GetBaseRating(SkillRating.Espionage);
             Mission mission = CreateMission(
                 game,
                 "empire",
@@ -628,7 +624,7 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
-            Assert.AreEqual(ratingBefore, officer.GetBaseRating(OfficerRating.Espionage));
+            Assert.AreEqual(ratingBefore, officer.GetBaseRating(SkillRating.Espionage));
         }
 
         [Test]
@@ -691,7 +687,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Espionage",
                 DisplayName = "Espionage",
                 LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.Espionage,
+                ParticipantRating = SkillRating.Espionage,
                 HasInitiated = true,
                 MaxProgress = 10,
                 CurrentProgress = 5,
@@ -704,7 +700,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Espionage", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
-            Assert.AreEqual(OfficerRating.Espionage, deserialized.ParticipantRating);
+            Assert.AreEqual(SkillRating.Espionage, deserialized.ParticipantRating);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(10, deserialized.MaxProgress);
             Assert.AreEqual(5, deserialized.CurrentProgress);
@@ -729,7 +725,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 game,
                 owner,
                 target,

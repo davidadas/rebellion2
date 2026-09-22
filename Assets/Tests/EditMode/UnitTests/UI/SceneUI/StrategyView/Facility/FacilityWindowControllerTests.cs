@@ -535,10 +535,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 
             public ManufacturingType LastType { get; private set; }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Reports whether a planetary manufacturing lane is tracked.
+            /// </summary>
+            /// <param name="planet">The planet containing the manufacturing lane.</param>
+            /// <param name="type">The manufacturing lane type.</param>
+            /// <returns>Always true for this test action recorder.</returns>
             public bool IsIdleBarTracked(Planet planet, ManufacturingType type) => true;
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Records the planetary manufacturing lane whose tracking state changed.
+            /// </summary>
+            /// <param name="planet">The planet containing the manufacturing lane.</param>
+            /// <param name="type">The manufacturing lane type.</param>
             public void ToggleIdleBarTracking(Planet planet, ManufacturingType type)
             {
                 LastPlanet = planet;

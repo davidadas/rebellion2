@@ -236,7 +236,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet(_playerFactionId, "Fleet")
             {
-                Movement = new Rebellion.Game.Movement.MovementState(),
+                Movement = new Rebellion.Game.Units.MovementState(),
             };
             fleet.Waypoints.Add("destination");
 
@@ -256,7 +256,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet(_playerFactionId, "Fleet")
             {
-                Movement = new Rebellion.Game.Movement.MovementState(),
+                Movement = new Rebellion.Game.Units.MovementState(),
             };
 
             List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(

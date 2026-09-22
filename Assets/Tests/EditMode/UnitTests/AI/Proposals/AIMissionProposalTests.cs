@@ -7,7 +7,6 @@ using Rebellion.AI.Scorers;
 using Rebellion.AI.Selectors;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.AI.Proposals

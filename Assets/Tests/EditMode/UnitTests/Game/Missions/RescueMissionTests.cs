@@ -4,7 +4,6 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -668,7 +667,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Rescue",
                 DisplayName = "Rescue",
                 LocationInstanceID = "PLANET1",
-                ParticipantRating = OfficerRating.Espionage,
+                ParticipantRating = SkillRating.Espionage,
                 TargetOfficerInstanceID = "OFFICER3",
                 HasInitiated = true,
                 MaxProgress = 8,
@@ -706,7 +705,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             return MissionTestFactory.TryCreate(
-                MissionTypeIDs.Rescue,
+                RescueMission.MissionTypeID,
                 game,
                 ownerInstanceId,
                 target,

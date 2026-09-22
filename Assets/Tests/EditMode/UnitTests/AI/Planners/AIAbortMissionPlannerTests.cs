@@ -51,7 +51,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces specialForces = AITestSceneBuilder.CreateSpecialForces(
                 "special-forces",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
             StubMission mission = EntityFactory.CreateMission(
                 "mission",
@@ -79,17 +79,17 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces probe = AITestSceneBuilder.CreateSpecialForces(
                 "probe",
                 empire.InstanceID,
-                MissionTypeIDs.Reconnaissance
+                ReconnaissanceMission.MissionTypeID
             );
             StubMission mission = EntityFactory.CreateMission(
                 "mission",
                 empire.InstanceID,
                 target.InstanceID
             );
-            mission.ConfigKey = MissionTypeIDs.Reconnaissance;
+            mission.ConfigKey = ReconnaissanceMission.MissionTypeID;
             game.AttachNode(mission, target);
             game.AttachNode(probe, mission);
-            probe.Movement = new Rebellion.Game.Movement.MovementState { TransitTicks = 10 };
+            probe.Movement = new Rebellion.Game.Units.MovementState { TransitTicks = 10 };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             bool hasAbortProposal = new AIAbortMissionPlanner()

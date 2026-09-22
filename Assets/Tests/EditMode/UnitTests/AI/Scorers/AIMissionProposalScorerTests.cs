@@ -13,6 +13,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Tests.AI.Helpers;
+using OfficerRating = Rebellion.Game.Units.SkillRating;
 
 namespace Rebellion.Tests.AI.Scorers
 {
@@ -215,7 +216,7 @@ namespace Rebellion.Tests.AI.Scorers
             );
 
             Assert.IsTrue(proposal.CanExecute(context));
-            MissionOdds odds = context.Missions.GetMissionOdds(proposal.CreateRequest());
+            MissionOdds odds = context.Missions.GetMissionOdds(proposal.CreateContext());
             Assert.IsNotNull(odds);
             Assert.Less(
                 odds.ObjectiveSuccessProbability,

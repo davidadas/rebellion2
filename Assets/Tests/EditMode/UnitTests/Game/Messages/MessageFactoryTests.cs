@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -1461,7 +1460,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 InstanceID = "espionage-mission",
                 DisplayName = "Espionage",
-                ConfigKey = MissionTypeIDs.Espionage,
+                ConfigKey = EspionageMission.MissionTypeID,
                 OwnerInstanceID = alliance.InstanceID,
             };
             game.AttachNode(mission, target);
@@ -1473,7 +1472,7 @@ namespace Rebellion.Tests.Game.Messages
                 "title",
                 "Successful.  {details}",
                 outcome: MessageResultOutcome.Success,
-                missionTypeId: MissionTypeIDs.Espionage
+                missionTypeId: EspionageMission.MissionTypeID
             );
             definition.DetailListHeaderTemplate = "Additional systems:";
             definition.DetailListItemTemplate = "\n     {system}";
@@ -1492,7 +1491,7 @@ namespace Rebellion.Tests.Game.Messages
                         Mission = mission,
                         MissionInstanceID = mission.InstanceID,
                         MissionName = "Espionage",
-                        MissionTypeID = MissionTypeIDs.Espionage,
+                        MissionTypeID = EspionageMission.MissionTypeID,
                         Outcome = MissionOutcome.Success,
                     }
                 ),
@@ -1563,7 +1562,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 InstanceID = "espionage-mission",
                 DisplayName = "Espionage",
-                ConfigKey = MissionTypeIDs.Espionage,
+                ConfigKey = EspionageMission.MissionTypeID,
                 OwnerInstanceID = alliance.InstanceID,
             };
             game.AttachNode(mission, target);
@@ -1579,7 +1578,7 @@ namespace Rebellion.Tests.Game.Messages
                             "title",
                             "Successful.  {details}",
                             outcome: MessageResultOutcome.Success,
-                            missionTypeId: MissionTypeIDs.Espionage
+                            missionTypeId: EspionageMission.MissionTypeID
                         ),
                     },
                     new MissionCompletedResult
@@ -1587,7 +1586,7 @@ namespace Rebellion.Tests.Game.Messages
                         Mission = mission,
                         MissionInstanceID = mission.InstanceID,
                         MissionName = "Espionage",
-                        MissionTypeID = MissionTypeIDs.Espionage,
+                        MissionTypeID = EspionageMission.MissionTypeID,
                         Outcome = MissionOutcome.Success,
                     }
                 ),
@@ -1636,7 +1635,7 @@ namespace Rebellion.Tests.Game.Messages
                             "{participant} recruits {officer}",
                             "body",
                             outcome: MessageResultOutcome.Success,
-                            missionTypeId: MissionTypeIDs.Recruitment
+                            missionTypeId: RecruitmentMission.MissionTypeID
                         ),
                     },
                     new MissionCompletedResult
@@ -1993,7 +1992,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             Mission mission = new SabotageMission
             {
-                ConfigKey = MissionTypeIDs.Sabotage,
+                ConfigKey = SabotageMission.MissionTypeID,
                 DisplayName = "Sabotage",
                 OwnerInstanceID = alliance.InstanceID,
             };
@@ -2011,7 +2010,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{mission}:{system}",
                             imagePaths: FactionImages(),
                             outcome: MessageResultOutcome.Failed,
-                            missionTypeId: MissionTypeIDs.Sabotage
+                            missionTypeId: SabotageMission.MissionTypeID
                         ),
                         Definition(
                             MessageResultType.MissionReport,
@@ -2020,7 +2019,7 @@ namespace Rebellion.Tests.Game.Messages
                             "missing-body:{mission}:{system}",
                             imagePaths: FactionImages(),
                             outcome: MessageResultOutcome.Failed,
-                            missionTypeId: MissionTypeIDs.Sabotage,
+                            missionTypeId: SabotageMission.MissionTypeID,
                             missionCompletionReason: MissionCompletionReason.TargetUnavailable
                         ),
                     },
@@ -2045,7 +2044,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             Mission mission = new SabotageMission
             {
-                ConfigKey = MissionTypeIDs.Sabotage,
+                ConfigKey = SabotageMission.MissionTypeID,
                 DisplayName = "Sabotage",
                 OwnerInstanceID = alliance.InstanceID,
             };
@@ -2062,7 +2061,7 @@ namespace Rebellion.Tests.Game.Messages
                         "body:{mission}:{system}",
                         imagePaths: FactionImages(),
                         outcome: MessageResultOutcome.Failed,
-                        missionTypeId: MissionTypeIDs.Sabotage
+                        missionTypeId: SabotageMission.MissionTypeID
                     ),
                 },
                 new MissionCompletedResult
@@ -2083,7 +2082,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             Mission mission = new DiplomacyMission
             {
-                ConfigKey = MissionTypeIDs.Diplomacy,
+                ConfigKey = DiplomacyMission.MissionTypeID,
                 DisplayName = "Diplomacy",
                 OwnerInstanceID = alliance.InstanceID,
             };
@@ -2109,7 +2108,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{mission}:{system}",
                             DefaultImage("diplomacy-image"),
                             outcome: MessageResultOutcome.Success,
-                            missionTypeId: MissionTypeIDs.Diplomacy
+                            missionTypeId: DiplomacyMission.MissionTypeID
                         ),
                     },
                     new MissionCompletedResult
@@ -2138,7 +2137,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             Mission mission = new AssassinationMission
             {
-                ConfigKey = MissionTypeIDs.Assassination,
+                ConfigKey = AssassinationMission.MissionTypeID,
                 DisplayName = "Assassination",
                 OwnerInstanceID = alliance.InstanceID,
                 TargetOfficerInstanceID = targetOfficer.InstanceID,
@@ -2159,7 +2158,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{officer}:{assassination_result}",
                             DefaultImage("mission-image"),
                             outcome: MessageResultOutcome.Success,
-                            missionTypeId: MissionTypeIDs.Assassination
+                            missionTypeId: AssassinationMission.MissionTypeID
                         ),
                     },
                     new MissionCompletedResult
@@ -2194,7 +2193,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             Mission mission = new AssassinationMission
             {
-                ConfigKey = MissionTypeIDs.Assassination,
+                ConfigKey = AssassinationMission.MissionTypeID,
                 DisplayName = "Assassination",
                 OwnerInstanceID = alliance.InstanceID,
                 TargetOfficerInstanceID = targetOfficer.InstanceID,
@@ -2214,7 +2213,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{officer}:{assassination_result}",
                             DefaultImage("mission-image"),
                             outcome: MessageResultOutcome.Success,
-                            missionTypeId: MissionTypeIDs.Assassination
+                            missionTypeId: AssassinationMission.MissionTypeID
                         ),
                     },
                     new MissionCompletedResult
@@ -2238,7 +2237,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             Mission mission = new ReconnaissanceMission
             {
-                ConfigKey = MissionTypeIDs.Reconnaissance,
+                ConfigKey = ReconnaissanceMission.MissionTypeID,
                 DisplayName = "Reconnaissance",
                 OwnerInstanceID = alliance.InstanceID,
             };
@@ -2261,7 +2260,7 @@ namespace Rebellion.Tests.Game.Messages
                             "success:{mission}:{system}",
                             "body:{mission}:{system}",
                             outcome: MessageResultOutcome.Success,
-                            missionTypeId: MissionTypeIDs.Reconnaissance,
+                            missionTypeId: ReconnaissanceMission.MissionTypeID,
                             imageKey: "mission_report",
                             showSubjectImage: true
                         ),
@@ -2270,7 +2269,7 @@ namespace Rebellion.Tests.Game.Messages
                     {
                         Mission = mission,
                         MissionName = "Reconnaissance",
-                        MissionTypeID = MissionTypeIDs.Reconnaissance,
+                        MissionTypeID = ReconnaissanceMission.MissionTypeID,
                         Outcome = MissionOutcome.Success,
                         Participants = new List<IMissionParticipant> { reconUnit },
                     }
@@ -2310,7 +2309,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             JediTrainingMission mission = new JediTrainingMission
             {
-                ConfigKey = MissionTypeIDs.JediTraining,
+                ConfigKey = JediTrainingMission.MissionTypeID,
                 DisplayName = "Jedi Training",
                 OwnerInstanceID = alliance.InstanceID,
                 TrainerInstanceID = trainer.InstanceID,
@@ -2329,7 +2328,7 @@ namespace Rebellion.Tests.Game.Messages
                             "report:{participant}",
                             "body:{participant}",
                             outcome: MessageResultOutcome.Success,
-                            missionTypeId: MissionTypeIDs.JediTraining,
+                            missionTypeId: JediTrainingMission.MissionTypeID,
                             imageKey: "mission_report",
                             showSubjectImage: true
                         ),
@@ -2338,7 +2337,7 @@ namespace Rebellion.Tests.Game.Messages
                     {
                         Mission = mission,
                         MissionName = "Jedi Training",
-                        MissionTypeID = MissionTypeIDs.JediTraining,
+                        MissionTypeID = JediTrainingMission.MissionTypeID,
                         Outcome = MissionOutcome.Success,
                         Participants = new List<IMissionParticipant> { student, trainer },
                     }
@@ -2359,7 +2358,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, Planet origin, _) = BuildTwoFactionMessageScene();
             Mission mission = new RecruitmentMission
             {
-                ConfigKey = MissionTypeIDs.Recruitment,
+                ConfigKey = RecruitmentMission.MissionTypeID,
                 DisplayName = "Recruitment",
                 OwnerInstanceID = alliance.InstanceID,
                 RecruitedOfficerInstanceID = "target-officer",
@@ -2392,7 +2391,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{participant}:{officer}:{system}",
                             DefaultImage("recruitment-image"),
                             outcome: MessageResultOutcome.Success,
-                            missionTypeId: MissionTypeIDs.Recruitment,
+                            missionTypeId: RecruitmentMission.MissionTypeID,
                             showSubjectImage: true
                         ),
                     },
@@ -2427,7 +2426,7 @@ namespace Rebellion.Tests.Game.Messages
                             "mission-body",
                             DefaultImage("recruitment-image"),
                             outcome: MessageResultOutcome.Success,
-                            missionTypeId: MissionTypeIDs.Recruitment
+                            missionTypeId: RecruitmentMission.MissionTypeID
                         ),
                         Definition(
                             MessageResultType.RecruitmentExhausted,
@@ -2455,7 +2454,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             Mission mission = new DiplomacyMission
             {
-                ConfigKey = MissionTypeIDs.Diplomacy,
+                ConfigKey = DiplomacyMission.MissionTypeID,
                 DisplayName = "Diplomacy",
                 OwnerInstanceID = alliance.InstanceID,
             };
@@ -2478,7 +2477,7 @@ namespace Rebellion.Tests.Game.Messages
                             "body:{mission}:{system}",
                             DefaultImage("diplomacy-image"),
                             outcome: MessageResultOutcome.Failed,
-                            missionTypeId: MissionTypeIDs.Diplomacy
+                            missionTypeId: DiplomacyMission.MissionTypeID
                         ),
                     },
                     new MissionCompletedResult

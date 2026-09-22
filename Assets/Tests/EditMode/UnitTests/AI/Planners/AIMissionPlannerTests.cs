@@ -12,10 +12,10 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
+using OfficerRating = Rebellion.Game.Units.SkillRating;
 
 namespace Rebellion.Tests.AI.Planners
 {
@@ -47,7 +47,7 @@ namespace Rebellion.Tests.AI.Planners
                 InstanceID = "recon",
                 OwnerInstanceID = empire.InstanceID,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
+                AllowedMissionTypeIDs = new List<string> { ReconnaissanceMission.MissionTypeID },
             };
             game.AttachNode(reconnaissanceTeam, origin);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -56,7 +56,7 @@ namespace Rebellion.Tests.AI.Planners
 
             AIMissionProposal proposal = proposals
                 .OfType<AIMissionProposal>()
-                .Where(candidate => candidate.MissionTypeID == MissionTypeIDs.Reconnaissance)
+                .Where(candidate => candidate.MissionTypeID == ReconnaissanceMission.MissionTypeID)
                 .OrderByDescending(candidate => candidate.Score)
                 .First();
             Assert.AreEqual(nearTarget.InstanceID, proposal.TargetPlanet.InstanceID);
@@ -128,7 +128,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(
                 proposals
                     .OfType<AIMissionProposal>()
-                    .Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Recruitment)
+                    .Any(proposal => proposal.MissionTypeID == RecruitmentMission.MissionTypeID)
             );
         }
 
@@ -153,7 +153,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(
                 proposals
                     .OfType<AIMissionProposal>()
-                    .Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Recruitment)
+                    .Any(proposal => proposal.MissionTypeID == RecruitmentMission.MissionTypeID)
             );
         }
 
@@ -169,9 +169,9 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID
             );
             Officer diplomat = CreateRecruiter("diplomat", empire.InstanceID, isMain: true);
-            diplomat.Ratings[OfficerRating.Diplomacy] = 100;
+            diplomat.Ratings[SkillRating.Diplomacy] = 100;
             Officer recruiter = CreateRecruiter("recruiter", empire.InstanceID, isMain: true);
-            recruiter.Ratings[OfficerRating.Diplomacy] = 20;
+            recruiter.Ratings[SkillRating.Diplomacy] = 20;
             game.AttachNode(diplomat, planet);
             game.AttachNode(recruiter, planet);
             AddRecruitableOfficer(game, empire.InstanceID);
@@ -180,7 +180,7 @@ namespace Rebellion.Tests.AI.Planners
             string[] recruiterIds = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Recruitment)
+                .Where(proposal => proposal.MissionTypeID == RecruitmentMission.MissionTypeID)
                 .Select(proposal => proposal.Participant.InstanceID)
                 .Distinct()
                 .ToArray();
@@ -212,7 +212,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Distinct()
                 .ToArray();
 
-            CollectionAssert.AreEqual(new[] { MissionTypeIDs.Recruitment }, missionTypeIds);
+            CollectionAssert.AreEqual(new[] { RecruitmentMission.MissionTypeID }, missionTypeIds);
         }
 
         [Test]
@@ -257,7 +257,7 @@ namespace Rebellion.Tests.AI.Planners
             string[] targetIds = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Recruitment)
+                .Where(proposal => proposal.MissionTypeID == RecruitmentMission.MissionTypeID)
                 .OrderByDescending(proposal => proposal.Score)
                 .Select(proposal => proposal.TargetPlanet.InstanceID)
                 .ToArray();
@@ -285,9 +285,9 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces participant = CreateSpecialForces(
                 "saboteur",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
-            participant.Ratings[OfficerRating.Espionage] = 100;
+            participant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -295,7 +295,7 @@ namespace Rebellion.Tests.AI.Planners
             AIMissionProposal proposal = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .First(candidate => candidate.MissionTypeID == MissionTypeIDs.Sabotage);
+                .First(candidate => candidate.MissionTypeID == SabotageMission.MissionTypeID);
 
             Assert.AreEqual(building.InstanceID, proposal.SelectedTarget.InstanceID);
             Assert.IsTrue(proposal.CanExecute(context));
@@ -332,9 +332,9 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces participant = CreateSpecialForces(
                 "saboteur",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
-            participant.Ratings[OfficerRating.Espionage] = 100;
+            participant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -342,7 +342,7 @@ namespace Rebellion.Tests.AI.Planners
             AIMissionProposal[] proposals = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                .Where(proposal => proposal.MissionTypeID == SabotageMission.MissionTypeID)
                 .ToArray();
 
             Assert.AreEqual(1, proposals.Length);
@@ -370,16 +370,16 @@ namespace Rebellion.Tests.AI.Planners
                     empire.InstanceID,
                     target.InstanceID
                 );
-                activeMission.ConfigKey = MissionTypeIDs.InciteUprising;
+                activeMission.ConfigKey = InciteUprisingMission.MissionTypeID;
                 game.AttachNode(activeMission, target);
             }
 
             SpecialForces participant = CreateSpecialForces(
                 "saboteur",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
-            participant.Ratings[OfficerRating.Espionage] = 100;
+            participant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -387,7 +387,7 @@ namespace Rebellion.Tests.AI.Planners
             AIMissionProposal proposal = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Where(candidate => candidate.MissionTypeID == MissionTypeIDs.Sabotage)
+                .Where(candidate => candidate.MissionTypeID == SabotageMission.MissionTypeID)
                 .OrderByDescending(candidate => candidate.Score)
                 .First();
 
@@ -418,21 +418,21 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces activeParticipant = CreateSpecialForces(
                 "active-saboteur",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             SpecialForces availableParticipant = CreateSpecialForces(
                 "available-saboteur",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
-            availableParticipant.Ratings[OfficerRating.Espionage] = 100;
+            availableParticipant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(activeParticipant, origin);
             game.AttachNode(availableParticipant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext initialContext = AITestSceneBuilder.CreateContext(game, empire);
             new AIMissionProposal(
                 new[] { activeParticipant },
-                MissionTypeIDs.Sabotage,
+                SabotageMission.MissionTypeID,
                 target,
                 selectedTarget: activeTarget
             ).Execute(initialContext);
@@ -442,7 +442,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIMissionProposal>()
                 .Where(proposal =>
-                    proposal.MissionTypeID == MissionTypeIDs.Sabotage
+                    proposal.MissionTypeID == SabotageMission.MissionTypeID
                     && proposal.Participant == availableParticipant
                 )
                 .ToArray();
@@ -500,7 +500,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces participant = CreateSpecialForces(
                 "saboteur",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, attackTarget);
@@ -510,7 +510,7 @@ namespace Rebellion.Tests.AI.Planners
             AIMissionProposal proposal = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Where(candidate => candidate.MissionTypeID == MissionTypeIDs.Sabotage)
+                .Where(candidate => candidate.MissionTypeID == SabotageMission.MissionTypeID)
                 .OrderByDescending(candidate => candidate.Score)
                 .First();
 
@@ -559,7 +559,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces participant = CreateSpecialForces(
                 "saboteur",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
@@ -568,7 +568,7 @@ namespace Rebellion.Tests.AI.Planners
             AIMissionProposal[] proposals = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                .Where(proposal => proposal.MissionTypeID == SabotageMission.MissionTypeID)
                 .ToArray();
 
             Assert.AreEqual(1, proposals.Length);
@@ -594,7 +594,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces participant = CreateSpecialForces(
                 "saboteur",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
@@ -603,7 +603,7 @@ namespace Rebellion.Tests.AI.Planners
             AIMissionProposal[] proposals = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                .Where(proposal => proposal.MissionTypeID == SabotageMission.MissionTypeID)
                 .ToArray();
 
             Assert.AreEqual(1, proposals.Length);
@@ -622,9 +622,9 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces participant = CreateSpecialForces(
                 "saboteur",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
-            participant.Ratings[OfficerRating.Espionage] = 100;
+            participant.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -632,7 +632,7 @@ namespace Rebellion.Tests.AI.Planners
             AIMissionProposal proposal = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Single(candidate => candidate.MissionTypeID == MissionTypeIDs.Sabotage);
+                .Single(candidate => candidate.MissionTypeID == SabotageMission.MissionTypeID);
 
             Assert.AreEqual(regiment.InstanceID, proposal.SelectedTarget.InstanceID);
         }
@@ -647,17 +647,17 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces leadSpy = CreateSpecialForces(
                 "lead-spy",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
-            leadSpy.Ratings[OfficerRating.Espionage] = 90;
+            leadSpy.Ratings[SkillRating.Espionage] = 90;
             SpecialForces specialForcesDecoy = CreateSpecialForces(
                 "special-forces-decoy",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
-            specialForcesDecoy.Ratings[OfficerRating.Espionage] = 60;
+            specialForcesDecoy.Ratings[SkillRating.Espionage] = 60;
             Officer officerDecoy = EntityFactory.CreateOfficer("officer-decoy", empire.InstanceID);
-            officerDecoy.Ratings[OfficerRating.Espionage] = 100;
+            officerDecoy.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(leadSpy, origin);
             game.AttachNode(specialForcesDecoy, origin);
             game.AttachNode(officerDecoy, origin);
@@ -670,7 +670,7 @@ namespace Rebellion.Tests.AI.Planners
             AIMissionProposal[] proposals = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Where(candidate => candidate.MissionTypeID == MissionTypeIDs.Espionage)
+                .Where(candidate => candidate.MissionTypeID == EspionageMission.MissionTypeID)
                 .ToArray();
 
             Assert.AreEqual(
@@ -695,10 +695,10 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces leadSpy = CreateSpecialForces(
                 "lead-spy",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
             Officer officerDecoy = EntityFactory.CreateOfficer("officer-decoy", empire.InstanceID);
-            officerDecoy.Ratings[OfficerRating.Espionage] = 80;
+            officerDecoy.Ratings[SkillRating.Espionage] = 80;
             game.AttachNode(leadSpy, origin);
             game.AttachNode(officerDecoy, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
@@ -709,7 +709,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIMissionProposal>()
                 .Single(candidate =>
-                    candidate.MissionTypeID == MissionTypeIDs.Espionage
+                    candidate.MissionTypeID == EspionageMission.MissionTypeID
                     && candidate.Participant == leadSpy
                 );
 
@@ -724,19 +724,19 @@ namespace Rebellion.Tests.AI.Planners
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Officer leadSpy = EntityFactory.CreateOfficer("lead-spy", empire.InstanceID);
-            leadSpy.Ratings[OfficerRating.Espionage] = 80;
+            leadSpy.Ratings[SkillRating.Espionage] = 80;
             SpecialForces decoy = CreateSpecialForces(
                 "decoy",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
             SpecialForces primaryAgent = CreateSpecialForces(
                 "primary-agent",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
-            decoy.Ratings[OfficerRating.Espionage] = 60;
-            primaryAgent.Ratings[OfficerRating.Espionage] = 40;
+            decoy.Ratings[SkillRating.Espionage] = 60;
+            primaryAgent.Ratings[SkillRating.Espionage] = 40;
             game.AttachNode(leadSpy, origin);
             game.AttachNode(decoy, origin);
             game.AttachNode(primaryAgent, origin);
@@ -748,7 +748,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIMissionProposal>()
                 .Single(candidate =>
-                    candidate.MissionTypeID == MissionTypeIDs.Espionage
+                    candidate.MissionTypeID == EspionageMission.MissionTypeID
                     && candidate.Participant == leadSpy
                 );
             context.SetSelectedProposals(new[] { proposal });
@@ -780,9 +780,9 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces participant = CreateSpecialForces(
                 "agent",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage,
-                MissionTypeIDs.Sabotage,
-                MissionTypeIDs.InciteUprising
+                EspionageMission.MissionTypeID,
+                SabotageMission.MissionTypeID,
+                InciteUprisingMission.MissionTypeID
             );
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
@@ -797,13 +797,15 @@ namespace Rebellion.Tests.AI.Planners
                 .ToArray();
 
             Assert.IsTrue(
-                proposals.Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Espionage)
+                proposals.Any(proposal => proposal.MissionTypeID == EspionageMission.MissionTypeID)
             );
             Assert.IsFalse(
-                proposals.Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Sabotage)
+                proposals.Any(proposal => proposal.MissionTypeID == SabotageMission.MissionTypeID)
             );
             Assert.IsFalse(
-                proposals.Any(proposal => proposal.MissionTypeID == MissionTypeIDs.InciteUprising)
+                proposals.Any(proposal =>
+                    proposal.MissionTypeID == InciteUprisingMission.MissionTypeID
+                )
             );
         }
 
@@ -827,7 +829,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces participant = CreateSpecialForces(
                 "saboteur",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
@@ -842,7 +844,7 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.IsTrue(
                 proposals.Any(proposal =>
-                    proposal.MissionTypeID == MissionTypeIDs.Sabotage
+                    proposal.MissionTypeID == SabotageMission.MissionTypeID
                     && proposal.TargetPlanet.InstanceID == target.InstanceID
                     && ((Building)proposal.SelectedTarget).IsPlanetaryShieldGenerator()
                 )
@@ -868,11 +870,11 @@ namespace Rebellion.Tests.AI.Planners
                 rebels.InstanceID
             );
             game.AttachNode(
-                CreateSpecialForces("spy-1", empire.InstanceID, MissionTypeIDs.Espionage),
+                CreateSpecialForces("spy-1", empire.InstanceID, EspionageMission.MissionTypeID),
                 origin
             );
             game.AttachNode(
-                CreateSpecialForces("spy-2", empire.InstanceID, MissionTypeIDs.Espionage),
+                CreateSpecialForces("spy-2", empire.InstanceID, EspionageMission.MissionTypeID),
                 origin
             );
             AITestSceneBuilder.RevealPlanet(game, empire, firstTarget);
@@ -883,7 +885,7 @@ namespace Rebellion.Tests.AI.Planners
             string[] targetIds = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Espionage)
+                .Where(proposal => proposal.MissionTypeID == EspionageMission.MissionTypeID)
                 .Select(proposal => proposal.TargetPlanet.InstanceID)
                 .Distinct()
                 .OrderBy(instanceId => instanceId)
@@ -912,7 +914,7 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIMissionProposal>()
                 .ToArray();
             AIMissionProposal proposal = proposals.Single(candidate =>
-                candidate.MissionTypeID == MissionTypeIDs.JediTraining
+                candidate.MissionTypeID == JediTrainingMission.MissionTypeID
             );
 
             CollectionAssert.AreEquivalent(new[] { trainer, student }, proposal.Participants);
@@ -932,7 +934,7 @@ namespace Rebellion.Tests.AI.Planners
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "p1", empire.InstanceID);
             planet.AddVisitor(empire.InstanceID);
             Officer trainer = CreateJedi("trainer", empire.InstanceID, 100, isTrainer: true);
-            trainer.Ratings[OfficerRating.Diplomacy] = 100;
+            trainer.Ratings[SkillRating.Diplomacy] = 100;
             game.AttachNode(trainer, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -963,7 +965,7 @@ namespace Rebellion.Tests.AI.Planners
             );
             trainerPlanet.AddVisitor(empire.InstanceID);
             Officer trainer = CreateJedi("trainer", empire.InstanceID, 100, isTrainer: true);
-            trainer.Ratings[OfficerRating.Diplomacy] = 100;
+            trainer.Ratings[SkillRating.Diplomacy] = 100;
             Officer student = CreateJedi("student", empire.InstanceID, 20, isTrainer: false);
             game.AttachNode(trainer, trainerPlanet);
             game.AttachNode(student, studentPlanet);
@@ -975,7 +977,9 @@ namespace Rebellion.Tests.AI.Planners
                 .ToArray();
 
             Assert.IsFalse(
-                proposals.Any(proposal => proposal.MissionTypeID == MissionTypeIDs.JediTraining)
+                proposals.Any(proposal =>
+                    proposal.MissionTypeID == JediTrainingMission.MissionTypeID
+                )
             );
             Assert.IsTrue(proposals.Any(proposal => proposal.Participants.Contains(trainer)));
         }
@@ -994,7 +998,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces participant = CreateSpecialForces(
                 "rescuer",
                 empire.InstanceID,
-                MissionTypeIDs.Rescue
+                RescueMission.MissionTypeID
             );
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, prison);
@@ -1003,7 +1007,7 @@ namespace Rebellion.Tests.AI.Planners
             AIMissionProposal proposal = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Single(candidate => candidate.MissionTypeID == MissionTypeIDs.Rescue);
+                .Single(candidate => candidate.MissionTypeID == RescueMission.MissionTypeID);
 
             Assert.AreEqual(prisoner.InstanceID, proposal.TargetOfficer.InstanceID);
             Assert.IsTrue(proposal.CanExecute(context));
@@ -1027,7 +1031,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces participant = CreateSpecialForces(
                 "rescuer",
                 empire.InstanceID,
-                MissionTypeIDs.Rescue
+                RescueMission.MissionTypeID
             );
             game.AttachNode(participant, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, prison);
@@ -1036,7 +1040,7 @@ namespace Rebellion.Tests.AI.Planners
             AIMissionProposal proposal = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Single(candidate => candidate.MissionTypeID == MissionTypeIDs.Rescue);
+                .Single(candidate => candidate.MissionTypeID == RescueMission.MissionTypeID);
 
             Assert.AreEqual(prisoner.InstanceID, proposal.TargetOfficer.InstanceID);
             Assert.IsTrue(proposal.CanExecute(context));
@@ -1063,7 +1067,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(
                 proposals
                     .OfType<AIMissionProposal>()
-                    .Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Rescue)
+                    .Any(proposal => proposal.MissionTypeID == RescueMission.MissionTypeID)
             );
         }
 
@@ -1082,7 +1086,7 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces participant = CreateSpecialForces(
                 "rescuer",
                 empire.InstanceID,
-                MissionTypeIDs.Rescue
+                RescueMission.MissionTypeID
             );
             game.AttachNode(participant, origin);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -1092,7 +1096,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(
                 proposals
                     .OfType<AIMissionProposal>()
-                    .Any(proposal => proposal.MissionTypeID == MissionTypeIDs.Rescue)
+                    .Any(proposal => proposal.MissionTypeID == RescueMission.MissionTypeID)
             );
         }
 
@@ -1122,7 +1126,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Plan(context)
                 .OfType<AIMissionProposal>()
                 .Single(candidate =>
-                    candidate.MissionTypeID == MissionTypeIDs.Research
+                    candidate.MissionTypeID == ResearchMission.MissionTypeID
                     && candidate.Discipline == ResearchDiscipline.ShipDesign
                 );
 
@@ -1159,7 +1163,7 @@ namespace Rebellion.Tests.AI.Planners
                 ManufacturingType.Ship
             );
             Officer diplomat = EntityFactory.CreateOfficer("diplomat", empire.InstanceID);
-            diplomat.Ratings[OfficerRating.Diplomacy] = 100;
+            diplomat.Ratings[SkillRating.Diplomacy] = 100;
             game.AttachNode(diplomat, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, supportedTarget);
             AITestSceneBuilder.RevealPlanet(game, empire, shipyardTarget);
@@ -1168,7 +1172,7 @@ namespace Rebellion.Tests.AI.Planners
             AIMissionProposal[] proposals = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
-                .Where(candidate => candidate.MissionTypeID == MissionTypeIDs.Diplomacy)
+                .Where(candidate => candidate.MissionTypeID == DiplomacyMission.MissionTypeID)
                 .ToArray();
 
             Assert.IsTrue(
@@ -1237,9 +1241,9 @@ namespace Rebellion.Tests.AI.Planners
             );
             AddShield(game, sabotageTarget, "shield", rebels.InstanceID);
             Officer diplomat = EntityFactory.CreateOfficer("diplomat", empire.InstanceID);
-            diplomat.Ratings[OfficerRating.Diplomacy] = 50;
-            diplomat.Ratings[OfficerRating.Espionage] = 100;
-            diplomat.Ratings[OfficerRating.Combat] = 100;
+            diplomat.Ratings[SkillRating.Diplomacy] = 50;
+            diplomat.Ratings[SkillRating.Espionage] = 100;
+            diplomat.Ratings[SkillRating.Combat] = 100;
             game.AttachNode(diplomat, origin);
             AITestSceneBuilder.RevealPlanet(game, empire, diplomacyTarget);
             AITestSceneBuilder.RevealPlanet(game, empire, sabotageTarget);
@@ -1253,7 +1257,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Distinct()
                 .ToArray();
 
-            CollectionAssert.AreEqual(new[] { MissionTypeIDs.Diplomacy }, missionTypeIds);
+            CollectionAssert.AreEqual(new[] { DiplomacyMission.MissionTypeID }, missionTypeIds);
         }
 
         /// <summary>
@@ -1312,10 +1316,10 @@ namespace Rebellion.Tests.AI.Planners
         {
             Officer officer = EntityFactory.CreateOfficer(instanceId, ownerInstanceId);
             officer.IsMain = isMain;
-            officer.Ratings[OfficerRating.Leadership] = 100;
-            officer.Ratings[OfficerRating.Diplomacy] = 0;
-            officer.Ratings[OfficerRating.Combat] = 0;
-            officer.Ratings[OfficerRating.Espionage] = 0;
+            officer.Ratings[SkillRating.Leadership] = 100;
+            officer.Ratings[SkillRating.Diplomacy] = 0;
+            officer.Ratings[SkillRating.Combat] = 0;
+            officer.Ratings[SkillRating.Espionage] = 0;
             return officer;
         }
 

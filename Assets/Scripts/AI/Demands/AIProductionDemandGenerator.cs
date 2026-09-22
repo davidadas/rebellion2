@@ -7,7 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Demands
 {

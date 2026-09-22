@@ -12,7 +12,7 @@ namespace Rebellion.Analyzers.Tests
     public sealed class MemberDeclarationOrderAnalyzerTests
     {
         [Test]
-        public async Task FieldAfterMethod_ReportsDiagnosticAsync()
+        public async Task FieldAfterMethod_Default_ReportsDiagnosticAsync()
         {
             const string source =
                 @"
@@ -29,7 +29,7 @@ class Example
         }
 
         [Test]
-        public async Task FieldBeforeMethod_DoesNotReportDiagnosticAsync()
+        public async Task FieldBeforeMethod_Default_DoesNotReportDiagnosticAsync()
         {
             const string source =
                 @"
@@ -45,7 +45,7 @@ class Example
         }
 
         [Test]
-        public async Task PropertyAfterMethod_ReportsDiagnosticAsync()
+        public async Task PropertyAfterMethod_Default_ReportsDiagnosticAsync()
         {
             const string source =
                 @"
@@ -62,7 +62,7 @@ class Example
         }
 
         [Test]
-        public async Task PropertyBeforeMethod_DoesNotReportDiagnosticAsync()
+        public async Task PropertyBeforeMethod_Default_DoesNotReportDiagnosticAsync()
         {
             const string source =
                 @"
@@ -78,7 +78,7 @@ class Example
         }
 
         [Test]
-        public async Task FieldAfterNestedMethod_ReportsDiagnosticAsync()
+        public async Task FieldAfterNestedMethod_Default_ReportsDiagnosticAsync()
         {
             const string source =
                 @"
@@ -98,7 +98,7 @@ class Outer
         }
 
         [Test]
-        public async Task GeneratedCode_DoesNotReportDiagnosticAsync()
+        public async Task GeneratedCode_Default_DoesNotReportDiagnosticAsync()
         {
             const string source =
                 @"

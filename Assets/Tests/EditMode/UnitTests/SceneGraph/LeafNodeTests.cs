@@ -252,7 +252,7 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
-        public void CreateCopy_ReturnsSameConcreteLeafType()
+        public void CreateCopy_Default_ReturnsSameConcreteLeafType()
         {
             ISceneNode copy = _leafNode.CreateCopy();
 

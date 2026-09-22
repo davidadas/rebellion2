@@ -1,6 +1,6 @@
 using System.Collections.Generic;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Units
@@ -18,8 +18,18 @@ namespace Rebellion.Game.Units
     /// <summary>
     /// Represents a special forces unit that can be used in missions.
     /// </summary>
-    public class SpecialForces : LeafNode, IMissionParticipant, IManufacturable, IMovable
+    public class SpecialForces
+        : LeafNode,
+            IMissionParticipant,
+            IManufacturable,
+            IMovable,
+            IEncyclopediaSource
     {
+        public string EncyclopediaImagePath { get; set; }
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
+            new List<EncyclopediaEntryStat>();
+        public string EncyclopediaDescription { get; set; }
+
         // Construction Info.
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }
@@ -45,13 +55,13 @@ namespace Rebellion.Game.Units
         public List<string> AllowedMissionTypeIDs { get; set; } = new List<string>();
 
         // Mission rating info.
-        public Dictionary<OfficerRating, int> Ratings { get; set; } =
-            new Dictionary<OfficerRating, int>
+        public Dictionary<SkillRating, int> Ratings { get; set; } =
+            new Dictionary<SkillRating, int>
             {
-                { OfficerRating.Diplomacy, 0 },
-                { OfficerRating.Espionage, 0 },
-                { OfficerRating.Combat, 0 },
-                { OfficerRating.Leadership, 0 },
+                { SkillRating.Diplomacy, 0 },
+                { SkillRating.Espionage, 0 },
+                { SkillRating.Combat, 0 },
+                { SkillRating.Leadership, 0 },
             };
         public bool CanImproveMissionRating => false;
 
@@ -78,6 +88,7 @@ namespace Rebellion.Game.Units
         {
             base.CopyStateTo(destination);
             SpecialForces copy = (SpecialForces)destination;
+            ((IEncyclopediaSource)this).CopyEncyclopediaStateTo(copy);
             copy.ConstructionCost = ConstructionCost;
             copy.MaintenanceCost = MaintenanceCost;
             copy.BaseBuildSpeed = BaseBuildSpeed;
@@ -97,7 +108,7 @@ namespace Rebellion.Game.Units
             copy.MissionReturnParentInstanceID = MissionReturnParentInstanceID;
             copy.MissionReturnLocationInstanceID = MissionReturnLocationInstanceID;
             copy.AllowedMissionTypeIDs = new List<string>(AllowedMissionTypeIDs);
-            copy.Ratings = new Dictionary<OfficerRating, int>(Ratings);
+            copy.Ratings = new Dictionary<SkillRating, int>(Ratings);
         }
 
         /// <summary>
@@ -114,7 +125,7 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="rating">The rating to read.</param>
         /// <returns>The stored rating value.</returns>
-        public int GetBaseRating(OfficerRating rating)
+        public int GetBaseRating(SkillRating rating)
         {
             return Ratings.TryGetValue(rating, out int value) ? value : 0;
         }
@@ -124,7 +135,7 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="rating">The rating to read.</param>
         /// <returns>The effective rating value.</returns>
-        public int GetEffectiveRating(OfficerRating rating)
+        public int GetEffectiveRating(SkillRating rating)
         {
             return GetBaseRating(rating);
         }
@@ -135,7 +146,7 @@ namespace Rebellion.Game.Units
         /// <param name="rating">The rating to update.</param>
         /// <param name="value">The new rating value.</param>
         /// <returns>The stored rating value.</returns>
-        public int SetBaseRating(OfficerRating rating, int value)
+        public int SetBaseRating(SkillRating rating, int value)
         {
             Ratings[rating] = value;
             return value;

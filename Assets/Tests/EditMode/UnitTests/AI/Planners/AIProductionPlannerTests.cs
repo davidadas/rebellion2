@@ -11,7 +11,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
@@ -601,12 +600,12 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces commandos = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             SpecialForces spies = AITestSceneBuilder.CreateSpecialForces(
                 "spies",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
             empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
             {
@@ -616,13 +615,13 @@ namespace Rebellion.Tests.AI.Planners
             SpecialForces firstCommandos = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             firstCommandos.InstanceID = "commandos-1";
             SpecialForces secondCommandos = AITestSceneBuilder.CreateSpecialForces(
                 "commandos",
                 empire.InstanceID,
-                MissionTypeIDs.Sabotage
+                SabotageMission.MissionTypeID
             );
             secondCommandos.InstanceID = "commandos-2";
             game.AttachNode(firstCommandos, planet);
@@ -633,7 +632,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID,
                 target.InstanceID
             );
-            mission.ConfigKey = MissionTypeIDs.Espionage;
+            mission.ConfigKey = EspionageMission.MissionTypeID;
             game.AttachNode(mission, target);
             game.AttachNode(officer, mission);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -1120,7 +1119,7 @@ namespace Rebellion.Tests.AI.Planners
 
         [TestCase(false, TestName = "Plan_WithNoCommittedCombatShip_SelectsEligibleWarship")]
         [TestCase(true, TestName = "Plan_WithCommittedCombatShip_SelectsEligibleWarship")]
-        public void Plan_GeneralRoleSelectionSelectsEligibleWarship(bool hasCommittedCombatShip)
+        public void Plan_GeneralRoleSelection_SelectsEligibleWarship(bool hasCommittedCombatShip)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
@@ -1208,7 +1207,7 @@ namespace Rebellion.Tests.AI.Planners
 
         [TestCase(false, TestName = "Plan_WithNoCarrier_SelectsCarrierCapableWarship")]
         [TestCase(true, TestName = "Plan_WithCarrier_SelectsHigherQualityWarship")]
-        public void Plan_GeneralCombatSelectionFillsMissingCarrierRole(bool hasCarrier)
+        public void Plan_GeneralCombatSelection_FillsMissingCarrierRole(bool hasCarrier)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Requests;
 using Rebellion.Game.Results;
-using Rebellion.Util.Common;
+using Rebellion.Util.Logging;
 
 namespace Rebellion.Systems
 {

@@ -9,7 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Systems
 {
@@ -178,50 +178,51 @@ namespace Rebellion.Systems
         {
             return result?.Mission?.OwnerInstanceID == faction.InstanceID
                 && (
-                    result.MissionTypeID == MissionTypeIDs.Recruitment
-                    || result.Mission.ConfigKey == MissionTypeIDs.Recruitment
+                    result.MissionTypeID == RecruitmentMission.MissionTypeID
+                    || result.Mission.ConfigKey == RecruitmentMission.MissionTypeID
                 );
         }
 
         /// <summary>
-        /// Returns whether the supplied request can create a mission.
+        /// Returns whether the supplied context can create a mission.
         /// </summary>
-        /// <param name="request">The mission start request to resolve and evaluate.</param>
+        /// <param name="context">The mission context to resolve and evaluate.</param>
         /// <returns>True when the mission can be created.</returns>
-        public bool CanCreateMission(MissionStartRequest request)
+        public bool CanCreateMission(MissionContext context)
         {
-            MissionContext context = ResolveMissionContext(request);
-            return context != null && _missionFactory.TryCreateMission(context, out _);
+            MissionContext resolvedContext = ResolveMissionContext(context);
+            return resolvedContext != null
+                && _missionFactory.TryCreateMission(resolvedContext, out _);
         }
 
         /// <summary>
-        /// Creates a mission from a request without starting it.
+        /// Creates a mission from a context without starting it.
         /// </summary>
-        /// <param name="request">The mission request to resolve.</param>
+        /// <param name="context">The mission context to resolve.</param>
         /// <param name="mission">The created mission when successful.</param>
-        /// <returns>True when the request creates a valid mission.</returns>
-        public bool TryCreateMission(MissionStartRequest request, out Mission mission)
+        /// <returns>True when the context creates a valid mission.</returns>
+        public bool TryCreateMission(MissionContext context, out Mission mission)
         {
-            MissionContext context = ResolveMissionContext(request);
-            if (context == null)
+            MissionContext resolvedContext = ResolveMissionContext(context);
+            if (resolvedContext == null)
             {
                 mission = null;
                 return false;
             }
 
-            return _missionFactory.TryCreateMission(context, out mission);
+            return _missionFactory.TryCreateMission(resolvedContext, out mission);
         }
 
         /// <summary>
-        /// Returns the mission options available for the supplied mission start request.
+        /// Returns the mission options available for the supplied context.
         /// </summary>
-        /// <param name="request">The mission start request to resolve and evaluate.</param>
-        /// <returns>The mission options that can be created from the resolved request.</returns>
-        public List<MissionOption> GetAvailableMissionOptions(MissionStartRequest request)
+        /// <param name="context">The mission context to resolve and evaluate.</param>
+        /// <returns>The mission options that can be created from the resolved context.</returns>
+        public List<MissionOption> GetAvailableMissionOptions(MissionContext context)
         {
-            MissionContext context = ResolveMissionContext(request);
-            return context != null
-                ? _missionFactory.GetAvailableMissionOptions(context)
+            MissionContext resolvedContext = ResolveMissionContext(context);
+            return resolvedContext != null
+                ? _missionFactory.GetAvailableMissionOptions(resolvedContext)
                 : new List<MissionOption>();
         }
 
@@ -247,41 +248,35 @@ namespace Rebellion.Systems
         /// outcome. Hidden betrayal and state changes produced during uprising resolution are
         /// intentionally excluded. Foiling uses the caller's observed planet state.
         /// </summary>
-        /// <param name="request">The mission configuration to evaluate.</param>
+        /// <param name="context">The mission configuration to evaluate.</param>
         /// <param name="observedDetectors">
         /// Optional detector snapshot already filtered for the mission owner.
         /// </param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
         public MissionOdds GetMissionOdds(
-            MissionStartRequest request,
+            MissionContext context,
             IReadOnlyList<ISceneNode> observedDetectors = null
         )
         {
-            if (!TryCreateMission(request, out Mission mission))
+            if (!TryCreateMission(context, out Mission mission))
                 return null;
 
             double objectiveSuccessProbability = mission.GetObjectiveSuccessProbability(
                 mission.GetMainParticipants(),
                 _game,
-                request.Location as Planet,
-                request.SelectedTarget
+                context.Location as Planet,
+                context.SelectedTarget
             );
-            Planet observedPlanet = request.Location as Planet;
+            Planet observedPlanet = context.Location as Planet;
             IReadOnlyList<ISceneNode> detectors =
                 observedPlanet == null
                     ? Array.Empty<ISceneNode>()
                     : observedDetectors ?? GetDetectors(mission, observedPlanet);
-            Dictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders = new();
-            double foilProbability = EstimateFoilProbability(
-                mission,
-                detectors,
-                detectorCommanders
-            );
+            double foilProbability = EstimateFoilProbability(mission, detectors);
             double personnelLossProbability = EstimatePersonnelLossProbability(
                 mission,
                 detectors,
-                foilProbability,
-                detectorCommanders
+                foilProbability
             );
             return new MissionOdds(
                 objectiveSuccessProbability,
@@ -291,14 +286,14 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Creates, attaches, and starts a mission from the supplied request.
+        /// Creates, attaches, and starts a mission from the supplied context.
         /// </summary>
-        /// <param name="request">The mission start request to resolve and start.</param>
+        /// <param name="context">The mission context to resolve and start.</param>
         /// <returns>True when the mission was started.</returns>
-        public bool InitiateMission(MissionStartRequest request)
+        public bool InitiateMission(MissionContext context)
         {
-            MissionContext context = ResolveMissionContext(request);
-            return context != null && CreateAndBeginMission(context);
+            MissionContext resolvedContext = ResolveMissionContext(context);
+            return resolvedContext != null && CreateAndBeginMission(resolvedContext);
         }
 
         /// <summary>
@@ -378,23 +373,23 @@ namespace Rebellion.Systems
         /// <summary>
         /// Resolves mission participants while preserving the caller's observed target state.
         /// </summary>
-        /// <param name="request">The mission start request to resolve.</param>
+        /// <param name="context">The mission context to resolve.</param>
         /// <returns>The resolved mission context, or null when any required object is missing.</returns>
-        private MissionContext ResolveMissionContext(MissionStartRequest request)
+        private MissionContext ResolveMissionContext(MissionContext context)
         {
             if (
-                request == null
-                || request.MainParticipants == null
-                || request.MainParticipants.Count == 0
-                || request.Location == null
+                context == null
+                || context.MainParticipants == null
+                || context.MainParticipants.Count == 0
+                || context.Location == null
             )
                 return null;
 
             List<IMissionParticipant> mainParticipants = ResolveMissionParticipants(
-                request.MainParticipants
+                context.MainParticipants
             );
             List<IMissionParticipant> decoyParticipants = ResolveMissionParticipants(
-                request.DecoyParticipants ?? new List<IMissionParticipant>()
+                context.DecoyParticipants ?? new List<IMissionParticipant>()
             );
 
             if (mainParticipants == null || decoyParticipants == null)
@@ -403,13 +398,13 @@ namespace Rebellion.Systems
             return new MissionContext
             {
                 Game = _game,
-                MissionTypeID = request.MissionTypeID,
+                MissionTypeID = context.MissionTypeID,
                 OwnerInstanceId = mainParticipants[0].GetOwnerInstanceID(),
-                Location = request.Location,
-                SelectedTarget = request.SelectedTarget,
+                Location = context.Location,
+                SelectedTarget = context.SelectedTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
-                Discipline = request.Discipline,
+                Discipline = context.Discipline,
             };
         }
 
@@ -792,13 +787,8 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The unstarted or active mission to evaluate.</param>
         /// <param name="detectors">The observed units that can confront mission participants.</param>
-        /// <param name="detectorCommanders">Commanders cached by local scope and required rank.</param>
         /// <returns>The estimated foiling percentage.</returns>
-        private double EstimateFoilProbability(
-            Mission mission,
-            IReadOnlyList<ISceneNode> detectors,
-            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders
-        )
+        private double EstimateFoilProbability(Mission mission, IReadOnlyList<ISceneNode> detectors)
         {
             if (mission == null || detectors == null || detectors.Count == 0)
                 return 0;
@@ -810,12 +800,7 @@ namespace Rebellion.Systems
                 foreach (ISceneNode detector in detectors)
                 {
                     unfoiledProbability *=
-                        1d
-                        - Math.Clamp(
-                            GetFoilProbability(mission, detector, detectorCommanders) / 100d,
-                            0,
-                            1
-                        );
+                        1d - Math.Clamp(GetFoilProbability(mission, detector) / 100d, 0, 1);
                 }
 
                 return (1d - unfoiledProbability) * 100d;
@@ -824,8 +809,8 @@ namespace Rebellion.Systems
             var decoyGroups = decoys
                 .GroupBy(decoy => new
                 {
-                    Espionage = decoy.GetEffectiveRating(OfficerRating.Espionage),
-                    Combat = decoy.GetEffectiveRating(OfficerRating.Combat),
+                    Espionage = decoy.GetEffectiveRating(SkillRating.Espionage),
+                    Combat = decoy.GetEffectiveRating(SkillRating.Combat),
                     CanBeRemoved = decoy is Officer or SpecialForces,
                 })
                 .Select(group => new { Decoy = group.First(), Count = group.Count() })
@@ -849,12 +834,7 @@ namespace Rebellion.Systems
             foreach (ISceneNode detector in detectors)
             {
                 double noFoilProbability =
-                    1d
-                    - Math.Clamp(
-                        GetFoilProbability(mission, detector, detectorCommanders) / 100d,
-                        0,
-                        1
-                    );
+                    1d - Math.Clamp(GetFoilProbability(mission, detector) / 100d, 0, 1);
                 Dictionary<BigInteger, double> next = new Dictionary<BigInteger, double>();
                 foreach ((BigInteger availableDecoys, double probability) in unfoiledByDecoyPool)
                 {
@@ -892,8 +872,7 @@ namespace Rebellion.Systems
                         double evasionProbability = GetParticipantEvasionProbability(
                             mission,
                             decoy,
-                            detector,
-                            detectorCommanders
+                            detector
                         );
 
                         // A diversion or successful evasion leaves this decoy available.
@@ -935,13 +914,11 @@ namespace Rebellion.Systems
         /// <param name="mission">The mission whose officers are exposed to detection.</param>
         /// <param name="detectors">The observed units that can confront mission participants.</param>
         /// <param name="foilProbability">The estimated chance that detection foils the mission.</param>
-        /// <param name="detectorCommanders">Commanders cached by local scope and required rank.</param>
         /// <returns>The estimated personnel-loss percentage.</returns>
         private double EstimatePersonnelLossProbability(
             Mission mission,
             IReadOnlyList<ISceneNode> detectors,
-            double foilProbability,
-            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders
+            double foilProbability
         )
         {
             if (
@@ -956,7 +933,7 @@ namespace Rebellion.Systems
             foreach (Officer officer in mission.GetMainParticipants().OfType<Officer>())
             {
                 double averageEvasionProbability = detectors.Average(detector =>
-                    GetParticipantEvasionProbability(mission, officer, detector, detectorCommanders)
+                    GetParticipantEvasionProbability(mission, officer, detector)
                 );
                 noOfficerLossProbability *= averageEvasionProbability;
             }
@@ -987,21 +964,19 @@ namespace Rebellion.Systems
         /// <param name="mission">The mission whose evasion rules apply.</param>
         /// <param name="participant">The participant attempting to evade detection.</param>
         /// <param name="detector">The unit confronting the participant.</param>
-        /// <param name="detectorCommanders">Optional commanders cached by local scope and rank.</param>
         /// <returns>The evasion probability from zero to one.</returns>
         private double GetParticipantEvasionProbability(
             Mission mission,
             IMissionParticipant participant,
-            ISceneNode detector,
-            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders = null
+            ISceneNode detector
         )
         {
             if (participant is not Officer && participant is not SpecialForces)
                 return 1d;
 
-            Officer commander = GetDetectorCommander(mission, detector, detectorCommanders);
-            int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
-            int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
+            Officer commander = mission.FindDetectorCommander(detector);
+            int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
+            int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
             return Math.Clamp(GetEvasionProbability(score) / 100d, 0, 1);
         }
 
@@ -1010,18 +985,13 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile detector.</param>
-        /// <param name="detectorCommanders">Optional commanders cached by local scope and rank.</param>
         /// <returns>The foiling percentage.</returns>
-        private int GetFoilProbability(
-            Mission mission,
-            ISceneNode detector,
-            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders = null
-        )
+        private int GetFoilProbability(Mission mission, ISceneNode detector)
         {
             if (mission == null || detector == null)
                 return 0;
 
-            int score = CalculateFoilScore(mission, detector, detectorCommanders);
+            int score = CalculateFoilScore(mission, detector);
             return LookupProbability(GetMissionTables().Foil, score);
         }
 
@@ -1030,60 +1000,17 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile unit making the detection attempt.</param>
-        /// <param name="detectorCommanders">Optional commanders cached by local scope and rank.</param>
         /// <returns>The score used to look up the foiling probability.</returns>
-        private int CalculateFoilScore(
-            Mission mission,
-            ISceneNode detector,
-            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders = null
-        )
+        private int CalculateFoilScore(Mission mission, ISceneNode detector)
         {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
             IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
-            Officer commander = GetDetectorCommander(mission, detector, detectorCommanders);
+            Officer commander = mission.FindDetectorCommander(detector);
             return GetAverageEspionage(participants)
                 - GetScaledCommanderEspionage(commander, missionTables.FoilDefenderScalingPercent)
                 - GetDetectorRating(detector)
                 - participants.OfType<SpecialForces>().Count()
                 - missionTables.FoilFlatScoreAdjustment;
-        }
-
-        /// <summary>
-        /// Returns the commander paired with a detector, reusing one lookup for detectors that
-        /// share a local fleet or planet and require the same commander rank.
-        /// </summary>
-        /// <param name="mission">The mission whose detector rules identify the commander.</param>
-        /// <param name="detector">The hostile detector.</param>
-        /// <param name="detectorCommanders">Optional commanders cached by local scope and rank.</param>
-        /// <returns>The eligible commander, or null when none is assigned.</returns>
-        private static Officer GetDetectorCommander(
-            Mission mission,
-            ISceneNode detector,
-            IDictionary<(string ScopeId, OfficerRank Rank), Officer> detectorCommanders
-        )
-        {
-            if (mission == null || detector == null || detectorCommanders == null)
-                return mission?.FindDetectorCommander(detector);
-
-            OfficerRank requiredRank = detector switch
-            {
-                Starfighter => OfficerRank.Commander,
-                CapitalShip => OfficerRank.Admiral,
-                Regiment => OfficerRank.General,
-                _ => OfficerRank.None,
-            };
-            ISceneNode scope = detector.GetParentOfType<Fleet>();
-            scope ??= detector.GetParentOfType<Planet>();
-            if (requiredRank == OfficerRank.None || string.IsNullOrEmpty(scope?.InstanceID))
-                return mission.FindDetectorCommander(detector);
-
-            (string ScopeId, OfficerRank Rank) key = (scope.InstanceID, requiredRank);
-            if (detectorCommanders.TryGetValue(key, out Officer commander))
-                return commander;
-
-            commander = mission.FindDetectorCommander(detector);
-            detectorCommanders.Add(key, commander);
-            return commander;
         }
 
         /// <summary>
@@ -1096,7 +1023,7 @@ namespace Rebellion.Systems
             return participants.Count == 0
                 ? 0
                 : participants.Sum(participant =>
-                    participant.GetEffectiveRating(OfficerRating.Espionage)
+                    participant.GetEffectiveRating(SkillRating.Espionage)
                 ) / participants.Count;
         }
 
@@ -1108,7 +1035,7 @@ namespace Rebellion.Systems
         /// <returns>The scaled commander contribution.</returns>
         private static int GetScaledCommanderEspionage(Officer commander, int scalingPercent)
         {
-            return (commander?.GetEffectiveRating(OfficerRating.Espionage) ?? 0)
+            return (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
                 * scalingPercent
                 / 100;
         }
@@ -1200,8 +1127,8 @@ namespace Rebellion.Systems
         )
         {
             Officer commander = mission.FindDetectorCommander(detector);
-            int defenderCombat = commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0;
-            int score = participant.GetEffectiveRating(OfficerRating.Combat) - defenderCombat;
+            int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
+            int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
             bool evaded = _provider.NextDouble() * 100 < GetEvasionProbability(score);
             if (evaded)
                 return;

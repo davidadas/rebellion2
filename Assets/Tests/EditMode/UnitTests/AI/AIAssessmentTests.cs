@@ -10,7 +10,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
 
@@ -457,7 +456,7 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
-        public void GetCommittedHeadquartersDefenseStrength_SumsLocalAndInboundFleets()
+        public void GetCommittedHeadquartersDefenseStrength_Default_SumsLocalAndInboundFleets()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -882,7 +881,7 @@ namespace Rebellion.Tests.AI
             };
             Officer admiral = EntityFactory.CreateOfficer("admiral", empire.InstanceID);
             admiral.CurrentRank = OfficerRank.Admiral;
-            admiral.Ratings[OfficerRating.Leadership] = 20;
+            admiral.Ratings[SkillRating.Leadership] = 20;
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             game.AttachNode(fighter, ship);

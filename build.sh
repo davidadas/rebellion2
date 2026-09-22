@@ -155,6 +155,10 @@ do_lint() {
                 "${extra_args[@]}"
             echo ""
         done
+
+        echo "=== Architecture Tests ==="
+        dotnet test "$ARCHITECTURE_TEST_PROJECT" --configuration Debug --verbosity quiet
+        echo ""
     fi
 
     echo "=== Format Rules ==="

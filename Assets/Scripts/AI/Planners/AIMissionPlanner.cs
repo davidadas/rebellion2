@@ -10,7 +10,8 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Random;
+using OfficerRating = Rebellion.Game.Units.SkillRating;
 
 namespace Rebellion.AI.Planners
 {

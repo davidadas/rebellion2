@@ -370,7 +370,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             TestMission mission = new TestMission
             {
                 InstanceID = instanceId,
-                ConfigKey = MissionTypeIDs.Diplomacy,
+                ConfigKey = DiplomacyMission.MissionTypeID,
                 DisplayName = displayName,
             };
             mission.AddChild(new Officer { InstanceID = $"{instanceId}-agent" });

@@ -167,7 +167,7 @@ namespace Rebellion.AI.Phases
             IList<AIProposal> proposals,
             int start,
             int end,
-            Rebellion.Util.Common.IRandomNumberProvider random
+            Rebellion.Util.Random.IRandomNumberProvider random
         )
         {
             if (random == null)

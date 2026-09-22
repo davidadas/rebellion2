@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game
@@ -32,8 +32,6 @@ namespace Rebellion.Game
         public SupportShiftConfig SupportShift { get; set; } = new SupportShiftConfig();
 
         public BlockadeConfig Blockade { get; set; } = new BlockadeConfig();
-
-        public VictoryConfig Victory { get; set; } = new VictoryConfig();
 
         public JediConfig Jedi { get; set; } = new JediConfig();
 
@@ -1019,12 +1017,6 @@ namespace Rebellion.Game
 
             public int EvacuationLossPercent { get; set; }
         }
-
-        /// <summary>
-        /// Victory system parameters.
-        /// </summary>
-        [PersistableObject]
-        public class VictoryConfig { }
 
         /// <summary>
         /// Force tier advancement and detection thresholds.
