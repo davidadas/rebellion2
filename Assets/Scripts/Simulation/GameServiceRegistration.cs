@@ -28,20 +28,18 @@ namespace Rebellion.Simulation
         };
 
         /// <summary>
-        /// Creates a locator for one game and its result bus.
+        /// Creates a locator for one game.
         /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="gameData">The content catalog used by game services.</param>
         /// <param name="random">The active game's random provider.</param>
         /// <param name="messageFactory">The message factory configured for this game.</param>
-        /// <param name="results">The result bus shared by this game's observers.</param>
         /// <returns>A locator that owns this game's runtime services.</returns>
         internal static ServiceLocator Create(
             GameRoot game,
             GameDataCatalog gameData,
             IRandomNumberProvider random,
-            MessageFactory messageFactory,
-            GameResultBus results
+            MessageFactory messageFactory
         )
         {
             if (game == null)
@@ -52,15 +50,12 @@ namespace Rebellion.Simulation
                 throw new ArgumentNullException(nameof(random));
             if (messageFactory == null)
                 throw new ArgumentNullException(nameof(messageFactory));
-            if (results == null)
-                throw new ArgumentNullException(nameof(results));
 
             ServiceContainer services = new();
             services.AddSingletonInstance(game);
             services.AddSingletonInstance(gameData);
             services.AddSingletonInstance(random);
             services.AddSingletonInstance(messageFactory);
-            services.AddSingletonInstance(results);
             services.AddSingleton<UnitFactory>(locator =>
             {
                 GameDataCatalog content = locator.GetService<GameDataCatalog>();
@@ -118,13 +113,14 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Constructs the registered observers so their subscriptions are active before results run.
+        /// Connects the registered observers before results run.
         /// </summary>
         /// <param name="services">The active game's service scope.</param>
-        internal static void ActivateObservers(ServiceLocator services)
+        /// <param name="results">The bus that delivers completed results.</param>
+        internal static void ConnectObservers(ServiceLocator services, GameResultBus results)
         {
             foreach (Type observerType in _resultObserverTypes)
-                services.GetService(observerType);
+                ((IResultObserver)services.GetService(observerType)).Connect(results);
         }
     }
 }

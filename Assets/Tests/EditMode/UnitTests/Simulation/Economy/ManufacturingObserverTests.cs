@@ -108,7 +108,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            _observer = new ManufacturingObserver(_manager, new GameResultBus());
+            _observer = new ManufacturingObserver(_manager);
         }
 
         [Test]

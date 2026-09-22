@@ -132,8 +132,7 @@ namespace Rebellion.Simulation
                 Game,
                 _gameData,
                 _randomProvider,
-                messageFactory,
-                resultBus
+                messageFactory
             );
             MessageObserver = GetService<MessageObserver>();
             GetService<MovementQueries>()
@@ -153,7 +152,7 @@ namespace Rebellion.Simulation
         private void ConnectResults()
         {
             _disconnect.Add(Results.Subscribe<GameResult>(GameEventExecutor.HandleResults).Dispose);
-            GameServiceRegistration.ActivateObservers(_serviceScope);
+            GameServiceRegistration.ConnectObservers(_serviceScope, Results);
 
             MovementCommands movementSystem = GetService<MovementCommands>();
             movementSystem.ResultsProduced += Pipeline.ProcessImmediate;

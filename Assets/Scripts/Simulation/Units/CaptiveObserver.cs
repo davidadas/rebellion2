@@ -10,20 +10,27 @@ using Rebellion.Game.Units;
 namespace Rebellion.Simulation
 {
     /// <summary>Routes capture and ownership changes to custody operations in batch order.</summary>
-    public sealed class CaptiveObserver : IDisposable
+    public sealed class CaptiveObserver : IResultObserver, IDisposable
     {
         private readonly GameRoot _game;
         private readonly CaptiveCommands _commands;
-        private readonly IDisposable[] _subscriptions;
+        private IDisposable[] _subscriptions;
 
         /// <summary>Creates the custody listener for the active game.</summary>
         /// <param name="game">The authoritative game used to resolve officer ownership.</param>
         /// <param name="commands">The custody and release operations.</param>
-        /// <param name="results">The bus that delivers capture and ownership changes.</param>
-        public CaptiveObserver(GameRoot game, CaptiveCommands commands, GameResultBus results)
+        public CaptiveObserver(GameRoot game, CaptiveCommands commands)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+        }
+
+        /// <summary>Registers capture and ownership callbacks with the result bus.</summary>
+        /// <param name="results">The bus that delivers capture and ownership changes.</param>
+        public void Connect(GameResultBus results)
+        {
+            if (_subscriptions != null)
+                throw new InvalidOperationException("Captive observer is already connected.");
             if (results == null)
                 throw new ArgumentNullException(nameof(results));
 
@@ -37,7 +44,7 @@ namespace Rebellion.Simulation
         /// <summary>Stops receiving capture and ownership changes.</summary>
         public void Dispose()
         {
-            foreach (IDisposable subscription in _subscriptions)
+            foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
                 subscription.Dispose();
         }
 

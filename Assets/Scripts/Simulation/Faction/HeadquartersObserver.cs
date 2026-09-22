@@ -8,19 +8,26 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Routes arrival and ownership result batches to headquarters operations.
     /// </summary>
-    public sealed class HeadquartersObserver : IDisposable
+    public sealed class HeadquartersObserver : IResultObserver, IDisposable
     {
         private readonly HeadquartersCommands _commands;
-        private readonly IDisposable[] _subscriptions;
+        private IDisposable[] _subscriptions;
 
         /// <summary>
         /// Creates the headquarters result observer.
         /// </summary>
         /// <param name="commands">The headquarters operations for the active game.</param>
-        /// <param name="results">The bus that delivers arrivals and ownership changes.</param>
-        public HeadquartersObserver(HeadquartersCommands commands, GameResultBus results)
+        public HeadquartersObserver(HeadquartersCommands commands)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+        }
+
+        /// <summary>Registers arrival and ownership callbacks with the result bus.</summary>
+        /// <param name="results">The bus that delivers arrivals and ownership changes.</param>
+        public void Connect(GameResultBus results)
+        {
+            if (_subscriptions != null)
+                throw new InvalidOperationException("Headquarters observer is already connected.");
             if (results == null)
                 throw new ArgumentNullException(nameof(results));
 
@@ -34,7 +41,7 @@ namespace Rebellion.Simulation
         /// <summary>Stops receiving arrivals and ownership changes.</summary>
         public void Dispose()
         {
-            foreach (IDisposable subscription in _subscriptions)
+            foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
                 subscription.Dispose();
         }
 

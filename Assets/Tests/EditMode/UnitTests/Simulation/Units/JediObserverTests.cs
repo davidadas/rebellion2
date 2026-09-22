@@ -20,10 +20,7 @@ namespace Rebellion.Tests.Simulation
         public void SetUp()
         {
             _game = new GameRoot(TestConfig.Create());
-            _observer = new JediObserver(
-                new JediCommands(_game, new FixedRNG()),
-                new GameResultBus()
-            );
+            _observer = new JediObserver(new JediCommands(_game, new FixedRNG()));
         }
 
         [Test]

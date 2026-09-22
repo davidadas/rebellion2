@@ -29,7 +29,7 @@ namespace Rebellion.Tests.Simulation
                 new ThrowingRNG(),
                 movement
             );
-            MissionObserver observer = new MissionObserver(commands, new GameResultBus());
+            MissionObserver observer = new MissionObserver(commands);
 
             List<GameResult> results = observer.HandleResults(
                 new[]
@@ -54,7 +54,7 @@ namespace Rebellion.Tests.Simulation
                 new ThrowingRNG(),
                 movement
             );
-            MissionObserver observer = new MissionObserver(commands, new GameResultBus());
+            MissionObserver observer = new MissionObserver(commands);
 
             Assert.IsEmpty(observer.HandleResults(new OfficerCaptureStateResult[] { null }));
         }
@@ -63,14 +63,14 @@ namespace Rebellion.Tests.Simulation
         public void Constructor_NullCommands_ThrowsArgumentNullException()
         {
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
-                new MissionObserver(null, new GameResultBus())
+                new MissionObserver(null)
             );
 
             Assert.AreEqual("commands", exception.ParamName);
         }
 
         [Test]
-        public void Constructor_CapturedMissionParticipant_RegistersInterruption()
+        public void Connect_CapturedMissionParticipant_RegistersInterruption()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -88,7 +88,8 @@ namespace Rebellion.Tests.Simulation
             );
 
             GameResultBus results = new GameResultBus();
-            MissionObserver observer = new MissionObserver(system, results);
+            MissionObserver observer = new MissionObserver(system);
+            observer.Connect(results);
             results.Publish(
                 new OfficerCaptureStateResult
                 {
@@ -102,6 +103,50 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(planet, officer.GetParent());
             Assert.IsTrue(officer.IsCaptured);
             Assert.IsFalse(officer.IsEnabled);
+        }
+
+        [Test]
+        public void Constructor_CapturedMissionParticipant_DoesNotSubscribe()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+            GameResultBus results = new GameResultBus();
+            MissionObserver observer = new MissionObserver(commands);
+
+            results.Publish(
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = officer,
+                    IsCaptured = true,
+                    Context = planet,
+                }
+            );
+
+            Assert.AreSame(mission, officer.GetParent());
+            observer.Dispose();
+        }
+
+        [Test]
+        public void Connect_AlreadyConnected_ThrowsInvalidOperationException()
+        {
+            (GameRoot game, _, _, MovementCommands movement) = BuildScene(factionOwnsPlanet: true);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+            MissionObserver observer = new MissionObserver(commands);
+            observer.Connect(new GameResultBus());
+
+            Assert.Throws<InvalidOperationException>(() => observer.Connect(new GameResultBus()));
         }
 
         [Test]
@@ -120,7 +165,8 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
             GameResultBus results = new GameResultBus();
-            MissionObserver observer = new MissionObserver(commands, results);
+            MissionObserver observer = new MissionObserver(commands);
+            observer.Connect(results);
             observer.Dispose();
 
             results.Publish(

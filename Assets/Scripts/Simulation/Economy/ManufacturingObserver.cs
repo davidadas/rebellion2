@@ -8,17 +8,24 @@ using Rebellion.Game.Units;
 namespace Rebellion.Simulation
 {
     /// <summary>Routes production-facility losses to cancellation of unsupported manufacturing lanes.</summary>
-    public sealed class ManufacturingObserver : IDisposable
+    public sealed class ManufacturingObserver : IResultObserver, IDisposable
     {
         private readonly ManufacturingCommands _commands;
-        private readonly IDisposable[] _subscriptions;
+        private IDisposable[] _subscriptions;
 
         /// <summary>Creates the manufacturing result listener.</summary>
         /// <param name="commands">The queue operations for this game.</param>
-        /// <param name="results">The bus that delivers manufacturing-loss results.</param>
-        public ManufacturingObserver(ManufacturingCommands commands, GameResultBus results)
+        public ManufacturingObserver(ManufacturingCommands commands)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+        }
+
+        /// <summary>Registers manufacturing-loss callbacks with the result bus.</summary>
+        /// <param name="results">The bus that delivers manufacturing-loss results.</param>
+        public void Connect(GameResultBus results)
+        {
+            if (_subscriptions != null)
+                throw new InvalidOperationException("Manufacturing observer is already connected.");
             if (results == null)
                 throw new ArgumentNullException(nameof(results));
 
@@ -34,7 +41,7 @@ namespace Rebellion.Simulation
         /// <summary>Stops receiving manufacturing-loss results.</summary>
         public void Dispose()
         {
-            foreach (IDisposable subscription in _subscriptions)
+            foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
                 subscription.Dispose();
         }
 

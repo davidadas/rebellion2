@@ -16,10 +16,7 @@ namespace Rebellion.Tests.Simulation
         public void HandleResults_NullArrivals_ReturnsNoResults()
         {
             (GameRoot game, _, _, _, _) = CreateGame(isMobile: true);
-            HeadquartersObserver observer = new HeadquartersObserver(
-                CreateCommands(game),
-                new GameResultBus()
-            );
+            HeadquartersObserver observer = new HeadquartersObserver(CreateCommands(game));
 
             Assert.IsEmpty(observer.HandleResults((IReadOnlyList<UnitArrivedResult>)null));
         }
@@ -28,10 +25,7 @@ namespace Rebellion.Tests.Simulation
         public void HandleResults_NullOwnershipChanges_ReturnsNoResults()
         {
             (GameRoot game, _, _, _, _) = CreateGame(isMobile: true);
-            HeadquartersObserver observer = new HeadquartersObserver(
-                CreateCommands(game),
-                new GameResultBus()
-            );
+            HeadquartersObserver observer = new HeadquartersObserver(CreateCommands(game));
 
             Assert.IsEmpty(
                 observer.HandleResults((IReadOnlyList<PlanetOwnershipChangedResult>)null)
@@ -43,10 +37,7 @@ namespace Rebellion.Tests.Simulation
         {
             (GameRoot game, Faction faction, Planet origin, Planet destination, Building hq) =
                 CreateGame(isMobile: true);
-            HeadquartersObserver observer = new HeadquartersObserver(
-                CreateCommands(game),
-                new GameResultBus()
-            );
+            HeadquartersObserver observer = new HeadquartersObserver(CreateCommands(game));
 
             List<GameResult> results = observer.HandleResults(
                 new List<UnitArrivedResult>
@@ -72,10 +63,7 @@ namespace Rebellion.Tests.Simulation
             game.GetFactions().Add(firstAttacker);
             game.GetFactions().Add(secondAttacker);
             game.CurrentTick = 42;
-            HeadquartersObserver observer = new HeadquartersObserver(
-                CreateCommands(game),
-                new GameResultBus()
-            );
+            HeadquartersObserver observer = new HeadquartersObserver(CreateCommands(game));
 
             List<GameResult> results = observer.HandleResults(
                 new List<PlanetOwnershipChangedResult>

@@ -4754,7 +4754,7 @@ namespace Rebellion.Tests.Simulation
                 blockade
             );
             GameResultBus resultBus = new GameResultBus();
-            new MovementObserver(movement, resultBus);
+            new MovementObserver(movement).Connect(resultBus);
 
             return (
                 game,

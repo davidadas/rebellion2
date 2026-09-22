@@ -24,12 +24,13 @@ namespace Rebellion.Tests.Simulation
         public void SetUp()
         {
             _results = new GameResultBus();
-            _observer = new FogOfWarObserver(_game, new FogOfWarCommands(_game), _results);
+            _observer = new FogOfWarObserver(_game, new FogOfWarCommands(_game));
         }
 
         [Test]
-        public void Constructor_SabotagedObject_RegistersSnapshotInvalidation()
+        public void Connect_SabotagedObject_RegistersSnapshotInvalidation()
         {
+            _observer.Connect(_results);
             _coruscant.EnergyCapacity = 1;
             Building mine = CreateBuilding("MINE1", _empire);
             _game.AttachNode(mine, _coruscant);
@@ -57,6 +58,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Dispose_IntelligenceResult_StopsRecordingObservations()
         {
+            _observer.Connect(_results);
             _observer.Dispose();
 
             _results.Publish(

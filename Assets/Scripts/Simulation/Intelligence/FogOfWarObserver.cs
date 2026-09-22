@@ -11,22 +11,29 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Selects intelligence observations and sabotage invalidations from completed results.
     /// </summary>
-    public sealed class FogOfWarObserver : IDisposable
+    public sealed class FogOfWarObserver : IResultObserver, IDisposable
     {
         private readonly GameRoot _game;
         private readonly FogOfWarCommands _commands;
-        private readonly IDisposable[] _subscriptions;
+        private IDisposable[] _subscriptions;
 
         /// <summary>
-        /// Connects result observation to the commands that update faction intelligence.
+        /// Creates the observer that updates faction intelligence.
         /// </summary>
         /// <param name="game">The game containing the observing factions.</param>
         /// <param name="commands">The commands that record and invalidate observations.</param>
-        /// <param name="results">The bus that delivers intelligence and sabotage results.</param>
-        public FogOfWarObserver(GameRoot game, FogOfWarCommands commands, GameResultBus results)
+        public FogOfWarObserver(GameRoot game, FogOfWarCommands commands)
         {
             _game = game;
             _commands = commands;
+        }
+
+        /// <summary>Registers intelligence and sabotage callbacks with the result bus.</summary>
+        /// <param name="results">The bus that delivers intelligence and sabotage results.</param>
+        public void Connect(GameResultBus results)
+        {
+            if (_subscriptions != null)
+                throw new InvalidOperationException("Fog of war observer is already connected.");
             if (results == null)
                 throw new ArgumentNullException(nameof(results));
 
@@ -40,7 +47,7 @@ namespace Rebellion.Simulation
         /// <summary>Stops receiving intelligence and sabotage results.</summary>
         public void Dispose()
         {
-            foreach (IDisposable subscription in _subscriptions)
+            foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
                 subscription.Dispose();
         }
 
