@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Rebellion.AI.Core;
-using Rebellion.AI.Production;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
+using Rebellion.AI.Phases;
+using Rebellion.AI.Planners;
+using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -299,6 +302,9 @@ public static partial class HeadlessSimulationRunner
         FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
         MovementSystem movement = new MovementSystem(game, fogOfWar, fleetSystem);
         ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleetSystem);
+        GalaxyMap factionView = fogOfWar.BuildFactionView(faction);
+        AIAssessment assessment = new AIAssessment(game, faction, factionView);
+        AIStrategicPlan strategicPlan = new AIStrategicPlan(game, assessment);
         AITurnContext context = new AITurnContext(
             game,
             faction,
@@ -308,14 +314,17 @@ public static partial class HeadlessSimulationRunner
             null,
             null,
             new SystemRandomProvider(0),
-            fogOfWar.BuildFactionView(faction)
+            assessment,
+            strategicPlan,
+            factionView
         );
         AIProductionPlanner productionPlanner = new AIProductionPlanner();
-        List<AIProductionRequirement> requirements = productionPlanner.BuildRequirements(context);
+        new AIDemandGenerationPhase().Execute(context);
         List<AIManufactureProposal> proposals = productionPlanner
             .Plan(context)
             .OfType<AIManufactureProposal>()
             .ToList();
+        List<AIProductionDemand> demands = context.ProductionDemands.ToList();
         context.AddProposals(proposals);
         new AIScoringPhase().Execute(context);
         List<AIManufactureProposal> selected = new AISelectionPhase()
@@ -323,15 +332,15 @@ public static partial class HeadlessSimulationRunner
             .OfType<AIManufactureProposal>()
             .ToList();
 
-        summary.ProductionDemandCount = requirements.Count;
+        summary.ProductionDemandCount = demands.Count;
         summary.ProjectedEconomyMaintenanceHeadroom = context
             .Assessment
             .ProjectedEconomyMaintenanceHeadroom;
-        summary.MineDemandCount = requirements.Count(requirement =>
-            requirement.Kind == AIProductionRequirementKind.Mine
+        summary.MineDemandCount = demands.Count(demand =>
+            demand.Kind == AIProductionDemandKind.Mine
         );
-        summary.RefineryDemandCount = requirements.Count(requirement =>
-            requirement.Kind == AIProductionRequirementKind.Refinery
+        summary.RefineryDemandCount = demands.Count(demand =>
+            demand.Kind == AIProductionDemandKind.Refinery
         );
         summary.MineDestinationCount = context.Assessment.OwnedPlanets.Count(planet =>
             planet.IsColonized
@@ -347,32 +356,32 @@ public static partial class HeadlessSimulationRunner
         );
         summary.ProductionProposalCount = proposals.Count;
         summary.SelectedProductionProposalCount = selected.Count;
-        summary.PlanetaryDefenseDemandCount = requirements.Count(requirement =>
-            requirement.Kind == AIProductionRequirementKind.PlanetaryDefense
+        summary.PlanetaryDefenseDemandCount = demands.Count(demand =>
+            demand.Kind == AIProductionDemandKind.PlanetaryDefense
         );
-        summary.PlanetaryDefenseDemandQuantity = requirements
-            .Where(requirement => requirement.Kind == AIProductionRequirementKind.PlanetaryDefense)
-            .Sum(requirement => requirement.QuantityNeeded);
+        summary.PlanetaryDefenseDemandQuantity = demands
+            .Where(demand => demand.Kind == AIProductionDemandKind.PlanetaryDefense)
+            .Sum(demand => demand.QuantityNeeded);
         summary.PlanetaryDefenseProposalCount = proposals.Count(proposal =>
-            proposal.Requirement.Kind == AIProductionRequirementKind.PlanetaryDefense
+            proposal.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
         );
         summary.SelectedPlanetaryDefenseProposalCount = selected.Count(proposal =>
-            proposal.Requirement.Kind == AIProductionRequirementKind.PlanetaryDefense
+            proposal.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
         );
-        summary.GarrisonDemandCount = requirements.Count(requirement =>
-            requirement.Kind == AIProductionRequirementKind.GarrisonRegimentReserve
+        summary.GarrisonDemandCount = demands.Count(demand =>
+            demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
         );
         summary.GarrisonProposalCount = proposals.Count(proposal =>
-            proposal.Requirement.Kind == AIProductionRequirementKind.GarrisonRegimentReserve
+            proposal.Demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
         );
         summary.SelectedGarrisonProposalCount = selected.Count(proposal =>
-            proposal.Requirement.Kind == AIProductionRequirementKind.GarrisonRegimentReserve
+            proposal.Demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
         );
         summary.BuildingProductionProposalCount = proposals.Count(proposal =>
-            proposal.Requirement.ManufacturingType == ManufacturingType.Building
+            proposal.Demand.ManufacturingType == ManufacturingType.Building
         );
         summary.SelectedBuildingProductionProposalCount = selected.Count(proposal =>
-            proposal.Requirement.ManufacturingType == ManufacturingType.Building
+            proposal.Demand.ManufacturingType == ManufacturingType.Building
         );
         summary.SelectedProductionMaintenanceCost = selected.Sum(proposal =>
             proposal.GetMaintenanceCost()
@@ -380,7 +389,7 @@ public static partial class HeadlessSimulationRunner
         summary.ProductionProposalDiagnostics = proposals
             .Select(proposal => new ProductionProposalDiagnostic
             {
-                DemandKind = proposal.Requirement.Kind.ToString(),
+                DemandKind = proposal.Demand.Kind.ToString(),
                 ProductTypeId = proposal.Product?.GetReference()?.GetTypeID(),
                 DestinationId = proposal.Destination?.InstanceID,
                 ProducerId = proposal.ProducerPlanet?.InstanceID,

@@ -14,8 +14,8 @@ utility decision: the question is whether it suppresses otherwise feasible strat
 | Fleet production routing | `AIFleetProductionAllocationScorer` | Configured sequential allocation |
 | Production-facility placement | `AIInfrastructurePlacementScorer` | Configured utility |
 | Sector production-hub assignment | `AIInfrastructureAllocationScorer` | Configured turn-scoped allocation |
-| Capital-ship reinforcement need | `AIFleetReinforcementUtility` | Shared configured utility |
-| Colonization target choice | `AIColonizationTargetScorer` | Configured utility |
+| Capital-ship reinforcement need | `AIFleetProductionAllocationScorer.ScoreDefenseNeed` | Shared configured utility |
+| Colonization target choice | `AIFleetPlanner.ScoreColonizationTarget` | Configured utility |
 | Unit technology choice other than capital-ship hulls | Production technology scorers | Configured utility |
 | Capital-ship hull choice | Seeded eligible-template selection | Deliberately excluded from this migration |
 

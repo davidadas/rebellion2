@@ -13,9 +13,9 @@ Strategic decisions follow one data flow:
 
 Use a response curve when a measured fact changes how desirable an otherwise valid option is.
 Examples include strategic value, readiness, travel efficiency, risk, production deficit, and
-technology capability. The domain owner normalizes its measurement to zero through one before
-scoring. Each consideration owns only its response curve and contribution weight in game
-configuration.
+technology capability. Each consideration owns its saturation value, response curve, and
+contribution weight in game configuration. The scorer supplies the raw value and normalizes it
+through that consideration before scoring.
 
 Keep hard constraints outside utility scoring. Ownership, manufacturing compatibility, available
 energy, fleet capacity, mission legality, and minimum force requirements determine whether an
@@ -26,10 +26,9 @@ Keep domain calculations outside utility scoring. Percent bounds, combat totals,
 travel distance, build duration, and fulfillment ratios describe game state. Feed their normalized
 results into considerations when they influence preference.
 
-Named raw-domain endpoints live at the shared `AIUtilityDomain` boundary. Decision-specific
-endpoints have distinct semantic names instead of anonymous divisors. `AIUtility.EvaluateCurve`
-rejects inputs outside zero through one so a missing normalization step fails at its source instead
-of silently saturating.
+`AIConsiderationConfig.SaturationValue` defines the raw value mapped to one for that consideration.
+`AIUtility.EvaluateCurve` rejects inputs outside zero through one so a missing normalization step
+fails at its source instead of silently saturating.
 
 Use deterministic identifiers only to resolve equal utility. A tie-break must not silently act as
 a second preference model. If a gameplay attribute consistently decides between otherwise valid
@@ -57,10 +56,10 @@ selection still uses `DefenseUtility` so allocation tie-breaks cannot distort th
 defense versus unrelated proposal types.
 
 Defense production and live capital-ship transfers evaluate their remaining strength through
-`AIFleetReinforcementUtility`. Callers supply projected strength for production and ready strength
+`AIFleetProductionAllocationScorer.ScoreDefenseNeed`. Callers supply projected strength for production and ready strength
 for an immediate transfer; the shared utility owns how the resulting need maps to preference.
 
-Colonization continuation uses `AIColonizationTargetScorer` after a fleet has been assigned to a
+Colonization continuation uses the private `AIFleetPlanner.ScoreColonizationTarget` policy after a fleet has been assigned to a
 system. `ColonizationTargetUtility` owns the economic preference between eligible colonies, so the
 planner does not hide a second target policy in chained sorting.
 
@@ -87,11 +86,12 @@ hard rule by using a score magnitude that other considerations cannot overcome.
 Policy targets, limits, and normalization scales remain explicit domain values. Preferences use
 `AIConsiderationConfig`:
 
-- `Curve` controls the response shape.
+- `SaturationValue` defines the raw value that maps to one.
+- `Curve` controls the response shape after normalization.
 - `Weight` is a relative importance from zero through one.
 
-Scorers must pass normalized inputs. Raw game-unit scales do not belong in consideration
-configuration, and the utility accumulator does not accept unnormalized values.
+Scorers normalize raw values with their owning consideration before passing them to the utility
+accumulator. Ratios that are intrinsically normalized remain direct inputs.
 
 `AIUtilityScore.Value` returns a weighted average for local decisions whose candidates all use the
 same fixed consideration vector. `AIUtilityScore.RankValue` preserves signed benefit-minus-cost

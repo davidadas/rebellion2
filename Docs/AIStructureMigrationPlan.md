@@ -116,7 +116,7 @@ command, decision-source, or behavior-tree hierarchies.
   position and returns the exact manufacturing action passed to allocation and execution.
 - `AIProposal`, `AIProposalPriority`, `AIClaimKeys`: common proposal contract.
 - `IAIProposalPlanner`, `IAIProposalScorer`: extension contracts.
-- `AIUtility`, `AIUtilityScore`, `AIUtilityDomain`: shared utility math.
+- `AIUtility`, `AIUtilityScore`: shared utility math.
 
 ### Fleet
 
