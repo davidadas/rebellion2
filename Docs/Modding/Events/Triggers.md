@@ -435,22 +435,27 @@ Activates after a duel resolves.
 </Triggers>
 ```
 
-### CharacterEncounter
+### MissionStarted
 
-Activates when one officer finishes transit and becomes physically present with an opposing
-officer at the same planet. Officers that are captured, killed, or still in direct or inherited
-transit do not produce encounters. Officer filters match in either arrival order.
+Activates after a mission is created and its participants are dispatched. For a remote mission,
+this occurs before its participants arrive at the target.
 
 **Optional options**
 
-- `FirstOfficerInstanceID` **[Optional]:** The `InstanceID` of one officer in the encounter.
-- `SecondOfficerInstanceID` **[Optional]:** The `InstanceID` of the other officer in the encounter.
-- `Bindings` **[Optional]:** Supports `FirstOfficer`, `SecondOfficer`, and `Location`.
+- `MissionTypeID` **[Optional]:** The mission type that must have started.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have started the mission.
+- `Participants` **[Optional]:** Filters the mission's main or decoy participants.
+- `Bindings` **[Optional]:** Supports `Mission`, `MissionTypeID`, `Location`, and `Participants`.
 
 ```xml
 <Triggers>
-  <CharacterEncounter FirstOfficerInstanceID="LUKE_SKYWALKER"
-                      SecondOfficerInstanceID="DARTH_VADER"/>
+  <MissionStarted MissionTypeID="ESPIONAGE">
+    <Participants Match="Any">
+      <Units>
+        <Unit UnitInstanceID="LUKE_SKYWALKER"/>
+      </Units>
+    </Participants>
+  </MissionStarted>
 </Triggers>
 ```
 

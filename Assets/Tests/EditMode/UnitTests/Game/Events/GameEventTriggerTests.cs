@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Game.Events
                     new ForceDiscoveryChangedTrigger(),
                     new UnitOwnershipChangedTrigger(),
                     new UnitDestroyedTrigger(),
-                    new CharacterEncounterTrigger(),
+                    new MissionStartedTrigger(),
                     new SpaceCombatCompletedTrigger(),
                     new ManufacturingCompletedTrigger
                     {
@@ -180,31 +180,32 @@ namespace Rebellion.Tests.Game.Events
         }
 
         /// <summary>
-        /// Verifies character encounter filters do not depend on which officer arrived.
+        /// Verifies mission-start filters apply mission type and participants.
         /// </summary>
         [Test]
-        public void Matches_CharacterEncounterTrigger_AppliesPairInEitherOrder()
+        public void Matches_MissionStartedTrigger_AppliesTypeAndParticipantFilters()
         {
-            CharacterEncounterTrigger trigger = new CharacterEncounterTrigger
+            Officer luke = new Officer { InstanceID = "luke" };
+            MissionStartedTrigger trigger = new MissionStartedTrigger
             {
-                FirstOfficerInstanceID = "luke",
-                SecondOfficerInstanceID = "vader",
+                MissionTypeID = "Diplomacy",
+                Participants = new MissionParticipantFilter
+                {
+                    Units = new List<EventUnitReference>
+                    {
+                        new EventUnitReference { UnitInstanceID = "luke" },
+                    },
+                },
             };
-            CharacterEncounterResult forward = new CharacterEncounterResult
+            MissionStartedResult result = new MissionStartedResult
             {
-                FirstOfficer = new Officer { InstanceID = "luke" },
-                SecondOfficer = new Officer { InstanceID = "vader" },
-            };
-            CharacterEncounterResult reverse = new CharacterEncounterResult
-            {
-                FirstOfficer = forward.SecondOfficer,
-                SecondOfficer = forward.FirstOfficer,
+                MissionTypeID = "Diplomacy",
+                Participants = new List<IMissionParticipant> { luke },
             };
 
-            Assert.IsTrue(trigger.Matches(forward));
-            Assert.IsTrue(trigger.Matches(reverse));
-            reverse.FirstOfficer.InstanceID = "palpatine";
-            Assert.IsFalse(trigger.Matches(reverse));
+            Assert.IsTrue(trigger.Matches(result));
+            result.Participants.Clear();
+            Assert.IsFalse(trigger.Matches(result));
         }
 
         [TestCaseSource(nameof(UnitDestructionResults))]

@@ -172,6 +172,26 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(isMet);
         }
 
+        /// <summary>
+        /// Verifies inherited fleet movement counts as transit for an embarked officer.
+        /// </summary>
+        [Test]
+        public void IsInTransit_OfficerCarriedByMovingFleet_ReturnsTrue()
+        {
+            GameRoot game = BuildHierarchy(out _, out Fleet fleet, out CapitalShip ship);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(officer, ship);
+            fleet.Movement = new MovementState();
+            IsInTransitConditional condition = new IsInTransitConditional
+            {
+                UnitInstanceID = officer.InstanceID,
+            };
+
+            bool isMet = condition.IsMet(game);
+
+            Assert.IsTrue(isMet);
+        }
+
         [Test]
         public void HasBuildingType_InactivePlanetWithEnabledBuilding_ReturnsTrue()
         {

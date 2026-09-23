@@ -442,6 +442,17 @@ namespace Rebellion.Systems
             _game.AttachNode(mission, planet);
 
             BeginMission(mission);
+            _pendingResults.Add(
+                new MissionStartedResult
+                {
+                    Mission = mission,
+                    MissionTypeID = mission.ConfigKey,
+                    Location = planet,
+                    Participants = mission.GetAllParticipants(),
+                    SourceEventInstanceID = mission.SourceEventInstanceID,
+                    Tick = _game.CurrentTick,
+                }
+            );
             return true;
         }
 

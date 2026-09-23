@@ -258,6 +258,18 @@ namespace Rebellion.Game.Results
     #region Mission
 
     /// <summary>
+    /// A mission was created and its participants were dispatched.
+    /// </summary>
+    public class MissionStartedResult : GameResult
+    {
+        public Mission Mission { get; set; }
+        public string MissionTypeID { get; set; }
+        public Planet Location { get; set; }
+        public List<IMissionParticipant> Participants { get; set; } =
+            new List<IMissionParticipant>();
+    }
+
+    /// <summary>
     /// A mission completed with a recorded outcome.
     /// </summary>
     public class MissionCompletedResult : GameResult
@@ -479,16 +491,6 @@ namespace Rebellion.Game.Results
         public IGameEntity Unit { get; set; }
         public Planet Destination { get; set; }
         public string MovementGroupID { get; set; }
-    }
-
-    /// <summary>
-    /// Two opposing officers became physically present at the same planet.
-    /// </summary>
-    public class CharacterEncounterResult : GameResult
-    {
-        public Officer FirstOfficer { get; set; }
-        public Officer SecondOfficer { get; set; }
-        public Planet Location { get; set; }
     }
 
     /// <summary>
