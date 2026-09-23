@@ -351,6 +351,17 @@ namespace Rebellion.Game.Events
                 "MovementGroupID",
                 result => result.MovementGroupID
             );
+            Add<CharacterEncounterResult, Officer>(
+                arguments,
+                "FirstOfficer",
+                result => result.FirstOfficer
+            );
+            Add<CharacterEncounterResult, Officer>(
+                arguments,
+                "SecondOfficer",
+                result => result.SecondOfficer
+            );
+            Add<CharacterEncounterResult, Planet>(arguments, "Location", result => result.Location);
             Add<SpaceCombatResult, Fleet>(
                 arguments,
                 "AttackerFleet",
@@ -1072,6 +1083,45 @@ namespace Rebellion.Game.Events
                 && MatchesInstanceID(DestinationInstanceID, arrived.Destination?.InstanceID)
                 && MatchesInstanceID(SourceEventInstanceID, arrived.SourceEventInstanceID);
         }
+    }
+
+    /// <summary>
+    /// Activates when the authored pair of officers physically encounters one another.
+    /// </summary>
+    [PersistableObject(Name = "CharacterEncounter")]
+    public sealed class CharacterEncounterTrigger : GameEventTrigger
+    {
+        [PersistableAttribute]
+        public string FirstOfficerInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string SecondOfficerInstanceID { get; set; }
+
+        internal override Type ResultType => typeof(CharacterEncounterResult);
+
+        /// <summary>
+        /// Checks whether the encountered pair matches regardless of arrival order.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the authored pair encountered one another.</returns>
+        internal override bool Matches(GameResult result)
+        {
+            if (result is not CharacterEncounterResult encounter)
+                return false;
+
+            return MatchesPair(encounter.FirstOfficer, encounter.SecondOfficer)
+                || MatchesPair(encounter.SecondOfficer, encounter.FirstOfficer);
+        }
+
+        /// <summary>
+        /// Checks one ordering of the encountered officer pair.
+        /// </summary>
+        /// <param name="first">The possible first officer.</param>
+        /// <param name="second">The possible second officer.</param>
+        /// <returns>True when this ordering matches the authored identifiers.</returns>
+        private bool MatchesPair(Officer first, Officer second) =>
+            MatchesInstanceID(FirstOfficerInstanceID, first?.InstanceID)
+            && MatchesInstanceID(SecondOfficerInstanceID, second?.InstanceID);
     }
 
     #endregion

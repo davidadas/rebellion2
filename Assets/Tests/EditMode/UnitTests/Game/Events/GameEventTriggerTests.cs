@@ -30,6 +30,7 @@ namespace Rebellion.Tests.Game.Events
                     new ForceDiscoveryChangedTrigger(),
                     new UnitOwnershipChangedTrigger(),
                     new UnitDestroyedTrigger(),
+                    new CharacterEncounterTrigger(),
                     new SpaceCombatCompletedTrigger(),
                     new ManufacturingCompletedTrigger
                     {
@@ -176,6 +177,34 @@ namespace Rebellion.Tests.Game.Events
             Assert.IsTrue(trigger.Matches(result));
             result.Destination.InstanceID = "elsewhere";
             Assert.IsFalse(trigger.Matches(result));
+        }
+
+        /// <summary>
+        /// Verifies character encounter filters do not depend on which officer arrived.
+        /// </summary>
+        [Test]
+        public void Matches_CharacterEncounterTrigger_AppliesPairInEitherOrder()
+        {
+            CharacterEncounterTrigger trigger = new CharacterEncounterTrigger
+            {
+                FirstOfficerInstanceID = "luke",
+                SecondOfficerInstanceID = "vader",
+            };
+            CharacterEncounterResult forward = new CharacterEncounterResult
+            {
+                FirstOfficer = new Officer { InstanceID = "luke" },
+                SecondOfficer = new Officer { InstanceID = "vader" },
+            };
+            CharacterEncounterResult reverse = new CharacterEncounterResult
+            {
+                FirstOfficer = forward.SecondOfficer,
+                SecondOfficer = forward.FirstOfficer,
+            };
+
+            Assert.IsTrue(trigger.Matches(forward));
+            Assert.IsTrue(trigger.Matches(reverse));
+            reverse.FirstOfficer.InstanceID = "palpatine";
+            Assert.IsFalse(trigger.Matches(reverse));
         }
 
         [TestCaseSource(nameof(UnitDestructionResults))]

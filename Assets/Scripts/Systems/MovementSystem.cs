@@ -1830,6 +1830,7 @@ namespace Rebellion.Systems
             if (destination is Mission)
             {
                 CompleteMissionParticipantArrival(movable);
+                AddCharacterEncounterResults(movable, destinationPlanet, results);
                 return;
             }
 
@@ -1845,6 +1846,7 @@ namespace Rebellion.Systems
             try
             {
                 CompleteArrival(movable, destination, destinationPlanet, results);
+                AddCharacterEncounterResults(movable, destinationPlanet, results);
                 if (completesManufacturingDelivery)
                     CompleteManufacturingDelivery(movable);
                 AddArrivalResults(
@@ -1895,6 +1897,77 @@ namespace Rebellion.Systems
         private void CompleteMissionParticipantArrival(IMovable movable)
         {
             movable.Movement = null;
+        }
+
+        /// <summary>
+        /// Records encounters created when an officer or officer-carrying unit finishes transit.
+        /// </summary>
+        /// <param name="movable">The unit that finished transit.</param>
+        /// <param name="destinationPlanet">The planet where transit completed.</param>
+        /// <param name="results">The collection receiving encounter results.</param>
+        private void AddCharacterEncounterResults(
+            IMovable movable,
+            Planet destinationPlanet,
+            ICollection<GameResult> results
+        )
+        {
+            Officer[] arrivingOfficers = (
+                movable is Officer arrivingOfficer
+                    ? new[] { arrivingOfficer }
+                    : (movable as ISceneNode)?.GetChildren<Officer>(recursive: true)
+                        ?? Enumerable.Empty<Officer>()
+            )
+                .Where(IsAvailableForEncounter)
+                .ToArray();
+            if (arrivingOfficers.Length == 0)
+                return;
+
+            Officer[] presentOfficers = destinationPlanet
+                .GetChildren<Officer>(recursive: true)
+                .Where(IsAvailableForEncounter)
+                .ToArray();
+            foreach (Officer arriving in arrivingOfficers)
+            {
+                foreach (Officer present in presentOfficers)
+                {
+                    if (
+                        ReferenceEquals(arriving, present)
+                        || arriving.OwnerInstanceID == present.OwnerInstanceID
+                    )
+                        continue;
+
+                    results.Add(
+                        new CharacterEncounterResult
+                        {
+                            FirstOfficer = arriving,
+                            SecondOfficer = present,
+                            Location = destinationPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns whether an officer is active and physically present for an encounter.
+        /// </summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <returns>True when the officer may encounter an opposing officer.</returns>
+        private static bool IsAvailableForEncounter(Officer officer)
+        {
+            if (officer is null or { IsKilled: true } or { IsCaptured: true })
+                return false;
+
+            for (ISceneNode node = officer; node is not Planet; node = node.GetParent())
+            {
+                if (node is IMovable { Movement: not null })
+                    return false;
+                if (node == null)
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>

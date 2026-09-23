@@ -2899,6 +2899,48 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(movementGroupId, arrival.MovementGroupID);
         }
 
+        /// <summary>
+        /// Verifies an arriving officer encounters a stationary opposing officer at the destination.
+        /// </summary>
+        [Test]
+        public void UpdateMovement_OfficerArrivesWithOpponentPresent_EmitsCharacterEncounter()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementSystem movement) =
+                BuildScene();
+            Officer opponent = EntityFactory.CreateOfficer("opponent", "rebels");
+            game.AttachNode(opponent, destination);
+            movement.RequestMove(officer, destination);
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+
+            CharacterEncounterResult encounter = movement
+                .ProcessTick()
+                .OfType<CharacterEncounterResult>()
+                .Single();
+
+            Assert.AreSame(officer, encounter.FirstOfficer);
+            Assert.AreSame(opponent, encounter.SecondOfficer);
+            Assert.AreSame(destination, encounter.Location);
+        }
+
+        /// <summary>
+        /// Verifies an opponent parented beneath the destination cannot encounter before arrival.
+        /// </summary>
+        [Test]
+        public void UpdateMovement_OfficerArrivesWhileOpponentStillInTransit_DoesNotEmitEncounter()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementSystem movement) =
+                BuildScene();
+            Officer opponent = EntityFactory.CreateOfficer("opponent", "rebels");
+            opponent.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            game.AttachNode(opponent, destination);
+            movement.RequestMove(officer, destination);
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+
+            List<GameResult> results = movement.ProcessTick();
+
+            Assert.IsEmpty(results.OfType<CharacterEncounterResult>());
+        }
+
         [Test]
         public void UpdateMovement_OnArrival_UnitRemainsAtDestination()
         {

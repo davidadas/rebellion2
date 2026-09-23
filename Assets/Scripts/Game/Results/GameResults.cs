@@ -482,6 +482,16 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// Two opposing officers became physically present at the same planet.
+    /// </summary>
+    public class CharacterEncounterResult : GameResult
+    {
+        public Officer FirstOfficer { get; set; }
+        public Officer SecondOfficer { get; set; }
+        public Planet Location { get; set; }
+    }
+
+    /// <summary>
     /// A fleet completed its assigned waypoint route.
     /// </summary>
     public class FleetWaypointsCompletedResult : GameResult

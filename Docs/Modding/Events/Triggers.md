@@ -435,6 +435,25 @@ Activates after a duel resolves.
 </Triggers>
 ```
 
+### CharacterEncounter
+
+Activates when one officer finishes transit and becomes physically present with an opposing
+officer at the same planet. Officers that are captured, killed, or still in direct or inherited
+transit do not produce encounters. Officer filters match in either arrival order.
+
+**Optional options**
+
+- `FirstOfficerInstanceID` **[Optional]:** The `InstanceID` of one officer in the encounter.
+- `SecondOfficerInstanceID` **[Optional]:** The `InstanceID` of the other officer in the encounter.
+- `Bindings` **[Optional]:** Supports `FirstOfficer`, `SecondOfficer`, and `Location`.
+
+```xml
+<Triggers>
+  <CharacterEncounter FirstOfficerInstanceID="LUKE_SKYWALKER"
+                      SecondOfficerInstanceID="DARTH_VADER"/>
+</Triggers>
+```
+
 ## Manufacturing
 
 ### ManufacturingCompleted
