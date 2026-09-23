@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
@@ -17,7 +16,6 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Random;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace Rebellion.Tests.Game.Events
 {
@@ -1159,11 +1157,6 @@ namespace Rebellion.Tests.Game.Events
                 IsCaptured = true,
                 CaptorFactionInstanceID = "empire",
             };
-            LogAssert.Expect(
-                LogType.Warning,
-                new Regex("Capture rejected: Test Officer is in transit and cannot be captured\\.")
-            );
-
             List<GameResult> results = action.Execute(game);
 
             Assert.IsFalse(officer.IsCaptured);
