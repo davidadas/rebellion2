@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -350,17 +351,44 @@ namespace Rebellion.Tests.Game.Units
         public void SerializeAndDeserialize_CapitalShipWithChildren_MaintainsState()
         {
             _capitalShip.ManufacturingQueueSequence = 7;
+            _capitalShip.ModelPath = "Pack/Units/TestCapitalShip/Models/model";
             _capitalShip.ShipNamePoolID = "POOL";
             _capitalShip.AssignName("Named Ship");
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
             Starfighter starfighter = new Starfighter();
             Regiment regiment = new Regiment();
             SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
+            HardpointGroup hardpointGroup = new HardpointGroup
+            {
+                Hardpoints = new List<Hardpoint>
+                {
+                    new Hardpoint
+                    {
+                        InstanceID = "GROUP-LASER-1",
+                        TypeID = "LASER",
+                        DisplayName = "Port laser",
+                        Health = 25,
+                        WeaponType = HardpointWeaponType.LaserCannon,
+                    },
+                    new Hardpoint { Health = 25 },
+                },
+            };
 
             _capitalShip.AddOfficer(officer);
             _capitalShip.AddStarfighter(starfighter);
             _capitalShip.AddRegiment(regiment);
             _capitalShip.AddSpecialForces(specialForces);
+            _capitalShip.Components.Add(
+                new Hardpoint
+                {
+                    InstanceID = "SHIP-LASER-1",
+                    TypeID = "LASER",
+                    DisplayName = "Forward laser",
+                    Health = 15,
+                    WeaponType = HardpointWeaponType.Turbolaser,
+                }
+            );
+            _capitalShip.HardpointGroups.Add(hardpointGroup);
 
             string serialized = SerializationHelper.Serialize(_capitalShip);
             CapitalShip deserialized = SerializationHelper.Deserialize<CapitalShip>(serialized);
@@ -386,6 +414,7 @@ namespace Rebellion.Tests.Game.Units
                 "ManufacturingQueueSequence should be correctly deserialized."
             );
             Assert.AreEqual("POOL", deserialized.ShipNamePoolID);
+            Assert.AreEqual(_capitalShip.ModelPath, deserialized.ModelPath);
             Assert.AreEqual("Named Ship", deserialized.DisplayName);
             Assert.IsTrue(deserialized.HasAssignedName);
             Assert.AreEqual(
@@ -413,6 +442,156 @@ namespace Rebellion.Tests.Game.Units
                 deserialized.GetChildren<SpecialForces>().Count,
                 "SpecialForces should be correctly deserialized."
             );
+            Assert.AreEqual(1, deserialized.Components.Count);
+            Assert.IsInstanceOf<Hardpoint>(deserialized.Components[0]);
+            Assert.AreEqual("SHIP-LASER-1", deserialized.Components[0].InstanceID);
+            Assert.AreEqual("LASER", deserialized.Components[0].TypeID);
+            Assert.AreEqual("Forward laser", deserialized.Components[0].DisplayName);
+            Assert.AreEqual(15, deserialized.Components[0].Health);
+            Assert.AreEqual(
+                HardpointWeaponType.Turbolaser,
+                ((Hardpoint)deserialized.Components[0]).WeaponType
+            );
+            Assert.AreEqual(1, deserialized.HardpointGroups.Count);
+            HardpointGroup deserializedGroup = deserialized.HardpointGroups[0];
+            Assert.AreEqual(2, deserializedGroup.Hardpoints.Count);
+            Assert.AreEqual("GROUP-LASER-1", deserializedGroup.Hardpoints[0].InstanceID);
+            Assert.AreEqual("LASER", deserializedGroup.Hardpoints[0].TypeID);
+            Assert.AreEqual("Port laser", deserializedGroup.Hardpoints[0].DisplayName);
+            Assert.AreEqual(25, deserializedGroup.Hardpoints[0].Health);
+            Assert.AreEqual(
+                HardpointWeaponType.LaserCannon,
+                deserializedGroup.Hardpoints[0].WeaponType
+            );
+        }
+
+        [Test]
+        public void SerializeAndDeserialize_WithSupportedShipComponents_MaintainsState()
+        {
+            _capitalShip.Components.AddRange(
+                new ShipComponent[]
+                {
+                    new ShieldGenerator
+                    {
+                        Health = 80,
+                        Capacity = 300,
+                        RechargeRate = 12,
+                    },
+                    new Engine
+                    {
+                        Health = 90,
+                        SublightSpeed = 5,
+                        Maneuverability = 4,
+                    },
+                    new Hyperdrive { Health = 70, Rating = 2 },
+                    new StarfighterBay { Health = 60, Capacity = 4 },
+                    new GravityWellGenerator { Health = 50 },
+                }
+            );
+
+            string serialized = SerializationHelper.Serialize(_capitalShip);
+            CapitalShip deserialized = SerializationHelper.Deserialize<CapitalShip>(serialized);
+
+            Assert.AreEqual(5, deserialized.Components.Count);
+            Assert.AreEqual(300, ((ShieldGenerator)deserialized.Components[0]).Capacity);
+            Assert.AreEqual(12, ((ShieldGenerator)deserialized.Components[0]).RechargeRate);
+            Assert.AreEqual(5, ((Engine)deserialized.Components[1]).SublightSpeed);
+            Assert.AreEqual(4, ((Engine)deserialized.Components[1]).Maneuverability);
+            Assert.AreEqual(2, ((Hyperdrive)deserialized.Components[2]).Rating);
+            Assert.AreEqual(4, ((StarfighterBay)deserialized.Components[3]).Capacity);
+            Assert.AreEqual(50, ((GravityWellGenerator)deserialized.Components[4]).Health);
+        }
+
+        [Test]
+        public void CreateCopy_WithComponentsAndHardpointGroups_CreatesIndependentCopies()
+        {
+            _capitalShip.ModelPath = "Pack/Units/TestCapitalShip/Models/model";
+            HardpointGroup originalGroup = new HardpointGroup
+            {
+                Hardpoints = new List<Hardpoint> { new Hardpoint { Health = 25 } },
+            };
+            Hardpoint originalComponent = new Hardpoint
+            {
+                InstanceID = "SHIP-LASER-1",
+                TypeID = "LASER",
+                DisplayName = "Forward laser",
+                Health = 15,
+                WeaponType = HardpointWeaponType.LaserCannon,
+            };
+            _capitalShip.Components.Add(originalComponent);
+            _capitalShip.HardpointGroups.Add(originalGroup);
+
+            CapitalShip copy = (CapitalShip)_capitalShip.CreateCopy();
+            Hardpoint copiedComponent = (Hardpoint)copy.Components.Single();
+            HardpointGroup copiedGroup = copy.HardpointGroups.Single();
+            copiedComponent.Health = 5;
+            copiedGroup.Hardpoints[0].Health = 10;
+
+            Assert.AreNotSame(originalComponent, copiedComponent);
+            Assert.AreEqual(_capitalShip.ModelPath, copy.ModelPath);
+            Assert.AreNotSame(originalGroup, copiedGroup);
+            Assert.AreNotSame(originalGroup.Hardpoints[0], copiedGroup.Hardpoints[0]);
+            Assert.AreEqual(originalComponent.InstanceID, copiedComponent.InstanceID);
+            Assert.AreEqual(originalComponent.TypeID, copiedComponent.TypeID);
+            Assert.AreEqual(originalComponent.DisplayName, copiedComponent.DisplayName);
+            Assert.AreEqual(originalComponent.WeaponType, copiedComponent.WeaponType);
+            Assert.AreEqual(15, originalComponent.Health);
+            Assert.AreEqual(25, originalGroup.Hardpoints[0].Health);
+        }
+
+        [Test]
+        public void CreateCopy_WithSupportedShipComponents_CreatesIndependentComponents()
+        {
+            _capitalShip.Components.AddRange(
+                new ShipComponent[]
+                {
+                    new ShieldGenerator
+                    {
+                        Health = 80,
+                        Capacity = 300,
+                        RechargeRate = 12,
+                    },
+                    new Engine
+                    {
+                        Health = 90,
+                        SublightSpeed = 5,
+                        Maneuverability = 4,
+                    },
+                    new Hyperdrive { Health = 70, Rating = 2 },
+                    new StarfighterBay { Health = 60, Capacity = 4 },
+                    new GravityWellGenerator { Health = 50 },
+                }
+            );
+
+            CapitalShip copy = (CapitalShip)_capitalShip.CreateCopy();
+
+            Assert.AreEqual(_capitalShip.Components.Count, copy.Components.Count);
+            for (
+                int componentIndex = 0;
+                componentIndex < _capitalShip.Components.Count;
+                componentIndex++
+            )
+            {
+                Assert.AreNotSame(
+                    _capitalShip.Components[componentIndex],
+                    copy.Components[componentIndex]
+                );
+                Assert.AreEqual(
+                    _capitalShip.Components[componentIndex].GetType(),
+                    copy.Components[componentIndex].GetType()
+                );
+                Assert.AreEqual(
+                    _capitalShip.Components[componentIndex].Health,
+                    copy.Components[componentIndex].Health
+                );
+            }
+
+            Assert.AreEqual(300, ((ShieldGenerator)copy.Components[0]).Capacity);
+            Assert.AreEqual(12, ((ShieldGenerator)copy.Components[0]).RechargeRate);
+            Assert.AreEqual(5, ((Engine)copy.Components[1]).SublightSpeed);
+            Assert.AreEqual(4, ((Engine)copy.Components[1]).Maneuverability);
+            Assert.AreEqual(2, ((Hyperdrive)copy.Components[2]).Rating);
+            Assert.AreEqual(4, ((StarfighterBay)copy.Components[3]).Capacity);
         }
 
         [Test]

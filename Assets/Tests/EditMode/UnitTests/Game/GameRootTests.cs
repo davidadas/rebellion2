@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -96,6 +98,44 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(0, _game.CurrentTick, "Current tick should be initialized to 0");
             Assert.IsEmpty(_game.GetEventPool(), "Event pool should be empty initially");
             Assert.IsEmpty(_game.EventRuntime.States, "Event states should be empty initially");
+            Assert.IsNull(_game.ActiveBattle);
+        }
+
+        [TestCase(BattleKind.Space)]
+        [TestCase(BattleKind.Ground)]
+        public void ActiveBattle_WhenPresent_RoundTripsDirectlyUnderGame(BattleKind kind)
+        {
+            _game.ActiveBattle = new ActiveBattle { Kind = kind, PlanetInstanceId = "PLANET1" };
+
+            string xml = SerializationHelper.Serialize(_game);
+            XElement gameElement = XDocument.Parse(xml).Root;
+            Assert.IsNotNull(gameElement);
+            XElement battleElement = gameElement.Element("ActiveBattle");
+            Assert.IsNotNull(battleElement);
+            Assert.AreEqual(kind.ToString(), battleElement.Element("Kind")?.Value);
+            Assert.AreEqual("PLANET1", battleElement.Element("PlanetInstanceId")?.Value);
+
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
+            Assert.IsNotNull(restored.ActiveBattle);
+            Assert.AreEqual(kind, restored.ActiveBattle.Kind);
+            Assert.AreEqual("PLANET1", restored.ActiveBattle.PlanetInstanceId);
+        }
+
+        [Test]
+        public void ActiveBattle_WhenAbsent_IsOmittedFromSave()
+        {
+            string xml = SerializationHelper.Serialize(_game);
+
+            Assert.IsNull(XDocument.Parse(xml).Root?.Element("ActiveBattle"));
+        }
+
+        [Test]
+        public void ActiveBattle_SaveWithoutActiveBattle_RemainsNull()
+        {
+            string xml = SerializationHelper.Serialize(_game);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
+
+            Assert.IsNull(restored.ActiveBattle);
         }
 
         [Test]

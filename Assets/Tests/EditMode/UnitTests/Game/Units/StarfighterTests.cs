@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Units
@@ -464,9 +466,32 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void CreateCopy_WithModelPath_PreservesPath()
+        {
+            _starfighter.ModelPath = "Pack/Units/TestStarfighter/Models/model";
+
+            Starfighter copy = (Starfighter)_starfighter.CreateCopy();
+
+            Assert.AreEqual(_starfighter.ModelPath, copy.ModelPath);
+        }
+
+        [Test]
         public void SerializeAndDeserialize_WithPopulatedStarfighter_MaintainsState()
         {
             _starfighter.ManufacturingQueueSequence = 7;
+            _starfighter.ModelPath = "Pack/Units/TestStarfighter/Models/model";
+            _starfighter.HardpointGroups.Add(
+                new HardpointGroup
+                {
+                    Hardpoints = new List<Hardpoint>
+                    {
+                        new Hardpoint { Health = 25 },
+                        new Hardpoint { Health = 25 },
+                        new Hardpoint { Health = 25 },
+                        new Hardpoint { Health = 25 },
+                    },
+                }
+            );
             string serialized = SerializationHelper.Serialize(_starfighter);
             Starfighter deserialized = SerializationHelper.Deserialize<Starfighter>(serialized);
 
@@ -475,6 +500,7 @@ namespace Rebellion.Tests.Game.Units
                 deserialized.InstanceID,
                 "InstanceID should be correctly deserialized."
             );
+            Assert.AreEqual(_starfighter.ModelPath, deserialized.ModelPath);
             Assert.AreEqual(
                 _starfighter.OwnerInstanceID,
                 deserialized.OwnerInstanceID,
@@ -605,6 +631,10 @@ namespace Rebellion.Tests.Game.Units
                 ((IMovable)deserialized).GetPosition().Y,
                 "PositionY should be correctly deserialized."
             );
+            Assert.AreEqual(1, deserialized.HardpointGroups.Count);
+            HardpointGroup hardpointGroup = deserialized.HardpointGroups[0];
+            Assert.AreEqual(4, hardpointGroup.Hardpoints.Count);
+            Assert.IsTrue(hardpointGroup.Hardpoints.All(hardpoint => hardpoint.Health == 25));
         }
     }
 }

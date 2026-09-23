@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -69,6 +70,7 @@ namespace Rebellion.Game
         // Game state.
         public int CurrentTick;
         public TickSpeed GameSpeed = TickSpeed.Slow;
+        public ActiveBattle ActiveBattle { get; set; }
 
         // Game events.
         [PersistableMember(Name = "EventPool")]

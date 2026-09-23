@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.ShipComponents;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Units
@@ -17,6 +18,7 @@ namespace Rebellion.Game.Units
         public string BattleResultImagePath { get; set; }
         public string BattleResultInTransitImagePath { get; set; }
         public string BattleResultDamagedImagePath { get; set; }
+        public string ModelPath { get; set; }
 
         // Construction Info.
         public int ConstructionCost { get; set; }
@@ -48,6 +50,10 @@ namespace Rebellion.Game.Units
         public int IonRange;
         public int TorpedoRange;
 
+        // Component Info.
+        public List<ShipComponent> Components { get; set; } = new List<ShipComponent>();
+        public List<HardpointGroup> HardpointGroups { get; set; } = new List<HardpointGroup>();
+
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }
@@ -77,6 +83,7 @@ namespace Rebellion.Game.Units
             copy.BattleResultImagePath = BattleResultImagePath;
             copy.BattleResultInTransitImagePath = BattleResultInTransitImagePath;
             copy.BattleResultDamagedImagePath = BattleResultDamagedImagePath;
+            copy.ModelPath = ModelPath;
             copy.ConstructionCost = ConstructionCost;
             copy.MaintenanceCost = MaintenanceCost;
             copy.BaseBuildSpeed = BaseBuildSpeed;
@@ -100,6 +107,8 @@ namespace Rebellion.Game.Units
             copy.LaserRange = LaserRange;
             copy.IonRange = IonRange;
             copy.TorpedoRange = TorpedoRange;
+            copy.Components = Components?.ConvertAll(component => component?.CreateCopy());
+            copy.HardpointGroups = HardpointGroups?.ConvertAll(group => group?.CreateCopy());
             copy.ProducerOwnerID = ProducerOwnerID;
             copy.ProducerPlanetID = ProducerPlanetID;
             copy.ManufacturingQueueSequence = ManufacturingQueueSequence;
