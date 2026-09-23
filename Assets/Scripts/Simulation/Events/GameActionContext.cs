@@ -117,6 +117,18 @@ namespace Rebellion.Simulation
     internal sealed class GameActionCommandException : Exception
     {
         /// <summary>
+        /// Creates an action-command failure.
+        /// </summary>
+        internal GameActionCommandException() { }
+
+        /// <summary>
+        /// Creates an action-command failure with a description.
+        /// </summary>
+        /// <param name="message">The failure description.</param>
+        internal GameActionCommandException(string message)
+            : base(message) { }
+
+        /// <summary>
         /// Creates an action-command failure with its underlying cause.
         /// </summary>
         /// <param name="message">The failure description.</param>
