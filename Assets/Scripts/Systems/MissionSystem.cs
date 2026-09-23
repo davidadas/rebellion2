@@ -1290,9 +1290,9 @@ namespace Rebellion.Systems
             ISceneNode capturingUnit = null
         )
         {
-            officer.IsCaptured = true;
-            officer.CaptorInstanceID = captorInstanceId;
-            officer.CanEscape = true;
+            if (!officer.TryCapture(captorInstanceId))
+                return;
+
             results.Add(
                 new OfficerCaptureStateResult
                 {

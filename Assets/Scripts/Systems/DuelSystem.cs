@@ -142,9 +142,9 @@ namespace Rebellion.Systems
             if (RollPercent(avoidanceChance))
                 return false;
 
-            encountered.IsCaptured = true;
-            encountered.CaptorInstanceID = opposing.OwnerInstanceID;
-            encountered.CanEscape = true;
+            if (!encountered.TryCapture(opposing.OwnerInstanceID))
+                return false;
+
             reactions.Add(
                 Stamp(
                     new OfficerCaptureStateResult

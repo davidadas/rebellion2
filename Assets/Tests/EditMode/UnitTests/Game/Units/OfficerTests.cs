@@ -1,7 +1,10 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Rebellion.Tests.Game.Units
 {
@@ -163,6 +166,63 @@ namespace Rebellion.Tests.Game.Units
             Officer officer = new Officer();
             bool isOnMission = officer.IsOnMission();
             Assert.IsFalse(isOnMission);
+        }
+
+        [Test]
+        public void TryCapture_WhenStationary_SetsCaptureState()
+        {
+            Officer officer = new Officer();
+
+            bool captured = officer.TryCapture("captor", canEscape: false);
+
+            Assert.IsTrue(captured);
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("captor", officer.CaptorInstanceID);
+            Assert.IsFalse(officer.CanEscape);
+        }
+
+        [Test]
+        public void TryCapture_WithDirectMovement_RejectsCaptureAndLogsWarning()
+        {
+            Officer officer = new Officer
+            {
+                DisplayName = "Test Officer",
+                Movement = new MovementState(),
+            };
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex("Capture rejected: Test Officer is in transit and cannot be captured\\.")
+            );
+
+            bool captured = officer.TryCapture("captor");
+
+            Assert.IsFalse(captured);
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+        }
+
+        [Test]
+        public void TryCapture_AboardMovingFleet_RejectsCaptureAndLogsWarning()
+        {
+            Officer officer = new Officer
+            {
+                DisplayName = "Test Officer",
+                OwnerInstanceID = "owner",
+            };
+            CapitalShip ship = new CapitalShip { OwnerInstanceID = "owner" };
+            Fleet fleet = new Fleet { OwnerInstanceID = "owner", Movement = new MovementState() };
+            officer.SetParent(ship);
+            ship.SetParent(fleet);
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex("Capture rejected: Test Officer is in transit and cannot be captured\\.")
+            );
+
+            bool captured = officer.TryCapture("captor");
+
+            Assert.IsFalse(captured);
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
         }
 
         [Test]

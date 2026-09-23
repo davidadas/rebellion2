@@ -6,6 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
@@ -506,6 +507,28 @@ namespace Rebellion.Game.Units
         public bool IsOnMission()
         {
             return GetParent() is Mission;
+        }
+
+        /// <summary>
+        /// Attempts to place this officer in the custody of another faction.
+        /// </summary>
+        /// <param name="captorInstanceId">The instance ID of the capturing faction.</param>
+        /// <param name="canEscape">Whether the officer can attempt to escape captivity.</param>
+        /// <returns>True when the officer was captured; otherwise false.</returns>
+        public bool TryCapture(string captorInstanceId, bool canEscape = true)
+        {
+            if (((IMovable)this).GetTransitMovement() != null)
+            {
+                GameLogger.Warning(
+                    $"Capture rejected: {GetDisplayName()} is in transit and cannot be captured."
+                );
+                return false;
+            }
+
+            IsCaptured = true;
+            CaptorInstanceID = captorInstanceId;
+            CanEscape = canEscape;
+            return true;
         }
 
         /// <summary>

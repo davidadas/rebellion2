@@ -235,9 +235,8 @@ namespace Rebellion.Game.Missions
             )
                 return results;
 
-            target.IsCaptured = true;
-            target.CaptorInstanceID = OwnerInstanceID;
-            target.CanEscape = true;
+            if (!target.TryCapture(OwnerInstanceID))
+                return results;
 
             results.Add(
                 new OfficerCaptureStateResult

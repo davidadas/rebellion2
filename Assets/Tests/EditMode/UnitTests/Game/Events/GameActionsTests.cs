@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
@@ -15,6 +16,8 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Random;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Rebellion.Tests.Game.Events
 {
@@ -1140,6 +1143,32 @@ namespace Rebellion.Tests.Game.Events
             action.Execute(game);
 
             Assert.IsFalse(officer.CanEscape);
+        }
+
+        [Test]
+        public void SetCaptureStatus_OfficerInTransit_LeavesOfficerFreeAndReturnsNoResult()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", planet.OwnerInstanceID);
+            officer.DisplayName = "Test Officer";
+            officer.Movement = new MovementState();
+            game.AttachNode(officer, planet);
+            SetCaptureStatusAction action = new SetCaptureStatusAction
+            {
+                OfficerInstanceID = officer.InstanceID,
+                IsCaptured = true,
+                CaptorFactionInstanceID = "empire",
+            };
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex("Capture rejected: Test Officer is in transit and cannot be captured\\.")
+            );
+
+            List<GameResult> results = action.Execute(game);
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+            Assert.IsEmpty(results);
         }
 
         [Test]
