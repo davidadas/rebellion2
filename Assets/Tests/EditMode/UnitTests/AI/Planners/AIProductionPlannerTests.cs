@@ -293,6 +293,61 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithSoleConstructionLane_ReservesLaneForConstructionExpansion()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.MinimumConstructionFacilityLanes = 2;
+            game.Config.AI.Infrastructure.PlanetsPerTrainingFacility = 1;
+            game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 1;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "planet",
+                empire.InstanceID,
+                energyCapacity: 10,
+                rawResourceNodes: 2
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Building constructionFacility = AITestSceneBuilder.CreateBuildingTemplate(
+                "construction-template",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Building trainingFacility = AITestSceneBuilder.CreateBuildingTemplate(
+                "training-template",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
+            );
+            empire.ResearchQueue[ManufacturingType.Building] = new List<Technology>
+            {
+                new Technology(constructionFacility),
+                new Technology(trainingFacility),
+            };
+
+            List<AIManufactureProposal> proposals = PlanProduction(
+                    AITestSceneBuilder.CreateContext(game, empire)
+                )
+                .OfType<AIManufactureProposal>()
+                .ToList();
+
+            Assert.IsTrue(
+                proposals.Any(item =>
+                    item.Demand.Kind == AIProductionDemandKind.ConstructionFacility
+                )
+            );
+            Assert.IsFalse(
+                proposals.Any(item => item.Demand.Kind == AIProductionDemandKind.TrainingFacility)
+            );
+        }
+
+        [Test]
         public void Plan_WithHeadroomBelowFacilityAllocationButEnoughForPrimaryHub_AddsProposal()
         {
             (GameRoot game, Faction empire, Planet planet, Building _) = CreateShipyardBatchScene(

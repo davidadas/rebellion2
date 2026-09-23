@@ -4,11 +4,12 @@ using System.Linq;
 using Rebellion.AI;
 using Rebellion.AI.Phases;
 using Rebellion.Game;
-using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
+using Rebellion.Systems.Combat;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
 public static partial class HeadlessSimulationRunner

@@ -111,6 +111,43 @@ namespace Rebellion.Tests.AI.Scorers
         }
 
         [Test]
+        public void GetDiplomacyTargetValue_WithInfrastructureDeficit_PrioritizesMatchingFacility()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.PlanetsPerTrainingFacility = 1;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet facilityWorld = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "facility-world",
+                null
+            );
+            Planet emptyWorld = AITestSceneBuilder.AddPlanet(game, system, "empty-world", null);
+            facilityWorld.SetPopularSupport(empire.InstanceID, 50);
+            emptyWorld.SetPopularSupport(empire.InstanceID, 50);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                facilityWorld,
+                "training-facility",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            double facilityValue = AIMissionProposalScorer.GetDiplomacyTargetValue(
+                context,
+                facilityWorld
+            );
+            double emptyValue = AIMissionProposalScorer.GetDiplomacyTargetValue(
+                context,
+                emptyWorld
+            );
+
+            Assert.Greater(facilityValue, emptyValue);
+        }
+
+        [Test]
         public void Score_RecruitmentProposal_ReturnsHigherScoreForHigherSupportPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

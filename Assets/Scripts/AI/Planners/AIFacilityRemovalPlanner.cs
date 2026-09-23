@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -31,8 +30,7 @@ namespace Rebellion.AI.Planners
             if (context.Assessment.ProjectedMaintenanceHeadroom >= 0)
                 return proposals;
 
-            int minimumShipyardCount = AIProductionCapacityTargets.GetDesiredCount(
-                context,
+            int minimumShipyardCount = context.StrategicPlan.GetInfrastructureTarget(
                 BuildingType.Shipyard
             );
             List<(Planet Planet, int Count, int Rate)> sites = context

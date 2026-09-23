@@ -108,7 +108,7 @@ public static partial class HeadlessSimulationRunner
                 Difficulty = options.Difficulty,
                 VictoryCondition = GameVictoryCondition.Conquest,
                 ResourceAvailability = GameResourceAvailability.Normal,
-                StartingResearchLevel = 1,
+                StartingResearchLevel = 0,
                 StartingFactionIDs = contentPack.Scenario.PlayableFactionIDs.ToArray(),
                 PlayerFactionID = contentPack.Scenario.PlayableFactionIDs.FirstOrDefault(),
                 PackID = contentPack.Definition.ID,

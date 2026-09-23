@@ -193,10 +193,7 @@ namespace Rebellion.AI.Demands
             int productionDemandCount = demands.Count(demand =>
                 demand.ManufacturingType == manufacturingType && demand.Kind != kind
             );
-            int desiredFacilityCount = AIProductionCapacityTargets.GetDesiredCount(
-                context,
-                buildingType
-            );
+            int desiredFacilityCount = context.StrategicPlan.GetInfrastructureTarget(buildingType);
             if (buildingType == BuildingType.TrainingFacility)
             {
                 int demandCapacityTarget = IntegerMath.DivideRoundedUp(
@@ -219,7 +216,7 @@ namespace Rebellion.AI.Demands
                 .ToList();
             int remainingFacilityCount = Math.Max(
                 0,
-                desiredFacilityCount - GetOwnedFacilityCount(context, buildingType)
+                desiredFacilityCount - context.StrategicPlan.GetInfrastructureCount(buildingType)
             );
             if (buildingType == BuildingType.ConstructionFacility)
                 remainingFacilityCount = Math.Max(
@@ -285,19 +282,6 @@ namespace Rebellion.AI.Demands
                         || building.Movement != null
                     )
                 );
-        }
-
-        /// <summary>
-        /// Returns the current and queued count for one facility type.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="buildingType">The facility type.</param>
-        /// <returns>The owned facility count.</returns>
-        private static int GetOwnedFacilityCount(AITurnContext context, BuildingType buildingType)
-        {
-            return context.Assessment.OwnedPlanets.Sum(planet =>
-                planet.GetTotalBuildingTypeCount(buildingType)
-            );
         }
 
         /// <summary>

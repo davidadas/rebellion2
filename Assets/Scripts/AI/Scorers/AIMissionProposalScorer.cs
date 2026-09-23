@@ -374,9 +374,40 @@ namespace Rebellion.AI.Scorers
             bool enabled
         )
         {
-            int opposingSupport = enabled
-                ? proposal.TargetPlanet?.GetOpposingPopularSupport(context.Faction.InstanceID) ?? 0
-                : 0;
+            if (!enabled)
+                return;
+
+            AddDiplomacyTargetUtility(ref score, context, proposal.TargetPlanet);
+        }
+
+        /// <summary>
+        /// Returns the strategic value of one diplomacy target.
+        /// </summary>
+        /// <param name="context">Current faction turn.</param>
+        /// <param name="planet">Diplomacy target to evaluate.</param>
+        /// <returns>The normalized diplomacy-target value.</returns>
+        internal static double GetDiplomacyTargetValue(AITurnContext context, Planet planet)
+        {
+            AIUtilityScore score = new AIUtilityScore();
+            AddDiplomacyTargetUtility(ref score, context, planet);
+            return score.Value;
+        }
+
+        /// <summary>
+        /// Adds support, acquisition, and strategic-infrastructure value for one diplomacy target.
+        /// </summary>
+        /// <param name="score">Score receiving diplomacy considerations.</param>
+        /// <param name="context">Current faction turn.</param>
+        /// <param name="planet">Diplomacy target to evaluate.</param>
+        private static void AddDiplomacyTargetUtility(
+            ref AIUtilityScore score,
+            AITurnContext context,
+            Planet planet
+        )
+        {
+            if (context?.Assessment == null || context.StrategicPlan == null || planet == null)
+                return;
+
             GameConfig.AIDiplomacyUtilityConfig utility = context
                 .Game
                 .Config
@@ -384,15 +415,93 @@ namespace Rebellion.AI.Scorers
                 .MissionPlanning
                 .Utility
                 .Diplomacy;
+            int opposingSupport = planet.GetOpposingPopularSupport(context.Faction.InstanceID);
             bool isCoreWorld =
-                enabled
-                && proposal.TargetPlanet?.GetParentOfType<PlanetSector>()?.SectorType
-                    == PlanetSectorType.Core;
+                planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core;
             score.Add(isCoreWorld ? 1 : 0, utility.CoreWorld);
+
+            if (context.Assessment.IsOwnedPlanet(planet))
+            {
+                score.Add(
+                    AIUtility.Fulfillment(opposingSupport, utility.SupportDeficit),
+                    utility.SupportDeficit
+                );
+                score.Add(
+                    AIUtility.Fulfillment(
+                        context.Assessment.GetDefensiveSupportRisk(planet),
+                        utility.SectorSupportRisk
+                    ),
+                    utility.SectorSupportRisk
+                );
+                return;
+            }
+
+            if (!context.Assessment.IsNeutralPlanet(planet))
+                return;
+
             score.Add(
                 AIUtility.Fulfillment(opposingSupport, utility.SupportDeficit),
                 utility.SupportDeficit
             );
+            AddInfrastructureAcquisitionUtility(
+                ref score,
+                context,
+                planet,
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building,
+                utility.ConstructionFacility
+            );
+            AddInfrastructureAcquisitionUtility(
+                ref score,
+                context,
+                planet,
+                BuildingType.Shipyard,
+                ManufacturingType.Ship,
+                utility.Shipyard
+            );
+            AddInfrastructureAcquisitionUtility(
+                ref score,
+                context,
+                planet,
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop,
+                utility.TrainingFacility
+            );
+
+            if (
+                context.Assessment.ProjectedMaintenanceHeadroom
+                < context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
+            )
+                score.Add(
+                    AIUtility.Fulfillment(planet.GetRawResourceNodes(), utility.ResourceNode),
+                    utility.ResourceNode
+                );
+        }
+
+        /// <summary>
+        /// Adds the value of acquiring facilities that satisfy a current infrastructure deficit.
+        /// </summary>
+        /// <param name="score">Score receiving the acquisition value.</param>
+        /// <param name="context">Current faction turn.</param>
+        /// <param name="planet">Neutral planet being evaluated.</param>
+        /// <param name="buildingType">Infrastructure category supplied by the planet.</param>
+        /// <param name="manufacturingType">Manufacturing capability used to count facilities.</param>
+        /// <param name="consideration">Configured utility consideration.</param>
+        private static void AddInfrastructureAcquisitionUtility(
+            ref AIUtilityScore score,
+            AITurnContext context,
+            Planet planet,
+            BuildingType buildingType,
+            ManufacturingType manufacturingType,
+            GameConfig.AIConsiderationConfig consideration
+        )
+        {
+            double deficitRatio = context.StrategicPlan.GetInfrastructureDeficitRatio(buildingType);
+            double supply = AIUtility.Fulfillment(
+                planet.GetProductionFacilityCount(manufacturingType),
+                consideration
+            );
+            score.Add(supply * deficitRatio, consideration);
         }
 
         /// <summary>

@@ -1134,8 +1134,7 @@ namespace Rebellion.AI.Planners
                         0,
                         context.Game.Config.AI.Infrastructure.FacilityConstructionLaneReserve
                     );
-            int laneLimit =
-                facilityCount > laneReserve ? facilityCount - laneReserve : facilityCount;
+            int laneLimit = Math.Max(0, facilityCount - laneReserve);
             int queueLimit = GetQueueBatchCapacity(context, producerPlanet, building);
             int energyLimit = demand.DestinationPlanet.GetAvailableEnergy();
 

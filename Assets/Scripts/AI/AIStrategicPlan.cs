@@ -17,6 +17,8 @@ namespace Rebellion.AI
         private readonly AIAssessment _assessment;
         private readonly int _targetBattleFleetCount;
         private readonly int _targetMobileCombatStrength;
+        private readonly Dictionary<BuildingType, int> _infrastructureCounts = new();
+        private readonly Dictionary<BuildingType, int> _infrastructureTargets = new();
         private readonly Dictionary<string, AIPlanetDefenseCommitment> _defenseByPlanetId =
             new Dictionary<string, AIPlanetDefenseCommitment>(StringComparer.Ordinal);
 
@@ -38,6 +40,50 @@ namespace Rebellion.AI
             _targetBattleFleetCount > 0
                 ? IntegerMath.DivideRoundedUp(_targetMobileCombatStrength, _targetBattleFleetCount)
                 : 0;
+
+        /// <summary>
+        /// Returns the projected owned count for one production-infrastructure category.
+        /// </summary>
+        /// <param name="buildingType">Infrastructure category to inspect.</param>
+        /// <returns>The completed and committed facility count.</returns>
+        public int GetInfrastructureCount(BuildingType buildingType)
+        {
+            return _infrastructureCounts.TryGetValue(buildingType, out int count) ? count : 0;
+        }
+
+        /// <summary>
+        /// Returns the strategic target for one production-infrastructure category.
+        /// </summary>
+        /// <param name="buildingType">Infrastructure category to inspect.</param>
+        /// <returns>The faction-wide target count.</returns>
+        public int GetInfrastructureTarget(BuildingType buildingType)
+        {
+            return _infrastructureTargets.TryGetValue(buildingType, out int target) ? target : 0;
+        }
+
+        /// <summary>
+        /// Returns the remaining strategic deficit for one production-infrastructure category.
+        /// </summary>
+        /// <param name="buildingType">Infrastructure category to inspect.</param>
+        /// <returns>The nonnegative target shortfall.</returns>
+        public int GetInfrastructureDeficit(BuildingType buildingType)
+        {
+            return Math.Max(
+                0,
+                GetInfrastructureTarget(buildingType) - GetInfrastructureCount(buildingType)
+            );
+        }
+
+        /// <summary>
+        /// Returns the normalized strategic deficit for one production-infrastructure category.
+        /// </summary>
+        /// <param name="buildingType">Infrastructure category to inspect.</param>
+        /// <returns>The target shortfall from zero through one.</returns>
+        public double GetInfrastructureDeficitRatio(BuildingType buildingType)
+        {
+            int target = GetInfrastructureTarget(buildingType);
+            return target > 0 ? GetInfrastructureDeficit(buildingType) / (double)target : 0;
+        }
 
         /// <summary>
         /// Returns the fleet strength allocated to defend a planet.
@@ -148,6 +194,77 @@ namespace Rebellion.AI
                     operationalPlanetCount * mobileCombatStrengthPerPlanet
                 )
             );
+            BuildInfrastructurePlan(_assessment.OwnedPlanets.Count);
+        }
+
+        /// <summary>
+        /// Builds cached production-infrastructure counts and targets for this turn.
+        /// </summary>
+        /// <param name="ownedPlanetCount">Number of faction planets used by infrastructure ratios.</param>
+        private void BuildInfrastructurePlan(int ownedPlanetCount)
+        {
+            BuildingType[] types =
+            {
+                BuildingType.ConstructionFacility,
+                BuildingType.Shipyard,
+                BuildingType.TrainingFacility,
+            };
+            foreach (BuildingType type in types)
+                _infrastructureCounts[type] = 0;
+
+            foreach (Planet planet in _assessment.OwnedPlanets)
+            {
+                foreach (Building building in _assessment.GetPlanetBuildings(planet))
+                {
+                    BuildingType type = building.GetBuildingType();
+                    if (
+                        building.GetOwnerInstanceID() == planet.GetOwnerInstanceID()
+                        && _infrastructureCounts.ContainsKey(type)
+                    )
+                        _infrastructureCounts[type]++;
+                }
+            }
+
+            GameConfig.AIInfrastructureConfig config = _game.Config.AI.Infrastructure;
+            SetInfrastructureTarget(
+                BuildingType.ConstructionFacility,
+                ownedPlanetCount,
+                config.PlanetsPerConstructionFacility,
+                config.MinimumConstructionFacilityLanes
+            );
+            SetInfrastructureTarget(
+                BuildingType.Shipyard,
+                ownedPlanetCount,
+                config.PlanetsPerShipyard,
+                0
+            );
+            SetInfrastructureTarget(
+                BuildingType.TrainingFacility,
+                ownedPlanetCount,
+                config.PlanetsPerTrainingFacility,
+                0
+            );
+        }
+
+        /// <summary>
+        /// Stores one infrastructure target derived from operational planets and a configured floor.
+        /// </summary>
+        /// <param name="buildingType">Infrastructure category being planned.</param>
+        /// <param name="operationalPlanetCount">Number of usable faction planets.</param>
+        /// <param name="planetsPerFacility">Planets supported by one facility.</param>
+        /// <param name="minimumCount">Minimum target count.</param>
+        private void SetInfrastructureTarget(
+            BuildingType buildingType,
+            int operationalPlanetCount,
+            int planetsPerFacility,
+            int minimumCount
+        )
+        {
+            int ratioTarget =
+                planetsPerFacility > 0
+                    ? IntegerMath.DivideRoundedUp(operationalPlanetCount, planetsPerFacility)
+                    : 0;
+            _infrastructureTargets[buildingType] = Math.Max(minimumCount, ratioTarget);
         }
 
         /// <summary>
