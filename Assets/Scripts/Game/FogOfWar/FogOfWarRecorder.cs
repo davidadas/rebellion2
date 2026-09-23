@@ -288,6 +288,7 @@ namespace Rebellion.Game.FogOfWar
 
                 Fleet fleet = GetOrCreatePartialFleetSnapshot(snapshot, sourceFleet);
                 CapitalShip ship = GetOrCreatePartialCapitalShipSnapshot(fleet, sourceShip);
+                RemoveAbsentCapacityCargo(ship, sourceShip, copy);
                 AddCapitalShipChild(ship, copy);
                 return;
             }
@@ -300,6 +301,43 @@ namespace Rebellion.Game.FogOfWar
                 Upsert(snapshot.SpecialForces, specialForces);
             else if (copy is Starfighter starfighter)
                 Upsert(snapshot.Starfighters, starfighter);
+        }
+
+        /// <summary>
+        /// Removes absent remembered cargo only when a newly observed unit requires its capacity.
+        /// </summary>
+        /// <param name="ship">The partial ship snapshot receiving the observation.</param>
+        /// <param name="sourceShip">The authoritative ship containing the observed unit.</param>
+        /// <param name="unit">The newly observed carried unit.</param>
+        private static void RemoveAbsentCapacityCargo(
+            CapitalShip ship,
+            CapitalShip sourceShip,
+            ISceneNode unit
+        )
+        {
+            if (unit is Regiment && ship.GetExcessRegimentCapacity() <= 0)
+                RemoveOneAbsentCargo<Regiment>(ship, sourceShip);
+            else if (unit is Starfighter && ship.GetExcessStarfighterCapacity() <= 0)
+                RemoveOneAbsentCargo<Starfighter>(ship, sourceShip);
+        }
+
+        /// <summary>
+        /// Removes one remembered unit that is no longer aboard the authoritative ship.
+        /// </summary>
+        /// <param name="ship">The partial ship snapshot receiving the observation.</param>
+        /// <param name="sourceShip">The authoritative ship containing the observed unit.</param>
+        /// <typeparam name="T">The capacity-constrained cargo type.</typeparam>
+        private static void RemoveOneAbsentCargo<T>(CapitalShip ship, CapitalShip sourceShip)
+            where T : class, ISceneNode
+        {
+            HashSet<string> currentUnitIDs = sourceShip
+                .GetChildren<T>(includeDisabled: true)
+                .Select(unit => unit.InstanceID)
+                .ToHashSet();
+            T staleUnit = ship.GetChildren<T>(includeDisabled: true)
+                .FirstOrDefault(unit => !currentUnitIDs.Contains(unit.InstanceID));
+            if (staleUnit != null)
+                ship.RemoveChild(staleUnit);
         }
 
         /// <summary>
