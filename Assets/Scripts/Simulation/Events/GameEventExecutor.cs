@@ -22,6 +22,7 @@ namespace Rebellion.Simulation
         private readonly PlanetaryControlCommands _planetaryControlCommands;
         private readonly DuelCommands _duelCommands;
         private readonly MessageCommands _messageCommands;
+        private readonly MissionCommands _missionCommands;
 
         /// <summary>
         /// Creates a new GameEventExecutor.
@@ -33,6 +34,7 @@ namespace Rebellion.Simulation
         /// <param name="planetaryControlCommands">The ownership operations.</param>
         /// <param name="duelCommands">The officer encounter operations.</param>
         /// <param name="messageCommands">The authored message delivery operations.</param>
+        /// <param name="missionCommands">The ordered mission interruption operations.</param>
         public GameEventExecutor(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -40,7 +42,8 @@ namespace Rebellion.Simulation
             MovementCommands movementCommands = null,
             PlanetaryControlCommands planetaryControlCommands = null,
             DuelCommands duelCommands = null,
-            MessageCommands messageCommands = null
+            MessageCommands messageCommands = null,
+            MissionCommands missionCommands = null
         )
         {
             _game = game;
@@ -50,6 +53,7 @@ namespace Rebellion.Simulation
             _planetaryControlCommands = planetaryControlCommands;
             _duelCommands = duelCommands;
             _messageCommands = messageCommands;
+            _missionCommands = missionCommands;
         }
 
         /// <summary>
@@ -446,7 +450,8 @@ namespace Rebellion.Simulation
                 _game,
                 _provider,
                 context,
-                _unitFactory
+                _unitFactory,
+                _missionCommands
             );
             results = new List<GameResult>(actionContext.Results);
             if (actionContext.DeferredOperations.Count > 0)
@@ -704,20 +709,23 @@ namespace Rebellion.Simulation
         /// <param name="provider">Random number provider for stochastic actions.</param>
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
+        /// <param name="missionCommands">The ordered mission interruption operations.</param>
         /// <returns>The context containing requests and results produced by the actions.</returns>
         private static GameActionContext ExecuteActions(
             GameEvent gameEvent,
             GameRoot game,
             IRandomNumberProvider provider,
             GameEventEvaluationContext context,
-            UnitFactory unitFactory = null
+            UnitFactory unitFactory = null,
+            MissionCommands missionCommands = null
         )
         {
             GameActionContext actionContext = new GameActionContext(
                 game,
                 provider,
                 context,
-                unitFactory
+                unitFactory,
+                missionCommands
             );
             ExecuteActions(gameEvent.Actions, actionContext);
             return actionContext;

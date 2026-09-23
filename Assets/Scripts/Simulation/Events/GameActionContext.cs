@@ -23,6 +23,7 @@ namespace Rebellion.Simulation
             Func<GameEventExecutor, string, List<GameResult>> Execute
         )> DeferredOperations { get; } = new();
         internal List<GameResult> Results { get; } = new List<GameResult>();
+        private readonly MissionCommands _missionCommands;
 
         /// <summary>
         /// Initializes a new instance of the GameActionContext class.
@@ -31,17 +32,20 @@ namespace Rebellion.Simulation
         /// <param name="random">The random.</param>
         /// <param name="evaluation">The evaluation.</param>
         /// <param name="unitFactory">The unit factory.</param>
+        /// <param name="missionCommands">The mission operations required by ordered capture actions.</param>
         public GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
             GameEventEvaluationContext evaluation = null,
-            UnitFactory unitFactory = null
+            UnitFactory unitFactory = null,
+            MissionCommands missionCommands = null
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
             Random = random ?? throw new ArgumentNullException(nameof(random));
             Evaluation = evaluation;
             UnitFactory = unitFactory;
+            _missionCommands = missionCommands;
         }
 
         /// <summary>
@@ -79,5 +83,45 @@ namespace Rebellion.Simulation
             foreach (GameResult result in results ?? Enumerable.Empty<GameResult>())
                 Record(result);
         }
+
+        /// <summary>
+        /// Interrupts missions containing newly captured officers before the next authored action.
+        /// </summary>
+        /// <param name="officers">The newly captured officers.</param>
+        internal void InterruptMissionsForCapture(IReadOnlyList<Officer> officers)
+        {
+            if (_missionCommands == null)
+                return;
+
+            try
+            {
+                Results.AddRange(
+                    _missionCommands
+                        .InterruptMissionsForCapturedOfficers(officers)
+                        .Where(result => result != null)
+                );
+            }
+            catch (Exception exception)
+            {
+                throw new GameActionCommandException(
+                    "Failed to interrupt missions for captured officers.",
+                    exception
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    /// Distinguishes failed command execution from invalid authored action data.
+    /// </summary>
+    internal sealed class GameActionCommandException : Exception
+    {
+        /// <summary>
+        /// Creates an action-command failure with its underlying cause.
+        /// </summary>
+        /// <param name="message">The failure description.</param>
+        /// <param name="innerException">The underlying command failure.</param>
+        internal GameActionCommandException(string message, Exception innerException)
+            : base(message, innerException) { }
     }
 }

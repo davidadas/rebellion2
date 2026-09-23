@@ -493,7 +493,10 @@ Reactivate a returning unit before placing or sending it.
 
 ### SetCaptureStatus
 
-Captures or releases one or more officers without moving them.
+Captures or releases one or more officers. Capturing an officer immediately interrupts any mission
+containing them before the next event action executes; ending that mission may move its participants.
+Custody transfer is handled later, when the event's results are processed, and may then move the
+officer to a captor-controlled location.
 
 **Required options**
 

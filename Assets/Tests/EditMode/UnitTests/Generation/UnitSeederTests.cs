@@ -18,10 +18,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_UprisingThresholdNotMet_AddsGarrisonTroops()
         {
             Planet planet = OwnedPlanet("p1", "FNEMP1", ownerSupport: 30);
-            Faction[] factions =
-            {
-                new Faction { InstanceID = "FNEMP1", GarrisonTroopTypeID = "REEM002" },
-            };
+            Faction[] factions = { new Faction { InstanceID = "FNEMP1" } };
             Regiment[] regimentTemplates =
             {
                 new Regiment { TypeID = "REEM002", MaintenanceCost = 1 },
@@ -29,7 +26,13 @@ namespace Rebellion.Tests.Generation
 
             GameGenerationConfig config = new GameGenerationConfig
             {
-                GalaxyClassification = new GalaxyClassificationSection(),
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>
+                    {
+                        new FactionSetup { FactionID = "FNEMP1", GarrisonTroopTypeID = "REEM002" },
+                    },
+                },
                 UnitDeployment = new UnitDeploymentSection
                 {
                     UprisingPreventionThreshold = 60,
@@ -58,10 +61,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_OwnerSupportAtThreshold_NoGarrisonTroops()
         {
             Planet planet = OwnedPlanet("p1", "FNEMP1", ownerSupport: 60);
-            Faction[] factions =
-            {
-                new Faction { InstanceID = "FNEMP1", GarrisonTroopTypeID = "REEM002" },
-            };
+            Faction[] factions = { new Faction { InstanceID = "FNEMP1" } };
             Regiment[] regimentTemplates =
             {
                 new Regiment { TypeID = "REEM002", MaintenanceCost = 1 },
@@ -69,7 +69,13 @@ namespace Rebellion.Tests.Generation
 
             GameGenerationConfig config = new GameGenerationConfig
             {
-                GalaxyClassification = new GalaxyClassificationSection(),
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>
+                    {
+                        new FactionSetup { FactionID = "FNEMP1", GarrisonTroopTypeID = "REEM002" },
+                    },
+                },
                 UnitDeployment = new UnitDeploymentSection
                 {
                     UprisingPreventionThreshold = 60,

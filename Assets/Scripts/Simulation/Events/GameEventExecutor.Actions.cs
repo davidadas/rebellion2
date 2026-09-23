@@ -134,6 +134,10 @@ namespace Rebellion.Simulation
                 {
                     ExecuteAction(action, context);
                 }
+                catch (GameActionCommandException)
+                {
+                    throw;
+                }
                 catch (Exception exception)
                 {
                     string eventInstanceId = context?.Evaluation?.Event?.InstanceID ?? "unknown";
@@ -440,6 +444,8 @@ namespace Rebellion.Simulation
                 );
             }
             context.Record(results);
+            if (action.IsCaptured)
+                context.InterruptMissionsForCapture(selected.Cast<Officer>().ToList());
         }
 
         /// <summary>

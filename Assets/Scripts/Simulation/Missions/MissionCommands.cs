@@ -240,6 +240,28 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Immediately interrupts missions containing newly captured officers.
+        /// </summary>
+        /// <param name="officers">The newly captured officers.</param>
+        /// <returns>The mission interruption and teardown results.</returns>
+        internal List<GameResult> InterruptMissionsForCapturedOfficers(
+            IReadOnlyList<Officer> officers
+        )
+        {
+            List<GameResult> results = new List<GameResult>();
+            List<Mission> missions = (officers ?? Array.Empty<Officer>())
+                .Select(officer => officer?.GetParent() as Mission)
+                .Where(mission => mission?.GetParent() != null)
+                .Distinct()
+                .ToList();
+
+            foreach (Mission mission in missions)
+                InterruptMission(mission, results);
+
+            return results;
+        }
+
+        /// <summary>
         /// Adds the originating mission to interruption results before returning them to the pipeline.
         /// </summary>
         /// <param name="mission">The mission producing the results.</param>
