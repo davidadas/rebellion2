@@ -9,6 +9,8 @@ namespace Rebellion.Game.ShipComponents
         public int SublightSpeed { get; set; }
         public int Maneuverability { get; set; }
 
+        /// <summary>Creates an independent copy of this engine.</summary>
+        /// <returns>The copied engine.</returns>
         public override ShipComponent CreateCopy()
         {
             Engine copy = new Engine

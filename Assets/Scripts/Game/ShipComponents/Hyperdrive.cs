@@ -8,6 +8,8 @@ namespace Rebellion.Game.ShipComponents
     {
         public int Rating { get; set; }
 
+        /// <summary>Creates an independent copy of this hyperdrive.</summary>
+        /// <returns>The copied hyperdrive.</returns>
         public override ShipComponent CreateCopy()
         {
             Hyperdrive copy = new Hyperdrive { Health = Health, Rating = Rating };

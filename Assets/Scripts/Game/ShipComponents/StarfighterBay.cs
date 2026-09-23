@@ -8,6 +8,8 @@ namespace Rebellion.Game.ShipComponents
     {
         public int Capacity { get; set; }
 
+        /// <summary>Creates an independent copy of this starfighter bay.</summary>
+        /// <returns>The copied starfighter bay.</returns>
         public override ShipComponent CreateCopy()
         {
             StarfighterBay copy = new StarfighterBay { Health = Health, Capacity = Capacity };

@@ -18,10 +18,21 @@ namespace Rebellion.Game.Combat
     [PersistableObject]
     public sealed class ActiveBattle
     {
+        [PersistableMember(Name = "Combatants")]
+        private Dictionary<string, List<CombatUnit>> _combatants =
+            new Dictionary<string, List<CombatUnit>>();
+
         public BattleKind Kind { get; set; }
         public string PlanetInstanceId { get; set; }
-        public Dictionary<string, List<CombatUnit>> Combatants { get; set; } =
-            new Dictionary<string, List<CombatUnit>>();
+
+        /// <summary>
+        /// Returns the battle units grouped by owning faction.
+        /// </summary>
+        /// <returns>The combatants grouped by faction identifier.</returns>
+        public Dictionary<string, List<CombatUnit>> GetCombatants()
+        {
+            return _combatants;
+        }
 
         /// <summary>
         /// Adds independently mutable battle copies of a strategic unit under its current owner.
@@ -48,14 +59,14 @@ namespace Rebellion.Game.Combat
                 return addedCombatants.AsReadOnly();
 
             if (
-                !Combatants.TryGetValue(
+                !_combatants.TryGetValue(
                     sourceUnit.OwnerInstanceID,
                     out List<CombatUnit> factionCombatants
                 )
             )
             {
                 factionCombatants = new List<CombatUnit>();
-                Combatants.Add(sourceUnit.OwnerInstanceID, factionCombatants);
+                _combatants.Add(sourceUnit.OwnerInstanceID, factionCombatants);
             }
 
             for (int combatantIndex = 0; combatantIndex < combatantCount; combatantIndex++)

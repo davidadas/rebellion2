@@ -11,12 +11,22 @@ namespace Rebellion.Game.Combat
     [PersistableObject]
     public sealed class CombatUnit : BaseGameEntity
     {
+        [PersistableMember(Name = "Unit")]
+        [PersistableInclude(typeof(CapitalShip))]
+        [PersistableInclude(typeof(Starfighter))]
+        private BaseSceneNode _unit;
+
         public string SourceUnitId { get; set; }
         public bool HasRetreated { get; set; }
 
-        [PersistableInclude(typeof(CapitalShip))]
-        [PersistableInclude(typeof(Starfighter))]
-        public BaseSceneNode Unit { get; set; }
+        /// <summary>
+        /// Returns the independently mutable battle copy of the strategic unit.
+        /// </summary>
+        /// <returns>The battle unit.</returns>
+        public BaseSceneNode GetUnit()
+        {
+            return _unit;
+        }
 
         /// <summary>
         /// Creates an independently mutable battle copy of a strategic ship.
@@ -40,7 +50,7 @@ namespace Rebellion.Game.Combat
                 starfighter.CurrentSquadronSize = 1;
             }
 
-            return new CombatUnit { SourceUnitId = sourceUnit.InstanceID, Unit = battleCopy };
+            return new CombatUnit { SourceUnitId = sourceUnit.InstanceID, _unit = battleCopy };
         }
     }
 }

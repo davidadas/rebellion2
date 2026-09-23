@@ -23,8 +23,8 @@ namespace Rebellion.Tests.Game.Combat
             IReadOnlyList<CombatUnit> addedCombatants = battle.AddCombatants(source);
 
             Assert.AreEqual(1, addedCombatants.Count);
-            Assert.AreSame(addedCombatants[0], battle.Combatants["FACTION_1"][0]);
-            Assert.AreNotSame(source, addedCombatants[0].Unit);
+            Assert.AreSame(addedCombatants[0], battle.GetCombatants()["FACTION_1"][0]);
+            Assert.AreNotSame(source, addedCombatants[0].GetUnit());
         }
 
         [Test]
@@ -42,11 +42,11 @@ namespace Rebellion.Tests.Game.Combat
             IReadOnlyList<CombatUnit> addedCombatants = battle.AddCombatants(source);
 
             Assert.AreEqual(3, addedCombatants.Count);
-            Assert.AreEqual(3, battle.Combatants["FACTION_1"].Count);
+            Assert.AreEqual(3, battle.GetCombatants()["FACTION_1"].Count);
             foreach (CombatUnit combatUnit in addedCombatants)
             {
                 Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitId);
-                Starfighter fighter = combatUnit.Unit as Starfighter;
+                Starfighter fighter = combatUnit.GetUnit() as Starfighter;
                 Assert.IsNotNull(fighter);
                 Assert.AreEqual(1, fighter.CurrentSquadronSize);
             }
@@ -70,8 +70,8 @@ namespace Rebellion.Tests.Game.Combat
 
             string xml = SerializationHelper.Serialize(battle);
             ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(xml);
-            CombatUnit restoredCombatUnit = restored.Combatants["FACTION_1"][0];
-            CapitalShip restoredShip = restoredCombatUnit.Unit as CapitalShip;
+            CombatUnit restoredCombatUnit = restored.GetCombatants()["FACTION_1"][0];
+            CapitalShip restoredShip = restoredCombatUnit.GetUnit() as CapitalShip;
 
             Assert.AreEqual(source.InstanceID, restoredCombatUnit.SourceUnitId);
             Assert.IsNotNull(restoredShip);

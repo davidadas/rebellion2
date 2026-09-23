@@ -6,6 +6,8 @@ namespace Rebellion.Game.ShipComponents
     [PersistableObject]
     public sealed class GravityWellGenerator : ShipComponent
     {
+        /// <summary>Creates an independent copy of this gravity-well generator.</summary>
+        /// <returns>The copied gravity-well generator.</returns>
         public override ShipComponent CreateCopy()
         {
             GravityWellGenerator copy = new GravityWellGenerator { Health = Health };

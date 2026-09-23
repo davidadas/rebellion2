@@ -480,18 +480,19 @@ namespace Rebellion.Tests.Game.Units
         {
             _starfighter.ManufacturingQueueSequence = 7;
             _starfighter.ModelPath = "Pack/Units/TestStarfighter/Models/model";
-            _starfighter.HardpointGroups.Add(
-                new HardpointGroup
-                {
-                    Hardpoints = new List<Hardpoint>
+            HardpointGroup hardpointGroup = new HardpointGroup();
+            hardpointGroup
+                .GetHardpoints()
+                .AddRange(
+                    new Hardpoint[]
                     {
                         new Hardpoint { Health = 25 },
                         new Hardpoint { Health = 25 },
                         new Hardpoint { Health = 25 },
                         new Hardpoint { Health = 25 },
-                    },
-                }
-            );
+                    }
+                );
+            _starfighter.GetHardpointGroups().Add(hardpointGroup);
             string serialized = SerializationHelper.Serialize(_starfighter);
             Starfighter deserialized = SerializationHelper.Deserialize<Starfighter>(serialized);
 
@@ -631,10 +632,12 @@ namespace Rebellion.Tests.Game.Units
                 ((IMovable)deserialized).GetPosition().Y,
                 "PositionY should be correctly deserialized."
             );
-            Assert.AreEqual(1, deserialized.HardpointGroups.Count);
-            HardpointGroup hardpointGroup = deserialized.HardpointGroups[0];
-            Assert.AreEqual(4, hardpointGroup.Hardpoints.Count);
-            Assert.IsTrue(hardpointGroup.Hardpoints.All(hardpoint => hardpoint.Health == 25));
+            Assert.AreEqual(1, deserialized.GetHardpointGroups().Count);
+            HardpointGroup deserializedGroup = deserialized.GetHardpointGroups()[0];
+            Assert.AreEqual(4, deserializedGroup.GetHardpoints().Count);
+            Assert.IsTrue(
+                deserializedGroup.GetHardpoints().All(hardpoint => hardpoint.Health == 25)
+            );
         }
     }
 }

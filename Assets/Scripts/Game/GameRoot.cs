@@ -70,7 +70,9 @@ namespace Rebellion.Game
         // Game state.
         public int CurrentTick;
         public TickSpeed GameSpeed = TickSpeed.Slow;
-        public ActiveBattle ActiveBattle { get; set; }
+
+        [PersistableMember(Name = "ActiveBattle")]
+        private ActiveBattle _activeBattle;
 
         // Game events.
         [PersistableMember(Name = "EventPool")]
@@ -189,6 +191,24 @@ namespace Rebellion.Game
         public TickSpeed GetGameSpeed()
         {
             return GameSpeed;
+        }
+
+        /// <summary>
+        /// Returns the tactical battle currently in progress.
+        /// </summary>
+        /// <returns>The active battle, or null when no battle is in progress.</returns>
+        public ActiveBattle GetActiveBattle()
+        {
+            return _activeBattle;
+        }
+
+        /// <summary>
+        /// Replaces the tactical battle currently in progress.
+        /// </summary>
+        /// <param name="activeBattle">The active battle, or null to clear it.</param>
+        public void SetActiveBattle(ActiveBattle activeBattle)
+        {
+            _activeBattle = activeBattle;
         }
 
         /// <summary>

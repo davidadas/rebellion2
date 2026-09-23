@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.ShipComponents;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
 {
@@ -51,8 +52,11 @@ namespace Rebellion.Game.Units
         public int TorpedoRange;
 
         // Component Info.
-        public List<ShipComponent> Components { get; set; } = new List<ShipComponent>();
-        public List<HardpointGroup> HardpointGroups { get; set; } = new List<HardpointGroup>();
+        [PersistableMember(Name = "Components")]
+        private List<ShipComponent> _components = new List<ShipComponent>();
+
+        [PersistableMember(Name = "HardpointGroups")]
+        private List<HardpointGroup> _hardpointGroups = new List<HardpointGroup>();
 
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
@@ -107,14 +111,32 @@ namespace Rebellion.Game.Units
             copy.LaserRange = LaserRange;
             copy.IonRange = IonRange;
             copy.TorpedoRange = TorpedoRange;
-            copy.Components = Components?.ConvertAll(component => component?.CreateCopy());
-            copy.HardpointGroups = HardpointGroups?.ConvertAll(group => group?.CreateCopy());
+            copy._components = _components?.ConvertAll(component => component?.CreateCopy());
+            copy._hardpointGroups = _hardpointGroups?.ConvertAll(group => group?.CreateCopy());
             copy.ProducerOwnerID = ProducerOwnerID;
             copy.ProducerPlanetID = ProducerPlanetID;
             copy.ManufacturingQueueSequence = ManufacturingQueueSequence;
             copy.ManufacturingProgress = ManufacturingProgress;
             copy.ManufacturingStatus = ManufacturingStatus;
             copy.Movement = Movement?.CreateCopy();
+        }
+
+        /// <summary>
+        /// Returns the components installed on this starfighter type.
+        /// </summary>
+        /// <returns>The installed components.</returns>
+        public List<ShipComponent> GetComponents()
+        {
+            return _components;
+        }
+
+        /// <summary>
+        /// Returns the weapon groups installed on this starfighter type.
+        /// </summary>
+        /// <returns>The installed hardpoint groups.</returns>
+        public List<HardpointGroup> GetHardpointGroups()
+        {
+            return _hardpointGroups;
         }
 
         /// <summary>

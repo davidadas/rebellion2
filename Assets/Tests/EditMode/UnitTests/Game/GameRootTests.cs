@@ -98,14 +98,14 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(0, _game.CurrentTick, "Current tick should be initialized to 0");
             Assert.IsEmpty(_game.GetEventPool(), "Event pool should be empty initially");
             Assert.IsEmpty(_game.EventRuntime.States, "Event states should be empty initially");
-            Assert.IsNull(_game.ActiveBattle);
+            Assert.IsNull(_game.GetActiveBattle());
         }
 
         [TestCase(BattleKind.Space)]
         [TestCase(BattleKind.Ground)]
         public void ActiveBattle_WhenPresent_RoundTripsDirectlyUnderGame(BattleKind kind)
         {
-            _game.ActiveBattle = new ActiveBattle { Kind = kind, PlanetInstanceId = "PLANET1" };
+            _game.SetActiveBattle(new ActiveBattle { Kind = kind, PlanetInstanceId = "PLANET1" });
 
             string xml = SerializationHelper.Serialize(_game);
             XElement gameElement = XDocument.Parse(xml).Root;
@@ -116,9 +116,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual("PLANET1", battleElement.Element("PlanetInstanceId")?.Value);
 
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
-            Assert.IsNotNull(restored.ActiveBattle);
-            Assert.AreEqual(kind, restored.ActiveBattle.Kind);
-            Assert.AreEqual("PLANET1", restored.ActiveBattle.PlanetInstanceId);
+            Assert.IsNotNull(restored.GetActiveBattle());
+            Assert.AreEqual(kind, restored.GetActiveBattle().Kind);
+            Assert.AreEqual("PLANET1", restored.GetActiveBattle().PlanetInstanceId);
         }
 
         [Test]
@@ -135,7 +135,7 @@ namespace Rebellion.Tests.Game
             string xml = SerializationHelper.Serialize(_game);
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
 
-            Assert.IsNull(restored.ActiveBattle);
+            Assert.IsNull(restored.GetActiveBattle());
         }
 
         [Test]

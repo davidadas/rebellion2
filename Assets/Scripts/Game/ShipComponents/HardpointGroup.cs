@@ -9,18 +9,30 @@ namespace Rebellion.Game.ShipComponents
     [PersistableObject]
     public sealed class HardpointGroup
     {
-        public List<Hardpoint> Hardpoints { get; set; } = new List<Hardpoint>();
+        [PersistableMember(Name = "Hardpoints")]
+        private List<Hardpoint> _hardpoints = new List<Hardpoint>();
+
+        /// <summary>
+        /// Returns the weapon mounts in this group.
+        /// </summary>
+        /// <returns>The group's hardpoints.</returns>
+        public List<Hardpoint> GetHardpoints()
+        {
+            return _hardpoints;
+        }
 
         /// <summary>
         /// Creates an independent copy of the hardpoint group and its mounts.
         /// </summary>
         /// <returns>The copied hardpoint group.</returns>
-        public HardpointGroup CreateCopy() =>
-            new HardpointGroup
+        public HardpointGroup CreateCopy()
+        {
+            return new HardpointGroup
             {
-                Hardpoints = Hardpoints?.ConvertAll(hardpoint =>
+                _hardpoints = _hardpoints?.ConvertAll(hardpoint =>
                     (Hardpoint)hardpoint?.CreateCopy()
                 ),
             };
+        }
     }
 }
