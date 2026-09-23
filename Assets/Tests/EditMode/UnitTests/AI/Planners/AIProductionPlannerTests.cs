@@ -122,6 +122,7 @@ namespace Rebellion.Tests.AI.Planners
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -293,10 +294,9 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithSoleConstructionLane_ReservesLaneForConstructionExpansion()
+        public void Plan_WithSoleConstructionLane_DoesNotUseReservedLaneForTraining()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.MinimumConstructionFacilityLanes = 2;
             game.Config.AI.Infrastructure.PlanetsPerTrainingFacility = 1;
             game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -315,11 +315,7 @@ namespace Rebellion.Tests.AI.Planners
                 BuildingType.ConstructionFacility,
                 ManufacturingType.Building
             );
-            Building constructionFacility = AITestSceneBuilder.CreateBuildingTemplate(
-                "construction-template",
-                BuildingType.ConstructionFacility,
-                ManufacturingType.Building
-            );
+            AddResourceEconomy(game, planet);
             Building trainingFacility = AITestSceneBuilder.CreateBuildingTemplate(
                 "training-template",
                 BuildingType.TrainingFacility,
@@ -327,7 +323,6 @@ namespace Rebellion.Tests.AI.Planners
             );
             empire.ResearchQueue[ManufacturingType.Building] = new List<Technology>
             {
-                new Technology(constructionFacility),
                 new Technology(trainingFacility),
             };
 
@@ -337,11 +332,6 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIManufactureProposal>()
                 .ToList();
 
-            Assert.IsTrue(
-                proposals.Any(item =>
-                    item.Demand.Kind == AIProductionDemandKind.ConstructionFacility
-                )
-            );
             Assert.IsFalse(
                 proposals.Any(item => item.Demand.Kind == AIProductionDemandKind.TrainingFacility)
             );
@@ -2451,6 +2441,7 @@ namespace Rebellion.Tests.AI.Planners
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 0;
             game.Config.AI.Infrastructure.ProductionFacilityMaintenanceAllocationPercent = 3;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "shipyard-system");
             Planet planet = AITestSceneBuilder.AddPlanet(

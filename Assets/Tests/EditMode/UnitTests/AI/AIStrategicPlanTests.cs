@@ -44,7 +44,7 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
-        public void MobileStrengthTarget_CoversMinimumStrengthForEveryTargetFleet()
+        public void MobileStrengthTarget_WithManyTargetFleets_CoversMinimumStrengthForEveryFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;

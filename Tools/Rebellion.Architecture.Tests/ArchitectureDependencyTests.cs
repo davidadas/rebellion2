@@ -70,6 +70,10 @@ namespace Rebellion.Architecture.Tests
                         .DoNotResideInNamespaceMatching("^Rebellion\\.SceneGraph(?:\\.|$)")
                         .And()
                         .DoNotHaveFullName(
+                            "Rebellion.Util.Serialization.PersistableObjectAttribute"
+                        )
+                        .And()
+                        .DoNotHaveFullName(
                             "Rebellion.Util.Serialization.PersistableIgnoreAttribute"
                         )
                 );
