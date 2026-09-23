@@ -70,6 +70,8 @@ namespace Rebellion.Systems
                 return false;
             if (encountered.IsCaptured || opposing.IsCaptured)
                 return false;
+            if (encountered.Movement != null || opposing.Movement != null)
+                return false;
             if (encountered.OwnerInstanceID == opposing.OwnerInstanceID)
                 return false;
             Planet location = encountered.GetParentOfType<Planet>();
