@@ -36,15 +36,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Fills currently idle manufacturing capacity with the advisor's delegated work.
-        /// </summary>
-        public void ProcessTick()
-        {
-            foreach (Faction faction in _game.GetFactions())
-                ProcessFaction(faction);
-        }
-
-        /// <summary>
         /// Immediately fills idle capacity for one faction's delegated work.
         /// </summary>
         /// <param name="faction">The faction whose current automation choices should run.</param>

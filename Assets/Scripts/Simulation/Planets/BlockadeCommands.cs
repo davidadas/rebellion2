@@ -32,24 +32,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Detects blockade start/end transitions and emits results.
-        /// </summary>
-        /// <returns>Blockade transition results generated this tick.</returns>
-        public List<GameResult> ProcessTick()
-        {
-            List<GameResult> results = new List<GameResult>();
-            HashSet<string> currentBlockades = DetectBlockadedPlanets();
-
-            ApplyBlockadeStatus(currentBlockades, results);
-            ClearBlockadeStatus(currentBlockades, results);
-
-            _blockadedPlanets.Clear();
-            _blockadedPlanets.UnionWith(currentBlockades);
-
-            return results;
-        }
-
-        /// <summary>
         /// Rolls to determine if a regiment is destroyed while evacuating through a blockade.
         /// </summary>
         /// <returns>True if the regiment is destroyed.</returns>
@@ -99,7 +81,7 @@ namespace Rebellion.Simulation
         /// Scans all planets and returns the set currently under blockade.
         /// </summary>
         /// <returns>Instance IDs of all currently blockaded planets.</returns>
-        private HashSet<string> DetectBlockadedPlanets()
+        internal HashSet<string> DetectBlockadedPlanets()
         {
             HashSet<string> blockaded = new HashSet<string>();
             foreach (PlanetSector sector in _game.GetGalaxyMap().GetChildren<PlanetSector>())
@@ -118,7 +100,10 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="currentBlockades">Planets blockaded this tick.</param>
         /// <param name="results">Results list to append transitions to.</param>
-        private void ApplyBlockadeStatus(HashSet<string> currentBlockades, List<GameResult> results)
+        internal void ApplyBlockadeStatus(
+            HashSet<string> currentBlockades,
+            List<GameResult> results
+        )
         {
             foreach (string planetId in currentBlockades)
             {
@@ -152,7 +137,10 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="currentBlockades">Planets blockaded this tick.</param>
         /// <param name="results">Results list to append transitions to.</param>
-        private void ClearBlockadeStatus(HashSet<string> currentBlockades, List<GameResult> results)
+        internal void ClearBlockadeStatus(
+            HashSet<string> currentBlockades,
+            List<GameResult> results
+        )
         {
             foreach (string planetId in _blockadedPlanets)
             {
@@ -173,6 +161,16 @@ namespace Rebellion.Simulation
                     }
                 );
             }
+        }
+
+        /// <summary>
+        /// Replaces the blockade state retained for the next transition comparison.
+        /// </summary>
+        /// <param name="currentBlockades">The planets blockaded during the current tick.</param>
+        internal void RememberBlockades(HashSet<string> currentBlockades)
+        {
+            _blockadedPlanets.Clear();
+            _blockadedPlanets.UnionWith(currentBlockades);
         }
     }
 }

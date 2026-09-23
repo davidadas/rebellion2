@@ -43,8 +43,6 @@ namespace Rebellion.Simulation
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
             Tick = new GameTickProcessor(
-                this,
-                () => GameEventExecutor,
                 (results, processMessages) => Pipeline.ProcessResults(results, processMessages),
                 results => Pipeline.ProcessMessageReactions(results)
             );
@@ -137,8 +135,7 @@ namespace Rebellion.Simulation
             MessageObserver = GetService<MessageObserver>();
             GetService<MovementQueries>()
                 .SetCompletedBuildingMovementPolicy(GetService<HeadquartersQueries>().CanMove);
-            // Research timers must be seeded before the first tick and before AI consumes RNG.
-            GetService<ResearchCommands>().InitializeTimers();
+            Tick.ConnectRuntime(_serviceScope);
             GameEventExecutor = GetService<GameEventExecutor>();
             GameEventExecutor.ValidateEvents(Game.GetEventPool());
 

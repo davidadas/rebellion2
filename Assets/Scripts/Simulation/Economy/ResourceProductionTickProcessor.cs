@@ -12,33 +12,39 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Processes mine and refinery cycles and the material requests that feed them.
     /// </summary>
-    public class ResourceProductionCommands
+    internal sealed class ResourceProductionTickProcessor : ITickProcessor
     {
         private const int _percentScale = 100;
 
-        private readonly GameRoot _game;
-        private readonly SmugglingCommands _smugglingSystem;
+        private readonly SmugglingTickProcessor _smuggling;
+        private readonly SmugglingCommands _smugglingCommands;
 
         /// <summary>
-        /// Creates a new ResourceProductionCommands.
+        /// Creates resource-production tick processing.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        public ResourceProductionCommands(GameRoot game)
+        /// <param name="smuggling">The smuggling state advanced before resource delivery.</param>
+        /// <param name="smugglingCommands">The smuggling rules applied to completed output.</param>
+        public ResourceProductionTickProcessor(
+            SmugglingTickProcessor smuggling,
+            SmugglingCommands smugglingCommands
+        )
         {
-            _game = game ?? throw new ArgumentNullException(nameof(game));
-            _smugglingSystem = new SmugglingCommands(game);
+            _smuggling = smuggling ?? throw new ArgumentNullException(nameof(smuggling));
+            _smugglingCommands =
+                smugglingCommands ?? throw new ArgumentNullException(nameof(smugglingCommands));
         }
 
         /// <summary>
         /// Services pending material requests and advances every active resource facility.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
         /// <returns>State-change results produced while processing the tick.</returns>
-        public List<GameResult> ProcessTick()
+        public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            List<GameResult> results = _smugglingSystem.ProcessTick();
+            List<GameResult> results = new List<GameResult>(_smuggling.ProcessTick(game));
 
-            foreach (Faction faction in _game.GetFactions())
-                ProcessFaction(faction);
+            foreach (Faction faction in game.GetFactions())
+                ProcessFaction(game, faction);
 
             return results;
         }
@@ -46,11 +52,12 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Processes material delivery, maintenance allocation, and resource cycles for one faction.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
         /// <param name="faction">The faction to process.</param>
-        private void ProcessFaction(Faction faction)
+        private void ProcessFaction(GameRoot game, Faction faction)
         {
-            ServicePendingRawMaterialRequests(faction);
-            ServicePendingRefinedMaterialRequests(faction);
+            ServicePendingRawMaterialRequests(game, faction);
+            ServicePendingRefinedMaterialRequests(game, faction);
 
             List<Building> mines = GetActiveResourceFacilities(faction, BuildingType.Mine);
             List<Building> refineries = GetActiveResourceFacilities(faction, BuildingType.Refinery);
@@ -60,39 +67,41 @@ namespace Rebellion.Simulation
             RebalanceResourceAllocations(refineries, maintenanceDemand, faction);
 
             foreach (Building mine in mines)
-                ProcessMine(faction, mine);
+                ProcessMine(game, faction, mine);
 
-            ServicePendingRawMaterialRequests(faction);
+            ServicePendingRawMaterialRequests(game, faction);
 
             foreach (Building refinery in refineries)
-                ProcessRefinery(faction, refinery);
+                ProcessRefinery(game, faction, refinery);
 
-            ServicePendingRefinedMaterialRequests(faction);
+            ServicePendingRefinedMaterialRequests(game, faction);
         }
 
         /// <summary>
         /// Delivers available raw material to queued refineries in request order.
         /// </summary>
+        /// <param name="game">The game containing the requested facilities.</param>
         /// <param name="faction">The faction whose requests are serviced.</param>
-        private void ServicePendingRawMaterialRequests(Faction faction)
+        private void ServicePendingRawMaterialRequests(GameRoot game, Faction faction)
         {
             faction.RawMaterialStockpile = ServicePendingMaterialRequests(
                 faction.PendingRawMaterialFacilityIDs,
                 faction.RawMaterialStockpile,
-                facilityId => GetPendingFacility(faction, facilityId, BuildingType.Refinery)
+                facilityId => GetPendingFacility(game, faction, facilityId, BuildingType.Refinery)
             );
         }
 
         /// <summary>
         /// Delivers available refined material to queued production facilities in request order.
         /// </summary>
+        /// <param name="game">The game containing the requested facilities.</param>
         /// <param name="faction">The faction whose requests are serviced.</param>
-        private void ServicePendingRefinedMaterialRequests(Faction faction)
+        private void ServicePendingRefinedMaterialRequests(GameRoot game, Faction faction)
         {
             faction.RefinedMaterialStockpile = ServicePendingMaterialRequests(
                 faction.PendingRefinedMaterialFacilityIDs,
                 faction.RefinedMaterialStockpile,
-                facilityId => GetPendingProductionFacility(faction, facilityId)
+                facilityId => GetPendingProductionFacility(game, faction, facilityId)
             );
         }
 
@@ -137,17 +146,19 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Resolves a valid pending resource facility owned by a faction.
         /// </summary>
+        /// <param name="game">The game containing the requested facility.</param>
         /// <param name="faction">The owning faction.</param>
         /// <param name="facilityId">The facility instance ID.</param>
         /// <param name="buildingType">The required resource facility type.</param>
         /// <returns>The live facility, or null when the request is stale.</returns>
         private Building GetPendingFacility(
+            GameRoot game,
             Faction faction,
             string facilityId,
             BuildingType buildingType
         )
         {
-            Building facility = _game.GetSceneNodeByInstanceID<Building>(facilityId);
+            Building facility = game.GetSceneNodeByInstanceID<Building>(facilityId);
             return
                 IsPendingFacilityValid(faction, facility) && facility.BuildingType == buildingType
                 ? facility
@@ -157,12 +168,17 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Resolves a valid pending manufacturing facility owned by a faction.
         /// </summary>
+        /// <param name="game">The game containing the requested facility.</param>
         /// <param name="faction">The owning faction.</param>
         /// <param name="facilityId">The facility instance ID.</param>
         /// <returns>The live facility, or null when the request is stale.</returns>
-        private Building GetPendingProductionFacility(Faction faction, string facilityId)
+        private Building GetPendingProductionFacility(
+            GameRoot game,
+            Faction faction,
+            string facilityId
+        )
         {
-            Building facility = _game.GetSceneNodeByInstanceID<Building>(facilityId);
+            Building facility = game.GetSceneNodeByInstanceID<Building>(facilityId);
             return
                 IsPendingFacilityValid(faction, facility)
                 && facility.ProductionType != ManufacturingType.None
@@ -377,26 +393,28 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Advances one mine and produces one raw material when its cycle completes.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
         /// <param name="faction">The owning faction.</param>
         /// <param name="mine">The mine to process.</param>
-        private void ProcessMine(Faction faction, Building mine)
+        private void ProcessMine(GameRoot game, Faction faction, Building mine)
         {
             if (!mine.ProductionInputReserved)
                 mine.ProductionInputReserved = true;
 
-            if (!AdvanceResourceCycle(faction, mine))
+            if (!AdvanceResourceCycle(game, faction, mine))
                 return;
 
-            _smugglingSystem.ResolveProductionRecipient(faction, mine).RawMaterialStockpile++;
+            _smugglingCommands.ResolveProductionRecipient(faction, mine).RawMaterialStockpile++;
             mine.ProductionInputReserved = true;
         }
 
         /// <summary>
         /// Advances one refinery and produces one refined material when its cycle completes.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
         /// <param name="faction">The owning faction.</param>
         /// <param name="refinery">The refinery to process.</param>
-        private void ProcessRefinery(Faction faction, Building refinery)
+        private void ProcessRefinery(GameRoot game, Faction faction, Building refinery)
         {
             if (!refinery.ProductionInputReserved)
             {
@@ -404,10 +422,10 @@ namespace Rebellion.Simulation
                     return;
             }
 
-            if (!AdvanceResourceCycle(faction, refinery))
+            if (!AdvanceResourceCycle(game, faction, refinery))
                 return;
 
-            _smugglingSystem
+            _smugglingCommands
                 .ResolveProductionRecipient(faction, refinery)
                 .RefinedMaterialStockpile++;
             faction.RequestRawMaterial(refinery);
@@ -416,13 +434,15 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Advances a resource facility by one tick and resets it after a completed cycle.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
         /// <param name="faction">The owning faction.</param>
         /// <param name="facility">The facility to advance.</param>
         /// <returns>True when the cycle completes this tick.</returns>
-        private bool AdvanceResourceCycle(Faction faction, Building facility)
+        private bool AdvanceResourceCycle(GameRoot game, Faction faction, Building facility)
         {
             if (facility.ProductionCycleDuration <= 0)
                 facility.ProductionCycleDuration = CalculateResourceCycleDuration(
+                    game,
                     faction,
                     facility
                 );
@@ -441,12 +461,17 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Calculates a resource facility cycle from process rate, maintenance load, and support.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
         /// <param name="faction">The owning faction.</param>
         /// <param name="facility">The facility whose cycle is calculated.</param>
         /// <returns>The cycle duration in ticks.</returns>
-        private int CalculateResourceCycleDuration(Faction faction, Building facility)
+        private static int CalculateResourceCycleDuration(
+            GameRoot game,
+            Faction faction,
+            Building facility
+        )
         {
-            GameConfig.ProductionConfig config = _game.Config.Production;
+            GameConfig.ProductionConfig config = game.Config.Production;
             int facilityCapacity = faction.Settings.ResourceProcessingPointsPerFacility;
             int scaledCapacity = Math.Max(
                 1,
@@ -467,7 +492,7 @@ namespace Rebellion.Simulation
             int startupBase = duration * config.ResourceStartupBasePercent / _percentScale;
             int startupRandomMaximum =
                 duration * config.ResourceStartupRandomPercent / _percentScale;
-            return Math.Max(1, startupBase + _game.Random.NextInt(0, startupRandomMaximum + 1));
+            return Math.Max(1, startupBase + game.Random.NextInt(0, startupRandomMaximum + 1));
         }
 
         /// <summary>

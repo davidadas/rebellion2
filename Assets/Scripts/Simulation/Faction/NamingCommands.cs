@@ -22,15 +22,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Assigns names for factions whose ship naming is automated.
-        /// </summary>
-        public void ProcessTick()
-        {
-            foreach (Faction faction in _game.GetFactions())
-                ProcessFaction(faction);
-        }
-
-        /// <summary>
         /// Assigns sequential faction names to eligible capital ships.
         /// </summary>
         /// <param name="faction">The faction whose ships should be named.</param>

@@ -375,7 +375,7 @@ namespace Rebellion.Tests.Simulation
             captive.Movement.TransitTicks = 1;
 
             game.CurrentTick = 12;
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
 
             Assert.IsNull(captive.Movement);
             Assert.AreEqual(10, snapshot.TickCaptured);

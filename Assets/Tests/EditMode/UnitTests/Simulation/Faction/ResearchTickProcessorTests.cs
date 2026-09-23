@@ -11,12 +11,12 @@ using Rebellion.Simulation;
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]
-    public class ResearchCommandsTests
+    public class ResearchTickProcessorTests
     {
         private GameRoot _game;
         private Faction _faction;
         private Planet _planet;
-        private ResearchCommands _system;
+        private ResearchTickProcessor _system;
 
         /// <summary>
         /// Sets up.
@@ -42,8 +42,8 @@ namespace Rebellion.Tests.Simulation
             };
             _game.AttachNode(_planet, planetSector);
 
-            _system = new ResearchCommands(_game, new StubRNG());
-            _system.InitializeTimers();
+            _system = new ResearchTickProcessor(new StubRNG());
+            _system.InitializeTimers(_game);
         }
 
         [Test]
@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Simulation
         {
             _faction.ResearchState.NextRefreshTick = 0;
 
-            _system.InitializeTimers();
+            _system.InitializeTimers(_game);
 
             Assert.Greater(_faction.ResearchState.NextRefreshTick, _game.CurrentTick);
         }
@@ -62,7 +62,7 @@ namespace Rebellion.Tests.Simulation
             Building shipyard = CreateShipyard("SY1");
             _game.AttachNode(shipyard, _planet);
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(
                 0,
@@ -79,7 +79,7 @@ namespace Rebellion.Tests.Simulation
             _game.CurrentTick = 30;
 
             int before = _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
             int after = _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
 
             Assert.AreEqual(1, after - before, "One core-sector shipyard should add 1 capacity");
@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(CreateShipyard("SY3"), _planet);
             _game.CurrentTick = 30;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(
                 3,
@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Simulation
             _planet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable> { ship };
             _game.CurrentTick = 30;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(
                 1,
@@ -134,7 +134,7 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(shipyard, _planet);
             _game.CurrentTick = 30;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(
                 0,
@@ -151,7 +151,7 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(shipyard, _planet);
             _game.CurrentTick = 30;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(
                 0,
@@ -164,7 +164,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_NoFacilities_NoCapacity()
         {
             _game.CurrentTick = 30;
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(
                 0,
@@ -201,7 +201,7 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(CreateShipyard("SY-OUTER"), outerRimPlanet);
             _game.CurrentTick = 30;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(
                 0,
@@ -218,7 +218,7 @@ namespace Rebellion.Tests.Simulation
             for (int i = 1; i <= 360; i++)
             {
                 _game.CurrentTick = i;
-                _system.ProcessTick();
+                _system.ProcessTick(_game);
             }
 
             Assert.AreEqual(
@@ -259,7 +259,7 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(thirdEmpireShipyard, empirePlanet);
             _game.CurrentTick = 30;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(
                 1,

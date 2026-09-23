@@ -801,7 +801,9 @@ namespace Rebellion.Tests.Simulation
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild1", "empire");
             _game.MoveNode(regiment, planet);
 
-            List<GameResult> results = _commands.ProcessTick();
+            IReadOnlyList<GameResult> results = new PlanetaryControlTickProcessor(
+                _commands
+            ).ProcessTick(_game);
 
             Assert.IsNull(planet.GetOwnerInstanceID());
             Assert.IsEmpty(
@@ -818,7 +820,9 @@ namespace Rebellion.Tests.Simulation
 
             _game.DetachNode(regiment);
 
-            List<GameResult> results = _commands.ProcessTick();
+            IReadOnlyList<GameResult> results = new PlanetaryControlTickProcessor(
+                _commands
+            ).ProcessTick(_game);
 
             Assert.IsNull(planet.GetOwnerInstanceID());
             Assert.AreEqual(0, planet.GetPopularSupport("empire"));
@@ -847,7 +851,7 @@ namespace Rebellion.Tests.Simulation
 
             _game.DetachNode(regiment);
             _game.CurrentTick = 20;
-            _commands.ProcessTick();
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
 
             PlanetSnapshot snapshot = GetPlanetSnapshot(observer, planet);
             Assert.AreEqual(5, snapshot.TickCaptured);
@@ -865,7 +869,7 @@ namespace Rebellion.Tests.Simulation
 
             _game.DetachNode(regiment);
             _game.CurrentTick = 20;
-            _commands.ProcessTick();
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
 
             PlanetSnapshot snapshot = GetPlanetSnapshot(_empire, planet);
             Assert.AreEqual(20, snapshot.TickCaptured);
@@ -878,7 +882,9 @@ namespace Rebellion.Tests.Simulation
             int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
             _targetPlanet.SetPopularSupport(_rebels.InstanceID, threshold + 1);
 
-            List<GameResult> results = _commands.ProcessTick();
+            IReadOnlyList<GameResult> results = new PlanetaryControlTickProcessor(
+                _commands
+            ).ProcessTick(_game);
 
             PlanetOwnershipChangedResult result = results
                 .OfType<PlanetOwnershipChangedResult>()
@@ -892,7 +898,7 @@ namespace Rebellion.Tests.Simulation
         {
             (Planet planet, PlanetaryControlCommands system) = BuildSupportScene(support: 15);
 
-            system.ProcessTick();
+            new PlanetaryControlTickProcessor(system).ProcessTick(_game);
 
             Assert.AreEqual(15, planet.GetPopularSupport("empire"));
         }
@@ -919,10 +925,10 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(ship, fleet);
             _game.CurrentTick = 30;
 
-            _commands.ProcessTick();
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
             _game.CurrentTick = 60;
 
-            _commands.ProcessTick();
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
 
             Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_empire.InstanceID));
             Assert.AreEqual(39, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
@@ -950,10 +956,10 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(ship, fleet);
             _game.CurrentTick = 30;
 
-            _commands.ProcessTick();
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
             _game.CurrentTick = 60;
 
-            _commands.ProcessTick();
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
 
             Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
             Assert.AreEqual(39, _targetPlanet.GetPopularSupport(_empire.InstanceID));
@@ -981,9 +987,9 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(ship, fleet);
             _game.CurrentTick = 30;
 
-            _commands.ProcessTick();
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
             _game.CurrentTick = 60;
-            _commands.ProcessTick();
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
 
             Assert.AreEqual(49, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
             Assert.AreEqual(51, _targetPlanet.GetPopularSupport(_empire.InstanceID));
@@ -1013,9 +1019,9 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(ship, fleet);
             _game.CurrentTick = 30;
 
-            _commands.ProcessTick();
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
             _game.CurrentTick = 60;
-            _commands.ProcessTick();
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
 
             Assert.AreEqual(60, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
             Assert.AreEqual(40, _targetPlanet.GetPopularSupport(_empire.InstanceID));
@@ -1029,7 +1035,7 @@ namespace Rebellion.Tests.Simulation
                 ownerInstanceId: null
             );
 
-            system.ProcessTick();
+            new PlanetaryControlTickProcessor(system).ProcessTick(_game);
 
             Assert.IsNull(planet.GetOwnerInstanceID());
         }
@@ -1042,7 +1048,7 @@ namespace Rebellion.Tests.Simulation
                 ownerInstanceId: null
             );
 
-            system.ProcessTick();
+            new PlanetaryControlTickProcessor(system).ProcessTick(_game);
 
             Assert.AreEqual("empire", planet.GetOwnerInstanceID());
         }
@@ -1058,7 +1064,7 @@ namespace Rebellion.Tests.Simulation
             planet.AddChild(EntityFactory.CreateRegiment("reg1", "empire"));
             planet.OwnerInstanceID = null;
 
-            system.ProcessTick();
+            new PlanetaryControlTickProcessor(system).ProcessTick(_game);
 
             Assert.IsNull(planet.GetOwnerInstanceID());
         }
@@ -1072,7 +1078,7 @@ namespace Rebellion.Tests.Simulation
                 isColonized: false
             );
 
-            system.ProcessTick();
+            new PlanetaryControlTickProcessor(system).ProcessTick(_game);
 
             Assert.IsNull(planet.GetOwnerInstanceID());
         }

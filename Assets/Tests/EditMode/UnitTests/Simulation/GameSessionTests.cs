@@ -1707,7 +1707,9 @@ namespace Rebellion.Tests.Simulation
             );
 
             diplomat.Movement = null;
-            List<GameResult> missionResults = manager.GetService<MissionCommands>().ProcessTick();
+            IReadOnlyList<GameResult> missionResults = new MissionTickProcessor(
+                manager.GetService<MissionCommands>()
+            ).ProcessTick(game);
 
             Assert.AreEqual(
                 MissionCompletionReason.Failure,

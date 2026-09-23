@@ -36,8 +36,18 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(0, publications);
             Assert.AreSame(destination, officer.GetParent());
-            Assert.AreEqual(1, movement.ProcessTick().OfType<GameObjectEnrouteResult>().Count());
-            Assert.IsEmpty(movement.ProcessTick().OfType<GameObjectEnrouteResult>());
+            Assert.AreEqual(
+                1,
+                new MovementTickProcessor(movement)
+                    .ProcessTick(game)
+                    .OfType<GameObjectEnrouteResult>()
+                    .Count()
+            );
+            Assert.IsEmpty(
+                new MovementTickProcessor(movement)
+                    .ProcessTick(game)
+                    .OfType<GameObjectEnrouteResult>()
+            );
         }
 
         [Test]
@@ -61,7 +71,11 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(accepted);
             Assert.AreEqual(1, published.OfType<GameObjectEnrouteResult>().Count());
-            Assert.IsEmpty(movement.ProcessTick().OfType<GameObjectEnrouteResult>());
+            Assert.IsEmpty(
+                new MovementTickProcessor(movement)
+                    .ProcessTick(game)
+                    .OfType<GameObjectEnrouteResult>()
+            );
         }
 
         [Test]
@@ -1244,7 +1258,7 @@ namespace Rebellion.Tests.Simulation
             foreach (IMovable inboundUnit in inboundUnits)
                 movement.RequestMove(inboundUnit, destinationFleet);
 
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
 
             Dictionary<IMovable, MovementState> previousMovements = inboundUnits.ToDictionary(
                 unit => unit,
@@ -1446,7 +1460,7 @@ namespace Rebellion.Tests.Simulation
             // Tick until transit completes.
             int transit = capitalShip.Movement.TransitTicks;
             for (int i = 0; i < transit; i++)
-                movement.ProcessTick();
+                new MovementTickProcessor(movement).ProcessTick(game);
 
             Assert.IsNull(
                 capitalShip.Movement,
@@ -1844,7 +1858,7 @@ namespace Rebellion.Tests.Simulation
             };
             scene.game.AttachNode(building, scene.blockadedDestination);
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            ProcessBlockadeStart(scene.blockade, scene.resultBus);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
             building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(
@@ -1911,7 +1925,9 @@ namespace Rebellion.Tests.Simulation
             movement.RequestMove(regiment, destination);
 
             // Evacuation results are pending — flush via ProcessTick
-            List<GameResult> results = movement.ProcessTick();
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
 
             EvacuationLossesResult evacResult = results
                 .OfType<EvacuationLossesResult>()
@@ -2343,7 +2359,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void TryRequestMove_EventOriginatedRequest_PropagatesSourceToArrival()
         {
-            (_, _, Planet destination, Officer officer, MovementCommands movement) = BuildScene();
+            (GameRoot game, _, Planet destination, Officer officer, MovementCommands movement) =
+                BuildScene();
             bool accepted = movement.TryRequestMove(
                 new List<IMovable> { officer },
                 new List<ContainerNode> { destination },
@@ -2356,7 +2373,7 @@ namespace Rebellion.Tests.Simulation
 
             List<GameResult> results = new List<GameResult>();
             for (int tick = 0; tick < transitTicks; tick++)
-                results.AddRange(movement.ProcessTick());
+                results.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
 
             UnitArrivedResult arrival = results.OfType<UnitArrivedResult>().Single();
             Assert.AreEqual("SEND_OFFICER", arrival.SourceEventInstanceID);
@@ -2820,7 +2837,7 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(expectedTransitTicks, fleet.Movement.TransitTicks);
 
             for (int tick = 0; tick < expectedTransitTicks; tick++)
-                movement.ProcessTick();
+                new MovementTickProcessor(movement).ProcessTick(game);
 
             Assert.AreSame(destination, fleet.GetParent());
             Assert.AreSame(fleet, fastShip.GetParent());
@@ -2838,7 +2855,7 @@ namespace Rebellion.Tests.Simulation
                 MovementCommands movement
             ) = BuildScene();
 
-            Assert.DoesNotThrow(() => movement.ProcessTick());
+            Assert.DoesNotThrow(() => new MovementTickProcessor(movement).ProcessTick(game));
             Assert.IsNull(officer.Movement);
         }
 
@@ -2854,7 +2871,7 @@ namespace Rebellion.Tests.Simulation
             ) = BuildScene();
             movement.RequestMove(officer, destination);
 
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
 
             Assert.AreEqual(1, officer.Movement.TicksElapsed);
         }
@@ -2872,7 +2889,9 @@ namespace Rebellion.Tests.Simulation
             movement.RequestMove(officer, destination);
             officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
 
-            List<GameResult> results = movement.ProcessTick();
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
 
             Assert.IsNull(officer.Movement);
             Assert.IsTrue(results.OfType<UnitArrivedResult>().Any());
@@ -2899,7 +2918,10 @@ namespace Rebellion.Tests.Simulation
             string movementGroupId = officer.Movement.MovementGroupID;
             officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
 
-            UnitArrivedResult arrival = movement.ProcessTick().OfType<UnitArrivedResult>().Single();
+            UnitArrivedResult arrival = new MovementTickProcessor(movement)
+                .ProcessTick(game)
+                .OfType<UnitArrivedResult>()
+                .Single();
 
             Assert.AreEqual(movementGroupId, arrival.MovementGroupID);
         }
@@ -2917,7 +2939,7 @@ namespace Rebellion.Tests.Simulation
             movement.RequestMove(officer, destination);
             officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
 
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
 
             Assert.AreEqual(destination, officer.GetParent());
         }
@@ -2947,7 +2969,9 @@ namespace Rebellion.Tests.Simulation
             movement.RequestMove(officer, mission);
             officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
 
-            List<GameResult> results = movement.ProcessTick();
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
 
             Assert.IsNull(officer.Movement, "Movement should be cleared on arrival at a mission");
             Assert.AreEqual(
@@ -2990,7 +3014,9 @@ namespace Rebellion.Tests.Simulation
             movement.RequestMove(specialForces, mission);
             specialForces.Movement.TicksElapsed = specialForces.Movement.TransitTicks;
 
-            List<GameResult> results = movement.ProcessTick();
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
 
             Assert.IsNull(specialForces.Movement);
             Assert.AreEqual(mission, specialForces.GetParent());
@@ -3015,8 +3041,8 @@ namespace Rebellion.Tests.Simulation
             officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
             officer2.Movement.TicksElapsed = officer2.Movement.TransitTicks;
 
-            List<UnitArrivedResult> arrivals = movement
-                .ProcessTick()
+            List<UnitArrivedResult> arrivals = new MovementTickProcessor(movement)
+                .ProcessTick(game)
                 .OfType<UnitArrivedResult>()
                 .Where(result => result.Unit == officer || result.Unit == officer2)
                 .ToList();
@@ -3100,7 +3126,7 @@ namespace Rebellion.Tests.Simulation
 
             // Tick until one tick before arrival
             for (int i = 0; i < transitTicks - 1; i++)
-                movement.ProcessTick();
+                new MovementTickProcessor(movement).ProcessTick(game);
 
             Assert.IsNotNull(officer.Movement, "Officer should still be in transit.");
 
@@ -3108,7 +3134,7 @@ namespace Rebellion.Tests.Simulation
             movement.RequestMove(fleet, planetC);
 
             // Tick once more — officer would have arrived at old position
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
 
             // Officer should still be en route because the fleet moved
             Assert.IsNotNull(
@@ -3144,7 +3170,7 @@ namespace Rebellion.Tests.Simulation
 
             // Advance until the fleet arrives.
             for (int i = 0; i < scene.fleetTransit; i++)
-                scene.movement.ProcessTick();
+                new MovementTickProcessor(scene.movement).ProcessTick(scene.game);
 
             Assert.IsNull(scene.fleet.Movement, "Fleet should have arrived at planet B.");
             Assert.AreEqual(scene.planetB, scene.fleet.GetParent(), "Fleet should be at planet B.");
@@ -3191,7 +3217,7 @@ namespace Rebellion.Tests.Simulation
 
             // Advance until CS2 also arrives (covers fleet arrival + remaining ticks).
             for (int i = 0; i < scene.capitalShip2Transit; i++)
-                scene.movement.ProcessTick();
+                new MovementTickProcessor(scene.movement).ProcessTick(scene.game);
 
             Assert.IsNull(scene.fleet.Movement, "Fleet should have arrived at planet B.");
             Assert.IsNull(scene.capitalShip2.Movement, "CS2 should have arrived.");
@@ -3264,7 +3290,7 @@ namespace Rebellion.Tests.Simulation
             int transit = mine.Movement.TransitTicks;
             List<GameResult> allResults = new List<GameResult>();
             for (int i = 0; i < transit; i++)
-                allResults.AddRange(movement.ProcessTick());
+                allResults.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
 
             Assert.IsNull(
                 game.GetSceneNodeByInstanceID<Building>(mine.InstanceID),
@@ -3326,7 +3352,7 @@ namespace Rebellion.Tests.Simulation
 
             int transit = regiment.Movement.TransitTicks;
             for (int i = 0; i < transit; i++)
-                movement.ProcessTick();
+                new MovementTickProcessor(movement).ProcessTick(game);
 
             // Regiment should be rerouted to nearest friendly planet (originPlanet).
             Assert.AreEqual(
@@ -3390,7 +3416,7 @@ namespace Rebellion.Tests.Simulation
             int transit = fleet.Movement.TransitTicks;
             List<GameResult> allResults = new List<GameResult>();
             for (int i = 0; i < transit; i++)
-                allResults.AddRange(movement.ProcessTick());
+                allResults.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
 
             Assert.IsNull(fleet.Movement, "Fleet should complete arrival at the hostile planet.");
             Assert.AreEqual(hostilePlanet, fleet.GetParent());
@@ -3469,7 +3495,7 @@ namespace Rebellion.Tests.Simulation
             int transit = regiment.Movement.TransitTicks;
             List<GameResult> allResults = new List<GameResult>();
             for (int i = 0; i < transit; i++)
-                allResults.AddRange(movement.ProcessTick());
+                allResults.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
 
             Assert.IsNull(
                 regiment.Movement,
@@ -3503,7 +3529,7 @@ namespace Rebellion.Tests.Simulation
             };
             scene.game.AttachNode(building, scene.blockadedDestination);
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            ProcessBlockadeStart(scene.blockade, scene.resultBus);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
             building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
@@ -3511,7 +3537,7 @@ namespace Rebellion.Tests.Simulation
             int transitTicks = building.Movement.TransitTicks;
             List<GameResult> results = new List<GameResult>();
             for (int tick = 0; tick < transitTicks; tick++)
-                results.AddRange(scene.movement.ProcessTick());
+                results.AddRange(new MovementTickProcessor(scene.movement).ProcessTick(scene.game));
 
             Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
             GameObjectDestroyedOnArrivalResult destroyed = results
@@ -3547,7 +3573,7 @@ namespace Rebellion.Tests.Simulation
             };
             scene.game.AttachNode(regiment, scene.blockadedDestination);
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            ProcessBlockadeStart(scene.blockade, scene.resultBus);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
             regiment.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(regiment, scene.blockadedDestination, scene.origin);
@@ -3555,7 +3581,7 @@ namespace Rebellion.Tests.Simulation
             int transitTicks = regiment.Movement.TransitTicks;
             List<GameResult> results = new List<GameResult>();
             for (int tick = 0; tick < transitTicks; tick++)
-                results.AddRange(scene.movement.ProcessTick());
+                results.AddRange(new MovementTickProcessor(scene.movement).ProcessTick(scene.game));
 
             Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             GameObjectDestroyedOnArrivalResult destroyed = results
@@ -3592,17 +3618,19 @@ namespace Rebellion.Tests.Simulation
             };
             scene.game.AttachNode(building, scene.blockadedDestination);
             (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            ProcessBlockadeStart(scene.blockade, scene.resultBus);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
             building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
             scene.game.DetachNode(blockadingFleet);
-            scene.resultBus.Publish(scene.blockade.ProcessTick());
+            scene.resultBus.Publish(
+                new BlockadeTickProcessor(scene.blockade).ProcessTick(scene.game)
+            );
 
             int transitTicks = building.Movement.TransitTicks;
             List<GameResult> results = new List<GameResult>();
             for (int tick = 0; tick < transitTicks; tick++)
-                results.AddRange(scene.movement.ProcessTick());
+                results.AddRange(new MovementTickProcessor(scene.movement).ProcessTick(scene.game));
 
             Assert.AreSame(
                 building,
@@ -3626,7 +3654,7 @@ namespace Rebellion.Tests.Simulation
         public void TrySetFleetWaypointRoute_MultipleDestinations_ContinuesRouteAfterArrival()
         {
             (
-                _,
+                GameRoot game,
                 _,
                 Planet firstDestination,
                 Planet secondDestination,
@@ -3649,7 +3677,9 @@ namespace Rebellion.Tests.Simulation
             );
 
             fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
-            List<GameResult> firstArrivalResults = movement.ProcessTick();
+            IReadOnlyList<GameResult> firstArrivalResults = new MovementTickProcessor(
+                movement
+            ).ProcessTick(game);
 
             Assert.IsNull(fleet.Movement);
             CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, fleet.Waypoints);
@@ -3662,7 +3692,9 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, fleet.Waypoints);
 
             fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
-            List<GameResult> finalArrivalResults = movement.ProcessTick();
+            IReadOnlyList<GameResult> finalArrivalResults = new MovementTickProcessor(
+                movement
+            ).ProcessTick(game);
 
             FleetWaypointsCompletedResult completed = finalArrivalResults
                 .OfType<FleetWaypointsCompletedResult>()
@@ -3725,7 +3757,7 @@ namespace Rebellion.Tests.Simulation
         public void TrySetFleetWaypointRoute_CapitalShip_CreatesFleetAndCompletesRoute()
         {
             (
-                _,
+                GameRoot game,
                 _,
                 Planet firstDestination,
                 Planet secondDestination,
@@ -3752,7 +3784,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             ship.Movement.TicksElapsed = ship.Movement.TransitTicks - 1;
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
             movement.ContinueFleetWaypointRoutes();
 
             Assert.IsNotNull(routeFleet.Movement);
@@ -3760,7 +3792,9 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { secondDestination.InstanceID }, routeFleet.Waypoints);
 
             routeFleet.Movement.TicksElapsed = routeFleet.Movement.TransitTicks - 1;
-            List<GameResult> finalResults = movement.ProcessTick();
+            IReadOnlyList<GameResult> finalResults = new MovementTickProcessor(
+                movement
+            ).ProcessTick(game);
 
             FleetWaypointsCompletedResult completed = finalResults
                 .OfType<FleetWaypointsCompletedResult>()
@@ -3813,7 +3847,7 @@ namespace Rebellion.Tests.Simulation
         public void ClearFleetWaypoints_ActiveRoute_PreservesCurrentMovementAndStopsContinuation()
         {
             (
-                _,
+                GameRoot game,
                 _,
                 Planet firstDestination,
                 Planet secondDestination,
@@ -3835,7 +3869,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(fleet.Waypoints);
 
             fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
             movement.ContinueFleetWaypointRoutes();
 
             Assert.IsNull(fleet.Movement);
@@ -3846,7 +3880,7 @@ namespace Rebellion.Tests.Simulation
         public void TryRequestMove_FleetWithQueuedWaypoints_ReplacesRoute()
         {
             (
-                _,
+                GameRoot game,
                 Planet origin,
                 Planet firstDestination,
                 Planet secondDestination,
@@ -3859,7 +3893,7 @@ namespace Rebellion.Tests.Simulation
                 "empire"
             );
             fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
 
             bool moved = movement.TryRequestMove(new ISceneNode[] { fleet }, origin, "empire");
 
@@ -4004,7 +4038,11 @@ namespace Rebellion.Tests.Simulation
                 .OfType<PlanetGarrisonChangedResult>()
                 .Single();
             Assert.AreSame(origin, result.Planet);
-            Assert.IsEmpty(movement.ProcessTick().OfType<PlanetGarrisonChangedResult>());
+            Assert.IsEmpty(
+                new MovementTickProcessor(movement)
+                    .ProcessTick(game)
+                    .OfType<PlanetGarrisonChangedResult>()
+            );
         }
 
         [Test]
@@ -4287,7 +4325,9 @@ namespace Rebellion.Tests.Simulation
             escort.Movement.TicksElapsed = escort.Movement.TransitTicks;
             captive.Movement.TicksElapsed = captive.Movement.TransitTicks;
 
-            List<GameResult> results = movement.ProcessTick();
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
 
             Assert.AreEqual(destination, captive.GetParent());
             Assert.IsNull(captive.Movement);
@@ -4322,7 +4362,7 @@ namespace Rebellion.Tests.Simulation
                 CurrentPosition = origin.GetPosition(),
             };
 
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
 
             Assert.IsTrue(
                 destination.WasVisitedBy("empire"),
@@ -4354,7 +4394,7 @@ namespace Rebellion.Tests.Simulation
                 CurrentPosition = origin.GetPosition(),
             };
 
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
 
             Assert.IsNull(
                 fleet.Movement,
@@ -4387,7 +4427,7 @@ namespace Rebellion.Tests.Simulation
                 CurrentPosition = origin.GetPosition(),
             };
 
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
 
             Assert.IsTrue(
                 destination.WasVisitedBy("empire"),
@@ -4418,7 +4458,7 @@ namespace Rebellion.Tests.Simulation
                 CurrentPosition = origin.GetPosition(),
             };
 
-            movement.ProcessTick();
+            new MovementTickProcessor(movement).ProcessTick(game);
 
             Assert.AreEqual(
                 countBefore,
@@ -4797,15 +4837,17 @@ namespace Rebellion.Tests.Simulation
         /// <summary>
         /// Processes blockade start.
         /// </summary>
+        /// <param name="game">The game being processed.</param>
         /// <param name="blockade">The blockade.</param>
         /// <param name="resultBus">The bus that delivers blockade reactions.</param>
         /// <returns>The result of process blockade start.</returns>
         private static List<GameResult> ProcessBlockadeStart(
+            GameRoot game,
             BlockadeCommands blockade,
             GameResultBus resultBus
         )
         {
-            return resultBus.Publish(blockade.ProcessTick());
+            return resultBus.Publish(new BlockadeTickProcessor(blockade).ProcessTick(game));
         }
 
         /// <summary>

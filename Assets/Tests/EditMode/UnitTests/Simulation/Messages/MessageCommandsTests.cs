@@ -176,7 +176,7 @@ namespace Rebellion.Tests.Simulation
                 new MessageFactory(new List<MessageDefinition>())
             );
 
-            messageSystem.ProcessTick();
+            new MessageTickProcessor().ProcessTick(game);
 
             CollectionAssert.AreEqual(new[] { retained }, faction.Messages[MessageType.Conflict]);
         }

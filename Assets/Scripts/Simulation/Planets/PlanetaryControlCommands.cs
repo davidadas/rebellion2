@@ -52,23 +52,9 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Checks for support-driven ownership transfers.
-        /// </summary>
-        /// <returns>Any ownership change results generated this tick.</returns>
-        public List<GameResult> ProcessTick()
-        {
-            List<GameResult> results = new List<GameResult>();
-            UpdateBlockadeSupport();
-            UpdateUncolonizedPlanets(results);
-            CheckOwnershipTransfers(results);
-
-            return results;
-        }
-
-        /// <summary>
         /// Updates timed popular-support changes caused by blockades.
         /// </summary>
-        private void UpdateBlockadeSupport()
+        internal void UpdateBlockadeSupport()
         {
             GameConfig.SupportShiftConfig config = _game.Config.SupportShift;
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
@@ -347,7 +333,7 @@ namespace Rebellion.Simulation
         /// Reconciles every planet against its current regiment presence.
         /// </summary>
         /// <param name="results">Collection to append any ownership-change results to.</param>
-        private void UpdateUncolonizedPlanets(List<GameResult> results)
+        internal void UpdateUncolonizedPlanets(List<GameResult> results)
         {
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
                 UpdateUncolonizedPlanet(planet, results);
@@ -662,7 +648,7 @@ namespace Rebellion.Simulation
         /// Checks all planets for support above the ownership threshold and transfers if needed.
         /// </summary>
         /// <param name="results">Collection to append any ownership change results to.</param>
-        private void CheckOwnershipTransfers(List<GameResult> results)
+        internal void CheckOwnershipTransfers(List<GameResult> results)
         {
             int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
 

@@ -38,7 +38,7 @@ namespace Rebellion.Tests.Simulation
             game.Config.Uprising.IncidentPulseMaxTicks = 10;
             planet.BeginUprising();
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             CollectionAssert.AreEqual(
                 new[] { 13, 15, 17 },
@@ -78,7 +78,7 @@ namespace Rebellion.Tests.Simulation
             planet.UprisingIncidentTimerOrder = 3;
             planet.NextUprisingTimerOrder = 3;
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(planet.IsInUprising);
             Assert.IsInstanceOf<PlanetUprisingEndedResult>(results.Single());
@@ -106,7 +106,7 @@ namespace Rebellion.Tests.Simulation
             planet.UprisingIncidentTimerOrder = 3;
             planet.NextUprisingTimerOrder = 3;
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(11, planet.NextUprisingSupportDriftTick);
             Assert.AreEqual(3, rng.IntCallCount);
@@ -121,7 +121,7 @@ namespace Rebellion.Tests.Simulation
                 troopCount: 5
             );
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(planet.IsInUprising, "Sufficient garrison should prevent uprising");
         }
@@ -135,7 +135,7 @@ namespace Rebellion.Tests.Simulation
                 troopCount: 0
             );
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(planet.IsInUprising, "Garrison deficit should trigger uprising");
             Assert.AreEqual(
@@ -155,7 +155,7 @@ namespace Rebellion.Tests.Simulation
                 troopCount: 5
             );
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(
                 planet.IsInUprising,
@@ -172,8 +172,12 @@ namespace Rebellion.Tests.Simulation
             );
             game.DetachNode(planet.GetChildren<Regiment>()[0]);
 
-            List<GameResult> firstResults = system.ProcessTick();
-            List<GameResult> secondResults = system.ProcessTick();
+            IReadOnlyList<GameResult> firstResults = new UprisingTickProcessor(system).ProcessTick(
+                game
+            );
+            IReadOnlyList<GameResult> secondResults = new UprisingTickProcessor(system).ProcessTick(
+                game
+            );
 
             Assert.AreEqual(1, firstResults.OfType<PlanetNearUprisingResult>().Count());
             Assert.IsEmpty(secondResults.OfType<PlanetNearUprisingResult>());
@@ -196,11 +200,11 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(facility, planet);
             game.AttachNode(facility2, planet);
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
 
             game.CurrentTick = 1;
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsNull(
                 game.GetSceneNodeByInstanceID<Building>(facility.InstanceID),
@@ -222,9 +226,9 @@ namespace Rebellion.Tests.Simulation
             facility.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(facility, planet);
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
             game.CurrentTick = 1;
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual("empire", planet.GetOwnerInstanceID());
             Assert.IsTrue(planet.IsInUprising);
@@ -244,7 +248,7 @@ namespace Rebellion.Tests.Simulation
             Officer officer = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
             game.AttachNode(officer, planet);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(officer.IsCaptured, "Officer should be captured by uprising case 3");
             Assert.IsNotNull(
@@ -273,7 +277,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(captive, planet);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(
                 captive.IsCaptured,
@@ -298,7 +302,7 @@ namespace Rebellion.Tests.Simulation
             Building facility = EntityFactory.CreateBuilding("b1", "empire");
             game.AttachNode(facility, planet);
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
         }
@@ -318,7 +322,7 @@ namespace Rebellion.Tests.Simulation
             ScheduleIncident(planet, 1);
             game.CurrentTick = 1;
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("enroute"));
             Assert.AreEqual(
@@ -354,7 +358,7 @@ namespace Rebellion.Tests.Simulation
             ScheduleIncident(planet, 1);
             game.CurrentTick = 1;
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(enroute.IsCaptured);
             Assert.IsFalse(killed.IsCaptured);
@@ -372,7 +376,7 @@ namespace Rebellion.Tests.Simulation
                 rng: new SequenceRNG(intValues: new[] { 8, 8 })
             );
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(planet.IsInUprising, "High support should prevent uprising");
         }
@@ -386,7 +390,7 @@ namespace Rebellion.Tests.Simulation
             );
             planet.BeginUprising();
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(planet.IsInUprising, "Uprising should end when controller loses planet");
             Assert.IsNull(planet.OwnerInstanceID, "Planet should become neutral");
@@ -408,7 +412,7 @@ namespace Rebellion.Tests.Simulation
             );
             planet.BeginUprising();
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(planet.IsInUprising);
             Assert.AreEqual("rebels", planet.OwnerInstanceID);
@@ -429,9 +433,11 @@ namespace Rebellion.Tests.Simulation
             );
             planet.BeginUprising();
 
-            List<GameResult> beforeTimer = system.ProcessTick();
+            IReadOnlyList<GameResult> beforeTimer = new UprisingTickProcessor(system).ProcessTick(
+                game
+            );
             game.CurrentTick = 1;
-            List<GameResult> atTimer = system.ProcessTick();
+            IReadOnlyList<GameResult> atTimer = new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsEmpty(beforeTimer.OfType<PlanetUprisingEndedResult>());
             Assert.IsFalse(planet.IsInUprising);
@@ -453,7 +459,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(facility, planet);
             game.AttachNode(EntityFactory.CreateFleet("enemy-fleet", "rebels"), planet);
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
         }
@@ -474,7 +480,7 @@ namespace Rebellion.Tests.Simulation
             facility.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(facility, planet);
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(facility.InstanceID));
             Assert.AreEqual(8, planet.GetPopularSupport("empire"));
@@ -503,7 +509,7 @@ namespace Rebellion.Tests.Simulation
             facility.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(facility, planet);
 
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
             Assert.AreEqual(10, planet.GetPopularSupport("empire"));
@@ -548,7 +554,7 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG(),
                 planetaryControl
             );
-            uprisingSystem.ProcessTick();
+            new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
             Assert.IsFalse(planet.IsInUprising, "Neutral planet should not revolt");
         }
@@ -610,7 +616,7 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG(),
                 planetaryControl
             );
-            uprisingSystem.ProcessTick();
+            new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
             Assert.IsFalse(
                 planet.IsInUprising,
@@ -675,7 +681,7 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG(),
                 planetaryControl
             );
-            uprisingSystem.ProcessTick();
+            new UprisingTickProcessor(uprisingSystem).ProcessTick(game);
 
             Assert.IsTrue(
                 planet.IsInUprising,
@@ -718,12 +724,12 @@ namespace Rebellion.Tests.Simulation
             game.Config.Uprising.IncidentPulseMinTicks = 100;
             game.Config.Uprising.IncidentPulseMaxTicks = 100;
             planet.BeginUprising();
-            system.ProcessTick();
+            new UprisingTickProcessor(system).ProcessTick(game);
 
             game.DetachNode(planet.GetChildren<Regiment>()[0]);
             system.ReconcileGarrison(planet);
             game.CurrentTick = 1;
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(planet.IsInUprising);
             Assert.AreEqual(0, planet.NextUprisingClearTick);

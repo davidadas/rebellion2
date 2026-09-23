@@ -167,7 +167,7 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(game)
             );
 
-            system2.ProcessTick();
+            new MaintenanceTickProcessor(system2).ProcessTick(game);
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
@@ -213,9 +213,13 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(game)
             );
 
-            List<GameResult> firstResults = maintenanceSystem.ProcessTick();
+            IReadOnlyList<GameResult> firstResults = new MaintenanceTickProcessor(
+                maintenanceSystem
+            ).ProcessTick(game);
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
-            List<GameResult> secondResults = maintenanceSystem.ProcessTick();
+            IReadOnlyList<GameResult> secondResults = new MaintenanceTickProcessor(
+                maintenanceSystem
+            ).ProcessTick(game);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment1.InstanceID));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
@@ -275,9 +279,9 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(game)
             );
 
-            maintenanceSystem.ProcessTick();
+            new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
             game.CurrentTick = 1;
-            maintenanceSystem.ProcessTick();
+            new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
 
             int remaining =
                 (game.GetSceneNodeByInstanceID<Regiment>("r1") != null ? 1 : 0)
@@ -318,11 +322,11 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(game)
             );
 
-            maintenanceSystem.ProcessTick();
+            new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
-            maintenanceSystem.ProcessTick();
+            new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval * 2;
-            maintenanceSystem.ProcessTick();
+            new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
 
             int remaining = Enumerable
                 .Range(0, 3)
@@ -362,9 +366,13 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(game)
             );
 
-            List<GameResult> firstResults = maintenanceSystem.ProcessTick();
+            IReadOnlyList<GameResult> firstResults = new MaintenanceTickProcessor(
+                maintenanceSystem
+            ).ProcessTick(game);
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
-            List<GameResult> secondResults = maintenanceSystem.ProcessTick();
+            IReadOnlyList<GameResult> secondResults = new MaintenanceTickProcessor(
+                maintenanceSystem
+            ).ProcessTick(game);
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsTrue(firstResults.OfType<MaintenanceRequiredResult>().Any());
@@ -401,7 +409,9 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(game)
             );
 
-            List<GameResult> results = maintenanceSystem.ProcessTick();
+            IReadOnlyList<GameResult> results = new MaintenanceTickProcessor(
+                maintenanceSystem
+            ).ProcessTick(game);
 
             MaintenanceRequiredResult shortfall = results
                 .OfType<MaintenanceRequiredResult>()
@@ -451,10 +461,12 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(game)
             );
 
-            maintenanceSystem.ProcessTick();
+            new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
 
-            List<GameResult> results = maintenanceSystem.ProcessTick();
+            IReadOnlyList<GameResult> results = new MaintenanceTickProcessor(
+                maintenanceSystem
+            ).ProcessTick(game);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(ship.InstanceID));
             Assert.AreSame(
@@ -495,9 +507,9 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(game)
             );
 
-            maintenanceSystem.ProcessTick();
+            new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
-            maintenanceSystem.ProcessTick();
+            new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(defense.InstanceID));
         }
@@ -535,9 +547,9 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(game)
             );
 
-            maintenanceSystem.ProcessTick();
+            new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
-            maintenanceSystem.ProcessTick();
+            new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("mine1"));
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));

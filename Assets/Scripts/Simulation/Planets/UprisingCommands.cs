@@ -42,31 +42,25 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Checks garrison levels and resolves active uprisings for all owned planets.
+        /// Checks one planet's garrison and resolves its active uprising.
         /// </summary>
-        /// <returns>Game results from uprising starts and consequence resolution.</returns>
-        public List<GameResult> ProcessTick()
+        /// <param name="planet">The planet whose uprising state should advance.</param>
+        /// <param name="results">The collection receiving uprising changes.</param>
+        internal void ProcessPlanet(Planet planet, List<GameResult> results)
         {
-            List<GameResult> results = new List<GameResult>();
-
-            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
+            Faction faction = GetControllingFaction(planet);
+            if (faction == null)
             {
-                Faction faction = GetControllingFaction(planet);
-                if (faction == null)
-                {
-                    _garrisonSurplusByPlanet[planet] = 0;
-                    if (planet.IsInUprising)
-                        planet.EndUprising();
-                    continue;
-                }
-
+                _garrisonSurplusByPlanet[planet] = 0;
                 if (planet.IsInUprising)
-                    ResolveActiveUprising(planet, faction, results);
-                else
-                    ReconcileGarrison(planet, faction, results);
+                    planet.EndUprising();
+                return;
             }
 
-            return results;
+            if (planet.IsInUprising)
+                ResolveActiveUprising(planet, faction, results);
+            else
+                ReconcileGarrison(planet, faction, results);
         }
 
         /// <summary>

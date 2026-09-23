@@ -23,14 +23,14 @@ namespace Rebellion.Tests.Simulation
         {
             (GameRoot game, Planet firstPlanet, Fleet fleet) = BuildScene();
             BlockadeCommands system = new BlockadeCommands(game, new ThrowingRNG());
-            system.ProcessTick();
+            new BlockadeTickProcessor(system).ProcessTick(game);
             Planet secondPlanet = new Planet { InstanceID = "p2", OwnerInstanceID = "empire" };
             game.AttachNode(secondPlanet, firstPlanet.GetParent());
             game.MoveNode(fleet, secondPlanet);
             game.CurrentTick = 42;
 
-            BlockadeChangedResult[] results = system
-                .ProcessTick()
+            BlockadeChangedResult[] results = new BlockadeTickProcessor(system)
+                .ProcessTick(game)
                 .Cast<BlockadeChangedResult>()
                 .ToArray();
 
@@ -85,7 +85,9 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet, Fleet hostileFleet) = BuildScene();
             BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
 
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new BlockadeTickProcessor(manager).ProcessTick(
+                game
+            );
 
             BlockadeChangedResult result = results.OfType<BlockadeChangedResult>().FirstOrDefault();
             Assert.IsNotNull(result);
@@ -101,8 +103,8 @@ namespace Rebellion.Tests.Simulation
             planet.OwnerInstanceID = null;
             BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
 
-            BlockadeChangedResult result = manager
-                .ProcessTick()
+            BlockadeChangedResult result = new BlockadeTickProcessor(manager)
+                .ProcessTick(game)
                 .OfType<BlockadeChangedResult>()
                 .Single();
 
@@ -118,9 +120,13 @@ namespace Rebellion.Tests.Simulation
             hostileFleet.Movement = new MovementState { TransitTicks = 10 };
             BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
 
-            List<GameResult> inTransitResults = manager.ProcessTick();
+            IReadOnlyList<GameResult> inTransitResults = new BlockadeTickProcessor(
+                manager
+            ).ProcessTick(game);
             hostileFleet.Movement = null;
-            List<GameResult> arrivalResults = manager.ProcessTick();
+            IReadOnlyList<GameResult> arrivalResults = new BlockadeTickProcessor(
+                manager
+            ).ProcessTick(game);
 
             Assert.IsFalse(inTransitResults.OfType<BlockadeChangedResult>().Any());
             BlockadeChangedResult result = arrivalResults.OfType<BlockadeChangedResult>().Single();
@@ -134,8 +140,10 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, _, _) = BuildScene();
             BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
 
-            manager.ProcessTick();
-            List<GameResult> results = manager.ProcessTick();
+            new BlockadeTickProcessor(manager).ProcessTick(game);
+            IReadOnlyList<GameResult> results = new BlockadeTickProcessor(manager).ProcessTick(
+                game
+            );
 
             Assert.AreEqual(0, results.OfType<BlockadeChangedResult>().Count());
         }
@@ -146,7 +154,7 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet, _) = BuildScene();
             BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
 
-            manager.ProcessTick();
+            new BlockadeTickProcessor(manager).ProcessTick(game);
 
             // Defender arrives, breaking the blockade
             Fleet defenderFleet = new Fleet
@@ -158,7 +166,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(defenderFleet, planet);
             AttachOperationalCapitalShip(game, defenderFleet, "defender-ship");
 
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new BlockadeTickProcessor(manager).ProcessTick(
+                game
+            );
 
             BlockadeChangedResult result = results.OfType<BlockadeChangedResult>().FirstOrDefault();
             Assert.IsNotNull(result);
@@ -178,7 +188,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(planet, sector);
 
             BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new BlockadeTickProcessor(manager).ProcessTick(
+                game
+            );
 
             Assert.AreEqual(0, results.Count);
         }
@@ -197,7 +209,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(inTransit, planet);
 
             BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
-            manager.ProcessTick();
+            new BlockadeTickProcessor(manager).ProcessTick(game);
 
             Assert.IsNotNull(
                 game.GetSceneNodeByInstanceID<Regiment>("r1"),
@@ -231,7 +243,9 @@ namespace Rebellion.Tests.Simulation
             AttachOperationalCapitalShip(game, defender, "defender-ship");
 
             BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new BlockadeTickProcessor(manager).ProcessTick(
+                game
+            );
 
             Assert.AreEqual(1, results.OfType<BlockadeChangedResult>().Count());
             Assert.AreEqual(blockaded, results.OfType<BlockadeChangedResult>().First().Planet);

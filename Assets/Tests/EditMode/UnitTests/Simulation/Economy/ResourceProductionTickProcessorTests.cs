@@ -11,10 +11,10 @@ using Rebellion.Simulation;
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]
-    public class ResourceProductionCommandsTests
+    public class ResourceProductionTickProcessorTests
     {
         private GameRoot _game;
-        private ResourceProductionCommands _system;
+        private ResourceProductionTickProcessor _system;
         private Faction _faction;
         private PlanetSector _planetSector;
         private Planet _planet;
@@ -44,7 +44,11 @@ namespace Rebellion.Tests.Simulation
 
             _planet = CreateOwnedPlanet("PLANET1");
             _game.AttachNode(_planet, _planetSector);
-            _system = new ResourceProductionCommands(_game);
+            SmugglingCommands smuggling = new SmugglingCommands(_game);
+            _system = new ResourceProductionTickProcessor(
+                new SmugglingTickProcessor(smuggling),
+                smuggling
+            );
         }
 
         [Test]
@@ -52,12 +56,12 @@ namespace Rebellion.Tests.Simulation
         {
             Building mine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 4);
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
             Assert.IsTrue(mine.ProductionInputReserved);
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(1, _faction.RawMaterialStockpile);
             Assert.IsTrue(mine.ProductionInputReserved);
@@ -78,7 +82,7 @@ namespace Rebellion.Tests.Simulation
             mine.ResourceStartupCyclePending = false;
             Faction beneficiary = _game.GetFactionByOwnerInstanceID("FACTION2");
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
             Assert.AreEqual(1, beneficiary.RawMaterialStockpile);
@@ -98,7 +102,7 @@ namespace Rebellion.Tests.Simulation
             refinery.ResourceStartupCyclePending = false;
             Faction beneficiary = _game.GetFactionByOwnerInstanceID("FACTION2");
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(0, _faction.RefinedMaterialStockpile);
             Assert.AreEqual(1, beneficiary.RefinedMaterialStockpile);
@@ -110,7 +114,7 @@ namespace Rebellion.Tests.Simulation
             Building first = AddCompleteBuilding(_planet, BuildingType.Refinery, processRate: 2);
             Building second = AddCompleteBuilding(_planet, BuildingType.Refinery, processRate: 2);
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             CollectionAssert.AreEqual(
                 new[] { first.InstanceID, second.InstanceID },
@@ -118,7 +122,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             _faction.RawMaterialStockpile = 1;
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(1, _faction.RefinedMaterialStockpile);
             CollectionAssert.AreEqual(
@@ -148,7 +152,7 @@ namespace Rebellion.Tests.Simulation
             _faction.RequestRefinedMaterial(facility);
             _faction.RefinedMaterialStockpile = 1;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(0, _faction.RefinedMaterialStockpile);
             Assert.IsTrue(facility.ProductionInputReserved);
@@ -167,7 +171,7 @@ namespace Rebellion.Tests.Simulation
             _faction.RequestRefinedMaterial(facility);
             _faction.RefinedMaterialStockpile = 1;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(1, _faction.RefinedMaterialStockpile);
             Assert.IsFalse(facility.ProductionInputReserved);
@@ -182,7 +186,7 @@ namespace Rebellion.Tests.Simulation
             _faction.RawMaterialStockpile = 1;
             _planet.IsInUprising = true;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
             Assert.IsTrue(refinery.ProductionInputReserved);
@@ -212,7 +216,7 @@ namespace Rebellion.Tests.Simulation
             _faction.RefinedMaterialStockpile = 1;
             _planet.IsInUprising = true;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(0, _faction.RefinedMaterialStockpile);
             Assert.IsTrue(facility.ProductionInputReserved);
@@ -238,7 +242,7 @@ namespace Rebellion.Tests.Simulation
             );
             _faction.RequestRawMaterial(refinery);
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
             Assert.IsTrue(refinery.ProductionInputReserved);
@@ -272,7 +276,7 @@ namespace Rebellion.Tests.Simulation
             _faction.RawMaterialStockpile = 1;
             _faction.RequestRefinedMaterial(facility);
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(0, _faction.RefinedMaterialStockpile);
             Assert.IsTrue(facility.ProductionInputReserved);
@@ -291,7 +295,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(1, _faction.RawMaterialStockpile);
         }
@@ -318,7 +322,7 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(15, mine.ResourceMaintenanceAllocation);
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(1, _faction.RawMaterialStockpile);
         }
@@ -339,7 +343,7 @@ namespace Rebellion.Tests.Simulation
                 _planet
             );
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(20, firstMine.ResourceMaintenanceAllocation);
             Assert.AreEqual(20, secondMine.ResourceMaintenanceAllocation);
@@ -367,7 +371,7 @@ namespace Rebellion.Tests.Simulation
                 _planet
             );
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(50, _faction.MaintenanceCapacity);
             Assert.AreEqual(20, mine.ResourceMaintenanceAllocation);
@@ -398,7 +402,7 @@ namespace Rebellion.Tests.Simulation
                 hostileFleet
             );
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(0, mine.ProductionCycleProgress);
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
@@ -412,7 +416,7 @@ namespace Rebellion.Tests.Simulation
             mine.ResourceStartupCyclePending = false;
             _planet.IsInUprising = true;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(0, mine.ProductionCycleProgress);
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
@@ -438,13 +442,13 @@ namespace Rebellion.Tests.Simulation
             );
             _planet.IsInUprising = true;
 
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(15, mine.ResourceMaintenanceAllocation);
             Assert.AreEqual(0, mine.ProductionCycleProgress);
 
             _planet.IsInUprising = false;
-            _system.ProcessTick();
+            _system.ProcessTick(_game);
 
             Assert.AreEqual(15, mine.ResourceMaintenanceAllocation);
             Assert.AreEqual(1, mine.ProductionCycleProgress);
@@ -503,7 +507,7 @@ namespace Rebellion.Tests.Simulation
         private void ProcessTicks(int count)
         {
             for (int tick = 0; tick < count; tick++)
-                _system.ProcessTick();
+                _system.ProcessTick(_game);
         }
     }
 }

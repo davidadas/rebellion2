@@ -74,39 +74,13 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Resolves all AI-vs-AI combat encounters this tick in a single pass.
-        /// When a player-involved encounter is found, emits a PendingCombatResult and stops.
-        /// </summary>
-        /// <returns>Combat results generated this tick.</returns>
-        public List<GameResult> ProcessTick()
-        {
-            List<GameResult> results = new List<GameResult>();
-            if (_pendingDecision != null)
-                return results;
-
-            HashSet<string> resolvedFleetIds = new HashSet<string>();
-
-            while (TryBeginFleetCombat(resolvedFleetIds, out SpaceCombatDecision decision))
-            {
-                if (TryAutoResolveAICombat(decision, resolvedFleetIds, results))
-                    continue;
-
-                _pendingDecision = decision;
-                results.Add(_queries.BuildPendingCombatResult(decision));
-                return results;
-            }
-
-            return results;
-        }
-
-        /// <summary>
         /// Attempts to auto-resolve a detected combat encounter when both sides are AI-controlled.
         /// </summary>
         /// <param name="decision">The detected encounter to resolve.</param>
         /// <param name="resolvedFleetIds">Set updated with both fleet IDs on successful resolution.</param>
         /// <param name="results">Output list that receives combat results.</param>
         /// <returns>True if auto-resolved; false if either side is player-controlled.</returns>
-        private bool TryAutoResolveAICombat(
+        internal bool TryAutoResolveAICombat(
             SpaceCombatDecision decision,
             HashSet<string> resolvedFleetIds,
             List<GameResult> results
@@ -124,6 +98,17 @@ namespace Rebellion.Simulation
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Stores a player-involved encounter and creates its presentation result.
+        /// </summary>
+        /// <param name="decision">The encounter awaiting player input.</param>
+        /// <returns>The pending-combat result exposed to presentation.</returns>
+        internal PendingCombatResult DeferCombatDecision(SpaceCombatDecision decision)
+        {
+            _pendingDecision = decision ?? throw new ArgumentNullException(nameof(decision));
+            return _queries.BuildPendingCombatResult(decision);
         }
 
         /// <summary>
@@ -296,7 +281,7 @@ namespace Rebellion.Simulation
         /// <param name="excludedFleetIds">Fleet instance IDs to skip.</param>
         /// <param name="decision">The detected encounter.</param>
         /// <returns>True if a hostile encounter was detected.</returns>
-        private bool TryBeginFleetCombat(
+        internal bool TryBeginFleetCombat(
             HashSet<string> excludedFleetIds,
             out SpaceCombatDecision decision
         )

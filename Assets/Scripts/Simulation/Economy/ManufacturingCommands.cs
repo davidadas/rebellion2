@@ -12,7 +12,7 @@ using Rebellion.Util.Logging;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Manages unit and facility production during each game tick.
+    /// Manages unit and facility production orders.
     /// </summary>
     public class ManufacturingCommands
     {
@@ -45,18 +45,13 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Processes manufacturing for the current tick.
+        /// Returns and clears results queued by immediate manufacturing operations.
         /// </summary>
-        /// <returns>Manufacturing results produced this tick.</returns>
-        public List<GameResult> ProcessTick()
+        /// <returns>The pending manufacturing results.</returns>
+        internal List<GameResult> TakePendingResults()
         {
-            List<GameResult> results = new List<GameResult>();
-            results.AddRange(_pendingResults);
+            List<GameResult> results = new List<GameResult>(_pendingResults);
             _pendingResults.Clear();
-            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
-            {
-                results.AddRange(ProcessPlanetManufacturing(planet));
-            }
             return results;
         }
 
@@ -505,7 +500,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="planet">The planet whose queues are processed.</param>
         /// <returns>Manufacturing results produced by the planet.</returns>
-        private List<GameResult> ProcessPlanetManufacturing(Planet planet)
+        internal List<GameResult> ProcessPlanetManufacturing(Planet planet)
         {
             List<GameResult> results = new List<GameResult>();
             Dictionary<ManufacturingType, List<IManufacturable>> queue =

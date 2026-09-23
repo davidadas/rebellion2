@@ -113,7 +113,7 @@ namespace Rebellion.Tests.Simulation
             AddCompletedRegiment(_producer, "GARRISON_1");
             AddCompletedRegiment(_producer, "GARRISON_2");
 
-            _automation.ProcessTick();
+            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
             Assert.AreEqual(1, _destination.GetAllRegiments().Count);
             Assert.AreEqual(
@@ -133,7 +133,7 @@ namespace Rebellion.Tests.Simulation
             uprising.IsInUprising = true;
             _game.AttachNode(uprising, _destination.GetParent());
 
-            _automation.ProcessTick();
+            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
             Assert.AreEqual(1, uprising.GetAllRegiments().Count);
             Assert.IsEmpty(_destination.GetAllRegiments());
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Simulation
             Planet secondDestination = CreatePlanet("SECOND_DESTINATION", 10, 0);
             _game.AttachNode(secondDestination, _destination.GetParent());
 
-            _automation.ProcessTick();
+            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
             Assert.AreEqual(1, _destination.GetAllRegiments().Count);
             Assert.AreEqual(1, secondDestination.GetAllRegiments().Count);
@@ -161,7 +161,7 @@ namespace Rebellion.Tests.Simulation
             _faction.ManageProduction = false;
             _producer.SetManufacturingReserved(ManufacturingType.Troop, true);
 
-            _automation.ProcessTick();
+            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
             Assert.IsEmpty(_destination.GetAllRegiments());
         }
@@ -171,7 +171,7 @@ namespace Rebellion.Tests.Simulation
         {
             _faction.ManageGarrisons = false;
 
-            _automation.ProcessTick();
+            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
             Assert.AreEqual(12, CountResourceFacilities(BuildingType.Mine));
             Assert.AreEqual(10, CountResourceFacilities(BuildingType.Refinery));
@@ -186,7 +186,7 @@ namespace Rebellion.Tests.Simulation
             distant.PositionX = 100;
             _game.AttachNode(distant, _destination.GetParent());
 
-            _automation.ProcessTick();
+            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
             Assert.AreEqual(2, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
             Assert.AreEqual(0, distant.GetTotalBuildingTypeCount(BuildingType.Mine));
@@ -200,7 +200,7 @@ namespace Rebellion.Tests.Simulation
             int mineCount = CountResourceFacilities(BuildingType.Mine);
             int refineryCount = CountResourceFacilities(BuildingType.Refinery);
 
-            _automation.ProcessTick();
+            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
             Assert.AreEqual(mineCount, CountResourceFacilities(BuildingType.Mine));
             Assert.AreEqual(refineryCount, CountResourceFacilities(BuildingType.Refinery));
@@ -213,7 +213,7 @@ namespace Rebellion.Tests.Simulation
             _destination.SetManufacturingReserved(ManufacturingType.Building, true);
             _destination.PositionX = 1;
 
-            _automation.ProcessTick();
+            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
             Assert.AreEqual(2, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
@@ -225,7 +225,7 @@ namespace Rebellion.Tests.Simulation
             _destination.NumRawResourceNodes = 0;
             int refineryCount = CountResourceFacilities(BuildingType.Refinery);
 
-            _automation.ProcessTick();
+            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
             Assert.AreEqual(refineryCount, CountResourceFacilities(BuildingType.Refinery));
         }
@@ -236,7 +236,7 @@ namespace Rebellion.Tests.Simulation
             _faction.ManageGarrisons = false;
             _faction.ManageProduction = false;
 
-            _automation.ProcessTick();
+            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
             Assert.IsEmpty(_destination.GetAllRegiments());
             Assert.AreEqual(0, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));

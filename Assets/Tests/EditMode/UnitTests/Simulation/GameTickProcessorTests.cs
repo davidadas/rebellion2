@@ -135,12 +135,9 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The tick processor under test.</returns>
         private GameTickProcessor CreateTickProcessor()
         {
-            return new GameTickProcessor(
-                _session,
-                () => _session.GameEventExecutor,
-                _processResults,
-                _ => { }
-            );
+            GameTickProcessor tick = new GameTickProcessor(_processResults, _ => { });
+            tick.ConnectRuntime(_session);
+            return tick;
         }
     }
 }

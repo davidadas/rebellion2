@@ -83,11 +83,10 @@ namespace Rebellion.Simulation
             services.AddSingleton<ManufacturingQueries>();
             services.AddSingleton<ManufacturingCommands>();
             services.AddSingleton<NamingCommands>();
-            services.AddSingleton<RecoveryCommands>();
             services.AddSingleton<CaptiveCommands>();
             services.AddSingleton<FactionAutomationCommands>();
             services.AddSingleton<MaintenanceCommands>();
-            services.AddSingleton<ResourceProductionCommands>();
+            services.AddSingleton<SmugglingCommands>();
             services.AddSingleton<PlanetaryControlQueries>();
             services.AddSingleton<PlanetaryControlCommands>();
             services.AddSingleton<UprisingCommands>();
@@ -101,7 +100,6 @@ namespace Rebellion.Simulation
             services.AddSingleton<BombardmentCommands>();
             services.AddSingleton<PlanetaryAssaultQueries>();
             services.AddSingleton<PlanetaryAssaultCommands>();
-            services.AddSingleton<ResearchCommands>();
             services.AddSingleton<VictoryCommands>();
             services.AddSingleton<AIDirector>();
             services.AddSingleton<MessageObserver>();

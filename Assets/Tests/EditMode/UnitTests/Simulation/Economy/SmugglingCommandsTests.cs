@@ -72,7 +72,7 @@ namespace Rebellion.Tests.Simulation
         {
             Building facility = AddFacility();
             SetSupport(15, 85);
-            _system.ProcessTick();
+            new SmugglingTickProcessor(_system).ProcessTick(_game);
             _game.Random = new QueueRNG(roll);
 
             Faction recipient = _system.ResolveProductionRecipient(_controller, facility);
@@ -85,7 +85,9 @@ namespace Rebellion.Tests.Simulation
         {
             SetSupport(15, 85);
 
-            List<GameResult> results = _system.ProcessTick();
+            IReadOnlyList<GameResult> results = new SmugglingTickProcessor(_system).ProcessTick(
+                _game
+            );
 
             PlanetStatChangedResult stat = results.OfType<PlanetStatChangedResult>().Single();
             Assert.AreEqual(75, stat.NewValue);
@@ -100,7 +102,9 @@ namespace Rebellion.Tests.Simulation
             SetSupport(15, 85);
             _system = new SmugglingCommands(_game);
 
-            List<GameResult> results = _system.ProcessTick();
+            IReadOnlyList<GameResult> results = new SmugglingTickProcessor(_system).ProcessTick(
+                _game
+            );
 
             Assert.IsEmpty(results.OfType<SmugglingChangedResult>());
         }
@@ -119,8 +123,8 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(fleet, _planet);
             _game.AttachNode(Active(new CapitalShip { InstanceID = "SHIP1" }), fleet);
 
-            PlanetStatChangedResult result = _system
-                .ProcessTick()
+            PlanetStatChangedResult result = new SmugglingTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<PlanetStatChangedResult>()
                 .Single();
 
@@ -144,7 +148,9 @@ namespace Rebellion.Tests.Simulation
                 fleet
             );
 
-            List<GameResult> results = _system.ProcessTick();
+            IReadOnlyList<GameResult> results = new SmugglingTickProcessor(_system).ProcessTick(
+                _game
+            );
 
             Assert.IsEmpty(results);
         }
@@ -153,11 +159,11 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_ControlChanged_EndsOldSmugglingAndStartsNewRelationship()
         {
             SetSupport(20, 20);
-            _system.ProcessTick();
+            new SmugglingTickProcessor(_system).ProcessTick(_game);
             _planet.OwnerInstanceID = "FACTION2";
 
-            SmugglingChangedResult[] changes = _system
-                .ProcessTick()
+            SmugglingChangedResult[] changes = new SmugglingTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<SmugglingChangedResult>()
                 .ToArray();
 
@@ -172,10 +178,12 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_DiversionChangesWithinRelationship_OnlyReportsStatChange()
         {
             SetSupport(15, 85);
-            _system.ProcessTick();
+            new SmugglingTickProcessor(_system).ProcessTick(_game);
             SetSupport(25, 75);
 
-            List<GameResult> results = _system.ProcessTick();
+            IReadOnlyList<GameResult> results = new SmugglingTickProcessor(_system).ProcessTick(
+                _game
+            );
 
             PlanetStatChangedResult stat = results.OfType<PlanetStatChangedResult>().Single();
             Assert.AreEqual(75, stat.OldValue);

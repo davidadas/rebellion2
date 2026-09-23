@@ -23,7 +23,7 @@ namespace Rebellion.Tests.Simulation
 
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(captive.IsCaptured, "Officer should be freed on successful escape");
             Assert.IsNull(captive.CaptorInstanceID, "CaptorInstanceID should be cleared");
@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Simulation
             captive.NextEscapeAttemptTick = 0;
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(captive.IsCaptured);
             Assert.AreEqual(101, captive.NextEscapeAttemptTick);
@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Simulation
             captive.NextEscapeAttemptTick = 0;
             CaptiveCommands system = CreateCommands(game, new MaximumRNG(), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(1101, captive.NextEscapeAttemptTick);
         }
@@ -63,7 +63,7 @@ namespace Rebellion.Tests.Simulation
             captive.NextEscapeAttemptTick = 100;
             CaptiveCommands system = CreateCommands(game, new ThrowingRNG(), movement);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(captive.IsCaptured);
             Assert.IsEmpty(results);
@@ -83,7 +83,7 @@ namespace Rebellion.Tests.Simulation
             dueCaptive.NextEscapeAttemptTick = game.CurrentTick;
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(dueCaptive.IsCaptured);
             Assert.IsTrue(waitingCaptive.IsCaptured);
@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Simulation
             captive.NextEscapeAttemptTick = game.CurrentTick;
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.99), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(101, captive.NextEscapeAttemptTick);
         }
@@ -111,7 +111,7 @@ namespace Rebellion.Tests.Simulation
 
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.99), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(captive.IsCaptured, "Officer should remain captured when escape fails");
         }
@@ -124,7 +124,7 @@ namespace Rebellion.Tests.Simulation
 
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(70, captive.Loyalty, "Loyalty should decrease by EscapeLoyaltyShift");
         }
@@ -137,7 +137,7 @@ namespace Rebellion.Tests.Simulation
 
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new CaptiveTickProcessor(system).ProcessTick(game);
 
             OfficerCaptureStateResult result = results
                 .OfType<OfficerCaptureStateResult>()
@@ -163,7 +163,7 @@ namespace Rebellion.Tests.Simulation
             game.ChangeOwnership(friendlyPlanet, "rebels");
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(captive.IsCaptured);
             Assert.AreEqual("rebels", captive.CaptorInstanceID);
@@ -191,7 +191,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(ship, fleet);
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(captive.IsCaptured);
             Assert.IsNull(captive.CaptorInstanceID);
@@ -225,7 +225,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(operationalShip, fleet);
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(captive.IsCaptured);
             Assert.AreSame(operationalShip, captive.GetParent());
@@ -241,7 +241,7 @@ namespace Rebellion.Tests.Simulation
 
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(captive.IsCaptured, "Officer with CanEscape=false should not escape");
         }
@@ -255,7 +255,7 @@ namespace Rebellion.Tests.Simulation
 
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(captive.IsCaptured, "Killed officer should not attempt escape");
         }
@@ -283,7 +283,7 @@ namespace Rebellion.Tests.Simulation
 
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.5), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(
                 captive.IsCaptured,
@@ -301,7 +301,7 @@ namespace Rebellion.Tests.Simulation
 
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.2), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(
                 captive.IsCaptured,
@@ -318,7 +318,7 @@ namespace Rebellion.Tests.Simulation
 
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(0, captive.Loyalty, "Loyalty should clamp to 0, not go negative");
         }
@@ -347,7 +347,7 @@ namespace Rebellion.Tests.Simulation
             }
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.2), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(captive.IsCaptured);
             Assert.AreSame(ship, captive.GetParent());
@@ -380,7 +380,7 @@ namespace Rebellion.Tests.Simulation
             }
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.2), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsFalse(captive.IsCaptured);
             Assert.AreEqual("empire", captive.GetParentOfType<Planet>()?.OwnerInstanceID);
@@ -400,7 +400,7 @@ namespace Rebellion.Tests.Simulation
             fleet.Movement = new MovementState { TransitTicks = 2 };
             CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
 
-            system.ProcessTick();
+            new CaptiveTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(captive.IsCaptured);
             Assert.AreSame(ship, captive.GetParent());

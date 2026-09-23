@@ -131,7 +131,7 @@ namespace Rebellion.Tests.Simulation
             int initialHull = fleet.GetChildren<CapitalShip>()[0].CurrentHullStrength;
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            bool detected = RunCombat(manager);
+            bool detected = RunCombat(game, manager);
 
             Assert.IsFalse(detected, "No combat should be detected");
             Assert.AreEqual(
@@ -247,7 +247,7 @@ namespace Rebellion.Tests.Simulation
             Fleet fleet2 = CreateFleet(game, "f2", "empire", planet, 1, 100, 10);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            RunCombat(manager);
+            RunCombat(game, manager);
 
             Assert.AreEqual(100, fleet1.GetChildren<CapitalShip>()[0].CurrentHullStrength);
             Assert.AreEqual(100, fleet2.GetChildren<CapitalShip>()[0].CurrentHullStrength);
@@ -275,7 +275,7 @@ namespace Rebellion.Tests.Simulation
             CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>()[0];
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            TryRunCombat(manager, out List<GameResult> results);
+            TryRunCombat(game, manager, out List<GameResult> results);
 
             HashSet<string> participatingShipIds = GetCombatResult(results)
                 .AttackingUnits.Concat(GetCombatResult(results).DefendingUnits)
@@ -307,7 +307,7 @@ namespace Rebellion.Tests.Simulation
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            RunCombat(manager);
+            RunCombat(game, manager);
 
             Assert.IsNull(
                 game.GetSceneNodeByInstanceID<Fleet>(allianceFleet.InstanceID),
@@ -334,7 +334,7 @@ namespace Rebellion.Tests.Simulation
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1000, 100);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            RunCombat(manager);
+            RunCombat(game, manager);
 
             Assert.IsNull(
                 game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID),
@@ -379,7 +379,7 @@ namespace Rebellion.Tests.Simulation
             );
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            RunCombat(manager);
+            RunCombat(game, manager);
 
             bool anyDestroyed =
                 game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID) == null
@@ -410,7 +410,7 @@ namespace Rebellion.Tests.Simulation
             CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>()[0];
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            TryRunCombat(manager, out List<GameResult> results);
+            TryRunCombat(game, manager, out List<GameResult> results);
 
             Assert.IsTrue(
                 HasDamageFor(results, empireShip),
@@ -436,7 +436,7 @@ namespace Rebellion.Tests.Simulation
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            RunCombat(manager);
+            RunCombat(game, manager);
 
             Assert.AreEqual(
                 0,
@@ -491,7 +491,7 @@ namespace Rebellion.Tests.Simulation
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            RunCombat(manager);
+            RunCombat(game, manager);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(allianceFleet.InstanceID));
             bool foundFleet = false;
@@ -600,7 +600,7 @@ namespace Rebellion.Tests.Simulation
             CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>()[0];
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            TryRunCombat(manager, out List<GameResult> results);
+            TryRunCombat(game, manager, out List<GameResult> results);
 
             Assert.IsTrue(HasDamageFor(results, empireShip));
             Assert.IsTrue(HasDamageFor(results, allianceShip));
@@ -982,7 +982,7 @@ namespace Rebellion.Tests.Simulation
             CapitalShip targetShip = targetFleet.GetChildren<CapitalShip>().Single();
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            TryRunCombat(manager, out List<GameResult> results);
+            TryRunCombat(game, manager, out List<GameResult> results);
 
             ShipDamageResult damage = GetCombatResult(results)
                 .ShipDamage.Single(result => result.Ship == targetShip);
@@ -1009,7 +1009,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(allianceFleet, planet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            bool detected = RunCombat(manager);
+            bool detected = RunCombat(game, manager);
 
             Assert.IsFalse(detected);
             Assert.IsFalse(empireFleet.IsInCombat);
@@ -1034,7 +1034,7 @@ namespace Rebellion.Tests.Simulation
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 10000, 1);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
 
             Fleet survivingEmpireFleet = game.GetSceneNodeByInstanceID<Fleet>("f1");
             Fleet survivingAllianceFleet = game.GetSceneNodeByInstanceID<Fleet>("f2");
@@ -1076,7 +1076,7 @@ namespace Rebellion.Tests.Simulation
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", planet, 3, 1000, 100);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            RunCombat(manager);
+            RunCombat(game, manager);
 
             Assert.AreEqual(
                 "alliance",
@@ -1103,7 +1103,9 @@ namespace Rebellion.Tests.Simulation
 
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(manager).ProcessTick(
+                game
+            );
 
             Assert.IsEmpty(results);
             Assert.IsFalse(empireFleet.IsInCombat);
@@ -1135,7 +1137,9 @@ namespace Rebellion.Tests.Simulation
 
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(manager).ProcessTick(
+                game
+            );
 
             Assert.IsEmpty(results);
             Assert.IsFalse(empireFleet.IsInCombat);
@@ -1165,7 +1169,9 @@ namespace Rebellion.Tests.Simulation
             }
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(manager).ProcessTick(
+                game
+            );
 
             Assert.IsFalse(
                 results.OfType<PendingCombatResult>().Any(),
@@ -1194,7 +1200,7 @@ namespace Rebellion.Tests.Simulation
 
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
 
             Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(empireFleet.Movement);
@@ -1242,7 +1248,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(coveringFighter, combatPlanet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
 
             Assert.AreSame(combatPlanet, allianceFleet.GetParentOfType<Planet>());
             Assert.IsNull(allianceFleet.Movement);
@@ -1272,7 +1278,7 @@ namespace Rebellion.Tests.Simulation
             );
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("ef1"));
             Assert.AreSame(combatPlanet, allianceFleet.GetParentOfType<Planet>());
@@ -1312,7 +1318,7 @@ namespace Rebellion.Tests.Simulation
 
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID));
             Assert.AreSame(combatPlanet, allianceFleet.GetParentOfType<Planet>());
@@ -1334,7 +1340,7 @@ namespace Rebellion.Tests.Simulation
 
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
 
             Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
             Assert.AreSame(allianceHome, allianceFleet.GetParentOfType<Planet>());
@@ -1352,7 +1358,9 @@ namespace Rebellion.Tests.Simulation
             CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>().Single();
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(manager).ProcessTick(
+                game
+            );
 
             SpaceCombatResult combatResult = GetCombatResult(results);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID));
@@ -1408,7 +1416,7 @@ namespace Rebellion.Tests.Simulation
             };
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
 
             Assert.IsTrue(empireFleets.All(fleet => fleet.GetParentOfType<Planet>() == empireHome));
             Assert.IsTrue(
@@ -1437,7 +1445,9 @@ namespace Rebellion.Tests.Simulation
                 .ToHashSet();
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(manager).ProcessTick(
+                game
+            );
 
             SpaceCombatResult combatResult = GetCombatResult(results);
             Assert.IsTrue(
@@ -1482,7 +1492,9 @@ namespace Rebellion.Tests.Simulation
             CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(manager).ProcessTick(
+                game
+            );
             PendingCombatResult pending = results.OfType<PendingCombatResult>().SingleOrDefault();
 
             Assert.IsNotNull(
@@ -1491,7 +1503,7 @@ namespace Rebellion.Tests.Simulation
             );
             Assert.AreSame(planet, pending.Planet);
             Assert.IsTrue(manager.HasPendingDecision);
-            Assert.IsEmpty(manager.ProcessTick());
+            Assert.IsEmpty(new SpaceCombatTickProcessor(manager).ProcessTick(game));
 
             List<GameResult> resolvedResults = manager.ResolvePending(autoResolve: true);
 
@@ -1518,7 +1530,9 @@ namespace Rebellion.Tests.Simulation
             allianceFleet.Waypoints.Add("alliance-next");
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(manager).ProcessTick(
+                game
+            );
 
             Assert.IsNotNull(results.OfType<PendingCombatResult>().SingleOrDefault());
             Assert.IsEmpty(empireFleet.Waypoints);
@@ -1545,8 +1559,8 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(defender, planet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            PendingCombatResult pending = manager
-                .ProcessTick()
+            PendingCombatResult pending = new SpaceCombatTickProcessor(manager)
+                .ProcessTick(game)
                 .OfType<PendingCombatResult>()
                 .Single();
 
@@ -1578,7 +1592,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(defender, planet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            List<GameResult> results = manager.ProcessTick();
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(manager).ProcessTick(
+                game
+            );
 
             Assert.IsEmpty(results);
             Assert.IsFalse(manager.HasPendingDecision);
@@ -1607,8 +1623,8 @@ namespace Rebellion.Tests.Simulation
 
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            PendingCombatResult pending = manager
-                .ProcessTick()
+            PendingCombatResult pending = new SpaceCombatTickProcessor(manager)
+                .ProcessTick(game)
                 .OfType<PendingCombatResult>()
                 .Single();
 
@@ -1652,8 +1668,8 @@ namespace Rebellion.Tests.Simulation
                 .ToHashSet();
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            PendingCombatResult pending = manager
-                .ProcessTick()
+            PendingCombatResult pending = new SpaceCombatTickProcessor(manager)
+                .ProcessTick(game)
                 .OfType<PendingCombatResult>()
                 .Single();
             Assert.IsTrue(fleets.All(fleet => fleet.IsInCombat));
@@ -1701,7 +1717,7 @@ namespace Rebellion.Tests.Simulation
                 .ToHashSet();
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
             SpaceCombatResult result = manager
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
@@ -1761,7 +1777,7 @@ namespace Rebellion.Tests.Simulation
             string inTransitShipId = inTransitFleet.GetChildren<CapitalShip>().Single().InstanceID;
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
 
             Assert.IsTrue(stationaryFleet.IsInCombat);
             Assert.IsFalse(inTransitFleet.IsInCombat);
@@ -1808,7 +1824,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(defender, planet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
             SpaceCombatResult result = manager
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
@@ -1860,7 +1876,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fighter, combatPlanet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
             SpaceCombatResult result = manager
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
@@ -1910,7 +1926,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fighter, combatPlanet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
             SpaceCombatResult result = manager
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
@@ -1986,7 +2002,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(defenderFighter, combatPlanet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
             SpaceCombatResult result = manager
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
@@ -2067,7 +2083,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(defenderFighter, defenderShip);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
             SpaceCombatResult result = manager
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
@@ -2320,7 +2336,7 @@ namespace Rebellion.Tests.Simulation
             retreatingShip.SublightSpeed = 10;
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
             SpaceCombatResult result = manager
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
@@ -2371,7 +2387,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fighter, planet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
             SpaceCombatResult result = manager
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
@@ -2403,7 +2419,7 @@ namespace Rebellion.Tests.Simulation
             };
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
             List<GameResult> results = manager.ResolvePendingRetreat("empire");
 
             Assert.IsNotNull(results);
@@ -2453,8 +2469,8 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fighter, combatPlanet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            PendingCombatResult pending = manager
-                .ProcessTick()
+            PendingCombatResult pending = new SpaceCombatTickProcessor(manager)
+                .ProcessTick(game)
                 .OfType<PendingCombatResult>()
                 .Single();
             bool empireCanRetreat =
@@ -2476,7 +2492,7 @@ namespace Rebellion.Tests.Simulation
             );
             Assert.AreSame(empireHome, fighter.GetParentOfType<Planet>());
             Assert.IsNotNull(fighter.Movement);
-            Assert.IsEmpty(manager.ProcessTick());
+            Assert.IsEmpty(new SpaceCombatTickProcessor(manager).ProcessTick(game));
             Assert.IsFalse(manager.HasPendingDecision);
         }
 
@@ -2501,8 +2517,8 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fighter, combatPlanet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            PendingCombatResult pending = manager
-                .ProcessTick()
+            PendingCombatResult pending = new SpaceCombatTickProcessor(manager)
+                .ProcessTick(game)
                 .OfType<PendingCombatResult>()
                 .Single();
             bool allianceCanRetreat =
@@ -2521,7 +2537,7 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(allianceHome.InstanceID, retreatPlanetInstanceId);
             Assert.AreSame(allianceHome, fighter.GetParentOfType<Planet>());
             Assert.IsNotNull(fighter.Movement);
-            Assert.IsEmpty(manager.ProcessTick());
+            Assert.IsEmpty(new SpaceCombatTickProcessor(manager).ProcessTick(game));
             Assert.IsFalse(manager.HasPendingDecision);
         }
 
@@ -2547,8 +2563,8 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fighter, combatPlanet);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            PendingCombatResult pending = manager
-                .ProcessTick()
+            PendingCombatResult pending = new SpaceCombatTickProcessor(manager)
+                .ProcessTick(game)
                 .OfType<PendingCombatResult>()
                 .Single();
             bool empireCanRetreat =
@@ -2578,8 +2594,8 @@ namespace Rebellion.Tests.Simulation
             CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            PendingCombatResult pending = manager
-                .ProcessTick()
+            PendingCombatResult pending = new SpaceCombatTickProcessor(manager)
+                .ProcessTick(game)
                 .OfType<PendingCombatResult>()
                 .Single();
             bool empireCanRetreat = ReferenceEquals(pending.AttackerFleet, empireFleet)
@@ -2614,7 +2630,7 @@ namespace Rebellion.Tests.Simulation
                 .ToHashSet();
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
             List<GameResult> results = manager.ResolvePendingRetreat("empire");
 
             Assert.IsTrue(
@@ -2784,7 +2800,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ResolvePending_ResolverThrows_RetainsPendingDecision()
         {
-            (_, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
+            (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
                 CreatePendingEncounter(failResolution: true);
 
             Assert.Throws<InvalidOperationException>(() => commands.ResolvePending(true));
@@ -2792,7 +2808,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(commands.HasPendingDecision);
             Assert.IsFalse(empireFleet.IsInCombat);
             Assert.IsFalse(allianceFleet.IsInCombat);
-            Assert.IsEmpty(commands.ProcessTick());
+            Assert.IsEmpty(new SpaceCombatTickProcessor(commands).ProcessTick(game));
         }
 
         [Test]
@@ -2883,7 +2899,7 @@ namespace Rebellion.Tests.Simulation
                 10
             );
             SpaceCombatCommands commands = MakeSpaceCombat(game);
-            Assert.IsNotEmpty(commands.ProcessTick());
+            Assert.IsNotEmpty(new SpaceCombatTickProcessor(commands).ProcessTick(game));
             return (game, commands, empireFleet, allianceFleet);
         }
 
@@ -2891,22 +2907,28 @@ namespace Rebellion.Tests.Simulation
         /// Runs a full combat cycle: detect then resolve (auto).
         /// Returns true if combat was detected and resolved.
         /// </summary>
+        /// <param name="game">The game being processed.</param>
         /// <param name="manager">The manager.</param>
         /// <returns>True when the operation succeeds; otherwise false.</returns>
-        private bool RunCombat(SpaceCombatCommands manager)
+        private bool RunCombat(GameRoot game, SpaceCombatCommands manager)
         {
-            return TryRunCombat(manager, out _);
+            return TryRunCombat(game, manager, out _);
         }
 
         /// <summary>
         /// Attempts run combat.
         /// </summary>
+        /// <param name="game">The game being processed.</param>
         /// <param name="manager">The manager.</param>
         /// <param name="results">Receives the results.</param>
         /// <returns>True when the operation succeeds; otherwise false.</returns>
-        private bool TryRunCombat(SpaceCombatCommands manager, out List<GameResult> results)
+        private bool TryRunCombat(
+            GameRoot game,
+            SpaceCombatCommands manager,
+            out List<GameResult> results
+        )
         {
-            results = manager.ProcessTick();
+            results = new SpaceCombatTickProcessor(manager).ProcessTick(game).ToList();
             return results.Count > 0;
         }
 
@@ -2973,7 +2995,7 @@ namespace Rebellion.Tests.Simulation
         /// </summary>
         /// <param name="results">The results.</param>
         /// <returns>The requested combat result.</returns>
-        private static SpaceCombatResult GetCombatResult(List<GameResult> results)
+        private static SpaceCombatResult GetCombatResult(IEnumerable<GameResult> results)
         {
             return results.OfType<SpaceCombatResult>().Single();
         }
@@ -3084,7 +3106,7 @@ namespace Rebellion.Tests.Simulation
             }
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
-            manager.ProcessTick();
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
             SpaceCombatResult result = manager
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()

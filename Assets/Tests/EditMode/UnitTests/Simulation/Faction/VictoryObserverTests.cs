@@ -45,7 +45,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void HandleResults_MultipleHeadquartersLosses_DeclaresOnlyFirstVictory()
         {
-            (_, Faction defender, Faction firstAttacker, _, VictoryCommands system) = BuildScene();
+            (GameRoot game, Faction defender, Faction firstAttacker, _, VictoryCommands system) =
+                BuildScene();
             Faction secondAttacker = new Faction { InstanceID = "other" };
 
             List<GameResult> results = new VictoryObserver(system).HandleResults(
@@ -69,7 +70,7 @@ namespace Rebellion.Tests.Simulation
             VictoryResult victory = results.OfType<VictoryResult>().Single();
             Assert.AreSame(firstAttacker, victory.Winner);
             Assert.AreEqual(200, victory.Tick);
-            Assert.IsEmpty(system.ProcessTick());
+            Assert.IsEmpty(new VictoryTickProcessor(system).ProcessTick(game));
             Assert.IsEmpty(
                 new VictoryObserver(system).HandleResults(
                     new HeadquartersLostResult[]

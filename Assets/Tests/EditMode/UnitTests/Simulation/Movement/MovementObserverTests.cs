@@ -49,7 +49,7 @@ namespace Rebellion.Tests.Simulation
             scene.movement.RequestMove(starfighter, scene.blockadedDestination);
             scene.movement.RequestMove(regiment, scene.blockadedDestination);
             scene.movement.RequestMove(specialForces, scene.blockadedDestination);
-            scene.movement.ProcessTick();
+            new MovementTickProcessor(scene.movement).ProcessTick(scene.game);
 
             IMovable[] units = { starfighter, regiment, specialForces };
             Dictionary<IMovable, Point> currentPositions = units.ToDictionary(
@@ -62,7 +62,11 @@ namespace Rebellion.Tests.Simulation
             );
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            List<GameResult> results = ProcessBlockadeStart(scene.blockade, scene.resultBus);
+            List<GameResult> results = ProcessBlockadeStart(
+                scene.game,
+                scene.blockade,
+                scene.resultBus
+            );
 
             foreach (IMovable unit in units)
             {
@@ -163,7 +167,11 @@ namespace Rebellion.Tests.Simulation
             }.ToDictionary(unit => unit, unit => unit.Movement);
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            List<GameResult> results = ProcessBlockadeStart(scene.blockade, scene.resultBus);
+            List<GameResult> results = ProcessBlockadeStart(
+                scene.game,
+                scene.blockade,
+                scene.resultBus
+            );
 
             Assert.AreSame(scene.blockadedDestination, officer.GetParent());
             Assert.AreSame(mission, missionForces.GetParent());
@@ -196,7 +204,11 @@ namespace Rebellion.Tests.Simulation
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            List<GameResult> results = ProcessBlockadeStart(scene.blockade, scene.resultBus);
+            List<GameResult> results = ProcessBlockadeStart(
+                scene.game,
+                scene.blockade,
+                scene.resultBus
+            );
 
             Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
             GameObjectDestroyedResult destroyed = results
@@ -228,7 +240,11 @@ namespace Rebellion.Tests.Simulation
             scene.fartherSafeDestination.OwnerInstanceID = "rebels";
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            List<GameResult> results = ProcessBlockadeStart(scene.blockade, scene.resultBus);
+            List<GameResult> results = ProcessBlockadeStart(
+                scene.game,
+                scene.blockade,
+                scene.resultBus
+            );
 
             Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Starfighter>(starfighter.InstanceID));
             GameObjectDestroyedResult destroyed = results
@@ -263,7 +279,11 @@ namespace Rebellion.Tests.Simulation
             scene.movement.RequestMove(starfighter, blockadingFleet);
             MovementState movement = starfighter.Movement;
 
-            List<GameResult> results = ProcessBlockadeStart(scene.blockade, scene.resultBus);
+            List<GameResult> results = ProcessBlockadeStart(
+                scene.game,
+                scene.blockade,
+                scene.resultBus
+            );
 
             Assert.AreSame(blockadingShip, starfighter.GetParent());
             Assert.AreSame(movement, starfighter.Movement);
@@ -317,7 +337,7 @@ namespace Rebellion.Tests.Simulation
             scene.movement.RequestMove(starfighter, scene.blockadedDestination);
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            ProcessBlockadeStart(scene.blockade, scene.resultBus);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
             Assert.AreSame(carrier, starfighter.GetParent());
             Assert.IsNotNull(starfighter.Movement);
@@ -343,7 +363,7 @@ namespace Rebellion.Tests.Simulation
             AddBlockadingFleet(scene.game, scene.nearestSafeDestination);
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
 
-            ProcessBlockadeStart(scene.blockade, scene.resultBus);
+            ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
             Assert.AreSame(scene.fartherSafeDestination, starfighter.GetParent());
             Assert.IsNotNull(starfighter.Movement);
@@ -467,15 +487,17 @@ namespace Rebellion.Tests.Simulation
         /// <summary>
         /// Processes blockade start.
         /// </summary>
+        /// <param name="game">The game being processed.</param>
         /// <param name="blockade">The blockade.</param>
         /// <param name="resultBus">The bus that delivers blockade reactions.</param>
         /// <returns>The result of process blockade start.</returns>
         private static List<GameResult> ProcessBlockadeStart(
+            GameRoot game,
             BlockadeCommands blockade,
             GameResultBus resultBus
         )
         {
-            return resultBus.Publish(blockade.ProcessTick());
+            return resultBus.Publish(new BlockadeTickProcessor(blockade).ProcessTick(game));
         }
     }
 }

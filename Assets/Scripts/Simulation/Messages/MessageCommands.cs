@@ -10,7 +10,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Delivers faction messages and advances their retention lifecycle.
+    /// Delivers faction messages.
     /// </summary>
     public class MessageCommands
     {
@@ -99,35 +99,6 @@ namespace Rebellion.Simulation
                 deliveredResults.Add(delivered);
             }
             return deliveredResults;
-        }
-
-        /// <summary>
-        /// Advances time-based message lifecycle state for the current game tick.
-        /// </summary>
-        public void ProcessTick()
-        {
-            RemoveExpiredMessages();
-        }
-
-        /// <summary>
-        /// Removes faction messages older than the configured retention period.
-        /// </summary>
-        private void RemoveExpiredMessages()
-        {
-            int retentionTicks = _game.Config.Messages.RetentionTicks;
-            foreach (Faction faction in _game.GetFactions())
-            {
-                if (faction?.Messages == null)
-                    continue;
-
-                foreach (List<Message> messages in faction.Messages.Values)
-                {
-                    messages?.RemoveAll(message =>
-                        message != null
-                        && (long)message.CreatedTick + retentionTicks < _game.CurrentTick
-                    );
-                }
-            }
         }
     }
 }

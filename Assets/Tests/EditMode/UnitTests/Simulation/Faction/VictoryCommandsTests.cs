@@ -19,7 +19,7 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Faction empire, _, _, VictoryCommands system) = BuildScene();
             empire.HQInstanceID = null;
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(0, results.Count, "No HQ configured should return no results");
         }
@@ -27,9 +27,11 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_HQStillOwnedByDefender_ReturnsEmpty()
         {
-            (_, _, _, _, VictoryCommands system) = BuildScene(rebelsCaptureEmpireHQ: false);
+            (GameRoot game, _, _, _, VictoryCommands system) = BuildScene(
+                rebelsCaptureEmpireHQ: false
+            );
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(0, results.Count, "HQ held by defender should not trigger victory");
         }
@@ -37,11 +39,11 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_HQCapturedHeadquartersMode_ReturnsVictoryResult()
         {
-            (_, Faction empire, Faction rebels, _, VictoryCommands system) = BuildScene(
+            (GameRoot game, Faction empire, Faction rebels, _, VictoryCommands system) = BuildScene(
                 GameVictoryCondition.Headquarters
             );
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(1, results.Count);
             VictoryResult victory = results[0] as VictoryResult;
@@ -53,10 +55,14 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_AfterVictoryDeclared_DoesNotDeclareVictoryAgain()
         {
-            (_, _, _, _, VictoryCommands system) = BuildScene();
+            (GameRoot game, _, _, _, VictoryCommands system) = BuildScene();
 
-            List<GameResult> firstResults = system.ProcessTick();
-            List<GameResult> secondResults = system.ProcessTick();
+            IReadOnlyList<GameResult> firstResults = new VictoryTickProcessor(system).ProcessTick(
+                game
+            );
+            IReadOnlyList<GameResult> secondResults = new VictoryTickProcessor(system).ProcessTick(
+                game
+            );
 
             Assert.AreEqual(1, firstResults.OfType<VictoryResult>().Count());
             Assert.IsEmpty(secondResults);
@@ -89,7 +95,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(leader, empirePlanet);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(
                 0,
@@ -114,7 +120,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(leader, game.GetSceneNodeByInstanceID<Planet>("hq_empire"));
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(1, results.Count);
             VictoryResult victory = results[0] as VictoryResult;
@@ -126,11 +132,11 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_HQCapturedConquestMode_NoMainCharacters_ReturnsVictoryResult()
         {
-            (_, _, Faction rebels, _, VictoryCommands system) = BuildScene(
+            (GameRoot game, _, Faction rebels, _, VictoryCommands system) = BuildScene(
                 GameVictoryCondition.Conquest
             );
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(1, results.Count);
             VictoryResult victory = results[0] as VictoryResult;
@@ -163,7 +169,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(headquarters, empireHQ);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(0, results.Count);
         }
@@ -171,7 +177,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_MobileHeadquartersMissing_ReturnsEmpty()
         {
-            (_, Faction empire, _, _, VictoryCommands system) = BuildScene(
+            (GameRoot game, Faction empire, _, _, VictoryCommands system) = BuildScene(
                 rebelsCaptureEmpireHQ: false
             );
             empire.Settings = new FactionSettings
@@ -183,7 +189,7 @@ namespace Rebellion.Tests.Simulation
                 },
             };
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(0, results.Count);
         }
@@ -217,7 +223,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(headquarters, empireHQ);
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(1, results.Count);
             VictoryResult victory = results[0] as VictoryResult;
@@ -293,7 +299,7 @@ namespace Rebellion.Tests.Simulation
                 thirdHeadquartersPlanet
             );
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
 
             Assert.AreEqual(1, results.Count);
             VictoryResult victory = results[0] as VictoryResult;

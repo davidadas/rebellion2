@@ -3,14 +3,13 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
+using VictoryResult = Rebellion.Game.Results.VictoryResult;
 
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Manages victory condition checking during each game tick.
+    /// Evaluates and records victory conditions.
     /// </summary>
     public class VictoryCommands
     {
@@ -29,35 +28,11 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Checks victory conditions for the current tick and returns any triggered results.
-        /// </summary>
-        /// <returns>Any victory results triggered this tick.</returns>
-        public List<GameResult> ProcessTick()
-        {
-            if (_victoryDeclared)
-                return new List<GameResult>();
-
-            foreach (Faction faction in _game.GetFactions())
-            {
-                VictoryResult outcome = CheckHQCapture(faction);
-                if (outcome != null)
-                {
-                    GameLogger.Log(
-                        $"Victory condition met: {outcome.Winner.GetDisplayName()} defeated {outcome.Loser.GetDisplayName()}."
-                    );
-                    return new List<GameResult> { outcome };
-                }
-            }
-
-            return new List<GameResult>();
-        }
-
-        /// <summary>
         /// Checks if a faction's HQ has been captured.
         /// </summary>
         /// <param name="defender">The faction to check for HQ capture.</param>
         /// <returns>A victory result if the HQ was captured, or null.</returns>
-        private VictoryResult CheckHQCapture(Faction defender)
+        internal VictoryResult CheckHQCapture(Faction defender)
         {
             if (defender.Settings?.Headquarters?.IsMobile == true)
                 return CheckMobileHQCapture(defender);

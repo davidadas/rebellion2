@@ -59,20 +59,13 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Processes movement for the current tick.
+        /// Returns and clears results queued by immediate movement operations.
         /// </summary>
-        /// <returns>Movement-related events generated this tick.</returns>
-        public List<GameResult> ProcessTick()
+        /// <returns>The pending movement results.</returns>
+        internal List<GameResult> TakePendingResults()
         {
             List<GameResult> results = new List<GameResult>(_pendingResults);
             _pendingResults.Clear();
-            _game
-                .GetGalaxyMap()
-                .Traverse(node =>
-                {
-                    if (node is IMovable movable)
-                        UpdateMovement(movable, results);
-                });
             return results;
         }
 
@@ -911,7 +904,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="movable">The movable unit to update.</param>
         /// <param name="results">The results generated this tick.</param>
-        private void UpdateMovement(IMovable movable, List<GameResult> results)
+        internal void UpdateMovement(IMovable movable, List<GameResult> results)
         {
             if (movable.Movement == null)
                 return;

@@ -2863,7 +2863,7 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new MissionTickProcessor(system).ProcessTick(game);
 
             Assert.IsTrue(
                 results.Any(r => r is MissionCompletedResult),
@@ -2917,7 +2917,7 @@ namespace Rebellion.Tests.Simulation
                 new FixedRNG(0.0),
                 movement
             );
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new MissionTickProcessor(system).ProcessTick(game);
 
             RecruitmentExhaustedResult exhausted = results
                 .OfType<RecruitmentExhaustedResult>()
@@ -3069,7 +3069,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(officer.IsCaptured);
             Assert.IsNull(mission.GetParent());
             game.CurrentTick = 43;
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = new MissionTickProcessor(system).ProcessTick(game);
 
             OfficerCaptureStateResult capture = results
                 .OfType<OfficerCaptureStateResult>()
@@ -3077,7 +3077,7 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(officer, capture.TargetOfficer);
             Assert.AreEqual(42, capture.Tick);
             Assert.AreEqual(mission.InstanceID, capture.MissionInstanceID);
-            Assert.IsEmpty(system.ProcessTick());
+            Assert.IsEmpty(new MissionTickProcessor(system).ProcessTick(game));
         }
 
         [Test]

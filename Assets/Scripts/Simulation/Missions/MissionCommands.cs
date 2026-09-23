@@ -64,26 +64,13 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Processes all active missions and returns aggregate results.
+        /// Returns and clears results queued by immediate mission operations.
         /// </summary>
-        /// <returns>All results produced by missions that executed this tick.</returns>
-        public List<GameResult> ProcessTick()
+        /// <returns>The pending mission results.</returns>
+        internal List<GameResult> TakePendingResults()
         {
             List<GameResult> results = new List<GameResult>(_pendingResults);
             _pendingResults.Clear();
-            List<Mission> missions = _game.GetSceneNodesByType<Mission>();
-            Dictionary<string, bool> recruitmentAvailabilityBefore =
-                GetRecruitmentAvailabilityByFaction();
-
-            foreach (Mission mission in missions)
-            {
-                if (mission.GetParent() == null)
-                    continue;
-
-                results.AddRange(UpdateMission(mission));
-            }
-
-            AddRecruitmentExhaustedResults(results, recruitmentAvailabilityBefore);
             return results;
         }
 
@@ -91,7 +78,7 @@ namespace Rebellion.Simulation
         /// Captures whether each faction has officers available for recruitment.
         /// </summary>
         /// <returns>Recruitment availability keyed by faction instance ID.</returns>
-        private Dictionary<string, bool> GetRecruitmentAvailabilityByFaction()
+        internal Dictionary<string, bool> GetRecruitmentAvailabilityByFaction()
         {
             return _game
                 .GetFactions()
@@ -113,7 +100,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="results">The mission results produced this tick.</param>
         /// <param name="recruitmentAvailabilityBefore">Recruitment availability captured before missions advanced.</param>
-        private void AddRecruitmentExhaustedResults(
+        internal void AddRecruitmentExhaustedResults(
             List<GameResult> results,
             Dictionary<string, bool> recruitmentAvailabilityBefore
         )

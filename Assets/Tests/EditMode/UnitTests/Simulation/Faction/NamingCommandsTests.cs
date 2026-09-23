@@ -40,7 +40,7 @@ namespace Rebellion.Tests.Simulation
         {
             CapitalShip ship = AddShip("SHIP", ManufacturingStatus.Complete);
 
-            _system.ProcessTick();
+            new NamingTickProcessor(_system).ProcessTick(_game);
 
             Assert.AreEqual("First", ship.DisplayName);
             Assert.IsTrue(ship.HasAssignedName);

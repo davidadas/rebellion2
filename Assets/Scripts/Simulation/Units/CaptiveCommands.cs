@@ -13,7 +13,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Establishes custody, releases officers, and processes scheduled escape attempts.
+    /// Establishes custody, releases officers, and evaluates scheduled escape attempts.
     /// Escape probability is based on the officer's skills and the forces guarding
     /// the planet, fleet, or ship where the officer is held.
     /// </summary>
@@ -102,49 +102,44 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Processes escape attempts that are due on the current tick.
+        /// Processes one officer's escape attempt when it is due.
         /// </summary>
-        /// <returns>Results for any officers that escaped.</returns>
-        public List<GameResult> ProcessTick()
+        /// <param name="officer">The officer whose captive state should advance.</param>
+        /// <param name="results">The collection receiving a successful escape.</param>
+        internal void ProcessEscapeAttempt(Officer officer, List<GameResult> results)
         {
-            List<GameResult> results = new List<GameResult>();
-            foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
+            if (!officer.IsCaptured || !officer.CanEscape || officer.IsKilled)
             {
-                if (!officer.IsCaptured || !officer.CanEscape || officer.IsKilled)
-                {
-                    officer.NextEscapeAttemptTick = 0;
-                    continue;
-                }
-
-                if (officer.NextEscapeAttemptTick <= 0)
-                {
-                    ScheduleEscapeAttempt(officer);
-                    continue;
-                }
-
-                if (_game.CurrentTick < officer.NextEscapeAttemptTick)
-                    continue;
-
-                ScheduleEscapeAttempt(officer);
-
-                ContainerNode custodyContext = GetCustodyContext(officer);
-                Planet planet = officer.GetParentOfType<Planet>();
-                if (
-                    custodyContext == null
-                    || planet == null
-                    || ((IMovable)officer).GetTransitMovement() != null
-                )
-                    continue;
-
-                if (RollEscapeAttempt(officer, custodyContext))
-                {
-                    OfficerCaptureStateResult result = TryReleaseOfficer(officer, planet);
-                    if (result != null)
-                        results.Add(result);
-                }
+                officer.NextEscapeAttemptTick = 0;
+                return;
             }
 
-            return results;
+            if (officer.NextEscapeAttemptTick <= 0)
+            {
+                ScheduleEscapeAttempt(officer);
+                return;
+            }
+
+            if (_game.CurrentTick < officer.NextEscapeAttemptTick)
+                return;
+
+            ScheduleEscapeAttempt(officer);
+
+            ContainerNode custodyContext = GetCustodyContext(officer);
+            Planet planet = officer.GetParentOfType<Planet>();
+            if (
+                custodyContext == null
+                || planet == null
+                || ((IMovable)officer).GetTransitMovement() != null
+            )
+                return;
+
+            if (RollEscapeAttempt(officer, custodyContext))
+            {
+                OfficerCaptureStateResult result = TryReleaseOfficer(officer, planet);
+                if (result != null)
+                    results.Add(result);
+            }
         }
 
         /// <summary>

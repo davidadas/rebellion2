@@ -11,32 +11,26 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Heals injured officers, repairs capital ships, and replenishes fighter squadrons each tick.
     /// </summary>
-    public class RecoveryCommands
+    internal sealed class RecoveryTickProcessor : ITickProcessor
     {
-        private readonly GameRoot _game;
-        private readonly GameConfig.RecoveryConfig _config;
-
         /// <summary>
-        /// Creates recovery commands for one game.
+        /// Creates recovery tick processing.
         /// </summary>
-        /// <param name="game">The active game state.</param>
-        public RecoveryCommands(GameRoot game)
-        {
-            _game = game;
-            _config = game.Config.Recovery;
-        }
+        public RecoveryTickProcessor() { }
 
         /// <summary>
         /// Processes one tick of recovery for all officers, ships, and squadrons.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
         /// <returns>Results emitted when a unit fully recovers.</returns>
-        public List<GameResult> ProcessTick()
+        public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
             List<GameResult> results = new List<GameResult>();
+            GameConfig.RecoveryConfig config = game.Config.Recovery;
 
-            HealOfficers(results);
-            RepairShips(results);
-            ReplaceSquadronLosses(results);
+            HealOfficers(game, config, results);
+            RepairShips(game, config, results);
+            ReplaceSquadronLosses(game, config, results);
 
             return results;
         }
@@ -45,17 +39,23 @@ namespace Rebellion.Simulation
         /// Heals each injured, non-captured officer by the configured amount.
         /// Emits a result only when the officer is fully healed.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
+        /// <param name="config">The recovery configuration.</param>
         /// <param name="results">Collection to append healing results to.</param>
-        private void HealOfficers(List<GameResult> results)
+        private static void HealOfficers(
+            GameRoot game,
+            GameConfig.RecoveryConfig config,
+            List<GameResult> results
+        )
         {
-            foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
+            foreach (Officer officer in game.GetSceneNodesByType<Officer>())
             {
                 if (!officer.CanHeal())
                     continue;
 
-                int amount = officer.HealsFast(_game.Config.Jedi.FastHealThreshold)
-                    ? _config.FastHealAmount
-                    : _config.NormalHealAmount;
+                int amount = officer.HealsFast(game.Config.Jedi.FastHealThreshold)
+                    ? config.FastHealAmount
+                    : config.NormalHealAmount;
                 officer.Heal(amount);
 
                 if (officer.InjuryPoints == 0)
@@ -65,7 +65,7 @@ namespace Rebellion.Simulation
                         {
                             Officer = officer,
                             Severity = 0,
-                            Tick = _game.CurrentTick,
+                            Tick = game.CurrentTick,
                         }
                     );
                 }
@@ -77,10 +77,16 @@ namespace Rebellion.Simulation
         /// Ships at friendly orbital shipyards repair faster.
         /// Emits a result only when the ship is fully repaired.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
+        /// <param name="config">The recovery configuration.</param>
         /// <param name="results">Collection to append repair results to.</param>
-        private void RepairShips(List<GameResult> results)
+        private static void RepairShips(
+            GameRoot game,
+            GameConfig.RecoveryConfig config,
+            List<GameResult> results
+        )
         {
-            foreach (CapitalShip ship in _game.GetSceneNodesByType<CapitalShip>())
+            foreach (CapitalShip ship in game.GetSceneNodesByType<CapitalShip>())
             {
                 if (
                     !ship.IsDamaged()
@@ -91,8 +97,8 @@ namespace Rebellion.Simulation
 
                 int before = ship.CurrentHullStrength;
                 int amount = IsAtFriendlyShipyard(ship)
-                    ? _config.FastRepairAmount
-                    : _config.NormalRepairAmount;
+                    ? config.FastRepairAmount
+                    : config.NormalRepairAmount;
                 ship.RepairHull(amount);
 
                 if (!ship.IsDamaged())
@@ -103,7 +109,7 @@ namespace Rebellion.Simulation
                             Ship = ship,
                             OldHull = before,
                             NewHull = ship.CurrentHullStrength,
-                            Tick = _game.CurrentTick,
+                            Tick = game.CurrentTick,
                         }
                     );
                 }
@@ -115,10 +121,16 @@ namespace Rebellion.Simulation
         /// Squadrons at friendly planets replace faster.
         /// Emits a result only when the squadron is back to full strength.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
+        /// <param name="config">The recovery configuration.</param>
         /// <param name="results">Collection to append replacement results to.</param>
-        private void ReplaceSquadronLosses(List<GameResult> results)
+        private static void ReplaceSquadronLosses(
+            GameRoot game,
+            GameConfig.RecoveryConfig config,
+            List<GameResult> results
+        )
         {
-            foreach (Starfighter squadron in _game.GetSceneNodesByType<Starfighter>())
+            foreach (Starfighter squadron in game.GetSceneNodesByType<Starfighter>())
             {
                 if (
                     !squadron.HasLosses()
@@ -128,8 +140,8 @@ namespace Rebellion.Simulation
 
                 int before = squadron.CurrentSquadronSize;
                 int amount = IsAtFriendlyPlanet(squadron)
-                    ? _config.FastReplacementAmount
-                    : _config.NormalReplacementAmount;
+                    ? config.FastReplacementAmount
+                    : config.NormalReplacementAmount;
                 squadron.ReplaceFighters(amount);
 
                 if (!squadron.HasLosses())
@@ -140,7 +152,7 @@ namespace Rebellion.Simulation
                             Fighter = squadron,
                             OldSize = before,
                             NewSize = squadron.CurrentSquadronSize,
-                            Tick = _game.CurrentTick,
+                            Tick = game.CurrentTick,
                         }
                     );
                 }
@@ -152,7 +164,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="unit">The scene node to check.</param>
         /// <returns>True if the unit is at a friendly planet.</returns>
-        private bool IsAtFriendlyPlanet(ISceneNode unit)
+        private static bool IsAtFriendlyPlanet(ISceneNode unit)
         {
             Planet planet = unit.GetParentOfType<Planet>();
             return planet != null && planet.OwnerInstanceID == unit.OwnerInstanceID;

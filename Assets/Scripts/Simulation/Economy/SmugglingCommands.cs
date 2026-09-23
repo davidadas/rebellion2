@@ -106,27 +106,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Recomputes the support- and garrison-driven smuggling percentage.
-        /// </summary>
-        /// <returns>Results for percentages that changed during this tick.</returns>
-        public List<GameResult> ProcessTick()
-        {
-            List<GameResult> results = new List<GameResult>();
-            foreach (
-                Planet planet in _game
-                    .GetGalaxyMap()
-                    .GetChildren<PlanetSector>()
-                    .SelectMany(sector => sector.GetChildren<Planet>())
-                    .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
-            )
-            {
-                RefreshPlanet(planet, results);
-            }
-
-            return results;
-        }
-
-        /// <summary>
         /// Applies the per-resource smuggling roll to completed output.
         /// </summary>
         /// <param name="controller">The faction that ordinarily receives production.</param>
@@ -151,7 +130,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="planet">The planet to reconcile.</param>
         /// <param name="results">The result collection receiving changes.</param>
-        private void RefreshPlanet(Planet planet, List<GameResult> results)
+        internal void RefreshPlanet(Planet planet, List<GameResult> results)
         {
             _states.TryGetValue(planet.InstanceID, out PlanetSmugglingState previous);
             PlanetSmugglingState current = CalculateSmugglingState(planet);

@@ -62,8 +62,8 @@ namespace Rebellion.Tests.Simulation
         {
             Officer luke = CreateJediTrainer("LUKE", forceValue: 85);
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -79,8 +79,8 @@ namespace Rebellion.Tests.Simulation
             // Default threshold is 80
             Officer luke = CreateJediTrainer("LUKE", forceValue: 80);
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -93,8 +93,8 @@ namespace Rebellion.Tests.Simulation
         {
             Officer luke = CreateJediTrainer("LUKE", forceValue: 79);
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -108,8 +108,8 @@ namespace Rebellion.Tests.Simulation
             Officer luke = CreateJediTrainer("LUKE", forceValue: 100);
             luke.IsCaptured = true;
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -123,8 +123,8 @@ namespace Rebellion.Tests.Simulation
             Officer luke = CreateJediTrainer("LUKE", forceValue: 100);
             luke.IsDiscoveringForceUser = true;
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -138,7 +138,7 @@ namespace Rebellion.Tests.Simulation
             Officer luke = CreateJediTrainer("LUKE", forceValue: 50);
             luke.IsDiscoveringForceUser = true; // Was set previously
 
-            _system.ProcessTick();
+            new JediTickProcessor(_system).ProcessTick(_game);
 
             Assert.IsFalse(luke.IsDiscoveringForceUser);
         }
@@ -158,8 +158,8 @@ namespace Rebellion.Tests.Simulation
             };
             _game.AttachNode(han, _tatooine);
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -173,8 +173,8 @@ namespace Rebellion.Tests.Simulation
             Officer luke = CreateKnownJedi("LUKE", forceValue: 100);
             luke.IsDiscoveringForceUser = true;
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -189,8 +189,8 @@ namespace Rebellion.Tests.Simulation
             leia.IsJediTrainer = true;
             leia.IsDiscoveringForceUser = true;
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -201,8 +201,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_EmptyGame_NoEvents()
         {
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -215,8 +215,8 @@ namespace Rebellion.Tests.Simulation
             Officer luke = CreateJediTrainer("LUKE", forceValue: 85);
             Officer vader = CreateJediTrainer("VADER", forceValue: 120);
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -232,8 +232,8 @@ namespace Rebellion.Tests.Simulation
             Officer luke = CreateJediTrainer("LUKE", forceValue: 70);
             luke.ForceTrainingAdjustment = 15;
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -252,8 +252,8 @@ namespace Rebellion.Tests.Simulation
 
             // Probability = 120 + 0 - 100 = 20%. Roll = 0.0 * 100 = 0% < 20%.
             _system = new JediCommands(_game, new FixedRNG(0.0));
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -291,8 +291,8 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(vader, ship);
             _system = new JediCommands(_game, new FixedRNG(0.0));
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .Where(result => result.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -312,8 +312,8 @@ namespace Rebellion.Tests.Simulation
 
             Officer leia = CreateDormantJedi("LEIA");
 
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -333,8 +333,8 @@ namespace Rebellion.Tests.Simulation
             Officer leia = CreateDormantJedi("LEIA");
 
             _system = new JediCommands(_game, new FixedRNG(0.0));
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -353,8 +353,8 @@ namespace Rebellion.Tests.Simulation
             Officer vader = CreateKnownJedi("VADER", forceValue: 100);
 
             _system = new JediCommands(_game, new FixedRNG(0.0));
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -372,8 +372,8 @@ namespace Rebellion.Tests.Simulation
             leia.IsCaptured = true;
 
             _system = new JediCommands(_game, new FixedRNG(0.0));
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -396,8 +396,8 @@ namespace Rebellion.Tests.Simulation
             _game.MoveNode(leia, mission);
 
             _system = new JediCommands(_game, new FixedRNG(0.0));
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -416,8 +416,8 @@ namespace Rebellion.Tests.Simulation
             Officer leia = CreateDormantJedi("LEIA");
 
             _system = new JediCommands(_game, new MaximumRNG());
-            List<ForceDiscoveryResult> results = _system
-                .ProcessTick()
+            List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -438,7 +438,7 @@ namespace Rebellion.Tests.Simulation
 
             // FixedRNG(0.0): NextDouble()=0.0 for discovery roll, NextInt(0, 6)=0 for ForceValue
             _system = new JediCommands(_game, new FixedRNG(0.0));
-            _system.ProcessTick();
+            new JediTickProcessor(_system).ProcessTick(_game);
 
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreEqual(10, leia.ForceValue);
@@ -453,8 +453,8 @@ namespace Rebellion.Tests.Simulation
             leia.ForceValue = 25;
             _system = new JediCommands(_game, new FixedRNG(0.0));
 
-            ForceExperienceResult result = _system
-                .ProcessTick()
+            ForceExperienceResult result = new JediTickProcessor(_system)
+                .ProcessTick(_game)
                 .OfType<ForceExperienceResult>()
                 .Single(r => r.Officer == leia);
 

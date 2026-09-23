@@ -11,7 +11,7 @@ using Rebellion.Simulation;
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]
-    public class RecoveryCommandsTests
+    public class RecoveryTickProcessorTests
     {
         [Test]
         public void ProcessTick_InjuredOfficerAtFriendlyPlanet_ReducesInjury()
@@ -22,9 +22,9 @@ namespace Rebellion.Tests.Simulation
             officer.InjuryPoints = 10;
             game.AttachNode(officer, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(9, officer.InjuryPoints, "Officer should heal 1 point per tick");
         }
@@ -40,9 +40,9 @@ namespace Rebellion.Tests.Simulation
             officer.ForceValue = game.Config.Jedi.FastHealThreshold;
             game.AttachNode(officer, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 7,
@@ -62,9 +62,9 @@ namespace Rebellion.Tests.Simulation
             officer.ForceValue = game.Config.Jedi.FastHealThreshold - 1;
             game.AttachNode(officer, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(9, officer.InjuryPoints);
         }
@@ -79,9 +79,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(officer, planet);
             planet.OwnerInstanceID = "rebels";
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(10, officer.InjuryPoints, "Officer at enemy planet should not heal");
         }
@@ -105,9 +105,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(officer, ship);
             planet.OwnerInstanceID = "rebels";
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(9, officer.InjuryPoints, "Officer aboard friendly fleet should heal");
         }
@@ -122,9 +122,9 @@ namespace Rebellion.Tests.Simulation
             officer.IsCaptured = true;
             game.AttachNode(officer, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(10, officer.InjuryPoints, "Captured officer should not heal");
         }
@@ -139,9 +139,9 @@ namespace Rebellion.Tests.Simulation
             officer.Movement = new MovementState { TransitTicks = 10 };
             game.AttachNode(officer, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(10, officer.InjuryPoints, "Officer in transit should not heal");
         }
@@ -164,7 +164,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(ship, fleet);
             game.AttachNode(officer, ship);
 
-            new RecoveryCommands(game).ProcessTick();
+            new RecoveryTickProcessor().ProcessTick(game);
 
             Assert.AreEqual(10, officer.InjuryPoints);
         }
@@ -180,9 +180,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(mission, planet);
             game.AttachNode(officer, mission);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(10, officer.InjuryPoints, "Officer on mission should not heal");
         }
@@ -196,9 +196,9 @@ namespace Rebellion.Tests.Simulation
             officer.InjuryPoints = 1;
             game.AttachNode(officer, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = system.ProcessTick(game);
 
             Assert.IsTrue(
                 results.Any(r => r is OfficerInjuredResult),
@@ -215,9 +215,9 @@ namespace Rebellion.Tests.Simulation
             officer.InjuryPoints = 10;
             game.AttachNode(officer, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = system.ProcessTick(game);
 
             Assert.IsFalse(
                 results.Any(r => r is OfficerInjuredResult),
@@ -235,9 +235,9 @@ namespace Rebellion.Tests.Simulation
             officer.IsForceSensitive = true;
             game.AttachNode(officer, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(0, officer.InjuryPoints, "Injury should clamp to 0, not go negative");
         }
@@ -269,9 +269,9 @@ namespace Rebellion.Tests.Simulation
                 planet
             );
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 85,
@@ -296,7 +296,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            new RecoveryCommands(game).ProcessTick();
+            new RecoveryTickProcessor().ProcessTick(game);
 
             Assert.AreEqual(81, ship.CurrentHullStrength);
         }
@@ -327,7 +327,7 @@ namespace Rebellion.Tests.Simulation
                 planet
             );
 
-            new RecoveryCommands(game).ProcessTick();
+            new RecoveryTickProcessor().ProcessTick(game);
 
             Assert.AreEqual(81, ship.CurrentHullStrength);
         }
@@ -349,7 +349,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            new RecoveryCommands(game).ProcessTick();
+            new RecoveryTickProcessor().ProcessTick(game);
 
             Assert.AreEqual(80, ship.CurrentHullStrength);
         }
@@ -371,7 +371,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            new RecoveryCommands(game).ProcessTick();
+            new RecoveryTickProcessor().ProcessTick(game);
 
             Assert.AreEqual(80, ship.CurrentHullStrength);
         }
@@ -394,9 +394,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 81,
@@ -422,9 +422,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(100, ship.CurrentHullStrength, "Undamaged ship should not change");
         }
@@ -456,9 +456,9 @@ namespace Rebellion.Tests.Simulation
                 planet
             );
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 100,
@@ -484,9 +484,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = system.ProcessTick(game);
 
             Assert.IsTrue(
                 results.Any(r => r is ShipHullDamageResult),
@@ -511,9 +511,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = system.ProcessTick(game);
 
             Assert.IsFalse(
                 results.Any(r => r is ShipHullDamageResult),
@@ -536,9 +536,9 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(squadron, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 10,
@@ -573,9 +573,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(carrier, fleet);
             game.AttachNode(squadron, carrier);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 9,
@@ -599,9 +599,9 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(squadron, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(12, squadron.CurrentSquadronSize, "Full squadron should not change");
         }
@@ -621,9 +621,9 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(squadron, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 12,
@@ -647,9 +647,9 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(squadron, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = system.ProcessTick(game);
 
             Assert.IsTrue(
                 results.Any(r => r is FighterDamageResult),
@@ -672,9 +672,9 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(squadron, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            List<GameResult> results = system.ProcessTick();
+            IReadOnlyList<GameResult> results = system.ProcessTick(game);
 
             Assert.IsFalse(
                 results.Any(r => r is FighterDamageResult),
@@ -699,9 +699,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 50,
@@ -725,9 +725,9 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(squadron, planet);
 
-            RecoveryCommands system = new RecoveryCommands(game);
+            RecoveryTickProcessor system = new RecoveryTickProcessor();
 
-            system.ProcessTick();
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 8,

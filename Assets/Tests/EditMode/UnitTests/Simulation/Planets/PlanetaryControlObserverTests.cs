@@ -224,7 +224,9 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(ship, fleet);
 
             _movementSystem.RequestMove(regiment, ship);
-            List<GameResult> movementResults = _movementSystem.ProcessTick();
+            IReadOnlyList<GameResult> movementResults = new MovementTickProcessor(
+                _movementSystem
+            ).ProcessTick(_game);
             List<GameResult> controlResults = _observer.HandleResults(
                 movementResults.OfType<PlanetGarrisonChangedResult>().ToList()
             );
@@ -252,8 +254,8 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(expectedOwnerId, change.NewOwner?.InstanceID);
             Assert.AreEqual(PlanetOwnershipChangeReason.PopularSupport, change.Reason);
             Assert.IsEmpty(
-                _commands
-                    .ProcessTick()
+                new PlanetaryControlTickProcessor(_commands)
+                    .ProcessTick(_game)
                     .OfType<PlanetOwnershipChangedResult>()
                     .Where(result => result.Planet == _targetPlanet)
             );
@@ -298,7 +300,9 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(ship, fleet);
 
             _movementSystem.RequestMove(regiment, ship);
-            List<GameResult> movementResults = _movementSystem.ProcessTick();
+            IReadOnlyList<GameResult> movementResults = new MovementTickProcessor(
+                _movementSystem
+            ).ProcessTick(_game);
             _observer.HandleResults(movementResults.OfType<PlanetGarrisonChangedResult>().ToList());
 
             Assert.AreEqual(_rebels.InstanceID, _targetPlanet.GetOwnerInstanceID());

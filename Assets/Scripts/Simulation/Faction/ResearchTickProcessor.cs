@@ -13,7 +13,7 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Manages research and technology advancement during each game tick.
     /// </summary>
-    public class ResearchCommands
+    internal sealed class ResearchTickProcessor : ITickProcessor
     {
         private static readonly ResearchDiscipline[] _researchDisciplines = new[]
         {
@@ -22,55 +22,54 @@ namespace Rebellion.Simulation
             ResearchDiscipline.TroopTraining,
         };
 
-        private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
 
         /// <summary>
         /// Creates research operations.
         /// </summary>
-        /// <param name="game">The game instance.</param>
         /// <param name="provider">The random number provider.</param>
-        public ResearchCommands(GameRoot game, IRandomNumberProvider provider)
+        public ResearchTickProcessor(IRandomNumberProvider provider)
         {
-            _game = game;
             _provider = provider;
         }
 
         /// <summary>
         /// Initializes research timers for factions that do not already have one.
         /// </summary>
-        internal void InitializeTimers()
+        /// <param name="game">The game whose research timers are initialized.</param>
+        internal void InitializeTimers(GameRoot game)
         {
-            GameConfig.ResearchConfig config = _game.Config.Research;
-            foreach (Faction faction in _game.GetFactions())
+            GameConfig.ResearchConfig config = game.Config.Research;
+            foreach (Faction faction in game.GetFactions())
             {
                 FactionResearchState state = faction.ResearchState;
                 if (state.NextRefreshTick == 0)
-                    state.NextRefreshTick = _game.CurrentTick + RollRefreshDelay(config);
+                    state.NextRefreshTick = game.CurrentTick + RollRefreshDelay(config);
             }
         }
 
         /// <summary>
         /// Processes research for the current tick across all factions.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
         /// <returns>Any primary research results generated this tick.</returns>
-        public List<GameResult> ProcessTick()
+        public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
             List<GameResult> results = new List<GameResult>();
-            if (_game.CurrentTick <= 0)
+            if (game.CurrentTick <= 0)
                 return results;
 
-            GameConfig.ResearchConfig config = _game.Config.Research;
+            GameConfig.ResearchConfig config = game.Config.Research;
 
-            foreach (Faction faction in _game.GetFactions())
+            foreach (Faction faction in game.GetFactions())
             {
                 FactionResearchState state = faction.ResearchState;
-                if (_game.CurrentTick < state.NextRefreshTick)
+                if (game.CurrentTick < state.NextRefreshTick)
                     continue;
 
-                RefreshResearchCapacity(faction, results);
+                RefreshResearchCapacity(game, faction, results);
 
-                state.NextRefreshTick = _game.CurrentTick + RollRefreshDelay(config);
+                state.NextRefreshTick = game.CurrentTick + RollRefreshDelay(config);
             }
 
             return results;
@@ -80,9 +79,14 @@ namespace Rebellion.Simulation
         /// Refreshes discipline research capacity from completed facilities on owned core sectors
         /// and immediately applies any resulting single-step order advances.
         /// </summary>
+        /// <param name="game">The game state being advanced.</param>
         /// <param name="faction">The faction to accumulate research capacity for.</param>
         /// <param name="results">Collection to append any research results to.</param>
-        private void RefreshResearchCapacity(Faction faction, List<GameResult> results)
+        private void RefreshResearchCapacity(
+            GameRoot game,
+            Faction faction,
+            List<GameResult> results
+        )
         {
             List<Planet> corePlanets = faction
                 .GetOwnedUnitsByType<Planet>()
@@ -103,7 +107,7 @@ namespace Rebellion.Simulation
                 results.Add(
                     new ResearchOrderedResult
                     {
-                        Tick = _game.CurrentTick,
+                        Tick = game.CurrentTick,
                         Faction = faction,
                         Discipline = discipline,
                         ResearchOrder = faction.GetHighestUnlockedOrder(discipline),
@@ -116,7 +120,7 @@ namespace Rebellion.Simulation
                     results.Add(
                         new ResearchExhaustedResult
                         {
-                            Tick = _game.CurrentTick,
+                            Tick = game.CurrentTick,
                             Faction = faction,
                             Discipline = discipline,
                             PreviousState = 0,

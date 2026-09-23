@@ -25,11 +25,31 @@ namespace Rebellion.Simulation
             AwaitingCombatDecision,
         }
 
-        private readonly IServiceLocator _services;
-        private readonly Func<GameEventExecutor> _getGameEventExecutor;
         private readonly Func<IEnumerable<GameResult>, bool, List<GameResult>> _processResults;
         private readonly Action<List<GameResult>> _processMessages;
         private readonly List<GameResult> _deferredMessageResults = new();
+        private AIDirector _aiDirector;
+        private ITickProcessor _blockade;
+        private ITickProcessor _captive;
+        private ITickProcessor _factionAutomation;
+        private GameEventExecutor _gameEventExecutor;
+        private GameRoot _game;
+        private ITickProcessor _jedi;
+        private ITickProcessor _maintenance;
+        private ITickProcessor _manufacturing;
+        private ITickProcessor _messages;
+        private ITickProcessor _missions;
+        private MovementCommands _movementCommands;
+        private ITickProcessor _movement;
+        private ITickProcessor _naming;
+        private ITickProcessor _planetaryControl;
+        private ITickProcessor _recovery;
+        private ITickProcessor _research;
+        private ITickProcessor _resourceProduction;
+        private SpaceCombatCommands _spaceCombatCommands;
+        private ITickProcessor _spaceCombat;
+        private ITickProcessor _uprising;
+        private ITickProcessor _victory;
         private bool _tickInProgress;
         private TickExecutionState _tickState;
 
@@ -41,28 +61,65 @@ namespace Rebellion.Simulation
         internal event Action CombatResumed;
 
         /// <summary>
-        /// Creates tick scheduling with current runtime dependencies and the existing result-release boundaries.
-        /// The locator follows the active game when a save replaces it in place.
+        /// Creates tick scheduling with the existing result-release boundaries.
         /// </summary>
-        /// <param name="services">Resolves commands and queries for the current game.</param>
-        /// <param name="getGameEventExecutor">Returns the current game event runtime.</param>
         /// <param name="processResults">Resolves and presents one result batch at its existing release boundary.</param>
         /// <param name="processMessages">Releases the messages of an already resolved batch.</param>
         internal GameTickProcessor(
-            IServiceLocator services,
-            Func<GameEventExecutor> getGameEventExecutor,
             Func<IEnumerable<GameResult>, bool, List<GameResult>> processResults,
             Action<List<GameResult>> processMessages
         )
         {
-            _services = services ?? throw new ArgumentNullException(nameof(services));
-            _getGameEventExecutor =
-                getGameEventExecutor
-                ?? throw new ArgumentNullException(nameof(getGameEventExecutor));
             _processResults =
                 processResults ?? throw new ArgumentNullException(nameof(processResults));
             _processMessages =
                 processMessages ?? throw new ArgumentNullException(nameof(processMessages));
+        }
+
+        /// <summary>
+        /// Replaces the feature processors and runtime services used by subsequent ticks.
+        /// </summary>
+        /// <param name="services">The newly constructed runtime service scope.</param>
+        internal void ConnectRuntime(IServiceLocator services)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            _game = services.GetService<GameRoot>();
+            ResearchTickProcessor research = new ResearchTickProcessor(
+                services.GetService<Rebellion.Util.Random.IRandomNumberProvider>()
+            );
+            research.InitializeTimers(_game);
+            _research = research;
+
+            _movementCommands = services.GetService<MovementCommands>();
+            _spaceCombatCommands = services.GetService<SpaceCombatCommands>();
+            _messages = new MessageTickProcessor();
+            _factionAutomation = new FactionAutomationTickProcessor(
+                services.GetService<FactionAutomationCommands>()
+            );
+            SmugglingCommands smugglingCommands = services.GetService<SmugglingCommands>();
+            SmugglingTickProcessor smuggling = new(smugglingCommands);
+            _resourceProduction = new ResourceProductionTickProcessor(smuggling, smugglingCommands);
+            _manufacturing = new ManufacturingTickProcessor(
+                services.GetService<ManufacturingCommands>()
+            );
+            _maintenance = new MaintenanceTickProcessor(services.GetService<MaintenanceCommands>());
+            _recovery = new RecoveryTickProcessor();
+            _captive = new CaptiveTickProcessor(services.GetService<CaptiveCommands>());
+            _movement = new MovementTickProcessor(_movementCommands);
+            _spaceCombat = new SpaceCombatTickProcessor(_spaceCombatCommands);
+            _missions = new MissionTickProcessor(services.GetService<MissionCommands>());
+            _gameEventExecutor = services.GetService<GameEventExecutor>();
+            _naming = new NamingTickProcessor(services.GetService<NamingCommands>());
+            _aiDirector = services.GetService<AIDirector>();
+            _blockade = new BlockadeTickProcessor(services.GetService<BlockadeCommands>());
+            _planetaryControl = new PlanetaryControlTickProcessor(
+                services.GetService<PlanetaryControlCommands>()
+            );
+            _uprising = new UprisingTickProcessor(services.GetService<UprisingCommands>());
+            _jedi = new JediTickProcessor(services.GetService<JediCommands>());
+            _victory = new VictoryTickProcessor(services.GetService<VictoryCommands>());
         }
 
         /// <summary>
@@ -99,7 +156,7 @@ namespace Rebellion.Simulation
             if (
                 _tickInProgress
                 || _tickState != TickExecutionState.Idle
-                || _services.GetService<GameRoot>().GetGameSpeed() == TickSpeed.Paused
+                || _game.GetGameSpeed() == TickSpeed.Paused
             )
                 yield break;
 
@@ -124,26 +181,26 @@ namespace Rebellion.Simulation
         /// <returns>A sequence containing one step per completed AI phase.</returns>
         private IEnumerable<object> ProcessTickCore()
         {
-            _services.GetService<GameRoot>().CurrentTick++;
-            _services.GetService<MessageCommands>().ProcessTick();
-            GameLogger.Debug("Tick: " + _services.GetService<GameRoot>().CurrentTick);
+            _game.CurrentTick++;
+            _messages.ProcessTick(_game);
+            GameLogger.Debug("Tick: " + _game.CurrentTick);
 
-            _services.GetService<FactionAutomationCommands>().ProcessTick();
-            ProcessResults(_services.GetService<ResourceProductionCommands>().ProcessTick());
-            ProcessResults(_services.GetService<ManufacturingCommands>().ProcessTick());
+            _factionAutomation.ProcessTick(_game);
+            ProcessResults(_resourceProduction.ProcessTick(_game));
+            ProcessResults(_manufacturing.ProcessTick(_game));
             // Refill capacity released by completed orders before tick observers render idle lanes.
-            _services.GetService<FactionAutomationCommands>().ProcessTick();
-            ProcessResults(_services.GetService<MaintenanceCommands>().ProcessTick());
-            ProcessResults(_services.GetService<RecoveryCommands>().ProcessTick());
-            ProcessResults(_services.GetService<CaptiveCommands>().ProcessTick());
+            _factionAutomation.ProcessTick(_game);
+            ProcessResults(_maintenance.ProcessTick(_game));
+            ProcessResults(_recovery.ProcessTick(_game));
+            ProcessResults(_captive.ProcessTick(_game));
 
             List<GameResult> movementResults = ProcessResults(
-                _services.GetService<MovementCommands>().ProcessTick(),
+                _movement.ProcessTick(_game),
                 processMessages: false
             );
 
             List<GameResult> combatResults = ProcessResults(
-                _services.GetService<SpaceCombatCommands>().ProcessTick(),
+                _spaceCombat.ProcessTick(_game),
                 processMessages: false
             );
 
@@ -154,7 +211,7 @@ namespace Rebellion.Simulation
                 combatResults,
                 waypointResults
             );
-            if (_services.GetService<SpaceCombatCommands>().HasPendingDecision)
+            if (_spaceCombatCommands.HasPendingDecision)
             {
                 StoreDeferredMessageResults(movementPhaseResults);
                 BeginPendingCombatDecision();
@@ -173,28 +230,21 @@ namespace Rebellion.Simulation
         /// <returns>A sequence containing one step per completed AI phase.</returns>
         private IEnumerable<object> ProcessRemainingTickPhases()
         {
-            ProcessResults(_services.GetService<MissionCommands>().ProcessTick());
-            ProcessResults(
-                _getGameEventExecutor()
-                    .ProcessEvents(_services.GetService<GameRoot>().GetEventPool())
-            );
-            _services.GetService<NamingCommands>().ProcessTick();
+            ProcessResults(_missions.ProcessTick(_game));
+            ProcessResults(_gameEventExecutor.ProcessEvents(_game.GetEventPool()));
+            _naming.ProcessTick(_game);
             List<GameResult> aiResults = new List<GameResult>();
-            foreach (
-                object step in _services
-                    .GetService<AIDirector>()
-                    .ProcessTickIncrementally(aiResults)
-            )
+            foreach (object step in _aiDirector.ProcessTickIncrementally(aiResults))
                 yield return step;
             ProcessResults(aiResults);
 
-            ProcessResults(_services.GetService<BlockadeCommands>().ProcessTick());
-            ProcessResults(_services.GetService<PlanetaryControlCommands>().ProcessTick());
-            ProcessResults(_services.GetService<UprisingCommands>().ProcessTick());
+            ProcessResults(_blockade.ProcessTick(_game));
+            ProcessResults(_planetaryControl.ProcessTick(_game));
+            ProcessResults(_uprising.ProcessTick(_game));
 
-            ProcessResults(_services.GetService<ResearchCommands>().ProcessTick());
-            ProcessResults(_services.GetService<JediCommands>().ProcessTick());
-            ProcessResults(_services.GetService<VictoryCommands>().ProcessTick());
+            ProcessResults(_research.ProcessTick(_game));
+            ProcessResults(_jedi.ProcessTick(_game));
+            ProcessResults(_victory.ProcessTick(_game));
             _tickState = TickExecutionState.Idle;
             TickCompleted?.Invoke();
         }
@@ -206,9 +256,7 @@ namespace Rebellion.Simulation
         /// <returns>The space combat result generated by the encounter, when present.</returns>
         public SpaceCombatResult ResolveCombat(bool autoResolve)
         {
-            List<GameResult> combatResults = _services
-                .GetService<SpaceCombatCommands>()
-                .ResolvePending(autoResolve);
+            List<GameResult> combatResults = _spaceCombatCommands.ResolvePending(autoResolve);
             return CompleteCombatResolution(combatResults);
         }
 
@@ -219,9 +267,9 @@ namespace Rebellion.Simulation
         /// <returns>The resulting space-combat summary, or null when retreat is unavailable.</returns>
         public SpaceCombatResult ResolveCombatRetreat(string retreatingFactionInstanceId)
         {
-            List<GameResult> combatResults = _services
-                .GetService<SpaceCombatCommands>()
-                .ResolvePendingRetreat(retreatingFactionInstanceId);
+            List<GameResult> combatResults = _spaceCombatCommands.ResolvePendingRetreat(
+                retreatingFactionInstanceId
+            );
             if (combatResults == null)
                 return null;
 
@@ -246,14 +294,14 @@ namespace Rebellion.Simulation
 
                 List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
                 List<GameResult> additionalCombatResults = ProcessResults(
-                    _services.GetService<SpaceCombatCommands>().ProcessTick(),
+                    _spaceCombat.ProcessTick(_game),
                     processMessages: false
                 );
                 _deferredMessageResults.AddRange(combatResults);
                 _deferredMessageResults.AddRange(waypointResults);
                 _deferredMessageResults.AddRange(additionalCombatResults);
 
-                if (_services.GetService<SpaceCombatCommands>().HasPendingDecision)
+                if (_spaceCombatCommands.HasPendingDecision)
                 {
                     BeginPendingCombatDecision();
                     return completedCombat;
@@ -288,10 +336,10 @@ namespace Rebellion.Simulation
         internal void ReconcileLoadedState()
         {
             List<GameResult> combatResults = ProcessResults(
-                _services.GetService<SpaceCombatCommands>().ProcessTick(),
+                _spaceCombat.ProcessTick(_game),
                 processMessages: false
             );
-            if (_services.GetService<SpaceCombatCommands>().HasPendingDecision)
+            if (_spaceCombatCommands.HasPendingDecision)
             {
                 StoreDeferredMessageResults(combatResults);
                 BeginPendingCombatDecision();
@@ -307,11 +355,11 @@ namespace Rebellion.Simulation
         /// <returns>The results produced while starting the next route legs.</returns>
         private List<GameResult> ProcessAvailableWaypointContinuations()
         {
-            if (_services.GetService<SpaceCombatCommands>().HasPendingDecision)
+            if (_spaceCombatCommands.HasPendingDecision)
                 return new List<GameResult>();
 
             return ProcessResults(
-                _services.GetService<MovementCommands>().ContinueFleetWaypointRoutes(),
+                _movementCommands.ContinueFleetWaypointRoutes(),
                 processMessages: false
             );
         }

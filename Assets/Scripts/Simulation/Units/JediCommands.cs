@@ -11,7 +11,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Manages Force discovery state and force user scanning each tick.
+    /// Applies Force discovery, growth, and force-user scanning operations.
     /// </summary>
     public class JediCommands
     {
@@ -27,24 +27,6 @@ namespace Rebellion.Simulation
         {
             _game = game;
             _provider = provider;
-        }
-
-        /// <summary>
-        /// Processes Force tier advancement and detection for all officers each tick.
-        /// </summary>
-        /// <returns>Any force discovery or experience results generated.</returns>
-        public List<GameResult> ProcessTick()
-        {
-            List<GameResult> results = new List<GameResult>();
-
-            // Update discovery state for all officers.
-            foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
-                UpdateForceDiscoveryState(officer, results);
-
-            // Scan for hidden force users at each active scanner's location.
-            ScanForHiddenForceUsers(results);
-
-            return results;
         }
 
         /// <summary>
@@ -97,7 +79,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="officer">The officer to evaluate.</param>
         /// <param name="results">Collection to append any discovery state change results to.</param>
-        private void UpdateForceDiscoveryState(Officer officer, List<GameResult> results)
+        internal void UpdateForceDiscoveryState(Officer officer, List<GameResult> results)
         {
             int threshold = _game.Config.Jedi.DiscoveringForceUserThreshold;
             bool shouldDiscover =
@@ -137,7 +119,7 @@ namespace Rebellion.Simulation
         /// Scans for hidden force users at each active scanner's location.
         /// </summary>
         /// <param name="results">Collection to append any discovered force user results to.</param>
-        private void ScanForHiddenForceUsers(List<GameResult> results)
+        internal void ScanForHiddenForceUsers(List<GameResult> results)
         {
             List<Officer> scanners = GetActiveForceScanners();
             if (scanners.Count == 0)

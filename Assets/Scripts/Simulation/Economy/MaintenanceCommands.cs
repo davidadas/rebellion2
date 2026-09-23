@@ -13,7 +13,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Enforces maintenance capacity limits each tick.
+    /// Applies maintenance capacity limits and explicit scrap operations.
     /// When a faction's committed maintenance cost exceeds its resource-facility capacity,
     /// one random eligible unit is scrapped on each configured timer pulse until balance is restored.
     /// </summary>
@@ -47,21 +47,6 @@ namespace Rebellion.Simulation
             _provider = provider;
             _fleetSystem =
                 fleetSystem ?? throw new System.ArgumentNullException(nameof(fleetSystem));
-        }
-
-        /// <summary>
-        /// Checks each faction for maintenance shortfall and scraps one random
-        /// eligible unit per faction on each auto-scrap timer pulse if over capacity.
-        /// </summary>
-        /// <returns>Any maintenance shortfall or auto-scrap results.</returns>
-        public List<GameResult> ProcessTick()
-        {
-            List<GameResult> results = new List<GameResult>();
-
-            foreach (Faction faction in _game.GetFactions())
-                ProcessFactionMaintenance(faction, results);
-
-            return results;
         }
 
         /// <summary>
@@ -120,7 +105,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="faction">The faction to process.</param>
         /// <param name="results">Result list to append to.</param>
-        private void ProcessFactionMaintenance(Faction faction, List<GameResult> results)
+        internal void ProcessFactionMaintenance(Faction faction, List<GameResult> results)
         {
             int capacity = faction.MaintenanceCapacity;
             int required = faction.GetTotalProjectedMaintenanceCost();
