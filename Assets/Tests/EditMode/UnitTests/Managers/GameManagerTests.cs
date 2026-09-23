@@ -384,7 +384,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessTick_EventCapturesMissionParticipant_CompletesCaptureLifecycle()
+        public void ProcessTick_CaptureBeforeDeactivation_CompletesCaptureLifecycleInActionOrder()
         {
             GameConfig config = new GameConfig();
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
@@ -438,6 +438,11 @@ namespace Rebellion.Tests.Managers
                                 IsCaptured = true,
                                 CaptorFactionInstanceID = captor.InstanceID,
                             },
+                            new SetNodeStateAction
+                            {
+                                InstanceID = officer.InstanceID,
+                                State = SceneNodeState.Inactive,
+                            },
                         },
                     }
                 );
@@ -449,6 +454,7 @@ namespace Rebellion.Tests.Managers
             Assert.AreSame(captorPlanet, officer.GetParent());
             Assert.IsNull(officer.Movement);
             Assert.IsTrue(officer.IsCaptured);
+            Assert.IsFalse(officer.IsEnabled);
             Assert.AreEqual(captor.InstanceID, officer.CaptorInstanceID);
             PlanetSnapshot snapshot = owner.Fog.Snapshots[sector.InstanceID].Planets[
                 captorPlanet.InstanceID

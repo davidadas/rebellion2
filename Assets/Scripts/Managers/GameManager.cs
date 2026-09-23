@@ -625,7 +625,13 @@ public sealed class GameManager
         requestDispatcher.Subscribe<OwnershipChangeRequest>(_planetaryControlSystem);
         requestDispatcher.Subscribe<DuelRequest>(_duelSystem);
         requestDispatcher.Subscribe<MessageDeliveryRequest>(_messageSystem);
-        _eventSystem = new GameEventSystem(_game, _randomProvider, unitFactory, requestDispatcher);
+        _eventSystem = new GameEventSystem(
+            _game,
+            _randomProvider,
+            unitFactory,
+            requestDispatcher,
+            _missionSystem.InterruptMissionsForCapturedOfficers
+        );
         _eventSystem.ValidateEvents(_game.GetEventPool());
         _aiSystem = new AISystem(
             _game,

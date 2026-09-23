@@ -67,6 +67,7 @@ Assets/TextMesh Pro/
 !MemberOrder.Lint.csproj
 !Tools/Rebellion.Analyzers/Rebellion.Analyzers.csproj
 !Tools/Rebellion.Analyzers.Tests/Rebellion.Analyzers.Tests.csproj
+!Tools/Rebellion.Architecture.Tests/Rebellion.Architecture.Tests.csproj
 
 # Misc
 *.md
