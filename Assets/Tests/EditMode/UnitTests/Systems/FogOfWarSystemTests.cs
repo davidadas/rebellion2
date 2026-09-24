@@ -2032,7 +2032,7 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
-        public void CaptureSnapshot_ParticipantSeenElsewhere_RemovesStaleMission()
+        public void CaptureSnapshot_ParticipantSeenElsewhere_PreservesRecordedMissionIdentity()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             vader.DisplayName = "Darth Vader";
@@ -2053,9 +2053,17 @@ namespace Rebellion.Tests.Sectors
                 .Fog
                 .Snapshots[_coreSector.InstanceID]
                 .Planets[_coruscant.InstanceID];
+            Officer recordedParticipant =
+                coruscantSnapshot
+                    .Missions.Single()
+                    .GetMainParticipants(includeDisabled: true)
+                    .Single() as Officer;
+
             Assert.IsEmpty(coruscantSnapshot.Officers);
-            Assert.IsEmpty(coruscantSnapshot.Missions);
-            Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[vader.InstanceID]);
+            Assert.IsNotNull(recordedParticipant);
+            Assert.AreNotSame(vader, recordedParticipant);
+            Assert.AreEqual(vader.InstanceID, recordedParticipant.InstanceID);
+            Assert.AreEqual("Darth Vader", recordedParticipant.DisplayName);
         }
 
         [Test]
