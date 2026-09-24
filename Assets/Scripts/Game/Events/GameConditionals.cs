@@ -905,7 +905,8 @@ namespace Rebellion.Game.Events
         /// <returns>True when the condition is met; otherwise false.</returns>
         public override bool IsMet(GameConditionContext context) =>
             context.Game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID, includeDisabled: true)
-                is IMovable { Movement: not null };
+                is IMovable movable
+            && movable.GetTransitMovement() != null;
     }
 
     /// <summary>

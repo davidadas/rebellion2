@@ -30,6 +30,7 @@ namespace Rebellion.Tests.Game.Events
                     new ForceDiscoveryChangedTrigger(),
                     new UnitOwnershipChangedTrigger(),
                     new UnitDestroyedTrigger(),
+                    new MissionStartedTrigger(),
                     new SpaceCombatCompletedTrigger(),
                     new ManufacturingCompletedTrigger
                     {
@@ -175,6 +176,35 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.IsTrue(trigger.Matches(result));
             result.Destination.InstanceID = "elsewhere";
+            Assert.IsFalse(trigger.Matches(result));
+        }
+
+        /// <summary>
+        /// Verifies mission-start filters apply mission type and participants.
+        /// </summary>
+        [Test]
+        public void Matches_MissionStartedTrigger_AppliesTypeAndParticipantFilters()
+        {
+            Officer luke = new Officer { InstanceID = "luke" };
+            MissionStartedTrigger trigger = new MissionStartedTrigger
+            {
+                MissionTypeID = "Diplomacy",
+                Participants = new MissionParticipantFilter
+                {
+                    Units = new List<EventUnitReference>
+                    {
+                        new EventUnitReference { UnitInstanceID = "luke" },
+                    },
+                },
+            };
+            MissionStartedResult result = new MissionStartedResult
+            {
+                MissionTypeID = "Diplomacy",
+                Participants = new List<IMissionParticipant> { luke },
+            };
+
+            Assert.IsTrue(trigger.Matches(result));
+            result.Participants.Clear();
             Assert.IsFalse(trigger.Matches(result));
         }
 

@@ -351,6 +351,18 @@ namespace Rebellion.Game.Events
                 "MovementGroupID",
                 result => result.MovementGroupID
             );
+            Add<MissionStartedResult, Mission>(arguments, "Mission", result => result.Mission);
+            Add<MissionStartedResult, string>(
+                arguments,
+                "MissionTypeID",
+                result => result.MissionTypeID
+            );
+            Add<MissionStartedResult, Planet>(arguments, "Location", result => result.Location);
+            Add<MissionStartedResult, List<IMissionParticipant>>(
+                arguments,
+                "Participants",
+                result => result.Participants
+            );
             Add<SpaceCombatResult, Fleet>(
                 arguments,
                 "AttackerFleet",
@@ -795,6 +807,37 @@ namespace Rebellion.Game.Events
                 )
                 && MatchesInstanceID(SourceEventInstanceID, completed.SourceEventInstanceID)
                 && (Participants?.Matches(completed.Participants) ?? true);
+        }
+    }
+
+    /// <summary>
+    /// Activates when a newly created mission satisfies the authored mission filters.
+    /// </summary>
+    [PersistableObject(Name = "MissionStarted")]
+    public sealed class MissionStartedTrigger : GameEventTrigger
+    {
+        [PersistableAttribute]
+        public string MissionTypeID { get; set; }
+
+        [PersistableAttribute]
+        public string SourceEventInstanceID { get; set; }
+
+        public MissionParticipantFilter Participants { get; set; }
+
+        internal override Type ResultType => typeof(MissionStartedResult);
+
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the started mission matches the authored filters.</returns>
+        internal override bool Matches(GameResult result)
+        {
+            if (result is not MissionStartedResult started)
+                return false;
+            return MatchesInstanceID(MissionTypeID, started.MissionTypeID)
+                && MatchesInstanceID(SourceEventInstanceID, started.SourceEventInstanceID)
+                && (Participants?.Matches(started.Participants) ?? true);
         }
     }
 

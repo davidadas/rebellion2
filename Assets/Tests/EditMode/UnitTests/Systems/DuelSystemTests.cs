@@ -84,6 +84,46 @@ namespace Rebellion.Tests.Sectors
         }
 
         /// <summary>
+        /// Verifies that officers parented at the same destination cannot duel before arrival.
+        /// </summary>
+        [Test]
+        public void HandleResults_OpposingOfficerInTransit_RejectsDuel()
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            opposing.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            DuelSystem system = new DuelSystem(game, new FixedRandomProvider(new[] { 0.99 }));
+
+            List<GameResult> results = system.HandleRequests(
+                new[] { Request(encountered, opposing) }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.IsFalse(encountered.IsCaptured);
+            Assert.AreEqual(0, encountered.InjuryPoints);
+            Assert.AreEqual(0, opposing.InjuryPoints);
+        }
+
+        /// <summary>
+        /// Verifies that an encountered officer cannot duel before arriving at the shared planet.
+        /// </summary>
+        [Test]
+        public void HandleResults_EncounteredOfficerInTransit_RejectsDuel()
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            encountered.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            DuelSystem system = new DuelSystem(game, new FixedRandomProvider(new[] { 0.99 }));
+
+            List<GameResult> results = system.HandleRequests(
+                new[] { Request(encountered, opposing) }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.IsFalse(encountered.IsCaptured);
+            Assert.AreEqual(0, encountered.InjuryPoints);
+            Assert.AreEqual(0, opposing.InjuryPoints);
+        }
+
+        /// <summary>
         /// Builds encounter.
         /// </summary>
         /// <returns>The constructed encounter.</returns>

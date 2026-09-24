@@ -3214,6 +3214,37 @@ namespace Rebellion.Tests.Sectors
             Assert.AreEqual(planet, mission.GetParent());
         }
 
+        /// <summary>
+        /// Verifies a newly initiated mission emits its lifecycle result on the next system tick.
+        /// </summary>
+        [Test]
+        public void ProcessTick_StartedMission_ReturnsMissionStartedResult()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            officer.FacilityResearch = 1;
+            AddResearchFacilities(game, planet);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            bool initiated = system.InitiateMission(
+                CreateContext(
+                    ResearchMission.MissionTypeID,
+                    officer,
+                    planet,
+                    discipline: ResearchDiscipline.FacilityDesign
+                )
+            );
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.IsTrue(initiated);
+            MissionStartedResult started = results.OfType<MissionStartedResult>().Single();
+            Assert.AreEqual(ResearchMission.MissionTypeID, started.MissionTypeID);
+            Assert.AreSame(planet, started.Location);
+            Assert.AreSame(started.Mission, game.GetSceneNodesByType<Mission>().Single());
+            Assert.AreEqual(new[] { officer }, started.Participants);
+        }
+
         [Test]
         public void InitiateMission_ExhaustedResearch_ReturnsFalse()
         {
