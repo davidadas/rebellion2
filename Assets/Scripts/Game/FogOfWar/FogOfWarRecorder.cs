@@ -947,9 +947,13 @@ namespace Rebellion.Game.FogOfWar
             IEnumerable<ISceneNode> fleetEntities = snapshot.Fleets.SelectMany(fleet =>
                 fleet.GetChildren<ISceneNode>(recursive: true).Prepend(fleet)
             );
+            IEnumerable<ISceneNode> missionEntities = snapshot.Missions.SelectMany(mission =>
+                mission.GetChildren<ISceneNode>(recursive: true).Prepend(mission)
+            );
             return snapshot
                 .Officers.Cast<ISceneNode>()
                 .Concat(fleetEntities)
+                .Concat(missionEntities)
                 .Concat(snapshot.Regiments)
                 .Concat(snapshot.SpecialForces)
                 .Concat(snapshot.Buildings)
@@ -1813,7 +1817,12 @@ namespace Rebellion.Game.FogOfWar
             snapshot.SpecialForces.RemoveAll(s => s.InstanceID == entityId);
             snapshot.Buildings.RemoveAll(b => b.InstanceID == entityId);
             snapshot.Starfighters.RemoveAll(s => s.InstanceID == entityId);
-            snapshot.Missions.RemoveAll(m => m.InstanceID == entityId);
+            snapshot.Missions.RemoveAll(mission =>
+                mission.InstanceID == entityId
+                || mission
+                    .GetChildren<ISceneNode>(recursive: true, includeDisabled: true)
+                    .Any(participant => participant.InstanceID == entityId)
+            );
             snapshot.ManufacturingQueueItems.RemoveAll(item => item.InstanceID == entityId);
 
             foreach (Fleet fleet in snapshot.Fleets)
