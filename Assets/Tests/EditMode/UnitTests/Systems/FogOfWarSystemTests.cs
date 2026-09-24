@@ -2371,6 +2371,113 @@ namespace Rebellion.Tests.Sectors
         }
 
         [Test]
+        public void RefreshVisibleKnowledge_EnemyShipAtNewPlanet_RemovesOldSnapshotLocation()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _game.MoveNode(fleet, _hoth);
+            _game.CurrentTick = 20;
+
+            _fogSystem.RefreshVisibleKnowledge();
+
+            PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            PlanetSnapshot currentSnapshot = _alliance.Fog.Snapshots[_outerRim.InstanceID].Planets[
+                _hoth.InstanceID
+            ];
+            Assert.IsFalse(
+                oldSnapshot.Fleets.Any(snapshotFleet =>
+                    snapshotFleet
+                        .GetChildren<CapitalShip>()
+                        .Any(candidate => candidate.InstanceID == ship.InstanceID)
+                )
+            );
+            Assert.AreEqual(
+                1,
+                currentSnapshot
+                    .Fleets.SelectMany(snapshotFleet => snapshotFleet.GetChildren<CapitalShip>())
+                    .Count(candidate => candidate.InstanceID == ship.InstanceID)
+            );
+            Assert.AreEqual(_hoth.InstanceID, _alliance.Fog.EntityLastSeenAt[ship.InstanceID]);
+        }
+
+        [Test]
+        public void ProcessResults_ShipDestroyedInCombat_RemovesShipForBothParticipants()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            CombatUnitSnapshot destroyedShip = new CombatUnitSnapshot(ship) { Destroyed = true };
+            _game.DeleteNode(ship);
+
+            _fogSystem.ProcessResults(
+                new GameResult[]
+                {
+                    new SpaceCombatResult
+                    {
+                        AttackerOwnerInstanceID = _alliance.InstanceID,
+                        DefenderOwnerInstanceID = _empire.InstanceID,
+                        Planet = _coruscant,
+                        DefendingUnits = new List<CombatUnitSnapshot> { destroyedShip },
+                        Tick = 20,
+                    },
+                }
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsFalse(
+                snapshot.Fleets.Any(snapshotFleet =>
+                    snapshotFleet
+                        .GetChildren<CapitalShip>()
+                        .Any(candidate => candidate.InstanceID == ship.InstanceID)
+                )
+            );
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(ship.InstanceID));
+        }
+
+        [Test]
+        public void ReconcileKnowledge_DuplicateRememberedShip_KeepsIndexedLocation()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            PlanetSnapshot duplicateSnapshot = new PlanetSnapshot { TickCaptured = 20 };
+            duplicateSnapshot.Fleets.Add(FogOfWarRecorder.CopyFleetForSnapshot(fleet));
+            PlanetSectorSnapshot outerRimSnapshot = new PlanetSectorSnapshot();
+            outerRimSnapshot.Planets[_tatooine.InstanceID] = duplicateSnapshot;
+            _alliance.Fog.Snapshots[_outerRim.InstanceID] = outerRimSnapshot;
+            _alliance.Fog.PlanetToSector[_tatooine.InstanceID] = _outerRim.InstanceID;
+            _alliance.Fog.EntityLastSeenAt[fleet.InstanceID] = _tatooine.InstanceID;
+            _alliance.Fog.EntityLastSeenAt[ship.InstanceID] = _tatooine.InstanceID;
+
+            _fogSystem.ReconcileKnowledge();
+
+            PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsFalse(
+                oldSnapshot.Fleets.Any(snapshotFleet =>
+                    snapshotFleet.InstanceID == fleet.InstanceID
+                )
+            );
+            Assert.AreEqual(
+                1,
+                duplicateSnapshot.Fleets.Count(snapshotFleet =>
+                    snapshotFleet.InstanceID == fleet.InstanceID
+                )
+            );
+            Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[ship.InstanceID]);
+        }
+
+        [Test]
         public void IsPlanetVisible_OwnedPlanet_ReturnsTrue()
         {
             bool visible = _fogSystem.IsPlanetVisible(_hoth, _alliance);

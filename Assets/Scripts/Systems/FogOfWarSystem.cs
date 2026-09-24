@@ -109,13 +109,105 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies fog-of-war side effects for a result batch.
+        /// Applies completed game results to the knowledge of factions informed by those results.
         /// </summary>
         /// <param name="results">The game results to process.</param>
-        public void ProcessResults(IReadOnlyList<GameObjectSabotagedResult> results)
+        public void ProcessResults(IReadOnlyList<GameResult> results)
         {
-            foreach (GameObjectSabotagedResult result in results)
-                RemoveSabotagedObjectFromActorSnapshot(result);
+            if (results == null)
+                return;
+
+            HandleResults(results.OfType<IntelligenceRevealedResult>().ToList());
+
+            foreach (
+                GameObjectDestroyedResult result in results.OfType<GameObjectDestroyedResult>()
+            )
+                RecordKnownDestruction(result);
+            foreach (OfficerKilledResult result in results.OfType<OfficerKilledResult>())
+                RecordKnownOfficerDeath(result);
+            foreach (SpaceCombatResult result in results.OfType<SpaceCombatResult>())
+                RecordCombatLosses(
+                    result.AttackerOwnerInstanceID,
+                    result.DefenderOwnerInstanceID,
+                    result.AttackingUnits.Concat(result.DefendingUnits)
+                );
+            foreach (BombardmentResult result in results.OfType<BombardmentResult>())
+                RecordCombatLosses(
+                    result.AttackerOwnerInstanceID,
+                    result.DefenderOwnerInstanceID,
+                    result.AttackingUnits.Concat(result.DefendingUnits)
+                );
+            foreach (PlanetaryAssaultResult result in results.OfType<PlanetaryAssaultResult>())
+                RecordCombatLosses(
+                    result.AttackerOwnerInstanceID,
+                    result.DefenderOwnerInstanceID,
+                    result.AttackingUnits.Concat(result.DefendingUnits)
+                );
+            foreach (EvacuationLossesResult result in results.OfType<EvacuationLossesResult>())
+                RecordEvacuationLosses(result);
+        }
+
+        /// <summary>
+        /// Records the post-transfer location of a captive for both the original faction and the
+        /// capturing faction. Releases remove the obsolete custody observation for both sides.
+        /// </summary>
+        /// <param name="officer">The officer whose custody state changed.</param>
+        /// <param name="previousCaptorId">The faction that held the officer before a release.</param>
+        /// <param name="currentTick">The tick when custody changed.</param>
+        internal void RecordCaptureState(Officer officer, string previousCaptorId, int currentTick)
+        {
+            if (officer == null || string.IsNullOrEmpty(officer.InstanceID))
+                return;
+
+            Faction owner = FindFaction(officer.OwnerInstanceID);
+            string captorId = officer.IsCaptured ? officer.CaptorInstanceID : previousCaptorId;
+            Faction captor = FindFaction(captorId);
+            if (!officer.IsCaptured)
+            {
+                RemoveEntityFromSnapshots(owner, officer.InstanceID);
+                if (captor != owner)
+                    RemoveEntityFromSnapshots(captor, officer.InstanceID);
+                return;
+            }
+
+            if (owner != null)
+                RecordObservations(owner, new[] { officer }, currentTick);
+            if (captor != null && captor != owner)
+                RecordObservations(captor, new[] { officer }, currentTick);
+        }
+
+        /// <summary>
+        /// Refreshes visible planet snapshots and repairs the one-location-per-entity index.
+        /// This keeps the existing persisted fog-of-war format while enforcing consistent state.
+        /// </summary>
+        public void ReconcileKnowledge()
+        {
+            RefreshVisibleKnowledge();
+            foreach (Faction faction in _game.GetFactions())
+                _recorder.ReconcileEntityLocations(faction);
+        }
+
+        /// <summary>
+        /// Replaces remembered state for every planet that its faction can currently observe.
+        /// Callers invoke this only after a complete simulation phase so snapshots never capture
+        /// an intermediate state.
+        /// </summary>
+        internal void RefreshVisibleKnowledge()
+        {
+            foreach (Faction faction in _game.GetFactions())
+            {
+                foreach (PlanetSector sector in _game.Galaxy.GetChildren<PlanetSector>())
+                {
+                    foreach (
+                        Planet planet in sector
+                            .GetChildren<Planet>()
+                            .Where(planet => IsPlanetVisible(planet, faction))
+                    )
+                    {
+                        CaptureSnapshot(faction, planet, sector, _game.CurrentTick);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -263,21 +355,155 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Removes a sabotaged object from the actor faction's fog-of-war snapshots.
+        /// Removes a destroyed object from the knowledge of factions that own, caused, or
+        /// currently observe the destruction.
         /// </summary>
-        /// <param name="result">The sabotage result to process.</param>
-        private void RemoveSabotagedObjectFromActorSnapshot(GameObjectSabotagedResult result)
+        /// <param name="result">The destruction result to process.</param>
+        private void RecordKnownDestruction(GameObjectDestroyedResult result)
         {
-            if (result?.DestroyedObject == null || result.DestroyedBy is not ISceneNode saboteur)
+            if (result?.DestroyedObject == null)
                 return;
 
-            Faction faction = _game
-                .GetFactions()
-                .FirstOrDefault(f => f.InstanceID == saboteur.GetOwnerInstanceID());
-            if (faction == null)
+            string entityId = result.DestroyedObject.GetInstanceID();
+            if (string.IsNullOrEmpty(entityId))
                 return;
 
-            RemoveEntityFromSnapshots(faction, result.DestroyedObject.GetInstanceID());
+            HashSet<Faction> informedFactions = GetInformedFactions(
+                result.DestroyedObject,
+                result.DestroyedBy,
+                result.Context
+            );
+            foreach (Faction faction in informedFactions)
+                RemoveEntityFromSnapshots(faction, entityId);
+        }
+
+        /// <summary>
+        /// Removes a dead officer from the knowledge of factions informed of the death.
+        /// </summary>
+        /// <param name="result">The officer death result.</param>
+        private void RecordKnownOfficerDeath(OfficerKilledResult result)
+        {
+            if (result?.TargetOfficer == null)
+                return;
+
+            foreach (
+                Faction faction in GetInformedFactions(
+                    result.TargetOfficer,
+                    result.Assassin,
+                    result.Context
+                )
+            )
+            {
+                RemoveEntityFromSnapshots(faction, result.TargetOfficer.InstanceID);
+            }
+        }
+
+        /// <summary>
+        /// Removes combatants confirmed destroyed to both participating factions.
+        /// </summary>
+        /// <param name="attackerFactionId">The attacking faction identifier.</param>
+        /// <param name="defenderFactionId">The defending faction identifier.</param>
+        /// <param name="units">The detached combat unit outcomes.</param>
+        private void RecordCombatLosses(
+            string attackerFactionId,
+            string defenderFactionId,
+            IEnumerable<CombatUnitSnapshot> units
+        )
+        {
+            List<Faction> informedFactions = new[]
+            {
+                FindFaction(attackerFactionId),
+                FindFaction(defenderFactionId),
+            }
+                .Where(faction => faction != null)
+                .Distinct()
+                .ToList();
+            foreach (
+                string entityId in (units ?? Enumerable.Empty<CombatUnitSnapshot>())
+                    .Where(unit => unit?.Destroyed == true)
+                    .Select(unit => unit.Unit?.InstanceID)
+                    .Where(entityId => !string.IsNullOrEmpty(entityId))
+                    .Distinct()
+            )
+            {
+                foreach (Faction faction in informedFactions)
+                    RemoveEntityFromSnapshots(faction, entityId);
+            }
+        }
+
+        /// <summary>
+        /// Removes evacuation casualties from the affected faction's remembered state.
+        /// </summary>
+        /// <param name="result">The evacuation-loss result.</param>
+        private void RecordEvacuationLosses(EvacuationLossesResult result)
+        {
+            if (result?.Faction == null)
+                return;
+
+            IEnumerable<ISceneNode> lostUnits = result
+                .LostShips.Cast<ISceneNode>()
+                .Concat(result.LostStarfighters)
+                .Concat(result.LostRegiments);
+            foreach (ISceneNode lostUnit in lostUnits.Where(unit => unit != null))
+                RemoveEntityFromSnapshots(result.Faction, lostUnit.InstanceID);
+        }
+
+        /// <summary>
+        /// Gets every faction that necessarily knows about a completed entity destruction.
+        /// </summary>
+        /// <param name="destroyedObject">The destroyed object.</param>
+        /// <param name="destroyedBy">The object responsible for the destruction.</param>
+        /// <param name="context">The location context of the destruction.</param>
+        /// <returns>The informed factions.</returns>
+        private HashSet<Faction> GetInformedFactions(
+            IGameEntity destroyedObject,
+            IGameEntity destroyedBy,
+            IGameEntity context
+        )
+        {
+            HashSet<Faction> factions = new HashSet<Faction>();
+            AddFaction(factions, (destroyedObject as ISceneNode)?.GetOwnerInstanceID());
+            AddFaction(factions, (destroyedBy as ISceneNode)?.GetOwnerInstanceID());
+
+            ISceneNode contextNode = context as ISceneNode;
+            Planet planet = contextNode as Planet ?? contextNode?.GetParentOfType<Planet>();
+            if (planet != null)
+            {
+                foreach (
+                    Faction faction in _game
+                        .GetFactions()
+                        .Where(faction => IsPlanetVisible(planet, faction))
+                )
+                {
+                    factions.Add(faction);
+                }
+            }
+
+            return factions;
+        }
+
+        /// <summary>
+        /// Adds a faction to a set when its identifier resolves in the active game.
+        /// </summary>
+        /// <param name="factions">The destination set.</param>
+        /// <param name="factionId">The faction identifier.</param>
+        private void AddFaction(ISet<Faction> factions, string factionId)
+        {
+            Faction faction = FindFaction(factionId);
+            if (faction != null)
+                factions.Add(faction);
+        }
+
+        /// <summary>
+        /// Resolves a faction without throwing when an optional owner identifier is absent.
+        /// </summary>
+        /// <param name="factionId">The faction identifier.</param>
+        /// <returns>The matching faction, or null.</returns>
+        private Faction FindFaction(string factionId)
+        {
+            return string.IsNullOrEmpty(factionId)
+                ? null
+                : _game.GetFactions().FirstOrDefault(faction => faction.InstanceID == factionId);
         }
 
         /// <summary>

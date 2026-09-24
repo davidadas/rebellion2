@@ -363,6 +363,7 @@ public sealed class GameManager
         );
 
         List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
+        _fogOfWarSystem.RefreshVisibleKnowledge();
 
         List<GameResult> movementPhaseResults = CombineResults(
             movementResults,
@@ -403,6 +404,7 @@ public sealed class GameManager
         ProcessResults(_researchSystem.ProcessTick());
         ProcessResults(_jediSystem.ProcessTick());
         ProcessResults(_victorySystem.ProcessTick());
+        _fogOfWarSystem.RefreshVisibleKnowledge();
         _tickState = TickExecutionState.Idle;
         TickCompleted?.Invoke();
     }
@@ -573,12 +575,11 @@ public sealed class GameManager
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
         _resultProcessor.Subscribe<OfficerCaptureStateResult>(_missionSystem);
         _resultProcessor.Subscribe<OfficerCaptureStateResult>(_captiveSystem);
-        _resultProcessor.Subscribe<IntelligenceRevealedResult>(_fogOfWarSystem);
         _resultProcessor.Subscribe<GameObjectDestroyedResult>(_manufacturingSystem);
         _resultProcessor.Subscribe<GameObjectScrappedResult>(_manufacturingSystem);
         _resultProcessor.Subscribe<BombardmentResult>(_manufacturingSystem);
         _resultProcessor.Subscribe<PlanetaryAssaultResult>(_manufacturingSystem);
-        _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
+        _resultProcessor.Observe<GameResult>(_fogOfWarSystem.ProcessResults);
 
         _movementSystem.ResultsProduced += HandleSystemResultsProduced;
         _maintenanceSystem.ResultsProduced += HandleSystemResultsProduced;
@@ -603,6 +604,7 @@ public sealed class GameManager
             faction.RebuildResearchCatalog(templates);
 
         _manufacturingSystem.RebuildQueues();
+        _fogOfWarSystem.ReconcileKnowledge();
     }
 
     /// <summary>
@@ -643,6 +645,7 @@ public sealed class GameManager
                 _spaceCombatSystem.ProcessTick(),
                 processMessages: false
             );
+            _fogOfWarSystem.RefreshVisibleKnowledge();
             _deferredMessageResults.AddRange(combatResults);
             _deferredMessageResults.AddRange(waypointResults);
             _deferredMessageResults.AddRange(additionalCombatResults);
@@ -685,6 +688,7 @@ public sealed class GameManager
             _spaceCombatSystem.ProcessTick(),
             processMessages: false
         );
+        _fogOfWarSystem.RefreshVisibleKnowledge();
         if (_spaceCombatSystem.HasPendingDecision)
         {
             StoreDeferredMessageResults(combatResults);
@@ -779,6 +783,7 @@ public sealed class GameManager
     private void HandleSystemResultsProduced(IReadOnlyList<GameResult> results)
     {
         List<GameResult> resolvedResults = ProcessResults(results);
+        _fogOfWarSystem.RefreshVisibleKnowledge();
         foreach (BombardmentResult result in resolvedResults.OfType<BombardmentResult>())
             BombardmentCompleted?.Invoke(result);
     }
