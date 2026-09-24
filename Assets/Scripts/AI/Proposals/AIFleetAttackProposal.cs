@@ -3,7 +3,7 @@ using Rebellion.AI.Director;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Proposals
 {
@@ -206,7 +206,8 @@ namespace Rebellion.AI.Proposals
 
             List<Fleet> attackingFleets = new List<Fleet> { Fleet };
             bool canBombard =
-                context.Bombardment?.CanExecute(
+                context.Bombardment != null
+                && context.BombardmentQueries?.CanExecute(
                     attackingFleets,
                     liveTarget,
                     BombardmentType.Military
@@ -217,7 +218,7 @@ namespace Rebellion.AI.Proposals
                     > context.Assessment.GetBombardmentShieldResistance(liveTarget);
             bool shouldBombardMilitaryTargets =
                 canDamageMilitaryTargets
-                && BombardmentSystem.HasActiveMilitaryTargets(
+                && BombardmentQueries.HasActiveMilitaryTargets(
                     liveTarget,
                     liveTarget.GetOwnerInstanceID()
                 );
@@ -349,7 +350,7 @@ namespace Rebellion.AI.Proposals
                     >= context.Assessment.GetRequiredAttackRegimentStrength(Fleet, liveTarget)
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, liveTarget)
                     >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent
-                && context.PlanetaryAssault.CanExecute(new List<Fleet> { Fleet }, liveTarget)
+                && context.PlanetaryAssaultQueries.CanExecute(new List<Fleet> { Fleet }, liveTarget)
                     == true;
         }
 

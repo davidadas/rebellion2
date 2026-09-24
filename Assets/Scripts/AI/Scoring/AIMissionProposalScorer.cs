@@ -43,7 +43,7 @@ namespace Rebellion.AI.Scoring
             )
                 return 0;
 
-            MissionOdds odds = context.Missions.GetMissionOdds(
+            MissionOdds odds = context.MissionQueries.GetMissionOdds(
                 missionProposal.CreateContext(),
                 context.Assessment.GetMissionDetectorCandidates(missionProposal.TargetPlanet)
             );

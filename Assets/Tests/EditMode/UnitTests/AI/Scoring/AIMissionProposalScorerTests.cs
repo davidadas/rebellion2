@@ -8,6 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Scoring
@@ -172,7 +173,7 @@ namespace Rebellion.Tests.AI.Scoring
             );
 
             Assert.IsTrue(proposal.CanExecute(context));
-            MissionOdds odds = context.Missions.GetMissionOdds(proposal.CreateContext());
+            MissionOdds odds = context.MissionQueries.GetMissionOdds(proposal.CreateContext());
             Assert.IsNotNull(odds);
             Assert.AreEqual(19, odds.ObjectiveSuccessProbability, 0.0001);
             double score = new AIMissionProposalScorer().Score(context, proposal);

@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Game.Missions
@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             SpecialForces reconTeam = CreateReconTeam("empire");
@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             Assert.IsTrue(snapshot.Planets.ContainsKey("enemy_planet"));
 
-            GalaxyMap view = fog.BuildFactionView(empire);
+            GalaxyMap view = new FogOfWarQueries(game).BuildFactionView(empire);
             Planet viewPlanet = view.GetChildren<PlanetSector>()
                 .First(sector => sector.InstanceID == "sector1")
                 .GetChildren<Planet>()
@@ -71,7 +71,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Regiment detector = EntityFactory.CreateRegiment("detector", "rebels");
@@ -98,12 +98,18 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
             movement.SendToMission(reconTeam, mission);
             reconTeam.Movement = null;
             mission.Initiate(1);
 
-            MissionSystem system = TestSystems.CreateMissionSystem(
+            MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
                 new FixedRNG(0.01),
                 movement
@@ -128,7 +134,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Mission mission = CreateMission(
@@ -156,7 +162,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.AddVisitor("empire");
@@ -182,7 +188,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Mission mission = CreateMission(
@@ -204,7 +210,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             SpecialForces reconTeam = CreateReconTeam("empire");

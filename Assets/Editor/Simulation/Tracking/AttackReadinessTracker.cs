@@ -6,7 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 public static partial class HeadlessSimulationRunner
@@ -63,8 +63,11 @@ public static partial class HeadlessSimulationRunner
                     null,
                     null,
                     null,
+                    null,
+                    null,
+                    null,
                     new SystemRandomProvider(0),
-                    new FogOfWarSystem(game).BuildFactionView(faction)
+                    new FogOfWarQueries(game).BuildFactionView(faction)
                 );
                 AIAssessment assessment = context.Assessment;
                 AttackReadinessFactionCounters counters = GetCounters(faction.InstanceID);

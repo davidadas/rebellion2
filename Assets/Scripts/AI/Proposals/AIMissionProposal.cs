@@ -172,7 +172,7 @@ namespace Rebellion.AI.Proposals
             if (context?.Missions == null || !IsStillValid())
                 return false;
 
-            return context.Missions.CanCreateMission(CreateContext());
+            return context.MissionQueries.CanCreateMission(CreateContext());
         }
 
         /// <summary>

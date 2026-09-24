@@ -5,7 +5,8 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
+using Rebellion.Util.DependencyInjection;
 
 /// <summary>
 /// Executes and finalizes commands shared by strategy feature windows.
@@ -16,12 +17,7 @@ public sealed class StrategyWindowCommandController
 {
     private readonly MissionCreateWindowController missionCreateWindowController;
     private readonly ConfirmDialogWindowController confirmDialogWindowController;
-    private readonly Func<GameRoot> getGame;
-    private readonly Func<MovementSystem> getMovementSystem;
-    private readonly Func<HeadquartersSystem> getHeadquartersSystem;
-    private readonly Func<MaintenanceSystem> getMaintenanceSystem;
-    private readonly Func<ManufacturingSystem> getManufacturingSystem;
-    private readonly Func<PersonnelSystem> getPersonnelSystem;
+    private readonly IServiceLocator services;
     private readonly Action<string> playSfx;
     private readonly Action<UIWindow> clearWindowSelection;
     private readonly Action rebuildSnapshot;
@@ -35,32 +31,22 @@ public sealed class StrategyWindowCommandController
     /// </summary>
     /// <param name="missionCreateWindowController">Owns mission-creation windows.</param>
     /// <param name="confirmDialogWindowController">Owns confirmation windows.</param>
-    /// <param name="getGame">Returns the active game state.</param>
-    /// <param name="getMovementSystem">Returns the active movement system.</param>
-    /// <param name="getMaintenanceSystem">Returns the active maintenance system.</param>
-    /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
-    /// <param name="getPersonnelSystem">Returns the active personnel system.</param>
+    /// <param name="services">Resolves commands and queries for the active game.</param>
     /// <param name="playSfx">Plays an optional officer response.</param>
     /// <param name="clearWindowSelection">Clears selection owned by a source window.</param>
     /// <param name="rebuildSnapshot">Rebuilds the visible strategy snapshot.</param>
     /// <param name="markDirty">Invalidates the strategy presentation.</param>
-    /// <param name="getHeadquartersSystem">Returns the mobile-headquarters system.</param>
     /// <param name="playInvalidOrderRejected">Plays the advisor's invalid-order rejection.</param>
     /// <param name="playInTransitOrderRejected">Plays the advisor's in-transit rejection.</param>
     /// <param name="playUnitUnderConstructionOrderRejected">Plays the advisor's under-construction rejection.</param>
     public StrategyWindowCommandController(
         MissionCreateWindowController missionCreateWindowController,
         ConfirmDialogWindowController confirmDialogWindowController,
-        Func<GameRoot> getGame,
-        Func<MovementSystem> getMovementSystem,
-        Func<MaintenanceSystem> getMaintenanceSystem,
-        Func<ManufacturingSystem> getManufacturingSystem,
-        Func<PersonnelSystem> getPersonnelSystem,
+        IServiceLocator services,
         Action<string> playSfx,
         Action<UIWindow> clearWindowSelection,
         Action rebuildSnapshot,
         Action markDirty,
-        Func<HeadquartersSystem> getHeadquartersSystem = null,
         Action playInvalidOrderRejected = null,
         Action playInTransitOrderRejected = null,
         Action playUnitUnderConstructionOrderRejected = null
@@ -72,17 +58,7 @@ public sealed class StrategyWindowCommandController
         this.confirmDialogWindowController =
             confirmDialogWindowController
             ?? throw new ArgumentNullException(nameof(confirmDialogWindowController));
-        this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getMovementSystem =
-            getMovementSystem ?? throw new ArgumentNullException(nameof(getMovementSystem));
-        this.getHeadquartersSystem = getHeadquartersSystem;
-        this.getMaintenanceSystem =
-            getMaintenanceSystem ?? throw new ArgumentNullException(nameof(getMaintenanceSystem));
-        this.getManufacturingSystem =
-            getManufacturingSystem
-            ?? throw new ArgumentNullException(nameof(getManufacturingSystem));
-        this.getPersonnelSystem =
-            getPersonnelSystem ?? throw new ArgumentNullException(nameof(getPersonnelSystem));
+        this.services = services ?? throw new ArgumentNullException(nameof(services));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.clearWindowSelection =
             clearWindowSelection ?? throw new ArgumentNullException(nameof(clearWindowSelection));
@@ -177,15 +153,17 @@ public sealed class StrategyWindowCommandController
     {
         List<ISceneNode> sourceItems = CopyItems(items);
         ContainerNode destination = target?.GetMoveDestination() as ContainerNode;
-        MovementSystem movementSystem = getMovementSystem();
+        MovementCommands movementSystem = services.GetService<MovementCommands>();
         int transitTimeInDays =
             movementSystem != null
-            && movementSystem.TryGetSelectionTransitTicks(
-                sourceItems,
-                destination,
-                GetPlayerFactionID(),
-                out int transitTicks
-            )
+            && services
+                .GetService<MovementQueries>()
+                .TryGetSelectionTransitTicks(
+                    sourceItems,
+                    destination,
+                    GetPlayerFactionID(),
+                    out int transitTicks
+                )
                 ? transitTicks
                 : -1;
         confirmDialogWindowController.OpenMove(
@@ -217,9 +195,11 @@ public sealed class StrategyWindowCommandController
         List<string> proposedWaypoints = source.WaypointPlanetIds.ToList();
         proposedWaypoints.Add(destination.InstanceID);
         if (
-            getMovementSystem()
+            services.GetService<MovementCommands>() == null
+            || services
+                .GetService<MovementQueries>()
                 ?.CanSetFleetWaypointRoute(source.Items, proposedWaypoints, GetPlayerFactionID())
-            != true
+                != true
         )
             return false;
 
@@ -238,7 +218,8 @@ public sealed class StrategyWindowCommandController
     {
         if (
             source?.Action != StrategyMenuAction.WaypointMove
-            || getMovementSystem()
+            || services
+                .GetService<MovementCommands>()
                 ?.TrySetFleetWaypointRoute(
                     source.Items,
                     source.WaypointPlanetIds,
@@ -272,7 +253,11 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when at least one waypoint was cleared.</returns>
     public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items)
     {
-        if (getMovementSystem()?.ClearFleetWaypoints(items, GetPlayerFactionID()) != true)
+        if (
+            services
+                .GetService<MovementCommands>()
+                ?.ClearFleetWaypoints(items, GetPlayerFactionID()) != true
+        )
             return false;
 
         RefreshAfterWaypointMutation();
@@ -296,8 +281,9 @@ public sealed class StrategyWindowCommandController
                     .ToList();
                 if (
                     manufacturables.Count == sourceItems.Count
-                    && getMaintenanceSystem()?.TryScrap(manufacturables, GetPlayerFactionID())
-                        == true
+                    && services
+                        .GetService<MaintenanceCommands>()
+                        ?.TryScrap(manufacturables, GetPlayerFactionID()) == true
                 )
                 {
                     RefreshAfterMutation(sourceWindow);
@@ -326,7 +312,8 @@ public sealed class StrategyWindowCommandController
                     .ToList();
                 if (
                     manufacturables.Count == sourceItems.Count
-                    && getManufacturingSystem()
+                    && services
+                        .GetService<ManufacturingCommands>()
                         ?.CancelManufacturing(manufacturables, GetPlayerFactionID()) == true
                 )
                 {
@@ -351,7 +338,11 @@ public sealed class StrategyWindowCommandController
             sourceItems,
             () =>
             {
-                if (getPersonnelSystem()?.Retire(sourceItems, GetPlayerFactionID()) == true)
+                if (
+                    services
+                        .GetService<PersonnelCommands>()
+                        ?.Retire(sourceItems, GetPlayerFactionID()) == true
+                )
                     RefreshAfterMutation(sourceWindow);
             }
         );
@@ -364,7 +355,8 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when every selected person may be retired.</returns>
     public bool CanRetire(IReadOnlyList<ISceneNode> items)
     {
-        return getPersonnelSystem()?.CanRetire(items, GetPlayerFactionID()) == true;
+        return services.GetService<PersonnelQueries>()?.CanRetire(items, GetPlayerFactionID())
+            == true;
     }
 
     /// <summary>
@@ -394,10 +386,12 @@ public sealed class StrategyWindowCommandController
         Building headquarters = items?.Count == 1 ? items[0] as Building : null;
         bool moved =
             headquarters?.BuildingType == BuildingType.Headquarters
-                ? getHeadquartersSystem?.Invoke()?.TryRelocate(headquarters, target?.Planet?.Planet)
-                    == true
-                : getMovementSystem()?.TryRequestMove(items, destination, GetPlayerFactionID())
-                    == true;
+                ? services
+                    .GetService<HeadquartersCommands>()
+                    ?.TryRelocate(headquarters, target?.Planet?.Planet) == true
+                : services
+                    .GetService<MovementCommands>()
+                    ?.TryRequestMove(items, destination, GetPlayerFactionID()) == true;
         if (moved)
             PlayMoveVoice(items);
 
@@ -414,7 +408,8 @@ public sealed class StrategyWindowCommandController
         if (target?.GetMoveDestination() is not CapitalShip destination)
             return false;
 
-        CapitalShip liveDestination = getGame()
+        CapitalShip liveDestination = services
+            .GetService<GameRoot>()
             ?.GetSceneNodeByInstanceID<CapitalShip>(destination.InstanceID);
         return (liveDestination ?? destination).ManufacturingStatus != ManufacturingStatus.Complete;
     }
@@ -430,7 +425,7 @@ public sealed class StrategyWindowCommandController
         if (items == null || items.Count == 0 || destination == null)
             return true;
 
-        GameRoot game = getGame();
+        GameRoot game = services.GetService<GameRoot>();
         return items.Any(item =>
         {
             ISceneNode liveItem = game?.GetSceneNodeByInstanceID<ISceneNode>(item?.InstanceID);
@@ -445,7 +440,7 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when at least one selected unit is in hyperspace; otherwise false.</returns>
     private bool ContainsInTransitUnit(IReadOnlyList<ISceneNode> items)
     {
-        GameRoot game = getGame();
+        GameRoot game = services.GetService<GameRoot>();
         return items?.Any(item =>
                 game?.GetSceneNodeByInstanceID<ISceneNode>(item?.InstanceID) is IMovable movable
                 && movable.GetTransitMovement() != null
@@ -461,7 +456,7 @@ public sealed class StrategyWindowCommandController
         if (items == null || items.Count != 1 || items[0] is not Officer selectedOfficer)
             return;
 
-        GameRoot game = getGame();
+        GameRoot game = services.GetService<GameRoot>();
         Officer officer = game?.GetSceneNodeByInstanceID<Officer>(selectedOfficer.InstanceID);
         string voicePath = officer?.GetVoicePath(OfficerVoiceLineType.Order, game.Random);
         if (!string.IsNullOrEmpty(voicePath))
@@ -494,7 +489,7 @@ public sealed class StrategyWindowCommandController
     /// <returns>The current player faction identifier.</returns>
     private string GetPlayerFactionID()
     {
-        return getGame()?.GetPlayerFaction()?.InstanceID ?? string.Empty;
+        return services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID ?? string.Empty;
     }
 
     /// <summary>

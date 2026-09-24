@@ -38,14 +38,14 @@ namespace Rebellion.Architecture.Tests
         }
 
         /// <summary>
-        /// Verifies that gameplay systems do not depend on presentation code.
+        /// Verifies that gameplay runtime implementations do not depend on presentation code.
         /// </summary>
         [Test]
-        public void GameplaySystems_Dependencies_DoNotReferenceUserInterface()
+        public void GameplayRuntime_Dependencies_DoNotReferenceUserInterface()
         {
             IArchRule rule = Types()
                 .That()
-                .ResideInNamespaceMatching("^Rebellion\\.Systems(?:\\.|$)")
+                .ResideInNamespaceMatching("^Rebellion\\.(?:Systems|Simulation)(?:\\.|$)")
                 .Should()
                 .NotDependOnAny(
                     Types().That().ResideInNamespaceMatching("^Rebellion\\.UI(?:\\.|$)")
@@ -90,6 +90,7 @@ namespace Rebellion.Architecture.Tests
         [TestCase("Rebellion.Util.Random")]
         [TestCase("Rebellion.Util.Reflection")]
         [TestCase("Rebellion.Util.Serialization")]
+        [TestCase("Rebellion.Util.DependencyInjection")]
         public void UtilityArea_Dependencies_ReferenceOnlySameUtilityArea(string utilityNamespace)
         {
             string escapedNamespace = utilityNamespace.Replace(".", "\\.");

@@ -7,7 +7,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -103,9 +103,15 @@ namespace Rebellion.Tests.Game.Missions
             // The candidate pool empties before the mission executes.
             game.GetUnrecruitedOfficers().Remove(target);
 
-            FogOfWarSystem fog = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            FogOfWarCommands fog = new FogOfWarCommands(game);
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
                 game,
                 new ThrowingRNG(),
                 movement
@@ -353,7 +359,7 @@ namespace Rebellion.Tests.Game.Missions
         /// <returns>The constructed scene.</returns>
         private (GameRoot game, Planet empirePlanet, Officer officer) BuildScene()
         {
-            (GameRoot game, Planet empirePlanet, Planet _, Officer officer, FogOfWarSystem _) =
+            (GameRoot game, Planet empirePlanet, Planet _, Officer officer, FogOfWarCommands _) =
                 MissionSceneBuilder.Build();
             officer.IsMain = true;
             return (game, empirePlanet, officer);

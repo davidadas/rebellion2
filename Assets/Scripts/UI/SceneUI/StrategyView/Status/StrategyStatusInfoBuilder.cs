@@ -6,7 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Projects game entities into status-window domain information.
@@ -136,7 +136,7 @@ internal sealed class StrategyStatusInfoBuilder
         if (queue.Count > 0)
         {
             info.Rows.Add(new StrategyStatusRow("Items to Build:", queue.Count.ToString()));
-            int? completionTicks = ManufacturingSystem.EstimateQueueCompletionTicks(
+            int? completionTicks = ManufacturingQueries.EstimateQueueCompletionTicks(
                 target.Planet.Planet,
                 type
             );
@@ -869,7 +869,7 @@ internal sealed class StrategyStatusInfoBuilder
             return;
 
         Planet producer = findVisibleNode(manufacturable.ProducerPlanetID) as Planet;
-        int? completionTicks = ManufacturingSystem.EstimateCompletionTicks(
+        int? completionTicks = ManufacturingQueries.EstimateCompletionTicks(
             producer,
             manufacturable
         );

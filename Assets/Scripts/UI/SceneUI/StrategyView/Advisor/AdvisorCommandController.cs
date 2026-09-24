@@ -10,7 +10,7 @@ using Rebellion.Game.Units;
 /// </summary>
 public sealed class AdvisorCommandController : ITargetingReceiver
 {
-    private readonly GameManager gameManager;
+    private readonly Func<Faction> getFaction;
     private readonly TargetingController targetingController;
     private readonly Func<IReadOnlyList<GalaxyMapSector>> getSectors;
     private readonly Action<
@@ -22,18 +22,18 @@ public sealed class AdvisorCommandController : ITargetingReceiver
     /// <summary>
     /// Creates the advisor command controller.
     /// </summary>
-    /// <param name="gameManager">The active game manager.</param>
+    /// <param name="getFaction">Returns the current player faction.</param>
     /// <param name="targetingController">Owns the active strategy targeting request.</param>
     /// <param name="getSectors">Returns the current visible galaxy sectors.</param>
     /// <param name="openConstructionWindow">Opens construction for a producer and destination.</param>
     public AdvisorCommandController(
-        GameManager gameManager,
+        Func<Faction> getFaction,
         TargetingController targetingController,
         Func<IReadOnlyList<GalaxyMapSector>> getSectors,
         Action<GalaxyMapPlanet, GalaxyMapPlanet, FacilityWindowTab> openConstructionWindow
     )
     {
-        this.gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
+        this.getFaction = getFaction ?? throw new ArgumentNullException(nameof(getFaction));
         this.targetingController =
             targetingController ?? throw new ArgumentNullException(nameof(targetingController));
         this.getSectors = getSectors ?? throw new ArgumentNullException(nameof(getSectors));
@@ -71,7 +71,7 @@ public sealed class AdvisorCommandController : ITargetingReceiver
         )
             return;
 
-        Faction faction = gameManager.GetPlayerFaction();
+        Faction faction = getFaction();
         Planet producer = FindProducerPlanet(
             faction,
             manufacturingType,

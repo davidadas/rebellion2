@@ -10,7 +10,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -33,7 +33,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private GameFleet _fleet;
         private StrategyFleetCommandController _fleetCommandController;
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _session;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private GalaxyMapSector _sector;
@@ -57,7 +57,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _sector = CreateSector();
-            _gameManager = TestContent.CreateGameManager(_game);
+            _session = TestContent.CreateGameSession(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
@@ -629,12 +629,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <returns>The created fleet command controller.</returns>
         private StrategyFleetCommandController CreateFleetCommandController()
         {
-            return new StrategyFleetCommandController(
-                () => _gameManager.GetGame(),
-                () => _gameManager.FleetSystem,
-                () => _gameManager.BombardmentSystem,
-                () => _gameManager.PlanetaryAssaultSystem
-            );
+            return new StrategyFleetCommandController(_session);
         }
 
         /// <summary>

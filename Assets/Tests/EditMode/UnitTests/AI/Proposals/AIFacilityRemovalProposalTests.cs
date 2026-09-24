@@ -7,7 +7,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Proposals
@@ -43,10 +43,10 @@ namespace Rebellion.Tests.AI.Proposals
                 ManufacturingType.Ship
             );
             StubRNG random = new StubRNG();
-            MaintenanceSystem maintenance = new MaintenanceSystem(
+            MaintenanceCommands maintenance = new MaintenanceCommands(
                 game,
                 random,
-                new FleetSystem(game)
+                new FleetCommands(game)
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(
                 game,
@@ -107,10 +107,10 @@ namespace Rebellion.Tests.AI.Proposals
             );
             unfinished.OwnerInstanceID = empire.InstanceID;
             StubRNG random = new StubRNG();
-            MaintenanceSystem maintenance = new MaintenanceSystem(
+            MaintenanceCommands maintenance = new MaintenanceCommands(
                 game,
                 random,
-                new FleetSystem(game)
+                new FleetCommands(game)
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(
                 game,
@@ -171,10 +171,10 @@ namespace Rebellion.Tests.AI.Proposals
                 ManufacturingType.Ship
             );
             StubRNG random = new StubRNG();
-            MaintenanceSystem maintenance = new MaintenanceSystem(
+            MaintenanceCommands maintenance = new MaintenanceCommands(
                 game,
                 random,
-                new FleetSystem(game)
+                new FleetCommands(game)
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(
                 game,
