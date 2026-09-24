@@ -24,7 +24,8 @@ namespace Rebellion.Tests.Simulation
         public void SetUp()
         {
             _results = new GameResultBus();
-            _observer = new FogOfWarObserver(_game, new FogOfWarCommands(_game));
+            FogOfWarQueries queries = new FogOfWarQueries(_game);
+            _observer = new FogOfWarObserver(_game, new FogOfWarCommands(_game, queries), queries);
         }
 
         [Test]
@@ -553,6 +554,43 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(
                 snapshot.ManufacturingQueueItems.Any(item => item.InstanceID == "HIDDEN_ORDER")
             );
+        }
+
+        [Test]
+        public void ProcessResults_ShipDestroyedInCombat_RemovesShipForBothParticipants()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            new FogOfWarRecorder().RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
+            CombatUnitSnapshot destroyedShip = new CombatUnitSnapshot(ship) { Destroyed = true };
+            _game.DeleteNode(ship);
+
+            _observer.ProcessResults(
+                new GameResult[]
+                {
+                    new SpaceCombatResult
+                    {
+                        AttackerOwnerInstanceID = _alliance.InstanceID,
+                        DefenderOwnerInstanceID = _empire.InstanceID,
+                        Planet = _coruscant,
+                        DefendingUnits = new List<CombatUnitSnapshot> { destroyedShip },
+                        Tick = 20,
+                    },
+                }
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsFalse(
+                snapshot.Fleets.Any(snapshotFleet =>
+                    snapshotFleet
+                        .GetChildren<CapitalShip>()
+                        .Any(candidate => candidate.InstanceID == ship.InstanceID)
+                )
+            );
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(ship.InstanceID));
         }
     }
 }

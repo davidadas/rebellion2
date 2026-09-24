@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -67,12 +66,9 @@ namespace Rebellion.Simulation
                 if (officer == null)
                     continue;
 
-                Faction originalFaction = _game.GetFactionByOwnerInstanceID(
-                    officer.OwnerInstanceID
-                );
                 if (result.IsCaptured == false)
                 {
-                    _commands.ClearReleaseTracking(officer, originalFaction);
+                    _commands.ClearReleaseTracking(officer, result.CaptorInstanceID, result.Tick);
                     continue;
                 }
 
@@ -85,7 +81,6 @@ namespace Rebellion.Simulation
 
                 _commands.EstablishCustody(
                     officer,
-                    originalFaction,
                     result.Context,
                     result.CapturingUnit,
                     result.Tick,

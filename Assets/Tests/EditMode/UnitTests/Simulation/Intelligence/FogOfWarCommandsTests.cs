@@ -731,5 +731,96 @@ namespace Rebellion.Tests.Simulation
                 "Fleet with capital ships should appear in snapshot"
             );
         }
+
+        [Test]
+        public void RefreshVisibleKnowledge_EnemyShipAtNewPlanet_RemovesOldSnapshotLocation()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+
+            _game.MoveNode(fleet, _hoth);
+            _game.CurrentTick = 20;
+
+            _commands.RefreshVisibleKnowledge();
+
+            PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            PlanetSnapshot currentSnapshot = _alliance.Fog.Snapshots[_outerRim.InstanceID].Planets[
+                _hoth.InstanceID
+            ];
+            Assert.IsFalse(
+                oldSnapshot.Fleets.Any(snapshotFleet =>
+                    snapshotFleet
+                        .GetChildren<CapitalShip>()
+                        .Any(candidate => candidate.InstanceID == ship.InstanceID)
+                )
+            );
+            Assert.AreEqual(
+                1,
+                currentSnapshot
+                    .Fleets.SelectMany(snapshotFleet => snapshotFleet.GetChildren<CapitalShip>())
+                    .Count(candidate => candidate.InstanceID == ship.InstanceID)
+            );
+            Assert.AreEqual(_hoth.InstanceID, _alliance.Fog.EntityLastSeenAt[ship.InstanceID]);
+        }
+
+        [Test]
+        public void ReconcileKnowledge_DuplicateRememberedShip_KeepsIndexedLocation()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            PlanetSnapshot duplicateSnapshot = new PlanetSnapshot { TickCaptured = 20 };
+            duplicateSnapshot.Fleets.Add(FogOfWarRecorder.CopyFleetForSnapshot(fleet));
+            PlanetSectorSnapshot outerRimSnapshot = new PlanetSectorSnapshot();
+            outerRimSnapshot.Planets[_tatooine.InstanceID] = duplicateSnapshot;
+            _alliance.Fog.Snapshots[_outerRim.InstanceID] = outerRimSnapshot;
+            _alliance.Fog.PlanetToSector[_tatooine.InstanceID] = _outerRim.InstanceID;
+            _alliance.Fog.EntityLastSeenAt[fleet.InstanceID] = _tatooine.InstanceID;
+            _alliance.Fog.EntityLastSeenAt[ship.InstanceID] = _tatooine.InstanceID;
+
+            _commands.ReconcileKnowledge();
+
+            PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsFalse(
+                oldSnapshot.Fleets.Any(snapshotFleet =>
+                    snapshotFleet.InstanceID == fleet.InstanceID
+                )
+            );
+            Assert.AreEqual(
+                1,
+                duplicateSnapshot.Fleets.Count(snapshotFleet =>
+                    snapshotFleet.InstanceID == fleet.InstanceID
+                )
+            );
+            Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[ship.InstanceID]);
+
+            GalaxyMap view = _queries.BuildFactionView(_alliance);
+            List<Planet> viewedPlanets = view.GetChildren<PlanetSector>()
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .ToList();
+            Assert.AreEqual(
+                1,
+                viewedPlanets
+                    .SelectMany(planet => planet.GetChildren<CapitalShip>(recursive: true))
+                    .Count(candidate => candidate.InstanceID == ship.InstanceID)
+            );
+            Assert.AreEqual(
+                _tatooine.InstanceID,
+                viewedPlanets
+                    .Single(planet =>
+                        planet
+                            .GetChildren<CapitalShip>(recursive: true)
+                            .Any(candidate => candidate.InstanceID == ship.InstanceID)
+                    )
+                    .InstanceID
+            );
+        }
     }
 }

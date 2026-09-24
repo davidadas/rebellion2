@@ -1780,6 +1780,7 @@ namespace Rebellion.Simulation
                 .Where(arrival =>
                     arrival?.Unit != null
                     && arrival.Unit is not Officer { IsCaptured: true }
+                    && (arrival.Unit as ISceneNode)?.GetParent() is not Mission
                     && !deployedUnitIds.Contains(arrival.Unit.GetInstanceID())
                 )
                 .ToArray();

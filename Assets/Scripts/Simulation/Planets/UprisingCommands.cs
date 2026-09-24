@@ -1085,9 +1085,18 @@ namespace Rebellion.Simulation
             List<GameResult> results
         )
         {
-            officer.IsCaptured = isCaptured;
-            officer.CaptorInstanceID = isCaptured ? captorInstanceId : null;
-            officer.CanEscape = isCaptured;
+            if (isCaptured)
+            {
+                if (!officer.TryCapture(captorInstanceId))
+                    return;
+            }
+            else
+            {
+                officer.IsCaptured = false;
+                officer.CaptorInstanceID = null;
+                officer.CanEscape = false;
+            }
+
             results.Add(
                 new OfficerCaptureStateResult
                 {

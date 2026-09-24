@@ -206,6 +206,21 @@ namespace Rebellion.Game.Events
         public MissionParticipantFilter Participants { get; set; }
     }
 
+    /// <summary>
+    /// Activates when a newly created mission satisfies the authored mission filters.
+    /// </summary>
+    [PersistableObject(Name = "MissionStarted")]
+    public sealed class MissionStartedTrigger : GameEventTrigger
+    {
+        [PersistableAttribute]
+        public string MissionTypeID { get; set; }
+
+        [PersistableAttribute]
+        public string SourceEventInstanceID { get; set; }
+
+        public MissionParticipantFilter Participants { get; set; }
+    }
+
     #endregion
 
     #region Officer

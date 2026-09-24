@@ -29,6 +29,7 @@ namespace Rebellion.Simulation
                 IntelligenceRevealedTrigger value => Matches(value, result),
                 MaintenanceRequiredTrigger value => Matches(value, result),
                 ResearchAdvancedTrigger value => Matches(value, result),
+                MissionStartedTrigger value => Matches(value, result),
                 MissionCompletedTrigger value => Matches(value, result),
                 OfficerCaptureChangedTrigger value => Matches(value, result),
                 OfficerKilledTrigger value => Matches(value, result),
@@ -64,6 +65,7 @@ namespace Rebellion.Simulation
                 IntelligenceRevealedTrigger => typeof(IntelligenceRevealedResult),
                 MaintenanceRequiredTrigger => typeof(MaintenanceRequiredResult),
                 ResearchAdvancedTrigger => typeof(ResearchOrderedResult),
+                MissionStartedTrigger => typeof(MissionStartedResult),
                 MissionCompletedTrigger => typeof(MissionCompletedResult),
                 OfficerCaptureChangedTrigger => typeof(OfficerCaptureStateResult),
                 OfficerKilledTrigger => typeof(OfficerKilledResult),
@@ -303,6 +305,27 @@ namespace Rebellion.Simulation
                 && (
                     definition.Participants == null
                     || Matches(definition.Participants, completed.Participants)
+                );
+        }
+
+        /// <summary>
+        /// Checks whether the value matches the required criteria.
+        /// </summary>
+        /// <param name="definition">The authored trigger or participant filter.</param>
+        /// <param name="result">The result.</param>
+        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
+        private static bool Matches(MissionStartedTrigger definition, GameResult result)
+        {
+            if (result is not MissionStartedResult started)
+                return false;
+            return MatchesInstanceID(definition.MissionTypeID, started.MissionTypeID)
+                && MatchesInstanceID(
+                    definition.SourceEventInstanceID,
+                    started.SourceEventInstanceID
+                )
+                && (
+                    definition.Participants == null
+                    || Matches(definition.Participants, started.Participants)
                 );
         }
 
@@ -686,6 +709,18 @@ namespace Rebellion.Simulation
                 arguments,
                 "Technology",
                 result => result.Technology
+            );
+            Add<MissionStartedResult, Mission>(arguments, "Mission", result => result.Mission);
+            Add<MissionStartedResult, string>(
+                arguments,
+                "MissionTypeID",
+                result => result.MissionTypeID
+            );
+            Add<MissionStartedResult, Planet>(arguments, "Location", result => result.Location);
+            Add<MissionStartedResult, List<IMissionParticipant>>(
+                arguments,
+                "Participants",
+                result => result.Participants
             );
             Add<MissionCompletedResult, Mission>(arguments, "Mission", result => result.Mission);
             Add<MissionCompletedResult, string>(

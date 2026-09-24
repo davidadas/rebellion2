@@ -19,6 +19,7 @@ namespace Rebellion.Tests.Game.Events
                     new IntelligenceRevealedTrigger(),
                     new MaintenanceRequiredTrigger(),
                     new ResearchAdvancedTrigger(),
+                    new MissionStartedTrigger(),
                     new MissionCompletedTrigger(),
                     new OfficerCaptureChangedTrigger(),
                     new ForceDiscoveryChangedTrigger(),

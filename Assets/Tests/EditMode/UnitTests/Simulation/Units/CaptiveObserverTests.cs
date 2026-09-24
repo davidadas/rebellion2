@@ -66,17 +66,14 @@ namespace Rebellion.Tests.Simulation
 
         [TestCase(false)]
         [TestCase(true)]
-        public void HandleResults_MissingOwnerOnFreeOfficer_ThrowsBeforeEligibilityCheck(
-            bool capturedResult
-        )
+        public void HandleResults_MissingOwnerOnFreeOfficer_DoesNotThrow(bool capturedResult)
         {
-            (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
-                BuildScene();
+            (GameRoot game, _, Officer captive, MovementCommands movement) = BuildScene();
             captive.OwnerInstanceID = "missing";
             captive.IsCaptured = false;
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            Assert.Throws<SceneNodeNotFoundException>(() =>
+            Assert.DoesNotThrow(() =>
                 system.HandleResults(
                     new[]
                     {
@@ -141,6 +138,47 @@ namespace Rebellion.Tests.Simulation
             Assert.AreNotSame(captive, observed);
             Assert.IsTrue(observed.IsCaptured);
             Assert.IsNull(observed.Movement);
+        }
+
+        [Test]
+        public void HandleResults_CaptorPreviouslyObservedOfficerElsewhere_ReplacesOldLocation()
+        {
+            (GameRoot game, Planet custodyPlanet, Officer captive, MovementCommands movement) =
+                BuildScene();
+            Planet previousPlanet = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
+            PlanetSector sector = previousPlanet.GetParentOfType<PlanetSector>();
+            Faction captor = game.GetFactionByOwnerInstanceID(captive.CaptorInstanceID);
+            captive.IsCaptured = false;
+            captive.CaptorInstanceID = null;
+            game.MoveNode(captive, previousPlanet);
+            FogOfWarCommands fogOfWar = new FogOfWarCommands(game);
+            fogOfWar.CaptureSnapshot(captor, previousPlanet, sector, 1);
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = captor.InstanceID;
+            CaptiveObserver observer = new CaptiveObserver(
+                game,
+                new CaptiveCommands(game, new FixedRNG(0.0), movement, fogOfWar)
+            );
+
+            observer.HandleResults(new[] { CaptureResult(captive, previousPlanet, 2) });
+
+            PlanetSnapshot previousSnapshot = captor.Fog.Snapshots[sector.InstanceID].Planets[
+                previousPlanet.InstanceID
+            ];
+            PlanetSnapshot custodySnapshot = captor.Fog.Snapshots[sector.InstanceID].Planets[
+                custodyPlanet.InstanceID
+            ];
+            Assert.IsFalse(
+                previousSnapshot.Officers.Any(officer => officer.InstanceID == captive.InstanceID)
+            );
+            Assert.AreEqual(
+                1,
+                custodySnapshot.Officers.Count(officer => officer.InstanceID == captive.InstanceID)
+            );
+            Assert.AreEqual(
+                custodyPlanet.InstanceID,
+                captor.Fog.EntityLastSeenAt[captive.InstanceID]
+            );
         }
 
         [Test]

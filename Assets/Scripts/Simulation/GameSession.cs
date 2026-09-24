@@ -152,20 +152,30 @@ namespace Rebellion.Simulation
             GameServiceRegistration.ConnectObservers(_serviceScope, Results);
 
             MovementCommands movementSystem = GetService<MovementCommands>();
-            movementSystem.ResultsProduced += Pipeline.ProcessImmediate;
-            _disconnect.Add(() => movementSystem.ResultsProduced -= Pipeline.ProcessImmediate);
+            movementSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => movementSystem.ResultsProduced -= ProcessImmediateResults);
             MaintenanceCommands maintenanceSystem = GetService<MaintenanceCommands>();
-            maintenanceSystem.ResultsProduced += Pipeline.ProcessImmediate;
-            _disconnect.Add(() => maintenanceSystem.ResultsProduced -= Pipeline.ProcessImmediate);
+            maintenanceSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => maintenanceSystem.ResultsProduced -= ProcessImmediateResults);
             BombardmentCommands bombardmentSystem = GetService<BombardmentCommands>();
-            bombardmentSystem.ResultsProduced += Pipeline.ProcessImmediate;
-            _disconnect.Add(() => bombardmentSystem.ResultsProduced -= Pipeline.ProcessImmediate);
+            bombardmentSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => bombardmentSystem.ResultsProduced -= ProcessImmediateResults);
             PlanetaryAssaultCommands planetaryAssaultSystem =
                 GetService<PlanetaryAssaultCommands>();
-            planetaryAssaultSystem.ResultsProduced += Pipeline.ProcessImmediate;
+            planetaryAssaultSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() =>
-                planetaryAssaultSystem.ResultsProduced -= Pipeline.ProcessImmediate
+                planetaryAssaultSystem.ResultsProduced -= ProcessImmediateResults
             );
+        }
+
+        /// <summary>
+        /// Routes results produced outside the tick loop and then refreshes visible intelligence.
+        /// </summary>
+        /// <param name="results">The immediately produced game results.</param>
+        private void ProcessImmediateResults(IReadOnlyList<GameResult> results)
+        {
+            Pipeline.ProcessImmediate(results);
+            GetService<FogOfWarCommands>().RefreshVisibleKnowledge();
         }
 
         /// <summary>
@@ -185,6 +195,7 @@ namespace Rebellion.Simulation
                 faction.RebuildResearchCatalog(templates);
 
             GetService<ManufacturingCommands>().RebuildQueues();
+            GetService<FogOfWarCommands>().ReconcileKnowledge();
         }
 
         /// <summary>

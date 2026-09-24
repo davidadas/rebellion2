@@ -2980,6 +2980,9 @@ namespace Rebellion.Tests.Simulation
                 "Officer should remain parented to the mission node, not be rerouted"
             );
             Assert.IsTrue(results.OfType<GameObjectEnrouteResult>().Any());
+            UnitArrivedResult arrival = results.OfType<UnitArrivedResult>().Single();
+            Assert.AreSame(officer, arrival.Unit);
+            Assert.AreSame(destination, arrival.Destination);
         }
 
         [Test]

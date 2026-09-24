@@ -643,7 +643,8 @@ namespace Rebellion.Simulation
                 definition.UnitInstanceID,
                 includeDisabled: true
             )
-                is IMovable { Movement: not null };
+                is IMovable movable
+            && movable.GetTransitMovement() != null;
 
         /// <summary>
         /// Checks whether the configured unit is contained by the configured location.

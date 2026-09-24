@@ -3114,6 +3114,40 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_StartedMission_ReturnsMissionStartedResult()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            officer.FacilityResearch = 1;
+            AddResearchFacilities(game, planet);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            bool initiated = commands.InitiateMission(
+                CreateContext(
+                    ResearchMission.MissionTypeID,
+                    officer,
+                    planet,
+                    discipline: ResearchDiscipline.FacilityDesign
+                )
+            );
+            IReadOnlyList<GameResult> results = new MissionTickProcessor(commands).ProcessTick(
+                game
+            );
+
+            Assert.IsTrue(initiated);
+            MissionStartedResult started = results.OfType<MissionStartedResult>().Single();
+            Assert.AreEqual(ResearchMission.MissionTypeID, started.MissionTypeID);
+            Assert.AreSame(planet, started.Location);
+            Assert.AreSame(started.Mission, game.GetSceneNodesByType<Mission>().Single());
+            Assert.AreEqual(new[] { officer }, started.Participants);
+        }
+
+        [Test]
         public void InitiateMission_ExhaustedResearch_ReturnsFalse()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(

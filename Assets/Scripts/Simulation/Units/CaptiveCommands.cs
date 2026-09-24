@@ -21,8 +21,8 @@ namespace Rebellion.Simulation
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
-        private readonly MovementCommands _movementSystem;
-        private readonly FogOfWarCommands _fogOfWarSystem;
+        private readonly MovementCommands _movementCommands;
+        private readonly FogOfWarCommands _fogOfWarCommands;
         private readonly ProbabilityTable _escapeTable;
         private readonly GameConfig.TickRangeConfig _escapeAttemptInterval;
         private readonly int _loyaltyShift;
@@ -32,21 +32,21 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="game">The active game state.</param>
         /// <param name="provider">RNG provider for escape rolls.</param>
-        /// <param name="movementSystem">Moves officers into and out of custody.</param>
-        /// <param name="fogOfWarSystem">Records the custody destination known at capture time.</param>
+        /// <param name="movementCommands">Moves officers into and out of custody.</param>
+        /// <param name="fogOfWarCommands">Records the custody destination known at capture time.</param>
         public CaptiveCommands(
             GameRoot game,
             IRandomNumberProvider provider,
-            MovementCommands movementSystem,
-            FogOfWarCommands fogOfWarSystem
+            MovementCommands movementCommands,
+            FogOfWarCommands fogOfWarCommands
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
-            _movementSystem =
-                movementSystem ?? throw new ArgumentNullException(nameof(movementSystem));
-            _fogOfWarSystem =
-                fogOfWarSystem ?? throw new ArgumentNullException(nameof(fogOfWarSystem));
+            _movementCommands =
+                movementCommands ?? throw new ArgumentNullException(nameof(movementCommands));
+            _fogOfWarCommands =
+                fogOfWarCommands ?? throw new ArgumentNullException(nameof(fogOfWarCommands));
             _escapeAttemptInterval = game.Config.Captive.EscapeAttemptInterval;
             _escapeTable = new ProbabilityTable(game.Config.Captive.EscapeTable);
             _loyaltyShift = game.Config.Captive.EscapeLoyaltyShift;
@@ -54,14 +54,12 @@ namespace Rebellion.Simulation
 
         /// <summary>Establishes custody and records the location revealed at capture time.</summary>
         /// <param name="officer">The captured officer requiring custody.</param>
-        /// <param name="originalFaction">The officer's faction receiving the observation.</param>
         /// <param name="context">The location where the capture occurred.</param>
         /// <param name="capturingUnit">The unit responsible for the capture, if present.</param>
         /// <param name="tick">The capture observation tick.</param>
         /// <param name="reactions">The collection receiving custody-transfer results.</param>
         public void EstablishCustody(
             Officer officer,
-            Faction originalFaction,
             IGameEntity context,
             ISceneNode capturingUnit,
             int tick,
@@ -71,7 +69,7 @@ namespace Rebellion.Simulation
             ContainerNode destination = ResolveCustodyDestination(context, capturingUnit, officer);
             if (
                 destination == null
-                || !_movementSystem.TryEstablishCapturedOfficerCustody(
+                || !_movementCommands.TryEstablishCapturedOfficerCustody(
                     officer,
                     destination,
                     GetCustodyEscort(capturingUnit),
@@ -86,19 +84,20 @@ namespace Rebellion.Simulation
                 return;
             }
 
-            _fogOfWarSystem.RecordObservations(originalFaction, new[] { officer }, tick);
+            _fogOfWarCommands.RecordCaptureState(officer, null, tick);
             if (officer.CanEscape && officer.NextEscapeAttemptTick <= 0)
                 ScheduleEscapeAttempt(officer);
         }
 
         /// <summary>Clears escape scheduling and removes observations of a released officer.</summary>
         /// <param name="officer">The officer whose release is being processed.</param>
-        /// <param name="originalFaction">The officer's faction whose snapshots are updated.</param>
-        public void ClearReleaseTracking(Officer officer, Faction originalFaction)
+        /// <param name="previousCaptorId">The faction that held the officer before release.</param>
+        /// <param name="tick">The release tick.</param>
+        public void ClearReleaseTracking(Officer officer, string previousCaptorId, int tick)
         {
             officer.NextEscapeAttemptTick = 0;
             if (!officer.IsCaptured)
-                _fogOfWarSystem.RemoveEntityFromSnapshots(originalFaction, officer.InstanceID);
+                _fogOfWarCommands.RecordCaptureState(officer, previousCaptorId, tick);
         }
 
         /// <summary>
@@ -356,7 +355,7 @@ namespace Rebellion.Simulation
 
             Faction faction = _game.GetFactionByOwnerInstanceID(officer.OwnerInstanceID);
             ContainerNode destination = GetEscapeDestinations(faction, officer, planet)
-                .FirstOrDefault(candidate => _movementSystem.TryRequestMove(officer, candidate));
+                .FirstOrDefault(candidate => _movementCommands.TryRequestMove(officer, candidate));
             if (destination == null)
             {
                 officer.IsCaptured = true;

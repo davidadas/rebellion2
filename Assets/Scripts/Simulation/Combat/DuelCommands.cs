@@ -47,6 +47,8 @@ namespace Rebellion.Simulation
                 return false;
             if (encountered.IsCaptured || opposing.IsCaptured)
                 return false;
+            if (encountered.Movement != null || opposing.Movement != null)
+                return false;
             if (encountered.OwnerInstanceID == opposing.OwnerInstanceID)
                 return false;
             Planet location = encountered.GetParentOfType<Planet>();
@@ -141,9 +143,9 @@ namespace Rebellion.Simulation
             if (RollPercent(avoidanceChance))
                 return false;
 
-            encountered.IsCaptured = true;
-            encountered.CaptorInstanceID = opposing.OwnerInstanceID;
-            encountered.CanEscape = true;
+            if (!encountered.TryCapture(opposing.OwnerInstanceID))
+                return false;
+
             reactions.Add(
                 Stamp(
                     new OfficerCaptureStateResult

@@ -32,6 +32,7 @@ namespace Rebellion.Simulation
         private ITickProcessor _blockade;
         private ITickProcessor _captive;
         private ITickProcessor _factionAutomation;
+        private FogOfWarCommands _fogOfWarCommands;
         private GameEventExecutor _gameEventExecutor;
         private GameRoot _game;
         private ITickProcessor _jedi;
@@ -93,6 +94,7 @@ namespace Rebellion.Simulation
             _research = research;
 
             _movementCommands = services.GetService<MovementCommands>();
+            _fogOfWarCommands = services.GetService<FogOfWarCommands>();
             _spaceCombatCommands = services.GetService<SpaceCombatCommands>();
             _messages = new MessageTickProcessor();
             _factionAutomation = new FactionAutomationTickProcessor(
@@ -205,6 +207,7 @@ namespace Rebellion.Simulation
             );
 
             List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
+            _fogOfWarCommands.RefreshVisibleKnowledge();
 
             List<GameResult> movementPhaseResults = CombineResults(
                 movementResults,
@@ -245,6 +248,7 @@ namespace Rebellion.Simulation
             ProcessResults(_research.ProcessTick(_game));
             ProcessResults(_jedi.ProcessTick(_game));
             ProcessResults(_victory.ProcessTick(_game));
+            _fogOfWarCommands.RefreshVisibleKnowledge();
             _tickState = TickExecutionState.Idle;
             TickCompleted?.Invoke();
         }
@@ -297,6 +301,7 @@ namespace Rebellion.Simulation
                     _spaceCombat.ProcessTick(_game),
                     processMessages: false
                 );
+                _fogOfWarCommands.RefreshVisibleKnowledge();
                 _deferredMessageResults.AddRange(combatResults);
                 _deferredMessageResults.AddRange(waypointResults);
                 _deferredMessageResults.AddRange(additionalCombatResults);
@@ -339,6 +344,7 @@ namespace Rebellion.Simulation
                 _spaceCombat.ProcessTick(_game),
                 processMessages: false
             );
+            _fogOfWarCommands.RefreshVisibleKnowledge();
             if (_spaceCombatCommands.HasPendingDecision)
             {
                 StoreDeferredMessageResults(combatResults);

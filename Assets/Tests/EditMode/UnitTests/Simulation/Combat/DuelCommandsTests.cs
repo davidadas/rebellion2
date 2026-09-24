@@ -157,6 +157,36 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results);
         }
 
+        [Test]
+        public void Resolve_OpposingOfficerInTransit_ReturnsNoResults()
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            opposing.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            DuelCommands commands = new DuelCommands(game, new FixedRandomProvider(new[] { 0.99 }));
+
+            List<GameResult> results = commands.Resolve(encountered, opposing);
+
+            Assert.IsEmpty(results);
+            Assert.IsFalse(encountered.IsCaptured);
+            Assert.AreEqual(0, encountered.InjuryPoints);
+            Assert.AreEqual(0, opposing.InjuryPoints);
+        }
+
+        [Test]
+        public void Resolve_EncounteredOfficerInTransit_ReturnsNoResults()
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            encountered.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            DuelCommands commands = new DuelCommands(game, new FixedRandomProvider(new[] { 0.99 }));
+
+            List<GameResult> results = commands.Resolve(encountered, opposing);
+
+            Assert.IsEmpty(results);
+            Assert.IsFalse(encountered.IsCaptured);
+            Assert.AreEqual(0, encountered.InjuryPoints);
+            Assert.AreEqual(0, opposing.InjuryPoints);
+        }
+
         /// <summary>
         /// Builds encounter.
         /// </summary>

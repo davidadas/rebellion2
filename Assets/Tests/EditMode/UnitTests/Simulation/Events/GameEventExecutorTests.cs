@@ -2100,6 +2100,27 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ExecuteAction_SetCaptureStatusOfficerInTransit_ReturnsNoResult()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", planet.OwnerInstanceID);
+            officer.Movement = new MovementState();
+            game.AttachNode(officer, planet);
+            SetCaptureStatusAction action = new SetCaptureStatusAction
+            {
+                OfficerInstanceID = officer.InstanceID,
+                IsCaptured = true,
+                CaptorFactionInstanceID = "empire",
+            };
+
+            List<GameResult> results = action.Execute(game);
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
         public void ExecuteAction_SetCaptureStatusMissionParticipant_RecordsParentAtCapture()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
@@ -3827,6 +3848,23 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void IsMet_IsInTransitOfficerCarriedByMovingFleet_ReturnsTrue()
+        {
+            GameRoot game = BuildHierarchy(out _, out Fleet fleet, out CapitalShip ship);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(officer, ship);
+            fleet.Movement = new MovementState();
+            IsInTransitConditional condition = new IsInTransitConditional
+            {
+                UnitInstanceID = officer.InstanceID,
+            };
+
+            bool isMet = GameEventExecutor.IsMet(condition, game);
+
+            Assert.IsTrue(isMet);
+        }
+
+        [Test]
         public void IsMet_HasBuildingTypeInactivePlanetWithEnabledBuilding_ReturnsTrue()
         {
             GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
@@ -4300,6 +4338,32 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
             result.Faction.InstanceID = "empire";
+            Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
+        }
+
+        [Test]
+        public void Matches_MissionStartedTrigger_AppliesTypeAndParticipantFilters()
+        {
+            Officer officer = new Officer { InstanceID = "officer" };
+            MissionStartedTrigger trigger = new MissionStartedTrigger
+            {
+                MissionTypeID = DiplomacyMission.MissionTypeID,
+                Participants = new MissionParticipantFilter
+                {
+                    Units = new List<EventUnitReference>
+                    {
+                        new EventUnitReference { UnitInstanceID = officer.InstanceID },
+                    },
+                },
+            };
+            MissionStartedResult result = new MissionStartedResult
+            {
+                MissionTypeID = DiplomacyMission.MissionTypeID,
+                Participants = new List<IMissionParticipant> { officer },
+            };
+
+            Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
+            result.Participants.Clear();
             Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
         }
 
