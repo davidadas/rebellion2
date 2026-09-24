@@ -73,16 +73,14 @@ namespace Rebellion.Systems
                 if (officer == null)
                     continue;
 
-                Faction originalFaction = _game.GetFactionByOwnerInstanceID(
-                    officer.OwnerInstanceID
-                );
                 if (result.IsCaptured == false)
                 {
                     officer.NextEscapeAttemptTick = 0;
                     if (!officer.IsCaptured)
-                        _fogOfWarSystem.RemoveEntityFromSnapshots(
-                            originalFaction,
-                            officer.InstanceID
+                        _fogOfWarSystem.RecordCaptureState(
+                            officer,
+                            result.CaptorInstanceID,
+                            result.Tick
                         );
                     continue;
                 }
@@ -112,7 +110,7 @@ namespace Rebellion.Systems
                     continue;
                 }
 
-                _fogOfWarSystem.RecordObservations(originalFaction, new[] { officer }, result.Tick);
+                _fogOfWarSystem.RecordCaptureState(officer, null, result.Tick);
                 if (officer.CanEscape && officer.NextEscapeAttemptTick <= 0)
                     ScheduleEscapeAttempt(officer);
             }

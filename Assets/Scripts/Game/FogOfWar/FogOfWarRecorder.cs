@@ -980,6 +980,142 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Repairs the entity-location index and removes duplicate remembered entities.
+        /// Existing save data can contain the same entity in more than one planet snapshot when
+        /// live visibility exposed a newer location without recording a new observation.
+        /// </summary>
+        /// <param name="faction">The faction whose remembered state is repaired.</param>
+        public void ReconcileEntityLocations(Faction faction)
+        {
+            if (faction?.Fog == null)
+                return;
+
+            Dictionary<string, List<SnapshotEntityLocation>> locationsByEntityId =
+                new Dictionary<string, List<SnapshotEntityLocation>>();
+            foreach (
+                KeyValuePair<string, PlanetSectorSnapshot> sectorEntry in faction.Fog.Snapshots
+            )
+            {
+                foreach (
+                    KeyValuePair<string, PlanetSnapshot> planetEntry in sectorEntry.Value.Planets
+                )
+                {
+                    faction.Fog.PlanetToSector[planetEntry.Key] = sectorEntry.Key;
+                    foreach (string entityId in GetSnapshotEntityIDs(planetEntry.Value))
+                    {
+                        if (
+                            !locationsByEntityId.TryGetValue(
+                                entityId,
+                                out List<SnapshotEntityLocation> locations
+                            )
+                        )
+                        {
+                            locations = new List<SnapshotEntityLocation>();
+                            locationsByEntityId[entityId] = locations;
+                        }
+
+                        locations.Add(
+                            new SnapshotEntityLocation(
+                                planetEntry.Key,
+                                planetEntry.Value,
+                                planetEntry.Value.TickCaptured
+                            )
+                        );
+                    }
+                }
+            }
+
+            Dictionary<string, string> repairedLocations = new Dictionary<string, string>();
+            foreach (
+                KeyValuePair<
+                    string,
+                    List<SnapshotEntityLocation>
+                > entityEntry in locationsByEntityId
+            )
+            {
+                SnapshotEntityLocation retainedLocation = SelectRetainedLocation(
+                    faction,
+                    entityEntry.Key,
+                    entityEntry.Value
+                );
+                repairedLocations[entityEntry.Key] = retainedLocation.PlanetId;
+
+                foreach (
+                    SnapshotEntityLocation staleLocation in entityEntry.Value.Where(location =>
+                        !ReferenceEquals(location.Snapshot, retainedLocation.Snapshot)
+                    )
+                )
+                {
+                    RemoveEntityFromSnapshot(staleLocation.Snapshot, entityEntry.Key);
+                }
+            }
+
+            faction.Fog.EntityLastSeenAt.Clear();
+            foreach (
+                KeyValuePair<string, string> repairedLocation in repairedLocations.Where(entry =>
+                    SnapshotContainsEntity(faction, entry.Value, entry.Key)
+                )
+            )
+            {
+                faction.Fog.EntityLastSeenAt[repairedLocation.Key] = repairedLocation.Value;
+            }
+        }
+
+        /// <summary>
+        /// Selects the authoritative remembered location for one entity.
+        /// </summary>
+        /// <param name="faction">The faction whose location index is being repaired.</param>
+        /// <param name="entityId">The entity instance identifier.</param>
+        /// <param name="locations">Every snapshot currently containing the entity.</param>
+        /// <returns>The retained snapshot location.</returns>
+        private static SnapshotEntityLocation SelectRetainedLocation(
+            Faction faction,
+            string entityId,
+            IReadOnlyList<SnapshotEntityLocation> locations
+        )
+        {
+            if (faction.Fog.EntityLastSeenAt.TryGetValue(entityId, out string indexedPlanetId))
+            {
+                SnapshotEntityLocation indexedLocation = locations.FirstOrDefault(location =>
+                    location.PlanetId == indexedPlanetId
+                );
+                if (indexedLocation != null)
+                    return indexedLocation;
+            }
+
+            return locations
+                .OrderByDescending(location => location.TickCaptured)
+                .ThenBy(location => location.PlanetId, System.StringComparer.Ordinal)
+                .First();
+        }
+
+        /// <summary>
+        /// Returns whether a remembered planet still contains an entity after duplicate cleanup.
+        /// </summary>
+        /// <param name="faction">The faction whose snapshots are inspected.</param>
+        /// <param name="planetId">The remembered planet identifier.</param>
+        /// <param name="entityId">The entity instance identifier.</param>
+        /// <returns>True when the entity remains in the requested planet snapshot.</returns>
+        private static bool SnapshotContainsEntity(
+            Faction faction,
+            string planetId,
+            string entityId
+        )
+        {
+            if (
+                !faction.Fog.PlanetToSector.TryGetValue(planetId, out string sectorId)
+                || !faction.Fog.Snapshots.TryGetValue(
+                    sectorId,
+                    out PlanetSectorSnapshot sectorSnapshot
+                )
+                || !sectorSnapshot.Planets.TryGetValue(planetId, out PlanetSnapshot planetSnapshot)
+            )
+                return false;
+
+            return GetSnapshotEntityIDs(planetSnapshot).Contains(entityId);
+        }
+
+        /// <summary>
         /// Returns the sector snapshot for a faction, creating it when needed.
         /// </summary>
         /// <param name="faction">The faction that owns the fog state.</param>
@@ -1712,6 +1848,35 @@ namespace Rebellion.Game.FogOfWar
                 specialForces.InstanceID == entityId
             );
             ship.RemoveChildren<Starfighter>(starfighter => starfighter.InstanceID == entityId);
+        }
+
+        /// <summary>
+        /// Identifies one planet snapshot containing a remembered entity.
+        /// </summary>
+        private sealed class SnapshotEntityLocation
+        {
+            public string PlanetId { get; }
+
+            public PlanetSnapshot Snapshot { get; }
+
+            public int TickCaptured { get; }
+
+            /// <summary>
+            /// Creates a remembered entity location.
+            /// </summary>
+            /// <param name="planetId">The containing planet identifier.</param>
+            /// <param name="snapshot">The containing planet snapshot.</param>
+            /// <param name="tickCaptured">The tick when the snapshot was captured.</param>
+            public SnapshotEntityLocation(
+                string planetId,
+                PlanetSnapshot snapshot,
+                int tickCaptured
+            )
+            {
+                PlanetId = planetId;
+                Snapshot = snapshot;
+                TickCaptured = tickCaptured;
+            }
         }
     }
 }

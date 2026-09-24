@@ -37,6 +37,44 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_CaptorPreviouslyObservedOfficerElsewhere_ReplacesOldLocation()
+        {
+            (GameRoot game, Planet custodyPlanet, Officer captive, MovementSystem movement) =
+                BuildScene();
+            Planet previousPlanet = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
+            PlanetSector sector = previousPlanet.GetParentOfType<PlanetSector>();
+            Faction captor = game.GetFactionByOwnerInstanceID(captive.CaptorInstanceID);
+            captive.IsCaptured = false;
+            captive.CaptorInstanceID = null;
+            game.MoveNode(captive, previousPlanet);
+            FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
+            fogOfWar.CaptureSnapshot(captor, previousPlanet, sector, 1);
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = captor.InstanceID;
+            CaptiveSystem system = new CaptiveSystem(game, new FixedRNG(0.0), movement, fogOfWar);
+
+            system.HandleResults(new[] { CaptureResult(captive, previousPlanet, 2) });
+
+            PlanetSnapshot previousSnapshot = captor.Fog.Snapshots[sector.InstanceID].Planets[
+                previousPlanet.InstanceID
+            ];
+            PlanetSnapshot custodySnapshot = captor.Fog.Snapshots[sector.InstanceID].Planets[
+                custodyPlanet.InstanceID
+            ];
+            Assert.IsFalse(
+                previousSnapshot.Officers.Any(officer => officer.InstanceID == captive.InstanceID)
+            );
+            Assert.AreEqual(
+                1,
+                custodySnapshot.Officers.Count(officer => officer.InstanceID == captive.InstanceID)
+            );
+            Assert.AreEqual(
+                custodyPlanet.InstanceID,
+                captor.Fog.EntityLastSeenAt[captive.InstanceID]
+            );
+        }
+
+        [Test]
         public void HandleResults_CaptureInsideForeignContainerAtCaptorPlanet_MovesToPlanet()
         {
             (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
