@@ -16,6 +16,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             "Assets/Prefabs/UI/StrategyView/PlanetSectorWindow.prefab";
 
         private Texture2D _fleetTexture;
+        private Texture2D _headquartersTexture;
         private Texture2D _planetTexture;
         private Texture2D _pressedTexture;
         private GameObject _rootObject;
@@ -31,6 +32,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _view = _rootObject.GetComponent<PlanetSectorWindowView>();
             _planetTexture = new Texture2D(100, 80);
             _fleetTexture = new Texture2D(24, 24);
+            _headquartersTexture = new Texture2D(37, 37);
             _pressedTexture = new Texture2D(24, 24);
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
             Canvas.ForceUpdateCanvases();
@@ -43,6 +45,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_pressedTexture);
+            UnityEngine.Object.DestroyImmediate(_headquartersTexture);
             UnityEngine.Object.DestroyImmediate(_fleetTexture);
             UnityEngine.Object.DestroyImmediate(_planetTexture);
             UnityEngine.Object.DestroyImmediate(_rootObject);
@@ -204,6 +207,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void TryGetHeadquartersDragPreview_RenderedHeadquarters_ReturnsOverlayGeometry()
+        {
+            _view.Render(
+                new PlanetSectorWindowRenderData(
+                    "Sesswenna",
+                    new[] { CreatePlanet(0, Vector2Int.zero, "Coruscant", _headquartersTexture) }
+                )
+            );
+            PlanetSectorPlanetView planet = GetPlanetViews()[0];
+            RectInt imageBounds = GetSourceRect(
+                GetPlanetField<RawImage>(planet, "headquartersImage").transform
+            );
+
+            bool found = _view.TryGetHeadquartersDragPreview(
+                new PlanetSectorWindowElement(0, PlanetIcon.None, true),
+                100,
+                50,
+                120,
+                80,
+                out DragPreview preview
+            );
+
+            Assert.IsTrue(found);
+            Assert.AreSame(_headquartersTexture, preview.Texture);
+            Assert.AreEqual(imageBounds.width, preview.Width);
+            Assert.AreEqual(imageBounds.height, preview.Height);
+        }
+
+        [Test]
         public void PlanetInteraction_RenderedChild_ForwardsAllSemanticEvents()
         {
             _view.Render(
@@ -276,8 +308,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <param name="index">The index.</param>
         /// <param name="offset">The offset.</param>
         /// <param name="name">The name.</param>
+        /// <param name="headquartersTexture">The optional headquarters overlay texture.</param>
         /// <returns>The created planet.</returns>
-        private PlanetSectorPlanetRenderData CreatePlanet(int index, Vector2Int offset, string name)
+        private PlanetSectorPlanetRenderData CreatePlanet(
+            int index,
+            Vector2Int offset,
+            string name,
+            Texture2D headquartersTexture = null
+        )
         {
             PlanetSectorBarRenderData segmented = new PlanetSectorBarRenderData(
                 true,
@@ -310,7 +348,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 _pressedTexture,
                 null,
                 null,
-                null,
+                headquartersTexture,
                 name,
                 Color.yellow,
                 PlanetIcon.None,

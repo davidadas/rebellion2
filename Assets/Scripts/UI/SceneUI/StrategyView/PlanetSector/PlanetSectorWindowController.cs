@@ -835,16 +835,20 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
-    /// Gets the player-controlled fleet items represented by a planet-sector selection.
+    /// Gets the movable player-controlled items represented by a planet-sector selection.
     /// </summary>
     /// <param name="view">The source planet-sector view.</param>
-    /// <returns>The selected fleet items.</returns>
+    /// <returns>The selected fleet or mobile-headquarters items.</returns>
     public List<ISceneNode> GetContextItems(PlanetSectorWindowView view)
     {
         if (!sessions.TryGetValue(view, out PlanetSectorWindowSession session))
             return new List<ISceneNode>();
 
         PlanetSectorWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
+        Building mobileHeadquarters = GetMobileHeadquarters(hit);
+        if (mobileHeadquarters != null)
+            return new List<ISceneNode> { mobileHeadquarters };
+
         return hit?.Icon == PlanetIcon.Fleet
             ? GetPlayerFleetItems(hit.Planet)
             : new List<ISceneNode>();
@@ -890,13 +894,13 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
-    /// Tries to create a fleet drag preview for one planet-sector window.
+    /// Tries to create a fleet or mobile-headquarters drag preview for one planet-sector window.
     /// </summary>
     /// <param name="view">The source planet-sector view.</param>
     /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
     /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
     /// <param name="preview">Receives the drag preview.</param>
-    /// <returns>True when the current fleet selection produced a preview.</returns>
+    /// <returns>True when the current movable selection produced a preview.</returns>
     public bool TryGetDragPreview(
         PlanetSectorWindowView view,
         int sourceX,
@@ -909,6 +913,18 @@ public sealed class PlanetSectorWindowController
             return false;
 
         PlanetSectorWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
+        if (GetMobileHeadquarters(hit) != null)
+        {
+            return view.TryGetHeadquartersDragPreview(
+                hit.Element,
+                session.Window.X,
+                session.Window.Y,
+                sourceX,
+                sourceY,
+                out preview
+            );
+        }
+
         return hit?.Icon == PlanetIcon.Fleet
             && GetPlayerFleetItems(hit.Planet).Count > 0
             && view.TryGetFleetDragPreview(
@@ -1025,7 +1041,7 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
-    /// Updates selection and begins a fleet drag candidate when appropriate.
+    /// Updates selection and begins a fleet or mobile-headquarters drag candidate when appropriate.
     /// </summary>
     /// <param name="view">The source planet-sector view.</param>
     /// <param name="element">The semantic presentation element.</param>
@@ -1054,6 +1070,7 @@ public sealed class PlanetSectorWindowController
 
         session.StoreContextHit(hit);
         bool selected = session.SelectHit(hit);
+        Building mobileHeadquarters = GetMobileHeadquarters(hit);
         if (eventData.button == PointerEventData.InputButton.Right)
         {
             session.Window.RequestContext(eventData);
@@ -1064,7 +1081,7 @@ public sealed class PlanetSectorWindowController
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        if (selected && hit.Icon == PlanetIcon.Fleet)
+        if ((selected && hit.Icon == PlanetIcon.Fleet) || mobileHeadquarters != null)
             startItemDrag(session.Window, eventData);
 
         markDirty();
