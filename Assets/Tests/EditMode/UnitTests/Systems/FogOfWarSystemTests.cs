@@ -2475,6 +2475,27 @@ namespace Rebellion.Tests.Sectors
                 )
             );
             Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[ship.InstanceID]);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            List<Planet> viewedPlanets = view.GetChildren<PlanetSector>()
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .ToList();
+            Assert.AreEqual(
+                1,
+                viewedPlanets
+                    .SelectMany(planet => planet.GetChildren<CapitalShip>(recursive: true))
+                    .Count(candidate => candidate.InstanceID == ship.InstanceID)
+            );
+            Assert.AreEqual(
+                _tatooine.InstanceID,
+                viewedPlanets
+                    .Single(planet =>
+                        planet
+                            .GetChildren<CapitalShip>(recursive: true)
+                            .Any(candidate => candidate.InstanceID == ship.InstanceID)
+                    )
+                    .InstanceID
+            );
         }
 
         [Test]

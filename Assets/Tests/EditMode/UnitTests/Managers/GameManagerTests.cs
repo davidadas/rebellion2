@@ -1121,6 +1121,79 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ResolveCombat_DestroyedDefenderAfterAttackerLeaves_DoesNotRestoreSnapshotGhost()
+        {
+            GameConfig config = CreateSpaceCombatConfig();
+            GameRoot game = new GameRoot(config) { Random = new FixedRNG() };
+            Faction alliance = new Faction { InstanceID = "ALLIANCE" };
+            Faction empire = new Faction { InstanceID = "EMPIRE" };
+            game.GetFactions().Add(alliance);
+            game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "PLAYER", PlayerControllerType.Human);
+
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet origin = CreatePlanet("ORIGIN", alliance.InstanceID, 0);
+            Planet battlePlanet = CreatePlanet("BATTLE", empire.InstanceID, 10);
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(origin, sector);
+            game.AttachNode(battlePlanet, sector);
+            Fleet attacker = CreateCombatFleet(
+                game,
+                "ATTACKER",
+                alliance.InstanceID,
+                battlePlanet,
+                hullStrength: 10000,
+                weaponPower: 10000
+            );
+            Fleet defender = CreateCombatFleet(
+                game,
+                "DEFENDER",
+                empire.InstanceID,
+                battlePlanet,
+                hullStrength: 1,
+                weaponPower: 0
+            );
+            string defenderShipId = defender.GetChildren<CapitalShip>().Single().InstanceID;
+            GameManager manager = new GameManager(game, TestGameData.Create(config));
+            manager
+                .GetFogOfWarSystem()
+                .CaptureSnapshot(alliance, battlePlanet, sector, game.CurrentTick);
+            PlanetSnapshot arrivalSnapshot = alliance.Fog.Snapshots[sector.InstanceID].Planets[
+                battlePlanet.InstanceID
+            ];
+            Assert.IsTrue(
+                arrivalSnapshot.Fleets.Any(fleet =>
+                    fleet.GetChildren<CapitalShip>().Any(ship => ship.InstanceID == defenderShipId)
+                ),
+                "The test must begin with the defender in the pre-combat snapshot."
+            );
+
+            manager.ProcessTick();
+            Assert.IsTrue(manager.SpaceCombatSystem.HasPendingDecision);
+
+            SpaceCombatResult result = manager.ResolveCombat(autoResolve: true);
+            game.MoveNode(attacker, origin);
+            GalaxyMap view = manager.GetFogOfWarSystem().BuildFactionView(alliance);
+            Planet rememberedBattlePlanet = view.GetChildren<PlanetSector>()
+                .Single(candidate => candidate.InstanceID == sector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(candidate => candidate.InstanceID == battlePlanet.InstanceID);
+
+            Assert.IsTrue(
+                result.DefendingUnits.Any(unit =>
+                    unit.Unit.InstanceID == defenderShipId && unit.Destroyed
+                )
+            );
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(defenderShipId));
+            Assert.IsFalse(manager.GetFogOfWarSystem().IsPlanetVisible(battlePlanet, alliance));
+            Assert.IsFalse(
+                rememberedBattlePlanet
+                    .GetChildren<CapitalShip>(recursive: true)
+                    .Any(ship => ship.InstanceID == defenderShipId)
+            );
+        }
+
+        [Test]
         public void ResolveCombat_UnrelatedFleetReachedWaypoint_StartsDeferredNextLeg()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -1507,6 +1580,34 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             return fleet;
+        }
+
+        /// <summary>
+        /// Creates synthetic configuration sufficient for an automatic space battle.
+        /// </summary>
+        /// <returns>The synthetic game configuration.</returns>
+        private static GameConfig CreateSpaceCombatConfig()
+        {
+            GameConfig config = new GameConfig();
+            config.Smuggling.LossPercentByMinimumSupport[0] = 0;
+            config.Combat.SpaceCombat = new GameConfig.SpaceCombatConfig
+            {
+                LaserCannonCapitalDamageMultiplier = 1.0 / 6.0,
+                AutoResolveFighterWeaponRechargeMultiplier = 3.751,
+                AutoResolveMaximumIterations = 4096,
+                AutoResolveStagnationIterations = 1200,
+                AutoResolveRetreatStrengthRatio = 0.33,
+                AutoResolveMinimumManeuverRatio = 0.1,
+                AutoResolveTargetScanDivisor = 3,
+                AutoResolveStartingDistance = 75,
+                AutoResolveWithdrawalDistance = 10,
+                AutoResolveComponentDamageInterval = 1,
+                AutoResolveComponentDamageRollMaximum = 10,
+                AutoResolveComponentDelayMinimum = 30,
+                AutoResolveComponentDelayMaximum = 50,
+                AutoResolveComponentDelayRecovery = 1,
+            };
+            return config;
         }
 
         /// <summary>
