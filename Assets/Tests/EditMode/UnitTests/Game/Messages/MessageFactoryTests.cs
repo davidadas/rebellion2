@@ -525,6 +525,44 @@ namespace Rebellion.Tests.Game.Messages
             Assert.IsEmpty(deliveries);
         }
 
+        /// <summary>
+        /// Verifies a participant reaching its mission does not create a normal arrival report.
+        /// </summary>
+        [Test]
+        public void CreateMessages_MissionParticipantArrival_DoesNotCreateDelivery()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            ResearchMission mission = new ResearchMission
+            {
+                InstanceID = "research-mission",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            Officer participant = new Officer
+            {
+                InstanceID = "mission-participant",
+                DisplayName = "Mission Participant",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, destination);
+            game.AttachNode(participant, mission);
+
+            List<MessageDeliveryRequest> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.PersonnelArrived,
+                        MessageType.Mission,
+                        "personnel:{system}",
+                        "body:{personnel}"
+                    ),
+                },
+                new UnitArrivedResult { Unit = participant, Destination = destination }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
         [Test]
         public void CreateMessages_SpecialForcesArrival_GroupsWithReportingOfficer()
         {

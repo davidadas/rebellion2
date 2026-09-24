@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -11,6 +12,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Random;
+using UnityEngine;
 
 namespace Rebellion.Tests.Systems
 {
@@ -34,6 +36,44 @@ namespace Rebellion.Tests.Systems
             Assert.AreNotSame(captive, observed);
             Assert.IsTrue(observed.IsCaptured);
             Assert.IsNull(observed.Movement);
+        }
+
+        [Test]
+        public void HandleResults_CaptorPreviouslyObservedOfficerElsewhere_ReplacesOldLocation()
+        {
+            (GameRoot game, Planet custodyPlanet, Officer captive, MovementSystem movement) =
+                BuildScene();
+            Planet previousPlanet = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
+            PlanetSector sector = previousPlanet.GetParentOfType<PlanetSector>();
+            Faction captor = game.GetFactionByOwnerInstanceID(captive.CaptorInstanceID);
+            captive.IsCaptured = false;
+            captive.CaptorInstanceID = null;
+            game.MoveNode(captive, previousPlanet);
+            FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
+            fogOfWar.CaptureSnapshot(captor, previousPlanet, sector, 1);
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = captor.InstanceID;
+            CaptiveSystem system = new CaptiveSystem(game, new FixedRNG(0.0), movement, fogOfWar);
+
+            system.HandleResults(new[] { CaptureResult(captive, previousPlanet, 2) });
+
+            PlanetSnapshot previousSnapshot = captor.Fog.Snapshots[sector.InstanceID].Planets[
+                previousPlanet.InstanceID
+            ];
+            PlanetSnapshot custodySnapshot = captor.Fog.Snapshots[sector.InstanceID].Planets[
+                custodyPlanet.InstanceID
+            ];
+            Assert.IsFalse(
+                previousSnapshot.Officers.Any(officer => officer.InstanceID == captive.InstanceID)
+            );
+            Assert.AreEqual(
+                1,
+                custodySnapshot.Officers.Count(officer => officer.InstanceID == captive.InstanceID)
+            );
+            Assert.AreEqual(
+                custodyPlanet.InstanceID,
+                captor.Fog.EntityLastSeenAt[captive.InstanceID]
+            );
         }
 
         [Test]
@@ -345,6 +385,46 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(captive.IsCaptured, "Officer should be freed on successful escape");
             Assert.IsNull(captive.CaptorInstanceID, "CaptorInstanceID should be cleared");
             Assert.IsFalse(captive.CanEscape, "CanEscape should be cleared after escape");
+        }
+
+        /// <summary>
+        /// Verifies a successful escape stops evaluating later destinations.
+        /// </summary>
+        [Test]
+        public void ProcessTick_MultipleEscapeDestinations_StopsAfterAcceptedMove()
+        {
+            (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            Planet alternateDestination = new Planet
+            {
+                InstanceID = "alternate_empire_planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 0,
+            };
+            game.AttachNode(alternateDestination, sector);
+            CaptiveSystem system = CreateSystem(game, new FixedRNG(0.0), movement);
+            int transitRejections = 0;
+            Application.LogCallback handler = (condition, _, _) =>
+            {
+                if (condition.Contains("already in transit", StringComparison.Ordinal))
+                    transitRejections++;
+            };
+            Application.logMessageReceived += handler;
+
+            try
+            {
+                system.ProcessTick();
+            }
+            finally
+            {
+                Application.logMessageReceived -= handler;
+            }
+
+            Assert.AreEqual(0, transitRejections);
+            Assert.AreEqual("emp_planet", captive.GetParent()?.InstanceID);
+            Assert.IsNotNull(captive.Movement);
         }
 
         [Test]

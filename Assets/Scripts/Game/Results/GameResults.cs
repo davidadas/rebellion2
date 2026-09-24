@@ -259,6 +259,18 @@ namespace Rebellion.Game.Results
     #region Mission
 
     /// <summary>
+    /// A mission was created and its participants were dispatched.
+    /// </summary>
+    public class MissionStartedResult : GameResult
+    {
+        public Mission Mission { get; set; }
+        public string MissionTypeID { get; set; }
+        public Planet Location { get; set; }
+        public List<IMissionParticipant> Participants { get; set; } =
+            new List<IMissionParticipant>();
+    }
+
+    /// <summary>
     /// A mission completed with a recorded outcome.
     /// </summary>
     public class MissionCompletedResult : GameResult

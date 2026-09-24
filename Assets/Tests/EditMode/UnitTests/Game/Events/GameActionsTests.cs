@@ -15,6 +15,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Random;
+using UnityEngine;
 
 namespace Rebellion.Tests.Game.Events
 {
@@ -1140,6 +1141,27 @@ namespace Rebellion.Tests.Game.Events
             action.Execute(game);
 
             Assert.IsFalse(officer.CanEscape);
+        }
+
+        [Test]
+        public void SetCaptureStatus_OfficerInTransit_LeavesOfficerFreeAndReturnsNoResult()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", planet.OwnerInstanceID);
+            officer.DisplayName = "Test Officer";
+            officer.Movement = new MovementState();
+            game.AttachNode(officer, planet);
+            SetCaptureStatusAction action = new SetCaptureStatusAction
+            {
+                OfficerInstanceID = officer.InstanceID,
+                IsCaptured = true,
+                CaptorFactionInstanceID = "empire",
+            };
+            List<GameResult> results = action.Execute(game);
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+            Assert.IsEmpty(results);
         }
 
         [Test]

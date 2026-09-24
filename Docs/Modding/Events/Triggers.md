@@ -435,6 +435,30 @@ Activates after a duel resolves.
 </Triggers>
 ```
 
+### MissionStarted
+
+Activates after a mission is created and its participants are dispatched. For a remote mission,
+this occurs before its participants arrive at the target.
+
+**Optional options**
+
+- `MissionTypeID` **[Optional]:** The mission type that must have started.
+- `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have started the mission.
+- `Participants` **[Optional]:** Filters the mission's main or decoy participants.
+- `Bindings` **[Optional]:** Supports `Mission`, `MissionTypeID`, `Location`, and `Participants`.
+
+```xml
+<Triggers>
+  <MissionStarted MissionTypeID="ESPIONAGE">
+    <Participants Match="Any">
+      <Units>
+        <Unit UnitInstanceID="LUKE_SKYWALKER"/>
+      </Units>
+    </Participants>
+  </MissionStarted>
+</Triggers>
+```
+
 ## Manufacturing
 
 ### ManufacturingCompleted

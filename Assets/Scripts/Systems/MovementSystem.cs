@@ -1879,6 +1879,13 @@ namespace Rebellion.Systems
             if (destination is Mission)
             {
                 CompleteMissionParticipantArrival(movable);
+                AddArrivalResults(
+                    movable,
+                    destinationPlanet,
+                    movementGroupID,
+                    results,
+                    sourceEventInstanceID
+                );
                 return;
             }
 
@@ -2583,9 +2590,9 @@ namespace Rebellion.Systems
         /// <param name="captorInstanceID">The instance ID of the capturing faction.</param>
         private void CaptureStrandedOfficer(Officer officer, Planet planet, string captorInstanceID)
         {
-            officer.IsCaptured = true;
-            officer.CaptorInstanceID = captorInstanceID;
-            officer.CanEscape = true;
+            if (!officer.TryCapture(captorInstanceID))
+                return;
+
             _pendingResults.Add(
                 new OfficerCaptureStateResult
                 {

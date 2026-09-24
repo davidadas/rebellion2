@@ -617,11 +617,23 @@ namespace Rebellion.Game.Events
                 );
 
             List<GameResult> results = new List<GameResult>();
+            List<Officer> capturedOfficers = new List<Officer>();
             foreach (Officer officer in selected.Cast<Officer>())
             {
-                officer.IsCaptured = IsCaptured;
-                officer.CaptorInstanceID = IsCaptured ? CaptorFactionInstanceID : null;
-                officer.CanEscape = IsCaptured ? CanEscape : true;
+                if (IsCaptured)
+                {
+                    if (!officer.TryCapture(CaptorFactionInstanceID, CanEscape))
+                        continue;
+
+                    capturedOfficers.Add(officer);
+                }
+                else
+                {
+                    officer.IsCaptured = false;
+                    officer.CaptorInstanceID = null;
+                    officer.CanEscape = true;
+                }
+
                 results.Add(
                     new OfficerCaptureStateResult
                     {
@@ -633,8 +645,8 @@ namespace Rebellion.Game.Events
                 );
             }
             context.Record(results);
-            if (IsCaptured)
-                context.InterruptMissionsForCapture(selected.Cast<Officer>().ToList());
+            if (capturedOfficers.Count > 0)
+                context.InterruptMissionsForCapture(capturedOfficers);
         }
     }
 
