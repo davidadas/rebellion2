@@ -30,6 +30,11 @@ namespace Rebellion.Tests.Content
             </xs:all>
           </xs:complexType>
         </xs:element>
+        <xs:element name=""Victory"" minOccurs=""0"">
+          <xs:complexType>
+            <xs:all/>
+          </xs:complexType>
+        </xs:element>
       </xs:all>
     </xs:complexType>
   </xs:element>
@@ -111,6 +116,19 @@ namespace Rebellion.Tests.Content
 
             Assert.AreEqual(12, config.Movement.DistanceScale);
             Assert.AreEqual(3, config.Research.BaseResearchPoints);
+        }
+
+        [Test]
+        public void LoadGameConfig_EmptyVictorySection_Deserializes()
+        {
+            GameConfig config = LoadGameConfigFromFixture(
+                "<GameConfig><Movement><DistanceScale>12</DistanceScale></Movement>"
+                    + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research>"
+                    + "<Victory/></GameConfig>",
+                packOverrideXml: null
+            );
+
+            Assert.IsNotNull(config.Victory);
         }
 
         [Test]

@@ -53,6 +53,15 @@ namespace Rebellion.Game
         public ProbabilityTablesConfig ProbabilityTables { get; set; } =
             new ProbabilityTablesConfig();
 
+        public VictoryConfig Victory { get; set; } = new VictoryConfig();
+
+        /// <summary>
+        /// Victory-condition parameters. Currently an empty section matching the game-config schema's
+        /// <c>Victory</c> element; fields can be added here as victory rules become data-driven.
+        /// </summary>
+        [PersistableObject]
+        public class VictoryConfig { }
+
         /// <summary>
         /// AI decision-making and mission dispatch.
         /// </summary>
