@@ -62,8 +62,6 @@ namespace Rebellion.Simulation
                 defenderWithdrawalGroups,
                 _config
             );
-            attacker.InitialStrength = GetTacticalStrength(attacker, defender);
-            defender.InitialStrength = GetTacticalStrength(defender, attacker);
             double previousAttackerDurability = GetTacticalDurability(attacker);
             double previousDefenderDurability = GetTacticalDurability(defender);
             int stagnantIterations = 0;
@@ -107,6 +105,7 @@ namespace Rebellion.Simulation
             if (
                 attacker.Outcome == SpaceCombatSideOutcome.Active
                 && defender.Outcome == SpaceCombatSideOutcome.Active
+                && !CompleteEliminatedForces(attacker, defender)
             )
             {
                 ResolveStalemate(
@@ -141,13 +140,17 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Begins per-unit withdrawal after a force falls below its initial-strength threshold.
+        /// Begins per-unit withdrawal after a force falls below the opposing-strength threshold.
         /// </summary>
         /// <param name="force">The force whose withdrawal state is evaluated.</param>
-        /// <param name="opposingForce">The force providing the available target types.</param>
+        /// <param name="opposingForce">The force providing the opposing tactical strength.</param>
         private void WithdrawUnitsAtThreshold(CombatForce force, CombatForce opposingForce)
         {
-            if (force.WithdrawalOrdered || !HasReachedWithdrawalThreshold(force, opposingForce))
+            if (
+                force.WithdrawalOrdered
+                || !force.Units.Any(unit => unit.CanWithdraw)
+                || !HasReachedWithdrawalThreshold(force, opposingForce)
+            )
                 return;
 
             force.WithdrawalOrdered = true;
@@ -156,19 +159,23 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Determines whether a force has fallen below the configured share of its initial
-        /// tactical strength.
+        /// Determines whether a force has fallen below the configured share of opposing tactical
+        /// strength.
         /// </summary>
         /// <param name="force">The force to inspect.</param>
-        /// <param name="opposingForce">The force providing the available target types.</param>
+        /// <param name="opposingForce">The force providing the opposing tactical strength.</param>
         /// <returns>True when the withdrawal threshold has been reached.</returns>
         private bool HasReachedWithdrawalThreshold(CombatForce force, CombatForce opposingForce)
         {
-            if (!force.HasCombatants || force.InitialStrength <= 0)
+            if (!force.HasCombatants)
                 return false;
 
-            return GetTacticalStrength(force, opposingForce) / force.InitialStrength
-                < _config.AutoResolveRetreatStrengthRatio;
+            double opposingStrength = GetRetreatStrength(opposingForce);
+            if (opposingStrength <= 0)
+                return false;
+
+            double forceStrength = GetRetreatStrength(force);
+            return forceStrength / opposingStrength < _config.AutoResolveRetreatStrengthRatio;
         }
 
         /// <summary>
@@ -291,7 +298,25 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Calculates the remaining strength used by the original completion checks.
+        /// Calculates the remaining strength used by the original retreat check.
+        /// </summary>
+        /// <param name="force">The force being measured.</param>
+        /// <returns>The force's remaining tactical strength.</returns>
+        private static double GetRetreatStrength(CombatForce force)
+        {
+            double strength = 0;
+            foreach (TacticalUnit unit in force.Units)
+            {
+                if (!unit.IsTargetable)
+                    continue;
+
+                strength += unit.GetEffectiveness(targetsFighters: false);
+            }
+            return strength;
+        }
+
+        /// <summary>
+        /// Calculates the remaining strength used by the completion checks.
         /// </summary>
         /// <param name="force">The force being measured.</param>
         /// <param name="opposingForce">The force providing the available target types.</param>
@@ -561,7 +586,6 @@ namespace Rebellion.Simulation
             internal bool HasTargetableShips => HasTargetableUnits(Ships);
             internal bool HasTargetableFighters => HasTargetableUnits(Fighters);
             internal bool HasWithdrawnUnits => HasWithdrawnUnit(Units);
-            internal double InitialStrength { get; set; }
             internal SpaceCombatSideOutcome Outcome { get; set; }
             internal bool WithdrawalOrdered { get; set; }
 

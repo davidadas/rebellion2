@@ -1986,8 +1986,8 @@ namespace Rebellion.Tests.Simulation
                 "alliance",
                 combatPlanet,
                 1,
-                1000,
                 100,
+                10,
                 shieldRechargeRate: 0
             );
             CapitalShip defenderShip = defenderFleet.GetChildren<CapitalShip>().Single();
@@ -2066,7 +2066,7 @@ namespace Rebellion.Tests.Simulation
                 combatPlanet,
                 1,
                 1000,
-                100,
+                20,
                 shieldRechargeRate: 0
             );
             CapitalShip defenderShip = defenderFleet.GetChildren<CapitalShip>().Single();
@@ -3058,7 +3058,7 @@ namespace Rebellion.Tests.Simulation
             destroyedCarrier.SublightSpeed = 10;
             destroyedCarrier.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
             {
-                1,
+                20,
                 0,
                 0,
                 0,

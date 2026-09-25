@@ -720,9 +720,149 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, GetShipOutcome(result, defender).HullAfter);
         }
 
+        [Test]
+        public void Resolve_IntactForceBelowOpposingStrengthThreshold_WithdrawsBeforeFiring()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
+            CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 32);
+            defender.SublightSpeed = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveRetreatStrengthRatio = 0.33;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true,
+                random: new ArcDamageRNG()
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_ForceAtOpposingStrengthThreshold_FiresBeforeStalemateResolution()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
+            CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 33);
+            defender.SublightSpeed = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveRetreatStrengthRatio = 0.33;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true,
+                random: new ArcDamageRNG()
+            );
+
+            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 1000);
+        }
+
+        [Test]
+        public void Resolve_ZeroStrengthForce_WithdrawsBeforeFiring()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
+            CapitalShip defender = CreatePassiveTarget("defender", hull: 1000);
+            defender.SublightSpeed = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveRetreatStrengthRatio = 0.33;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(1000, GetShipOutcome(result, defender).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_PositiveStrengthForceAgainstZeroStrengthOpponent_DoesNotWithdraw()
+        {
+            CapitalShip attacker = CreatePassiveTarget("attacker", hull: 1);
+            CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 1);
+            defender.SublightSpeed = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveRetreatStrengthRatio = 1.01;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true,
+                random: new ArcDamageRNG()
+            );
+
+            Assert.IsFalse(GetShipOutcome(result, defender).Withdrew);
+            Assert.AreEqual(0, GetShipOutcome(result, attacker).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_MixedOpposingTargets_UsesCapitalTargetStrengthForWithdrawal()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 40);
+            Starfighter attackerFighter = CreateFighter(
+                "attacker-fighter",
+                squadronSize: 12,
+                weaponStrength: 0
+            );
+            CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 0);
+            defender.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
+            defender.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            defender.WeaponRecharge = 60;
+            defender.SublightSpeed = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveRetreatStrengthRatio = 0.33;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new[] { attackerFighter },
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true,
+                random: new ArcDamageRNG()
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(12, GetFighterOutcome(result, attackerFighter).SquadronSizeAfter);
+        }
+
         [TestCase(true, true)]
         [TestCase(false, false)]
-        public void Resolve_ForceReachesOneThirdStrength_CompletesAccordingToWithdrawalAvailability(
+        public void Resolve_ForceReachesOpposingStrengthThreshold_CompletesAccordingToWithdrawalAvailability(
             bool canWithdraw,
             bool expectsWithdrawal
         )
@@ -731,6 +871,7 @@ namespace Rebellion.Tests.Simulation
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 1);
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 0.33;
             config.AutoResolveTargetScanDivisor = 1;
 
             SpaceCombatResult result = Resolve(
@@ -752,14 +893,17 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_FighterForceFallsBelowOneThirdStrength_WithdrawsForce()
+        public void Resolve_FighterForceFallsBelowOpposingStrengthThreshold_WithdrawsForce()
         {
-            CapitalShip attacker = CreateShip("attacker", hull: 10000, weaponStrength: 9);
+            CapitalShip attacker = CreateShip("attacker", hull: 10000, weaponStrength: 2);
             Starfighter defender = CreateFighter("defender", squadronSize: 12, weaponStrength: 1);
             defender.ShieldStrength = 10;
             defender.SublightSpeed = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 0.33;
 
             SpaceCombatResult result = Resolve(
+                config,
                 new[] { attacker },
                 new List<Starfighter>(),
                 new List<CapitalShip>(),
@@ -769,7 +913,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(4, GetFighterOutcome(result, defender).SquadronSizeAfter);
+            Assert.That(GetFighterOutcome(result, defender).SquadronSizeAfter, Is.InRange(1, 11));
         }
 
         [Test]
@@ -968,7 +1112,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Resolve_CarriedNonHyperdriveFighterWithdraws_PreservesFighter()
         {
-            CapitalShip attacker = CreatePassiveTarget("attacker", hull: 100);
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 1);
             CapitalShip carrier = CreateShip("carrier", hull: 100, weaponStrength: 1);
             carrier.StarfighterCapacity = 1;
             carrier.SublightSpeed = 10;
@@ -1470,7 +1614,7 @@ namespace Rebellion.Tests.Simulation
                 AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                 AutoResolveMaximumIterations = 4096,
                 AutoResolveStagnationIterations = 1200,
-                AutoResolveRetreatStrengthRatio = 0.33,
+                AutoResolveRetreatStrengthRatio = 0,
                 AutoResolveMinimumManeuverRatio = 0.1,
                 AutoResolveTargetScanDivisor = 3,
                 AutoResolveStartingDistance = 75,

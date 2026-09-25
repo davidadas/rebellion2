@@ -411,6 +411,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 InstanceID = "retired-officer",
                 DisplayName = "Retired Officer",
                 OwnerInstanceID = _playerFactionId,
+                IsEnabled = false,
                 IsRetired = true,
             };
             _playerFaction.AddOwnedUnit(retiredOfficer);
@@ -475,16 +476,56 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
-        public void GetRows_DisabledPersonnelWithDisplayStatus_UsesStatusAsLocation()
+        public void GetRows_InactiveRegisteredVader_ShowsJabbasPalaceMissionStatus()
+        {
+            Officer vader = new Officer
+            {
+                InstanceID = "DARTH_VADER",
+                DisplayName = "Darth Vader",
+                DisplayStatus = "On Mission (Jabba's Palace)",
+                OwnerInstanceID = _playerFactionId,
+                IsEnabled = false,
+            };
+            _alpha.AddTestChild(vader);
+            vader.SetParent(_alpha);
+            GalaxyPlanetSector sector = new GalaxyPlanetSector();
+            GalaxyMapPlanet mapPlanet = new GalaxyMapPlanet(sector, _alpha, string.Empty);
+            FinderWindowRowBuilder builder = new FinderWindowRowBuilder(
+                new[] { new GalaxyMapSector(sector, new[] { mapPlanet }) },
+                new[] { _opponentFaction, _playerFaction },
+                _playerFactionId,
+                registeredOfficers: new[] { vader }
+            );
+
+            FinderWindowRow row = FinderWindowProjector
+                .FilterRows(
+                    builder.GetRows(
+                        FinderMode.Personnel,
+                        false,
+                        FinderWindowTab.Faction(_playerFactionId, "Player")
+                    ),
+                    "Vad"
+                )
+                .Single();
+
+            Assert.AreEqual("Darth Vader - Jabba's Palace (On Mission)", row.Name);
+            Assert.IsNull(row.Planet);
+            Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
+        }
+
+        [Test]
+        public void GetRows_DisabledPersonnelWithMissionLocation_ShowsLocationThenStatus()
         {
             Officer inactiveOfficer = new Officer
             {
-                InstanceID = "inactive-officer",
+                InstanceID = "LUKE_SKYWALKER",
                 DisplayName = "Luke Skywalker",
                 DisplayStatus = "On Mission (Dagobah)",
                 OwnerInstanceID = _playerFactionId,
                 IsEnabled = false,
             };
+            _alpha.AddTestChild(inactiveOfficer);
+            inactiveOfficer.SetParent(_alpha);
             _playerFaction.AddOwnedUnit(inactiveOfficer);
 
             FinderWindowRow row = _builder
@@ -495,7 +536,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 )
                 .Single();
 
-            Assert.AreEqual("Luke Skywalker - On Mission (Dagobah)", row.Name);
+            Assert.AreEqual("Luke Skywalker - Dagobah (On Mission)", row.Name);
             Assert.IsNull(row.Planet);
             Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
             Assert.IsNull(row.Fleet);
@@ -532,7 +573,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
-        public void GetRows_DisabledPlayerPersonnelOnPlanet_HidesLocationAndNavigation()
+        public void GetRows_DisabledPlayerPersonnelOnPlanet_PreservesLocationAndNavigation()
         {
             Officer inactiveOfficer = new Officer
             {
@@ -543,6 +584,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 IsEnabled = false,
             };
             _alpha.AddTestChild(inactiveOfficer);
+            inactiveOfficer.SetParent(_alpha);
             _playerFaction.AddOwnedUnit(inactiveOfficer);
 
             FinderWindowRow row = _builder
@@ -553,9 +595,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 )
                 .Single();
 
-            Assert.AreEqual("Inactive Officer - On Mission", row.Name);
-            Assert.IsNull(row.Planet);
-            Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
+            Assert.AreEqual("Inactive Officer - Alpha (On Mission)", row.Name);
+            Assert.AreSame(_alphaMapPlanet, row.Planet);
+            Assert.AreEqual(PlanetIcon.Defense, row.TargetIcon);
             Assert.IsNull(row.Fleet);
             Assert.IsNull(row.Mission);
         }
