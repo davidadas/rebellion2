@@ -447,14 +447,15 @@ public sealed class FinderWindowRowBuilder
             if (!seen.Add(key))
                 continue;
 
-            bool hideLocation =
+            bool hideNavigation =
                 candidate is Officer unavailableOfficer
-                && (unavailableOfficer.IsKilled || unavailableOfficer.IsRetired);
-            GalaxyMapPlanet displayedPlanet = hideLocation ? null : planet;
+                    && (unavailableOfficer.IsKilled || unavailableOfficer.IsRetired)
+                || TryGetOffMapLocation(candidate, out _);
+            GalaxyMapPlanet displayedPlanet = hideNavigation ? null : planet;
             PlanetIcon displayedTargetIcon =
-                hideLocation || displayedPlanet == null ? PlanetIcon.None : targetIcon;
-            Fleet displayedFleet = hideLocation ? null : fleet;
-            Mission displayedMission = hideLocation ? null : mission;
+                hideNavigation || displayedPlanet == null ? PlanetIcon.None : targetIcon;
+            Fleet displayedFleet = hideNavigation ? null : fleet;
+            Mission displayedMission = hideNavigation ? null : mission;
 
             rows.Add(
                 new FinderWindowRow(
@@ -518,6 +519,8 @@ public sealed class FinderWindowRowBuilder
                 ? unavailableOfficer.DisplayStatus
                 : "Location Unknown";
         }
+        if (TryGetOffMapLocation(personnel, out string offMapLocation))
+            return offMapLocation;
         if (fleet != null)
             return fleet.GetDisplayName();
         if (personnel?.GetParentOfType<Fleet>() is Fleet parentFleet)
@@ -551,13 +554,8 @@ public sealed class FinderWindowRowBuilder
             return "Captured";
         if (personnel is Officer { InjuryPoints: > 0 })
             return "Injured";
-        if (
-            personnel is { IsEnabled: false }
-            && personnel is BaseGameEntity { DisplayStatus: "On Mission" }
-        )
-        {
+        if (HasOnMissionDisplayStatus(personnel))
             return "On Mission";
-        }
         if (personnel is { IsEnabled: false })
             return string.Empty;
         if (personnel is IMovable movable && movable.GetTransitMovement() != null)
@@ -576,6 +574,71 @@ public sealed class FinderWindowRowBuilder
         }
 
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Resolves an authored off-map location for temporarily unavailable personnel.
+    /// </summary>
+    /// <param name="personnel">The represented personnel node.</param>
+    /// <param name="location">The authored location, when one is available.</param>
+    /// <returns>True when the personnel has an authored off-map location.</returns>
+    private static bool TryGetOffMapLocation(ISceneNode personnel, out string location)
+    {
+        location = string.Empty;
+        if (
+            personnel is not { IsEnabled: false }
+            || personnel is not BaseGameEntity entity
+            || string.IsNullOrWhiteSpace(entity.DisplayStatus)
+        )
+        {
+            return false;
+        }
+
+        string displayStatus = entity.DisplayStatus.Trim();
+        const string missionLocationPrefix = "On Mission (";
+        if (
+            displayStatus.StartsWith(missionLocationPrefix, StringComparison.Ordinal)
+            && displayStatus.EndsWith(")", StringComparison.Ordinal)
+        )
+        {
+            location = displayStatus
+                .Substring(
+                    missionLocationPrefix.Length,
+                    displayStatus.Length - missionLocationPrefix.Length - 1
+                )
+                .Trim();
+            return !string.IsNullOrEmpty(location);
+        }
+
+        if (string.Equals(displayStatus, "On Mission", StringComparison.Ordinal))
+            return false;
+
+        location = displayStatus;
+        return true;
+    }
+
+    /// <summary>
+    /// Determines whether unavailable personnel has an authored mission status.
+    /// </summary>
+    /// <param name="personnel">The represented personnel node.</param>
+    /// <returns>True when the display status represents an active off-map mission.</returns>
+    private static bool HasOnMissionDisplayStatus(ISceneNode personnel)
+    {
+        if (
+            personnel is not { IsEnabled: false }
+            || personnel is not BaseGameEntity entity
+            || string.IsNullOrWhiteSpace(entity.DisplayStatus)
+        )
+        {
+            return false;
+        }
+
+        string displayStatus = entity.DisplayStatus.Trim();
+        return string.Equals(displayStatus, "On Mission", StringComparison.Ordinal)
+            || (
+                displayStatus.StartsWith("On Mission (", StringComparison.Ordinal)
+                && displayStatus.EndsWith(")", StringComparison.Ordinal)
+            );
     }
 
     /// <summary>

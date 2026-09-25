@@ -514,16 +514,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
-        public void GetRows_DisabledPersonnelWithDisplayStatus_UsesStatusAsLocation()
+        public void GetRows_DisabledPersonnelWithMissionLocation_ShowsLocationThenStatus()
         {
             Officer inactiveOfficer = new Officer
             {
-                InstanceID = "inactive-officer",
+                InstanceID = "LUKE_SKYWALKER",
                 DisplayName = "Luke Skywalker",
                 DisplayStatus = "On Mission (Dagobah)",
                 OwnerInstanceID = _playerFactionId,
                 IsEnabled = false,
             };
+            _alpha.AddTestChild(inactiveOfficer);
+            inactiveOfficer.SetParent(_alpha);
             _playerFaction.AddOwnedUnit(inactiveOfficer);
 
             FinderWindowRow row = _builder
@@ -534,7 +536,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 )
                 .Single();
 
-            Assert.AreEqual("Luke Skywalker - On Mission (Dagobah)", row.Name);
+            Assert.AreEqual("Luke Skywalker - Dagobah (On Mission)", row.Name);
             Assert.IsNull(row.Planet);
             Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
             Assert.IsNull(row.Fleet);
