@@ -655,6 +655,7 @@ namespace Rebellion.Tests.Simulation
         public void Resolve_ShieldRechargeRate_RestoresShieldStrengthBetweenRounds()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0;
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
@@ -826,6 +827,7 @@ namespace Rebellion.Tests.Simulation
         public void Resolve_PreDamagedShipWithStableShields_DoesNotReportExistingHullDamage()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0;
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
@@ -920,6 +922,7 @@ namespace Rebellion.Tests.Simulation
         public void Resolve_FighterDamage_IsAbsorbedByCapitalShipShields()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0;
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
@@ -1983,7 +1986,7 @@ namespace Rebellion.Tests.Simulation
                 combatPlanet,
                 1,
                 100,
-                100,
+                10,
                 shieldRechargeRate: 0
             );
             CapitalShip defenderShip = defenderFleet.GetChildren<CapitalShip>().Single();
@@ -2062,7 +2065,7 @@ namespace Rebellion.Tests.Simulation
                 combatPlanet,
                 1,
                 1000,
-                100,
+                20,
                 shieldRechargeRate: 0
             );
             CapitalShip defenderShip = defenderFleet.GetChildren<CapitalShip>().Single();
@@ -3054,7 +3057,7 @@ namespace Rebellion.Tests.Simulation
             destroyedCarrier.SublightSpeed = 10;
             destroyedCarrier.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
             {
-                100,
+                20,
                 0,
                 0,
                 0,
