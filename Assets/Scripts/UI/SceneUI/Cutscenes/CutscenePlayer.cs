@@ -179,15 +179,14 @@ public sealed class CutscenePlayer : MonoBehaviour
         if (texture == null || texture.height <= 0)
             return;
 
-        RevealFrame(texture, frameIndex);
+        RevealFrame(texture);
     }
 
     /// <summary>
     /// Presents one decoded frame using its native texture and aspect ratio.
     /// </summary>
     /// <param name="texture">The decoder-owned video texture.</param>
-    /// <param name="frameIndex">The decoded frame index.</param>
-    private void RevealFrame(Texture texture, long frameIndex)
+    private void RevealFrame(Texture texture)
     {
         videoPlayer.frameReady -= HandleFirstFrameReady;
         videoPlayer.sendFrameReadyEvents = false;
