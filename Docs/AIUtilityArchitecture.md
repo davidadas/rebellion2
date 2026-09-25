@@ -113,12 +113,8 @@ one otherwise optional candidate over another.
 Default linear curves provide predictable interpolation. Tune deliberate behavior changes against
 the designated deterministic seed first, then validate held seeds after tuning is complete.
 
-`AIUtilityDecisionAudit.md` records every remaining ordering category and whether it belongs to
-strategic utility, sequential allocation, feasibility, deterministic indexing, or execution.
-
 ## Verification
 
-During migration, run Medium seed `12345` for 1000 ticks and compare the complete normalized JSON
-with `SimulationResults/current-medium-seed-12345-tick-1000.json`. Structural slices require an
-exact match unless a deliberate behavior change is separately justified. Run held seeds only after
-the complete migration, as specified in `Docs/AIUtilityBaseline.md`.
+Validate strategic behavior changes with identical-seed before-and-after simulations. Compare
+timing and gameplay outcomes separately, and include multiple held seeds before treating a result
+as representative.

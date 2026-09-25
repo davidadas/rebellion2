@@ -165,7 +165,6 @@ public sealed class CutscenePlayer : MonoBehaviour
     private void HandlePlaybackError(VideoPlayer source, string message)
     {
         Debug.LogWarning($"Cutscene playback failed: {message}", source);
-        GameStartupTrace.Log($"Faction introduction decoder failed: {message}");
         EndCutscene();
     }
 
@@ -196,7 +195,6 @@ public sealed class CutscenePlayer : MonoBehaviour
         screen.GetComponent<AspectRatioFitter>().aspectRatio =
             (float)texture.width / texture.height;
         screen.color = authoredScreenColor;
-        GameStartupTrace.Log($"Faction introduction first frame displayed (frame {frameIndex}).");
     }
 
     /// <summary>
