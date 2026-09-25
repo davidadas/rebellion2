@@ -13,6 +13,8 @@ public sealed class ContextMenuCommandView
         IPointerDownHandler,
         IPointerClickHandler
 {
+    private const int _submenuIconVerticalOffset = 2;
+
     [SerializeField]
     private RawImage hitAreaImage;
 
@@ -97,6 +99,8 @@ public sealed class ContextMenuCommandView
 
         Texture iconTexture = item?.GetIconTexture();
         RectInt iconRect = GetIconRect(iconTexture, item?.CenterNativeIcon == true);
+        if (item?.HasSubmenu == true)
+            iconRect.y += _submenuIconVerticalOffset;
         UILayout.SetSourceRect(
             iconImage.rectTransform,
             iconRect.x,

@@ -10,6 +10,48 @@ using Rebellion.Util.Random;
 namespace Rebellion.Simulation
 {
     /// <summary>
+    /// Stores the original tactical command bonuses contributed by one side's ranking officers.
+    /// </summary>
+    public readonly struct SpaceCombatCommandModifiers
+    {
+        private const double _admiralLeadershipDivisor = 10.0;
+        private const double _commanderCombatDivisor = 20.0;
+
+        /// <summary>
+        /// Gets the selected Admiral's effective Leadership rating.
+        /// </summary>
+        public int AdmiralLeadership { get; }
+
+        /// <summary>
+        /// Gets the selected Commander's effective Combat rating.
+        /// </summary>
+        public int CommanderCombat { get; }
+
+        /// <summary>
+        /// Gets the bonus applied to capital-ship reaction and maneuver rates.
+        /// </summary>
+        internal double CapitalShipCommandBonus =>
+            Math.Max(AdmiralLeadership, 0) / _admiralLeadershipDivisor;
+
+        /// <summary>
+        /// Gets the bonus applied to fighter effectiveness and maneuver rates.
+        /// </summary>
+        internal double StarfighterCommandBonus =>
+            Math.Max(CommanderCombat, 0) / _commanderCombatDivisor;
+
+        /// <summary>
+        /// Creates command modifiers from the officers selected for tactical command.
+        /// </summary>
+        /// <param name="admiralLeadership">The selected Admiral's effective Leadership.</param>
+        /// <param name="commanderCombat">The selected Commander's effective Combat.</param>
+        public SpaceCombatCommandModifiers(int admiralLeadership, int commanderCombat)
+        {
+            AdmiralLeadership = Math.Max(admiralLeadership, 0);
+            CommanderCombat = Math.Max(commanderCombat, 0);
+        }
+    }
+
+    /// <summary>
     /// Resolves a space battle without constructing or rendering the tactical scene.
     /// </summary>
     public sealed class SpaceCombatAutoResolver
@@ -40,6 +82,8 @@ namespace Rebellion.Simulation
         /// <param name="defenderFighters">The defending fighter squadrons.</param>
         /// <param name="attackerWithdrawalGroups">The attacking unit groups capable of retreat.</param>
         /// <param name="defenderWithdrawalGroups">The defending unit groups capable of retreat.</param>
+        /// <param name="attackerCommand">The attacking side's tactical command bonuses.</param>
+        /// <param name="defenderCommand">The defending side's tactical command bonuses.</param>
         /// <returns>The resolved tactical state for both forces.</returns>
         public SpaceCombatResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
@@ -47,20 +91,24 @@ namespace Rebellion.Simulation
             IReadOnlyList<CapitalShip> defenderShips,
             IReadOnlyList<Starfighter> defenderFighters,
             IReadOnlyList<IReadOnlyCollection<ISceneNode>> attackerWithdrawalGroups,
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups
+            IReadOnlyList<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups,
+            SpaceCombatCommandModifiers attackerCommand = default,
+            SpaceCombatCommandModifiers defenderCommand = default
         )
         {
             CombatForce attacker = new CombatForce(
                 attackerShips,
                 attackerFighters,
                 attackerWithdrawalGroups,
-                _config
+                _config,
+                attackerCommand
             );
             CombatForce defender = new CombatForce(
                 defenderShips,
                 defenderFighters,
                 defenderWithdrawalGroups,
-                _config
+                _config,
+                defenderCommand
             );
             double previousAttackerDurability = GetTacticalDurability(attacker);
             double previousDefenderDurability = GetTacticalDurability(defender);
@@ -596,20 +644,30 @@ namespace Rebellion.Simulation
             /// <param name="fighters">The force's fighter squadrons.</param>
             /// <param name="withdrawalGroups">The force's unit groups capable of retreat.</param>
             /// <param name="config">The automatic combat parameters.</param>
+            /// <param name="command">The force's tactical command bonuses.</param>
             internal CombatForce(
                 IReadOnlyList<CapitalShip> ships,
                 IReadOnlyList<Starfighter> fighters,
                 IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups,
-                GameConfig.SpaceCombatConfig config
+                GameConfig.SpaceCombatConfig config,
+                SpaceCombatCommandModifiers command
             )
             {
                 Ships = (ships ?? Array.Empty<CapitalShip>())
                     .Where(ship => ship != null)
-                    .Select(ship => new CapitalShipState(ship, config))
+                    .Select(ship => new CapitalShipState(
+                        ship,
+                        config,
+                        command.CapitalShipCommandBonus
+                    ))
                     .ToList();
                 Fighters = (fighters ?? Array.Empty<Starfighter>())
                     .Where(fighter => fighter != null)
-                    .Select(fighter => new StarfighterState(fighter, config))
+                    .Select(fighter => new StarfighterState(
+                        fighter,
+                        config,
+                        command.StarfighterCommandBonus
+                    ))
                     .ToList();
                 Units = new List<TacticalUnit>(Ships.Count + Fighters.Count);
                 Units.AddRange(Ships);
@@ -1126,6 +1184,7 @@ namespace Rebellion.Simulation
             private readonly int[] _ionCannons;
             private readonly int[] _laserCannons;
             private readonly double _laserCannonCapitalDamageMultiplier;
+            private readonly double _commandBonus;
             private readonly double _maximumHull;
             private readonly double _maximumShields;
             private readonly double[] _maximumArcCharge = new double[
@@ -1165,18 +1224,27 @@ namespace Rebellion.Simulation
             internal override double ManeuverRate =>
                 _movementDelay > 0
                     ? MinimumManeuverRatio
-                    : Math.Max(Ship.SublightSpeed + Ship.Maneuverability, MinimumManeuverRatio);
+                    : Math.Max(
+                        Ship.SublightSpeed + Ship.Maneuverability + _commandBonus,
+                        MinimumManeuverRatio
+                    );
 
             /// <summary>
             /// Creates tactical state from a capital ship's current strategic state.
             /// </summary>
             /// <param name="ship">The capital ship entering combat.</param>
             /// <param name="config">The automatic combat parameters.</param>
-            internal CapitalShipState(CapitalShip ship, GameConfig.SpaceCombatConfig config)
+            /// <param name="commandBonus">The Admiral's Leadership-derived tactical bonus.</param>
+            internal CapitalShipState(
+                CapitalShip ship,
+                GameConfig.SpaceCombatConfig config,
+                double commandBonus
+            )
                 : base(config.AutoResolveMinimumManeuverRatio)
             {
                 Ship = ship;
                 InitialHull = Math.Max(ship.CurrentHullStrength, 0);
+                _commandBonus = Math.Max(commandBonus, 0);
                 _maximumHull = Math.Max(ship.MaxHullStrength, 1);
                 _maximumShields = Math.Max(ship.MaxShieldStrength, 0);
                 _turbolasers = GetWeaponValues(ship, PrimaryWeaponType.Turbolaser);
@@ -1561,7 +1629,7 @@ namespace Rebellion.Simulation
             private void RechargeWeapons()
             {
                 double condition = CurrentHull / _maximumHull;
-                double recharge = Math.Max(Ship.WeaponRecharge, 0) * condition;
+                double recharge = (Math.Max(Ship.WeaponRecharge, 0) + _commandBonus) * condition;
                 int queuedArcCount = _rechargeQueue.Count;
                 for (int arcIndex = 0; arcIndex < queuedArcCount && recharge > 0; arcIndex++)
                 {
@@ -1719,6 +1787,7 @@ namespace Rebellion.Simulation
             internal readonly Starfighter Fighter;
             internal readonly int InitialSquadronSize;
             private readonly double _durabilityPerFighter;
+            private readonly double _commandBonus;
             private readonly double _maximumWeaponCharge;
             private readonly double _weaponRecharge;
             private readonly double[] _weaponTargetDamage = new double[3];
@@ -1742,18 +1811,27 @@ namespace Rebellion.Simulation
                 _maximumWeaponCharge > 0 && _currentWeaponCharge >= _maximumWeaponCharge;
             internal override double ClosingSpeed => Math.Max(Fighter.SublightSpeed, 0);
             internal override double ManeuverRate =>
-                Math.Max(Fighter.SublightSpeed + Fighter.Agility, MinimumManeuverRatio);
+                Math.Max(
+                    Fighter.SublightSpeed + Fighter.Agility + _commandBonus,
+                    MinimumManeuverRatio
+                );
 
             /// <summary>
             /// Creates tactical state from a fighter squadron's current strategic state.
             /// </summary>
             /// <param name="fighter">The fighter squadron entering combat.</param>
             /// <param name="config">The automatic combat parameters.</param>
-            internal StarfighterState(Starfighter fighter, GameConfig.SpaceCombatConfig config)
+            /// <param name="commandBonus">The Commander's Combat-derived tactical bonus.</param>
+            internal StarfighterState(
+                Starfighter fighter,
+                GameConfig.SpaceCombatConfig config,
+                double commandBonus
+            )
                 : base(config.AutoResolveMinimumManeuverRatio)
             {
                 Fighter = fighter;
                 InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);
+                _commandBonus = Math.Max(commandBonus, 0);
                 _durabilityPerFighter = Math.Max(fighter.ShieldStrength, 1);
                 _currentDurability = InitialSquadronSize * _durabilityPerFighter;
                 _maximumWeaponCharge =
@@ -1800,7 +1878,9 @@ namespace Rebellion.Simulation
                         requireRange: true
                     );
                     double damage =
-                        weaponStrength * GetManeuverMultiplier(target) * squadronStrength;
+                        GetEffectiveWeaponStrength(weaponStrength)
+                        * GetManeuverMultiplier(target)
+                        * squadronStrength;
                     if (damage > 0)
                     {
                         AddPendingDamage(pendingDamage, target, damage, weaponIndex == 2);
@@ -1839,7 +1919,9 @@ namespace Rebellion.Simulation
                             continue;
 
                         double candidateDamage =
-                            GetWeaponStrength(weaponIndex, engagementRange, requireRange: true)
+                            GetEffectiveWeaponStrength(
+                                GetWeaponStrength(weaponIndex, engagementRange, requireRange: true)
+                            )
                             * maneuverMultiplier
                             * squadronStrength;
                         if (candidateDamage <= _weaponTargetDamage[weaponIndex])
@@ -1929,18 +2011,37 @@ namespace Rebellion.Simulation
             /// <param name="engagementDistance">The abstract distance between combat forces.</param>
             /// <param name="requireRange">Whether a positive weapon range is required.</param>
             /// <returns>The fighter's usable weapon strength.</returns>
-            private int GetCombinedWeaponStrength(
+            private double GetCombinedWeaponStrength(
                 bool targetsFighters,
                 double engagementDistance,
                 bool requireRange
             )
             {
-                int strength =
-                    GetWeaponStrength(0, engagementDistance, requireRange)
-                    + GetWeaponStrength(1, engagementDistance, requireRange);
+                double strength =
+                    GetEffectiveWeaponStrength(
+                        GetWeaponStrength(0, engagementDistance, requireRange)
+                    )
+                    + GetEffectiveWeaponStrength(
+                        GetWeaponStrength(1, engagementDistance, requireRange)
+                    );
                 if (!targetsFighters)
-                    strength += GetWeaponStrength(2, engagementDistance, requireRange);
+                {
+                    strength += GetEffectiveWeaponStrength(
+                        GetWeaponStrength(2, engagementDistance, requireRange)
+                    );
+                }
                 return strength;
+            }
+
+            /// <summary>
+            /// Applies the Commander's original Combat-derived effectiveness bonus to a usable
+            /// fighter weapon lane without changing the weapon charge it consumes.
+            /// </summary>
+            /// <param name="weaponStrength">The usable raw weapon strength.</param>
+            /// <returns>The command-adjusted weapon strength.</returns>
+            private double GetEffectiveWeaponStrength(int weaponStrength)
+            {
+                return weaponStrength > 0 ? weaponStrength + _commandBonus : 0;
             }
 
             /// <summary>

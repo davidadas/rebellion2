@@ -758,13 +758,25 @@ namespace Rebellion.Simulation
                     planet,
                     defenderOwnerInstanceId
                 );
+            SpaceCombatCommandModifiers attackerCommand = GetCommandModifiers(
+                attackerFleets,
+                planet,
+                attackerOwnerInstanceId
+            );
+            SpaceCombatCommandModifiers defenderCommand = GetCommandModifiers(
+                defenderFleets,
+                planet,
+                defenderOwnerInstanceId
+            );
             SpaceCombatResult result = _autoResolver.Resolve(
                 attackerShips,
                 attackerFighters,
                 defenderShips,
                 defenderFighters,
                 attackerWithdrawalGroups,
-                defenderWithdrawalGroups
+                defenderWithdrawalGroups,
+                attackerCommand,
+                defenderCommand
             );
             result.AttackerFleet = SpaceCombatQueries.GetRepresentativeFleet(attackerFleets);
             result.DefenderFleet = SpaceCombatQueries.GetRepresentativeFleet(defenderFleets);
@@ -775,6 +787,88 @@ namespace Rebellion.Simulation
             result.Tick = tick;
             withdrawnUnits = result.WithdrawnUnits.ToHashSet();
             return result;
+        }
+
+        /// <summary>
+        /// Selects the original tactical command officers for one side of a space battle.
+        /// The best Leadership-rated fleet Admiral commands capital ships; the best Combat-rated
+        /// Commander across the system and participating fleets commands starfighters.
+        /// </summary>
+        /// <param name="fleets">The side's participating fleets in encounter order.</param>
+        /// <param name="planet">The system where combat occurs.</param>
+        /// <param name="ownerInstanceId">The side's faction instance identifier.</param>
+        /// <returns>The selected officers' effective ratings.</returns>
+        internal static SpaceCombatCommandModifiers GetCommandModifiers(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            string ownerInstanceId
+        )
+        {
+            List<Officer> fleetOfficers = (fleets ?? Array.Empty<Fleet>())
+                .Where(fleet => fleet != null)
+                .SelectMany(fleet => fleet.GetOfficers())
+                .ToList();
+            Officer admiral = SelectBestCommandOfficer(
+                fleetOfficers,
+                OfficerRank.Admiral,
+                SkillRating.Leadership,
+                ownerInstanceId
+            );
+
+            IEnumerable<Officer> commanderCandidates = (
+                planet?.GetAllOfficers() ?? new List<Officer>()
+            ).Concat(fleetOfficers);
+            Officer commander = SelectBestCommandOfficer(
+                commanderCandidates,
+                OfficerRank.Commander,
+                SkillRating.Combat,
+                ownerInstanceId
+            );
+            return new SpaceCombatCommandModifiers(
+                admiral?.GetEffectiveRating(SkillRating.Leadership) ?? 0,
+                commander?.GetEffectiveRating(SkillRating.Combat) ?? 0
+            );
+        }
+
+        /// <summary>
+        /// Returns the first eligible officer with the highest requested effective rating.
+        /// </summary>
+        /// <param name="officers">The stable-order candidates to inspect.</param>
+        /// <param name="rank">The required command rank.</param>
+        /// <param name="rating">The rating used to compare eligible officers.</param>
+        /// <param name="ownerInstanceId">The required faction instance identifier.</param>
+        /// <returns>The selected officer, or null when no candidate is eligible.</returns>
+        private static Officer SelectBestCommandOfficer(
+            IEnumerable<Officer> officers,
+            OfficerRank rank,
+            SkillRating rating,
+            string ownerInstanceId
+        )
+        {
+            Officer selected = null;
+            int selectedRating = int.MinValue;
+            foreach (Officer candidate in officers ?? Enumerable.Empty<Officer>())
+            {
+                if (
+                    candidate == null
+                    || candidate.CurrentRank != rank
+                    || candidate.GetOwnerInstanceID() != ownerInstanceId
+                    || candidate.IsKilled
+                    || candidate.IsCaptured
+                    || candidate.IsRetired
+                    || candidate.Movement != null
+                    || candidate.IsOnMission()
+                )
+                    continue;
+
+                int candidateRating = candidate.GetEffectiveRating(rating);
+                if (candidateRating <= selectedRating)
+                    continue;
+
+                selected = candidate;
+                selectedRating = candidateRating;
+            }
+            return selected;
         }
 
         /// <summary>

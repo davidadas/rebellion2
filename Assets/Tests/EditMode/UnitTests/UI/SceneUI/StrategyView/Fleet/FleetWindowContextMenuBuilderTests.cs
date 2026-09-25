@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -324,7 +325,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void Build_OfficerSelection_ReturnsPersonnelOperations()
         {
-            Officer officer = new Officer();
+            Officer officer = new Officer
+            {
+                AllowedRanks = new[]
+                {
+                    OfficerRank.Commander,
+                    OfficerRank.Admiral,
+                    OfficerRank.General,
+                },
+            };
+            Planet planet = new Planet();
+            GameFleet fleet = new GameFleet();
+            fleet.SetParent(planet);
+            officer.SetParent(fleet);
 
             List<StrategyMenuCommand> commands = FleetWindowContextMenuBuilder.Build(
                 new ISceneNode[] { officer },
@@ -340,6 +353,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     StrategyMenuAction.Move,
                     StrategyMenuAction.MoveConfirm,
                     StrategyMenuAction.CreateMission,
+                    StrategyMenuAction.Command,
                     StrategyMenuAction.Encyclopedia,
                     StrategyMenuAction.Status,
                     StrategyMenuAction.Retire,
@@ -348,6 +362,97 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
             Assert.AreEqual("Retire ", commands.Last().Text);
             Assert.IsTrue(commands.All(command => command.Enabled));
+            StrategyMenuCommand commandMenu = commands.Single(command =>
+                command.Action == StrategyMenuAction.Command
+            );
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    StrategyMenuAction.CommandNone,
+                    StrategyMenuAction.CommandCommander,
+                    StrategyMenuAction.CommandAdmiral,
+                    StrategyMenuAction.CommandGeneral,
+                },
+                commandMenu.SubmenuCommands.Select(command => command.Action)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "None", "Commander", "Admiral", "General" },
+                commandMenu.SubmenuCommands.Select(command => command.Text)
+            );
+            CollectionAssert.AreEqual(
+                new[] { true, true, true, true },
+                commandMenu.SubmenuCommands.Select(command => command.Enabled)
+            );
+            Assert.AreEqual(
+                StrategyContextMenuIconKeys.CheckMark,
+                commandMenu.SubmenuCommands[0].IconKey
+            );
+        }
+
+        [Test]
+        public void Build_OfficerAtPlanet_DisablesFleetOnlyAdmiralPost()
+        {
+            Officer officer = new Officer
+            {
+                AllowedRanks = new[]
+                {
+                    OfficerRank.Commander,
+                    OfficerRank.Admiral,
+                    OfficerRank.General,
+                },
+            };
+            officer.SetParent(new Planet());
+
+            StrategyMenuCommand commandMenu = FleetWindowContextMenuBuilder
+                .Build(new ISceneNode[] { officer }, true, true, true, true)
+                .Single(command => command.Action == StrategyMenuAction.Command);
+
+            CollectionAssert.AreEqual(
+                new[] { true, true, false, true },
+                commandMenu.SubmenuCommands.Select(command => command.Enabled)
+            );
+        }
+
+        [Test]
+        public void Build_OfficerWithLimitedRanks_DisablesUnavailableCommandChoices()
+        {
+            Officer officer = new Officer
+            {
+                AllowedRanks = new[] { OfficerRank.General },
+                CurrentRank = OfficerRank.General,
+            };
+            officer.SetParent(new Planet());
+
+            StrategyMenuCommand commandMenu = FleetWindowContextMenuBuilder
+                .Build(new ISceneNode[] { officer }, true, true, true, true)
+                .Single(command => command.Action == StrategyMenuAction.Command);
+
+            CollectionAssert.AreEqual(
+                new[] { true, false, false, true },
+                commandMenu.SubmenuCommands.Select(command => command.Enabled)
+            );
+            Assert.AreEqual(
+                StrategyContextMenuIconKeys.CheckMark,
+                commandMenu.SubmenuCommands[3].IconKey
+            );
+        }
+
+        [Test]
+        public void Build_OfficerWithoutPossibleRank_DisablesCommandMenu()
+        {
+            Officer officer = new Officer();
+            officer.SetParent(new Planet());
+
+            StrategyMenuCommand commandMenu = FleetWindowContextMenuBuilder
+                .Build(new ISceneNode[] { officer }, true, true, true, true)
+                .Single(command => command.Action == StrategyMenuAction.Command);
+
+            Assert.IsFalse(commandMenu.Enabled);
+            Assert.IsTrue(commandMenu.SubmenuCommands.All(command => !command.Enabled));
+            Assert.AreEqual(
+                StrategyContextMenuIconKeys.CheckMark,
+                commandMenu.SubmenuCommands[0].IconKey
+            );
         }
 
         [Test]

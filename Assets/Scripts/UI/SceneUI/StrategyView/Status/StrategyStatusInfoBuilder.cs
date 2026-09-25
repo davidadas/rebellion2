@@ -184,6 +184,15 @@ internal sealed class StrategyStatusInfoBuilder
         );
         AddHeadquartersEtaRow(info, planet);
         info.Rows.Add(
+            new StrategyStatusRow("General:", FindPlanetOfficerByRank(planet, OfficerRank.General))
+        );
+        info.Rows.Add(
+            new StrategyStatusRow(
+                "Commander:",
+                FindPlanetOfficerByRank(planet, OfficerRank.Commander)
+            )
+        );
+        info.Rows.Add(
             new StrategyStatusRow("Popular Support:", GetPlayerSupport(planet).ToString())
         );
         info.Rows.Add(new StrategyStatusRow("Energy:", planet.GetAvailableEnergy().ToString()));
@@ -957,16 +966,24 @@ internal sealed class StrategyStatusInfoBuilder
     /// </summary>
     /// <param name="officer">The officer to inspect.</param>
     /// <returns>The displayed command assignment.</returns>
-    private static string GetOfficerCommandingText(Officer officer)
+    private string GetOfficerCommandingText(Officer officer)
     {
         if (officer.CurrentRank == OfficerRank.None)
-            return "None";
+            return "Not Assigned";
 
+        if (!string.IsNullOrWhiteSpace(officer.CommandingInstanceID))
+        {
+            ISceneNode commandTarget = findVisibleNode(officer.CommandingInstanceID);
+            return commandTarget?.GetDisplayName() ?? "Not Assigned";
+        }
+
+        // Saves created before command targets were persisted only contain the rank. Preserve
+        // their prior location-derived presentation until the player next changes the post.
         ISceneNode parent = officer.GetParent();
         if (parent is CapitalShip ship)
-            return ship.GetParentOfType<Fleet>()?.GetDisplayName() ?? ship.GetDisplayName();
+            return ship.GetParentOfType<Fleet>()?.GetDisplayName() ?? "Not Assigned";
 
-        return parent?.GetDisplayName() ?? "None";
+        return parent is Fleet or Planet ? parent.GetDisplayName() : "Not Assigned";
     }
 
     /// <summary>
@@ -999,6 +1016,23 @@ internal sealed class StrategyStatusInfoBuilder
     private static string FindFleetOfficerByRank(Fleet fleet, OfficerRank rank)
     {
         Officer officer = fleet.GetOfficers().FirstOrDefault(o => o.CurrentRank == rank);
+        return officer?.GetDisplayName() ?? "Not Assigned";
+    }
+
+    /// <summary>
+    /// Finds the displayed name of a planetary officer holding one command rank.
+    /// Officers attached to orbiting fleets belong to that fleet's command instead.
+    /// </summary>
+    /// <param name="planet">The planet to inspect.</param>
+    /// <param name="rank">The command rank to find.</param>
+    /// <returns>The assigned officer name, or a not-assigned label.</returns>
+    private static string FindPlanetOfficerByRank(Planet planet, OfficerRank rank)
+    {
+        Officer officer = planet
+            .GetChildren<Officer>(recursive: true)
+            .FirstOrDefault(candidate =>
+                candidate.GetParentOfType<Fleet>() == null && candidate.CurrentRank == rank
+            );
         return officer?.GetDisplayName() ?? "Not Assigned";
     }
 

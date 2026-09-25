@@ -267,6 +267,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void Build_PersonnelTab_ReturnsOfficerAndSpecialForcesPresentation()
         {
+            _officer.CurrentRank = OfficerRank.General;
             _session.SelectTab(FleetWindowTab.Personnel);
 
             FleetWindowRenderData data = _projector.Build(_session, _window, true);
@@ -274,7 +275,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(data.ShowCapacity);
             Assert.AreEqual(2, data.DetailItems.Count);
             StrategyUnitCardRenderData officerCard = data.DetailItems[0];
-            Assert.AreEqual("Officer", officerCard.Name);
+            Assert.AreEqual("General Officer", officerCard.Name);
             Assert.IsTrue(officerCard.UseAlternateNameLayout);
             Assert.IsNotNull(officerCard.BackgroundTexture);
             Assert.IsNotNull(officerCard.DamagedOverlayTexture);
