@@ -525,7 +525,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(12, GetFighterOutcome(result, defender).SquadronSizeAfter);
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
         }
 

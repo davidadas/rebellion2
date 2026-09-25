@@ -85,8 +85,8 @@ namespace Rebellion.Simulation
                 AdvanceTacticalState(attacker);
                 AdvanceTacticalState(defender);
 
-                double attackerStrength = GetTacticalStrength(attacker);
-                double defenderStrength = GetTacticalStrength(defender);
+                double attackerStrength = GetTacticalStrength(attacker, defender);
+                double defenderStrength = GetTacticalStrength(defender, attacker);
                 double attackerDurability = GetTacticalDurability(attacker);
                 double defenderDurability = GetTacticalDurability(defender);
                 bool stateChanged =
@@ -106,13 +106,14 @@ namespace Rebellion.Simulation
             if (
                 attacker.Outcome == SpaceCombatSideOutcome.Active
                 && defender.Outcome == SpaceCombatSideOutcome.Active
+                && !CompleteEliminatedForces(attacker, defender)
             )
             {
                 ResolveStalemate(
                     attacker,
                     defender,
-                    GetTacticalStrength(attacker),
-                    GetTacticalStrength(defender)
+                    GetTacticalStrength(attacker, defender),
+                    GetTacticalStrength(defender, attacker)
                 );
             }
 
@@ -170,13 +171,12 @@ namespace Rebellion.Simulation
             if (!force.HasCombatants)
                 return false;
 
-            double forceStrength = GetTacticalStrength(force);
-            if (forceStrength <= 0)
-                return _config.AutoResolveRetreatStrengthRatio > 0;
+            double opposingStrength = GetRetreatStrength(opposingForce);
+            if (opposingStrength <= 0)
+                return false;
 
-            double opposingStrength = GetTacticalStrength(opposingForce);
-            return opposingStrength > 0
-                && forceStrength / opposingStrength < _config.AutoResolveRetreatStrengthRatio;
+            double forceStrength = GetRetreatStrength(force);
+            return forceStrength / opposingStrength < _config.AutoResolveRetreatStrengthRatio;
         }
 
         /// <summary>
@@ -299,11 +299,11 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Calculates the remaining strength used by the original completion checks.
+        /// Calculates the remaining strength used by the original retreat check.
         /// </summary>
         /// <param name="force">The force being measured.</param>
         /// <returns>The force's remaining tactical strength.</returns>
-        private static double GetTacticalStrength(CombatForce force)
+        private static double GetRetreatStrength(CombatForce force)
         {
             double strength = 0;
             foreach (TacticalUnit unit in force.Units)
@@ -312,6 +312,30 @@ namespace Rebellion.Simulation
                     continue;
 
                 strength += unit.GetEffectiveness(targetsFighters: false);
+            }
+            return strength;
+        }
+
+        /// <summary>
+        /// Calculates the remaining strength used by the completion checks.
+        /// </summary>
+        /// <param name="force">The force being measured.</param>
+        /// <param name="opposingForce">The force providing the available target types.</param>
+        /// <returns>The force's remaining tactical strength.</returns>
+        private static double GetTacticalStrength(CombatForce force, CombatForce opposingForce)
+        {
+            bool canTargetCapitalShips = opposingForce.HasTargetableShips;
+            bool canTargetFighters = opposingForce.HasTargetableFighters;
+            double strength = 0;
+            foreach (TacticalUnit unit in force.Units)
+            {
+                if (!unit.IsTargetable)
+                    continue;
+
+                strength += Math.Max(
+                    canTargetCapitalShips ? unit.GetEffectiveness(targetsFighters: false) : 0,
+                    canTargetFighters ? unit.GetEffectiveness(targetsFighters: true) : 0
+                );
             }
             return strength;
         }
@@ -560,6 +584,8 @@ namespace Rebellion.Simulation
             private readonly List<TacticalUnit> _targetableUnits = new List<TacticalUnit>();
 
             internal bool HasCombatants => HasTargetableUnits(Units);
+            internal bool HasTargetableShips => HasTargetableUnits(Ships);
+            internal bool HasTargetableFighters => HasTargetableUnits(Fighters);
             internal bool HasWithdrawnUnits => HasWithdrawnUnit(Units);
             internal SpaceCombatSideOutcome Outcome { get; set; }
             internal bool WithdrawalOrdered { get; set; }
