@@ -301,11 +301,6 @@ namespace Rebellion.Tests.Game.Units
                 "CurrentRank mismatch"
             );
             Assert.AreEqual(
-                originalOfficer.CommandingInstanceID,
-                deserializedOfficer.CommandingInstanceID,
-                "CommandingInstanceID mismatch"
-            );
-            Assert.AreEqual(
                 originalOfficer.Movement,
                 deserializedOfficer.Movement,
                 "MovementStatus mismatch"

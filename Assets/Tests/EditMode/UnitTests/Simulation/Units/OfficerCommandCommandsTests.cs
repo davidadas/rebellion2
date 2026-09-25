@@ -37,7 +37,6 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(changed);
             Assert.AreEqual(OfficerRank.Admiral, officer.CurrentRank);
-            Assert.AreEqual(fleet.InstanceID, officer.CommandingInstanceID);
             Assert.AreEqual("Admiral candidate", officer.GetDisplayName());
             Assert.AreEqual(2, (int)OfficerRank.Admiral);
             CommandKindChangedResult rankResult = published
@@ -66,7 +65,6 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(changed);
             Assert.AreEqual("candidate", officer.GetDisplayName());
-            Assert.IsNull(officer.CommandingInstanceID);
         }
 
         [Test]
@@ -75,7 +73,6 @@ namespace Rebellion.Tests.Simulation
             GameRoot game = BuildScene(out Planet planet);
             Officer officer = CreateOfficer(game, planet, "candidate", OfficerRank.Commander);
             officer.CurrentRank = OfficerRank.Commander;
-            officer.CommandingInstanceID = planet.InstanceID;
 
             bool changed = new OfficerCommandCommands(game).TrySetRank(
                 officer.InstanceID,
@@ -85,7 +82,6 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(changed);
             Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
-            Assert.IsNull(officer.CommandingInstanceID);
         }
 
         [Test]

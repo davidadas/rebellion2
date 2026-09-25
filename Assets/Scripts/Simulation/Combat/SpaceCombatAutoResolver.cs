@@ -14,9 +14,6 @@ namespace Rebellion.Simulation
     /// </summary>
     public readonly struct SpaceCombatCommandModifiers
     {
-        private const double _admiralLeadershipDivisor = 10.0;
-        private const double _commanderCombatDivisor = 20.0;
-
         /// <summary>
         /// Gets the selected Admiral's effective Leadership rating.
         /// </summary>
@@ -26,18 +23,6 @@ namespace Rebellion.Simulation
         /// Gets the selected Commander's effective Combat rating.
         /// </summary>
         public int CommanderCombat { get; }
-
-        /// <summary>
-        /// Gets the bonus applied to capital-ship reaction and maneuver rates.
-        /// </summary>
-        internal double CapitalShipCommandBonus =>
-            Math.Max(AdmiralLeadership, 0) / _admiralLeadershipDivisor;
-
-        /// <summary>
-        /// Gets the bonus applied to fighter effectiveness and maneuver rates.
-        /// </summary>
-        internal double StarfighterCommandBonus =>
-            Math.Max(CommanderCombat, 0) / _commanderCombatDivisor;
 
         /// <summary>
         /// Creates command modifiers from the officers selected for tactical command.
@@ -653,20 +638,24 @@ namespace Rebellion.Simulation
                 SpaceCombatCommandModifiers command
             )
             {
+                double capitalShipCommandBonus = GetCommandBonus(
+                    command.AdmiralLeadership,
+                    config.AdmiralLeadershipDivisor
+                );
+                double starfighterCommandBonus = GetCommandBonus(
+                    command.CommanderCombat,
+                    config.CommanderCombatDivisor
+                );
                 Ships = (ships ?? Array.Empty<CapitalShip>())
                     .Where(ship => ship != null)
-                    .Select(ship => new CapitalShipState(
-                        ship,
-                        config,
-                        command.CapitalShipCommandBonus
-                    ))
+                    .Select(ship => new CapitalShipState(ship, config, capitalShipCommandBonus))
                     .ToList();
                 Fighters = (fighters ?? Array.Empty<Starfighter>())
                     .Where(fighter => fighter != null)
                     .Select(fighter => new StarfighterState(
                         fighter,
                         config,
-                        command.StarfighterCommandBonus
+                        starfighterCommandBonus
                     ))
                     .ToList();
                 Units = new List<TacticalUnit>(Ships.Count + Fighters.Count);
@@ -674,6 +663,17 @@ namespace Rebellion.Simulation
                 Units.AddRange(Fighters);
                 ConfigureWithdrawalGroups(withdrawalGroups);
                 Outcome = SpaceCombatSideOutcome.Active;
+            }
+
+            /// <summary>
+            /// Scales an officer rating with its configured original-game divisor.
+            /// </summary>
+            /// <param name="rating">The selected officer's effective rating.</param>
+            /// <param name="divisor">The configured tactical divisor.</param>
+            /// <returns>The tactical command bonus, or zero for an invalid divisor.</returns>
+            private static double GetCommandBonus(int rating, int divisor)
+            {
+                return divisor > 0 ? (double)Math.Max(rating, 0) / divisor : 0;
             }
 
             /// <summary>

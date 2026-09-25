@@ -1017,6 +1017,10 @@ namespace Rebellion.Game
         [PersistableObject]
         public class SpaceCombatConfig
         {
+            public int AdmiralLeadershipDivisor { get; set; }
+
+            public int CommanderCombatDivisor { get; set; }
+
             public double LaserCannonCapitalDamageMultiplier { get; set; }
 
             public double AutoResolveFighterWeaponRechargeMultiplier { get; set; }
