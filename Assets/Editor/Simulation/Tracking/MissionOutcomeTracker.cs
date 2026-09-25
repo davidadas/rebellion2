@@ -245,7 +245,12 @@ public static partial class HeadlessSimulationRunner
             }
 
             foreach (OfficerInjuredResult result in results.OfType<OfficerInjuredResult>())
-                RecordParticipantOutcome(result, result.Officer, missionsById, isCapture: false);
+                RecordParticipantOutcome(
+                    result.MissionInstanceID,
+                    result.Officer,
+                    missionsById,
+                    isCapture: false
+                );
 
             foreach (
                 OfficerCaptureStateResult result in results
@@ -253,7 +258,7 @@ public static partial class HeadlessSimulationRunner
                     .Where(result => result.IsCaptured)
             )
                 RecordParticipantOutcome(
-                    result,
+                    result.MissionInstanceID,
                     result.TargetOfficer ?? result.CapturedOfficer,
                     missionsById,
                     isCapture: true
@@ -304,8 +309,7 @@ public static partial class HeadlessSimulationRunner
             bool intelligenceRefreshed = results
                 .OfType<IntelligenceRevealedResult>()
                 .Any(result =>
-                    result.MissionInstanceID == completed.MissionInstanceID
-                    && result.Recipient?.InstanceID == factionId
+                    result.Recipient?.InstanceID == factionId
                     && result.Observations.Contains(completed.Location)
                 );
             GetDiplomacyOwnershipChanges(factionId)
@@ -351,22 +355,22 @@ public static partial class HeadlessSimulationRunner
         /// <summary>
         /// Records one injury or capture and attributes it to its completing mission when present.
         /// </summary>
-        /// <param name="result">The participant result.</param>
+        /// <param name="missionInstanceID">The mission that caused the participant outcome.</param>
         /// <param name="officer">The affected officer.</param>
         /// <param name="missionsById">Completed missions in the same result batch.</param>
         /// <param name="isCapture">Whether the outcome is a capture rather than an injury.</param>
         private void RecordParticipantOutcome(
-            GameResult result,
+            string missionInstanceID,
             Officer officer,
             IReadOnlyDictionary<string, MissionCompletedResult> missionsById,
             bool isCapture
         )
         {
-            if (officer == null || string.IsNullOrEmpty(result.MissionInstanceID))
+            if (officer == null || string.IsNullOrEmpty(missionInstanceID))
                 return;
 
             missionsById.TryGetValue(
-                result.MissionInstanceID,
+                missionInstanceID,
                 out MissionCompletedResult completedMission
             );
             string missionTypeId = completedMission?.MissionTypeID ?? string.Empty;

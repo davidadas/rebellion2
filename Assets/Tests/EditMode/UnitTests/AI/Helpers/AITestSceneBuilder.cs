@@ -10,7 +10,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.AI.Helpers
@@ -298,35 +298,64 @@ namespace Rebellion.Tests.AI.Helpers
         public static AITurnContext CreateContext(
             GameRoot game,
             Faction faction,
-            MissionSystem missions = null,
-            MovementSystem movement = null,
-            ManufacturingSystem manufacturing = null,
-            BombardmentSystem bombardment = null,
-            PlanetaryAssaultSystem planetaryAssault = null,
+            MissionCommands missions = null,
+            MovementCommands movement = null,
+            ManufacturingCommands manufacturing = null,
+            BombardmentCommands bombardment = null,
+            PlanetaryAssaultCommands planetaryAssault = null,
             IRandomNumberProvider random = null,
-            MaintenanceSystem maintenance = null
+            MaintenanceCommands maintenance = null
         )
         {
             IRandomNumberProvider provider = random ?? new StubRNG();
-            FogOfWarSystem fog = new FogOfWarSystem(game);
-            FleetSystem fleetSystem = new FleetSystem(game);
-            MovementSystem movementSystem = movement ?? new MovementSystem(game, fog, fleetSystem);
-            MissionSystem missionSystem =
-                missions ?? TestSystems.CreateMissionSystem(game, provider, movementSystem);
-            ManufacturingSystem manufacturingSystem =
-                manufacturing ?? new ManufacturingSystem(game, fleetSystem, movementSystem);
-            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
+            FogOfWarCommands fog = new FogOfWarCommands(game);
+            FogOfWarQueries fogQueries = new FogOfWarQueries(game);
+            FleetCommands fleetSystem = new FleetCommands(game);
+            MovementCommands movementSystem =
+                movement
+                ?? new MovementCommands(
+                    game,
+                    fog,
+                    fleetSystem,
+                    fogQueries,
+                    new MovementQueries(game)
+                );
+            MissionCommands missionSystem =
+                missions ?? TestSystems.CreateMissionCommands(game, provider, movementSystem);
+            ManufacturingCommands manufacturingSystem =
+                manufacturing
+                ?? new ManufacturingCommands(
+                    game,
+                    fleetSystem,
+                    new ManufacturingQueries(game),
+                    movementSystem
+                );
+            PlanetaryControlCommands planetaryControl = new PlanetaryControlCommands(
                 game,
                 movementSystem,
                 manufacturingSystem,
-                fog
+                fog,
+                new PlanetaryControlQueries(game),
+                fogQueries
             );
-            BombardmentSystem bombardmentSystem =
+            BombardmentCommands bombardmentSystem =
                 bombardment
-                ?? new BombardmentSystem(game, provider, movementSystem, planetaryControl);
-            PlanetaryAssaultSystem planetaryAssaultSystem =
-                planetaryAssault ?? new PlanetaryAssaultSystem(game, provider, planetaryControl);
-            GalaxyMap factionView = fog.BuildFactionView(faction);
+                ?? new BombardmentCommands(
+                    game,
+                    provider,
+                    movementSystem,
+                    planetaryControl,
+                    new BombardmentQueries(game)
+                );
+            PlanetaryAssaultCommands planetaryAssaultSystem =
+                planetaryAssault
+                ?? new PlanetaryAssaultCommands(
+                    game,
+                    provider,
+                    planetaryControl,
+                    new PlanetaryAssaultQueries(game)
+                );
+            GalaxyMap factionView = fogQueries.BuildFactionView(faction);
             AIAssessment assessment = new AIAssessment(game, faction, factionView);
             AIStrategicPlan strategicPlan = new AIStrategicPlan(game, assessment);
 

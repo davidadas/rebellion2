@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
@@ -130,6 +131,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("Planet Status", info.Header);
             Assert.AreEqual("Corellia", info.Label);
             CollectionAssert.AreEqual(new[] { _planet }, info.ImageItems);
+        }
+
+        [Test]
+        public void Build_PlanetReceivingRelocatedHeadquarters_ReturnsHeadquartersEta()
+        {
+            Faction player = _game.GetFactionByOwnerInstanceID(_ownerId);
+            player.HQInstanceID = "origin";
+            player.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                DisplayName = "Origin",
+                OwnerInstanceID = _ownerId,
+                IsColonized = true,
+                IsHeadquarters = true,
+                EnergyCapacity = 1,
+                PositionX = 100,
+            };
+            _game.AttachNode(origin, _planetSector);
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _ownerId,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, origin);
+            GameSession session = TestContent.CreateGameSession(_game);
+            Assert.IsTrue(
+                session.GetService<HeadquartersCommands>().TryRelocate(headquarters, _planet)
+            );
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, _planet));
+
+            StrategyStatusRow eta = info.Rows.Single(row => row.Left == "Headquarters ETA:");
+            Assert.AreEqual(
+                $"Day {_game.CurrentTick + headquarters.Movement.TicksRemaining()}",
+                eta.Right
+            );
         }
 
         [Test]

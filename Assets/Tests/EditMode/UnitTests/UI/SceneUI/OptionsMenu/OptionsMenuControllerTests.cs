@@ -296,7 +296,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void ActiveGame_OpenAndBackToGame_PausesAndRestoresSpeed()
         {
-            GameManager gameManager = _bootstrap.GetRuntime().StartGame(CreateGame());
+            _bootstrap.GetRuntime().StartGame(CreateGame());
+            GameManager gameManager = _bootstrap.GetRuntime().GetActiveGameManager();
             gameManager.SetGameSpeed(TickSpeed.Fast);
 
             OptionsMenuView view = OpenAndRender();

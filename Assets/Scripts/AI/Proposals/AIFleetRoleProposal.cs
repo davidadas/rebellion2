@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Proposals
 {
@@ -84,7 +84,7 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            FleetSystem fleets = new FleetSystem(context.Game);
+            FleetCommands fleets = new FleetCommands(context.Game);
             foreach (CapitalShip ship in Ships)
             {
                 Fleet colonizationFleet = fleets.CreateFromCapitalShips(

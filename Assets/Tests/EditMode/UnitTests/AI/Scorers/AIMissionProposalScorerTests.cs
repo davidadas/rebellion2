@@ -11,7 +11,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Tests.AI.Helpers;
 using OfficerRating = Rebellion.Game.Units.SkillRating;
 
@@ -253,7 +253,7 @@ namespace Rebellion.Tests.AI.Scorers
             );
 
             Assert.IsTrue(proposal.CanExecute(context));
-            MissionOdds odds = context.Missions.GetMissionOdds(proposal.CreateContext());
+            MissionOdds odds = context.MissionQueries.GetMissionOdds(proposal.CreateContext());
             Assert.IsNotNull(odds);
             Assert.Less(
                 odds.ObjectiveSuccessProbability,
@@ -754,7 +754,7 @@ namespace Rebellion.Tests.AI.Scorers
             );
             game.AttachNode(favoredRegiment, favored);
             game.Config.AI.Garrison.GarrisonDivisor = 5;
-            int favoredRequirement = UprisingSystem.CalculateGarrisonRequirement(
+            int favoredRequirement = UprisingQueries.CalculateGarrisonRequirement(
                 favored,
                 rebels,
                 game.Config.AI.Garrison

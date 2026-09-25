@@ -7,7 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Scorers
 {
@@ -45,7 +45,7 @@ namespace Rebellion.AI.Scorers
             )
                 return 0;
 
-            MissionOdds odds = context.Missions.GetMissionOdds(
+            MissionOdds odds = context.MissionQueries.GetMissionOdds(
                 missionProposal.CreateContext(),
                 context.Assessment.GetMissionDetectorCandidates(missionProposal.TargetPlanet)
             );
@@ -312,7 +312,7 @@ namespace Rebellion.AI.Scorers
             int stabilityRequirement =
                 owner == null
                     ? 0
-                    : UprisingSystem.CalculateGarrisonRequirement(
+                    : UprisingQueries.CalculateGarrisonRequirement(
                         planet,
                         owner,
                         context.Game.Config.AI.Garrison

@@ -153,7 +153,6 @@ namespace Rebellion.Tests.Editor.Simulation
             };
             IntelligenceRevealedResult intelligence = new IntelligenceRevealedResult
             {
-                MissionInstanceID = mission.InstanceID,
                 Recipient = empire,
                 Observations = new List<Rebellion.SceneGraph.ISceneNode> { planet },
                 Tick = 42,

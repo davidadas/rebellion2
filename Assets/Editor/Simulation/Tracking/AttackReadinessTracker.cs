@@ -7,8 +7,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
-using Rebellion.Systems.Combat;
+using Rebellion.Simulation;
 using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
@@ -58,7 +57,7 @@ public static partial class HeadlessSimulationRunner
                 if (buildingAttackFleets.Count == 0)
                     continue;
 
-                GalaxyMap factionView = new FogOfWarSystem(game).BuildFactionView(faction);
+                GalaxyMap factionView = new FogOfWarQueries(game).BuildFactionView(faction);
                 AIAssessment assessment = new AIAssessment(game, faction, factionView);
                 AIStrategicPlan strategicPlan = new AIStrategicPlan(game, assessment);
                 AITurnContext context = new AITurnContext(
@@ -256,7 +255,7 @@ public static partial class HeadlessSimulationRunner
             int combatCount = defenders == 0 ? 0 : defenders + 1;
             GameConfig.AIFleetDeploymentConfig fleetConfig = context.Game.Config.AI.FleetDeployment;
             int minimum = Math.Max(1, fleetConfig.MinimumPlanetaryAssaultRegimentCount);
-            int stability = UprisingSystem.CalculateGarrisonRequirement(
+            int stability = UprisingQueries.CalculateGarrisonRequirement(
                 target,
                 context.Faction,
                 context.Game.Config.AI.Garrison

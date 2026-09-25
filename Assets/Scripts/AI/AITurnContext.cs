@@ -8,7 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 namespace Rebellion.AI
@@ -22,12 +22,16 @@ namespace Rebellion.AI
         public GameRoot Game { get; }
         public Faction Faction { get; }
         public IRandomNumberProvider Random { get; }
-        public MissionSystem Missions { get; }
-        public MovementSystem Movement { get; }
-        public ManufacturingSystem Manufacturing { get; }
-        public MaintenanceSystem Maintenance { get; }
-        public BombardmentSystem Bombardment { get; }
-        public PlanetaryAssaultSystem PlanetaryAssault { get; }
+        public MissionCommands Missions { get; }
+        public MissionQueries MissionQueries { get; }
+        public MovementCommands Movement { get; }
+        public MovementQueries MovementQueries { get; }
+        public ManufacturingCommands Manufacturing { get; }
+        public MaintenanceCommands Maintenance { get; }
+        public BombardmentCommands Bombardment { get; }
+        public BombardmentQueries BombardmentQueries { get; }
+        public PlanetaryAssaultCommands PlanetaryAssault { get; }
+        public PlanetaryAssaultQueries PlanetaryAssaultQueries { get; }
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
         public AIStrategicPlan StrategicPlan { get; }
@@ -81,26 +85,30 @@ namespace Rebellion.AI
         public AITurnContext(
             GameRoot game,
             Faction faction,
-            MissionSystem missions,
-            MovementSystem movement,
-            ManufacturingSystem manufacturing,
-            BombardmentSystem bombardment,
-            PlanetaryAssaultSystem planetaryAssault,
+            MissionCommands missions,
+            MovementCommands movement,
+            ManufacturingCommands manufacturing,
+            BombardmentCommands bombardment,
+            PlanetaryAssaultCommands planetaryAssault,
             IRandomNumberProvider random,
             AIAssessment assessment,
             AIStrategicPlan strategicPlan,
             GalaxyMap factionView = null,
-            MaintenanceSystem maintenance = null
+            MaintenanceCommands maintenance = null
         )
         {
             Game = game;
             Faction = faction;
             Missions = missions;
+            MissionQueries = game == null ? null : new MissionQueries(game);
             Movement = movement;
+            MovementQueries = game == null ? null : new MovementQueries(game);
             Manufacturing = manufacturing;
             Maintenance = maintenance;
             Bombardment = bombardment;
+            BombardmentQueries = game == null ? null : new BombardmentQueries(game);
             PlanetaryAssault = planetaryAssault;
+            PlanetaryAssaultQueries = game == null ? null : new PlanetaryAssaultQueries(game);
             Random = random;
             FactionView = factionView;
             Assessment = assessment;

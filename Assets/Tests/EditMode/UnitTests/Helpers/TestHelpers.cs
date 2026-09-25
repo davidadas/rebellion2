@@ -16,7 +16,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
@@ -95,7 +95,7 @@ public static class SceneTestExtensions
 
 /// <summary>
 /// Always returns the minimum value — use when tests need every action to succeed.
-/// Replaces AlwaysSucceedRNG in MissionSystemTests and DiplomacyMissionTests.
+/// Replaces AlwaysSucceedRNG in MissionCommandsTests and DiplomacyMissionTests.
 /// </summary>
 public class StubRNG : IRandomNumberProvider
 {
@@ -189,7 +189,7 @@ public sealed class MaximumRNG : IRandomNumberProvider
 
 /// <summary>
 /// Returns a fixed sequence of doubles, then falls back to 0.5.
-/// Replaces MockRNG in SpaceCombatSystemTests and UprisingSystemTests.
+/// Replaces MockRNG in SpaceCombatCommandsTests and UprisingCommandsTests.
 /// </summary>
 public class QueueRNG : IRandomNumberProvider
 {
@@ -223,7 +223,7 @@ public class QueueRNG : IRandomNumberProvider
 /// Minimal no-op Mission for use in tests.
 /// Default constructor is for tests that only need to parent an officer to a mission.
 /// Parameterized constructor is for tests that attach the mission to the scene graph.
-/// Replaces TestMission (OfficerTests, FogOfWarSystemTests) and InstantMission (MissionSystemTests).
+/// Replaces TestMission (OfficerTests, FogOfWarQueriesTests) and InstantMission (MissionCommandsTests).
 /// </summary>
 public class StubMission : Mission
 {
@@ -504,7 +504,7 @@ public static class MissionSceneBuilder
         Planet empirePlanet,
         Planet enemyPlanet,
         Officer officer,
-        FogOfWarSystem fog
+        FogOfWarCommands fog
     ) Build(GameConfig config = null)
     {
         GameRoot game = new GameRoot(config ?? TestConfig.Create());
@@ -550,7 +550,7 @@ public static class MissionSceneBuilder
         officer.MissionReturnParentInstanceID = empirePlanet.InstanceID;
         officer.MissionReturnLocationInstanceID = empirePlanet.InstanceID;
 
-        FogOfWarSystem fog = new FogOfWarSystem(game);
+        FogOfWarCommands fog = new FogOfWarCommands(game);
         return (game, empirePlanet, enemyPlanet, officer, fog);
     }
 
@@ -579,23 +579,37 @@ public static class TestSystems
     /// <param name="provider">The random number provider used by missions and uprisings.</param>
     /// <param name="movement">The movement system used by mission and control behavior.</param>
     /// <returns>A mission system with all required dependencies.</returns>
-    public static MissionSystem CreateMissionSystem(
+    public static MissionCommands CreateMissionCommands(
         GameRoot game,
         IRandomNumberProvider provider,
-        MovementSystem movement
+        MovementCommands movement
     )
     {
-        FogOfWarSystem fog = new FogOfWarSystem(game);
-        FleetSystem fleet = new FleetSystem(game);
-        ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleet, movement);
-        PlanetaryControlSystem control = new PlanetaryControlSystem(
+        FogOfWarCommands fog = new FogOfWarCommands(game);
+        FleetCommands fleet = new FleetCommands(game);
+        ManufacturingCommands manufacturing = new ManufacturingCommands(
+            game,
+            fleet,
+            new ManufacturingQueries(game),
+            movement
+        );
+        PlanetaryControlCommands control = new PlanetaryControlCommands(
             game,
             movement,
             manufacturing,
-            fog
+            fog,
+            new PlanetaryControlQueries(game),
+            new FogOfWarQueries(game)
         );
-        UprisingSystem uprising = new UprisingSystem(game, provider, control);
-        return new MissionSystem(game, provider, movement, uprising);
+        UprisingCommands uprising = new UprisingCommands(game, provider, control);
+        return new MissionCommands(
+            game,
+            provider,
+            movement,
+            uprising,
+            new MissionQueries(game),
+            new MovementQueries(game)
+        );
     }
 }
 

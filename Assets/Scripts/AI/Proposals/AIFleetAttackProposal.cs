@@ -3,7 +3,7 @@ using Rebellion.AI.Demands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Proposals
 {
@@ -172,7 +172,8 @@ namespace Rebellion.AI.Proposals
 
             List<Fleet> attackingFleets = new List<Fleet> { Fleet };
             bool canBombard =
-                context.Bombardment?.CanExecute(
+                context.Bombardment != null
+                && context.BombardmentQueries?.CanExecute(
                     attackingFleets,
                     liveTarget,
                     BombardmentType.Military
@@ -183,7 +184,7 @@ namespace Rebellion.AI.Proposals
                     > context.Assessment.GetBombardmentShieldResistance(liveTarget);
             bool shouldBombardMilitaryTargets =
                 canDamageMilitaryTargets
-                && BombardmentSystem.HasActiveMilitaryTargets(
+                && BombardmentQueries.HasActiveMilitaryTargets(
                     liveTarget,
                     liveTarget.GetOwnerInstanceID()
                 );
@@ -313,7 +314,7 @@ namespace Rebellion.AI.Proposals
                     >= GetRequiredRegimentStrength(context, liveTarget)
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, liveTarget)
                     >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent
-                && context.PlanetaryAssault.CanExecute(new List<Fleet> { Fleet }, liveTarget)
+                && context.PlanetaryAssaultQueries.CanExecute(new List<Fleet> { Fleet }, liveTarget)
                     == true;
         }
 
@@ -431,8 +432,8 @@ namespace Rebellion.AI.Proposals
         private bool HasInboundUnitThatWouldArriveAfterFleet(AITurnContext context)
         {
             if (
-                context.Movement == null
-                || !context.Movement.TryGetTransitTicks(
+                context.MovementQueries == null
+                || !context.MovementQueries.TryGetTransitTicks(
                     new List<IMovable> { Fleet },
                     TargetPlanet,
                     out int fleetTransitTicks
@@ -444,7 +445,7 @@ namespace Rebellion.AI.Proposals
             {
                 if (
                     inboundUnit.Movement != null
-                    && context.Movement.TryEstimateRetargetedTransitTicks(
+                    && context.MovementQueries.TryEstimateRetargetedTransitTicks(
                         inboundUnit,
                         TargetPlanet,
                         out int inboundTransitTicks

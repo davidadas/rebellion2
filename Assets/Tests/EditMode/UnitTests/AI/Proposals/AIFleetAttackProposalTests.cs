@@ -292,6 +292,12 @@ namespace Rebellion.Tests.AI.Fleets
                 empire.InstanceID
             );
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            foreach (
+                Planet planet in empire
+                    .GetOwnedColonizedPlanets()
+                    .Where(planet => planet != friendly)
+            )
+                planet.PositionX = -100000;
             friendly.PositionX = 0;
             target.PositionX = 10000;
             Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
@@ -319,7 +325,7 @@ namespace Rebellion.Tests.AI.Fleets
 
             proposal.Execute(context);
 
-            Assert.AreSame(friendly, fleet.GetParentOfType<Planet>());
+            Assert.AreEqual(friendly.InstanceID, fleet.GetParentOfType<Planet>()?.InstanceID);
             Assert.IsNull(fleet.Movement);
             Assert.IsNotNull(inbound.Movement);
             Assert.AreEqual(0, inbound.Movement.TicksElapsed);

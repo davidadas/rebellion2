@@ -1039,6 +1039,29 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Sets the mission ID on result types that use it for report or outcome attribution.
+        /// </summary>
+        /// <param name="result">The result to attribute to this mission.</param>
+        internal void SetResultMissionID(GameResult result)
+        {
+            switch (result)
+            {
+                case MissionCompletedResult completed:
+                    completed.MissionInstanceID = InstanceID;
+                    break;
+                case PlanetsRevealedResult revealed:
+                    revealed.MissionInstanceID = InstanceID;
+                    break;
+                case OfficerInjuredResult injured:
+                    injured.MissionInstanceID = InstanceID;
+                    break;
+                case OfficerCaptureStateResult capture:
+                    capture.MissionInstanceID = InstanceID;
+                    break;
+            }
+        }
+
+        /// <summary>
         /// Adds mission-origin metadata to interruption results before appending them.
         /// </summary>
         /// <param name="source">The results produced by the interruption.</param>
@@ -1053,7 +1076,7 @@ namespace Rebellion.Game.Missions
 
             foreach (GameResult result in source.Where(result => result != null))
             {
-                result.MissionInstanceID = InstanceID;
+                SetResultMissionID(result);
                 if (string.IsNullOrEmpty(result.SourceEventInstanceID))
                     result.SourceEventInstanceID = SourceEventInstanceID;
                 destination.Add(result);

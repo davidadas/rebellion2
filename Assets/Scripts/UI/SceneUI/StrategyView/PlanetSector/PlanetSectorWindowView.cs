@@ -272,20 +272,95 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     )
     {
         preview = null;
-        if (element?.Icon != PlanetIcon.Fleet)
-            return false;
+        return element?.Icon == PlanetIcon.Fleet
+            && TryGetDragPreview(
+                element.PlanetIndex,
+                windowX,
+                windowY,
+                sourceX,
+                sourceY,
+                (PlanetSectorPlanetView view, out Texture texture, out RectTransform rect) =>
+                    view.TryGetFleetDragImage(out texture, out rect),
+                out preview
+            );
+    }
 
-        PlanetSectorPlanetView view = GetActivePlanetView(element.PlanetIndex);
-        if (view == null || !view.TryGetFleetDragImage(out Texture texture, out RectTransform rect))
+    /// <summary>
+    /// Tries to create a mobile-headquarters drag preview from a rendered planet overlay.
+    /// </summary>
+    /// <param name="element">The selected headquarters presentation element.</param>
+    /// <param name="windowX">The source-space horizontal window position.</param>
+    /// <param name="windowY">The source-space vertical window position.</param>
+    /// <param name="sourceX">The source-space horizontal pointer position.</param>
+    /// <param name="sourceY">The source-space vertical pointer position.</param>
+    /// <param name="preview">Receives the drag preview.</param>
+    /// <returns>True when a visible headquarters overlay produced a preview.</returns>
+    internal bool TryGetHeadquartersDragPreview(
+        PlanetSectorWindowElement element,
+        int windowX,
+        int windowY,
+        int sourceX,
+        int sourceY,
+        out DragPreview preview
+    )
+    {
+        preview = null;
+        return element?.PlanetImage == true
+            && TryGetDragPreview(
+                element.PlanetIndex,
+                windowX,
+                windowY,
+                sourceX,
+                sourceY,
+                (PlanetSectorPlanetView view, out Texture texture, out RectTransform rect) =>
+                    view.TryGetHeadquartersDragImage(out texture, out rect),
+                out preview
+            );
+    }
+
+    private delegate bool DragImageResolver(
+        PlanetSectorPlanetView view,
+        out Texture texture,
+        out RectTransform rect
+    );
+
+    /// <summary>
+    /// Creates a drag preview from one rendered child image.
+    /// </summary>
+    /// <param name="planetIndex">The source planet's render-data index.</param>
+    /// <param name="windowX">The window's source-space horizontal offset.</param>
+    /// <param name="windowY">The window's source-space vertical offset.</param>
+    /// <param name="sourceX">The pointer's source-space horizontal position.</param>
+    /// <param name="sourceY">The pointer's source-space vertical position.</param>
+    /// <param name="tryGetImage">The resolver for the rendered child image.</param>
+    /// <param name="preview">Receives the created drag preview.</param>
+    /// <returns>True when a drag preview was created.</returns>
+    private bool TryGetDragPreview(
+        int planetIndex,
+        int windowX,
+        int windowY,
+        int sourceX,
+        int sourceY,
+        DragImageResolver tryGetImage,
+        out DragPreview preview
+    )
+    {
+        preview = null;
+        PlanetSectorPlanetView view = GetActivePlanetView(planetIndex);
+        if (
+            view == null
+            || tryGetImage == null
+            || !tryGetImage(view, out Texture texture, out RectTransform rect)
+        )
             return false;
 
         RectInt planetRect = UILayout.GetSourceRect(view.transform as RectTransform);
-        RectInt iconRect = UILayout.GetSourceRect(rect);
+        RectInt imageRect = UILayout.GetSourceRect(rect);
         RectInt sourceRect = new RectInt(
-            windowX + planetRect.x + iconRect.x,
-            windowY + planetRect.y + iconRect.y,
-            iconRect.width,
-            iconRect.height
+            windowX + planetRect.x + imageRect.x,
+            windowY + planetRect.y + imageRect.y,
+            imageRect.width,
+            imageRect.height
         );
         preview = UILayout.CreateDragPreview(texture, sourceRect, sourceX, sourceY);
         return preview != null;

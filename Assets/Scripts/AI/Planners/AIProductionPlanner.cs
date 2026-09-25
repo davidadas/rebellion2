@@ -8,7 +8,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Planners
@@ -1811,13 +1811,13 @@ namespace Rebellion.AI.Planners
                 return cachedTicks;
 
             int manufacturingTicks =
-                ManufacturingSystem.EstimateAppendedCompletionTicks(producer, product, quantity)
+                ManufacturingQueries.EstimateAppendedCompletionTicks(producer, product, quantity)
                 ?? int.MaxValue;
-            if (manufacturingTicks == int.MaxValue || context.Movement == null)
+            if (manufacturingTicks == int.MaxValue || context.MovementQueries == null)
                 return CacheReinforcementArrival(key, int.MaxValue);
 
             if (
-                !context.Movement.TryEstimateManufacturedTransitTicks(
+                !context.MovementQueries.TryEstimateManufacturedTransitTicks(
                     movable,
                     producer,
                     destinationFleet,

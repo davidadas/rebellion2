@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Rebellion.AI;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
@@ -12,6 +13,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
@@ -137,9 +139,8 @@ public static partial class HeadlessSimulationRunner
                 );
             }
 
-            GameManager manager = new GameManager(game, contentPack.GameData);
-            if (!string.IsNullOrWhiteSpace(options.InputSaveFileName))
-                manager.ReconcileLoadedState();
+            GameSession session = new GameSession(game, contentPack.GameData);
+            AIDirector aiDirector = session.GetService<AIDirector>();
             ManufacturingIdleTracker idleTracker = new ManufacturingIdleTracker();
             ManufacturedUnitTracker manufacturedUnitTracker = new ManufacturedUnitTracker();
             FleetHistoryTracker fleetHistoryTracker = new FleetHistoryTracker();
@@ -176,16 +177,17 @@ public static partial class HeadlessSimulationRunner
             List<(long Elapsed, int Tick, int Count, string ProductTypeId)> manufactureExecutions =
                 new();
             VictoryResult victory = null;
-            manager.ResultsResolved += planetaryAssaultTracker.Record;
-            manager.ResultsResolved += garrisonRemovalBombardmentTracker.Record;
-            manager.ResultsResolved += spaceCombatCalibrationTracker.Record;
-            manager.VictoriesResolved += results => victory ??= results.FirstOrDefault();
-            manager.ResultsResolved += missionOutcomeTracker.Record;
-            manager.ResultsResolved += results => manufacturedUnitTracker.Record(game, results);
-            manager.ResultsResolved += specialForcesLifecycleTracker.Record;
-            manager.AIFactionTurnStarted += faction =>
+            session.Pipeline.ResultsResolved += planetaryAssaultTracker.Record;
+            session.Pipeline.ResultsResolved += garrisonRemovalBombardmentTracker.Record;
+            session.Pipeline.ResultsResolved += spaceCombatCalibrationTracker.Record;
+            session.Pipeline.VictoriesResolved += results => victory ??= results.FirstOrDefault();
+            session.Pipeline.ResultsResolved += missionOutcomeTracker.Record;
+            session.Pipeline.ResultsResolved += results =>
+                manufacturedUnitTracker.Record(game, results);
+            session.Pipeline.ResultsResolved += specialForcesLifecycleTracker.Record;
+            aiDirector.FactionTurnStarted += faction =>
                 aiFactionTurnStarts[faction.InstanceID] = Stopwatch.GetTimestamp();
-            manager.AIFactionTurnCompleted += faction =>
+            aiDirector.FactionTurnCompleted += faction =>
             {
                 if (!aiFactionTurnStarts.Remove(faction.InstanceID, out long startedAt))
                     return;
@@ -194,9 +196,9 @@ public static partial class HeadlessSimulationRunner
                 aiFactionTurnSamples.Add(elapsed);
                 slowAiFactionTurns.Add((elapsed, faction.InstanceID, game.CurrentTick));
             };
-            manager.AIFactionTurnStepStarted += (faction, stepName) =>
+            aiDirector.FactionTurnStepStarted += (faction, stepName) =>
                 aiFactionStepStarts[(faction.InstanceID, stepName)] = Stopwatch.GetTimestamp();
-            manager.AIFactionTurnStepCompleted += (faction, stepName) =>
+            aiDirector.FactionTurnStepCompleted += (faction, stepName) =>
             {
                 if (!aiFactionStepStarts.Remove((faction.InstanceID, stepName), out long startedAt))
                     return;
@@ -232,7 +234,7 @@ public static partial class HeadlessSimulationRunner
                     LogToFile(logPath, $"[HeadlessSim] tick {i}");
                 long startTimestamp = Stopwatch.GetTimestamp();
                 ProcessTickIncrementally(
-                    manager,
+                    session.Tick,
                     gameProcessingStepSamples,
                     aiWorkUnitSamples,
                     slowMissionPlans,
@@ -520,7 +522,7 @@ public static partial class HeadlessSimulationRunner
     /// <summary>
     /// Drains one incremental game tick while recording each scheduled step.
     /// </summary>
-    /// <param name="manager">The game manager processing the tick.</param>
+    /// <param name="tickProcessor">The game tick processor advancing the simulation.</param>
     /// <param name="stepSamples">The collection receiving step durations.</param>
     /// <param name="aiWorkUnitSamples">
     /// The optional collection receiving AI planner and proposal durations keyed by runtime type.
@@ -529,7 +531,7 @@ public static partial class HeadlessSimulationRunner
     /// <param name="manufactureExecutions">The collection receiving manufacturing execution samples.</param>
     /// <param name="currentTick">The tick being processed.</param>
     private static void ProcessTickIncrementally(
-        GameManager manager,
+        GameTickProcessor tickProcessor,
         ICollection<long> stepSamples,
         IDictionary<string, List<long>> aiWorkUnitSamples = null,
         ICollection<(
@@ -548,7 +550,7 @@ public static partial class HeadlessSimulationRunner
         int currentTick = 0
     )
     {
-        IEnumerator tick = manager.ProcessTickIncrementally();
+        IEnumerator tick = tickProcessor.ProcessTickIncrementally();
         try
         {
             bool hasNext;

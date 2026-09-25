@@ -8,7 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 public static partial class HeadlessSimulationRunner
 {
@@ -57,8 +57,7 @@ public static partial class HeadlessSimulationRunner
             }
             game.Summary.PlayerFactionID = commander.InstanceID;
 
-            GameManager manager = new GameManager(game, contentPack.GameData);
-            manager.ReconcileLoadedState();
+            GameSession manager = new GameSession(game, contentPack.GameData);
             List<CommanderCommandResult> commandResults = ApplyCommanderCommands(
                 manager,
                 commander,
@@ -67,7 +66,7 @@ public static partial class HeadlessSimulationRunner
             );
             List<long> ignoredStepSamples = new List<long>();
             for (int tick = 0; tick < advanceTicks; tick++)
-                ProcessTickIncrementally(manager, ignoredStepSamples);
+                ProcessTickIncrementally(manager.Tick, ignoredStepSamples);
 
             saveManager.SaveGameData(
                 game,
@@ -129,7 +128,7 @@ public static partial class HeadlessSimulationRunner
     /// <param name="commandPath">The commandPath value.</param>
     /// <returns>The operation result.</returns>
     private static List<CommanderCommandResult> ApplyCommanderCommands(
-        GameManager manager,
+        GameSession manager,
         Faction commander,
         GameDataCatalog gameData,
         string commandPath
@@ -156,7 +155,7 @@ public static partial class HeadlessSimulationRunner
     /// <param name="command">The command value.</param>
     /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyCommanderCommand(
-        GameManager manager,
+        GameSession manager,
         Faction commander,
         GameDataCatalog gameData,
         CommanderCommand command
@@ -173,12 +172,15 @@ public static partial class HeadlessSimulationRunner
             return ApplyBombardmentCommand(manager, commander, command);
         if (string.Equals(command.Type, "ResolveCombat", StringComparison.OrdinalIgnoreCase))
         {
-            return manager.TryResolveCombat(autoResolve: true)
-                ? CommanderCommandResult.Accepted(command)
-                : CommanderCommandResult.Rejected(
+            SpaceCombatCommands combat = manager.GetService<SpaceCombatCommands>();
+            if (!combat.TryGetPendingCombat(out _))
+                return CommanderCommandResult.Rejected(
                     command,
                     "No player combat is awaiting resolution."
                 );
+
+            manager.Pipeline.ProcessImmediate(combat.ResolvePending(autoResolve: true));
+            return CommanderCommandResult.Accepted(command);
         }
         if (string.Equals(command.Type, "LoadRegiments", StringComparison.OrdinalIgnoreCase))
             return ApplyLoadRegimentsCommand(manager, commander, command);
@@ -187,7 +189,7 @@ public static partial class HeadlessSimulationRunner
         if (!string.Equals(command.Type, "Move", StringComparison.OrdinalIgnoreCase))
             return CommanderCommandResult.Rejected(command, "Unsupported command type.");
 
-        GameRoot game = manager.GetGame();
+        GameRoot game = manager.Game;
         ContainerNode destination = game.GetSceneNodeByInstanceID<ContainerNode>(
             command.DestinationId
         );
@@ -201,7 +203,9 @@ public static partial class HeadlessSimulationRunner
         if (units.Any(unit => unit.GetOwnerInstanceID() != commander.InstanceID))
             return CommanderCommandResult.Rejected(command, "Unit is not commander-owned.");
 
-        return manager.TryRequestMove(units, destination, commander.InstanceID)
+        return manager
+            .GetService<MovementCommands>()
+            .TryRequestMove(units, destination, commander.InstanceID)
             ? CommanderCommandResult.Accepted(command)
             : CommanderCommandResult.Rejected(command, "Movement system rejected the command.");
     }
@@ -214,12 +218,12 @@ public static partial class HeadlessSimulationRunner
     /// <param name="command">The command value.</param>
     /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyUnloadRegimentsCommand(
-        GameManager manager,
+        GameSession manager,
         Faction commander,
         CommanderCommand command
     )
     {
-        GameRoot game = manager.GetGame();
+        GameRoot game = manager.Game;
         Fleet source = game.GetSceneNodeByInstanceID<Fleet>(command.ProducerId);
         Planet destination = game.GetSceneNodeByInstanceID<Planet>(command.DestinationId);
         if (
@@ -243,7 +247,9 @@ public static partial class HeadlessSimulationRunner
             .Take(Math.Max(1, command.Count))
             .Cast<ISceneNode>()
             .ToList();
-        return manager.TryRequestMove(regiments, destination, commander.InstanceID)
+        return manager
+            .GetService<MovementCommands>()
+            .TryRequestMove(regiments, destination, commander.InstanceID)
             ? CommanderCommandResult.Accepted(command)
             : CommanderCommandResult.Rejected(
                 command,
@@ -259,12 +265,12 @@ public static partial class HeadlessSimulationRunner
     /// <param name="command">The command value.</param>
     /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyLoadRegimentsCommand(
-        GameManager manager,
+        GameSession manager,
         Faction commander,
         CommanderCommand command
     )
     {
-        GameRoot game = manager.GetGame();
+        GameRoot game = manager.Game;
         Planet source = game.GetSceneNodeByInstanceID<Planet>(command.ProducerId);
         Fleet destination = game.GetSceneNodeByInstanceID<Fleet>(command.DestinationId);
         if (
@@ -289,7 +295,9 @@ public static partial class HeadlessSimulationRunner
             .Take(Math.Max(1, command.Count))
             .Cast<ISceneNode>()
             .ToList();
-        return manager.TryRequestMove(regiments, destination, commander.InstanceID)
+        return manager
+            .GetService<MovementCommands>()
+            .TryRequestMove(regiments, destination, commander.InstanceID)
             ? CommanderCommandResult.Accepted(command)
             : CommanderCommandResult.Rejected(
                 command,
@@ -306,24 +314,26 @@ public static partial class HeadlessSimulationRunner
     /// <param name="command">The command value.</param>
     /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyManufacturingCommand(
-        GameManager manager,
+        GameSession manager,
         Faction commander,
         GameDataCatalog gameData,
         CommanderCommand command
     )
     {
-        GameRoot game = manager.GetGame();
+        GameRoot game = manager.Game;
         Planet producer = game.GetSceneNodeByInstanceID<Planet>(command.ProducerId);
         ISceneNode destination = game.GetSceneNodeByInstanceID<ISceneNode>(command.DestinationId);
         IManufacturable template = GetManufacturingTemplates(gameData)
             .FirstOrDefault(candidate => candidate.TypeID == command.TemplateId);
-        bool accepted = manager.TryStartManufacturing(
-            producer,
-            template,
-            destination,
-            Math.Max(1, command.Count),
-            commander.InstanceID
-        );
+        bool accepted = manager
+            .GetService<ManufacturingCommands>()
+            .StartManufacturing(
+                producer,
+                template,
+                destination,
+                Math.Max(1, command.Count),
+                commander.InstanceID
+            );
         return accepted
             ? CommanderCommandResult.Accepted(command)
             : CommanderCommandResult.Rejected(
@@ -340,19 +350,19 @@ public static partial class HeadlessSimulationRunner
     /// <param name="command">The command value.</param>
     /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyAssaultCommand(
-        GameManager manager,
+        GameSession manager,
         Faction commander,
         CommanderCommand command
     )
     {
         ResolveCombatCommand(
-            manager.GetGame(),
+            manager.Game,
             commander,
             command,
             out List<Fleet> fleets,
             out Planet target
         );
-        return manager.TryPlanetaryAssault(fleets, target) != null
+        return manager.GetService<PlanetaryAssaultCommands>().TryExecute(fleets, target) != null
             ? CommanderCommandResult.Accepted(command)
             : CommanderCommandResult.Rejected(
                 command,
@@ -368,13 +378,13 @@ public static partial class HeadlessSimulationRunner
     /// <param name="command">The command value.</param>
     /// <returns>The operation result.</returns>
     private static CommanderCommandResult ApplyBombardmentCommand(
-        GameManager manager,
+        GameSession manager,
         Faction commander,
         CommanderCommand command
     )
     {
         ResolveCombatCommand(
-            manager.GetGame(),
+            manager.Game,
             commander,
             command,
             out List<Fleet> fleets,
@@ -382,7 +392,7 @@ public static partial class HeadlessSimulationRunner
         );
         if (!Enum.TryParse(command.BombardmentType, true, out BombardmentType type))
             return CommanderCommandResult.Rejected(command, "Unknown bombardment type.");
-        return manager.TryBombard(fleets, target, type) != null
+        return manager.GetService<BombardmentCommands>().TryExecute(fleets, target, type) != null
             ? CommanderCommandResult.Accepted(command)
             : CommanderCommandResult.Rejected(command, "Bombardment system rejected the command.");
     }
@@ -435,16 +445,16 @@ public static partial class HeadlessSimulationRunner
     /// <param name="commandResults">The commandResults value.</param>
     private static void WriteCommanderState(
         string outputPath,
-        GameManager manager,
+        GameSession manager,
         Faction commander,
         GameDataCatalog gameData,
         List<CommanderCommandResult> commandResults
     )
     {
-        GalaxyMap view = manager.GetFogOfWarSystem().BuildFactionView(commander);
+        GalaxyMap view = manager.GetService<FogOfWarQueries>().BuildFactionView(commander);
         CommanderState state = new CommanderState
         {
-            Tick = manager.GetCurrentTick(),
+            Tick = manager.Game.CurrentTick,
             FactionId = commander.InstanceID,
             RawMaterials = commander.RawMaterialStockpile,
             RefinedMaterials = commander.RefinedMaterialStockpile,
@@ -504,8 +514,7 @@ public static partial class HeadlessSimulationRunner
                 .OrderBy(planet => planet.Id, StringComparer.Ordinal)
                 .ToList(),
             Fleets = manager
-                .GetGame()
-                .GetSceneNodesByOwnerInstanceID<Fleet>(commander.InstanceID)
+                .Game.GetSceneNodesByOwnerInstanceID<Fleet>(commander.InstanceID)
                 .Select(fleet => new CommanderFleet
                 {
                     Id = fleet.InstanceID,
@@ -520,9 +529,9 @@ public static partial class HeadlessSimulationRunner
                         ),
                     Starfighters = fleet.GetStarfighters().Count(),
                     CombatValue = fleet.GetCombatValue(),
-                    Bombardment = BombardmentSystem.GetBombardmentStrength(
+                    Bombardment = BombardmentQueries.GetBombardmentStrength(
                         new[] { fleet },
-                        manager.GetGame().Config.Combat.Bombardment
+                        manager.Game.Config.Combat.Bombardment
                     ),
                     Moving = fleet.Movement != null,
                 })

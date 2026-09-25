@@ -12,7 +12,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 public static partial class HeadlessSimulationRunner
@@ -298,11 +298,22 @@ public static partial class HeadlessSimulationRunner
     )
     {
         Faction faction = game.GetFactionByOwnerInstanceID(summary.FactionId);
-        FleetSystem fleetSystem = new FleetSystem(game);
-        FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
-        MovementSystem movement = new MovementSystem(game, fogOfWar, fleetSystem);
-        ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleetSystem);
-        GalaxyMap factionView = fogOfWar.BuildFactionView(faction);
+        FleetCommands fleetSystem = new FleetCommands(game);
+        FogOfWarQueries fogOfWarQueries = new FogOfWarQueries(game);
+        FogOfWarCommands fogOfWar = new FogOfWarCommands(game, fogOfWarQueries);
+        MovementCommands movement = new MovementCommands(
+            game,
+            fogOfWar,
+            fleetSystem,
+            fogOfWarQueries,
+            new MovementQueries(game)
+        );
+        ManufacturingCommands manufacturing = new ManufacturingCommands(
+            game,
+            fleetSystem,
+            new ManufacturingQueries(game)
+        );
+        GalaxyMap factionView = fogOfWarQueries.BuildFactionView(faction);
         AIAssessment assessment = new AIAssessment(game, faction, factionView);
         AIStrategicPlan strategicPlan = new AIStrategicPlan(game, assessment);
         AITurnContext context = new AITurnContext(

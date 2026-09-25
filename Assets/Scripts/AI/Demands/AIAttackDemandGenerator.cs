@@ -5,8 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
-using Rebellion.Systems.Combat;
+using Rebellion.Simulation;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Demands
@@ -177,7 +176,7 @@ namespace Rebellion.AI.Demands
                 1,
                 config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount
             );
-            int stabilityRequirement = UprisingSystem.CalculateGarrisonRequirement(
+            int stabilityRequirement = UprisingQueries.CalculateGarrisonRequirement(
                 planet,
                 faction,
                 config.AI.Garrison

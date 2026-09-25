@@ -10,7 +10,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Proposals
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.AI.Proposals
                 game,
                 empire,
                 random: random,
-                maintenance: new MaintenanceSystem(game, random, new FleetSystem(game))
+                maintenance: new MaintenanceCommands(game, random, new FleetCommands(game))
             );
         }
     }

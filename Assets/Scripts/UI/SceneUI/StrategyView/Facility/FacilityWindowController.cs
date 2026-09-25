@@ -5,7 +5,8 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
+using Rebellion.Util.DependencyInjection;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -42,8 +43,7 @@ public sealed class FacilityWindowController
 {
     private readonly HashSet<FacilityWindowView> boundViews = new HashSet<FacilityWindowView>();
     private readonly ConstructionWindowController constructionWindowController;
-    private readonly Func<GameRoot> getGame;
-    private readonly Func<ManufacturingSystem> getManufacturingSystem;
+    private readonly IServiceLocator services;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
     private readonly Action markDirty;
@@ -61,8 +61,7 @@ public sealed class FacilityWindowController
     /// <summary>
     /// Creates a facility feature controller.
     /// </summary>
-    /// <param name="getGame">Returns the active game.</param>
-    /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
+    /// <param name="services">Resolves the active game's manufacturing commands and state.</param>
     /// <param name="constructionWindowController">The construction sessions affected by destination changes.</param>
     /// <param name="getUIContext">Returns the active strategy presentation context.</param>
     /// <param name="targetingController">The strategy targeting controller.</param>
@@ -72,8 +71,7 @@ public sealed class FacilityWindowController
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public FacilityWindowController(
-        Func<GameRoot> getGame,
-        Func<ManufacturingSystem> getManufacturingSystem,
+        IServiceLocator services,
         ConstructionWindowController constructionWindowController,
         Func<UIContext> getUIContext,
         TargetingController targetingController,
@@ -84,10 +82,7 @@ public sealed class FacilityWindowController
         Func<SelectionModifierState> getSelectionModifiers = null
     )
     {
-        this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getManufacturingSystem =
-            getManufacturingSystem
-            ?? throw new ArgumentNullException(nameof(getManufacturingSystem));
+        this.services = services ?? throw new ArgumentNullException(nameof(services));
         this.constructionWindowController =
             constructionWindowController
             ?? throw new ArgumentNullException(nameof(constructionWindowController));
@@ -294,7 +289,7 @@ public sealed class FacilityWindowController
         List<StrategyMenuCommand> commands = CreateContextCommands(
             session.Planet?.Planet,
             session,
-            getGame()?.GetPlayerFaction()?.InstanceID
+            services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID
         );
         if (commands.Count == 0)
             return false;
@@ -381,7 +376,7 @@ public sealed class FacilityWindowController
             return;
 
         Planet planet = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
-        string playerFactionId = getGame()?.GetPlayerFaction()?.InstanceID;
+        string playerFactionId = services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID;
         if (
             planet == null
             || string.IsNullOrEmpty(playerFactionId)
@@ -766,8 +761,8 @@ public sealed class FacilityWindowController
             destinationItemId = null;
 
         Planet producer = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
-        string playerFactionId = getGame()?.GetPlayerFaction()?.InstanceID;
-        ManufacturingSystem manufacturingSystem = getManufacturingSystem();
+        string playerFactionId = services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID;
+        ManufacturingCommands manufacturingSystem = services.GetService<ManufacturingCommands>();
         if (
             destination == null
             || producer == null
@@ -1118,7 +1113,7 @@ public sealed class FacilityWindowController
     {
         return string.IsNullOrEmpty(instanceId)
             ? null
-            : getGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
+            : services.GetService<GameRoot>()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
     }
 
     /// <summary>
@@ -1130,7 +1125,7 @@ public sealed class FacilityWindowController
     {
         return string.IsNullOrEmpty(planetId)
             ? null
-            : getGame()?.GetSceneNodeByInstanceID<Planet>(planetId);
+            : services.GetService<GameRoot>()?.GetSceneNodeByInstanceID<Planet>(planetId);
     }
 
     /// <summary>

@@ -6,7 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Demands
@@ -504,7 +504,7 @@ namespace Rebellion.AI.Demands
         /// <returns>The target regiment count.</returns>
         private static int GetGarrisonCount(AITurnContext context, Planet planet)
         {
-            int stabilityTarget = UprisingSystem.CalculateGarrisonRequirement(
+            int stabilityTarget = UprisingQueries.CalculateGarrisonRequirement(
                 planet,
                 context.Faction,
                 context.Game.Config.AI.Garrison

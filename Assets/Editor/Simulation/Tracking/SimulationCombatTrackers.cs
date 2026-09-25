@@ -5,7 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 public static partial class HeadlessSimulationRunner
 {
@@ -451,7 +451,7 @@ public static partial class HeadlessSimulationRunner
             if (!result.Success || result.Planet == null || result.AttackingFaction == null)
                 return 0;
 
-            int requirement = UprisingSystem.CalculateGarrisonRequirement(
+            int requirement = UprisingQueries.CalculateGarrisonRequirement(
                 result.Planet,
                 result.AttackingFaction,
                 _game.Config.AI.Garrison

@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -29,7 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private int _dirtyCount;
         private GalaxyMapPlanet _destination;
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _session;
         private int _invalidOrderRejectionCount;
         private GalaxyMapPlanet _missionTarget;
         private MissionCreateWindowController _missionCreateController;
@@ -75,7 +75,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             };
             _game.AttachNode(_officer, origin);
             _game.AttachNode(_specialForces, origin);
-            _gameManager = TestContent.CreateGameManager(_game);
+            _session = TestContent.CreateGameSession(_game);
             _uiContext = TestContent.CreateUIContext(
                 _game,
                 TestContent.CreateThemeLibrary(),
@@ -86,8 +86,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _sourceWindow = CreateSourceWindow();
             _missionCreateController = new MissionCreateWindowController(
-                () => _game,
-                () => _gameManager.MissionSystem,
+                _session,
                 () => _uiContext,
                 _ => { },
                 _windowLayer,
@@ -109,16 +108,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _controller = new StrategyWindowCommandController(
                 _missionCreateController,
                 confirmController,
-                () => _gameManager.GetGame(),
-                () => _gameManager.MovementSystem,
-                () => _gameManager.MaintenanceSystem,
-                () => _gameManager.ManufacturingSystem,
-                () => _gameManager.PersonnelSystem,
+                _session,
                 _ => _playedSfxCount++,
                 window => _clearedWindow = window,
                 () => _rebuildCount++,
                 () => _dirtyCount++,
-                null,
                 () => _invalidOrderRejectionCount++,
                 () => _transitRejectionCount++,
                 () => _underConstructionRejectionCount++
@@ -151,11 +145,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 new StrategyWindowCommandController(
                     null,
                     confirmController,
-                    () => _gameManager.GetGame(),
-                    () => _gameManager.MovementSystem,
-                    () => _gameManager.MaintenanceSystem,
-                    () => _gameManager.ManufacturingSystem,
-                    () => _gameManager.PersonnelSystem,
+                    _session,
                     _ => { },
                     _ => { },
                     () => { },
@@ -192,6 +182,42 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreSame(_sourceWindow, _clearedWindow);
             Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void TryExecuteMove_MobileHeadquarters_UsesHeadquartersRelocationRules()
+        {
+            Planet origin = _officer.GetParentOfType<Planet>();
+            Planet destination = _destination.Planet;
+            origin.EnergyCapacity = 1;
+            destination.EnergyCapacity = 1;
+            origin.IsHeadquarters = true;
+            Faction player = _game.GetFactionByOwnerInstanceID(_playerFactionId);
+            player.HQInstanceID = origin.InstanceID;
+            player.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, origin);
+
+            bool moved = _controller.TryExecuteMove(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                new ISceneNode[] { headquarters }
+            );
+
+            Assert.IsTrue(moved);
+            Assert.IsNotNull(headquarters.Movement);
+            Assert.IsFalse(origin.IsHeadquarters);
+            Assert.IsNull(player.HQInstanceID);
+            Assert.AreSame(_sourceWindow, _clearedWindow);
         }
 
         [Test]
@@ -461,6 +487,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreSame(_sourceWindow, _clearedWindow);
             Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void OpenRetireConfirmWindow_OfficerCapturedBeforeConfirmation_PreservesOfficer()
+        {
+            _controller.OpenRetireConfirmWindow(_sourceWindow, new ISceneNode[] { _officer });
+            _officer.IsCaptured = true;
+
+            ConfirmOpenDialog();
+
+            Assert.IsTrue(_officer.IsActive());
+            Assert.IsFalse(_officer.IsRetired);
+            Assert.AreEqual(0, _rebuildCount);
+        }
+
+        [Test]
+        public void OpenRetireConfirmWindow_GameReplacedBeforeConfirmation_RetiresReplacementOfficer()
+        {
+            _controller.OpenRetireConfirmWindow(_sourceWindow, new ISceneNode[] { _officer });
+            GameRoot replacement = CreateGame(out Planet origin, out _, out _);
+            Officer replacementOfficer = new Officer
+            {
+                InstanceID = _officer.InstanceID,
+                OwnerInstanceID = _playerFactionId,
+            };
+            replacement.AttachNode(replacementOfficer, origin);
+            _session.ReplaceGame(replacement);
+
+            ConfirmOpenDialog();
+
+            Assert.IsTrue(replacementOfficer.IsRetired);
+            Assert.IsFalse(_officer.IsRetired);
         }
 
         /// <summary>

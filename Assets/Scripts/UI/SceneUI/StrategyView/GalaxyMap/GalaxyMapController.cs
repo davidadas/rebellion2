@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -107,21 +109,26 @@ public sealed class GalaxyMapController
     /// <summary>
     /// Rebuilds the faction-filtered galaxy snapshot used by map and window projection.
     /// </summary>
-    /// <param name="gameManager">The active game manager.</param>
-    public void RebuildSnapshot(GameManager gameManager)
+    /// <param name="playerFaction">The player faction whose view is projected.</param>
+    /// <param name="queries">Fog-of-war queries used to build the permitted view.</param>
+    /// <param name="game">The authoritative game used only when global-view mode is enabled.</param>
+    public void RebuildSnapshot(
+        Faction playerFaction,
+        FogOfWarQueries queries,
+        GameRoot game = null
+    )
     {
-        if (gameManager == null)
-            throw new ArgumentNullException(nameof(gameManager));
+        if (queries == null)
+            throw new ArgumentNullException(nameof(queries));
 
         sectors.Clear();
-        Faction playerFaction = gameManager.GetPlayerFaction();
         playerFactionId = playerFaction?.InstanceID ?? string.Empty;
         visibleGalaxyMap = null;
         if (playerFaction != null)
         {
             visibleGalaxyMap = globalViewEnabled
-                ? gameManager.GetGame().Galaxy
-                : gameManager.GetFogOfWarSystem().BuildFactionView(playerFaction);
+                ? game?.Galaxy ?? queries.BuildFactionView(playerFaction)
+                : queries.BuildFactionView(playerFaction);
             IReadOnlyList<PlanetSector> visibleSectors =
                 visibleGalaxyMap?.GetChildren<PlanetSector>();
             foreach (PlanetSector sector in visibleSectors ?? Array.Empty<PlanetSector>())

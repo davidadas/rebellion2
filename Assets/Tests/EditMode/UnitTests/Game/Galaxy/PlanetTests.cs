@@ -710,6 +710,16 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void GetManufacturingQueue_NoItems_ReturnsEmptyDictionary()
+        {
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                _planet.GetManufacturingQueue();
+
+            Assert.IsNotNull(queue);
+            Assert.IsEmpty(queue);
+        }
+
+        [Test]
         public void GetManufacturingQueue_EmptyQueue_ReturnsEmptyDictionary()
         {
             Dictionary<ManufacturingType, List<IManufacturable>> queue =

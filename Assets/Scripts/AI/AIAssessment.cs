@@ -8,8 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
-using Rebellion.Systems.Combat;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI
 {
@@ -1494,8 +1493,8 @@ namespace Rebellion.AI
         /// <returns>The bombardment strength absorbed by the shields.</returns>
         public int GetBombardmentShieldResistance(Planet planet)
         {
-            return BombardmentSystem.GetBombardmentShieldResistance(
-                BombardmentSystem.GetBombardmentShieldStrength(planet),
+            return BombardmentQueries.GetBombardmentShieldResistance(
+                BombardmentQueries.GetBombardmentShieldStrength(planet),
                 _game.Config.Combat.Bombardment
             );
         }
@@ -1514,7 +1513,7 @@ namespace Rebellion.AI
                 _activeHostileMilitaryTargets,
                 targetPlanet.InstanceID,
                 () =>
-                    BombardmentSystem.HasActiveMilitaryTargets(
+                    BombardmentQueries.HasActiveMilitaryTargets(
                         targetPlanet,
                         targetPlanet.GetOwnerInstanceID()
                     )
@@ -1689,7 +1688,7 @@ namespace Rebellion.AI
                 _fleetBombardmentStrengths,
                 fleet.InstanceID,
                 () =>
-                    BombardmentSystem.GetBombardmentStrength(
+                    BombardmentQueries.GetBombardmentStrength(
                         new[] { fleet },
                         _game.Config.Combat.Bombardment
                     )
@@ -1710,7 +1709,7 @@ namespace Rebellion.AI
                 _projectedFleetBombardmentStrengths,
                 fleet.InstanceID,
                 () =>
-                    BombardmentSystem.GetProjectedBombardmentStrength(
+                    BombardmentQueries.GetProjectedBombardmentStrength(
                         fleet,
                         _game.Config.Combat.Bombardment
                     )
@@ -1728,7 +1727,7 @@ namespace Rebellion.AI
             if (fleet == null || capitalShip == null || _game?.Config == null)
                 return 0;
 
-            return BombardmentSystem.GetProjectedCapitalShipBombardmentStrength(
+            return BombardmentQueries.GetProjectedCapitalShipBombardmentStrength(
                 fleet,
                 capitalShip,
                 _game.Config.Combat.Bombardment

@@ -13,7 +13,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Tests.AI.Helpers;
 using Rebellion.Util.Mathematics;
 
@@ -802,7 +802,7 @@ namespace Rebellion.Tests.AI.Demands
                     && item.DestinationPlanet == planet
                 );
 
-            int stabilityRequirement = UprisingSystem.CalculateGarrisonRequirement(
+            int stabilityRequirement = UprisingQueries.CalculateGarrisonRequirement(
                 planet,
                 empire,
                 game.Config.AI.Garrison

@@ -261,7 +261,7 @@ namespace Rebellion.AI.Selectors
                 double? personnelLossProbability = mission.PersonnelLossProbability;
                 if (!personnelLossProbability.HasValue)
                 {
-                    MissionOdds odds = context.Missions.GetMissionOdds(
+                    MissionOdds odds = context.MissionQueries.GetMissionOdds(
                         mission.CreateContext(),
                         context.Assessment.GetMissionDetectorCandidates(mission.TargetPlanet)
                     );

@@ -1,13 +1,5 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using Rebellion.Game.Factions;
-using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -27,14 +19,6 @@ namespace Rebellion.Game.Events
         /// </summary>
         public AllConditional()
             : base() { }
-
-        /// <summary>
-        /// Evaluates the AND composition: all child conditions must be met.
-        /// </summary>
-        /// <param name="context">The current condition-evaluation context.</param>
-        /// <returns>True if every child condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context) =>
-            Conditionals.All(conditional => conditional.IsMet(context));
     }
 
     /// <summary>
@@ -51,14 +35,6 @@ namespace Rebellion.Game.Events
         /// </summary>
         public AnyConditional()
             : base() { }
-
-        /// <summary>
-        /// Evaluates the OR composition: at least one child condition must be met.
-        /// </summary>
-        /// <param name="context">The current condition-evaluation context.</param>
-        /// <returns>True if any child condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context) =>
-            Conditionals.Any(conditional => conditional.IsMet(context));
     }
 
     /// <summary>
@@ -75,14 +51,6 @@ namespace Rebellion.Game.Events
         /// </summary>
         public NotConditional()
             : base() { }
-
-        /// <summary>
-        /// Evaluates the NOT composition: no child condition may be met.
-        /// </summary>
-        /// <param name="context">The current condition-evaluation context.</param>
-        /// <returns>True if every child condition is unmet; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context) =>
-            Conditionals.All(conditional => !conditional.IsMet(context));
     }
 
     /// <summary>
@@ -99,14 +67,6 @@ namespace Rebellion.Game.Events
         /// </summary>
         public XorConditional()
             : base() { }
-
-        /// <summary>
-        /// Evaluates the XOR composition: exactly one child condition must be met.
-        /// </summary>
-        /// <param name="context">The current condition-evaluation context.</param>
-        /// <returns>True if precisely one child condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context) =>
-            Conditionals.Count(conditional => conditional.IsMet(context)) == 1;
     }
     #endregion
 
@@ -125,33 +85,6 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Applies the shared authored comparison vocabulary to integer values.
-    /// </summary>
-    internal static class IntegerComparison
-    {
-        /// <summary>
-        /// Compares an actual integer with an expected integer using the selected operator.
-        /// </summary>
-        /// <param name="actual">The actual.</param>
-        /// <param name="operation">The operation.</param>
-        /// <param name="expected">The expected.</param>
-        /// <returns>True when the comparison between the actual and expected values holds.</returns>
-        internal static bool Evaluate(int actual, ComparisonOperator operation, int expected) =>
-            operation switch
-            {
-                ComparisonOperator.Equal => actual == expected,
-                ComparisonOperator.NotEqual => actual != expected,
-                ComparisonOperator.GreaterThan => actual > expected,
-                ComparisonOperator.GreaterThanOrEqual => actual >= expected,
-                ComparisonOperator.LessThan => actual < expected,
-                ComparisonOperator.LessThanOrEqual => actual <= expected,
-                _ => throw new InvalidOperationException(
-                    $"Unsupported comparison operator '{operation}'."
-                ),
-            };
-    }
-
-    /// <summary>
     /// A <see cref="GameConditional"/> that is met when the current tick count satisfies a comparison against a target value.
     /// </summary>
     [PersistableObject(Name = "TickCount")]
@@ -162,17 +95,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public int Ticks { get; set; }
-
-        /// <summary>
-        /// Compares the current tick against the authored tick count.
-        /// </summary>
-        /// <param name="context">The context providing the current game state.</param>
-        /// <returns>True when the tick comparison holds; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            GameRoot game = context.Game;
-            return IntegerComparison.Evaluate(game.CurrentTick, Comparison, Ticks);
-        }
     }
 
     /// <summary>
@@ -183,16 +105,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public string EventInstanceID { get; set; }
-
-        /// <summary>
-        /// Checks whether the event with the configured instance ID has activated at least once.
-        /// </summary>
-        /// <param name="context">The context providing event runtime state.</param>
-        /// <returns>True if the event has activated; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            return context.Game.EventRuntime.GetState(EventInstanceID).ActivationCount > 0;
-        }
     }
 
     /// <summary>
@@ -203,16 +115,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public string EventInstanceID { get; set; }
-
-        /// <summary>
-        /// Checks the persisted completion state for the referenced event.
-        /// </summary>
-        /// <param name="context">The context providing event runtime state.</param>
-        /// <returns>True when the referenced event is permanently complete.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            return context.Game.EventRuntime.GetState(EventInstanceID).IsComplete;
-        }
     }
 
     /// <summary>
@@ -229,17 +131,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public int CompareTo { get; set; }
-
-        /// <summary>
-        /// Compares the current event variable value with the authored integer.
-        /// </summary>
-        /// <param name="context">The context providing event runtime state.</param>
-        /// <returns>True when the variable comparison succeeds.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            int current = context.Game.EventRuntime.GetVariable(Key);
-            return IntegerComparison.Evaluate(current, Comparison, CompareTo);
-        }
     }
 
     /// <summary>
@@ -259,160 +150,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string CompareToBinding { get; set; }
-
-        /// <summary>
-        /// Checks whether the condition is met.
-        /// </summary>
-        /// <param name="context">The context.</param>
-        /// <returns>True when the condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            bool hasLiteral = CompareTo != null;
-            bool hasBinding = !string.IsNullOrWhiteSpace(CompareToBinding);
-            if (hasLiteral == hasBinding)
-                throw new InvalidOperationException(
-                    "EvaluateBinding requires exactly one CompareTo or CompareToBinding."
-                );
-            if (
-                context.Evaluation == null
-                || !context.Evaluation.TryGetBindingReference(Binding, out object actual)
-            )
-                return false;
-
-            object expected;
-            if (hasBinding)
-            {
-                if (!context.Evaluation.TryGetBindingReference(CompareToBinding, out expected))
-                    return false;
-            }
-            else
-            {
-                if (actual == null)
-                    return Comparison == ComparisonOperator.NotEqual;
-                expected = ConvertLiteral(actual, CompareTo);
-            }
-
-            int comparison = Compare(actual, expected);
-            return Comparison switch
-            {
-                ComparisonOperator.Equal => comparison == 0,
-                ComparisonOperator.NotEqual => comparison != 0,
-                ComparisonOperator.GreaterThan => comparison > 0,
-                ComparisonOperator.GreaterThanOrEqual => comparison >= 0,
-                ComparisonOperator.LessThan => comparison < 0,
-                ComparisonOperator.LessThanOrEqual => comparison <= 0,
-                _ => throw new InvalidOperationException(
-                    $"Unsupported binding comparison '{Comparison}'."
-                ),
-            };
-        }
-
-        /// <summary>
-        /// Converts an authored literal to the runtime type supplied by the compared binding.
-        /// </summary>
-        /// <param name="actual">The runtime value that establishes the required type.</param>
-        /// <param name="literal">The authored scalar text.</param>
-        /// <returns>The converted scalar value.</returns>
-        private static object ConvertLiteral(object actual, string literal)
-        {
-            if (actual == null)
-                return null;
-            if (actual is bool && bool.TryParse(literal, out bool boolean))
-                return boolean;
-            if (actual is bool)
-                throw new InvalidOperationException($"'{literal}' is not a Boolean value.");
-            if (actual is int)
-            {
-                if (
-                    !int.TryParse(
-                        literal,
-                        NumberStyles.Integer,
-                        CultureInfo.InvariantCulture,
-                        out int integer
-                    )
-                )
-                    throw new InvalidOperationException($"'{literal}' is not an integer value.");
-                return integer;
-            }
-            if (actual is double)
-            {
-                if (
-                    !double.TryParse(
-                        literal,
-                        NumberStyles.Float,
-                        CultureInfo.InvariantCulture,
-                        out double number
-                    )
-                )
-                    throw new InvalidOperationException($"'{literal}' is not a double value.");
-                return number;
-            }
-            if (actual is Enum)
-            {
-                Type enumType = actual.GetType();
-                if (!Enum.GetNames(enumType).Contains(literal))
-                    throw new InvalidOperationException(
-                        $"'{literal}' is not a valid {enumType.Name} value."
-                    );
-                return Enum.Parse(enumType, literal, false);
-            }
-            if (actual is string)
-                return literal;
-            throw new InvalidOperationException(
-                $"Binding values of type '{actual?.GetType().Name ?? "null"}' cannot be compared."
-            );
-        }
-
-        /// <summary>
-        /// Compares two compatible runtime scalar values.
-        /// </summary>
-        /// <param name="actual">The value exposed by the primary binding.</param>
-        /// <param name="expected">The authored or bound comparison value.</param>
-        /// <returns>A negative, zero, or positive comparison result.</returns>
-        private int Compare(object actual, object expected)
-        {
-            if (actual == null || expected == null)
-            {
-                if (IsOrderedComparison())
-                    throw new InvalidOperationException(
-                        "Null bindings cannot participate in ordered comparisons."
-                    );
-                return actual == null && expected == null ? 0 : 1;
-            }
-
-            if (actual.GetType() != expected.GetType())
-                throw new InvalidOperationException(
-                    $"Bindings '{Binding}' and '{CompareToBinding}' have incompatible value types '{actual.GetType().Name}' and '{expected.GetType().Name}'."
-                );
-            if (actual is int integer)
-                return integer.CompareTo((int)expected);
-            if (actual is double number)
-                return number.CompareTo((double)expected);
-            if (IsOrderedComparison())
-                throw new InvalidOperationException(
-                    $"Binding '{Binding}' supports ordered comparisons only for numeric values."
-                );
-            if (actual is bool boolean)
-                return boolean.CompareTo((bool)expected);
-            if (actual is string text)
-                return string.Compare(text, (string)expected, StringComparison.Ordinal);
-            if (actual is Enum)
-                return Equals(actual, expected) ? 0 : 1;
-            throw new InvalidOperationException(
-                $"Binding values of type '{actual.GetType().Name}' cannot be compared."
-            );
-        }
-
-        /// <summary>
-        /// Returns whether the authored operator requires ordered scalar values.
-        /// </summary>
-        /// <returns>True when the ordered comparison condition is met; otherwise false.</returns>
-        private bool IsOrderedComparison() =>
-            Comparison
-                is ComparisonOperator.GreaterThan
-                    or ComparisonOperator.GreaterThanOrEqual
-                    or ComparisonOperator.LessThan
-                    or ComparisonOperator.LessThanOrEqual;
     }
 
     /// <summary>
@@ -426,31 +163,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
-
-        /// <summary>
-        /// Checks whether the condition is met.
-        /// </summary>
-        /// <param name="context">The context.</param>
-        /// <returns>True when the condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            if (
-                context.Evaluation == null
-                || !context.Evaluation.TryGetBindingReference(Binding, out object actual)
-                || actual is not IEnumerable values
-            )
-                return false;
-
-            foreach (object value in values)
-            {
-                if (
-                    value is IGameEntity entity
-                    && string.Equals(entity.InstanceID, UnitInstanceID, StringComparison.Ordinal)
-                )
-                    return true;
-            }
-            return false;
-        }
     }
     #endregion
 
@@ -462,27 +174,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
-
-        /// <summary>
-        /// Checks whether the condition is met.
-        /// </summary>
-        /// <param name="context">The context.</param>
-        /// <returns>True when the condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
-                OfficerInstanceID,
-                includeDisabled: true
-            );
-            return officer != null && Evaluate(officer);
-        }
-
-        /// <summary>
-        /// Evaluates the requested operation.
-        /// </summary>
-        /// <param name="officer">The officer.</param>
-        /// <returns>True when the officer satisfies the specialized condition; otherwise false.</returns>
-        protected abstract bool Evaluate(Officer officer);
     }
 
     [PersistableObject(Name = "IsCaptured")]
@@ -490,52 +181,16 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public string CaptorFactionInstanceID { get; set; }
-
-        /// <summary>
-        /// Evaluates the requested operation.
-        /// </summary>
-        /// <param name="officer">The officer.</param>
-        /// <returns>True when the officer is captured by the configured faction; otherwise false.</returns>
-        protected override bool Evaluate(Officer officer) =>
-            officer.IsCaptured
-            && (
-                string.IsNullOrWhiteSpace(CaptorFactionInstanceID)
-                || officer.CaptorInstanceID == CaptorFactionInstanceID
-            );
     }
 
     [PersistableObject(Name = "IsKilled")]
-    public sealed class IsKilledConditional : OfficerBooleanConditional
-    {
-        /// <summary>
-        /// Evaluates the requested operation.
-        /// </summary>
-        /// <param name="officer">The officer.</param>
-        /// <returns>True when the officer is killed; otherwise false.</returns>
-        protected override bool Evaluate(Officer officer) => officer.IsKilled;
-    }
+    public sealed class IsKilledConditional : OfficerBooleanConditional { }
 
     [PersistableObject(Name = "IsInjured")]
-    public sealed class IsInjuredConditional : OfficerBooleanConditional
-    {
-        /// <summary>
-        /// Evaluates the requested operation.
-        /// </summary>
-        /// <param name="officer">The officer.</param>
-        /// <returns>True when the officer is injured; otherwise false.</returns>
-        protected override bool Evaluate(Officer officer) => officer.InjuryPoints > 0;
-    }
+    public sealed class IsInjuredConditional : OfficerBooleanConditional { }
 
     [PersistableObject(Name = "IsForceEligible")]
-    public sealed class IsForceEligibleConditional : OfficerBooleanConditional
-    {
-        /// <summary>
-        /// Evaluates the requested operation.
-        /// </summary>
-        /// <param name="officer">The officer.</param>
-        /// <returns>True when the officer is eligible to use the Force; otherwise false.</returns>
-        protected override bool Evaluate(Officer officer) => officer.IsForceEligible;
-    }
+    public sealed class IsForceEligibleConditional : OfficerBooleanConditional { }
 
     /// <summary>
     /// Compares one officer's effective Force rank with an authored threshold.
@@ -551,27 +206,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public ForceRankLabel Rank { get; set; }
-
-        /// <summary>
-        /// Compares the officer's Force rank with the configured rank threshold.
-        /// </summary>
-        /// <param name="context">The context providing the current game state.</param>
-        /// <returns>True when the Force-rank comparison succeeds.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(
-                OfficerInstanceID,
-                includeDisabled: true
-            );
-            if (officer == null)
-                return false;
-
-            int current = officer.ForceRank;
-            int expected = context.Game.GetConfig().Jedi.GetMinimumRank(Rank);
-            if (expected == int.MaxValue)
-                throw new InvalidOperationException($"Force rank '{Rank}' is not configured.");
-            return IntegerComparison.Evaluate(current, Comparison, expected);
-        }
     }
 
     #endregion
@@ -588,28 +222,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string PlanetBinding { get; set; }
-
-        /// <summary>
-        /// Checks whether the condition is met.
-        /// </summary>
-        /// <param name="context">The context.</param>
-        /// <returns>True when the condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
-                : context.Game.GetSceneNodeByInstanceID<Planet>(
-                    PlanetInstanceID,
-                    includeDisabled: true
-                );
-            return planet
-                    ?.GetChildren<Building>(includeDisabled: true)
-                    .Any(building =>
-                        building.IsEnabled
-                        && building.BuildingType == Type
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                    ) == true;
-        }
     }
 
     /// <summary>
@@ -626,29 +238,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute(Name = "FactionInstanceID")]
         public string FactionInstanceID { get; set; }
-
-        /// <summary>
-        /// Checks whether the condition is met.
-        /// </summary>
-        /// <param name="context">The context.</param>
-        /// <returns>True when the condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            GameRoot game = context.Game;
-            Planet planet = string.IsNullOrWhiteSpace(PlanetBinding)
-                ? game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID, includeDisabled: true)
-                : context.Evaluation?.GetBindingReference<Planet>(PlanetBinding);
-            if (planet?.IsDestroyed != false)
-                return false;
-
-            Faction owner = game.GetFactions()
-                .FirstOrDefault(faction => faction.InstanceID == planet.OwnerInstanceID);
-            return owner != null
-                && (
-                    string.IsNullOrWhiteSpace(FactionInstanceID)
-                    || owner.InstanceID == FactionInstanceID
-                );
-        }
     }
 
     /// <summary>
@@ -665,26 +254,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string PlanetBinding { get; set; }
-
-        /// <summary>
-        /// Checks whether the condition is met.
-        /// </summary>
-        /// <param name="context">The context.</param>
-        /// <returns>True when the condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context.Evaluation?.GetBindingReference<Planet>(PlanetBinding)
-                : context.Game.GetSceneNodeByInstanceID<Planet>(
-                    PlanetInstanceID,
-                    includeDisabled: true
-                );
-            if (planet == null || string.IsNullOrWhiteSpace(FactionInstanceID))
-                return false;
-
-            int support = planet.GetPopularSupport(FactionInstanceID);
-            return context.Random.NextInt(0, 100) < support;
-        }
     }
 
     [PersistableObject(Name = "Unit")]
@@ -704,53 +273,10 @@ namespace Rebellion.Game.Events
         CapitalShip,
     }
 
-    internal static class SceneAncestors
-    {
-        /// <summary>
-        /// Resolves the requested operation.
-        /// </summary>
-        /// <param name="node">The node.</param>
-        /// <param name="type">The type.</param>
-        /// <returns>The resolved value.</returns>
-        internal static ISceneNode Resolve(ISceneNode node, SceneAncestorType type) =>
-            type switch
-            {
-                SceneAncestorType.Galaxy => node.GetParentOfType<GalaxyMap>(),
-                SceneAncestorType.PlanetSector => node.GetParentOfType<PlanetSector>(),
-                SceneAncestorType.Planet => node.GetParentOfType<Planet>(),
-                SceneAncestorType.Fleet => node.GetParentOfType<Fleet>(),
-                SceneAncestorType.Mission => node.GetParentOfType<Mission>(),
-                SceneAncestorType.CapitalShip => node.GetParentOfType<CapitalShip>(),
-                _ => null,
-            };
-    }
-
     [PersistableObject(Name = "ShareParent")]
     public sealed class ShareParentConditional : GameConditional
     {
         public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
-
-        /// <summary>
-        /// Checks whether the condition is met.
-        /// </summary>
-        /// <param name="context">The context.</param>
-        /// <returns>True when the condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            List<ISceneNode> nodes = ResolveDistinctUnits(context);
-            if (nodes == null)
-                return false;
-            ISceneNode parent = nodes[0].GetParent();
-            return parent != null && nodes.All(node => ReferenceEquals(node.GetParent(), parent));
-        }
-
-        /// <summary>
-        /// Resolves distinct units.
-        /// </summary>
-        /// <param name="context">The context.</param>
-        /// <returns>The resolved distinct units.</returns>
-        private List<ISceneNode> ResolveDistinctUnits(GameConditionContext context) =>
-            SceneConditionUnits.ResolveDistinct(context.Game, Units);
     }
 
     [PersistableObject(Name = "ShareAncestor")]
@@ -760,50 +286,6 @@ namespace Rebellion.Game.Events
         public SceneAncestorType Type { get; set; }
 
         public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
-
-        /// <summary>
-        /// Checks whether the condition is met.
-        /// </summary>
-        /// <param name="context">The context.</param>
-        /// <returns>True when the condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            List<ISceneNode> nodes = SceneConditionUnits.ResolveDistinct(context.Game, Units);
-            if (nodes == null)
-                return false;
-            List<ISceneNode> ancestors = nodes.ConvertAll(node =>
-                SceneAncestors.Resolve(node, Type)
-            );
-            return ancestors[0] != null
-                && ancestors.All(ancestor => ReferenceEquals(ancestor, ancestors[0]));
-        }
-    }
-
-    internal static class SceneConditionUnits
-    {
-        /// <summary>
-        /// Resolves distinct.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="references">The references.</param>
-        /// <returns>The resolved distinct.</returns>
-        public static List<ISceneNode> ResolveDistinct(
-            GameRoot game,
-            IReadOnlyCollection<EventUnitReference> references
-        )
-        {
-            if (references == null || references.Count < 2)
-                return null;
-            List<string> ids = references.Select(reference => reference.UnitInstanceID).ToList();
-            if (ids.Any(string.IsNullOrWhiteSpace) || ids.Distinct().Count() != ids.Count)
-                return null;
-            List<ISceneNode> nodes = ids.Select(id =>
-                    game.GetSceneNodeByInstanceID<ISceneNode>(id, includeDisabled: true)
-                )
-                .Where(node => node != null)
-                .ToList();
-            return nodes.Count == ids.Count ? nodes : null;
-        }
     }
 
     /// <summary>
@@ -819,25 +301,6 @@ namespace Rebellion.Game.Events
         /// </summary>
         public AreOnOpposingFactionsConditional()
             : base() { }
-
-        /// <summary>
-        /// Checks whether the two referenced units belong to different owners.
-        /// </summary>
-        /// <param name="context">The context used to resolve unit references.</param>
-        /// <returns>True if exactly two units are referenced and their owner instance IDs differ.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            GameRoot game = context.Game;
-            // Get the scene nodes for the units.
-            List<ISceneNode> sceneNodes = UnitInstanceIDs
-                .Select(id => game.GetSceneNodeByInstanceID<ISceneNode>(id, includeDisabled: true))
-                .Where(node => node != null)
-                .ToList();
-
-            // Check if the units are on opposing factions.
-            return sceneNodes.Count == 2
-                && sceneNodes[0].OwnerInstanceID != sceneNodes[1].OwnerInstanceID;
-        }
     }
 
     /// <summary>
@@ -848,21 +311,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
-
-        /// <summary>
-        /// Checks whether the referenced unit is parented to a <see cref="Mission"/> node.
-        /// </summary>
-        /// <param name="context">The context used to resolve the unit.</param>
-        /// <returns>True if the unit exists and its direct parent is a mission; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            ISceneNode sceneNode = context.Game.GetSceneNodeByInstanceID<ISceneNode>(
-                UnitInstanceID,
-                includeDisabled: true
-            );
-            // Check if the unit is on a mission.
-            return sceneNode?.GetParent() is Mission;
-        }
     }
 
     /// <summary>
@@ -873,20 +321,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public string NodeInstanceID { get; set; }
-
-        /// <summary>
-        /// Checks whether the referenced node is active in its hierarchy.
-        /// </summary>
-        /// <param name="context">The context providing the current game state.</param>
-        /// <returns>True when the node and its ancestors are active.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            ISceneNode node = context.Game.GetSceneNodeByInstanceID<ISceneNode>(
-                NodeInstanceID,
-                includeDisabled: true
-            );
-            return node?.IsActive() == true;
-        }
     }
 
     /// <summary>
@@ -897,16 +331,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
-
-        /// <summary>
-        /// Checks whether the condition is met.
-        /// </summary>
-        /// <param name="context">The context.</param>
-        /// <returns>True when the condition is met; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context) =>
-            context.Game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID, includeDisabled: true)
-                is IMovable movable
-            && movable.GetTransitMovement() != null;
     }
 
     /// <summary>
@@ -917,31 +341,6 @@ namespace Rebellion.Game.Events
     {
         public string UnitInstanceID { get; set; }
         public string LocationInstanceID { get; set; }
-
-        /// <summary>
-        /// Checks whether the configured unit is contained by the configured location.
-        /// </summary>
-        /// <param name="context">The context providing the current game state.</param>
-        /// <returns>True when the unit is contained by the location.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            GameRoot game = context.Game;
-            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(
-                UnitInstanceID,
-                includeDisabled: true
-            );
-            ISceneNode location = game.GetSceneNodeByInstanceID<ISceneNode>(
-                LocationInstanceID,
-                includeDisabled: true
-            );
-            for (ISceneNode current = unit; current != null; current = current.GetParent())
-            {
-                if (current == location)
-                    return true;
-            }
-
-            return false;
-        }
     }
     #endregion
 }

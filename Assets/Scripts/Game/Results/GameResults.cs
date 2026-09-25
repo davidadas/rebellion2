@@ -275,6 +275,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class MissionCompletedResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public Mission Mission { get; set; }
         public string MissionName { get; set; }
         public string MissionTypeID { get; set; }
@@ -293,6 +294,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class PlanetsRevealedResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public List<Planet> AdditionalPlanets { get; set; } = new List<Planet>();
     }
 
@@ -327,7 +329,9 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class OfficerCaptureStateResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public Officer TargetOfficer { get; set; }
+        public ISceneNode ParentAtCapture { get; set; }
         public bool IsCaptured { get; set; }
         public string CaptorInstanceID { get; set; }
         public ISceneNode CapturingUnit { get; set; }
@@ -367,6 +371,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class OfficerInjuredResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public Officer Officer { get; set; }
         public int Severity { get; set; }
         public int Detail { get; set; }

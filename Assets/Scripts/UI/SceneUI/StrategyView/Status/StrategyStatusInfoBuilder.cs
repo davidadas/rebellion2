@@ -6,7 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Projects game entities into status-window domain information.
@@ -136,7 +136,7 @@ internal sealed class StrategyStatusInfoBuilder
         if (queue.Count > 0)
         {
             info.Rows.Add(new StrategyStatusRow("Items to Build:", queue.Count.ToString()));
-            int? completionTicks = ManufacturingSystem.EstimateQueueCompletionTicks(
+            int? completionTicks = ManufacturingQueries.EstimateQueueCompletionTicks(
                 target.Planet.Planet,
                 type
             );
@@ -182,11 +182,39 @@ internal sealed class StrategyStatusInfoBuilder
                 string.IsNullOrEmpty(info.OwnerFactionId) ? "Neutral" : "Active"
             )
         );
+        AddHeadquartersEtaRow(info, planet);
         info.Rows.Add(
             new StrategyStatusRow("Popular Support:", GetPlayerSupport(planet).ToString())
         );
         info.Rows.Add(new StrategyStatusRow("Energy:", planet.GetAvailableEnergy().ToString()));
         return info;
+    }
+
+    /// <summary>
+    /// Appends the arrival day of the player's mobile headquarters when this planet is its active
+    /// movement destination.
+    /// </summary>
+    /// <param name="info">The planet status information receiving the ETA row.</param>
+    /// <param name="planet">The represented destination planet.</param>
+    private void AddHeadquartersEtaRow(StrategyStatusInfo info, Planet planet)
+    {
+        MovementState movement = planet
+            ?.GetChildren<Building>()
+            .FirstOrDefault(building =>
+                building.BuildingType == BuildingType.Headquarters
+                && building.Movement != null
+                && string.Equals(
+                    building.OwnerInstanceID,
+                    playerFactionId,
+                    StringComparison.Ordinal
+                )
+            )
+            ?.Movement;
+        if (movement == null)
+            return;
+
+        long arrivalDay = (long)currentTick + Math.Max(movement.TicksRemaining(), 0);
+        info.Rows.Add(new StrategyStatusRow("Headquarters ETA:", $"Day {arrivalDay}"));
     }
 
     /// <summary>
@@ -869,7 +897,7 @@ internal sealed class StrategyStatusInfoBuilder
             return;
 
         Planet producer = findVisibleNode(manufacturable.ProducerPlanetID) as Planet;
-        int? completionTicks = ManufacturingSystem.EstimateCompletionTicks(
+        int? completionTicks = ManufacturingQueries.EstimateCompletionTicks(
             producer,
             manufacturable
         );
