@@ -37,7 +37,6 @@ public sealed class GalaxyMapProjector
     /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
     /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
     /// <param name="spotlightPlanetInstanceId">The transiently emphasized planet, or null.</param>
-    /// <param name="globalViewEnabled">Whether the authoritative galaxy is displayed.</param>
     /// <returns>The complete immutable map presentation.</returns>
     public GalaxyMapRenderData Project(
         IReadOnlyList<GalaxyMapSector> sectors,
@@ -47,8 +46,7 @@ public sealed class GalaxyMapProjector
         StrategyBriefingMapPresentation briefing = null,
         StrategyWindowTargetingSource waypointPlan = null,
         IReadOnlyCollection<string> selectedFleetInstanceIds = null,
-        string spotlightPlanetInstanceId = null,
-        bool globalViewEnabled = false
+        string spotlightPlanetInstanceId = null
     )
     {
         UIContext context = GetRequiredContext();
@@ -83,8 +81,7 @@ public sealed class GalaxyMapProjector
                 waypointPlan,
                 selectedFleetInstanceIds,
                 filterMode == GalacticInformationFilterMode.FleetWaypoints
-            ),
-            globalViewEnabled
+            )
         );
     }
 

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
@@ -26,11 +25,6 @@ public interface IGalaxyMapActions
     /// Requests a strategy render after galaxy-map interaction state changes.
     /// </summary>
     void RequestGalaxyMapRender();
-
-    /// <summary>
-    /// Switches between faction knowledge and the authoritative galaxy.
-    /// </summary>
-    void ToggleGalaxyVisibility();
 }
 
 /// <summary>
@@ -57,7 +51,6 @@ public sealed class GalaxyMapController
     private string hoveredSectorInstanceId;
     private string playerFactionId = string.Empty;
     private string spotlightPlanetInstanceId;
-    private bool globalViewEnabled;
 
     public string PlayerFactionId => playerFactionId;
 
@@ -103,20 +96,14 @@ public sealed class GalaxyMapController
         view.SectorHoverCleared += HandleSectorHoverCleared;
         view.SectorHovered += HandleSectorHovered;
         view.SectorOpenRequested += HandleSectorOpenRequested;
-        view.VisibilityModeRequested += HandleVisibilityModeRequested;
     }
 
     /// <summary>
     /// Rebuilds the faction-filtered galaxy snapshot used by map and window projection.
     /// </summary>
-    /// <param name="playerFaction">The player faction whose view is projected.</param>
-    /// <param name="queries">Fog-of-war queries used to build the permitted view.</param>
-    /// <param name="game">The authoritative game used only when global-view mode is enabled.</param>
-    public void RebuildSnapshot(
-        Faction playerFaction,
-        FogOfWarQueries queries,
-        GameRoot game = null
-    )
+    /// <param name="playerFaction">The faction whose permitted view is rendered.</param>
+    /// <param name="queries">The faction-filtered snapshot queries.</param>
+    public void RebuildSnapshot(Faction playerFaction, FogOfWarQueries queries)
     {
         if (queries == null)
             throw new ArgumentNullException(nameof(queries));
@@ -126,9 +113,7 @@ public sealed class GalaxyMapController
         visibleGalaxyMap = null;
         if (playerFaction != null)
         {
-            visibleGalaxyMap = globalViewEnabled
-                ? game?.Galaxy ?? queries.BuildFactionView(playerFaction)
-                : queries.BuildFactionView(playerFaction);
+            visibleGalaxyMap = queries.BuildFactionView(playerFaction);
             IReadOnlyList<PlanetSector> visibleSectors =
                 visibleGalaxyMap?.GetChildren<PlanetSector>();
             foreach (PlanetSector sector in visibleSectors ?? Array.Empty<PlanetSector>())
@@ -174,8 +159,7 @@ public sealed class GalaxyMapController
                     briefingPresentation,
                     waypointPlan,
                     selectedFleetInstanceIds,
-                    spotlightPlanetInstanceId,
-                    globalViewEnabled
+                    spotlightPlanetInstanceId
                 )
             );
     }
@@ -364,22 +348,6 @@ public sealed class GalaxyMapController
     }
 
     /// <summary>
-    /// Requests the alternate galaxy visibility mode from the screen boundary.
-    /// </summary>
-    private void HandleVisibilityModeRequested()
-    {
-        actions.ToggleGalaxyVisibility();
-    }
-
-    /// <summary>
-    /// Toggles whether snapshot rebuilding uses the authoritative galaxy.
-    /// </summary>
-    public void ToggleVisibility()
-    {
-        globalViewEnabled = !globalViewEnabled;
-    }
-
-    /// <summary>
     /// Releases subscriptions when the bound authored map view is destroyed.
     /// </summary>
     /// <param name="destroyedView">The destroyed map view.</param>
@@ -465,7 +433,6 @@ public sealed class GalaxyMapController
         view.SectorHoverCleared -= HandleSectorHoverCleared;
         view.SectorHovered -= HandleSectorHovered;
         view.SectorOpenRequested -= HandleSectorOpenRequested;
-        view.VisibilityModeRequested -= HandleVisibilityModeRequested;
         view = null;
     }
 

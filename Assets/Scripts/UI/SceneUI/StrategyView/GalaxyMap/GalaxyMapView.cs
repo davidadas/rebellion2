@@ -25,12 +25,6 @@ public sealed class GalaxyMapView : MonoBehaviour
     [SerializeField]
     private PlanetSectorClusterView planetSectorClusterPrefab;
 
-    [SerializeField]
-    private Button visibilityToggleButton;
-
-    [SerializeField]
-    private TextMeshProUGUI visibilityToggleLabel;
-
     private readonly Dictionary<string, PlanetSectorClusterView> clusterViews = new Dictionary<
         string,
         PlanetSectorClusterView
@@ -60,11 +54,6 @@ public sealed class GalaxyMapView : MonoBehaviour
     /// </summary>
     public event Action<string, int, int> SectorOpenRequested;
 
-    /// <summary>
-    /// Raised when the player requests the alternate galaxy visibility mode.
-    /// </summary>
-    public event Action VisibilityModeRequested;
-
     public RectTransform Background => background;
 
     public RectTransform PlanetSectorClusters => planetSectorClusters;
@@ -76,7 +65,6 @@ public sealed class GalaxyMapView : MonoBehaviour
     {
         VerifyReferences();
         EnsureWaypointOverlay();
-        visibilityToggleButton.onClick.AddListener(HandleVisibilityModeRequested);
     }
 
     /// <summary>
@@ -86,8 +74,6 @@ public sealed class GalaxyMapView : MonoBehaviour
     {
         foreach (PlanetSectorClusterView clusterView in clusterViews.Values)
             UnbindClusterView(clusterView);
-
-        visibilityToggleButton.onClick.RemoveListener(HandleVisibilityModeRequested);
 
         clusterViews.Clear();
         visibleClusterKeys.Clear();
@@ -111,7 +97,6 @@ public sealed class GalaxyMapView : MonoBehaviour
         RenderClusters(data.Clusters);
         waypointOverlay.SetPresentationOrder();
         RenderActiveFilterLabel(data.ActiveFilterLabel);
-        visibilityToggleLabel.text = data.GlobalViewEnabled ? "FOG" : "WORLD";
     }
 
     /// <summary>
@@ -337,14 +322,6 @@ public sealed class GalaxyMapView : MonoBehaviour
     }
 
     /// <summary>
-    /// Forwards the authored visibility-button click as a semantic map request.
-    /// </summary>
-    private void HandleVisibilityModeRequested()
-    {
-        VisibilityModeRequested?.Invoke();
-    }
-
-    /// <summary>
     /// Converts a child cluster double-click to a semantic sector-open request.
     /// </summary>
     /// <param name="clusterView">The requested cluster view.</param>
@@ -394,9 +371,5 @@ public sealed class GalaxyMapView : MonoBehaviour
             throw new MissingReferenceException($"{name}/ActiveFilterLabel is missing.");
         if (planetSectorClusterPrefab == null)
             throw new MissingReferenceException($"{name}/PlanetSectorCluster prefab is missing.");
-        if (visibilityToggleButton == null)
-            throw new MissingReferenceException($"{name}/VisibilityToggle is missing Button.");
-        if (visibilityToggleLabel == null)
-            throw new MissingReferenceException($"{name}/VisibilityToggle is missing its label.");
     }
 }

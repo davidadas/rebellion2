@@ -1318,8 +1318,7 @@ public sealed class StrategyController
     {
         galaxyMapController.RebuildSnapshot(
             session.Game.GetPlayerFaction(),
-            session.GetService<FogOfWarQueries>(),
-            session.Game
+            session.GetService<FogOfWarQueries>()
         );
         bookmarkController.ReconcilePlanets(Sectors);
         statusWindowController.ReconcileWindows(Sectors);
@@ -2120,16 +2119,6 @@ public sealed class StrategyController
     /// </summary>
     void IGalaxyMapActions.RequestGalaxyMapRender()
     {
-        dirty = true;
-    }
-
-    /// <summary>
-    /// Toggles the galaxy between faction knowledge and authoritative world state.
-    /// </summary>
-    void IGalaxyMapActions.ToggleGalaxyVisibility()
-    {
-        galaxyMapController.ToggleVisibility();
-        RebuildSnapshot();
         dirty = true;
     }
 

@@ -69,8 +69,6 @@ public sealed class GalaxyMapRenderData
 
     public IReadOnlyList<GalaxyMapWaypointRouteRenderData> WaypointRoutes { get; }
 
-    public bool GlobalViewEnabled { get; }
-
     /// <summary>
     /// Creates a galaxy-map presentation snapshot.
     /// </summary>
@@ -80,15 +78,13 @@ public sealed class GalaxyMapRenderData
     /// <param name="activeFilterLabel">The active galactic-information label.</param>
     /// <param name="clusters">The visible sector clusters in render order.</param>
     /// <param name="waypointRoutes">The player fleet waypoint routes.</param>
-    /// <param name="globalViewEnabled">Whether the authoritative galaxy is displayed.</param>
     public GalaxyMapRenderData(
         Texture2D backgroundTexture,
         RectInt? backgroundBounds,
         Color backgroundColor,
         GalaxyMapActiveFilterLabelRenderData activeFilterLabel,
         IReadOnlyList<GalaxyMapClusterRenderData> clusters,
-        IReadOnlyList<GalaxyMapWaypointRouteRenderData> waypointRoutes = null,
-        bool globalViewEnabled = false
+        IReadOnlyList<GalaxyMapWaypointRouteRenderData> waypointRoutes = null
     )
     {
         BackgroundTexture = backgroundTexture;
@@ -97,7 +93,6 @@ public sealed class GalaxyMapRenderData
         ActiveFilterLabel = activeFilterLabel;
         Clusters = Copy(clusters);
         WaypointRoutes = Copy(waypointRoutes);
-        GlobalViewEnabled = globalViewEnabled;
     }
 
     /// <summary>

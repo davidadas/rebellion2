@@ -660,11 +660,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             /// Executes request galaxy map render.
             /// </summary>
             public void RequestGalaxyMapRender() { }
-
-            /// <summary>
-            /// Toggles galaxy visibility.
-            /// </summary>
-            public void ToggleGalaxyVisibility() { }
         }
 
         private sealed class TestHudActions : IStrategyHudActions

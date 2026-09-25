@@ -744,21 +744,6 @@ public static class StrategyViewPrefabBuilder
         );
         activeFilterLabel.gameObject.SetActive(false);
 
-        RawImage visibilityToggleImage = CreateRawButton("VisibilityToggle", galaxyMap.transform);
-        visibilityToggleImage.color = new Color(0f, 0f, 0f, 0.8f);
-        Button visibilityToggleButton = CreateButton(visibilityToggleImage);
-        SetSourceRect(visibilityToggleImage.rectTransform, 566, 8, 66, 18);
-        TextMeshProUGUI visibilityToggleLabel = CreateTextLabel(
-            "VisibilityToggleLabel",
-            visibilityToggleImage.transform
-        );
-        visibilityToggleLabel.text = "WORLD";
-        visibilityToggleLabel.color = Color.white;
-        visibilityToggleLabel.fontSize = 9;
-        visibilityToggleLabel.alignment = TextAlignmentOptions.Center;
-        visibilityToggleLabel.raycastTarget = false;
-        FillParent(visibilityToggleLabel.rectTransform);
-
         GameObject bookmarks = CreateLayer("Bookmarks", root.transform);
         RectTransform bookmarksRect = bookmarks.GetComponent<RectTransform>();
         SetStrategySurfaceRect(bookmarksRect);
@@ -957,8 +942,6 @@ public static class StrategyViewPrefabBuilder
         AssignReference(galaxyMapView, "planetSectorClusters", planetSectorClusters);
         AssignReference(galaxyMapView, "activeFilterLabel", activeFilterLabel);
         AssignReference(galaxyMapView, "planetSectorClusterPrefab", planetSectorClusterPrefab);
-        AssignReference(galaxyMapView, "visibilityToggleButton", visibilityToggleButton);
-        AssignReference(galaxyMapView, "visibilityToggleLabel", visibilityToggleLabel);
 
         SaveGeneratedPrefabAsset(sceneRoot, _prefabPath);
         Object.DestroyImmediate(sceneRoot);
