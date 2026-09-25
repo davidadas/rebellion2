@@ -185,10 +185,10 @@ namespace Rebellion.Game.Units
     /// </summary>
     public enum OfficerRank
     {
-        None,
-        Commander,
-        General,
-        Admiral,
+        None = 0,
+        Commander = 1,
+        Admiral = 2,
+        General = 3,
     }
 
     /// <summary>
@@ -277,6 +277,7 @@ namespace Rebellion.Game.Units
         // Rank Info.
         public OfficerRank[] AllowedRanks { get; set; }
         public OfficerRank CurrentRank { get; set; }
+        public string CommandingInstanceID { get; set; }
 
         // Owner Info.
         public string InitialParentTypeID { get; set; }
@@ -325,6 +326,54 @@ namespace Rebellion.Game.Units
                 { SkillRating.Leadership, 0 },
             };
         public bool CanImproveMissionRating => true;
+
+        /// <summary>
+        /// Returns the officer's current command title and classic command name.
+        /// </summary>
+        /// <returns>The classic command-qualified name, or the authored name when unassigned.</returns>
+        public override string GetDisplayName()
+        {
+            string name = base.GetDisplayName();
+            if (CurrentRank == OfficerRank.None || string.IsNullOrWhiteSpace(name))
+                return name;
+
+            string title = CurrentRank switch
+            {
+                OfficerRank.Commander => "Commander",
+                OfficerRank.Admiral => "Admiral",
+                OfficerRank.General => "General",
+                _ => string.Empty,
+            };
+            if (title.Length == 0)
+                return name;
+
+            string commandName = GetCommandName(name);
+            return string.IsNullOrWhiteSpace(commandName) ? name : $"{title} {commandName}";
+        }
+
+        /// <summary>
+        /// Converts an authored character name to the surname-style command name used by the
+        /// original game, such as Wedge Antilles becoming Antilles and Garm Bel Iblis becoming
+        /// Bel Iblis.
+        /// </summary>
+        /// <param name="name">The authored officer name.</param>
+        /// <returns>The name portion displayed after a command title.</returns>
+        private static string GetCommandName(string name)
+        {
+            string commandName = name.Trim();
+            string[] existingTitles = { "Commander ", "Admiral ", "General " };
+            foreach (string existingTitle in existingTitles)
+            {
+                if (!commandName.StartsWith(existingTitle, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                commandName = commandName.Substring(existingTitle.Length).TrimStart();
+                break;
+            }
+
+            int firstSpace = commandName.IndexOf(' ');
+            return firstSpace < 0 ? commandName : commandName.Substring(firstSpace + 1).TrimStart();
+        }
 
         /// <summary>
         /// Applies authored image-set overrides to the officer's active image paths.
@@ -389,6 +438,7 @@ namespace Rebellion.Game.Units
             copy.IsDiscoveringForceUser = IsDiscoveringForceUser;
             copy.AllowedRanks = AllowedRanks?.ToArray();
             copy.CurrentRank = CurrentRank;
+            copy.CommandingInstanceID = CommandingInstanceID;
             copy.InitialParentTypeID = InitialParentTypeID;
             copy.InitialParentInstanceID = InitialParentInstanceID;
             copy.DiplomacyVariance = DiplomacyVariance;

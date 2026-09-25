@@ -91,6 +91,7 @@ namespace Rebellion.Simulation
             services.AddSingleton<PlanetaryControlCommands>();
             services.AddSingleton<UprisingCommands>();
             services.AddSingleton<JediCommands>();
+            services.AddSingleton<OfficerCommandCommands>();
             services.AddSingleton<OfficerLoyaltyCommands>();
             services.AddSingleton<MissionQueries>();
             services.AddSingleton<MissionCommands>();

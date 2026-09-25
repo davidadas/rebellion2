@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using UnityEngine;
 
 namespace Rebellion.Tests.Game.Units
@@ -9,6 +10,56 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class OfficerTests
     {
+        [TestCase(OfficerRank.None, "Han Solo")]
+        [TestCase(OfficerRank.Commander, "Commander Solo")]
+        [TestCase(OfficerRank.Admiral, "Admiral Solo")]
+        [TestCase(OfficerRank.General, "General Solo")]
+        public void GetDisplayName_CommandRank_ReturnsCommandQualifiedName(
+            OfficerRank rank,
+            string expected
+        )
+        {
+            IGameEntity officer = new Officer { DisplayName = "Han Solo", CurrentRank = rank };
+
+            Assert.AreEqual(expected, officer.GetDisplayName());
+        }
+
+        [Test]
+        public void GetDisplayName_NameAlreadyIncludesCommandTitle_DoesNotRepeatTitle()
+        {
+            Officer officer = new Officer
+            {
+                DisplayName = "Admiral Ackbar",
+                CurrentRank = OfficerRank.Admiral,
+            };
+
+            Assert.AreEqual("Admiral Ackbar", officer.GetDisplayName());
+        }
+
+        [Test]
+        public void GetDisplayName_MultipartSurname_PreservesCompleteClassicCommandName()
+        {
+            Officer officer = new Officer
+            {
+                DisplayName = "Garm Bel Iblis",
+                CurrentRank = OfficerRank.General,
+            };
+
+            Assert.AreEqual("General Bel Iblis", officer.GetDisplayName());
+        }
+
+        [Test]
+        public void GetDisplayName_WedgeAntilles_UsesOriginalGameCommandName()
+        {
+            Officer officer = new Officer
+            {
+                DisplayName = "Wedge Antilles",
+                CurrentRank = OfficerRank.Commander,
+            };
+
+            Assert.AreEqual("Commander Antilles", officer.GetDisplayName());
+        }
+
         [Test]
         public void IsMovable_OnActiveMission_ReturnsFalse()
         {
@@ -220,6 +271,7 @@ namespace Rebellion.Tests.Game.Units
             {
                 IsMain = true,
                 CurrentRank = OfficerRank.Admiral,
+                CommandingInstanceID = "command-target",
                 Ratings = new Dictionary<SkillRating, int>
                 {
                     { SkillRating.Espionage, 15 },
@@ -244,6 +296,11 @@ namespace Rebellion.Tests.Game.Units
                 originalOfficer.CurrentRank,
                 deserializedOfficer.CurrentRank,
                 "CurrentRank mismatch"
+            );
+            Assert.AreEqual(
+                originalOfficer.CommandingInstanceID,
+                deserializedOfficer.CommandingInstanceID,
+                "CommandingInstanceID mismatch"
             );
             Assert.AreEqual(
                 originalOfficer.Movement,

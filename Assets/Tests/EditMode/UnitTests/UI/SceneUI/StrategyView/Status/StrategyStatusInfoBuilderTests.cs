@@ -116,10 +116,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 {
                     "Location:|Core Sector",
                     "Status:|Active",
+                    "General:|Not Assigned",
+                    "Commander:|Not Assigned",
                     "Popular Support:|63",
                     "Energy:|12",
                 },
                 info.Rows.Select(row => row.Left + "|" + row.Right)
+            );
+        }
+
+        [Test]
+        public void Build_Planet_ReturnsSystemCommandersButExcludesOrbitingFleetCommanders()
+        {
+            Officer systemGeneral = EntityFactory.CreateOfficer("system-general", _ownerId);
+            systemGeneral.DisplayName = "Carlist Rieekan";
+            systemGeneral.CurrentRank = OfficerRank.General;
+            _game.AttachNode(systemGeneral, _planet);
+            GameFleet fleet = new GameFleet { InstanceID = "fleet", OwnerInstanceID = _ownerId };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = _ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer fleetCommander = EntityFactory.CreateOfficer("fleet-commander", _ownerId);
+            fleetCommander.DisplayName = "Wedge Antilles";
+            fleetCommander.CurrentRank = OfficerRank.Commander;
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(ship, fleet);
+            _game.AttachNode(fleetCommander, ship);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, _planet));
+
+            Assert.AreEqual(
+                "General Rieekan",
+                info.Rows.Single(row => row.Left == "General:").Right
+            );
+            Assert.AreEqual(
+                "Not Assigned",
+                info.Rows.Single(row => row.Left == "Commander:").Right
             );
         }
 
@@ -530,7 +565,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
 
             Assert.AreEqual("Character Status", info.Header);
-            Assert.AreEqual("None", info.Rows.Single(row => row.Left == "Commanding:").Right);
+            Assert.AreEqual(
+                "Not Assigned",
+                info.Rows.Single(row => row.Left == "Commanding:").Right
+            );
             Assert.AreEqual(
                 "Awaiting Orders",
                 info.Rows.Single(row => row.Left == "Status:").Right
@@ -562,6 +600,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
 
             Assert.IsFalse(info.Rows.Any(row => row.Left == "Attached:"));
+        }
+
+        [Test]
+        public void Build_OfficerWithStoredCommandTarget_ReturnsOriginalCommandingAssignment()
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "command-fleet",
+                DisplayName = "First Fleet",
+                OwnerInstanceID = _ownerId,
+            };
+            Officer officer = new Officer
+            {
+                InstanceID = "command-officer",
+                DisplayName = "Wedge Antilles",
+                OwnerInstanceID = _ownerId,
+                CurrentRank = OfficerRank.Commander,
+                CommandingInstanceID = fleet.InstanceID,
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(officer, _planet);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
+
+            Assert.AreEqual("Commander Antilles", info.Label);
+            Assert.AreEqual(
+                "First Fleet",
+                info.Rows.Single(row => row.Left == "Commanding:").Right
+            );
         }
 
         [Test]
