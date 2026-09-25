@@ -74,13 +74,14 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Resolve_AdmiralLeadership_ImprovesCapitalShipReactionRate()
         {
-            CapitalShip uncommandedShip = CreateShip("uncommanded", hull: 100, weaponStrength: 10);
-            CapitalShip commandedShip = CreateShip("commanded", hull: 100, weaponStrength: 10);
+            CapitalShip uncommandedShip = CreateShip("uncommanded", hull: 100, weaponStrength: 2);
+            CapitalShip commandedShip = CreateShip("commanded", hull: 100, weaponStrength: 2);
             uncommandedShip.WeaponRecharge = 0;
             commandedShip.WeaponRecharge = 0;
             CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
             CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AdmiralLeadershipDivisor = 50;
             config.AutoResolveMaximumIterations = 2;
             config.AutoResolveTargetScanDivisor = 1;
             config.AutoResolveStartingDistance = 0;
@@ -106,8 +107,8 @@ namespace Rebellion.Tests.Simulation
                 )
             );
 
-            Assert.AreEqual(90, GetShipOutcome(uncommanded, firstTarget).HullAfter);
-            Assert.AreEqual(80, GetShipOutcome(commanded, secondTarget).HullAfter);
+            Assert.AreEqual(98, GetShipOutcome(uncommanded, firstTarget).HullAfter);
+            Assert.AreEqual(96, GetShipOutcome(commanded, secondTarget).HullAfter);
         }
 
         [Test]
@@ -118,6 +119,7 @@ namespace Rebellion.Tests.Simulation
             CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
             CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.CommanderCombatDivisor = 25;
             config.AutoResolveMaximumIterations = 1;
             config.AutoResolveTargetScanDivisor = 1;
             config.AutoResolveStartingDistance = 0;
@@ -144,7 +146,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(95, GetShipOutcome(uncommanded, firstTarget).HullAfter);
-            Assert.AreEqual(90, GetShipOutcome(commanded, secondTarget).HullAfter);
+            Assert.AreEqual(91, GetShipOutcome(commanded, secondTarget).HullAfter);
         }
 
         [Test]
@@ -1791,6 +1793,8 @@ namespace Rebellion.Tests.Simulation
         {
             return new GameConfig.SpaceCombatConfig
             {
+                AdmiralLeadershipDivisor = 10,
+                CommanderCombatDivisor = 20,
                 LaserCannonCapitalDamageMultiplier = 1.0 / 6.0,
                 AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                 AutoResolveMaximumIterations = 4096,

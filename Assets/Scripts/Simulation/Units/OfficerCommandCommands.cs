@@ -175,8 +175,6 @@ namespace Rebellion.Simulation
         {
             OfficerRank previousRank = officer.CurrentRank;
             officer.CurrentRank = rank;
-            officer.CommandingInstanceID =
-                rank == OfficerRank.None ? null : commandTarget?.InstanceID;
             results.Add(
                 new CommandKindChangedResult
                 {

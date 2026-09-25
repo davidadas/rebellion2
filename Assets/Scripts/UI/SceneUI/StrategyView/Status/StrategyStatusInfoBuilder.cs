@@ -971,19 +971,8 @@ internal sealed class StrategyStatusInfoBuilder
         if (officer.CurrentRank == OfficerRank.None)
             return "Not Assigned";
 
-        if (!string.IsNullOrWhiteSpace(officer.CommandingInstanceID))
-        {
-            ISceneNode commandTarget = findVisibleNode(officer.CommandingInstanceID);
-            return commandTarget?.GetDisplayName() ?? "Not Assigned";
-        }
-
-        // Saves created before command targets were persisted only contain the rank. Preserve
-        // their prior location-derived presentation until the player next changes the post.
-        ISceneNode parent = officer.GetParent();
-        if (parent is CapitalShip ship)
-            return ship.GetParentOfType<Fleet>()?.GetDisplayName() ?? "Not Assigned";
-
-        return parent is Fleet or Planet ? parent.GetDisplayName() : "Not Assigned";
+        ISceneNode commandTarget = OfficerCommandCommands.ResolveCommandTarget(officer);
+        return commandTarget?.GetDisplayName() ?? "Not Assigned";
     }
 
     /// <summary>

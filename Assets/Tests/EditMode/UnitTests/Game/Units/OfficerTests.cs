@@ -271,7 +271,6 @@ namespace Rebellion.Tests.Game.Units
             {
                 IsMain = true,
                 CurrentRank = OfficerRank.Admiral,
-                CommandingInstanceID = "command-target",
                 Ratings = new Dictionary<SkillRating, int>
                 {
                     { SkillRating.Espionage, 15 },
@@ -296,11 +295,6 @@ namespace Rebellion.Tests.Game.Units
                 originalOfficer.CurrentRank,
                 deserializedOfficer.CurrentRank,
                 "CurrentRank mismatch"
-            );
-            Assert.AreEqual(
-                originalOfficer.CommandingInstanceID,
-                deserializedOfficer.CommandingInstanceID,
-                "CommandingInstanceID mismatch"
             );
             Assert.AreEqual(
                 originalOfficer.Movement,

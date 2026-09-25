@@ -603,7 +603,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
-        public void Build_OfficerWithStoredCommandTarget_ReturnsOriginalCommandingAssignment()
+        public void Build_OfficerInFleet_DerivesCommandingAssignmentFromLocation()
         {
             GameFleet fleet = new GameFleet
             {
@@ -611,16 +611,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 DisplayName = "First Fleet",
                 OwnerInstanceID = _ownerId,
             };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "command-ship",
+                OwnerInstanceID = _ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             Officer officer = new Officer
             {
                 InstanceID = "command-officer",
                 DisplayName = "Wedge Antilles",
                 OwnerInstanceID = _ownerId,
                 CurrentRank = OfficerRank.Commander,
-                CommandingInstanceID = fleet.InstanceID,
             };
             _game.AttachNode(fleet, _planet);
-            _game.AttachNode(officer, _planet);
+            _game.AttachNode(ship, fleet);
+            _game.AttachNode(officer, ship);
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
 

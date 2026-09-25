@@ -277,7 +277,6 @@ namespace Rebellion.Game.Units
         // Rank Info.
         public OfficerRank[] AllowedRanks { get; set; }
         public OfficerRank CurrentRank { get; set; }
-        public string CommandingInstanceID { get; set; }
 
         // Owner Info.
         public string InitialParentTypeID { get; set; }
@@ -438,7 +437,6 @@ namespace Rebellion.Game.Units
             copy.IsDiscoveringForceUser = IsDiscoveringForceUser;
             copy.AllowedRanks = AllowedRanks?.ToArray();
             copy.CurrentRank = CurrentRank;
-            copy.CommandingInstanceID = CommandingInstanceID;
             copy.InitialParentTypeID = InitialParentTypeID;
             copy.InitialParentInstanceID = InitialParentInstanceID;
             copy.DiplomacyVariance = DiplomacyVariance;

@@ -3276,6 +3276,8 @@ namespace Rebellion.Tests.Simulation
                 {
                     SpaceCombat = new GameConfig.SpaceCombatConfig
                     {
+                        AdmiralLeadershipDivisor = 10,
+                        CommanderCombatDivisor = 20,
                         AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                         AutoResolveMaximumIterations = 4096,
                         AutoResolveStagnationIterations = 1200,
