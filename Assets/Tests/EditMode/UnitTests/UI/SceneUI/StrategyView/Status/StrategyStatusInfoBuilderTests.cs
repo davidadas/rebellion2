@@ -6,9 +6,9 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
@@ -131,6 +131,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("Planet Status", info.Header);
             Assert.AreEqual("Corellia", info.Label);
             CollectionAssert.AreEqual(new[] { _planet }, info.ImageItems);
+        }
+
+        [Test]
+        public void Build_PlanetReceivingRelocatedHeadquarters_ReturnsHeadquartersEta()
+        {
+            Faction player = _game.GetFactionByOwnerInstanceID(_ownerId);
+            player.HQInstanceID = "origin";
+            player.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                DisplayName = "Origin",
+                OwnerInstanceID = _ownerId,
+                IsColonized = true,
+                IsHeadquarters = true,
+                EnergyCapacity = 1,
+                PositionX = 100,
+            };
+            _game.AttachNode(origin, _planetSector);
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _ownerId,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, origin);
+            GameSession session = TestContent.CreateGameSession(_game);
+            Assert.IsTrue(
+                session.GetService<HeadquartersCommands>().TryRelocate(headquarters, _planet)
+            );
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, _planet));
+
+            StrategyStatusRow eta = info.Rows.Single(row => row.Left == "Headquarters ETA:");
+            Assert.AreEqual(
+                $"Day {_game.CurrentTick + headquarters.Movement.TicksRemaining()}",
+                eta.Right
+            );
         }
 
         [Test]
@@ -446,10 +488,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 ManufacturingStatus = ManufacturingStatus.Building,
                 MaintenanceCost = 5,
             };
-            specialForces.SetBaseRating(OfficerRating.Diplomacy, 11);
-            specialForces.SetBaseRating(OfficerRating.Espionage, 22);
-            specialForces.SetBaseRating(OfficerRating.Combat, 33);
-            specialForces.SetBaseRating(OfficerRating.Leadership, 44);
+            specialForces.SetBaseRating(SkillRating.Diplomacy, 11);
+            specialForces.SetBaseRating(SkillRating.Espionage, 22);
+            specialForces.SetBaseRating(SkillRating.Combat, 33);
+            specialForces.SetBaseRating(SkillRating.Leadership, 44);
             _game.AttachNode(specialForces, _planet);
 
             StrategyStatusInfo info = _builder.Build(
@@ -479,10 +521,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 FacilityResearch = 2,
                 AllowedRanks = new[] { OfficerRank.Admiral, OfficerRank.Commander },
             };
-            officer.SetBaseRating(OfficerRating.Diplomacy, 10);
-            officer.SetBaseRating(OfficerRating.Espionage, 20);
-            officer.SetBaseRating(OfficerRating.Combat, 30);
-            officer.SetBaseRating(OfficerRating.Leadership, 40);
+            officer.SetBaseRating(SkillRating.Diplomacy, 10);
+            officer.SetBaseRating(SkillRating.Espionage, 20);
+            officer.SetBaseRating(SkillRating.Combat, 30);
+            officer.SetBaseRating(SkillRating.Leadership, 40);
             _game.AttachNode(officer, _planet);
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));

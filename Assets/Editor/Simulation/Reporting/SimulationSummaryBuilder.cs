@@ -12,8 +12,8 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
-using Rebellion.Util.Common;
+using Rebellion.Simulation;
+using Rebellion.Util.Random;
 
 public static partial class HeadlessSimulationRunner
 {
@@ -290,18 +290,25 @@ public static partial class HeadlessSimulationRunner
     )
     {
         Faction faction = game.GetFactionByOwnerInstanceID(summary.FactionId);
-        FleetSystem fleetSystem = new FleetSystem(game);
-        ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleetSystem);
+        FleetCommands fleetSystem = new FleetCommands(game);
+        ManufacturingCommands manufacturing = new ManufacturingCommands(
+            game,
+            fleetSystem,
+            new ManufacturingQueries(game)
+        );
         AITurnContext context = new AITurnContext(
             game,
             faction,
             null,
             null,
+            null,
             manufacturing,
             null,
             null,
+            null,
+            null,
             new SystemRandomProvider(0),
-            new FogOfWarSystem(game).BuildFactionView(faction)
+            new FogOfWarQueries(game).BuildFactionView(faction)
         );
         List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
         List<AIManufactureProposal> proposals = new AIProductionPlanner()

@@ -32,7 +32,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void CompositeSignatures_UsePlatformModifierAndAuthoredBindingParts()
+        public void CompositeSignatures_Default_UsePlatformModifierAndAuthoredBindingParts()
         {
             InputAction decrease = _inputManager.Asset.FindAction(
                 "Strategy/DecreaseGameSpeed",
@@ -58,7 +58,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void CompositeSignatures_EquivalentChordOverridesMatch()
+        public void CompositeSignatures_EquivalentChordOverrides_Match()
         {
             InputAction expected = _inputManager.Asset.FindAction(
                 "Strategy/DecreaseGameSpeed",
@@ -83,7 +83,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void BindingSignatures_DistinguishPlainKeyFromModifiedChord()
+        public void BindingSignatures_PlainAndModifiedKeys_DistinguishSignatures()
         {
             InputAction plain = _inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
             InputAction chord = _inputManager.Asset.FindAction(

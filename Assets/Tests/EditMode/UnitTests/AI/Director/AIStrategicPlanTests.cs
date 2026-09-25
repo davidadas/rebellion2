@@ -11,7 +11,7 @@ namespace Rebellion.Tests.AI.Director
     public class AIStrategicPlanTests
     {
         [Test]
-        public void FleetCountChange_RedistributesIndependentMobileStrengthTarget()
+        public void FleetCountChange_Default_RedistributesIndependentMobileStrengthTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;

@@ -24,11 +24,11 @@ namespace Rebellion.Tests.AI.Phases
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "p1", empire.InstanceID);
             planet.AddVisitor(empire.InstanceID);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
-            officer.Ratings[OfficerRating.Diplomacy] = 90;
+            officer.Ratings[SkillRating.Diplomacy] = 90;
             game.AttachNode(officer, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             context.AddProposal(
-                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, planet)
+                new AIMissionProposal(new[] { officer }, DiplomacyMission.MissionTypeID, planet)
             );
 
             new AIScoringPhase().Execute(context);
@@ -42,6 +42,9 @@ namespace Rebellion.Tests.AI.Phases
         {
             TestAIProposal proposal = new TestAIProposal();
             AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -66,6 +69,9 @@ namespace Rebellion.Tests.AI.Phases
         public void Execute_WithUnsupportedProposal_ThrowsInvalidOperationException()
         {
             AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

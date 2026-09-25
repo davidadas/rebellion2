@@ -6,7 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game

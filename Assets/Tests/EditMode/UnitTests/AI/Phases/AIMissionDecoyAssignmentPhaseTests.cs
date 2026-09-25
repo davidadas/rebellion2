@@ -32,7 +32,7 @@ namespace Rebellion.Tests.AI.Phases
             context.SetSpecialForcesIntent(decoy, SpecialForcesIntent.Decoy);
             AIMissionProposal mission = new AIMissionProposal(
                 new[] { officer },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 target
             );
             mission.SetScore(50);
@@ -78,7 +78,7 @@ namespace Rebellion.Tests.AI.Phases
             context.SetSpecialForcesIntent(decoy, SpecialForcesIntent.Decoy);
             AIMissionProposal mission = new AIMissionProposal(
                 new[] { officer },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 target
             );
             mission.SetScore(50);
@@ -118,7 +118,7 @@ namespace Rebellion.Tests.AI.Phases
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal mission = new AIMissionProposal(
                 new[] { officer },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 target
             );
             mission.SetScore(50);
@@ -145,7 +145,7 @@ namespace Rebellion.Tests.AI.Phases
             context.SetSpecialForcesIntent(decoy, SpecialForcesIntent.Decoy);
             AIMissionProposal mission = new AIMissionProposal(
                 new[] { primary },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 target
             );
             mission.SetScore(50);
@@ -172,7 +172,7 @@ namespace Rebellion.Tests.AI.Phases
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal mission = new AIMissionProposal(
                 new[] { officer },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 target
             );
             mission.SetScore(50);
@@ -197,7 +197,7 @@ namespace Rebellion.Tests.AI.Phases
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal mission = new AIMissionProposal(
                 new[] { participant },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 target
             );
             mission.SetScore(50);
@@ -228,7 +228,7 @@ namespace Rebellion.Tests.AI.Phases
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal mission = new AIMissionProposal(
                 new[] { officer },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 target
             );
             mission.SetScore(50);
@@ -273,13 +273,13 @@ namespace Rebellion.Tests.AI.Phases
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal firstMission = new AIMissionProposal(
                 new[] { firstOfficer },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 firstTarget
             );
             firstMission.SetScore(100);
             AIMissionProposal secondMission = new AIMissionProposal(
                 new[] { secondOfficer },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 secondTarget
             );
             secondMission.SetScore(50);
@@ -309,7 +309,7 @@ namespace Rebellion.Tests.AI.Phases
             context.SetSpecialForcesIntent(decoy, SpecialForcesIntent.Decoy);
             AIMissionProposal mission = new AIMissionProposal(
                 new[] { officer },
-                MissionTypeIDs.Diplomacy,
+                DiplomacyMission.MissionTypeID,
                 target
             );
             mission.SetScore(50);
@@ -336,7 +336,7 @@ namespace Rebellion.Tests.AI.Phases
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal mission = new AIMissionProposal(
                 new[] { officer },
-                MissionTypeIDs.Sabotage,
+                SabotageMission.MissionTypeID,
                 target
             );
             mission.SetScore(50);
@@ -380,14 +380,14 @@ namespace Rebellion.Tests.AI.Phases
             context.SetSpecialForcesIntent(decoy, SpecialForcesIntent.Decoy);
             AIMissionProposal lowerRisk = new AIMissionProposal(
                 new[] { firstOfficer },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 firstTarget
             );
             lowerRisk.SetScore(100);
             lowerRisk.SetFoilProbability(10);
             AIMissionProposal higherRisk = new AIMissionProposal(
                 new[] { secondOfficer },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 secondTarget
             );
             higherRisk.SetScore(50);
@@ -421,7 +421,7 @@ namespace Rebellion.Tests.AI.Phases
                 InstanceID = instanceId,
                 OwnerInstanceID = ownerInstanceId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Espionage },
+                AllowedMissionTypeIDs = new List<string> { EspionageMission.MissionTypeID },
             };
         }
     }

@@ -10,7 +10,7 @@ namespace Rebellion.Tests.Managers
     public sealed class UserSettingsManagerTests
     {
         [Test]
-        public void SaveThenLoad_RestoresRuntimeBindingOverridesFromDisk()
+        public void SaveThenLoad_Default_RestoresRuntimeBindingOverridesFromDisk()
         {
             string directory = Path.Combine(
                 Path.GetTempPath(),
@@ -75,7 +75,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void SaveThenLoad_RestoresMissionOddsVisibilityFromDisk()
+        public void SaveThenLoad_Default_RestoresMissionOddsVisibilityFromDisk()
         {
             string directory = Path.Combine(
                 Path.GetTempPath(),
@@ -113,7 +113,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void SaveThenLoad_RestoresDisabledModsFromDisk()
+        public void SaveThenLoad_Default_RestoresDisabledModsFromDisk()
         {
             string directory = Path.Combine(
                 Path.GetTempPath(),

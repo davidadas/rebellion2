@@ -25,7 +25,7 @@ namespace Rebellion.Tests.AI.Phases
             SpecialForces specialForces = CreateSpecialForces(
                 "special-forces",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
             game.AttachNode(officer, planet);
             game.AttachNode(specialForces, planet);
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.AI.Phases
             SpecialForces specialForces = CreateSpecialForces(
                 "special-forces",
                 empire.InstanceID,
-                MissionTypeIDs.Reconnaissance
+                ReconnaissanceMission.MissionTypeID
             );
             game.AttachNode(officer, planet);
             game.AttachNode(specialForces, planet);
@@ -73,17 +73,17 @@ namespace Rebellion.Tests.AI.Phases
             SpecialForces first = CreateSpecialForces(
                 "special-forces-1",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
             SpecialForces second = CreateSpecialForces(
                 "special-forces-2",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
             SpecialForces third = CreateSpecialForces(
                 "special-forces-3",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
             game.AttachNode(officer, planet);
             game.AttachNode(first, planet);
@@ -108,9 +108,9 @@ namespace Rebellion.Tests.AI.Phases
             SpecialForces specialForces = CreateSpecialForces(
                 "special-forces",
                 empire.InstanceID,
-                MissionTypeIDs.Espionage
+                EspionageMission.MissionTypeID
             );
-            specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Reconnaissance);
+            specialForces.AllowedMissionTypeIDs.Add(ReconnaissanceMission.MissionTypeID);
             game.AttachNode(officer, planet);
             game.AttachNode(specialForces, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);

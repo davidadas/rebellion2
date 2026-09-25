@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Director
 {

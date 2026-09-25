@@ -4,7 +4,6 @@ using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -708,6 +707,16 @@ namespace Rebellion.Tests.Game.Galaxy
                 availableEnergy,
                 "Should return full energy capacity when no buildings exist."
             );
+        }
+
+        [Test]
+        public void GetManufacturingQueue_NoItems_ReturnsEmptyDictionary()
+        {
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                _planet.GetManufacturingQueue();
+
+            Assert.IsNotNull(queue);
+            Assert.IsEmpty(queue);
         }
 
         [Test]

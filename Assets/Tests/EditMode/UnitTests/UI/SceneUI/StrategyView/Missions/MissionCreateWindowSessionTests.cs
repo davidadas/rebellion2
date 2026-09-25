@@ -40,8 +40,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _target = new StrategyMissionTarget(planet, planet.Planet);
             _choices = new List<StrategyMissionChoice>
             {
-                CreateChoice(MissionTypeIDs.Diplomacy, "Diplomacy"),
-                CreateChoice(MissionTypeIDs.Espionage, "Espionage"),
+                CreateChoice(DiplomacyMission.MissionTypeID, "Diplomacy"),
+                CreateChoice(EspionageMission.MissionTypeID, "Espionage"),
             };
             _participants = new List<IMissionParticipant>
             {
@@ -255,7 +255,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 new MissionOption(
                     typeId,
                     displayName,
-                    OfficerRating.Diplomacy,
+                    SkillRating.Diplomacy,
                     MissionTargetKind.Planet
                 )
             );

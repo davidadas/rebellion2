@@ -7,7 +7,8 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Generation;
-using Rebellion.Util.Common;
+using Rebellion.Simulation;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -20,6 +21,7 @@ public sealed class GameFlowController : MonoBehaviour
     private StrategyController strategyController;
 
     private GameManager activeGameManager;
+    private GameSession activeSession;
     private GameRoot game;
     private FactionThemeLibrary themeLibrary;
     private UIContext uiContext;
@@ -69,18 +71,18 @@ public sealed class GameFlowController : MonoBehaviour
             GameRuntime runtime = bootstrap.GetRuntime();
             if (runtime?.HasActiveGame == true)
             {
-                GameManager gameManager = runtime.GetActiveGameManager();
-                InitializeStrategy(gameManager);
-                ActivateGameplay(gameManager, false);
+                GameSession session = runtime.GetActiveGameSession();
+                InitializeStrategy(session);
+                ActivateGameplay(session, false);
                 return;
             }
 
             if (GameLaunchContext.IsLoadGame)
             {
                 LoadGame();
-                GameManager gameManager = StartGameSession(loadedGame: true);
-                InitializeStrategy(gameManager);
-                ActivateGameplay(gameManager, false);
+                GameSession session = StartGameSession(loadedGame: true);
+                InitializeStrategy(session);
+                ActivateGameplay(session, false);
             }
             else
                 await StartNewGameAsync();
@@ -105,7 +107,7 @@ public sealed class GameFlowController : MonoBehaviour
 
         if (activeGameManager?.TryAdvanceTickTimer(Time.deltaTime) == true)
         {
-            activeTick = activeGameManager.ProcessTickIncrementally();
+            activeTick = activeSession.Tick.ProcessTickIncrementally();
             AdvanceActiveTick();
         }
     }
@@ -119,8 +121,8 @@ public sealed class GameFlowController : MonoBehaviour
 
         if (activeGameManager != null)
         {
-            activeGameManager.HeadquartersLost -= HandleHeadquartersLost;
-            activeGameManager.VictoryDeclared -= HandleVictoryDeclared;
+            activeSession.Pipeline.HeadquartersLost -= HandleHeadquartersLost;
+            activeSession.Pipeline.VictoryDeclared -= HandleVictoryDeclared;
         }
     }
 
@@ -169,15 +171,15 @@ public sealed class GameFlowController : MonoBehaviour
             .Settings.Gameplay.DisableBriefings;
         bool playBriefing = GameLaunchContext.PlayIntroCutscene && !briefingsDisabled;
         Task intro = PlayFactionIntroAsync(game.GetPlayerFaction());
-        GameManager gameManager = StartGameSession(loadedGame: false);
-        InitializeStrategy(gameManager);
+        GameSession session = StartGameSession(loadedGame: false);
+        InitializeStrategy(session);
         Task briefingReady = playBriefing
             ? strategyController.PrepareBriefingAsync()
             : Task.CompletedTask;
         GameStartupTrace.Log("Briefing owner preparation requested.");
         await Task.WhenAll(intro, briefingReady);
         GameStartupTrace.Log("Introduction and briefing preparation complete.");
-        ActivateGameplay(gameManager, playBriefing);
+        ActivateGameplay(session, playBriefing);
     }
 
     /// <summary>
@@ -233,8 +235,8 @@ public sealed class GameFlowController : MonoBehaviour
     /// Starts the built game in the active runtime.
     /// </summary>
     /// <param name="loadedGame">Whether the game was restored from persisted state.</param>
-    /// <returns>The active game manager.</returns>
-    private GameManager StartGameSession(bool loadedGame)
+    /// <returns>The active game session.</returns>
+    private GameSession StartGameSession(bool loadedGame)
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         GameRuntime runtime = bootstrap.GetRuntime();
@@ -243,20 +245,28 @@ public sealed class GameFlowController : MonoBehaviour
     }
 
     /// <summary>
-    /// Composes strategy UI for an active game manager without revealing it or starting music.
+    /// Composes strategy UI for an active game session without revealing it or starting music.
     /// </summary>
-    /// <param name="gameManager">The active game manager.</param>
-    private void InitializeStrategy(GameManager gameManager)
+    /// <param name="session">The active game session.</param>
+    private void InitializeStrategy(GameSession session)
     {
         AppBootstrap bootstrap = AppBootstrap.Instance;
         ContentPack contentPack = bootstrap.GetContentPack();
         GameStartupTrace.Log("Building encyclopedia catalog.");
+        GameDataCatalog gameData = contentPack.GameData;
         EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build(
-            contentPack.GameData
+            gameData.EncyclopediaEntries,
+            gameData.PlanetSectors,
+            gameData.Buildings,
+            gameData.CapitalShips,
+            gameData.Starfighters,
+            gameData.Regiments,
+            gameData.SpecialForces,
+            gameData.Officers
         );
         GameStartupTrace.Log("Encyclopedia catalog complete; creating UI context.");
         uiContext = new UIContext(
-            gameManager.GetGame(),
+            session.Game,
             themeLibrary,
             encyclopediaCatalog,
             bootstrap.GetContentAssets().GetTexture
@@ -264,14 +274,19 @@ public sealed class GameFlowController : MonoBehaviour
 
         if (activeGameManager != null)
         {
-            activeGameManager.HeadquartersLost -= HandleHeadquartersLost;
-            activeGameManager.VictoryDeclared -= HandleVictoryDeclared;
+            activeSession.Pipeline.HeadquartersLost -= HandleHeadquartersLost;
+            activeSession.Pipeline.VictoryDeclared -= HandleVictoryDeclared;
         }
-        gameManager.HeadquartersLost += HandleHeadquartersLost;
-        gameManager.VictoryDeclared += HandleVictoryDeclared;
+        session.Pipeline.HeadquartersLost += HandleHeadquartersLost;
+        session.Pipeline.VictoryDeclared += HandleVictoryDeclared;
 
         GameStartupTrace.Log("StrategyController initialization started.");
-        strategyController.Initialize(gameManager, uiContext);
+        strategyController.Initialize(
+            session,
+            bootstrap.GetRuntime().GetActiveGameManager(),
+            bootstrap.GetRuntime(),
+            uiContext
+        );
         GameStartupTrace.Log("StrategyController initialization complete.");
     }
 
@@ -292,12 +307,13 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Reveals strategy UI and optionally begins the prepared opening briefing.
     /// </summary>
-    /// <param name="gameManager">The active game manager.</param>
+    /// <param name="session">The active game session.</param>
     /// <param name="requestBriefing">Whether launch state requested the opening briefing.</param>
-    private void ActivateGameplay(GameManager gameManager, bool requestBriefing)
+    private void ActivateGameplay(GameSession session, bool requestBriefing)
     {
         strategyController.ActivatePresentation();
-        GameRoot activeGame = gameManager.GetGame();
+        GameManager clock = AppBootstrap.Instance.GetRuntime().GetActiveGameManager();
+        GameRoot activeGame = session.Game;
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();
         bool briefingsDisabled = AppBootstrap
             .Instance.GetUserSettingsManager()
@@ -313,11 +329,15 @@ public sealed class GameFlowController : MonoBehaviour
             strategyController.PlayBriefing(() =>
             {
                 metadata.OpeningBriefingCompleted = true;
-                activeGameManager = gameManager;
+                activeSession = session;
+                activeGameManager = clock;
             });
         }
         else
-            activeGameManager = gameManager;
+        {
+            activeSession = session;
+            activeGameManager = clock;
+        }
         GameStartupTrace.Complete(
             playBriefing ? "Opening briefing started." : "Strategy gameplay ready."
         );
@@ -344,7 +364,7 @@ public sealed class GameFlowController : MonoBehaviour
         if (campaignEnding || result == null)
             return;
 
-        Faction playerFaction = activeGameManager?.GetPlayerFaction();
+        Faction playerFaction = activeSession?.Game.GetPlayerFaction();
         if (playerFaction == null)
             return;
 

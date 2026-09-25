@@ -3,7 +3,6 @@ using NUnit.Framework;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.AI.Proposals
@@ -18,7 +17,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { officer },
-                MissionTypeIDs.Recruitment,
+                RecruitmentMission.MissionTypeID,
                 planet
             );
 
@@ -36,7 +35,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { officer },
-                MissionTypeIDs.Diplomacy,
+                DiplomacyMission.MissionTypeID,
                 planet
             );
 
@@ -63,7 +62,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { officer },
-                MissionTypeIDs.Diplomacy,
+                DiplomacyMission.MissionTypeID,
                 planet
             );
 
@@ -80,7 +79,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { trainer, student },
-                MissionTypeIDs.JediTraining,
+                JediTrainingMission.MissionTypeID,
                 planet
             );
 
@@ -98,7 +97,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "rebels" };
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { main },
-                MissionTypeIDs.Espionage,
+                EspionageMission.MissionTypeID,
                 planet,
                 decoyParticipants: new[] { decoy }
             );
@@ -116,7 +115,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "rebels" };
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { officer },
-                MissionTypeIDs.InciteUprising,
+                InciteUprisingMission.MissionTypeID,
                 planet
             );
 

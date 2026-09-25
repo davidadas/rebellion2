@@ -6,7 +6,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>

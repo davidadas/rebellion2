@@ -1,14 +1,7 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
-using Rebellion.Systems;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -21,440 +14,6 @@ namespace Rebellion.Game.Events
     {
         // Trigger Bindings.
         public List<GameEventBinding> Bindings { get; set; } = new List<GameEventBinding>();
-
-        /// <summary>
-        /// Identifies the simulation result consumed by the trigger.
-        /// </summary>
-        internal abstract Type ResultType { get; }
-
-        /// <summary>
-        /// Checks whether a simulation result satisfies the trigger criteria.
-        /// </summary>
-        /// <param name="result">The simulation result being evaluated.</param>
-        /// <returns>True when the result satisfies the trigger criteria.</returns>
-        internal abstract bool Matches(GameResult result);
-
-        /// <summary>
-        /// Adds the authored result arguments to the event evaluation context.
-        /// </summary>
-        /// <param name="context">The event evaluation context receiving the bindings.</param>
-        /// <param name="result">The matched simulation result.</param>
-        internal void Bind(GameEventEvaluationContext context, GameResult result)
-        {
-            foreach (GameEventBinding binding in Bindings)
-            {
-                GameEventTriggerArgument argument = GameEventTriggerArguments.Get(
-                    ResultType,
-                    binding.Argument
-                );
-                context.Bind(binding.As, argument.Resolve(result));
-            }
-        }
-
-        /// <summary>
-        /// Resolves the declared value type for an authored trigger argument.
-        /// </summary>
-        /// <param name="argument">The authored trigger argument name.</param>
-        /// <returns>The declared argument type.</returns>
-        internal Type GetBindingType(string argument) =>
-            GameEventTriggerArguments.Get(ResultType, argument).ValueType;
-
-        /// <summary>
-        /// Compares an optional authored instance ID with an actual instance ID.
-        /// </summary>
-        /// <param name="expected">The optional authored instance ID.</param>
-        /// <param name="actual">The actual instance ID.</param>
-        /// <returns>True when no value was authored or the instance IDs match.</returns>
-        protected static bool MatchesInstanceID(string expected, string actual) =>
-            string.IsNullOrWhiteSpace(expected)
-            || string.Equals(expected, actual, StringComparison.Ordinal);
-
-        /// <summary>
-        /// Compares an optional authored source-event ID with a simulation result.
-        /// </summary>
-        /// <param name="expected">The optional authored source-event ID.</param>
-        /// <param name="result">The simulation result.</param>
-        /// <returns>True when no source was authored or the source IDs match.</returns>
-        protected static bool MatchesSource(string expected, GameResult result) =>
-            MatchesInstanceID(expected, result?.SourceEventInstanceID);
-    }
-
-    /// <summary>
-    /// Describes one stable value that a trigger may expose without reflecting over result objects.
-    /// </summary>
-    internal sealed class GameEventTriggerArgument
-    {
-        private readonly Func<GameResult, object> _resolve;
-
-        // Argument Type.
-        internal Type ValueType { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the GameEventTriggerArgument class.
-        /// </summary>
-        /// <param name="valueType">The value type.</param>
-        /// <param name="resolve">The resolve.</param>
-        private GameEventTriggerArgument(Type valueType, Func<GameResult, object> resolve)
-        {
-            ValueType = valueType;
-            _resolve = resolve;
-        }
-
-        /// <summary>
-        /// Resolves the argument value from a matched simulation result.
-        /// </summary>
-        /// <param name="result">The matched simulation result.</param>
-        /// <returns>The exposed argument value.</returns>
-        internal object Resolve(GameResult result) => _resolve(result);
-
-        /// <summary>
-        /// Creates a strongly typed trigger-argument accessor.
-        /// </summary>
-        /// <typeparam name="TResult">The supported simulation-result type.</typeparam>
-        /// <typeparam name="TValue">The exposed argument type.</typeparam>
-        /// <param name="resolve">The function that resolves the argument value.</param>
-        /// <returns>The trigger-argument accessor.</returns>
-        internal static GameEventTriggerArgument Create<TResult, TValue>(
-            Func<TResult, TValue> resolve
-        )
-            where TResult : GameResult =>
-            new GameEventTriggerArgument(typeof(TValue), result => resolve((TResult)result));
-    }
-
-    /// <summary>
-    /// Defines the stable arguments exposed by each supported trigger-result contract.
-    /// </summary>
-    internal static class GameEventTriggerArguments
-    {
-        private static readonly IReadOnlyDictionary<(Type, string), GameEventTriggerArgument> _all =
-            Build();
-
-        /// <summary>
-        /// Resolves a declared trigger argument.
-        /// </summary>
-        /// <param name="resultType">The simulation-result type.</param>
-        /// <param name="argument">The authored argument name.</param>
-        /// <returns>The declared trigger argument.</returns>
-        internal static GameEventTriggerArgument Get(Type resultType, string argument)
-        {
-            if (
-                string.IsNullOrWhiteSpace(argument)
-                || !_all.TryGetValue((resultType, argument), out GameEventTriggerArgument value)
-            )
-                throw new InvalidOperationException(
-                    $"Trigger result '{resultType?.Name}' does not expose argument '{argument}'."
-                );
-            return value;
-        }
-
-        /// <summary>
-        /// Builds the result-to-argument contracts used by event bindings.
-        /// </summary>
-        /// <returns>The supported trigger arguments indexed by result type and argument name.</returns>
-        private static IReadOnlyDictionary<(Type, string), GameEventTriggerArgument> Build()
-        {
-            Dictionary<(Type, string), GameEventTriggerArgument> arguments = new();
-            Add<PlanetOwnershipChangedResult, Planet>(arguments, "Planet", result => result.Planet);
-            Add<PlanetOwnershipChangedResult, Faction>(
-                arguments,
-                "PreviousOwner",
-                result => result.PreviousOwner
-            );
-            Add<PlanetOwnershipChangedResult, Faction>(
-                arguments,
-                "NewOwner",
-                result => result.NewOwner
-            );
-            Add<PlanetOwnershipChangedResult, PlanetOwnershipChangeReason>(
-                arguments,
-                "Reason",
-                result => result.Reason
-            );
-            Add<PlanetStatChangedResult, Planet>(arguments, "Planet", result => result.Planet);
-            Add<PlanetStatChangedResult, Faction>(arguments, "Faction", result => result.Faction);
-            Add<PlanetStatChangedResult, PlanetChangeCategory>(
-                arguments,
-                "Category",
-                result => result.Category
-            );
-            Add<PlanetStatChangedResult, int>(
-                arguments,
-                "PreviousValue",
-                result => result.OldValue
-            );
-            Add<PlanetStatChangedResult, int>(arguments, "CurrentValue", result => result.NewValue);
-            Add<BlockadeChangedResult, Planet>(arguments, "Planet", result => result.Planet);
-            Add<BlockadeChangedResult, Fleet>(
-                arguments,
-                "BlockadingFleet",
-                result => result.BlockadingFleet
-            );
-            Add<BlockadeChangedResult, bool>(arguments, "IsBlockaded", result => result.Blockaded);
-            Add<PlanetUprisingStartedResult, Planet>(arguments, "Planet", result => result.Planet);
-            Add<PlanetUprisingStartedResult, Faction>(
-                arguments,
-                "InstigatorFaction",
-                result => result.InstigatorFaction
-            );
-            Add<PlanetUprisingEndedResult, Planet>(arguments, "Planet", result => result.Planet);
-            Add<PlanetUprisingEndedResult, Faction>(arguments, "Faction", result => result.Faction);
-            Add<IntelligenceRevealedResult, Faction>(
-                arguments,
-                "Recipient",
-                result => result.Recipient
-            );
-            Add<IntelligenceRevealedResult, List<ISceneNode>>(
-                arguments,
-                "Observations",
-                result => result.Observations
-            );
-            Add<MaintenanceRequiredResult, Faction>(arguments, "Faction", result => result.Faction);
-            Add<MaintenanceRequiredResult, int>(arguments, "Amount", result => result.Amount);
-            Add<ResearchOrderedResult, Faction>(arguments, "Faction", result => result.Faction);
-            Add<ResearchOrderedResult, ResearchDiscipline>(
-                arguments,
-                "Discipline",
-                result => result.Discipline
-            );
-            Add<ResearchOrderedResult, int>(
-                arguments,
-                "ResearchOrder",
-                result => result.ResearchOrder
-            );
-            Add<ResearchOrderedResult, int>(arguments, "Capacity", result => result.Capacity);
-            Add<ResearchOrderedResult, Technology>(
-                arguments,
-                "Technology",
-                result => result.Technology
-            );
-            Add<MissionCompletedResult, Mission>(arguments, "Mission", result => result.Mission);
-            Add<MissionCompletedResult, string>(
-                arguments,
-                "MissionName",
-                result => result.MissionName
-            );
-            Add<MissionCompletedResult, string>(
-                arguments,
-                "MissionTypeID",
-                result => result.MissionTypeID
-            );
-            Add<MissionCompletedResult, string>(
-                arguments,
-                "TargetName",
-                result => result.TargetName
-            );
-            Add<MissionCompletedResult, Planet>(arguments, "Location", result => result.Location);
-            Add<MissionCompletedResult, ContainerNode>(
-                arguments,
-                "ReturnDestination",
-                result => result.ReturnDestination
-            );
-            Add<MissionCompletedResult, List<IMissionParticipant>>(
-                arguments,
-                "Participants",
-                result => result.Participants
-            );
-            Add<MissionCompletedResult, MissionOutcome>(
-                arguments,
-                "Outcome",
-                result => result.Outcome
-            );
-            Add<MissionCompletedResult, MissionCompletionReason>(
-                arguments,
-                "CompletionReason",
-                result => result.CompletionReason
-            );
-            Add<MissionCompletedResult, bool>(
-                arguments,
-                "CanContinue",
-                result => result.CanContinue
-            );
-            Add<OfficerCaptureStateResult, Officer>(
-                arguments,
-                "Officer",
-                result => result.TargetOfficer
-            );
-            Add<OfficerCaptureStateResult, bool>(
-                arguments,
-                "IsCaptured",
-                result => result.IsCaptured
-            );
-            Add<OfficerCaptureStateResult, Officer>(
-                arguments,
-                "LinkedOfficer",
-                result => result.LinkedOfficer
-            );
-            Add<OfficerCaptureStateResult, IGameEntity>(
-                arguments,
-                "Context",
-                result => result.Context
-            );
-            Add<OfficerKilledResult, Officer>(arguments, "Officer", result => result.TargetOfficer);
-            Add<OfficerKilledResult, IGameEntity>(arguments, "Assassin", result => result.Assassin);
-            Add<OfficerKilledResult, IGameEntity>(arguments, "Context", result => result.Context);
-            Add<OfficerInjuredResult, Officer>(arguments, "Officer", result => result.Officer);
-            Add<OfficerInjuredResult, int>(arguments, "Severity", result => result.Severity);
-            Add<OfficerRecruitedResult, Officer>(arguments, "Officer", result => result.Officer);
-            Add<OfficerRecruitedResult, Faction>(arguments, "Faction", result => result.Faction);
-            Add<OfficerRecruitedResult, Planet>(arguments, "Planet", result => result.Planet);
-            Add<ForceDiscoveryResult, Officer>(arguments, "Officer", result => result.Officer);
-            Add<ForceDiscoveryResult, Officer>(
-                arguments,
-                "Discoverer",
-                result => result.Discoverer
-            );
-            Add<ForceDiscoveryResult, int>(arguments, "ForceRank", result => result.ForceRank);
-            Add<ForceDiscoveryResult, ForceEventType>(
-                arguments,
-                "EventType",
-                result => result.EventType
-            );
-            Add<UnitOwnershipChangedResult, ISceneNode>(arguments, "Unit", result => result.Unit);
-            Add<UnitOwnershipChangedResult, Faction>(
-                arguments,
-                "PreviousOwner",
-                result => result.PreviousOwner
-            );
-            Add<UnitOwnershipChangedResult, Faction>(
-                arguments,
-                "NewOwner",
-                result => result.NewOwner
-            );
-            Add<GameObjectCreatedResult, IGameEntity>(
-                arguments,
-                "Unit",
-                result => result.GameObject
-            );
-            Add<GameObjectDestroyedResult, IGameEntity>(
-                arguments,
-                "Unit",
-                result => result.DestroyedObject
-            );
-            Add<GameObjectDestroyedResult, IGameEntity>(
-                arguments,
-                "DestroyedBy",
-                result => result.DestroyedBy
-            );
-            Add<GameObjectDestroyedResult, IGameEntity>(
-                arguments,
-                "Context",
-                result => result.Context
-            );
-            Add<GameObjectDestroyedResult, UnitDestructionReason>(
-                arguments,
-                "Reason",
-                result => result.Reason
-            );
-            Add<UnitArrivedResult, IGameEntity>(arguments, "Unit", result => result.Unit);
-            Add<UnitArrivedResult, Planet>(arguments, "Destination", result => result.Destination);
-            Add<UnitArrivedResult, string>(
-                arguments,
-                "MovementGroupID",
-                result => result.MovementGroupID
-            );
-            Add<SpaceCombatResult, Fleet>(
-                arguments,
-                "AttackerFleet",
-                result => result.AttackerFleet
-            );
-            Add<SpaceCombatResult, Fleet>(
-                arguments,
-                "DefenderFleet",
-                result => result.DefenderFleet
-            );
-            Add<SpaceCombatResult, Planet>(arguments, "Planet", result => result.Planet);
-            Add<SpaceCombatResult, CombatSide>(arguments, "Winner", result => result.Winner);
-            Add<BombardmentResult, Planet>(arguments, "Planet", result => result.Planet);
-            Add<BombardmentResult, Faction>(
-                arguments,
-                "AttackingFaction",
-                result => result.AttackingFaction
-            );
-            Add<BombardmentResult, BombardmentType>(arguments, "Type", result => result.Type);
-            Add<BombardmentResult, bool>(
-                arguments,
-                "PlanetDestroyed",
-                result => result.PlanetDestroyed
-            );
-            Add<PlanetaryAssaultResult, Planet>(arguments, "Planet", result => result.Planet);
-            Add<PlanetaryAssaultResult, Faction>(
-                arguments,
-                "AttackingFaction",
-                result => result.AttackingFaction
-            );
-            Add<PlanetaryAssaultResult, bool>(arguments, "Success", result => result.Success);
-            Add<PlanetaryAssaultResult, bool>(
-                arguments,
-                "BlockedByShields",
-                result => result.BlockedByShields
-            );
-            Add<DuelResult, Officer>(
-                arguments,
-                "FirstOfficer",
-                result => result.EncounteredOfficer
-            );
-            Add<DuelResult, Officer>(arguments, "SecondOfficer", result => result.OpposingOfficer);
-            Add<DuelResult, string>(
-                arguments,
-                "FirstOfficerInstanceID",
-                result => result.EncounteredOfficer?.InstanceID
-            );
-            Add<DuelResult, string>(
-                arguments,
-                "SecondOfficerInstanceID",
-                result => result.OpposingOfficer?.InstanceID
-            );
-            Add<DuelResult, Planet>(arguments, "Location", result => result.Location);
-            Add<DuelResult, bool>(
-                arguments,
-                "FirstOfficerCaptured",
-                result => result.EncounteredOfficerCaptured
-            );
-            Add<DuelResult, int>(
-                arguments,
-                "FirstOfficerInjury",
-                result => result.EncounteredOfficerInjury
-            );
-            Add<DuelResult, int>(
-                arguments,
-                "SecondOfficerInjury",
-                result => result.OpposingOfficerInjury
-            );
-            Add<DuelResult, string>(arguments, "ImagePath", result => result.ImagePath);
-            Add<DuelResult, string>(arguments, "AudioPath", result => result.AudioPath);
-            Add<ManufacturingDeployedResult, Faction>(
-                arguments,
-                "Faction",
-                result => result.Faction
-            );
-            Add<ManufacturingDeployedResult, IGameEntity>(
-                arguments,
-                "DeployedObject",
-                result => result.DeployedObject
-            );
-            Add<ManufacturingDeployedResult, IGameEntity>(
-                arguments,
-                "Location",
-                result => result.Location
-            );
-            return arguments;
-        }
-
-        /// <summary>
-        /// Adds a strongly typed argument to the trigger contract.
-        /// </summary>
-        /// <typeparam name="TResult">The supported simulation-result type.</typeparam>
-        /// <typeparam name="TValue">The exposed argument type.</typeparam>
-        /// <param name="arguments">The trigger contract being built.</param>
-        /// <param name="name">The authored argument name.</param>
-        /// <param name="resolve">The function that resolves the argument value.</param>
-        private static void Add<TResult, TValue>(
-            IDictionary<(Type, string), GameEventTriggerArgument> arguments,
-            string name,
-            Func<TResult, TValue> resolve
-        )
-            where TResult : GameResult =>
-            arguments.Add((typeof(TResult), name), GameEventTriggerArgument.Create(resolve));
     }
 
     #region Planet
@@ -479,21 +38,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(PlanetOwnershipChangedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is PlanetOwnershipChangedResult changed
-            && MatchesInstanceID(PlanetInstanceID, changed.Planet?.InstanceID)
-            && MatchesInstanceID(PreviousOwnerFactionInstanceID, changed.PreviousOwner?.InstanceID)
-            && MatchesInstanceID(NewOwnerFactionInstanceID, changed.NewOwner?.InstanceID)
-            && (!Reason.HasValue || changed.Reason == Reason.Value)
-            && MatchesSource(SourceEventInstanceID, changed);
     }
 
     /// <summary>
@@ -513,20 +57,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(PlanetStatChangedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is PlanetStatChangedResult changed
-            && MatchesInstanceID(PlanetInstanceID, changed.Planet?.InstanceID)
-            && MatchesInstanceID(FactionInstanceID, changed.Faction?.InstanceID)
-            && (!Category.HasValue || changed.Category == Category.Value)
-            && MatchesSource(SourceEventInstanceID, changed);
     }
 
     /// <summary>
@@ -543,19 +73,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(BlockadeChangedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is BlockadeChangedResult changed
-            && MatchesInstanceID(PlanetInstanceID, changed.Planet?.InstanceID)
-            && (!IsBlockaded.HasValue || changed.Blockaded == IsBlockaded.Value)
-            && MatchesSource(SourceEventInstanceID, changed);
     }
 
     /// <summary>
@@ -572,19 +89,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(PlanetUprisingStartedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is PlanetUprisingStartedResult started
-            && MatchesInstanceID(PlanetInstanceID, started.Planet?.InstanceID)
-            && MatchesInstanceID(InstigatorFactionInstanceID, started.InstigatorFaction?.InstanceID)
-            && MatchesSource(SourceEventInstanceID, started);
     }
 
     /// <summary>
@@ -601,19 +105,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(PlanetUprisingEndedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is PlanetUprisingEndedResult ended
-            && MatchesInstanceID(PlanetInstanceID, ended.Planet?.InstanceID)
-            && MatchesInstanceID(FactionInstanceID, ended.Faction?.InstanceID)
-            && MatchesSource(SourceEventInstanceID, ended);
     }
 
     /// <summary>
@@ -630,24 +121,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(IntelligenceRevealedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is IntelligenceRevealedResult revealed
-            && MatchesInstanceID(RecipientFactionInstanceID, revealed.Recipient?.InstanceID)
-            && (
-                string.IsNullOrWhiteSpace(ObservationInstanceID)
-                || revealed.Observations?.Any(observation =>
-                    MatchesInstanceID(ObservationInstanceID, observation?.InstanceID)
-                ) == true
-            )
-            && MatchesSource(SourceEventInstanceID, revealed);
     }
 
     /// <summary>
@@ -661,18 +134,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(MaintenanceRequiredResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is MaintenanceRequiredResult required
-            && MatchesInstanceID(FactionInstanceID, required.Faction?.InstanceID)
-            && MatchesSource(SourceEventInstanceID, required);
     }
 
     #endregion
@@ -696,20 +157,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(ResearchOrderedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is ResearchOrderedResult advanced
-            && MatchesInstanceID(FactionInstanceID, advanced.Faction?.InstanceID)
-            && (!Discipline.HasValue || advanced.Discipline == Discipline.Value)
-            && MatchesInstanceID(TechnologyTypeID, advanced.Technology?.Manufacturable?.GetTypeID())
-            && MatchesSource(SourceEventInstanceID, advanced);
     }
 
     #endregion
@@ -736,25 +183,6 @@ namespace Rebellion.Game.Events
         public ParticipantMatch Match { get; set; } = ParticipantMatch.Any;
 
         public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
-
-        /// <summary>
-        /// Checks whether a completed mission contains the authored participants.
-        /// </summary>
-        /// <param name="participants">The completed mission's participants.</param>
-        /// <returns>True when the participant filter is satisfied.</returns>
-        internal bool Matches(IReadOnlyCollection<IMissionParticipant> participants)
-        {
-            if (Units.Count == 0)
-                return true;
-
-            HashSet<string> participantIDs = (participants ?? Array.Empty<IMissionParticipant>())
-                .Where(participant => participant != null)
-                .Select(participant => participant.GetInstanceID())
-                .ToHashSet(StringComparer.Ordinal);
-            return Match == ParticipantMatch.All
-                ? Units.All(unit => participantIDs.Contains(unit.UnitInstanceID))
-                : Units.Any(unit => participantIDs.Contains(unit.UnitInstanceID));
-        }
     }
 
     /// <summary>
@@ -776,27 +204,21 @@ namespace Rebellion.Game.Events
         public string SourceEventInstanceID { get; set; }
 
         public MissionParticipantFilter Participants { get; set; }
+    }
 
-        internal override Type ResultType => typeof(MissionCompletedResult);
+    /// <summary>
+    /// Activates when a newly created mission satisfies the authored mission filters.
+    /// </summary>
+    [PersistableObject(Name = "MissionStarted")]
+    public sealed class MissionStartedTrigger : GameEventTrigger
+    {
+        [PersistableAttribute]
+        public string MissionTypeID { get; set; }
 
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result)
-        {
-            if (result is not MissionCompletedResult completed)
-                return false;
-            return MatchesInstanceID(MissionTypeID, completed.MissionTypeID)
-                && (!Outcome.HasValue || completed.Outcome == Outcome.Value)
-                && (
-                    !CompletionReason.HasValue
-                    || completed.CompletionReason == CompletionReason.Value
-                )
-                && MatchesInstanceID(SourceEventInstanceID, completed.SourceEventInstanceID)
-                && (Participants?.Matches(completed.Participants) ?? true);
-        }
+        [PersistableAttribute]
+        public string SourceEventInstanceID { get; set; }
+
+        public MissionParticipantFilter Participants { get; set; }
     }
 
     #endregion
@@ -817,23 +239,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(OfficerCaptureStateResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result)
-        {
-            if (result is not OfficerCaptureStateResult changed)
-                return false;
-            string officerID = (changed.TargetOfficer ?? changed.CapturedOfficer)?.InstanceID;
-            return MatchesInstanceID(OfficerInstanceID, officerID)
-                && (!IsCaptured.HasValue || changed.IsCaptured == IsCaptured.Value)
-                && MatchesSource(SourceEventInstanceID, changed);
-        }
     }
 
     /// <summary>
@@ -847,18 +252,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(OfficerKilledResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is OfficerKilledResult killed
-            && MatchesInstanceID(OfficerInstanceID, killed.TargetOfficer?.InstanceID)
-            && MatchesSource(SourceEventInstanceID, killed);
     }
 
     /// <summary>
@@ -872,18 +265,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(OfficerInjuredResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is OfficerInjuredResult injured
-            && MatchesInstanceID(OfficerInstanceID, injured.Officer?.InstanceID)
-            && MatchesSource(SourceEventInstanceID, injured);
     }
 
     /// <summary>
@@ -903,20 +284,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(OfficerRecruitedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is OfficerRecruitedResult recruited
-            && MatchesInstanceID(OfficerInstanceID, recruited.Officer?.InstanceID)
-            && MatchesInstanceID(FactionInstanceID, recruited.Faction?.InstanceID)
-            && MatchesInstanceID(PlanetInstanceID, recruited.Planet?.InstanceID)
-            && MatchesSource(SourceEventInstanceID, recruited);
     }
 
     /// <summary>
@@ -936,20 +303,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(ForceDiscoveryResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is ForceDiscoveryResult changed
-            && MatchesInstanceID(OfficerInstanceID, changed.Officer?.InstanceID)
-            && MatchesInstanceID(DiscovererInstanceID, changed.Discoverer?.InstanceID)
-            && (!EventType.HasValue || changed.EventType == EventType.Value)
-            && MatchesSource(SourceEventInstanceID, changed);
     }
 
     #endregion
@@ -973,20 +326,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(UnitOwnershipChangedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is UnitOwnershipChangedResult changed
-            && MatchesInstanceID(UnitInstanceID, changed.Unit?.InstanceID)
-            && MatchesInstanceID(PreviousOwnerFactionInstanceID, changed.PreviousOwner?.InstanceID)
-            && MatchesInstanceID(NewOwnerFactionInstanceID, changed.NewOwner?.InstanceID)
-            && MatchesSource(SourceEventInstanceID, changed);
     }
 
     /// <summary>
@@ -1000,18 +339,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(GameObjectCreatedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is GameObjectCreatedResult created
-            && MatchesInstanceID(UnitInstanceID, created.GameObject?.InstanceID)
-            && MatchesSource(SourceEventInstanceID, created);
     }
 
     /// <summary>
@@ -1028,19 +355,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(GameObjectDestroyedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is GameObjectDestroyedResult destroyed
-            && MatchesInstanceID(UnitInstanceID, destroyed.DestroyedObject?.InstanceID)
-            && (!Reason.HasValue || destroyed.Reason == Reason.Value)
-            && MatchesSource(SourceEventInstanceID, destroyed);
     }
 
     /// <summary>
@@ -1057,22 +371,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(UnitArrivedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result)
-        {
-            if (result is not UnitArrivedResult arrived)
-                return false;
-            return MatchesInstanceID(UnitInstanceID, arrived.Unit?.InstanceID)
-                && MatchesInstanceID(DestinationInstanceID, arrived.Destination?.InstanceID)
-                && MatchesInstanceID(SourceEventInstanceID, arrived.SourceEventInstanceID);
-        }
     }
 
     #endregion
@@ -1099,21 +397,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(SpaceCombatResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is SpaceCombatResult combat
-            && MatchesInstanceID(PlanetInstanceID, combat.Planet?.InstanceID)
-            && MatchesInstanceID(AttackerFactionInstanceID, combat.AttackerOwnerInstanceID)
-            && MatchesInstanceID(DefenderFactionInstanceID, combat.DefenderOwnerInstanceID)
-            && (!Winner.HasValue || combat.Winner == Winner.Value)
-            && MatchesSource(SourceEventInstanceID, combat);
     }
 
     /// <summary>
@@ -1139,22 +422,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(BombardmentResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is BombardmentResult bombardment
-            && MatchesInstanceID(PlanetInstanceID, bombardment.Planet?.InstanceID)
-            && MatchesInstanceID(AttackerFactionInstanceID, bombardment.AttackerOwnerInstanceID)
-            && MatchesInstanceID(DefenderFactionInstanceID, bombardment.DefenderOwnerInstanceID)
-            && (!Type.HasValue || bombardment.Type == Type.Value)
-            && (!PlanetDestroyed.HasValue || bombardment.PlanetDestroyed == PlanetDestroyed.Value)
-            && MatchesSource(SourceEventInstanceID, bombardment);
     }
 
     /// <summary>
@@ -1180,22 +447,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(PlanetaryAssaultResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is PlanetaryAssaultResult assault
-            && MatchesInstanceID(PlanetInstanceID, assault.Planet?.InstanceID)
-            && MatchesInstanceID(AttackerFactionInstanceID, assault.AttackerOwnerInstanceID)
-            && MatchesInstanceID(DefenderFactionInstanceID, assault.DefenderOwnerInstanceID)
-            && (!Success.HasValue || assault.Success == Success.Value)
-            && (!BlockedByShields.HasValue || assault.BlockedByShields == BlockedByShields.Value)
-            && MatchesSource(SourceEventInstanceID, assault);
     }
 
     /// <summary>
@@ -1212,22 +463,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(DuelResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result)
-        {
-            if (result is not DuelResult duel)
-                return false;
-            return MatchesInstanceID(FirstOfficerInstanceID, duel.EncounteredOfficer?.InstanceID)
-                && MatchesInstanceID(SecondOfficerInstanceID, duel.OpposingOfficer?.InstanceID)
-                && MatchesInstanceID(SourceEventInstanceID, duel.SourceEventInstanceID);
-        }
     }
 
     #endregion
@@ -1251,20 +486,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }
-
-        internal override Type ResultType => typeof(ManufacturingDeployedResult);
-
-        /// <summary>
-        /// Checks whether the value matches the required criteria.
-        /// </summary>
-        /// <param name="result">The result.</param>
-        /// <returns>True when the value matches the required criteria; otherwise false.</returns>
-        internal override bool Matches(GameResult result) =>
-            result is ManufacturingDeployedResult completed
-            && MatchesInstanceID(FactionInstanceID, completed.Faction?.InstanceID)
-            && MatchesInstanceID(UnitInstanceID, completed.DeployedObject?.InstanceID)
-            && MatchesInstanceID(LocationInstanceID, completed.Location?.InstanceID)
-            && MatchesSource(SourceEventInstanceID, completed);
     }
 
     #endregion

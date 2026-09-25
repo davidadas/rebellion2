@@ -4,8 +4,7 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
-using Rebellion.Util.Extensions;
+using Rebellion.Simulation;
 using UnityEngine;
 
 /// <summary>
@@ -152,7 +151,7 @@ internal sealed class DefenseWindowProjector
         )
             return string.Empty;
 
-        int requirement = UprisingSystem.CalculateGarrisonRequirement(
+        int requirement = UprisingQueries.CalculateGarrisonRequirement(
             mapPlanet.Planet,
             playerFaction,
             uiContext.Game.Config.AI.Garrison

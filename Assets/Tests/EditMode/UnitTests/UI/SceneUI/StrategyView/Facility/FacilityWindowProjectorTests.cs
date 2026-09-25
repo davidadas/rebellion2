@@ -6,7 +6,6 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -246,6 +245,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsNotNull(data.InventorySelectionTexture);
             Assert.AreEqual(
                 FacilityWindowTabState.Active,
+                data.Tabs.Single(tab => tab.Tab == FacilityWindowTab.Mines).State
+            );
+        }
+
+        [Test]
+        public void CreateRenderData_PlanetHasRawResourceNodesButNoMines_DisablesMinesTab()
+        {
+            FacilityWindowRenderData data = _projector.CreateRenderData(_window, _session, null);
+
+            Assert.AreEqual(
+                FacilityWindowTabState.Disabled,
                 data.Tabs.Single(tab => tab.Tab == FacilityWindowTab.Mines).State
             );
         }

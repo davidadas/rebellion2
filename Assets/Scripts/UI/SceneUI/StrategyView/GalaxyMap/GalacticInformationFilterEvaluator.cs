@@ -4,9 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Contains the evaluated marker intensity and faction presentation for one visible planet.

@@ -92,9 +92,35 @@ public interface IIdleBarTrackingActions
 }
 
 /// <summary>
+/// Reads and changes whether individual planetary manufacturing lanes appear in the idle bar.
+/// </summary>
+public interface IIdleBarManufacturingTrackingActions
+{
+    bool IsIdleBarEnabled { get; }
+
+    /// <summary>
+    /// Reports whether one planetary manufacturing lane appears in the idle bar.
+    /// </summary>
+    /// <param name="planet">The planet containing the manufacturing lane.</param>
+    /// <param name="type">The manufacturing lane type.</param>
+    /// <returns><see langword="true"/> when the lane is tracked.</returns>
+    bool IsIdleBarTracked(Planet planet, ManufacturingType type);
+
+    /// <summary>
+    /// Changes whether one planetary manufacturing lane appears in the idle bar.
+    /// </summary>
+    /// <param name="planet">The planet containing the manufacturing lane.</param>
+    /// <param name="type">The manufacturing lane type.</param>
+    void ToggleIdleBarTracking(Planet planet, ManufacturingType type);
+}
+
+/// <summary>
 /// Owns idle-bar projection, tracking state, and semantic action routing.
 /// </summary>
-public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
+public sealed class IdleBarController
+    : IIdleBarTrackingActions,
+        IIdleBarManufacturingTrackingActions,
+        IDisposable
 {
     private const string _entityItemTypeID = "Entity";
     private static readonly string[] _planetItemTypeIDs =
@@ -119,7 +145,9 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
     private string highlightedEntityId;
     private IdleBarView view;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets whether the idle bar is currently enabled.
+    /// </summary>
     public bool IsIdleBarEnabled => getVisibility();
 
     /// <summary>
@@ -267,7 +295,11 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
         actions = null;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Reports whether an entity appears in the idle bar.
+    /// </summary>
+    /// <param name="entity">The entity whose tracking state is requested.</param>
+    /// <returns><see langword="true"/> when the entity is tracked.</returns>
     public bool IsIdleBarTracked(ISceneNode entity)
     {
         if (string.IsNullOrEmpty(entity?.InstanceID))
@@ -277,7 +309,10 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
             .Any(type => !ContainsIgnoredItem(ignoredItems, entity.InstanceID, type));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Changes whether an entity appears in the idle bar.
+    /// </summary>
+    /// <param name="entity">The entity whose tracking state should change.</param>
     public void ToggleIdleBarTracking(ISceneNode entity)
     {
         if (string.IsNullOrEmpty(entity?.InstanceID))
@@ -304,6 +339,56 @@ public sealed class IdleBarController : IIdleBarTrackingActions, IDisposable
         if (untrack && highlightedEntityId == entity.InstanceID)
             ClearLocationHighlight();
         actions.RequestIdleBarRender();
+    }
+
+    /// <summary>
+    /// Reports whether one planetary manufacturing lane appears in the idle bar.
+    /// </summary>
+    /// <param name="planet">The planet containing the manufacturing lane.</param>
+    /// <param name="type">The manufacturing lane type.</param>
+    /// <returns><see langword="true"/> when the lane is tracked.</returns>
+    public bool IsIdleBarTracked(Planet planet, ManufacturingType type)
+    {
+        return !string.IsNullOrEmpty(planet?.InstanceID)
+            && IsTrackedManufacturingType(type)
+            && !ContainsIgnoredItem(ignoredItems, planet.InstanceID, type.ToString());
+    }
+
+    /// <summary>
+    /// Changes whether one planetary manufacturing lane appears in the idle bar.
+    /// </summary>
+    /// <param name="planet">The planet containing the manufacturing lane.</param>
+    /// <param name="type">The manufacturing lane type.</param>
+    public void ToggleIdleBarTracking(Planet planet, ManufacturingType type)
+    {
+        if (string.IsNullOrEmpty(planet?.InstanceID) || !IsTrackedManufacturingType(type))
+            return;
+
+        string itemTypeID = type.ToString();
+        if (ContainsIgnoredItem(ignoredItems, planet.InstanceID, itemTypeID))
+        {
+            ignoredItems.RemoveAll(item => IsIgnoredItem(item, planet.InstanceID, itemTypeID));
+        }
+        else
+        {
+            ignoredItems.Add(
+                new IgnoredItem { TargetInstanceID = planet.InstanceID, ItemTypeID = itemTypeID }
+            );
+        }
+
+        actions.RequestIdleBarRender();
+    }
+
+    /// <summary>
+    /// Reports whether a manufacturing type has an independently tracked idle-bar entry.
+    /// </summary>
+    /// <param name="type">The manufacturing type to inspect.</param>
+    /// <returns>True when the type is represented by the idle bar.</returns>
+    private static bool IsTrackedManufacturingType(ManufacturingType type)
+    {
+        return type == ManufacturingType.Ship
+            || type == ManufacturingType.Troop
+            || type == ManufacturingType.Building;
     }
 
     /// <summary>

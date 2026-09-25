@@ -6,7 +6,8 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
+using Rebellion.Util.DependencyInjection;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -34,8 +35,7 @@ public sealed class MissionCreateWindowController
     private readonly HashSet<MissionCreateWindowView> boundViews =
         new HashSet<MissionCreateWindowView>();
     private readonly Action<UIWindow> closeWindow;
-    private readonly Func<GameRoot> getGame;
-    private readonly Func<MissionSystem> getMissionSystem;
+    private readonly IServiceLocator services;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<bool> getShowMissionOdds;
     private readonly Func<Vector2Int> getWindowPosition;
@@ -52,8 +52,7 @@ public sealed class MissionCreateWindowController
     /// <summary>
     /// Creates the Mission Create feature controller.
     /// </summary>
-    /// <param name="getGame">Returns the active game.</param>
-    /// <param name="getMissionSystem">Returns the active mission system.</param>
+    /// <param name="services">Resolves the active game's mission commands and queries.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="playSfx">Plays a resolved mission acknowledgment sound.</param>
     /// <param name="windowLayer">Provides the authored Mission Create prefab and modal layer.</param>
@@ -66,8 +65,7 @@ public sealed class MissionCreateWindowController
     /// <param name="getShowMissionOdds">Returns the persisted mission-odds visibility.</param>
     /// <param name="setShowMissionOdds">Persists mission-odds visibility.</param>
     public MissionCreateWindowController(
-        Func<GameRoot> getGame,
-        Func<MissionSystem> getMissionSystem,
+        IServiceLocator services,
         Func<UIContext> getUIContext,
         Action<string> playSfx,
         StrategyWindowLayerView windowLayer,
@@ -81,9 +79,7 @@ public sealed class MissionCreateWindowController
         Action<bool> setShowMissionOdds = null
     )
     {
-        this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getMissionSystem =
-            getMissionSystem ?? throw new ArgumentNullException(nameof(getMissionSystem));
+        this.services = services ?? throw new ArgumentNullException(nameof(services));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));
         this.windowManager =
@@ -97,7 +93,7 @@ public sealed class MissionCreateWindowController
         this.setShowMissionOdds = setShowMissionOdds ?? (_ => { });
         projector = new MissionCreateWindowProjector(
             getUIContext,
-            request => this.getMissionSystem().GetMissionOdds(request),
+            request => this.services.GetService<MissionQueries>().GetMissionOdds(request),
             getObservedPlanet
         );
     }
@@ -183,7 +179,7 @@ public sealed class MissionCreateWindowController
                 view,
                 target,
                 sourceItems,
-                getGame()?.GetPlayerFaction()?.InstanceID
+                services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID
             )
         )
         {
@@ -560,14 +556,18 @@ public sealed class MissionCreateWindowController
         if (target?.Planet?.Planet == null)
             return choices;
 
-        MissionStartRequest request = new MissionStartRequest
+        MissionContext context = new MissionContext
         {
             Location = target.Planet.Planet,
             SelectedTarget = target.Item,
             MainParticipants = participants.ToList(),
             DecoyParticipants = new List<IMissionParticipant>(),
         };
-        foreach (MissionOption option in getMissionSystem().GetAvailableMissionOptions(request))
+        foreach (
+            MissionOption option in services
+                .GetService<MissionQueries>()
+                .GetAvailableMissionOptions(context)
+        )
             choices.Add(new StrategyMissionChoice(option));
 
         return choices;
@@ -585,13 +585,16 @@ public sealed class MissionCreateWindowController
         if (choice == null || session.Agents.Count == 0 || missionPlanet == null)
             return false;
 
-        MissionStartRequest request = session.CreateMissionRequest(
+        MissionContext context = session.CreateMissionContext(
             choice,
             missionPlanet,
             session.Target.Item
         );
-        MissionSystem missionSystem = getMissionSystem();
-        if (!missionSystem.CanCreateMission(request) || !missionSystem.InitiateMission(request))
+        MissionCommands missionSystem = services.GetService<MissionCommands>();
+        if (
+            !services.GetService<MissionQueries>().CanCreateMission(context)
+            || !missionSystem.InitiateMission(context)
+        )
             return false;
 
         PlayMissionStartVoice(session.Agents, session.Decoys);
@@ -619,7 +622,10 @@ public sealed class MissionCreateWindowController
         if (officer == null)
             return;
 
-        string voicePath = officer.GetVoicePath(OfficerVoiceLineType.Order, getGame()?.Random);
+        string voicePath = officer.GetVoicePath(
+            OfficerVoiceLineType.Order,
+            services.GetService<GameRoot>()?.Random
+        );
         if (!string.IsNullOrEmpty(voicePath))
             playSfx(voicePath);
     }
@@ -790,13 +796,13 @@ internal sealed class MissionCreateWindowSession
     }
 
     /// <summary>
-    /// Builds the mission request shared by planning estimates and final submission.
+    /// Builds the mission context shared by planning estimates and final submission.
     /// </summary>
     /// <param name="choice">The mission option to request.</param>
     /// <param name="planet">The authoritative or observed mission planet.</param>
     /// <param name="target">The authoritative or observed mission target.</param>
-    /// <returns>A request containing the session's current participant roles.</returns>
-    public MissionStartRequest CreateMissionRequest(
+    /// <returns>A context containing the session's current participant roles.</returns>
+    public MissionContext CreateMissionContext(
         StrategyMissionChoice choice,
         Planet planet,
         ISceneNode target
@@ -805,7 +811,7 @@ internal sealed class MissionCreateWindowSession
         if (choice == null)
             throw new ArgumentNullException(nameof(choice));
 
-        return new MissionStartRequest
+        return new MissionContext
         {
             MissionTypeID = choice.MissionTypeID,
             Location = planet,

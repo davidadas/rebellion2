@@ -8,7 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -26,8 +26,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private ConstructionWindowController _constructionController;
         private FacilityWindowController _controller;
         private int _dirtyCount;
+        private ManufacturingTrackingActions _trackingActions;
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _session;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private TargetingController _targetingController;
@@ -43,7 +44,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             _dirtyCount = 0;
             _game = CreateGame();
-            _gameManager = TestContent.CreateGameManager(_game);
+            _session = TestContent.CreateGameSession(_game);
             _uiContext = TestContent.CreateUIContext(
                 _game,
                 TestContent.CreateThemeLibrary(),
@@ -66,7 +67,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             _constructionController.Initialize(new ConstructionActions());
             _controller = CreateController();
             FacilityActions actions = new FacilityActions();
-            _controller.Initialize(actions, actions);
+            _trackingActions = new ManufacturingTrackingActions();
+            _controller.Initialize(actions, actions, _trackingActions);
         }
 
         /// <summary>
@@ -79,29 +81,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
-        public void Constructor_NullGameProvider_ThrowsArgumentNullException()
+        public void Constructor_NullServices_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new FacilityWindowController(
-                    null,
-                    () => _gameManager.ManufacturingSystem,
-                    _constructionController,
-                    () => _uiContext,
-                    _targetingController,
-                    _windowLayer,
-                    _windowManager,
-                    (_, _) => Vector2Int.zero,
-                    () => { }
-                )
-            );
-        }
-
-        [Test]
-        public void Constructor_NullManufacturingSystemProvider_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() =>
-                new FacilityWindowController(
-                    () => _game,
                     null,
                     _constructionController,
                     () => _uiContext,
@@ -118,7 +101,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         public void Initialize_NullActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, new FacilityActions())
+                _controller.Initialize(
+                    null,
+                    new FacilityActions(),
+                    new ManufacturingTrackingActions()
+                )
             );
         }
 
@@ -303,6 +290,50 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void OnContextMenuCommandSelected_ManufacturingTracking_TogglesSelectedLane()
+        {
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            ManufacturingLaneCardView card =
+                view.GetComponentsInChildren<ManufacturingLaneCardView>(true)
+                    .Single(candidate => candidate.name == "TrainingManufacturingLaneCard");
+            UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            PointerEventData pointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+            };
+            card.GetComponent<UIPointerGestureRelay>().OnPointerDown(pointer);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 4, 5, 6, 7),
+                pointer,
+                10,
+                20
+            );
+            StrategyMenuCommand tracked = FacilityWindowContextMenuBuilder
+                .Build(
+                    _planet.Planet,
+                    FacilityWindowTab.Manufacturing,
+                    FacilityWindowTab.Training,
+                    null,
+                    _playerFactionId,
+                    trackingEnabled: true,
+                    manufacturingTracked: true
+                )
+                .Single(command => command.Action == StrategyMenuAction.ToggleIdleBarTracking);
+            ContextMenuRequest request = new ContextMenuRequest(
+                context,
+                new IContextMenuCommand[] { tracked },
+                _controller
+            );
+
+            _controller.OnContextMenuCommandSelected(request, tracked);
+
+            Assert.AreSame(_planet.Planet, _trackingActions.LastPlanet);
+            Assert.AreEqual(ManufacturingType.Troop, _trackingActions.LastType);
+        }
+
+        [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
             FacilityWindowView view = OpenWindow(out UIWindow _);
@@ -319,8 +350,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private FacilityWindowController CreateController()
         {
             return new FacilityWindowController(
-                () => _game,
-                () => _gameManager.ManufacturingSystem,
+                _session,
                 _constructionController,
                 () => _uiContext,
                 _targetingController,
@@ -338,9 +368,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         private ConstructionWindowController CreateConstructionController()
         {
             return new ConstructionWindowController(
-                () => _game,
-                () => _gameManager.ManufacturingSystem,
-                () => _gameManager.MovementSystem,
+                _session,
                 () => _uiContext,
                 _windowLayer,
                 _windowManager,
@@ -475,6 +503,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             /// Refreshes facility state.
             /// </summary>
             public void RefreshFacilityState() { }
+        }
+
+        private sealed class ManufacturingTrackingActions : IIdleBarManufacturingTrackingActions
+        {
+            public bool IsIdleBarEnabled => true;
+
+            public Planet LastPlanet { get; private set; }
+
+            public ManufacturingType LastType { get; private set; }
+
+            /// <summary>
+            /// Reports whether a planetary manufacturing lane is tracked.
+            /// </summary>
+            /// <param name="planet">The planet containing the manufacturing lane.</param>
+            /// <param name="type">The manufacturing lane type.</param>
+            /// <returns>Always true for this test action recorder.</returns>
+            public bool IsIdleBarTracked(Planet planet, ManufacturingType type) => true;
+
+            /// <summary>
+            /// Records the planetary manufacturing lane whose tracking state changed.
+            /// </summary>
+            /// <param name="planet">The planet containing the manufacturing lane.</param>
+            /// <param name="type">The manufacturing lane type.</param>
+            public void ToggleIdleBarTracking(Planet planet, ManufacturingType type)
+            {
+                LastPlanet = planet;
+                LastType = type;
+            }
         }
     }
 }

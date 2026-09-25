@@ -120,7 +120,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void AuthoredPrefab_CockpitBackdropAndControlsShareFullCanvas()
+        public void AuthoredPrefab_CockpitBackdropAndControls_ShareFullCanvas()
         {
             Transform canvas = _prefabRoot.transform.Find("UI/Canvas");
             Transform viewport = canvas.Find("Viewport");
@@ -155,7 +155,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void RenderOptionsOverlay_ChangesAuthoredOverlayVisibility()
+        public void RenderOptionsOverlay_Default_ChangesAuthoredOverlayVisibility()
         {
             GameObject overlay = GetField<GameObject>("optionsOverlay");
 

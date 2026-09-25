@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Missions
 {
     /// <summary>
-    /// Bundles all inputs needed to create a mission.
+    /// Describes the participants, target, and game state used to evaluate and create a mission.
     /// </summary>
     public class MissionContext
     {

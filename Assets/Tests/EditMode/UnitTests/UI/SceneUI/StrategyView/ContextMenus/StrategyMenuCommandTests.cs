@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using GameFleet = Rebellion.Game.Units.Fleet;

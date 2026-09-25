@@ -444,7 +444,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void WindowBackgroundDrop_RoutesToFleetDestination()
+        public void WindowBackgroundDrop_Default_RoutesToFleetDestination()
         {
             PointerEventData eventData = new PointerEventData(null);
             PointerEventData received = null;
@@ -626,7 +626,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void DetailItemTemplate_StatusRendersAboveEntity()
+        public void DetailItemTemplate_Status_RendersAboveEntity()
         {
             StrategyUnitCardView itemTemplate = _viewObject
                 .GetComponentsInChildren<StrategyUnitCardView>(true)

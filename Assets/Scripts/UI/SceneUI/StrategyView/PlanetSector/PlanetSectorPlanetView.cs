@@ -243,6 +243,26 @@ public sealed class PlanetSectorPlanetView
     }
 
     /// <summary>
+    /// Tries to resolve the visible headquarters overlay used by a drag preview.
+    /// </summary>
+    /// <param name="texture">Receives the headquarters drag image.</param>
+    /// <param name="rect">Receives the authored headquarters-image transform.</param>
+    /// <returns>True when a headquarters overlay is available.</returns>
+    internal bool TryGetHeadquartersDragImage(out Texture texture, out RectTransform rect)
+    {
+        texture = null;
+        rect = headquartersImage == null ? null : headquartersImage.rectTransform;
+        if (
+            headquartersImage?.isActiveAndEnabled != true
+            || lastRenderData?.HeadquartersTexture == null
+        )
+            return false;
+
+        texture = lastRenderData.HeadquartersTexture;
+        return true;
+    }
+
+    /// <summary>
     /// Tries to create a semantic hit from the current pointer raycast.
     /// </summary>
     /// <param name="eventData">The pointer event.</param>
@@ -418,9 +438,15 @@ public sealed class PlanetSectorPlanetView
         if (target == null && allowPressFallback)
             target = eventData.pointerPressRaycast.gameObject;
 
+        bool headquartersTargetHit =
+            headquartersImage?.isActiveAndEnabled == true
+            && IsTargetOrChild(target, headquartersImage);
         PlanetIcon icon = PlanetIcon.None;
-        bool planetImageHit = false;
-        if (TryGetPointerSourcePosition(eventData, out int sourceX, out int sourceY))
+        bool planetImageHit = headquartersTargetHit;
+        if (
+            !headquartersTargetHit
+            && TryGetPointerSourcePosition(eventData, out int sourceX, out int sourceY)
+        )
         {
             icon = GetSourceIcon(sourceX, sourceY);
             planetImageHit = icon == PlanetIcon.None && IsPlanetImageSourcePoint(sourceX, sourceY);

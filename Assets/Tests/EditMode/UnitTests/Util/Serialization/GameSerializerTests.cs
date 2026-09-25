@@ -360,6 +360,38 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
+        public void Deserialize_InlineCollectionIgnoresUnknownElements_SkipsUnknownChildType()
+        {
+            Type skippedObjectType = null;
+            string skippedElementName = null;
+            GameSerializer serializer = new GameSerializer(
+                typeof(ItemWithInlineCollection),
+                new GameSerializerSettings
+                {
+                    IgnoreUnknownElements = true,
+                    UnknownElementSkipped = (objectType, elementName) =>
+                    {
+                        skippedObjectType = objectType;
+                        skippedElementName = elementName;
+                    },
+                }
+            );
+            const string xml =
+                "<ItemWithInlineCollection><SimpleItem><Name>known</Name></SimpleItem><UnknownItem/><SimpleItem><Name>also-known</Name></SimpleItem></ItemWithInlineCollection>";
+
+            ItemWithInlineCollection item = (ItemWithInlineCollection)DeserializeFromString(
+                serializer,
+                xml
+            );
+
+            Assert.AreEqual(2, item.Items.Count);
+            Assert.AreEqual("known", item.Items[0].Name);
+            Assert.AreEqual("also-known", item.Items[1].Name);
+            Assert.AreEqual(typeof(ItemWithInlineCollection), skippedObjectType);
+            Assert.AreEqual("UnknownItem", skippedElementName);
+        }
+
+        [Test]
         public void Serialize_InlineCollection_RejectsNullCollection()
         {
             GameSerializer serializer = new GameSerializer(typeof(ItemWithNullInlineCollection));

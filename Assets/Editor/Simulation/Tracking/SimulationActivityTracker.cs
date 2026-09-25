@@ -249,7 +249,7 @@ public static partial class HeadlessSimulationRunner
             MissionTargetCounts counts
         )
         {
-            if (mission.MissionTypeId != MissionTypeIDs.Espionage)
+            if (mission.MissionTypeId != EspionageMission.MissionTypeID)
                 return;
 
             if (GetIntelTick(game, mission.FactionId, mission.PlanetId) > mission.InitialIntelTick)

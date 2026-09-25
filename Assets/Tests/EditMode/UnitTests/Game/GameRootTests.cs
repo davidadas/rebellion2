@@ -8,7 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Game
 {
@@ -63,6 +63,28 @@ namespace Rebellion.Tests.Game
             _game.GetFactions().Add(_faction1);
             _game.GetFactions().Add(_faction2);
             _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
+        }
+
+        [Test]
+        public void AttachNode_DifferentOwner_ThrowsException()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _planet.EnergyCapacity = 10;
+            _game.AttachNode(_planet, _planetSector);
+
+            // Scene graph must reject a building whose owner doesn't match the planet's owner.
+            Building rebelBuilding = new Building
+            {
+                InstanceID = "REBEL_BUILDING",
+                OwnerInstanceID = "REBELS",
+                BuildingType = BuildingType.Mine,
+                ManufacturingFactionInstanceIDs = new List<string> { "REBELS" },
+            };
+
+            Assert.Throws<SceneAccessException>(
+                () => _game.AttachNode(rebelBuilding, _planet),
+                "Attaching a building to a planet owned by a different faction must throw SceneAccessException"
+            );
         }
 
         [Test]

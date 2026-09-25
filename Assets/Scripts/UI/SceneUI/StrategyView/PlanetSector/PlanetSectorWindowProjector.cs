@@ -4,7 +4,6 @@ using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
@@ -219,6 +218,7 @@ internal sealed class PlanetSectorWindowProjector
         Planet planet = strategyPlanet?.Planet;
         string planetInstanceId = planet?.InstanceID;
         string ownerFactionId = planet?.OwnerInstanceID;
+        string headquartersFactionId = ResolveHeadquartersFactionId(uiContext, planet);
         bool unexplored = planet?.IsUnexploredView == true;
         string fleetFactionId = SelectPresentFactionID(
             GetFleetOwnerFactionIDs(planet),
@@ -270,10 +270,10 @@ internal sealed class PlanetSectorWindowProjector
             fleetPressedTexture,
             missionTexture,
             missionPressedTexture,
-            !unexplored && planet?.IsHeadquarters == true
+            !string.IsNullOrEmpty(headquartersFactionId)
                 ? uiContext.GetTexture(
                     uiContext
-                        .GetTheme(ownerFactionId)
+                        .GetTheme(headquartersFactionId)
                         ?.PlanetOverlayTheme?.PlanetSectorHeadquartersImagePath
                 )
                 : null,
@@ -289,6 +289,37 @@ internal sealed class PlanetSectorWindowProjector
             unexplored ? CreateHiddenBar() : CreateRawResourceBar(planet),
             unexplored ? CreateHiddenBar() : CreateSupportBar(uiContext, planet, popularSupport)
         );
+    }
+
+    /// <summary>
+    /// Resolves the headquarters faction represented by a planet, including the player's mobile
+    /// headquarters immediately after it is reparented to its destination for transit.
+    /// </summary>
+    /// <param name="uiContext">The active UI context.</param>
+    /// <param name="planet">The projected planet.</param>
+    /// <returns>The represented headquarters faction identifier, or null when none exists.</returns>
+    private static string ResolveHeadquartersFactionId(UIContext uiContext, Planet planet)
+    {
+        if (uiContext?.Game == null || planet?.IsUnexploredView != false)
+            return null;
+        if (planet.IsHeadquarters && !string.IsNullOrEmpty(planet.OwnerInstanceID))
+            return planet.OwnerInstanceID;
+
+        string playerFactionId = uiContext.GetPlayerFactionInstanceID();
+        Planet livePlanet = uiContext.Game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+        bool receivesMovingHeadquarters =
+            livePlanet
+                ?.GetChildren<Building>()
+                .Any(building =>
+                    building.BuildingType == BuildingType.Headquarters
+                    && building.Movement != null
+                    && string.Equals(
+                        building.OwnerInstanceID,
+                        playerFactionId,
+                        StringComparison.Ordinal
+                    )
+                ) == true;
+        return receivesMovingHeadquarters ? playerFactionId : null;
     }
 
     /// <summary>

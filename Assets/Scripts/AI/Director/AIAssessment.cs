@@ -2,15 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
-using Rebellion.Util.Common;
+using Rebellion.Simulation;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI.Director
 {
@@ -1711,7 +1710,7 @@ namespace Rebellion.AI.Director
                 1,
                 _context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount
             );
-            int stabilityRequirement = UprisingSystem.CalculateGarrisonRequirement(
+            int stabilityRequirement = UprisingQueries.CalculateGarrisonRequirement(
                 planet,
                 _context.Faction,
                 _context.Game.Config.AI.Garrison
@@ -1915,8 +1914,8 @@ namespace Rebellion.AI.Director
         /// <returns>The bombardment strength absorbed by the shields.</returns>
         public int GetBombardmentShieldResistance(Planet planet)
         {
-            return BombardmentSystem.GetBombardmentShieldResistance(
-                BombardmentSystem.GetBombardmentShieldStrength(planet),
+            return BombardmentQueries.GetBombardmentShieldResistance(
+                BombardmentQueries.GetBombardmentShieldStrength(planet),
                 _context.Game.Config.Combat.Bombardment
             );
         }
@@ -1935,7 +1934,7 @@ namespace Rebellion.AI.Director
                 _activeHostileMilitaryTargets,
                 targetPlanet.InstanceID,
                 () =>
-                    BombardmentSystem.HasActiveMilitaryTargets(
+                    BombardmentQueries.HasActiveMilitaryTargets(
                         targetPlanet,
                         targetPlanet.GetOwnerInstanceID()
                     )
@@ -2208,7 +2207,7 @@ namespace Rebellion.AI.Director
                 _fleetBombardmentStrengths,
                 fleet.InstanceID,
                 () =>
-                    BombardmentSystem.GetBombardmentStrength(
+                    BombardmentQueries.GetBombardmentStrength(
                         new[] { fleet },
                         _context.Game.Config.Combat.Bombardment
                     )
@@ -2229,7 +2228,7 @@ namespace Rebellion.AI.Director
                 _projectedFleetBombardmentStrengths,
                 fleet.InstanceID,
                 () =>
-                    BombardmentSystem.GetProjectedBombardmentStrength(
+                    BombardmentQueries.GetProjectedBombardmentStrength(
                         fleet,
                         _context.Game.Config.Combat.Bombardment
                     )
@@ -2247,7 +2246,7 @@ namespace Rebellion.AI.Director
             if (fleet == null || capitalShip == null || _context?.Game?.Config == null)
                 return 0;
 
-            return BombardmentSystem.GetProjectedCapitalShipBombardmentStrength(
+            return BombardmentQueries.GetProjectedCapitalShipBombardmentStrength(
                 fleet,
                 capitalShip,
                 _context.Game.Config.Combat.Bombardment

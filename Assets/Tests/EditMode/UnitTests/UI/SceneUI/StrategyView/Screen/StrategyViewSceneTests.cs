@@ -73,7 +73,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void AuthoredPrefab_FitsCenteredSixteenByNineViewport()
+        public void AuthoredPrefab_Default_FitsCenteredSixteenByNineViewport()
         {
             GameObject prefabRoot = PrefabUtility.LoadPrefabContents(_prefabPath);
 

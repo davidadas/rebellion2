@@ -479,7 +479,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void SuppressNextClick_FirstStatusDoubleClickIgnoredAndSecondHandled()
+        public void SuppressNextClick_RepeatedStatusDoubleClick_IgnoresFirstAndHandlesSecond()
         {
             _openStatus = true;
             PointerEventData eventData = CreateStatusDoubleClickEvent(_window);

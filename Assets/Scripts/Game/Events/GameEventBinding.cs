@@ -1,45 +1,21 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
     /// <summary>
-    /// Resolves one typed scalar value for an event-local binding.
+    /// Defines a typed scalar source for an event-local binding.
     /// </summary>
     [PersistableObject]
-    public abstract class GameEventBindingSource
-    {
-        /// <summary>
-        /// Gets the scalar type produced by this source.
-        /// </summary>
-        internal abstract Type ValueType { get; }
-
-        /// <summary>
-        /// Resolves the scalar value from the current game and evaluation context.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="provider">The random provider available to nested selectors.</param>
-        /// <param name="context">The current event evaluation context.</param>
-        /// <returns>The resolved scalar value.</returns>
-        internal abstract object Resolve(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        );
-    }
+    public abstract class GameEventBindingSource { }
 
     /// <summary>
     /// Resolves one officer's effective authored rating.
     /// </summary>
-    [PersistableObject(Name = "OfficerRating")]
-    public sealed class OfficerRatingBindingSource : GameEventBindingSource
+    [PersistableObject(Name = "SkillRating")]
+    public sealed class SkillRatingBindingSource : GameEventBindingSource
     {
         // Officer.
         [PersistableAttribute]
@@ -50,36 +26,7 @@ namespace Rebellion.Game.Events
 
         // Rating.
         [PersistableAttribute]
-        public OfficerRating Rating { get; set; }
-
-        internal override Type ValueType => typeof(int);
-
-        /// <summary>
-        /// Resolves the requested operation.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The resolved value.</returns>
-        internal override object Resolve(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        )
-        {
-            bool hasInstanceID = !string.IsNullOrWhiteSpace(OfficerInstanceID);
-            bool hasBinding = !string.IsNullOrWhiteSpace(OfficerBinding);
-            if (hasInstanceID == hasBinding)
-                throw new InvalidOperationException(
-                    "OfficerRating requires exactly one OfficerInstanceID or OfficerBinding."
-                );
-            Officer officer = hasBinding
-                ? context?.GetBindingReference<Officer>(OfficerBinding)
-                : game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID, includeDisabled: true);
-            if (officer == null)
-                throw new InvalidOperationException("OfficerRating could not resolve its officer.");
-            return officer.GetEffectiveRating(Rating);
-        }
+        public SkillRating Rating { get; set; }
     }
 
     /// <summary>
@@ -94,35 +41,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string OfficerBinding { get; set; }
-
-        internal override Type ValueType => typeof(int);
-
-        /// <summary>
-        /// Resolves the requested operation.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The resolved value.</returns>
-        internal override object Resolve(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        )
-        {
-            bool hasInstanceID = !string.IsNullOrWhiteSpace(OfficerInstanceID);
-            bool hasBinding = !string.IsNullOrWhiteSpace(OfficerBinding);
-            if (hasInstanceID == hasBinding)
-                throw new InvalidOperationException(
-                    "OfficerForce requires exactly one OfficerInstanceID or OfficerBinding."
-                );
-            Officer officer = hasBinding
-                ? context?.GetBindingReference<Officer>(OfficerBinding)
-                : game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID, includeDisabled: true);
-            if (officer == null)
-                throw new InvalidOperationException("OfficerForce could not resolve its officer.");
-            return officer.ForceRank;
-        }
     }
 
     /// <summary>
@@ -141,35 +59,6 @@ namespace Rebellion.Game.Events
         // Statistic.
         [PersistableAttribute]
         public PlanetStat Stat { get; set; }
-
-        internal override Type ValueType => typeof(int);
-
-        /// <summary>
-        /// Resolves the requested operation.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The resolved value.</returns>
-        internal override object Resolve(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        )
-        {
-            bool hasInstanceID = !string.IsNullOrWhiteSpace(PlanetInstanceID);
-            bool hasBinding = !string.IsNullOrWhiteSpace(PlanetBinding);
-            if (hasInstanceID == hasBinding)
-                throw new InvalidOperationException(
-                    "PlanetStat requires exactly one PlanetInstanceID or PlanetBinding."
-                );
-            Planet planet = hasBinding
-                ? context?.GetBindingReference<Planet>(PlanetBinding)
-                : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID, includeDisabled: true);
-            if (planet == null)
-                throw new InvalidOperationException("PlanetStat could not resolve its planet.");
-            return planet.GetStatValue(Stat);
-        }
     }
 
     /// <summary>
@@ -180,31 +69,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
-
-        internal override Type ValueType => typeof(int);
-
-        /// <summary>
-        /// Resolves the requested operation.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The resolved value.</returns>
-        internal override object Resolve(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        )
-        {
-            if (Selectors.Count == 0)
-                throw new InvalidOperationException(
-                    "SelectionCount requires at least one selector."
-                );
-            return Selectors
-                .SelectMany(selector => selector.Select(game, provider, context))
-                .Distinct()
-                .Count();
-        }
     }
 
     /// <summary>
@@ -228,75 +92,5 @@ namespace Rebellion.Game.Events
         [PersistableInlineCollection]
         public List<GameEventBindingSource> Sources { get; set; } =
             new List<GameEventBindingSource>();
-
-        /// <summary>
-        /// Gets the value type exposed by the configured binding source.
-        /// </summary>
-        /// <returns>The bound value type.</returns>
-        internal Type GetValueType()
-        {
-            if (RollInteger != null)
-                return typeof(int);
-            if (RollDouble != null)
-                return typeof(double);
-            if (Sources.Count == 1)
-                return Sources[0].ValueType;
-            return typeof(ISceneNode);
-        }
-
-        /// <summary>
-        /// Resolves the authored source and stores its value in the evaluation context.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="provider">The random number provider used by selectors and rolls.</param>
-        /// <param name="context">The event evaluation context that receives the binding.</param>
-        internal void Bind(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        )
-        {
-            int modeCount =
-                (Selectors.Count > 0 ? 1 : 0)
-                + (RollInteger != null ? 1 : 0)
-                + (RollDouble != null ? 1 : 0)
-                + (Sources.Count > 0 ? 1 : 0);
-            if (modeCount != 1)
-                throw new InvalidOperationException(
-                    $"Binding '{As}' requires exactly one From, RollInteger, RollDouble, or typed value source."
-                );
-
-            if (RollInteger != null)
-            {
-                context.Bind(As, RollInteger.Roll(provider));
-                return;
-            }
-            if (RollDouble != null)
-            {
-                context.Bind(As, RollDouble.Roll(provider));
-                return;
-            }
-            if (Sources.Count > 0)
-            {
-                if (Sources.Count != 1)
-                    throw new InvalidOperationException(
-                        $"Binding '{As}' requires exactly one typed value source."
-                    );
-                context.Bind(As, Sources[0].Resolve(game, provider, context));
-                return;
-            }
-
-            if (Selectors.Count != 1)
-                throw new InvalidOperationException(
-                    $"Selection binding '{As}' requires exactly one selector."
-                );
-
-            ISceneNode[] values = Selectors[0].Select(game, provider, context).Distinct().ToArray();
-            if (values.Length != 1)
-                throw new InvalidOperationException(
-                    $"Selection binding '{As}' must resolve exactly one object but resolved {values.Length}."
-                );
-            context.Bind(As, values[0]);
-        }
     }
 }

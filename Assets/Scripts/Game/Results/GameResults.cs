@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Advisor;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -9,7 +8,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
 
 namespace Rebellion.Game.Results
 {
@@ -75,6 +73,16 @@ namespace Rebellion.Game.Results
     #endregion
 
     #region Planet
+
+    /// <summary>
+    /// Requests a signed popular-support shift for one faction on a planet.
+    /// </summary>
+    public class PopularSupportShiftResult : GameResult
+    {
+        public Planet Planet { get; set; }
+        public Faction Faction { get; set; }
+        public int Shift { get; set; }
+    }
 
     /// <summary>
     /// A numeric attribute of a planet changed for a faction (energy, loyalty, raw materials, etc.).
@@ -250,10 +258,23 @@ namespace Rebellion.Game.Results
     #region Mission
 
     /// <summary>
+    /// A mission was created and its participants were dispatched.
+    /// </summary>
+    public class MissionStartedResult : GameResult
+    {
+        public Mission Mission { get; set; }
+        public string MissionTypeID { get; set; }
+        public Planet Location { get; set; }
+        public List<IMissionParticipant> Participants { get; set; } =
+            new List<IMissionParticipant>();
+    }
+
+    /// <summary>
     /// A mission completed with a recorded outcome.
     /// </summary>
     public class MissionCompletedResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public Mission Mission { get; set; }
         public string MissionName { get; set; }
         public string MissionTypeID { get; set; }
@@ -272,6 +293,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class PlanetsRevealedResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public List<Planet> AdditionalPlanets { get; set; } = new List<Planet>();
     }
 
@@ -306,7 +328,9 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class OfficerCaptureStateResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public Officer TargetOfficer { get; set; }
+        public ISceneNode ParentAtCapture { get; set; }
         public bool IsCaptured { get; set; }
         public string CaptorInstanceID { get; set; }
         public ISceneNode CapturingUnit { get; set; }
@@ -346,6 +370,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class OfficerInjuredResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public Officer Officer { get; set; }
         public int Severity { get; set; }
         public int Detail { get; set; }
@@ -741,6 +766,8 @@ namespace Rebellion.Game.Results
             new List<CombatUnitSnapshot>();
         public List<CombatUnitSnapshot> DefendingUnits { get; set; } =
             new List<CombatUnitSnapshot>();
+        public List<ISceneNode> WithdrawnUnits { get; set; } = new List<ISceneNode>();
+        public int IterationsCompleted { get; set; }
         public List<GameResult> Events { get; set; } = new List<GameResult>();
     }
 
@@ -760,13 +787,14 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Describes one target affected by an orbital bombardment strike.
+    /// Identifies the target policy selected for an orbital bombardment.
     /// </summary>
-    public class BombardmentStrikeEvent
+    public enum BombardmentType
     {
-        public BombardmentTargetType TargetType { get; set; }
-        public IGameEntity Target { get; set; }
-        public string TargetName { get; set; }
+        Military,
+        Civilian,
+        General,
+        DestroyPlanet,
     }
 
     /// <summary>
@@ -787,8 +815,6 @@ namespace Rebellion.Game.Results
         public int AllocatedEnergyDamage { get; set; }
         public bool HeadquartersDestroyed { get; set; }
         public bool PlanetDestroyed { get; set; }
-        public List<BombardmentStrikeEvent> Strikes { get; set; } =
-            new List<BombardmentStrikeEvent>();
         public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
         public List<CapitalShip> DestroyedCapitalShips { get; set; } = new List<CapitalShip>();

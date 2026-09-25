@@ -10,7 +10,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -33,7 +33,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private GameFleet _fleet;
         private StrategyFleetCommandController _fleetCommandController;
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _session;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private GalaxyMapSector _sector;
@@ -57,7 +57,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _sector = CreateSector();
-            _gameManager = TestContent.CreateGameManager(_game);
+            _session = TestContent.CreateGameSession(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
@@ -480,6 +480,67 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void PlanetPressed_MobileHeadquarters_BeginsDragWithHeadquartersSelectionAndPreview()
+        {
+            Faction player = _game.GetFactionByOwnerInstanceID(_playerFactionId);
+            player.HQInstanceID = _planet.Planet.InstanceID;
+            player.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            _planet.Planet.IsHeadquarters = true;
+            _planet.Planet.EnergyCapacity = 1;
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, _planet.Planet);
+            UIWindow draggedWindow = null;
+            PointerEventData draggedEvent = null;
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (window, eventData) =>
+                {
+                    draggedWindow = window;
+                    draggedEvent = eventData;
+                }
+            );
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            PointerEventData eventData = CreateOverlayPointerEvent(view, "headquartersImage");
+            eventData.button = PointerEventData.InputButton.Left;
+
+            planetView.OnPointerDown(eventData);
+            bool hasPreview = _controller.TryGetDragPreview(
+                view,
+                window.X + 20,
+                window.Y + 20,
+                out DragPreview preview
+            );
+
+            Assert.AreSame(window, draggedWindow);
+            Assert.AreSame(eventData, draggedEvent);
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { headquarters },
+                _controller.GetContextItems(view)
+            );
+            Assert.IsTrue(hasPreview);
+            Assert.AreSame(
+                GetField<RawImage>(planetView, "headquartersImage").texture,
+                preview.Texture
+            );
+        }
+
+        [Test]
         public void OnTargetSelected_KnownActions_RouteSharedCommands()
         {
             StrategyMissionTarget target = new StrategyMissionTarget(_planet, null);
@@ -629,12 +690,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <returns>The created fleet command controller.</returns>
         private StrategyFleetCommandController CreateFleetCommandController()
         {
-            return new StrategyFleetCommandController(
-                () => _gameManager.GetGame(),
-                () => _gameManager.FleetSystem,
-                () => _gameManager.BombardmentSystem,
-                () => _gameManager.PlanetaryAssaultSystem
-            );
+            return new StrategyFleetCommandController(_session);
         }
 
         /// <summary>

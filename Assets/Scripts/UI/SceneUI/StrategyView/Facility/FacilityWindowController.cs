@@ -5,7 +5,8 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
+using Rebellion.Util.DependencyInjection;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -42,8 +43,7 @@ public sealed class FacilityWindowController
 {
     private readonly HashSet<FacilityWindowView> boundViews = new HashSet<FacilityWindowView>();
     private readonly ConstructionWindowController constructionWindowController;
-    private readonly Func<GameRoot> getGame;
-    private readonly Func<ManufacturingSystem> getManufacturingSystem;
+    private readonly IServiceLocator services;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
     private readonly Action markDirty;
@@ -55,13 +55,13 @@ public sealed class FacilityWindowController
     private readonly UIWindowManager windowManager;
 
     private IFacilityWindowActions actions;
+    private IIdleBarManufacturingTrackingActions idleBarTrackingActions;
     private IStrategyConfirmationActions confirmationActions;
 
     /// <summary>
     /// Creates a facility feature controller.
     /// </summary>
-    /// <param name="getGame">Returns the active game.</param>
-    /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
+    /// <param name="services">Resolves the active game's manufacturing commands and state.</param>
     /// <param name="constructionWindowController">The construction sessions affected by destination changes.</param>
     /// <param name="getUIContext">Returns the active strategy presentation context.</param>
     /// <param name="targetingController">The strategy targeting controller.</param>
@@ -71,8 +71,7 @@ public sealed class FacilityWindowController
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
     public FacilityWindowController(
-        Func<GameRoot> getGame,
-        Func<ManufacturingSystem> getManufacturingSystem,
+        IServiceLocator services,
         ConstructionWindowController constructionWindowController,
         Func<UIContext> getUIContext,
         TargetingController targetingController,
@@ -83,10 +82,7 @@ public sealed class FacilityWindowController
         Func<SelectionModifierState> getSelectionModifiers = null
     )
     {
-        this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getManufacturingSystem =
-            getManufacturingSystem
-            ?? throw new ArgumentNullException(nameof(getManufacturingSystem));
+        this.services = services ?? throw new ArgumentNullException(nameof(services));
         this.constructionWindowController =
             constructionWindowController
             ?? throw new ArgumentNullException(nameof(constructionWindowController));
@@ -107,15 +103,19 @@ public sealed class FacilityWindowController
     /// </summary>
     /// <param name="windowActions">The feature-specific facility actions.</param>
     /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
+    /// <param name="trackingActions">Reads and changes manufacturing-lane idle-bar tracking.</param>
     public void Initialize(
         IFacilityWindowActions windowActions,
-        IStrategyConfirmationActions windowConfirmationActions
+        IStrategyConfirmationActions windowConfirmationActions,
+        IIdleBarManufacturingTrackingActions trackingActions
     )
     {
         actions = windowActions ?? throw new ArgumentNullException(nameof(windowActions));
         confirmationActions =
             windowConfirmationActions
             ?? throw new ArgumentNullException(nameof(windowConfirmationActions));
+        idleBarTrackingActions =
+            trackingActions ?? throw new ArgumentNullException(nameof(trackingActions));
     }
 
     /// <summary>
@@ -289,7 +289,7 @@ public sealed class FacilityWindowController
         List<StrategyMenuCommand> commands = CreateContextCommands(
             session.Planet?.Planet,
             session,
-            getGame()?.GetPlayerFaction()?.InstanceID
+            services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID
         );
         if (commands.Count == 0)
             return false;
@@ -338,6 +338,9 @@ public sealed class FacilityWindowController
             case StrategyMenuAction.Reserve:
                 ToggleManufacturingReservation(view);
                 break;
+            case StrategyMenuAction.ToggleIdleBarTracking:
+                ToggleManufacturingTracking(view);
+                break;
             case StrategyMenuAction.Encyclopedia:
                 actions.OpenFacilityInfo(GetStatusTarget(view));
                 break;
@@ -373,7 +376,7 @@ public sealed class FacilityWindowController
             return;
 
         Planet planet = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
-        string playerFactionId = getGame()?.GetPlayerFaction()?.InstanceID;
+        string playerFactionId = services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID;
         if (
             planet == null
             || string.IsNullOrEmpty(playerFactionId)
@@ -386,6 +389,25 @@ public sealed class FacilityWindowController
             !planet.IsManufacturingReserved(manufacturingType.Value)
         );
         actions.RefreshFacilityState();
+    }
+
+    /// <summary>
+    /// Toggles idle-bar tracking for the represented planetary manufacturing lane.
+    /// </summary>
+    /// <param name="view">The facility view whose manufacturing lane was selected.</param>
+    private void ToggleManufacturingTracking(FacilityWindowView view)
+    {
+        if (
+            !TryGetSession(view, out FacilityWindowSession session)
+            || !TryGetContextManufacturingType(view, out ManufacturingType type)
+        )
+            return;
+
+        Planet planet = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
+        if (planet == null)
+            return;
+
+        idleBarTrackingActions.ToggleIdleBarTracking(planet, type);
     }
 
     /// <summary>
@@ -654,18 +676,27 @@ public sealed class FacilityWindowController
     /// <param name="session">The active facility session.</param>
     /// <param name="playerFactionId">The player faction identifier.</param>
     /// <returns>The available context commands.</returns>
-    private static List<StrategyMenuCommand> CreateContextCommands(
+    private List<StrategyMenuCommand> CreateContextCommands(
         Planet planet,
         FacilityWindowSession session,
         string playerFactionId
     )
     {
+        FacilityWindowTab? manufacturingTab = session.GetContextManufacturingTab();
+        ManufacturingType? manufacturingType = manufacturingTab.HasValue
+            ? FacilityManufacturingLaneCatalog.GetManufacturingType(manufacturingTab.Value)
+            : null;
+        bool manufacturingTracked =
+            manufacturingType.HasValue
+            && idleBarTrackingActions.IsIdleBarTracked(planet, manufacturingType.Value);
         return FacilityWindowContextMenuBuilder.Build(
             planet,
             session.ActiveTab,
             session.GetContextManufacturingTab(),
             session.GetContextBuilding(),
-            playerFactionId
+            playerFactionId,
+            idleBarTrackingActions.IsIdleBarEnabled,
+            manufacturingTracked
         );
     }
 
@@ -730,8 +761,8 @@ public sealed class FacilityWindowController
             destinationItemId = null;
 
         Planet producer = GetAuthoritativePlanet(session.Planet?.Planet?.InstanceID);
-        string playerFactionId = getGame()?.GetPlayerFaction()?.InstanceID;
-        ManufacturingSystem manufacturingSystem = getManufacturingSystem();
+        string playerFactionId = services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID;
+        ManufacturingCommands manufacturingSystem = services.GetService<ManufacturingCommands>();
         if (
             destination == null
             || producer == null
@@ -1082,7 +1113,7 @@ public sealed class FacilityWindowController
     {
         return string.IsNullOrEmpty(instanceId)
             ? null
-            : getGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
+            : services.GetService<GameRoot>()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
     }
 
     /// <summary>
@@ -1094,7 +1125,7 @@ public sealed class FacilityWindowController
     {
         return string.IsNullOrEmpty(planetId)
             ? null
-            : getGame()?.GetSceneNodeByInstanceID<Planet>(planetId);
+            : services.GetService<GameRoot>()?.GetSceneNodeByInstanceID<Planet>(planetId);
     }
 
     /// <summary>
@@ -1102,7 +1133,7 @@ public sealed class FacilityWindowController
     /// </summary>
     private void EnsureInitialized()
     {
-        if (actions == null || confirmationActions == null)
+        if (actions == null || confirmationActions == null || idleBarTrackingActions == null)
             throw new InvalidOperationException(
                 $"{nameof(FacilityWindowController)} must be initialized before use."
             );

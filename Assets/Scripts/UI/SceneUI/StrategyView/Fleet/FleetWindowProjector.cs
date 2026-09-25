@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>

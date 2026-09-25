@@ -168,7 +168,17 @@ namespace Rebellion.Tests.Game.Encyclopedia
         [Test]
         public void Build_FromActivePack_UsesPackEncyclopediaImages()
         {
-            EncyclopediaCatalog catalog = new EncyclopediaCatalogBuilder().Build(TestContent.Data);
+            GameDataCatalog gameData = TestContent.Data;
+            EncyclopediaCatalog catalog = BuildCatalog(
+                gameData.EncyclopediaEntries,
+                gameData.PlanetSectors,
+                gameData.Buildings,
+                gameData.CapitalShips,
+                gameData.Starfighters,
+                gameData.Regiments,
+                gameData.SpecialForces,
+                gameData.Officers
+            );
 
             List<EncyclopediaEntry> entriesWithWrongImagePath = catalog
                 .Where(entry =>

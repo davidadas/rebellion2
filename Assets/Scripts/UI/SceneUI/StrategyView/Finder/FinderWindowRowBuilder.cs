@@ -6,7 +6,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Projects galaxy objects into ordered Finder tabs and domain-backed result rows.
@@ -15,6 +14,7 @@ public sealed class FinderWindowRowBuilder
 {
     private readonly IReadOnlyList<GalaxyMapSector> sectors;
     private readonly IReadOnlyList<Faction> factions;
+    private readonly IReadOnlyList<Officer> registeredOfficers;
     private readonly string playerFactionId;
     private readonly Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds;
     private readonly Func<string, IReadOnlyList<string>> getTroopColumnTypeIds;
@@ -27,16 +27,19 @@ public sealed class FinderWindowRowBuilder
     /// <param name="playerFactionId">The player faction identifier.</param>
     /// <param name="getTroopColumnTypeIds">Returns regiment type identifiers in Finder column order.</param>
     /// <param name="getSpecialForcesColumnTypeIds">Returns special-forces type identifiers in Finder column order.</param>
+    /// <param name="registeredOfficers">The authoritative live officer roster, including disabled officers.</param>
     public FinderWindowRowBuilder(
         IReadOnlyList<GalaxyMapSector> sectors,
         IReadOnlyList<Faction> factions,
         string playerFactionId,
         Func<string, IReadOnlyList<string>> getTroopColumnTypeIds = null,
-        Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds = null
+        Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds = null,
+        IReadOnlyList<Officer> registeredOfficers = null
     )
     {
         this.sectors = sectors ?? throw new ArgumentNullException(nameof(sectors));
         this.factions = factions ?? Array.Empty<Faction>();
+        this.registeredOfficers = registeredOfficers;
         this.playerFactionId = playerFactionId;
         this.getTroopColumnTypeIds = getTroopColumnTypeIds;
         this.getSpecialForcesColumnTypeIds = getSpecialForcesColumnTypeIds;
@@ -265,13 +268,33 @@ public sealed class FinderWindowRowBuilder
             Faction ownedFaction = factions.FirstOrDefault(faction =>
                 string.Equals(faction.InstanceID, ownerId, StringComparison.Ordinal)
             );
-            AddPersonnelRows(
-                rows,
-                seen,
-                null,
-                PlanetIcon.Defense,
-                ownedFaction?.GetOwnedUnitsByType<Officer>(includeDisabled: true)
-            );
+            IEnumerable<Officer> officers =
+                registeredOfficers
+                ?? ownedFaction?.GetOwnedUnitsByType<Officer>(includeDisabled: true);
+            if (officers != null)
+            {
+                foreach (Officer officer in officers)
+                {
+                    Fleet fleet = officer?.GetParentOfType<Fleet>();
+                    Mission mission = officer?.GetParentOfType<Mission>();
+                    GalaxyMapPlanet planet = FindGalaxyMapPlanet(
+                        officer?.GetParentOfType<Planet>()
+                    );
+                    PlanetIcon targetIcon =
+                        mission != null ? PlanetIcon.Mission
+                        : fleet != null ? PlanetIcon.Fleet
+                        : PlanetIcon.Defense;
+                    AddPersonnelRows(
+                        rows,
+                        seen,
+                        planet,
+                        targetIcon,
+                        new[] { officer },
+                        mission,
+                        fleet
+                    );
+                }
+            }
         }
 
         return rows.Where(row =>
@@ -424,11 +447,15 @@ public sealed class FinderWindowRowBuilder
             if (!seen.Add(key))
                 continue;
 
-            bool hideLocation = !candidate.IsEnabled;
-            GalaxyMapPlanet displayedPlanet = hideLocation ? null : planet;
-            PlanetIcon displayedTargetIcon = hideLocation ? PlanetIcon.None : targetIcon;
-            Fleet displayedFleet = hideLocation ? null : fleet;
-            Mission displayedMission = hideLocation ? null : mission;
+            bool hideNavigation =
+                candidate is Officer unavailableOfficer
+                    && (unavailableOfficer.IsKilled || unavailableOfficer.IsRetired)
+                || TryGetOffMapLocation(candidate, out _);
+            GalaxyMapPlanet displayedPlanet = hideNavigation ? null : planet;
+            PlanetIcon displayedTargetIcon =
+                hideNavigation || displayedPlanet == null ? PlanetIcon.None : targetIcon;
+            Fleet displayedFleet = hideNavigation ? null : fleet;
+            Mission displayedMission = hideNavigation ? null : mission;
 
             rows.Add(
                 new FinderWindowRow(
@@ -483,6 +510,23 @@ public sealed class FinderWindowRowBuilder
         Fleet fleet = null
     )
     {
+        if (
+            personnel is Officer unavailableOfficer
+            && (unavailableOfficer.IsKilled || unavailableOfficer.IsRetired)
+        )
+        {
+            return !string.IsNullOrWhiteSpace(unavailableOfficer.DisplayStatus)
+                ? unavailableOfficer.DisplayStatus
+                : "Location Unknown";
+        }
+        if (TryGetOffMapLocation(personnel, out string offMapLocation))
+            return offMapLocation;
+        if (fleet != null)
+            return fleet.GetDisplayName();
+        if (personnel?.GetParentOfType<Fleet>() is Fleet parentFleet)
+            return parentFleet.GetDisplayName();
+        if (personnel?.GetParentOfType<Planet>() is Planet parentPlanet)
+            return parentPlanet.GetDisplayName();
         if (personnel is { IsEnabled: false })
         {
             return
@@ -491,12 +535,6 @@ public sealed class FinderWindowRowBuilder
                 ? entity.DisplayStatus
                 : "Location Unknown";
         }
-        if (fleet != null)
-            return fleet.GetDisplayName();
-        if (personnel?.GetParentOfType<Fleet>() is Fleet parentFleet)
-            return parentFleet.GetDisplayName();
-        if (personnel?.GetParentOfType<Planet>() is Planet parentPlanet)
-            return parentPlanet.GetDisplayName();
 
         return planet?.Planet?.GetDisplayName() ?? "Location Unknown";
     }
@@ -516,6 +554,8 @@ public sealed class FinderWindowRowBuilder
             return "Captured";
         if (personnel is Officer { InjuryPoints: > 0 })
             return "Injured";
+        if (HasOnMissionDisplayStatus(personnel))
+            return "On Mission";
         if (personnel is { IsEnabled: false })
             return string.Empty;
         if (personnel is IMovable movable && movable.GetTransitMovement() != null)
@@ -534,6 +574,93 @@ public sealed class FinderWindowRowBuilder
         }
 
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Resolves an authored off-map location for temporarily unavailable personnel.
+    /// </summary>
+    /// <param name="personnel">The represented personnel node.</param>
+    /// <param name="location">The authored location, when one is available.</param>
+    /// <returns>True when the personnel has an authored off-map location.</returns>
+    private static bool TryGetOffMapLocation(ISceneNode personnel, out string location)
+    {
+        location = string.Empty;
+        if (
+            personnel is not { IsEnabled: false }
+            || personnel is not BaseGameEntity entity
+            || string.IsNullOrWhiteSpace(entity.DisplayStatus)
+        )
+        {
+            return false;
+        }
+
+        string displayStatus = entity.DisplayStatus.Trim();
+        const string missionLocationPrefix = "On Mission (";
+        if (
+            displayStatus.StartsWith(missionLocationPrefix, StringComparison.Ordinal)
+            && displayStatus.EndsWith(")", StringComparison.Ordinal)
+        )
+        {
+            location = displayStatus
+                .Substring(
+                    missionLocationPrefix.Length,
+                    displayStatus.Length - missionLocationPrefix.Length - 1
+                )
+                .Trim();
+            return !string.IsNullOrEmpty(location);
+        }
+
+        if (string.Equals(displayStatus, "On Mission", StringComparison.Ordinal))
+            return false;
+
+        location = displayStatus;
+        return true;
+    }
+
+    /// <summary>
+    /// Determines whether unavailable personnel has an authored mission status.
+    /// </summary>
+    /// <param name="personnel">The represented personnel node.</param>
+    /// <returns>True when the display status represents an active off-map mission.</returns>
+    private static bool HasOnMissionDisplayStatus(ISceneNode personnel)
+    {
+        if (
+            personnel is not { IsEnabled: false }
+            || personnel is not BaseGameEntity entity
+            || string.IsNullOrWhiteSpace(entity.DisplayStatus)
+        )
+        {
+            return false;
+        }
+
+        string displayStatus = entity.DisplayStatus.Trim();
+        return string.Equals(displayStatus, "On Mission", StringComparison.Ordinal)
+            || (
+                displayStatus.StartsWith("On Mission (", StringComparison.Ordinal)
+                && displayStatus.EndsWith(")", StringComparison.Ordinal)
+            );
+    }
+
+    /// <summary>
+    /// Resolves a live planet node to its visible Finder snapshot.
+    /// </summary>
+    /// <param name="planet">The live planet containing the personnel.</param>
+    /// <returns>The visible planet snapshot, or null when unavailable.</returns>
+    private GalaxyMapPlanet FindGalaxyMapPlanet(Planet planet)
+    {
+        if (planet == null)
+            return null;
+
+        return sectors
+            .SelectMany(sector => sector.Planets)
+            .FirstOrDefault(candidate =>
+                ReferenceEquals(candidate?.Planet, planet)
+                || string.Equals(
+                    candidate?.Planet?.InstanceID,
+                    planet.InstanceID,
+                    StringComparison.Ordinal
+                )
+            );
     }
 
     /// <summary>

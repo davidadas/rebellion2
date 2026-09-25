@@ -3,8 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
+using Rebellion.Util.Logging;
+using Rebellion.Util.Random;
 using UnityEngine;
 
 /// <summary>

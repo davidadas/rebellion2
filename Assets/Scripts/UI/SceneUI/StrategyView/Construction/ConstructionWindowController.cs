@@ -5,7 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Util.DependencyInjection;
 using UnityEngine;
 
 /// <summary>
@@ -41,7 +41,7 @@ public sealed class ConstructionWindowController
     private readonly HashSet<ConstructionWindowView> boundViews =
         new HashSet<ConstructionWindowView>();
     private readonly Action<UIWindow> closeWindow;
-    private readonly Func<GameRoot> getGame;
+    private readonly IServiceLocator services;
     private readonly Func<int, int, Vector2Int> getConstructionWindowPosition;
     private readonly Func<Vector2Int> getUtilityWindowPosition;
     private readonly Action markDirty;
@@ -57,9 +57,7 @@ public sealed class ConstructionWindowController
     /// <summary>
     /// Creates a construction feature controller.
     /// </summary>
-    /// <param name="getGame">Returns the active game.</param>
-    /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
-    /// <param name="getMovementSystem">Returns the active movement system.</param>
+    /// <param name="services">Resolves the active game's commands and queries.</param>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="windowLayer">Provides the authored construction prefab and modal layer.</param>
     /// <param name="windowManager">Owns strategy-window creation, focus, and registration.</param>
@@ -68,9 +66,7 @@ public sealed class ConstructionWindowController
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     public ConstructionWindowController(
-        Func<GameRoot> getGame,
-        Func<ManufacturingSystem> getManufacturingSystem,
-        Func<MovementSystem> getMovementSystem,
+        IServiceLocator services,
         Func<UIContext> getUIContext,
         StrategyWindowLayerView windowLayer,
         UIWindowManager windowManager,
@@ -80,7 +76,7 @@ public sealed class ConstructionWindowController
         Action markDirty
     )
     {
-        this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
+        this.services = services ?? throw new ArgumentNullException(nameof(services));
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));
         this.windowManager =
             windowManager ?? throw new ArgumentNullException(nameof(windowManager));
@@ -92,11 +88,7 @@ public sealed class ConstructionWindowController
             ?? throw new ArgumentNullException(nameof(getUtilityWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
-        orderController = new ConstructionOrderController(
-            getGame,
-            getManufacturingSystem,
-            getMovementSystem
-        );
+        orderController = new ConstructionOrderController(services);
         projector = new ConstructionWindowProjector(getUIContext);
     }
 
@@ -597,7 +589,7 @@ public sealed class ConstructionWindowController
     /// <returns>The player faction identifier, or null.</returns>
     private string GetPlayerFactionID()
     {
-        return getGame()?.GetPlayerFaction()?.InstanceID;
+        return services.GetService<GameRoot>()?.GetPlayerFaction()?.InstanceID;
     }
 
     /// <summary>
@@ -776,7 +768,7 @@ public sealed class ConstructionWindowController
     /// <returns>The authoritative planet, or null.</returns>
     private Planet GetAuthoritativePlanet(string planetId)
     {
-        return getGame()?.GetSceneNodeByInstanceID<Planet>(planetId);
+        return services.GetService<GameRoot>()?.GetSceneNodeByInstanceID<Planet>(planetId);
     }
 
     /// <summary>
@@ -788,7 +780,7 @@ public sealed class ConstructionWindowController
     {
         return string.IsNullOrEmpty(instanceId)
             ? null
-            : getGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
+            : services.GetService<GameRoot>()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
     }
 
     /// <summary>

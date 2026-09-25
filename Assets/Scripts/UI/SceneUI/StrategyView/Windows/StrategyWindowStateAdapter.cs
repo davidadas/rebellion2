@@ -55,7 +55,11 @@ public sealed class StrategyWindowStateAdapter<TView> : IStrategyWindowStateAdap
         return true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Restores a runtime window from its persisted state.
+    /// </summary>
+    /// <param name="state">The persisted window state.</param>
+    /// <returns>The restored window, or null when no state is supplied.</returns>
     public UIWindow Restore(WindowState state)
     {
         return state == null ? null : restore(state);

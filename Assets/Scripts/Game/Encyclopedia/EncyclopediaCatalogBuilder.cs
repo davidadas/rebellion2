@@ -12,28 +12,6 @@ namespace Rebellion.Game.Encyclopedia
     public sealed class EncyclopediaCatalogBuilder
     {
         /// <summary>
-        /// Builds the encyclopedia catalog from the active pack's composed game data.
-        /// </summary>
-        /// <param name="gameData">The active pack's composed game data.</param>
-        /// <returns>The built encyclopedia catalog.</returns>
-        public EncyclopediaCatalog Build(GameDataCatalog gameData)
-        {
-            if (gameData == null)
-                throw new System.ArgumentNullException(nameof(gameData));
-
-            return Build(
-                gameData.EncyclopediaEntries,
-                gameData.PlanetSectors,
-                gameData.Buildings,
-                gameData.CapitalShips,
-                gameData.Starfighters,
-                gameData.Regiments,
-                gameData.SpecialForces,
-                gameData.Officers
-            );
-        }
-
-        /// <summary>
         /// Builds the encyclopedia catalog from authored entries and static game data.
         /// </summary>
         /// <param name="authoredEntries">The authored encyclopedia entries.</param>
@@ -168,7 +146,7 @@ namespace Rebellion.Game.Encyclopedia
             IEnumerable<T> entities,
             EncyclopediaEntryCategory category
         )
-            where T : BaseGameEntity
+            where T : BaseGameEntity, IEncyclopediaSource
         {
             if (entities == null)
                 return;
@@ -184,13 +162,15 @@ namespace Rebellion.Game.Encyclopedia
         /// <summary>
         /// Creates an encyclopedia entry from a game entity.
         /// </summary>
+        /// <typeparam name="T">The encyclopedia-backed entity type.</typeparam>
         /// <param name="entity">The entity to convert.</param>
         /// <param name="category">The encyclopedia category for the entity.</param>
         /// <returns>The created entry, or null when no entity was provided.</returns>
-        private static EncyclopediaEntry CreateEntry(
-            BaseGameEntity entity,
+        private static EncyclopediaEntry CreateEntry<T>(
+            T entity,
             EncyclopediaEntryCategory category
         )
+            where T : BaseGameEntity, IEncyclopediaSource
         {
             if (entity?.HasEncyclopediaData != true)
                 return null;
@@ -234,9 +214,11 @@ namespace Rebellion.Game.Encyclopedia
         /// <summary>
         /// Gets the text body used by the encyclopedia for an entity.
         /// </summary>
+        /// <typeparam name="T">The encyclopedia-backed entity type.</typeparam>
         /// <param name="entity">The entity whose encyclopedia description is being resolved.</param>
         /// <returns>The encyclopedia description.</returns>
-        private static string GetEncyclopediaDescription(BaseGameEntity entity)
+        private static string GetEncyclopediaDescription<T>(T entity)
+            where T : BaseGameEntity, IEncyclopediaSource
         {
             return string.IsNullOrEmpty(entity.EncyclopediaDescription)
                 ? entity.Description

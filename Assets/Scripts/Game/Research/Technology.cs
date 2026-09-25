@@ -1,5 +1,5 @@
 using Rebellion.Game.Units;
-using Rebellion.Util.Extensions;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Research
@@ -44,7 +44,9 @@ namespace Rebellion.Game.Research
         /// <seealso cref="IManufacturable"/>
         public IManufacturable GetReferenceCopy()
         {
-            IManufacturable clonedManufacturable = Manufacturable.GetDeepCopy();
+            ISceneNode clonedNode = ((ISceneNode)Manufacturable).CreateCopy();
+            clonedNode.InstanceID = null;
+            IManufacturable clonedManufacturable = (IManufacturable)clonedNode;
 
             // Set directly on the property to bypass the Complete->Building guard,
             // which is meant for live game objects, not freshly cloned templates.

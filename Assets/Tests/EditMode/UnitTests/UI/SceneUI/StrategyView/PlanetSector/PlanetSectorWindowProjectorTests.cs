@@ -6,8 +6,8 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -330,6 +330,63 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(
                 (Color32)opposingTheme.GetPrimaryColor(),
                 presentation.SupportBar.BackgroundColor
+            );
+        }
+
+        [Test]
+        public void CreateRenderData_RelocatedHeadquartersInTransit_ShowsOnDestinationPlanet()
+        {
+            Planet origin = CreatePlanet("origin", _playerFactionId, 13, 25);
+            Planet destination = CreatePlanet("destination", _playerFactionId, 21, 34);
+            origin.IsColonized = true;
+            destination.IsColonized = true;
+            origin.EnergyCapacity = 1;
+            destination.EnergyCapacity = 2;
+            origin.IsHeadquarters = true;
+            Faction player = _game.GetFactionByOwnerInstanceID(_playerFactionId);
+            player.HQInstanceID = origin.InstanceID;
+            player.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, _planetSector);
+            _game.AttachNode(destination, _planetSector);
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, origin);
+            GameSession session = TestContent.CreateGameSession(_game);
+            Assert.IsTrue(
+                session.GetService<HeadquartersCommands>().TryRelocate(headquarters, destination)
+            );
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(_planetSector, origin, string.Empty),
+                new GalaxyMapPlanet(_planetSector, destination, string.Empty)
+            );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                sector,
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsFalse(destination.IsHeadquarters);
+            Assert.IsNotNull(headquarters.Movement);
+            Assert.IsNull(data.Planets[0].HeadquartersTexture);
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext
+                        .GetPlayerFactionTheme()
+                        .PlanetOverlayTheme.PlanetSectorHeadquartersImagePath
+                ),
+                data.Planets[1].HeadquartersTexture
             );
         }
 
@@ -695,11 +752,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <summary>
         /// Creates sector.
         /// </summary>
-        /// <param name="planet">The planet.</param>
+        /// <param name="planets">The planets.</param>
         /// <returns>The created sector.</returns>
-        private GalaxyMapSector CreateSector(GalaxyMapPlanet planet)
+        private GalaxyMapSector CreateSector(params GalaxyMapPlanet[] planets)
         {
-            return new GalaxyMapSector(_planetSector, new[] { planet });
+            return new GalaxyMapSector(_planetSector, planets);
         }
 
         private sealed class TestMission : Mission

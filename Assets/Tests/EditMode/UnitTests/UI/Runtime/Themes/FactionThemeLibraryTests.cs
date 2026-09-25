@@ -56,7 +56,7 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         }
 
         [Test]
-        public void GetTheme_StrategyMusicContainsFactionTrackMappingsAndCadence()
+        public void GetTheme_StrategyMusic_ReturnsFactionTrackMappingsAndCadence()
         {
             StrategyMusicTheme allianceMusic = _library.GetTheme("FNALL1").StrategyMusic;
             StrategyMusicTheme empireMusic = _library.GetTheme("FNEMP1").StrategyMusic;

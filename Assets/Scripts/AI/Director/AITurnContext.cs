@@ -7,8 +7,8 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
-using Rebellion.Util.Common;
+using Rebellion.Simulation;
+using Rebellion.Util.Random;
 
 namespace Rebellion.AI.Director
 {
@@ -21,12 +21,15 @@ namespace Rebellion.AI.Director
         public GameRoot Game { get; }
         public Faction Faction { get; }
         public IRandomNumberProvider Random { get; }
-        public MissionSystem Missions { get; }
-        public MovementSystem Movement { get; }
-        public ManufacturingSystem Manufacturing { get; }
-        public MaintenanceSystem Maintenance { get; }
-        public BombardmentSystem Bombardment { get; }
-        public PlanetaryAssaultSystem PlanetaryAssault { get; }
+        public MissionCommands Missions { get; }
+        public MissionQueries MissionQueries { get; }
+        public MovementCommands Movement { get; }
+        public ManufacturingCommands Manufacturing { get; }
+        public MaintenanceCommands Maintenance { get; }
+        public BombardmentCommands Bombardment { get; }
+        public BombardmentQueries BombardmentQueries { get; }
+        public PlanetaryAssaultCommands PlanetaryAssault { get; }
+        public PlanetaryAssaultQueries PlanetaryAssaultQueries { get; }
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
         public AIStrategicPlan StrategicPlan { get; }
@@ -51,35 +54,44 @@ namespace Rebellion.AI.Director
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="faction">The faction being processed.</param>
-        /// <param name="missions">Mission system used by mission proposals.</param>
+        /// <param name="missions">Mission commands used by mission proposals.</param>
+        /// <param name="missionQueries">Mission eligibility and odds used by mission proposals.</param>
         /// <param name="movement">Movement system used by movement proposals.</param>
         /// <param name="manufacturing">Manufacturing system used by production proposals.</param>
-        /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
-        /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
+        /// <param name="bombardment">Bombardment commands used by fleet attack proposals.</param>
+        /// <param name="bombardmentQueries">Bombardment eligibility rules used by fleet attack proposals.</param>
+        /// <param name="planetaryAssault">Planetary-assault commands used by fleet attack proposals.</param>
+        /// <param name="planetaryAssaultQueries">Assault eligibility rules used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic decisions.</param>
         /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
-        /// <param name="maintenance">Maintenance system used to project production capacity.</param>
+        /// <param name="maintenance">Maintenance commands used to scrap surplus facilities.</param>
         public AITurnContext(
             GameRoot game,
             Faction faction,
-            MissionSystem missions,
-            MovementSystem movement,
-            ManufacturingSystem manufacturing,
-            BombardmentSystem bombardment,
-            PlanetaryAssaultSystem planetaryAssault,
+            MissionCommands missions,
+            MissionQueries missionQueries,
+            MovementCommands movement,
+            ManufacturingCommands manufacturing,
+            BombardmentCommands bombardment,
+            BombardmentQueries bombardmentQueries,
+            PlanetaryAssaultCommands planetaryAssault,
+            PlanetaryAssaultQueries planetaryAssaultQueries,
             IRandomNumberProvider random,
             GalaxyMap factionView = null,
-            MaintenanceSystem maintenance = null
+            MaintenanceCommands maintenance = null
         )
         {
             Game = game;
             Faction = faction;
             Missions = missions;
+            MissionQueries = missionQueries;
             Movement = movement;
             Manufacturing = manufacturing;
             Maintenance = maintenance;
             Bombardment = bombardment;
+            BombardmentQueries = bombardmentQueries;
             PlanetaryAssault = planetaryAssault;
+            PlanetaryAssaultQueries = planetaryAssaultQueries;
             Random = random;
             FactionView = factionView;
             _unlockedSpecialForcesMissionTypes =

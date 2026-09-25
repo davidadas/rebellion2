@@ -1,11 +1,8 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -26,36 +23,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string OwnerFactionInstanceID { get; set; }
-
-        /// <summary>
-        /// Returns registered nodes that match the authored activity and identity filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <returns>The selected owned.</returns>
-        protected IEnumerable<T> SelectOwned(GameRoot game)
-        {
-            IEnumerable<T> nodes = IncludeInactive
-                ? game.GetRegisteredSceneNodesByType<T>(includeDisabled: true)
-                : Active<T>(game);
-            return SelectOwned(nodes.Where(node => node.GetParent() != null));
-        }
-
-        /// <summary>
-        /// Filters a supplied node sequence by authored identity and ownership.
-        /// </summary>
-        /// <param name="nodes">The nodes.</param>
-        /// <returns>The selected owned.</returns>
-        protected IEnumerable<T> SelectOwned(IEnumerable<T> nodes)
-        {
-            return nodes
-                .Where(node =>
-                    string.IsNullOrWhiteSpace(InstanceID) || node.InstanceID == InstanceID
-                )
-                .Where(node =>
-                    string.IsNullOrWhiteSpace(OwnerFactionInstanceID)
-                    || node.OwnerInstanceID == OwnerFactionInstanceID
-                );
-        }
     }
 
     /// <summary>
@@ -69,16 +36,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string PlanetBinding { get; set; }
-
-        /// <summary>
-        /// Returns owned nodes located at the selected planet.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected located.</returns>
-        protected IEnumerable<T> SelectLocated(GameRoot game, GameEventEvaluationContext context) =>
-            SelectOwned(game)
-                .Where(node => MatchesLocation(node, context, PlanetInstanceID, PlanetBinding));
     }
 
     /// <summary>
@@ -92,23 +49,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public ManufacturingStatus? ManufacturingStatus { get; set; }
-
-        /// <summary>
-        /// Returns located units matching the authored manufacturing filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected manufacturable.</returns>
-        protected IEnumerable<T> SelectManufacturable(
-            GameRoot game,
-            GameEventEvaluationContext context
-        ) =>
-            SelectLocated(game, context)
-                .Where(unit => string.IsNullOrWhiteSpace(TypeID) || unit.TypeID == TypeID)
-                .Where(unit =>
-                    !ManufacturingStatus.HasValue
-                    || unit.ManufacturingStatus == ManufacturingStatus.Value
-                );
     }
 
     #endregion
@@ -123,25 +63,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public PlanetSectorType? SectorType { get; set; }
-
-        /// <summary>
-        /// Returns active planets that match the authored ownership and sector filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) =>
-            SelectOwned(game)
-                .Where(planet => !planet.IsDestroyed)
-                .Where(planet =>
-                    !SectorType.HasValue
-                    || planet.GetParentOfType<PlanetSector>()?.SectorType == SectorType.Value
-                );
     }
 
     /// <summary>
@@ -158,29 +79,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public PlanetSectorType? SectorType { get; set; }
-
-        /// <summary>
-        /// Returns active planet sectors that match the authored filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) =>
-            (
-                IncludeInactive
-                    ? game.GetRegisteredSceneNodesByType<PlanetSector>(includeDisabled: true)
-                    : Active<PlanetSector>(game)
-            )
-                .Where(sector => sector.GetParent() != null)
-                .Where(sector =>
-                    string.IsNullOrWhiteSpace(InstanceID) || sector.InstanceID == InstanceID
-                )
-                .Where(sector => !SectorType.HasValue || sector.SectorType == SectorType.Value);
     }
 
     #endregion
@@ -195,145 +93,43 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public bool? IsCaptured { get; set; }
-
-        /// <summary>
-        /// Returns officers that match the authored location and captivity filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        )
-        {
-            return SelectOwned(game)
-                .Where(node => MatchesLocation(node, context, PlanetInstanceID, PlanetBinding))
-                .Where(officer => !IsCaptured.HasValue || officer.IsCaptured == IsCaptured.Value);
-        }
     }
 
     /// <summary>
     /// Selects active special-forces units.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectSpecialForces : LocatedSceneNodeSelector<SpecialForces>
-    {
-        /// <summary>
-        /// Returns special-forces units that match the authored location filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) => SelectLocated(game, context);
-    }
+    public sealed class SelectSpecialForces : LocatedSceneNodeSelector<SpecialForces> { }
 
     /// <summary>
     /// Selects active fleets.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectFleets : LocatedSceneNodeSelector<Fleet>
-    {
-        /// <summary>
-        /// Returns fleets that match the authored location filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) => SelectLocated(game, context);
-    }
+    public sealed class SelectFleets : LocatedSceneNodeSelector<Fleet> { }
 
     /// <summary>
     /// Selects active missions.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectMissions : LocatedSceneNodeSelector<Mission>
-    {
-        /// <summary>
-        /// Returns missions that match the authored location filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) => SelectLocated(game, context);
-    }
+    public sealed class SelectMissions : LocatedSceneNodeSelector<Mission> { }
 
     /// <summary>
     /// Selects active capital ships.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectCapitalShips : ManufacturableSelector<CapitalShip>
-    {
-        /// <summary>
-        /// Returns capital ships that match the authored unit filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) => SelectManufacturable(game, context);
-    }
+    public sealed class SelectCapitalShips : ManufacturableSelector<CapitalShip> { }
 
     /// <summary>
     /// Selects active starfighter units.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectStarfighters : ManufacturableSelector<Starfighter>
-    {
-        /// <summary>
-        /// Returns starfighters that match the authored unit filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) => SelectManufacturable(game, context);
-    }
+    public sealed class SelectStarfighters : ManufacturableSelector<Starfighter> { }
 
     /// <summary>
     /// Selects active regiment units.
     /// </summary>
     [PersistableObject]
-    public sealed class SelectRegiments : ManufacturableSelector<Regiment>
-    {
-        /// <summary>
-        /// Returns regiments that match the authored unit filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) => SelectManufacturable(game, context);
-    }
+    public sealed class SelectRegiments : ManufacturableSelector<Regiment> { }
 
     /// <summary>
     /// Groups buildings by their strategic purpose for authored selection.
@@ -353,38 +149,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public BuildingSelectionCategory Category { get; set; }
-
-        /// <summary>
-        /// Returns buildings that match the authored unit and strategic-category filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) => SelectManufacturable(game, context).Where(MatchesCategory);
-
-        /// <summary>
-        /// Returns whether a building belongs to the authored strategic category.
-        /// </summary>
-        /// <param name="building">The building.</param>
-        /// <returns>True when the value matches category; otherwise false.</returns>
-        private bool MatchesCategory(Building building) =>
-            Category switch
-            {
-                BuildingSelectionCategory.Any => true,
-                BuildingSelectionCategory.PlanetaryDefense => building.BuildingType
-                    is BuildingType.Defense
-                        or BuildingType.Weapon,
-                BuildingSelectionCategory.ManufacturingFacility => building.BuildingType
-                    is BuildingType.Shipyard
-                        or BuildingType.TrainingFacility
-                        or BuildingType.ConstructionFacility,
-                _ => false,
-            };
     }
 
     /// <summary>
@@ -407,43 +171,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public ManufacturingType? ManufacturingType { get; set; }
-
-        /// <summary>
-        /// Returns manufacturing orders that match the authored planet, owner, and type filters.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        )
-        {
-            Planet boundPlanet = !string.IsNullOrWhiteSpace(PlanetBinding)
-                ? context?.GetBindingReference<Planet>(PlanetBinding)
-                : null;
-            string planetID = boundPlanet?.InstanceID ?? PlanetInstanceID;
-            IEnumerable<Planet> planets = (
-                IncludeInactive
-                    ? game.GetRegisteredSceneNodesByType<Planet>(includeDisabled: true)
-                    : Active<Planet>(game)
-            )
-                .Where(planet => planet.GetParent() != null)
-                .Where(planet =>
-                    string.IsNullOrWhiteSpace(planetID) || planet.InstanceID == planetID
-                )
-                .Where(planet =>
-                    string.IsNullOrWhiteSpace(OwnerFactionInstanceID)
-                    || planet.OwnerInstanceID == OwnerFactionInstanceID
-                );
-            return planets
-                .SelectMany(planet => planet.ManufacturingQueue)
-                .Where(entry => !ManufacturingType.HasValue || entry.Key == ManufacturingType.Value)
-                .SelectMany(entry => entry.Value)
-                .Cast<ISceneNode>();
-        }
     }
 
     #endregion
@@ -470,60 +197,6 @@ namespace Rebellion.Game.Events
 
         [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
-
-        /// <summary>
-        /// Randomly samples the authored candidate selectors within the configured limits.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        )
-        {
-            if (ChancePercent < 0 || ChancePercent > 100)
-                throw new InvalidOperationException(
-                    "SelectRandom ChancePercent must be between 0 and 100."
-                );
-            if (Count is < 0 || MinimumCount < 0 || MaximumCount is < 0)
-                throw new InvalidOperationException("SelectRandom counts cannot be negative.");
-            if (Count.HasValue && (MinimumCount != 0 || MaximumCount.HasValue))
-                throw new InvalidOperationException(
-                    "SelectRandom Count cannot be combined with MinimumCount or MaximumCount."
-                );
-            if (MaximumCount.HasValue && MaximumCount.Value < MinimumCount)
-                throw new InvalidOperationException(
-                    "SelectRandom MaximumCount cannot be less than MinimumCount."
-                );
-
-            List<ISceneNode> remaining = Selectors
-                .SelectMany(selector => selector.Select(game, provider, context))
-                .Distinct()
-                .OrderBy(node => node.InstanceID, StringComparer.Ordinal)
-                .ToList();
-            List<ISceneNode> selected = new List<ISceneNode>();
-            int minimum = Count ?? MinimumCount;
-            int maximum = Count ?? MaximumCount ?? remaining.Count;
-            foreach (ISceneNode candidate in remaining.ToList())
-            {
-                if (provider.NextInt(0, 100) >= ChancePercent)
-                    continue;
-                selected.Add(candidate);
-                remaining.Remove(candidate);
-            }
-            while (selected.Count < Math.Min(minimum, selected.Count + remaining.Count))
-            {
-                int index = provider.NextInt(0, remaining.Count);
-                selected.Add(remaining[index]);
-                remaining.RemoveAt(index);
-            }
-            while (selected.Count > maximum)
-                selected.RemoveAt(provider.NextInt(0, selected.Count));
-            return selected;
-        }
     }
 
     /// <summary>
@@ -534,32 +207,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
-
-        /// <summary>
-        /// Returns the first distinct node produced by the authored candidate selectors.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) => SelectCandidates(game, provider, context).Take(1);
-
-        /// <summary>
-        /// Returns the distinct candidate sequence before taking its first node.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected candidates.</returns>
-        internal IEnumerable<ISceneNode> SelectCandidates(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) => Selectors.SelectMany(selector => selector.Select(game, provider, context)).Distinct();
     }
 
     /// <summary>
@@ -570,52 +217,6 @@ namespace Rebellion.Game.Events
     {
         [PersistableAttribute]
         public string Binding { get; set; }
-
-        /// <summary>
-        /// Returns the scene node or nodes held by the authored event binding.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        )
-        {
-            if (context?.TryGetBindingReference(Binding, out object value) != true)
-                throw new InvalidOperationException(
-                    $"SelectBinding could not resolve binding '{Binding}'."
-                );
-
-            IEnumerable<ISceneNode> nodes = value switch
-            {
-                ISceneNode node => new[] { node },
-                IEnumerable<ISceneNode> collection => collection,
-                _ => throw new InvalidOperationException(
-                    $"SelectBinding '{Binding}' does not contain scene nodes."
-                ),
-            };
-            List<ISceneNode> selected = new List<ISceneNode>();
-            foreach (ISceneNode node in nodes)
-            {
-                ISceneNode canonical =
-                    node == null
-                        ? null
-                        : game.GetSceneNodeByInstanceID<ISceneNode>(
-                            node.InstanceID,
-                            includeDisabled: true
-                        );
-                if (canonical == null)
-                    throw new InvalidOperationException(
-                        $"SelectBinding '{Binding}' contains an unregistered scene node."
-                    );
-                if (selected.All(existing => existing.InstanceID != canonical.InstanceID))
-                    selected.Add(canonical);
-            }
-            return selected;
-        }
     }
 
     /// <summary>
@@ -629,24 +230,6 @@ namespace Rebellion.Game.Events
 
         [PersistableMember(Name = "From")]
         public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
-
-        /// <summary>
-        /// Returns the nearest parent of the requested type for each authored candidate node.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        ) =>
-            Selectors
-                .SelectMany(selector => selector.Select(game, provider, context))
-                .Select(node => SceneAncestors.Resolve(node, Type))
-                .Where(node => node != null)
-                .Distinct();
     }
 
     /// <summary>
@@ -660,37 +243,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public string UnitBinding { get; set; }
-
-        /// <summary>
-        /// Returns the remembered previous location of the authored unit.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <param name="context">The context.</param>
-        /// <returns>The selected value.</returns>
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context
-        )
-        {
-            bool hasInstanceID = !string.IsNullOrWhiteSpace(UnitInstanceID);
-            bool hasBinding = !string.IsNullOrWhiteSpace(UnitBinding);
-            if (hasInstanceID == hasBinding)
-                throw new InvalidOperationException(
-                    "SelectPreviousLocation requires exactly one of UnitInstanceID or UnitBinding."
-                );
-            ISceneNode unit = hasBinding
-                ? context?.GetBindingReference<ISceneNode>(UnitBinding)
-                : game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID, includeDisabled: true);
-            if (unit == null)
-                return Enumerable.Empty<ISceneNode>();
-            ISceneNode parent = game.GetSceneNodeByInstanceID<ISceneNode>(
-                unit.LastParentInstanceID,
-                includeDisabled: true
-            );
-            return parent == null ? Enumerable.Empty<ISceneNode>() : new[] { parent };
-        }
     }
 
     #endregion

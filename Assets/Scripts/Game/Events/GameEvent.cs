@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Game.Units;
-using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -31,18 +29,9 @@ namespace Rebellion.Game.Events
 
         public List<GameEventBinding> Bindings { get; set; } = new List<GameEventBinding>();
         public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
-        public GameEventScheduler Schedule { get; set; }
+        public GameEventSchedule Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
-
-        /// <summary>
-        /// Checks whether the event remains below its authored activation limit.
-        /// </summary>
-        /// <param name="state">The event's current runtime state.</param>
-        /// <returns>True when the event can activate.</returns>
-        internal bool CanActivate(GameEventState state) =>
-            !state.IsComplete
-            && (!MaximumActivations.HasValue || state.ActivationCount < MaximumActivations.Value);
 
         /// <summary>
         /// Creates an empty event definition for deserialization.
@@ -58,47 +47,6 @@ namespace Rebellion.Game.Events
         {
             Conditionals = conditionals;
             Actions = actions;
-        }
-
-        /// <summary>
-        /// Returns true if all conditions accept the supplied evaluation context.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
-        /// <returns>True if every conditional is satisfied.</returns>
-        internal bool AreConditionsMet(GameRoot game, GameEventEvaluationContext context)
-        {
-            foreach (GameConditional conditional in Conditionals)
-            {
-                if (!conditional.IsMet(game, context))
-                    return false;
-            }
-            return true;
-        }
-
-        /// <summary>
-        /// Executes the event's actions and returns their shared context.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="provider">Random number provider for stochastic actions.</param>
-        /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
-        /// <param name="unitFactory">Factory for actions that create runtime units.</param>
-        /// <returns>The context containing requests and results produced by the actions.</returns>
-        internal GameActionContext ExecuteActions(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventEvaluationContext context,
-            UnitFactory unitFactory = null
-        )
-        {
-            GameActionContext actionContext = new GameActionContext(
-                game,
-                provider,
-                context,
-                unitFactory
-            );
-            GameAction.ExecuteAll(Actions, actionContext);
-            return actionContext;
         }
     }
 }

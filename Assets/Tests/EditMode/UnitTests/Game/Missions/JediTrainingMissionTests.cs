@@ -7,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -228,14 +227,14 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void ResolveObjective_TrainingProgress_DoesNotImproveDiplomacyRating()
         {
-            int trainerDiplomacy = _trainer.GetBaseRating(OfficerRating.Diplomacy);
-            int studentDiplomacy = _student.GetBaseRating(OfficerRating.Diplomacy);
+            int trainerDiplomacy = _trainer.GetBaseRating(SkillRating.Diplomacy);
+            int studentDiplomacy = _student.GetBaseRating(SkillRating.Diplomacy);
             JediTrainingMission mission = CreateMission();
 
             mission.ResolveObjective(_game, new SequenceRNG(intValues: new[] { 0, 0, 20 }));
 
-            Assert.AreEqual(trainerDiplomacy, _trainer.GetBaseRating(OfficerRating.Diplomacy));
-            Assert.AreEqual(studentDiplomacy, _student.GetBaseRating(OfficerRating.Diplomacy));
+            Assert.AreEqual(trainerDiplomacy, _trainer.GetBaseRating(SkillRating.Diplomacy));
+            Assert.AreEqual(studentDiplomacy, _student.GetBaseRating(SkillRating.Diplomacy));
         }
 
         [Test]
@@ -309,7 +308,7 @@ namespace Rebellion.Tests.Game.Missions
             planet ??= _planet;
 
             Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.JediTraining,
+                JediTrainingMission.MissionTypeID,
                 _game,
                 "rebels",
                 planet,

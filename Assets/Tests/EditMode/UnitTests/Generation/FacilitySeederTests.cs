@@ -4,7 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
-using Rebellion.Util.Common;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Generation
 {
