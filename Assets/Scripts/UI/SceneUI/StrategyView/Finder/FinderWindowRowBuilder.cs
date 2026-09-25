@@ -268,14 +268,33 @@ public sealed class FinderWindowRowBuilder
             Faction ownedFaction = factions.FirstOrDefault(faction =>
                 string.Equals(faction.InstanceID, ownerId, StringComparison.Ordinal)
             );
-            AddPersonnelRows(
-                rows,
-                seen,
-                null,
-                PlanetIcon.Defense,
+            IEnumerable<Officer> officers =
                 registeredOfficers
-                    ?? ownedFaction?.GetOwnedUnitsByType<Officer>(includeDisabled: true)
-            );
+                ?? ownedFaction?.GetOwnedUnitsByType<Officer>(includeDisabled: true);
+            if (officers != null)
+            {
+                foreach (Officer officer in officers)
+                {
+                    Fleet fleet = officer?.GetParentOfType<Fleet>();
+                    Mission mission = officer?.GetParentOfType<Mission>();
+                    GalaxyMapPlanet planet = FindGalaxyMapPlanet(
+                        officer?.GetParentOfType<Planet>()
+                    );
+                    PlanetIcon targetIcon =
+                        mission != null ? PlanetIcon.Mission
+                        : fleet != null ? PlanetIcon.Fleet
+                        : PlanetIcon.Defense;
+                    AddPersonnelRows(
+                        rows,
+                        seen,
+                        planet,
+                        targetIcon,
+                        new[] { officer },
+                        mission,
+                        fleet
+                    );
+                }
+            }
         }
 
         return rows.Where(row =>
@@ -428,9 +447,12 @@ public sealed class FinderWindowRowBuilder
             if (!seen.Add(key))
                 continue;
 
-            bool hideLocation = !candidate.IsEnabled;
+            bool hideLocation =
+                candidate is Officer unavailableOfficer
+                && (unavailableOfficer.IsKilled || unavailableOfficer.IsRetired);
             GalaxyMapPlanet displayedPlanet = hideLocation ? null : planet;
-            PlanetIcon displayedTargetIcon = hideLocation ? PlanetIcon.None : targetIcon;
+            PlanetIcon displayedTargetIcon =
+                hideLocation || displayedPlanet == null ? PlanetIcon.None : targetIcon;
             Fleet displayedFleet = hideLocation ? null : fleet;
             Mission displayedMission = hideLocation ? null : mission;
 
@@ -487,12 +509,13 @@ public sealed class FinderWindowRowBuilder
         Fleet fleet = null
     )
     {
-        if (personnel is { IsEnabled: false })
+        if (
+            personnel is Officer unavailableOfficer
+            && (unavailableOfficer.IsKilled || unavailableOfficer.IsRetired)
+        )
         {
-            return
-                personnel is BaseGameEntity entity
-                && !string.IsNullOrWhiteSpace(entity.DisplayStatus)
-                ? entity.DisplayStatus
+            return !string.IsNullOrWhiteSpace(unavailableOfficer.DisplayStatus)
+                ? unavailableOfficer.DisplayStatus
                 : "Location Unknown";
         }
         if (fleet != null)
@@ -501,6 +524,14 @@ public sealed class FinderWindowRowBuilder
             return parentFleet.GetDisplayName();
         if (personnel?.GetParentOfType<Planet>() is Planet parentPlanet)
             return parentPlanet.GetDisplayName();
+        if (personnel is { IsEnabled: false })
+        {
+            return
+                personnel is BaseGameEntity entity
+                && !string.IsNullOrWhiteSpace(entity.DisplayStatus)
+                ? entity.DisplayStatus
+                : "Location Unknown";
+        }
 
         return planet?.Planet?.GetDisplayName() ?? "Location Unknown";
     }
@@ -520,6 +551,13 @@ public sealed class FinderWindowRowBuilder
             return "Captured";
         if (personnel is Officer { InjuryPoints: > 0 })
             return "Injured";
+        if (
+            personnel is { IsEnabled: false }
+            && personnel is BaseGameEntity { DisplayStatus: "On Mission" }
+        )
+        {
+            return "On Mission";
+        }
         if (personnel is { IsEnabled: false })
             return string.Empty;
         if (personnel is IMovable movable && movable.GetTransitMovement() != null)
@@ -538,6 +576,28 @@ public sealed class FinderWindowRowBuilder
         }
 
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Resolves a live planet node to its visible Finder snapshot.
+    /// </summary>
+    /// <param name="planet">The live planet containing the personnel.</param>
+    /// <returns>The visible planet snapshot, or null when unavailable.</returns>
+    private GalaxyMapPlanet FindGalaxyMapPlanet(Planet planet)
+    {
+        if (planet == null)
+            return null;
+
+        return sectors
+            .SelectMany(sector => sector.Planets)
+            .FirstOrDefault(candidate =>
+                ReferenceEquals(candidate?.Planet, planet)
+                || string.Equals(
+                    candidate?.Planet?.InstanceID,
+                    planet.InstanceID,
+                    StringComparison.Ordinal
+                )
+            );
     }
 
     /// <summary>
