@@ -97,7 +97,6 @@ public static partial class HeadlessSimulationRunner
         BaseGameEntity.SetInstanceIdSeed(
             string.IsNullOrWhiteSpace(options.InputSaveFileName) ? options.Seed : null
         );
-        AIMissionPlanner.CaptureDiagnostics = true;
 
         try
         {
@@ -165,13 +164,6 @@ public static partial class HeadlessSimulationRunner
             Dictionary<(string FactionId, string StepName), long> aiFactionStepStarts = new();
             Dictionary<string, List<long>> aiFactionStepSamples = new(StringComparer.Ordinal);
             Dictionary<string, List<long>> aiWorkUnitSamples = new(StringComparer.Ordinal);
-            List<(
-                long Elapsed,
-                int Tick,
-                int Candidates,
-                int ExactScores,
-                string Breakdown
-            )> slowMissionPlans = new();
             List<(long Elapsed, int Tick, int Count, string ProductTypeId)> manufactureExecutions =
                 new();
             VictoryResult victory = null;
@@ -235,7 +227,6 @@ public static partial class HeadlessSimulationRunner
                     session.Tick,
                     gameProcessingStepSamples,
                     aiWorkUnitSamples,
-                    slowMissionPlans,
                     manufactureExecutions,
                     game.CurrentTick
                 );
@@ -297,21 +288,6 @@ public static partial class HeadlessSimulationRunner
                 LogToFile(
                     logPath,
                     $"[HeadlessSim] ai-work-unit name={workUnit.Key} median={GetPercentileMilliseconds(workUnit.Value, 50):F3}ms p90={GetPercentileMilliseconds(workUnit.Value, 90):F3}ms p99={GetPercentileMilliseconds(workUnit.Value, 99):F3}ms max={GetPercentileMilliseconds(workUnit.Value, 100):F3}ms"
-                );
-            }
-            foreach (
-                (
-                    long elapsed,
-                    int tick,
-                    int candidates,
-                    int exactScores,
-                    string breakdown
-                ) in slowMissionPlans.OrderByDescending(sample => sample.Elapsed).Take(20)
-            )
-            {
-                LogToFile(
-                    logPath,
-                    $"[HeadlessSim] ai-slow-mission-plan tick={tick} elapsed={GetElapsedMilliseconds(elapsed):F3}ms candidates={candidates} exactScores={exactScores} scores={breakdown}"
                 );
             }
             foreach (
@@ -378,7 +354,6 @@ public static partial class HeadlessSimulationRunner
         }
         finally
         {
-            AIMissionPlanner.CaptureDiagnostics = false;
             BaseGameEntity.SetInstanceIdSeed(null);
             GameLogger.SetMinimumLevel(GameLogger.LogLevel.Debug);
             GameLogger.Configure(enableFileLogging: false);
@@ -520,20 +495,12 @@ public static partial class HeadlessSimulationRunner
     /// <param name="aiWorkUnitSamples">
     /// The optional collection receiving AI planner and proposal durations keyed by runtime type.
     /// </param>
-    /// <param name="slowMissionPlans">The collection receiving detailed mission-planner samples.</param>
     /// <param name="manufactureExecutions">The collection receiving manufacturing execution samples.</param>
     /// <param name="currentTick">The tick being processed.</param>
     private static void ProcessTickIncrementally(
         GameTickProcessor tickProcessor,
         ICollection<long> stepSamples,
         IDictionary<string, List<long>> aiWorkUnitSamples = null,
-        ICollection<(
-            long Elapsed,
-            int Tick,
-            int Candidates,
-            int ExactScores,
-            string Breakdown
-        )> slowMissionPlans = null,
         ICollection<(
             long Elapsed,
             int Tick,
@@ -564,29 +531,7 @@ public static partial class HeadlessSimulationRunner
                     }
 
                     samples.Add(elapsed);
-                    if (workUnit is AIMissionPlanner missionPlanner)
-                    {
-                        string breakdown = string.Join(
-                            ",",
-                            missionPlanner
-                                .LastScoreDiagnostics.OrderByDescending(entry =>
-                                    entry.Value.Elapsed
-                                )
-                                .Select(entry =>
-                                    $"{entry.Key}:{entry.Value.Count}/{GetElapsedMilliseconds(entry.Value.Elapsed):F3}ms"
-                                )
-                        );
-                        slowMissionPlans?.Add(
-                            (
-                                elapsed,
-                                currentTick,
-                                missionPlanner.LastCandidateCount,
-                                missionPlanner.LastExactScoreCount,
-                                breakdown
-                            )
-                        );
-                    }
-                    else if (workUnit is AIManufactureProposal manufactureProposal)
+                    if (workUnit is AIManufactureProposal manufactureProposal)
                     {
                         manufactureExecutions?.Add(
                             (

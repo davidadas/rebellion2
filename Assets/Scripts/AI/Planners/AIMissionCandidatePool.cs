@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
 
@@ -18,15 +17,6 @@ namespace Rebellion.AI.Planners
             List<AIMissionProposal>
         > _alternatives =
             new Dictionary<(string ParticipantId, string MissionTypeId), List<AIMissionProposal>>();
-        private readonly Dictionary<string, (int Count, long Elapsed)> _scoreDiagnostics =
-            new Dictionary<string, (int Count, long Elapsed)>(StringComparer.Ordinal);
-
-        internal int CandidateCount { get; private set; }
-
-        internal int ExactScoreCount { get; private set; }
-
-        internal IReadOnlyDictionary<string, (int Count, long Elapsed)> ScoreDiagnostics =>
-            _scoreDiagnostics;
 
         /// <summary>
         /// Clears candidates retained from the previous planning turn.
@@ -34,9 +24,6 @@ namespace Rebellion.AI.Planners
         internal void Reset()
         {
             _alternatives.Clear();
-            _scoreDiagnostics.Clear();
-            CandidateCount = 0;
-            ExactScoreCount = 0;
         }
 
         /// <summary>
@@ -54,9 +41,6 @@ namespace Rebellion.AI.Planners
             if (proposal == null)
                 return;
 
-            if (AIMissionPlanner.CaptureDiagnostics)
-                CandidateCount++;
-
             int retainedAlternatives = Math.Max(
                 1,
                 context.Game.Config.AI.MissionPlanning.RetainedAlternativesPerMission
@@ -71,24 +55,7 @@ namespace Rebellion.AI.Planners
             )
                 return;
 
-            double score;
-            if (AIMissionPlanner.CaptureDiagnostics)
-            {
-                ExactScoreCount++;
-                long startedAt = Stopwatch.GetTimestamp();
-                score = _scorer.Score(context, proposal);
-                long elapsed = Stopwatch.GetTimestamp() - startedAt;
-                string missionTypeId = proposal.MissionTypeID ?? string.Empty;
-                _scoreDiagnostics.TryGetValue(
-                    missionTypeId,
-                    out (int Count, long Elapsed) existing
-                );
-                _scoreDiagnostics[missionTypeId] = (existing.Count + 1, existing.Elapsed + elapsed);
-            }
-            else
-            {
-                score = _scorer.Score(context, proposal);
-            }
+            double score = _scorer.Score(context, proposal);
             if (score <= 0)
                 return;
 
