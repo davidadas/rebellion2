@@ -1964,7 +1964,7 @@ namespace Rebellion.Tests.Simulation
                 combatPlanet,
                 1,
                 1000,
-                200,
+                76,
                 shieldRechargeRate: 0
             );
             Starfighter attackerFighter = new Starfighter
