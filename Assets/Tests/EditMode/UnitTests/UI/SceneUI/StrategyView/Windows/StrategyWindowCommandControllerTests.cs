@@ -185,6 +185,42 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void TryExecuteMove_MobileHeadquarters_UsesHeadquartersRelocationRules()
+        {
+            Planet origin = _officer.GetParentOfType<Planet>();
+            Planet destination = _destination.Planet;
+            origin.EnergyCapacity = 1;
+            destination.EnergyCapacity = 1;
+            origin.IsHeadquarters = true;
+            Faction player = _game.GetFactionByOwnerInstanceID(_playerFactionId);
+            player.HQInstanceID = origin.InstanceID;
+            player.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, origin);
+
+            bool moved = _controller.TryExecuteMove(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                new ISceneNode[] { headquarters }
+            );
+
+            Assert.IsTrue(moved);
+            Assert.IsNotNull(headquarters.Movement);
+            Assert.IsFalse(origin.IsHeadquarters);
+            Assert.IsNull(player.HQInstanceID);
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+        }
+
+        [Test]
         public void TryExecuteMove_AlreadyAtDestination_DoesNotPlayOrderAudio()
         {
             _officer.VoiceSet.OrderPaths.Add("officer-order");

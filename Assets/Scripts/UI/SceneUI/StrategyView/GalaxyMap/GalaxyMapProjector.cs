@@ -577,18 +577,44 @@ public sealed class GalaxyMapProjector
     /// <returns>The resolved overlay texture, or null when no overlay is visible.</returns>
     private static Texture2D ResolveHeadquartersTexture(UIContext context, Planet planet)
     {
-        if (
-            planet.IsUnexploredView
-            || !planet.IsHeadquarters
-            || string.IsNullOrEmpty(planet.OwnerInstanceID)
-        )
+        string factionInstanceId = ResolveHeadquartersFactionId(context, planet);
+        if (string.IsNullOrEmpty(factionInstanceId))
             return null;
 
         return context.GetTexture(
-            context
-                .GetTheme(planet.OwnerInstanceID)
-                ?.PlanetOverlayTheme?.GalaxyHeadquartersImagePath
+            context.GetTheme(factionInstanceId)?.PlanetOverlayTheme?.GalaxyHeadquartersImagePath
         );
+    }
+
+    /// <summary>
+    /// Resolves the headquarters faction represented by a planet, including the player's mobile
+    /// headquarters immediately after it is reparented to its destination for transit.
+    /// </summary>
+    /// <param name="context">The active UI context.</param>
+    /// <param name="planet">The projected planet.</param>
+    /// <returns>The represented headquarters faction identifier, or null when none exists.</returns>
+    private static string ResolveHeadquartersFactionId(UIContext context, Planet planet)
+    {
+        if (context?.Game == null || planet?.IsUnexploredView != false)
+            return null;
+        if (planet.IsHeadquarters && !string.IsNullOrEmpty(planet.OwnerInstanceID))
+            return planet.OwnerInstanceID;
+
+        string playerFactionId = context.GetPlayerFactionInstanceID();
+        Planet livePlanet = context.Game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+        bool receivesMovingHeadquarters =
+            livePlanet
+                ?.GetChildren<Building>()
+                .Any(building =>
+                    building.BuildingType == BuildingType.Headquarters
+                    && building.Movement != null
+                    && string.Equals(
+                        building.OwnerInstanceID,
+                        playerFactionId,
+                        StringComparison.Ordinal
+                    )
+                ) == true;
+        return receivesMovingHeadquarters ? playerFactionId : null;
     }
 
     /// <summary>
