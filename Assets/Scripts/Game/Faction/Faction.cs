@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using Rebellion.Game.FogOfWar;
@@ -33,10 +32,6 @@ namespace Rebellion.Game.Factions
     /// </summary>
     public class Faction : BaseGameEntity
     {
-        public static bool CaptureProjectedMaintenanceDiagnostics { get; set; }
-        public static int ProjectedMaintenanceCalculationCount { get; private set; }
-        public static long ProjectedMaintenanceElapsedTimestampCount { get; private set; }
-
         private FactionSettings _settings = new FactionSettings();
         private int _nextFleetNumber = 1;
 
@@ -136,7 +131,8 @@ namespace Rebellion.Game.Factions
         public int MaintenanceCapacity =>
             GetTotalAvailableMaterialsRaw() * Settings.ResourceProcessingPointsPerFacility;
         public int MaintenanceHeadroom => ProjectedMaintenanceHeadroom;
-        public int ProjectedMaintenanceHeadroom => CalculateProjectedMaintenanceHeadroom();
+        public int ProjectedMaintenanceHeadroom =>
+            MaintenanceCapacity - GetTotalProjectedMaintenanceCost();
 
         // Fog of War.
         public FogState Fog { get; set; } = new FogState();
@@ -153,46 +149,7 @@ namespace Rebellion.Game.Factions
         /// <returns>The projected maintenance headroom.</returns>
         public int GetProjectedMaintenanceHeadroom(IManufacturable item)
         {
-            return CalculateProjectedMaintenanceHeadroom(item);
-        }
-
-        /// <summary>
-        /// Resets opt-in projected-maintenance diagnostics for a simulation run.
-        /// </summary>
-        public static void ResetProjectedMaintenanceDiagnostics()
-        {
-            ProjectedMaintenanceCalculationCount = 0;
-            ProjectedMaintenanceElapsedTimestampCount = 0;
-        }
-
-        /// <summary>
-        /// Calculates projected maintenance headroom and records opt-in timing diagnostics.
-        /// </summary>
-        /// <param name="additionalItem">The optional prospective item.</param>
-        /// <returns>The projected maintenance headroom.</returns>
-        private int CalculateProjectedMaintenanceHeadroom(IManufacturable additionalItem = null)
-        {
-            if (!CaptureProjectedMaintenanceDiagnostics)
-            {
-                return MaintenanceCapacity
-                    - (
-                        additionalItem == null
-                            ? GetTotalProjectedMaintenanceCost()
-                            : GetTotalProjectedMaintenanceCost(additionalItem)
-                    );
-            }
-
-            long startedAt = Stopwatch.GetTimestamp();
-            int headroom =
-                MaintenanceCapacity
-                - (
-                    additionalItem == null
-                        ? GetTotalProjectedMaintenanceCost()
-                        : GetTotalProjectedMaintenanceCost(additionalItem)
-                );
-            ProjectedMaintenanceCalculationCount++;
-            ProjectedMaintenanceElapsedTimestampCount += Stopwatch.GetTimestamp() - startedAt;
-            return headroom;
+            return MaintenanceCapacity - GetTotalProjectedMaintenanceCost(item);
         }
 
         /// <summary>
