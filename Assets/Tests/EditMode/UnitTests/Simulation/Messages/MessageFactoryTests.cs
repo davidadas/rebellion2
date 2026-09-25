@@ -2054,52 +2054,6 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateMessages_DiplomacyTargetChangedSides_IdentifiesNewOwner()
-        {
-            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
-                BuildTwoFactionMessageScene();
-            target.OwnerInstanceID = empire.InstanceID;
-            Mission mission = new DiplomacyMission
-            {
-                ConfigKey = MissionTypeIDs.Diplomacy,
-                DisplayName = "Diplomacy",
-                OwnerInstanceID = alliance.InstanceID,
-            };
-            game.AttachNode(mission, target);
-
-            Message message = FirstMessageFor(
-                CreateMessages(
-                    game,
-                    new[]
-                    {
-                        Definition(
-                            MessageResultType.MissionReport,
-                            MessageType.Mission,
-                            "aborted:{system}",
-                            "{system} joined the {faction}",
-                            outcome: MessageResultOutcome.Failed,
-                            missionTypeId: MissionTypeIDs.Diplomacy,
-                            missionCompletionReason: MissionCompletionReason.TargetChangedSides
-                        ),
-                    },
-                    new MissionCompletedResult
-                    {
-                        Mission = mission,
-                        MissionName = "Diplomacy",
-                        MissionTypeID = MissionTypeIDs.Diplomacy,
-                        Location = target,
-                        Outcome = MissionOutcome.Failed,
-                        CompletionReason = MissionCompletionReason.TargetChangedSides,
-                    }
-                ),
-                alliance
-            );
-
-            Assert.AreEqual("aborted:Yavin", message.Title);
-            Assert.AreEqual("Yavin joined the Empire", message.Body);
-        }
-
-        [Test]
         public void CreateMessages_NeutralMissionTarget_DoesNotRequireOwner()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();

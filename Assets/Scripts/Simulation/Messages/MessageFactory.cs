@@ -307,13 +307,6 @@ namespace Rebellion.Simulation
             string officerName = GetMissionOfficerName(result, game, killedResults);
             string targetName = GetMissionObjectTargetName(result, game, sabotageResults);
             string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
-            string targetOwnerInstanceId = target?.GetOwnerInstanceID();
-            string targetOwnerName = string.IsNullOrEmpty(targetOwnerInstanceId)
-                ? string.Empty
-                : game?.GetFactions()
-                    .FirstOrDefault(candidate => candidate.InstanceID == targetOwnerInstanceId)
-                    ?.GetDisplayName()
-                    ?? string.Empty;
             MessageDefinition definition = GetMissionDefinition(
                 MessageResultType.MissionReport,
                 outcome,
@@ -339,7 +332,6 @@ namespace Rebellion.Simulation
                         },
                         { "officer", string.IsNullOrEmpty(officerName) ? "target" : officerName },
                         { "target", string.IsNullOrEmpty(targetName) ? "target" : targetName },
-                        { "faction", targetOwnerName },
                         { "assassination_result", assassinationResult },
                         { "details", missionDetails },
                     },
