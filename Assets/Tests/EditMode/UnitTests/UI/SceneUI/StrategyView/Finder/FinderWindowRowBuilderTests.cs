@@ -476,13 +476,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
-        public void GetRows_InactiveRegisteredPlayerOfficer_RemainsSearchable()
+        public void GetRows_InactiveRegisteredVader_ShowsJabbasPalaceMissionStatus()
         {
             Officer vader = new Officer
             {
                 InstanceID = "DARTH_VADER",
                 DisplayName = "Darth Vader",
-                DisplayStatus = "On Mission",
+                DisplayStatus = "On Mission (Jabba's Palace)",
                 OwnerInstanceID = _playerFactionId,
                 IsEnabled = false,
             };
@@ -508,9 +508,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 )
                 .Single();
 
-            Assert.AreEqual("Darth Vader - Alpha (On Mission)", row.Name);
-            Assert.AreSame(mapPlanet, row.Planet);
-            Assert.AreEqual(PlanetIcon.Defense, row.TargetIcon);
+            Assert.AreEqual("Darth Vader - Jabba's Palace (On Mission)", row.Name);
+            Assert.IsNull(row.Planet);
+            Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
         }
 
         [Test]
