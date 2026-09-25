@@ -569,8 +569,9 @@ namespace Rebellion.Simulation
 
             ResolveDecoys(mission, activeDetectors, planet, results);
 
+            int foilChanceModifier = _queries.GetFoilChanceModifier(mission);
             ISceneNode foilingDetector = activeDetectors.FirstOrDefault(detector =>
-                DoesDetectorFoilMission(mission, detector)
+                DoesDetectorFoilMission(mission, detector, foilChanceModifier)
             );
             if (foilingDetector == null)
                 return false;
@@ -589,13 +590,20 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile unit making the detection attempt.</param>
+        /// <param name="foilChanceModifier">The resolved difficulty adjustment.</param>
         /// <returns>True when the detector foils the mission.</returns>
-        private bool DoesDetectorFoilMission(Mission mission, ISceneNode detector)
+        private bool DoesDetectorFoilMission(
+            Mission mission,
+            ISceneNode detector,
+            int foilChanceModifier
+        )
         {
             if (mission == null || detector == null)
                 return false;
 
-            return RollProbability(_queries.GetFoilProbability(mission, detector));
+            return RollProbability(
+                _queries.GetFoilProbability(mission, detector, foilChanceModifier)
+            );
         }
 
         /// <summary>

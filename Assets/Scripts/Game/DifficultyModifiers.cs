@@ -10,6 +10,8 @@ namespace Rebellion.Game
     {
         public int MissionSuccessChancePoints { get; set; }
 
+        public int MissionFoilChancePoints { get; set; }
+
         public int MineOutputPercent { get; set; } = 100;
 
         public int RefineryOutputPercent { get; set; } = 100;

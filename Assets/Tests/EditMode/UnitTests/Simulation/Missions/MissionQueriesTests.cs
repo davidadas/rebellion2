@@ -87,6 +87,28 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetMissionOdds_AIControlledFaction_AppliesFoilDifficultyModifier()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            game.Summary.Difficulty = GameDifficulty.Hard;
+            game.Summary.PlayerFactionID = "rebels";
+            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MissionFoilChancePoints = -15,
+            };
+            MissionQueries system = new MissionQueries(game);
+
+            MissionOdds odds = system.GetMissionOdds(
+                CreateContext(EspionageMission.MissionTypeID, spy, planet)
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(35, odds.FoilProbability, 0.001);
+        }
+
+        [Test]
         public void GetMissionOdds_ValidMission_DoesNotStartMission()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
