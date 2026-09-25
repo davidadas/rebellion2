@@ -10,10 +10,24 @@ with the improvements we have always wanted.
 
 Rebellion 2 is available in early access for Windows and macOS.
 
-| Platform | Download | Release schedule |
-| --- | --- | --- |
-| Windows | [Download the latest installer](https://github.com/adasgames/rebellion2-installers/releases/latest/download/Rebellion2-Windows-Setup.exe) | Updated with each release |
-| macOS | [Download the latest installer](https://github.com/adasgames/rebellion2-installers/releases/download/latest-macos/Rebellion2-macOS.zip) | Updated monthly because development and release costs are higher |
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://github.com/adasgames/rebellion2-installers/releases/latest/download/Rebellion2-Windows-Setup.exe">
+        <img src="Docs/Assets/windows.svg" width="64" alt="Windows"><br>
+        <strong>Install latest for Windows</strong>
+      </a><br>
+      <sub>64-bit Windows installer</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://github.com/adasgames/rebellion2-installers/releases/download/latest-macos/Rebellion2-macOS.zip">
+        <img src="Docs/Assets/apple.svg" width="64" alt="macOS"><br>
+        <strong>Download latest for macOS</strong>
+      </a><br>
+      <sub>Universal Intel + Apple Silicon app</sub>
+    </td>
+  </tr>
+</table>
 
 [View release notes and all downloads](https://github.com/adasgames/rebellion2-installers/releases/latest)
 or browse the public [installer and launcher source code](https://github.com/adasgames/rebellion2-installers).
