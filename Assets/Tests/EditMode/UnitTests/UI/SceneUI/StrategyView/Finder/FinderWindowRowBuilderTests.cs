@@ -411,6 +411,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 InstanceID = "retired-officer",
                 DisplayName = "Retired Officer",
                 OwnerInstanceID = _playerFactionId,
+                IsEnabled = false,
                 IsRetired = true,
             };
             _playerFaction.AddOwnedUnit(retiredOfficer);
@@ -472,6 +473,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
 
             Assert.AreEqual("Inactive Officer - Away on an event", rows.Single().Name);
+        }
+
+        [Test]
+        public void GetRows_InactiveRegisteredPlayerOfficer_RemainsSearchable()
+        {
+            Officer vader = new Officer
+            {
+                InstanceID = "DARTH_VADER",
+                DisplayName = "Darth Vader",
+                DisplayStatus = "On Mission",
+                OwnerInstanceID = _playerFactionId,
+                IsEnabled = false,
+            };
+            FinderWindowRowBuilder builder = new FinderWindowRowBuilder(
+                new GalaxyMapSector[0],
+                new[] { _opponentFaction, _playerFaction },
+                _playerFactionId,
+                registeredOfficers: new[] { vader }
+            );
+
+            FinderWindowRow row = FinderWindowProjector
+                .FilterRows(
+                    builder.GetRows(
+                        FinderMode.Personnel,
+                        false,
+                        FinderWindowTab.Faction(_playerFactionId, "Player")
+                    ),
+                    "Vad"
+                )
+                .Single();
+
+            Assert.AreEqual("Darth Vader - On Mission", row.Name);
+            Assert.IsNull(row.Planet);
+            Assert.AreEqual(PlanetIcon.None, row.TargetIcon);
         }
 
         [Test]

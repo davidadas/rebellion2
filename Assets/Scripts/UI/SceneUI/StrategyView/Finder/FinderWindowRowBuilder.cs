@@ -14,6 +14,7 @@ public sealed class FinderWindowRowBuilder
 {
     private readonly IReadOnlyList<GalaxyMapSector> sectors;
     private readonly IReadOnlyList<Faction> factions;
+    private readonly IReadOnlyList<Officer> registeredOfficers;
     private readonly string playerFactionId;
     private readonly Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds;
     private readonly Func<string, IReadOnlyList<string>> getTroopColumnTypeIds;
@@ -26,16 +27,19 @@ public sealed class FinderWindowRowBuilder
     /// <param name="playerFactionId">The player faction identifier.</param>
     /// <param name="getTroopColumnTypeIds">Returns regiment type identifiers in Finder column order.</param>
     /// <param name="getSpecialForcesColumnTypeIds">Returns special-forces type identifiers in Finder column order.</param>
+    /// <param name="registeredOfficers">The authoritative live officer roster, including disabled officers.</param>
     public FinderWindowRowBuilder(
         IReadOnlyList<GalaxyMapSector> sectors,
         IReadOnlyList<Faction> factions,
         string playerFactionId,
         Func<string, IReadOnlyList<string>> getTroopColumnTypeIds = null,
-        Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds = null
+        Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds = null,
+        IReadOnlyList<Officer> registeredOfficers = null
     )
     {
         this.sectors = sectors ?? throw new ArgumentNullException(nameof(sectors));
         this.factions = factions ?? Array.Empty<Faction>();
+        this.registeredOfficers = registeredOfficers;
         this.playerFactionId = playerFactionId;
         this.getTroopColumnTypeIds = getTroopColumnTypeIds;
         this.getSpecialForcesColumnTypeIds = getSpecialForcesColumnTypeIds;
@@ -269,7 +273,8 @@ public sealed class FinderWindowRowBuilder
                 seen,
                 null,
                 PlanetIcon.Defense,
-                ownedFaction?.GetOwnedUnitsByType<Officer>(includeDisabled: true)
+                registeredOfficers
+                    ?? ownedFaction?.GetOwnedUnitsByType<Officer>(includeDisabled: true)
             );
         }
 
