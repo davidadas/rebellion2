@@ -57,10 +57,7 @@ namespace Rebellion.AI.Scorers
             double demandPressure = GetDemandPressure(context, proposal?.Demand);
             int maintenanceCost = proposal?.GetUnitMaintenanceCost() ?? 0;
             if (context?.Game == null || context.Faction == null || proposal == null)
-                return AIUtility.Fulfillment(
-                    demandPressure,
-                    new GameConfig.AISelectionConfig().DemandUtility
-                );
+                return 0;
 
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
             GameConfig.AIProductionUtilityConfig utility = config.ProductionUtility;
