@@ -46,7 +46,7 @@ namespace Rebellion.Simulation
                 if (result?.PreviousOwner?.InstanceID == result?.NewOwner?.InstanceID)
                     continue;
 
-                _commands.ApplyControlShift(result?.NewOwner);
+                _commands.ApplyControlShift(result?.Planet, result?.NewOwner);
             }
 
             return new List<GameResult>();

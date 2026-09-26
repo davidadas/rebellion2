@@ -51,7 +51,7 @@ Officers are unique authored characters. Add each officer as an `Officer` entry 
 | `IsRecruitable` | Allows the officer to enter play through recruitment. |
 | `RecruitingFactionInstanceIDs` | Factions that may recruit the officer. |
 | `Loyalty` | Starting loyalty used by betrayal and allegiance mechanics. |
-| `CanBetray` | Allows loyalty to change after faction control gains and permits mission betrayal when the loyalty roll fails. |
+| `CanBetray` | Allows support-based loyalty changes after faction control gains and permits mission betrayal when the loyalty roll fails. |
 
 The four entries in `Ratings` are the officer's base `Diplomacy`, `Espionage`, `Combat`, and
 `Leadership` ratings. `ShipResearch`, `TroopResearch`, and `FacilityResearch` are stored separately

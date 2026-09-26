@@ -1166,18 +1166,7 @@ namespace Rebellion.Game
         [PersistableObject]
         public class OfficerLoyaltyConfig
         {
-            public RandomRangeConfig PlanetAcquisitionLoyaltyShift { get; set; } =
-                new RandomRangeConfig();
-        }
-
-        /// <summary>
-        /// An authored inclusive integer range.
-        /// </summary>
-        [PersistableObject]
-        public class RandomRangeConfig
-        {
-            public int Minimum { get; set; }
-            public int Maximum { get; set; }
+            public int PlanetAcquisitionSupportDivisor { get; set; }
         }
 
         /// <summary>

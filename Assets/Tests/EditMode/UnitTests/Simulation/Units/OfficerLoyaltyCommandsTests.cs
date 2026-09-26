@@ -25,6 +25,11 @@ namespace Rebellion.Tests.Simulation
             );
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(alliance);
+            planet.PopularSupport = new Dictionary<string, int>
+            {
+                { alliance.InstanceID, 100 },
+                { empireOfficer.OwnerInstanceID, 0 },
+            };
             Planet alliancePlanet = new Planet
             {
                 InstanceID = "alliance-planet",
@@ -55,33 +60,67 @@ namespace Rebellion.Tests.Simulation
             );
             captive.IsCaptured = true;
             game.AttachNode(captive, alliancePlanet);
-            OfficerLoyaltyCommands system = new OfficerLoyaltyCommands(
-                game,
-                new SequenceRNG(new[] { 5 })
-            );
+            OfficerLoyaltyCommands system = new OfficerLoyaltyCommands(game, new ThrowingRNG());
 
-            system.ApplyControlShift(alliance);
+            system.ApplyControlShift(planet, alliance);
 
-            Assert.AreEqual(55, allianceOfficer.Loyalty);
-            Assert.AreEqual(45, empireOfficer.Loyalty);
-            Assert.AreEqual(55, commander.Loyalty);
-            Assert.AreEqual(45, captive.Loyalty);
+            Assert.AreEqual(52, allianceOfficer.Loyalty);
+            Assert.AreEqual(48, empireOfficer.Loyalty);
+            Assert.AreEqual(52, commander.Loyalty);
+            Assert.AreEqual(48, captive.Loyalty);
         }
 
         [Test]
         public void ApplyControlShift_OfficerCannotBetray_DoesNotShiftLoyalty()
         {
-            GameRoot game = BuildScene(out _, out Officer officer, canBetray: false, loyalty: 50);
+            GameRoot game = BuildScene(
+                out Planet planet,
+                out Officer officer,
+                canBetray: false,
+                loyalty: 50
+            );
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(alliance);
-            OfficerLoyaltyCommands commands = new OfficerLoyaltyCommands(
-                game,
-                new SequenceRNG(new[] { 5 })
-            );
+            planet.PopularSupport = new Dictionary<string, int>
+            {
+                { alliance.InstanceID, 100 },
+                { officer.OwnerInstanceID, 0 },
+            };
+            OfficerLoyaltyCommands commands = new OfficerLoyaltyCommands(game, new ThrowingRNG());
 
-            commands.ApplyControlShift(alliance);
+            commands.ApplyControlShift(planet, alliance);
 
             Assert.AreEqual(50, officer.Loyalty);
+        }
+
+        [TestCase(100, 0, 2)]
+        [TestCase(80, 20, 1)]
+        [TestCase(60, 40, 0)]
+        [TestCase(10, 90, -1)]
+        public void ApplyControlShift_SupportLevels_DeriveExpectedShift(
+            int incomingSupport,
+            int opposingSupport,
+            int expectedShift
+        )
+        {
+            GameRoot game = BuildScene(
+                out Planet planet,
+                out Officer officer,
+                canBetray: true,
+                loyalty: 50
+            );
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(alliance);
+            officer.OwnerInstanceID = alliance.InstanceID;
+            planet.PopularSupport = new Dictionary<string, int>
+            {
+                { alliance.InstanceID, incomingSupport },
+                { "empire", opposingSupport },
+            };
+
+            new OfficerLoyaltyCommands(game, new ThrowingRNG()).ApplyControlShift(planet, alliance);
+
+            Assert.AreEqual(50 + expectedShift, officer.Loyalty);
         }
 
         [Test]
@@ -230,8 +269,7 @@ namespace Rebellion.Tests.Simulation
         )
         {
             GameConfig config = new GameConfig();
-            config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Minimum = 0;
-            config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Maximum = 5;
+            config.OfficerLoyalty.PlanetAcquisitionSupportDivisor = 80;
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };

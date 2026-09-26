@@ -131,21 +131,31 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Applies one deterministic loyalty shift after a faction gains control.
+        /// Applies the acquired planet's support-based loyalty shift after a faction gains control.
         /// </summary>
+        /// <param name="planet">The acquired planet.</param>
         /// <param name="incomingFaction">The faction gaining a planet.</param>
-        public void ApplyControlShift(Faction incomingFaction)
+        public void ApplyControlShift(Planet planet, Faction incomingFaction)
         {
-            if (incomingFaction == null)
+            if (planet == null || incomingFaction == null)
                 return;
 
-            GameConfig.RandomRangeConfig range = _game
-                .Config
-                .OfficerLoyalty
-                .PlanetAcquisitionLoyaltyShift;
-            int minimum = Math.Max(0, range.Minimum);
-            int maximum = Math.Max(minimum, range.Maximum);
-            int loyaltyShift = _provider.NextInt(minimum, maximum + 1);
+            Faction opposingFaction = _game
+                .GetFactions()
+                .FirstOrDefault(faction => faction.InstanceID != incomingFaction.InstanceID);
+            if (opposingFaction == null)
+                return;
+
+            int divisor = _game.Config.OfficerLoyalty.PlanetAcquisitionSupportDivisor;
+            if (divisor <= 0)
+                throw new InvalidOperationException(
+                    $"{nameof(GameConfig.OfficerLoyaltyConfig.PlanetAcquisitionSupportDivisor)} must be greater than zero."
+                );
+
+            int incomingSupport = planet.GetPopularSupport(incomingFaction.InstanceID);
+            int opposingSupport = planet.GetPopularSupport(opposingFaction.InstanceID);
+            int loyaltyShift =
+                (incomingSupport - opposingSupport) / divisor + incomingSupport / divisor;
             if (loyaltyShift == 0)
                 return;
 
