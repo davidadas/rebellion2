@@ -224,7 +224,7 @@ internal static class FleetWindowContextMenuBuilder
     }
 
     /// <summary>
-    /// Builds the source-ordered classic Command submenu for one officer.
+    /// Builds the Command submenu for one officer.
     /// </summary>
     /// <param name="officer">The selected officer.</param>
     /// <param name="playerControlsOfficer">Whether the player controls the officer.</param>
@@ -293,7 +293,7 @@ internal static class FleetWindowContextMenuBuilder
     /// Builds one radio-style command choice.
     /// </summary>
     /// <param name="action">The semantic appointment action.</param>
-    /// <param name="text">The original menu label.</param>
+    /// <param name="text">The menu label.</param>
     /// <param name="rank">The represented command post.</param>
     /// <param name="officer">The selected officer.</param>
     /// <param name="canChangeCommand">Whether command changes are currently allowed.</param>

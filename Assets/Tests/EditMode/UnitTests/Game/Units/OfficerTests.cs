@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void GetDisplayName_MultipartSurname_PreservesCompleteClassicCommandName()
+        public void GetDisplayName_MultipartSurname_PreservesCompleteCommandName()
         {
             Officer officer = new Officer
             {
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void GetDisplayName_WedgeAntilles_UsesOriginalGameCommandName()
+        public void GetDisplayName_WedgeAntilles_UsesSurnameCommandName()
         {
             Officer officer = new Officer
             {

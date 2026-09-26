@@ -10,7 +10,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Assigns officers to the classic local Commander, Admiral, and General posts.
+    /// Assigns officers to local Commander, Admiral, and General posts.
     /// </summary>
     public sealed class OfficerCommandCommands
     {
@@ -87,8 +87,7 @@ namespace Rebellion.Simulation
             ISceneNode commandTarget = ResolveCommandTarget(officer);
             List<GameResult> results = new List<GameResult>();
 
-            // The original compound command setter treats choosing the active post as a
-            // resignation from that post.
+            // Selecting the active post resigns the officer from that post.
             if (rank != OfficerRank.None && officer.CurrentRank == rank)
                 rank = OfficerRank.None;
 
@@ -196,7 +195,7 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Reports whether a value is one of the four classic command choices.
+        /// Reports whether a value is one of the four supported command choices.
         /// </summary>
         /// <param name="rank">The value to inspect.</param>
         /// <returns>True for None, Commander, Admiral, or General.</returns>
@@ -208,8 +207,8 @@ namespace Rebellion.Simulation
                     or OfficerRank.General;
 
         /// <summary>
-        /// Enforces the original command scopes: Admirals command fleets, while Generals and
-        /// Commanders may command either a fleet or a planetary system.
+        /// Enforces command scopes: Admirals command fleets, while Generals and Commanders may
+        /// command either a fleet or a planetary system.
         /// </summary>
         /// <param name="rank">The requested rank.</param>
         /// <param name="commandTarget">The local fleet or system command.</param>

@@ -790,7 +790,7 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Selects the original tactical command officers for one side of a space battle.
+        /// Selects the tactical command officers for one side of a space battle.
         /// The best Leadership-rated fleet Admiral commands capital ships; the best Combat-rated
         /// Commander across the system and participating fleets commands starfighters.
         /// </summary>
