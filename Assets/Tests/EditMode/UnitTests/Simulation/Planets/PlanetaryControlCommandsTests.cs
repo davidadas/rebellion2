@@ -196,6 +196,109 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ReconcilePlanet_UncolonizedPlanetLosesOnlyStationedRegiment_DestroysInboundBuildingsAndReroutesInboundUnits()
+        {
+            PlanetSector sector = _targetPlanet.GetParentOfType<PlanetSector>();
+            sector.SectorType = PlanetSectorType.OuterRim;
+            _targetPlanet.IsColonized = false;
+            _targetPlanet.EnergyCapacity = 10;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+
+            Regiment stationedRegiment = EntityFactory.CreateRegiment(
+                "stationed-regiment",
+                _empire.InstanceID
+            );
+            stationedRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(stationedRegiment, _targetPlanet);
+
+            Building inboundMine = new Building
+            {
+                InstanceID = "inbound-mine",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            Building inboundRefinery = new Building
+            {
+                InstanceID = "inbound-refinery",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.Refinery,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _game.AttachNode(inboundMine, _targetPlanet);
+            _game.AttachNode(inboundRefinery, _targetPlanet);
+            inboundMine.ManufacturingStatus = ManufacturingStatus.Delivering;
+            inboundRefinery.ManufacturingStatus = ManufacturingStatus.Delivering;
+            _movementSystem.RequestMove(inboundMine, _targetPlanet, _empirePlanet);
+            _movementSystem.RequestMove(inboundRefinery, _targetPlanet, _empirePlanet);
+
+            Officer inboundOfficer = EntityFactory.CreateOfficer(
+                "inbound-officer",
+                _empire.InstanceID
+            );
+            Starfighter inboundStarfighter = new Starfighter
+            {
+                InstanceID = "inbound-starfighter",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 10,
+            };
+            _game.AttachNode(inboundOfficer, _empirePlanet);
+            _game.AttachNode(inboundStarfighter, _empirePlanet);
+            Assert.IsTrue(_movementSystem.TryRequestMove(inboundOfficer, _targetPlanet));
+            Assert.IsTrue(_movementSystem.TryRequestMove(inboundStarfighter, _targetPlanet));
+
+            Point currentPosition = new Point(50, 0);
+            IMovable[] inboundObjects =
+            {
+                inboundMine,
+                inboundRefinery,
+                inboundOfficer,
+                inboundStarfighter,
+            };
+            foreach (IMovable inboundObject in inboundObjects)
+            {
+                Assert.IsNotNull(
+                    inboundObject.Movement,
+                    "Setup: every inbound object must be moving"
+                );
+                inboundObject.Movement.CurrentPosition = currentPosition;
+            }
+
+            _game.DetachNode(stationedRegiment);
+
+            List<GameResult> results = _commands.ReconcilePlanet(_targetPlanet);
+            List<GameResult> movementResults = _movementSystem.TakePendingResults();
+
+            Assert.IsNull(_targetPlanet.GetOwnerInstanceID());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(inboundMine.InstanceID));
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(inboundRefinery.InstanceID));
+            foreach (IMovable inboundUnit in new IMovable[] { inboundOfficer, inboundStarfighter })
+            {
+                Assert.AreSame(_empirePlanet, inboundUnit.GetParentOfType<Planet>());
+                Assert.IsNotNull(inboundUnit.Movement);
+                Assert.AreEqual(currentPosition, inboundUnit.Movement.OriginPosition);
+            }
+
+            CollectionAssert.AreEquivalent(
+                new IMovable[] { inboundMine, inboundRefinery },
+                movementResults
+                    .OfType<GameObjectDestroyedResult>()
+                    .Select(result => result.DestroyedObject)
+                    .ToArray()
+            );
+            Assert.IsTrue(
+                results
+                    .OfType<PlanetOwnershipChangedResult>()
+                    .Any(result =>
+                        result.Planet == _targetPlanet
+                        && result.PreviousOwner == _empire
+                        && result.NewOwner == null
+                    )
+            );
+        }
+
+        [Test]
         public void TransferPlanet_ValidTransfer_ChangesPlanetOwner()
         {
             _commands.TransferPlanet(_targetPlanet, _rebels);

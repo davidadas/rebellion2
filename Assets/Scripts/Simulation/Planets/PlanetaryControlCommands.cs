@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -563,6 +564,7 @@ namespace Rebellion.Simulation
                 );
 
                 _manufacturingSystem.InvalidatePlanetDestinationOrders(planet, newOwnerId);
+                DestroyInvalidInboundBuildings(planet, newOwnerId);
 
                 if (newOwner != null)
                     TransferBuildings(planet, newOwner);
@@ -792,6 +794,30 @@ namespace Rebellion.Simulation
             {
                 _game.ChangeOwnership(building, newOwner.InstanceID);
             }
+        }
+
+        /// <summary>
+        /// Destroys buildings still being delivered to a planet that no longer accepts their
+        /// owner. Stationary buildings remain available for an incoming owner to capture.
+        /// </summary>
+        /// <param name="planet">The planet whose ownership is changing.</param>
+        /// <param name="newOwnerId">The incoming owner's instance ID, or null for neutral control.</param>
+        private void DestroyInvalidInboundBuildings(Planet planet, string newOwnerId)
+        {
+            List<Building> inboundBuildings = planet
+                .GetChildren<Building>(includeDisabled: true)
+                .Where(building =>
+                    building.Movement != null
+                    && !string.Equals(
+                        building.GetOwnerInstanceID(),
+                        newOwnerId,
+                        StringComparison.Ordinal
+                    )
+                )
+                .ToList();
+
+            foreach (Building building in inboundBuildings)
+                _movementSystem.DestroyEvictedUnit(building, planet);
         }
 
         /// <summary>
