@@ -1024,10 +1024,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="specialForces">The special forces to add.</param>
         private void AddSpecialForces(SpecialForces specialForces)
         {
-            if (!IsColonized)
-                throw new SceneAccessException(specialForces, this);
-
-            if (IsColonized && specialForces.GetOwnerInstanceID() != this.GetOwnerInstanceID())
+            if (!CanAcceptChild(specialForces))
                 throw new SceneAccessException(specialForces, this);
 
             _specialForces.Add(specialForces);
@@ -1048,10 +1045,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="starfighter">The starfighter to add.</param>
         private void AddStarfighter(Starfighter starfighter)
         {
-            if (!IsColonized)
-                throw new SceneAccessException(starfighter, this);
-
-            if (IsColonized && starfighter.GetOwnerInstanceID() != this.GetOwnerInstanceID())
+            if (!CanAcceptChild(starfighter))
                 throw new SceneAccessException(starfighter, this);
 
             _starfighters.Add(starfighter);
@@ -1112,10 +1106,34 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Returns whether this planet has an active, complete unit of the supplied faction
+        /// stationed directly on it rather than in transit, aboard a ship, or on a mission.
+        /// </summary>
+        /// <param name="ownerInstanceId">The faction whose stationed unit is required.</param>
+        /// <returns>True when a qualifying unit is stationed on the planet.</returns>
+        internal bool HasStationedUnit(string ownerInstanceId)
+        {
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return false;
+
+            return GetChildren<IMovable>()
+                .Any(unit =>
+                    unit is not Building
+                    && unit.GetOwnerInstanceID() == ownerInstanceId
+                    && unit.GetTransitMovement() == null
+                    && (
+                        unit is not IManufacturable manufacturable
+                        || manufacturable.ManufacturingStatus == ManufacturingStatus.Complete
+                    )
+                );
+        }
+
+        /// <summary>
         /// Returns true if this planet can accept the child. Fleets and Missions are always
         /// accepted. Uncolonized planets accept regiments and facilities under construction;
-        /// claimed uncolonized planets only accept their owner's units. Colonized planets accept
-        /// surface children only when ownership and capacity rules permit them.
+        /// an owned uncolonized planet with a stationed friendly unit also accepts its owner's
+        /// other surface units. Colonized planets accept surface children when ownership and
+        /// capacity rules permit them.
         /// </summary>
         /// <param name="child">The candidate child node.</param>
         /// <returns>True if AddChild would succeed; otherwise false.</returns>
@@ -1134,10 +1152,11 @@ namespace Rebellion.Game.Galaxy
 
                     return regiment.GetOwnerInstanceID() == GetOwnerInstanceID();
                 case SpecialForces specialForces:
-                    return IsColonized
+                    return CanHostOwnedUnits()
                         && specialForces.GetOwnerInstanceID() == GetOwnerInstanceID();
                 case Starfighter starfighter:
-                    return IsColonized && starfighter.GetOwnerInstanceID() == GetOwnerInstanceID();
+                    return CanHostOwnedUnits()
+                        && starfighter.GetOwnerInstanceID() == GetOwnerInstanceID();
                 case Building building:
                     return (
                             IsColonized
@@ -1178,8 +1197,19 @@ namespace Rebellion.Game.Galaxy
             if (!officer.IsActive())
                 return true;
 
-            return IsColonized
+            return CanHostOwnedUnits()
                 && (officer.IsCaptured || officer.GetOwnerInstanceID() == OwnerInstanceID);
+        }
+
+        /// <summary>
+        /// Returns whether this planet may host units owned by its controlling faction.
+        /// </summary>
+        /// <returns>
+        /// True when the planet is colonized or has a friendly unit stationed directly on it.
+        /// </returns>
+        private bool CanHostOwnedUnits()
+        {
+            return IsColonized || HasStationedUnit(GetOwnerInstanceID());
         }
 
         /// <summary>
