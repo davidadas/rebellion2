@@ -639,6 +639,62 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
+        public void Build_IndependentlyMovingOfficer_DoesNotCommandDestinationBeforeArrival()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "moving-command-officer",
+                DisplayName = "Wedge Antilles",
+                OwnerInstanceID = _ownerId,
+                CurrentRank = OfficerRank.Commander,
+                Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
+            };
+            _game.AttachNode(officer, _planet);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
+
+            Assert.AreEqual(
+                "Not Assigned",
+                info.Rows.Single(row => row.Left == "Commanding:").Right
+            );
+        }
+
+        [Test]
+        public void Build_OfficerAboardMovingFleet_StillCommandsFleet()
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "moving-command-fleet",
+                DisplayName = "First Fleet",
+                OwnerInstanceID = _ownerId,
+                Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "moving-command-ship",
+                OwnerInstanceID = _ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = new Officer
+            {
+                InstanceID = "moving-fleet-commander",
+                DisplayName = "Wedge Antilles",
+                OwnerInstanceID = _ownerId,
+                CurrentRank = OfficerRank.Commander,
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(ship, fleet);
+            _game.AttachNode(officer, ship);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
+
+            Assert.AreEqual(
+                "First Fleet",
+                info.Rows.Single(row => row.Left == "Commanding:").Right
+            );
+        }
+
+        [Test]
         public void Build_OfficerWithDisplayStatus_ShowsDisplayStatus()
         {
             Officer officer = new Officer

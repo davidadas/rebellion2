@@ -217,14 +217,14 @@ namespace Rebellion.Simulation
             if (!officer.IsActive() || ReferenceEquals(originPlanet, destinationPlanet))
             {
                 officer.Movement = null;
-                _game.MoveNode(officer, resolvedDestination);
+                MoveNode(officer, resolvedDestination, results);
                 return true;
             }
 
             if (escort == null)
             {
                 officer.Movement = null;
-                _game.MoveNode(officer, resolvedDestination);
+                MoveNode(officer, resolvedDestination, results);
                 return true;
             }
 
@@ -517,7 +517,7 @@ namespace Rebellion.Simulation
                     continue;
                 }
 
-                _game.MoveNode(participant, missionPlanet);
+                MoveNode(participant, missionPlanet, _pendingResults);
                 participant.Movement = null;
             }
 
@@ -912,7 +912,7 @@ namespace Rebellion.Simulation
                     _game.AttachNode(unit, resolvedDestination);
                 }
                 else
-                    _game.MoveNode(unit, resolvedDestination);
+                    MoveNode(unit, resolvedDestination, _pendingResults);
                 liveUnits[index].Movement = null;
             }
 
@@ -1176,7 +1176,7 @@ namespace Rebellion.Simulation
             ICollection<GameResult> results
         )
         {
-            _game.MoveNode(movable, destination);
+            MoveNode(movable, destination, results);
             movable.Movement = null;
             GameLogger.Log($"{movable.GetDisplayName()} arrived at {destination.GetDisplayName()}");
 
@@ -1432,7 +1432,7 @@ namespace Rebellion.Simulation
                 if (destinationPlanet == null)
                     continue;
 
-                _game.MoveNode(unit, destination);
+                MoveNode(unit, destination, reactions);
                 RetargetMovement(unit, destinationPlanet);
                 reactions.Add(
                     new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
@@ -1532,7 +1532,7 @@ namespace Rebellion.Simulation
                     .FirstOrDefault();
                 if (rebasePlanet != null)
                 {
-                    _game.MoveNode(inactiveFleet, rebasePlanet);
+                    MoveNode(inactiveFleet, rebasePlanet, _pendingResults);
                     RetargetInTransitFleetJoiners(inactiveFleet, rebasePlanet);
                     GameLogger.Log(
                         $"{inactiveFleet.GetDisplayName()} rebased to {rebasePlanet.GetDisplayName()} because it has no operational capital ships."
@@ -1673,7 +1673,7 @@ namespace Rebellion.Simulation
                     EvacuateToNearestFriendlyPlanet(independentlyMobileOccupant);
 
                 if (destination?.CanAcceptChild(node) == true)
-                    _game.MoveNode(node, destination);
+                    MoveNode(node, destination, _pendingResults);
                 else if (MovementQueries.CanTravelBetweenPlanets(unit))
                     EvacuateToNearestFriendlyPlanet(unit);
             }
@@ -1822,7 +1822,7 @@ namespace Rebellion.Simulation
 
             if (destinationPlanet == originPlanet)
             {
-                _game.MoveNode(unit, destination);
+                MoveNode(unit, destination, results);
                 ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet, results);
                 unit.Movement = null;
                 AddPlanetGarrisonChangedResults(results, unit, originPlanet);
@@ -1837,7 +1837,7 @@ namespace Rebellion.Simulation
                 return true;
             }
 
-            _game.MoveNode(unit, destination);
+            MoveNode(unit, destination, results);
             ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet, results);
 
             unit.Movement = new MovementState
@@ -1942,7 +1942,23 @@ namespace Rebellion.Simulation
         /// <param name="resolvedDestination">The accepted delivery destination.</param>
         private void ApplyManufacturingDestination(IMovable unit, ContainerNode resolvedDestination)
         {
-            _game.MoveNode(unit, resolvedDestination);
+            MoveNode(unit, resolvedDestination, _pendingResults);
+        }
+
+        /// <summary>
+        /// Reparents a node and reconciles command posts affected by the hierarchy change.
+        /// </summary>
+        /// <param name="node">The node to reparent.</param>
+        /// <param name="destination">The new parent.</param>
+        /// <param name="results">The result collection receiving command changes.</param>
+        private void MoveNode(
+            ISceneNode node,
+            ContainerNode destination,
+            ICollection<GameResult> results
+        )
+        {
+            _game.MoveNode(node, destination);
+            OfficerCommandCommands.ReconcileRelocatedCommandRanks(node, _game.CurrentTick, results);
         }
 
         /// <summary>

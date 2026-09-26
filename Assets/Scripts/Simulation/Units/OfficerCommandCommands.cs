@@ -130,11 +130,92 @@ namespace Rebellion.Simulation
         /// <returns>The local command target, or null when the officer is not deployed.</returns>
         internal static ISceneNode ResolveCommandTarget(Officer officer)
         {
+            if (officer?.Movement != null)
+                return null;
+
+            return ResolveCommandHierarchyTarget(officer);
+        }
+
+        /// <summary>
+        /// Finds the fleet or planetary command represented by the scene hierarchy, independent
+        /// of an officer's in-transit display state.
+        /// </summary>
+        /// <param name="officer">The officer whose hierarchy is requested.</param>
+        /// <returns>The hierarchy's command target, or null while assigned to a mission.</returns>
+        private static ISceneNode ResolveCommandHierarchyTarget(Officer officer)
+        {
             if (officer?.IsOnMission() != false)
                 return null;
 
             Fleet fleet = officer.GetParentOfType<Fleet>();
             return fleet != null ? fleet : officer.GetParentOfType<Planet>();
+        }
+
+        /// <summary>
+        /// Removes command posts from relocated officers when their destination command already
+        /// has an officer holding the same post. Officers traveling with an entire fleet retain
+        /// that fleet's command because every officer in the command moves together.
+        /// </summary>
+        /// <param name="movedNode">The relocated officer or container.</param>
+        /// <param name="tick">The current game tick.</param>
+        /// <param name="results">The movement results receiving command changes.</param>
+        internal static void ReconcileRelocatedCommandRanks(
+            ISceneNode movedNode,
+            int tick,
+            ICollection<GameResult> results
+        )
+        {
+            if (movedNode == null)
+                return;
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+
+            HashSet<Officer> movedOfficers = new HashSet<Officer>(
+                movedNode is Officer officer ? new[] { officer }
+                : movedNode is ContainerNode container
+                    ? container.GetChildren<Officer>(recursive: true)
+                : Enumerable.Empty<Officer>()
+            );
+            HashSet<Officer> retainedMovedOfficers = new HashSet<Officer>();
+
+            foreach (
+                Officer relocatedOfficer in movedOfficers
+                    .Where(candidate => candidate.CurrentRank != OfficerRank.None)
+                    .ToList()
+            )
+            {
+                ISceneNode commandTarget = ResolveCommandHierarchyTarget(relocatedOfficer);
+                if (commandTarget == null)
+                    continue;
+
+                bool postAlreadyFilled = GetCommandOfficers(commandTarget)
+                    .Any(candidate =>
+                        !ReferenceEquals(candidate, relocatedOfficer)
+                        && candidate.CurrentRank == relocatedOfficer.CurrentRank
+                        && string.Equals(
+                            candidate.GetOwnerInstanceID(),
+                            relocatedOfficer.GetOwnerInstanceID(),
+                            StringComparison.Ordinal
+                        )
+                        && (
+                            !movedOfficers.Contains(candidate)
+                            || retainedMovedOfficers.Contains(candidate)
+                        )
+                    );
+                if (postAlreadyFilled)
+                {
+                    ApplyRankChange(
+                        relocatedOfficer,
+                        OfficerRank.None,
+                        commandTarget,
+                        tick,
+                        results
+                    );
+                    continue;
+                }
+
+                retainedMovedOfficers.Add(relocatedOfficer);
+            }
         }
 
         /// <summary>
@@ -172,6 +253,25 @@ namespace Rebellion.Simulation
             ICollection<GameResult> results
         )
         {
+            ApplyRankChange(officer, rank, commandTarget, _game.CurrentTick, results);
+        }
+
+        /// <summary>
+        /// Changes one officer's post and records both command notifications.
+        /// </summary>
+        /// <param name="officer">The officer to update.</param>
+        /// <param name="rank">The new post.</param>
+        /// <param name="commandTarget">The command associated with the change.</param>
+        /// <param name="tick">The current game tick.</param>
+        /// <param name="results">The destination result collection.</param>
+        private static void ApplyRankChange(
+            Officer officer,
+            OfficerRank rank,
+            ISceneNode commandTarget,
+            int tick,
+            ICollection<GameResult> results
+        )
+        {
             OfficerRank previousRank = officer.CurrentRank;
             officer.CurrentRank = rank;
             results.Add(
@@ -180,7 +280,7 @@ namespace Rebellion.Simulation
                     Officer = officer,
                     CommandKind = (int)rank,
                     Detail = (int)previousRank,
-                    Tick = _game.CurrentTick,
+                    Tick = tick,
                 }
             );
             results.Add(
@@ -189,7 +289,7 @@ namespace Rebellion.Simulation
                     Officer = officer,
                     CommandTarget = rank == OfficerRank.None ? null : commandTarget,
                     Context = commandTarget,
-                    Tick = _game.CurrentTick,
+                    Tick = tick,
                 }
             );
         }
