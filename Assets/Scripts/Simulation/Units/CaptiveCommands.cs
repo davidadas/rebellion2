@@ -25,7 +25,6 @@ namespace Rebellion.Simulation
         private readonly FogOfWarCommands _fogOfWarCommands;
         private readonly ProbabilityTable _escapeTable;
         private readonly GameConfig.TickRangeConfig _escapeAttemptInterval;
-        private readonly int _loyaltyShift;
 
         /// <summary>
         /// Creates the custody and escape operations for the active game.
@@ -49,7 +48,6 @@ namespace Rebellion.Simulation
                 fogOfWarCommands ?? throw new ArgumentNullException(nameof(fogOfWarCommands));
             _escapeAttemptInterval = game.Config.Captive.EscapeAttemptInterval;
             _escapeTable = new ProbabilityTable(game.Config.Captive.EscapeTable);
-            _loyaltyShift = game.Config.Captive.EscapeLoyaltyShift;
         }
 
         /// <summary>Establishes custody and records the location revealed at capture time.</summary>
@@ -369,8 +367,6 @@ namespace Rebellion.Simulation
                 officer.CaptorInstanceID = captorInstanceID;
                 return null;
             }
-
-            officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + _loyaltyShift));
 
             return ReleaseOfficer(officer, planet, _game.CurrentTick, captorInstanceID);
         }

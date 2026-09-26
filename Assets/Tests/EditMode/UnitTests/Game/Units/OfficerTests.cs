@@ -216,7 +216,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void SerializeDeserialize_Officer_PreservesAllData()
         {
-            Officer originalOfficer = new Officer
+            Officer originalOfficer = new Officer(canBetray: false, loyalty: 75)
             {
                 IsMain = true,
                 CurrentRank = OfficerRank.Admiral,
@@ -230,7 +230,6 @@ namespace Rebellion.Tests.Game.Units
                 IsForceEligible = true,
                 ForceValue = 75,
                 ForceTrainingAdjustment = 10,
-                CanBetray = false,
                 NextEscapeAttemptTick = 725,
                 MissionReturnParentInstanceID = "return-parent",
                 MissionReturnLocationInstanceID = "return-location",
@@ -239,6 +238,8 @@ namespace Rebellion.Tests.Game.Units
             string xml = SerializationHelper.Serialize(originalOfficer);
             Officer deserializedOfficer = SerializationHelper.Deserialize<Officer>(xml);
 
+            StringAssert.Contains("<CanBetray>False</CanBetray>", xml);
+            StringAssert.Contains("<Loyalty>75</Loyalty>", xml);
             Assert.AreEqual(originalOfficer.IsMain, deserializedOfficer.IsMain, "IsMain mismatch");
             Assert.AreEqual(
                 originalOfficer.CurrentRank,
@@ -279,6 +280,11 @@ namespace Rebellion.Tests.Game.Units
                 originalOfficer.CanBetray,
                 deserializedOfficer.CanBetray,
                 "CanBetray mismatch"
+            );
+            Assert.AreEqual(
+                originalOfficer.Loyalty,
+                deserializedOfficer.Loyalty,
+                "Loyalty mismatch"
             );
             Assert.AreEqual(
                 originalOfficer.MissionReturnParentInstanceID,
@@ -358,26 +364,26 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void IsTraitor_SetToTrue_ReturnsTrue()
+        public void TryAdjustLoyalty_BetrayableOfficer_ChangesAndClampsLoyalty()
         {
-            Officer officer = new Officer();
-            officer.IsTraitor = true;
-            Assert.IsTrue(officer.IsTraitor);
+            Officer officer = new Officer(canBetray: true, loyalty: 75);
+
+            Assert.IsTrue(officer.TryAdjustLoyalty(10));
+            Assert.AreEqual(85, officer.Loyalty);
+            Assert.IsTrue(officer.TryAdjustLoyalty(int.MaxValue));
+            Assert.AreEqual(100, officer.Loyalty);
+            Assert.IsTrue(officer.TryAdjustLoyalty(int.MinValue));
+            Assert.AreEqual(0, officer.Loyalty);
+            Assert.IsFalse(officer.TryAdjustLoyalty(-1));
+            Assert.AreEqual(0, officer.Loyalty);
         }
 
         [Test]
-        public void IsTraitor_SetToFalse_ReturnsFalse()
+        public void TryAdjustLoyalty_NonBetrayableOfficer_DoesNotChangeLoyalty()
         {
-            Officer officer = new Officer();
-            officer.IsTraitor = false;
-            Assert.IsFalse(officer.IsTraitor);
-        }
+            Officer officer = new Officer(canBetray: false, loyalty: 75);
 
-        [Test]
-        public void Loyalty_SetAndGet_ReturnsCorrectValue()
-        {
-            Officer officer = new Officer();
-            officer.Loyalty = 75;
+            Assert.IsFalse(officer.TryAdjustLoyalty(-10));
             Assert.AreEqual(75, officer.Loyalty);
         }
 

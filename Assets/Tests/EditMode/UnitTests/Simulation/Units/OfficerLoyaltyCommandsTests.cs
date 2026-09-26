@@ -15,12 +15,16 @@ namespace Rebellion.Tests.Simulation
     public class OfficerLoyaltyCommandsTests
     {
         [Test]
-        public void ApplyControlShift_FactionGainsPlanet_ShiftsOnlyFreeLivingOfficerLoyalty()
+        public void ApplyControlShift_FactionGainsPlanet_ShiftsBetrayableOfficerLoyalty()
         {
-            GameRoot game = BuildScene(out Planet planet, out Officer empireOfficer);
+            GameRoot game = BuildScene(
+                out Planet planet,
+                out Officer empireOfficer,
+                canBetray: true,
+                loyalty: 50
+            );
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(alliance);
-            empireOfficer.Loyalty = 50;
             Planet alliancePlanet = new Planet
             {
                 InstanceID = "alliance-planet",
@@ -30,19 +34,25 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(alliancePlanet, planet.GetParent());
             Officer allianceOfficer = EntityFactory.CreateOfficer(
                 "alliance-free",
-                alliance.InstanceID
+                alliance.InstanceID,
+                canBetray: true,
+                loyalty: 50
             );
-            allianceOfficer.Loyalty = 50;
             game.AttachNode(allianceOfficer, alliancePlanet);
             Officer commander = EntityFactory.CreateOfficer(
                 "alliance-command",
-                alliance.InstanceID
+                alliance.InstanceID,
+                canBetray: true,
+                loyalty: 50
             );
-            commander.Loyalty = 50;
             commander.CurrentRank = OfficerRank.General;
             game.AttachNode(commander, alliancePlanet);
-            Officer captive = EntityFactory.CreateOfficer("empire-captive", "empire");
-            captive.Loyalty = 50;
+            Officer captive = EntityFactory.CreateOfficer(
+                "empire-captive",
+                "empire",
+                canBetray: true,
+                loyalty: 50
+            );
             captive.IsCaptured = true;
             game.AttachNode(captive, alliancePlanet);
             OfficerLoyaltyCommands system = new OfficerLoyaltyCommands(
@@ -54,16 +64,35 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(55, allianceOfficer.Loyalty);
             Assert.AreEqual(45, empireOfficer.Loyalty);
-            Assert.AreEqual(50, commander.Loyalty);
-            Assert.AreEqual(50, captive.Loyalty);
+            Assert.AreEqual(55, commander.Loyalty);
+            Assert.AreEqual(45, captive.Loyalty);
+        }
+
+        [Test]
+        public void ApplyControlShift_OfficerCannotBetray_DoesNotShiftLoyalty()
+        {
+            GameRoot game = BuildScene(out _, out Officer officer, canBetray: false, loyalty: 50);
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(alliance);
+            OfficerLoyaltyCommands commands = new OfficerLoyaltyCommands(
+                game,
+                new SequenceRNG(new[] { 5 })
+            );
+
+            commands.ApplyControlShift(alliance);
+
+            Assert.AreEqual(50, officer.Loyalty);
         }
 
         [Test]
         public void TryResolveMissionBetrayal_LowLoyaltyOfficer_FoilsWithoutRevealingIdentity()
         {
-            GameRoot game = BuildScene(out Planet planet, out Officer officer);
-            officer.CanBetray = true;
-            officer.Loyalty = 0;
+            GameRoot game = BuildScene(
+                out Planet planet,
+                out Officer officer,
+                canBetray: true,
+                loyalty: 0
+            );
             StubMission mission = CreateMission(game, planet, officer);
 
             bool betrayed = new OfficerLoyaltyCommands(
@@ -73,15 +102,17 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(betrayed);
             Assert.IsEmpty(results);
-            Assert.IsFalse(officer.IsTraitor);
         }
 
         [Test]
         public void TryResolveMissionBetrayal_ForceCapableCompanion_DiscoversTraitor()
         {
-            GameRoot game = BuildScene(out Planet planet, out Officer traitor);
-            traitor.CanBetray = true;
-            traitor.Loyalty = 0;
+            GameRoot game = BuildScene(
+                out Planet planet,
+                out Officer traitor,
+                canBetray: true,
+                loyalty: 0
+            );
             Officer discoverer = new Officer
             {
                 InstanceID = "discoverer",
@@ -99,10 +130,44 @@ namespace Rebellion.Tests.Simulation
 
             TraitorDiscoveredResult result = results.OfType<TraitorDiscoveredResult>().Single();
             Assert.IsTrue(betrayed);
-            Assert.IsTrue(traitor.IsTraitor);
             Assert.AreSame(traitor, result.Officer);
             Assert.AreSame(discoverer, result.DiscoveredBy);
             Assert.AreSame(planet, result.Context);
+        }
+
+        [Test]
+        public void TryResolveMissionBetrayal_PreviouslyReportedOfficer_RepeatsDiscovery()
+        {
+            GameRoot game = BuildScene(
+                out Planet planet,
+                out Officer traitor,
+                canBetray: true,
+                loyalty: 0
+            );
+            Officer discoverer = new Officer
+            {
+                InstanceID = "discoverer",
+                OwnerInstanceID = traitor.OwnerInstanceID,
+                ForceValue = 100,
+            };
+            game.AttachNode(discoverer, planet);
+            StubMission mission = CreateMission(game, planet, traitor);
+            mission.AddChild(discoverer);
+            OfficerLoyaltyCommands commands = new OfficerLoyaltyCommands(game, new StubRNG());
+
+            bool firstBetrayal = commands.TryResolveMissionBetrayal(
+                mission,
+                out List<GameResult> firstResults
+            );
+            bool repeatedBetrayal = commands.TryResolveMissionBetrayal(
+                mission,
+                out List<GameResult> repeatedResults
+            );
+
+            Assert.IsTrue(firstBetrayal);
+            Assert.AreEqual(1, firstResults.OfType<TraitorDiscoveredResult>().Count());
+            Assert.IsTrue(repeatedBetrayal);
+            Assert.AreEqual(1, repeatedResults.OfType<TraitorDiscoveredResult>().Count());
         }
 
         [TestCase(80, 19, true)]
@@ -113,9 +178,12 @@ namespace Rebellion.Tests.Simulation
             bool expectedBetrayal
         )
         {
-            GameRoot game = BuildScene(out Planet planet, out Officer officer);
-            officer.CanBetray = true;
-            officer.Loyalty = loyalty;
+            GameRoot game = BuildScene(
+                out Planet planet,
+                out Officer officer,
+                canBetray: true,
+                loyalty: loyalty
+            );
             StubMission mission = CreateMission(game, planet, officer);
 
             bool betrayed = new OfficerLoyaltyCommands(
@@ -129,9 +197,12 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void TryResolveMissionBetrayal_CommandOfficer_DoesNotBetray()
         {
-            GameRoot game = BuildScene(out Planet planet, out Officer officer);
-            officer.CanBetray = true;
-            officer.Loyalty = 0;
+            GameRoot game = BuildScene(
+                out Planet planet,
+                out Officer officer,
+                canBetray: true,
+                loyalty: 0
+            );
             officer.CurrentRank = OfficerRank.Admiral;
             StubMission mission = CreateMission(game, planet, officer);
 
@@ -148,10 +219,17 @@ namespace Rebellion.Tests.Simulation
         /// </summary>
         /// <param name="planet">Receives the planet.</param>
         /// <param name="officer">Receives the officer.</param>
+        /// <param name="canBetray">Whether the officer's loyalty can change and permit betrayal.</param>
+        /// <param name="loyalty">The officer's starting loyalty.</param>
         /// <returns>The constructed scene.</returns>
-        private static GameRoot BuildScene(out Planet planet, out Officer officer)
+        private static GameRoot BuildScene(
+            out Planet planet,
+            out Officer officer,
+            bool canBetray = false,
+            int loyalty = 100
+        )
         {
-            GameConfig config = TestConfig.Create();
+            GameConfig config = new GameConfig();
             config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Minimum = 0;
             config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Maximum = 5;
             GameRoot game = new GameRoot(config);
@@ -165,7 +243,7 @@ namespace Rebellion.Tests.Simulation
                 IsColonized = true,
             };
             game.AttachNode(planet, sector);
-            officer = EntityFactory.CreateOfficer("officer", "empire");
+            officer = EntityFactory.CreateOfficer("officer", "empire", canBetray, loyalty);
             game.AttachNode(officer, planet);
             return game;
         }

@@ -42,7 +42,12 @@ namespace Rebellion.Simulation
                 PlanetOwnershipChangedResult result in results
                     ?? Array.Empty<PlanetOwnershipChangedResult>()
             )
+            {
+                if (result?.PreviousOwner?.InstanceID == result?.NewOwner?.InstanceID)
+                    continue;
+
                 _commands.ApplyControlShift(result?.NewOwner);
+            }
 
             return new List<GameResult>();
         }

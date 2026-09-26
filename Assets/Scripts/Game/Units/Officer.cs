@@ -225,11 +225,18 @@ namespace Rebellion.Game.Units
     /// </summary>
     public class Officer : LeafNode, IMissionParticipant, IMovable, IEncyclopediaSource
     {
+        private const int _ratingPercentScale = 100;
+
+        [PersistableMember(Name = nameof(CanBetray))]
+        private bool _canBetray;
+
+        [PersistableMember(Name = nameof(Loyalty))]
+        private int _loyalty;
+
         public string EncyclopediaImagePath { get; set; }
         public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
             new List<EncyclopediaEntryStat>();
         public string EncyclopediaDescription { get; set; }
-        private const int _ratingPercentScale = 100;
 
         // Research Info.
         public int ShipResearch { get; set; }
@@ -247,9 +254,16 @@ namespace Rebellion.Game.Units
         public bool CanEscape { get; set; }
         public int NextEscapeAttemptTick { get; set; }
         public bool IsKilled { get; set; }
-        public bool CanBetray { get; set; }
-        public bool IsTraitor { get; set; }
-        public int Loyalty { get; set; }
+
+        /// <summary>
+        /// Gets whether this officer's loyalty can change and permit betrayal.
+        /// </summary>
+        public bool CanBetray => _canBetray;
+
+        /// <summary>
+        /// Gets this officer's current loyalty.
+        /// </summary>
+        public int Loyalty => _loyalty;
 
         // Injury Info.
         public int InjuryPoints { get; set; }
@@ -350,6 +364,35 @@ namespace Rebellion.Game.Units
         /// </summary>
         public Officer() { }
 
+        /// <summary>
+        /// Creates an officer with authored loyalty settings.
+        /// </summary>
+        /// <param name="canBetray">Whether the officer's loyalty can change and permit betrayal.</param>
+        /// <param name="loyalty">The officer's starting loyalty.</param>
+        public Officer(bool canBetray, int loyalty)
+        {
+            _canBetray = canBetray;
+            _loyalty = Math.Clamp(loyalty, 0, 100);
+        }
+
+        /// <summary>
+        /// Applies a signed loyalty adjustment when this officer's loyalty can change.
+        /// </summary>
+        /// <param name="adjustment">The signed amount to apply.</param>
+        /// <returns>True when the stored loyalty changed; otherwise false.</returns>
+        public bool TryAdjustLoyalty(int adjustment)
+        {
+            if (!CanBetray || adjustment == 0)
+                return false;
+
+            int adjustedLoyalty = (int)Math.Clamp((long)_loyalty + adjustment, 0L, 100L);
+            if (adjustedLoyalty == _loyalty)
+                return false;
+
+            _loyalty = adjustedLoyalty;
+            return true;
+        }
+
         /// <summary>Creates an empty officer copy.</summary>
         /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new Officer();
@@ -372,9 +415,8 @@ namespace Rebellion.Game.Units
             copy.CanEscape = CanEscape;
             copy.NextEscapeAttemptTick = NextEscapeAttemptTick;
             copy.IsKilled = IsKilled;
-            copy.CanBetray = CanBetray;
-            copy.IsTraitor = IsTraitor;
-            copy.Loyalty = Loyalty;
+            copy._canBetray = _canBetray;
+            copy._loyalty = _loyalty;
             copy.InjuryPoints = InjuryPoints;
             copy.JediProbability = JediProbability;
             copy.JediLevel = JediLevel;

@@ -106,7 +106,7 @@ namespace Rebellion.Simulation
             officer is { IsCaptured: false, IsKilled: false } && officer.ForceRank > 0;
 
         /// <summary>
-        /// Marks a discovered betrayer as a known traitor and records who exposed them and where.
+        /// Records who exposed a mission betrayal and where.
         /// </summary>
         /// <param name="mission">The mission.</param>
         /// <param name="defector">The defector.</param>
@@ -119,7 +119,6 @@ namespace Rebellion.Simulation
             ICollection<GameResult> results
         )
         {
-            defector.IsTraitor = true;
             results.Add(
                 new TraitorDiscoveredResult
                 {
@@ -150,26 +149,14 @@ namespace Rebellion.Simulation
             if (loyaltyShift == 0)
                 return;
 
-            foreach (
-                Officer officer in _game.GetSceneNodesByType<Officer>().Where(IsFreeLivingOfficer)
-            )
+            foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
             {
                 int signedShift =
                     officer.GetOwnerInstanceID() == incomingFaction.InstanceID
                         ? loyaltyShift
                         : -loyaltyShift;
-                officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + signedShift));
+                officer.TryAdjustLoyalty(signedShift);
             }
-        }
-
-        /// <summary>
-        /// Returns whether an officer participates in galaxy-wide loyalty shifts.
-        /// </summary>
-        /// <param name="officer">The officer to inspect.</param>
-        /// <returns>True for living, uncaptured officers without command rank.</returns>
-        private static bool IsFreeLivingOfficer(Officer officer)
-        {
-            return officer is { CurrentRank: OfficerRank.None, IsCaptured: false, IsKilled: false };
         }
     }
 }

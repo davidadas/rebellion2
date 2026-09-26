@@ -685,10 +685,17 @@ public static class EntityFactory
     /// </summary>
     /// <param name="id">The id.</param>
     /// <param name="factionId">The faction id.</param>
+    /// <param name="canBetray">Whether the officer's loyalty can change and permit betrayal.</param>
+    /// <param name="loyalty">The officer's starting loyalty.</param>
     /// <returns>The created officer.</returns>
-    public static Officer CreateOfficer(string id, string factionId)
+    public static Officer CreateOfficer(
+        string id,
+        string factionId,
+        bool canBetray = false,
+        int loyalty = 100
+    )
     {
-        return new Officer
+        return new Officer(canBetray, loyalty)
         {
             InstanceID = id,
             DisplayName = id,
