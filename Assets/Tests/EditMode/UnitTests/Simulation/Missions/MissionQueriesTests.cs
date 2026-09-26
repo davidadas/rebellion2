@@ -243,22 +243,30 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void GetMissionOdds_Default_DoesNotExposeHiddenBetrayalState()
         {
-            (GameRoot game, Planet _, Planet target, Officer diplomat, MissionQueries missions) =
-                BuildMissionOddsScene("empire");
+            (
+                GameRoot game,
+                Planet origin,
+                Planet target,
+                Officer loyalDiplomat,
+                MissionQueries missions
+            ) = BuildMissionOddsScene("empire");
             game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
             {
                 { -100, 50 },
             };
-
-            diplomat.CanBetray = false;
-            diplomat.Loyalty = 100;
-            MissionOdds loyalOdds = missions.GetMissionOdds(
-                CreateContext(DiplomacyMission.MissionTypeID, diplomat, target)
+            Officer betrayalDiplomat = EntityFactory.CreateOfficer(
+                "betrayal-diplomat",
+                "empire",
+                canBetray: true,
+                loyalty: 0
             );
-            diplomat.CanBetray = true;
-            diplomat.Loyalty = 0;
+            game.AttachNode(betrayalDiplomat, origin);
+
+            MissionOdds loyalOdds = missions.GetMissionOdds(
+                CreateContext(DiplomacyMission.MissionTypeID, loyalDiplomat, target)
+            );
             MissionOdds betrayalOdds = missions.GetMissionOdds(
-                CreateContext(DiplomacyMission.MissionTypeID, diplomat, target)
+                CreateContext(DiplomacyMission.MissionTypeID, betrayalDiplomat, target)
             );
 
             Assert.IsNotNull(loyalOdds);

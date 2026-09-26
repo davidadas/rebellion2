@@ -23,10 +23,10 @@ namespace Rebellion.Tests.Simulation
         public void UpdateMission_BetrayingOfficer_ProducesFailedCompletion()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
-                factionOwnsPlanet: true
+                factionOwnsPlanet: true,
+                canBetray: true,
+                loyalty: 0
             );
-            officer.CanBetray = true;
-            officer.Loyalty = 0;
             StubMission mission = CreateMission(game, planet, officer);
             mission.Initiate(0);
             MissionCommands system = TestSystems.CreateMissionCommands(
@@ -3419,13 +3419,15 @@ namespace Rebellion.Tests.Simulation
         /// Builds scene.
         /// </summary>
         /// <param name="factionOwnsPlanet">Whether faction owns planet.</param>
+        /// <param name="canBetray">Whether the officer's loyalty can change and permit betrayal.</param>
+        /// <param name="loyalty">The officer's starting loyalty.</param>
         /// <returns>The constructed scene.</returns>
         private (
             GameRoot game,
             Planet planet,
             Officer officer,
             MovementCommands movement
-        ) BuildScene(bool factionOwnsPlanet)
+        ) BuildScene(bool factionOwnsPlanet, bool canBetray = false, int loyalty = 100)
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -3452,7 +3454,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(planet, sector);
 
-            Officer officer = new Officer
+            Officer officer = new Officer(canBetray, loyalty)
             {
                 InstanceID = "o1",
                 OwnerInstanceID = "empire",
