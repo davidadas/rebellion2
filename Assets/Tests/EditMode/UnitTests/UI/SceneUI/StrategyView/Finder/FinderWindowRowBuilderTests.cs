@@ -390,16 +390,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             CollectionAssert.AreEqual(
                 new[]
                 {
+                    "Admiral Han - Fleet Alpha (Enroute)",
                     "Agent - Alpha (Captured)",
-                    "Han - Fleet Alpha (Enroute) (Admiral)",
-                    "Leia - Alpha (Injured) (General)",
+                    "General Leia - Alpha (Injured)",
                 },
                 rows.Select(row => row.Name)
             );
-            Assert.AreEqual(PlanetIcon.Mission, rows[0].TargetIcon);
-            Assert.AreSame(mission, rows[0].Mission);
-            Assert.AreEqual(PlanetIcon.Fleet, rows[1].TargetIcon);
-            Assert.AreSame(fleet, rows[1].Fleet);
+            Assert.AreEqual(PlanetIcon.Fleet, rows[0].TargetIcon);
+            Assert.AreSame(fleet, rows[0].Fleet);
+            Assert.AreEqual(PlanetIcon.Mission, rows[1].TargetIcon);
+            Assert.AreSame(mission, rows[1].Mission);
             Assert.AreEqual(PlanetIcon.Defense, rows[2].TargetIcon);
         }
 

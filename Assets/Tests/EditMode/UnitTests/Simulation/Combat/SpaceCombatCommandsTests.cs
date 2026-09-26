@@ -64,6 +64,135 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetCommandModifiers_MultipleEligibleOfficers_SelectsBestFleetAdmiralAndSystemOrFleetCommander()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Fleet firstFleet = CreateFleet(game, "first", "empire", planet, 1, 100, 10);
+            Fleet secondFleet = CreateFleet(game, "second", "empire", planet, 1, 100, 10);
+            Officer firstAdmiral = new Officer
+            {
+                InstanceID = "first-admiral",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.Admiral,
+            };
+            firstAdmiral.SetBaseRating(SkillRating.Leadership, 40);
+            Officer secondAdmiral = new Officer
+            {
+                InstanceID = "second-admiral",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.Admiral,
+            };
+            secondAdmiral.SetBaseRating(SkillRating.Leadership, 80);
+            Officer fleetCommander = new Officer
+            {
+                InstanceID = "fleet-commander",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.Commander,
+            };
+            fleetCommander.SetBaseRating(SkillRating.Combat, 60);
+            Officer systemCommander = new Officer
+            {
+                InstanceID = "system-commander",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.Commander,
+            };
+            systemCommander.SetBaseRating(SkillRating.Combat, 70);
+            game.AttachNode(firstAdmiral, firstFleet.GetChildren<CapitalShip>().Single());
+            game.AttachNode(fleetCommander, firstFleet.GetChildren<CapitalShip>().Single());
+            game.AttachNode(secondAdmiral, secondFleet.GetChildren<CapitalShip>().Single());
+            game.AttachNode(systemCommander, planet);
+
+            SpaceCombatCommandModifiers modifiers = SpaceCombatCommands.GetCommandModifiers(
+                new[] { firstFleet, secondFleet },
+                planet,
+                "empire"
+            );
+
+            Assert.AreEqual(80, modifiers.AdmiralLeadership);
+            Assert.AreEqual(70, modifiers.CommanderCombat);
+        }
+
+        [Test]
+        public void GetCommandModifiers_UnavailableAndNonparticipatingOfficers_IgnoresThem()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Fleet participating = CreateFleet(game, "participating", "empire", planet, 1, 100, 10);
+            Fleet excluded = CreateFleet(game, "excluded", "empire", planet, 1, 100, 10);
+            Officer activeAdmiral = new Officer
+            {
+                InstanceID = "active-admiral",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.Admiral,
+            };
+            activeAdmiral.SetBaseRating(SkillRating.Leadership, 30);
+            Officer killedAdmiral = new Officer
+            {
+                InstanceID = "killed-admiral",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.Admiral,
+                IsKilled = true,
+            };
+            killedAdmiral.SetBaseRating(SkillRating.Leadership, 100);
+            Officer excludedAdmiral = new Officer
+            {
+                InstanceID = "excluded-admiral",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.Admiral,
+            };
+            excludedAdmiral.SetBaseRating(SkillRating.Leadership, 90);
+            Officer activeCommander = new Officer
+            {
+                InstanceID = "active-commander",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.Commander,
+            };
+            activeCommander.SetBaseRating(SkillRating.Combat, 40);
+            Officer retiredCommander = new Officer
+            {
+                InstanceID = "retired-commander",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.Commander,
+                IsRetired = true,
+            };
+            retiredCommander.SetBaseRating(SkillRating.Combat, 100);
+            CapitalShip participatingShip = participating.GetChildren<CapitalShip>().Single();
+            game.AttachNode(activeAdmiral, participatingShip);
+            game.AttachNode(killedAdmiral, participatingShip);
+            game.AttachNode(activeCommander, participatingShip);
+            game.AttachNode(excludedAdmiral, excluded.GetChildren<CapitalShip>().Single());
+            game.AttachNode(retiredCommander, planet);
+
+            SpaceCombatCommandModifiers modifiers = SpaceCombatCommands.GetCommandModifiers(
+                new[] { participating },
+                planet,
+                "empire"
+            );
+
+            Assert.AreEqual(30, modifiers.AdmiralLeadership);
+            Assert.AreEqual(40, modifiers.CommanderCombat);
+        }
+
+        [Test]
         public void Resolve_CompletedEncounter_ReturnsAggregateDamage()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -3147,6 +3276,8 @@ namespace Rebellion.Tests.Simulation
                 {
                     SpaceCombat = new GameConfig.SpaceCombatConfig
                     {
+                        AdmiralLeadershipDivisor = 10,
+                        CommanderCombatDivisor = 20,
                         AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                         AutoResolveMaximumIterations = 4096,
                         AutoResolveStagnationIterations = 1200,

@@ -86,7 +86,7 @@ namespace Rebellion.SceneGraph
         /// Returns the DisplayName of the entity.
         /// </summary>
         /// <returns></returns>
-        public string GetDisplayName()
+        public virtual string GetDisplayName()
         {
             return DisplayName;
         }

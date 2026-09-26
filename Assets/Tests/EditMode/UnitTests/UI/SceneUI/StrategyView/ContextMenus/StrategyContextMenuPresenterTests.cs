@@ -122,7 +122,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual("Fast", FindCommandText(rootRows[1]).text);
             Assert.AreEqual("Checked", FindCommandText(rootRows[2]).text);
             Assert.AreEqual("Child", FindCommandText(childRow).text);
-            Assert.AreEqual(new RectInt(6, 0, 17, 20), parentIconRect);
+            Assert.AreEqual(new RectInt(6, 2, 17, 20), parentIconRect);
             Assert.AreEqual(new RectInt(4, 7, 14, 14), checkIconRect);
         }
 

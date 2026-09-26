@@ -157,6 +157,9 @@ namespace Rebellion.Simulation
             MaintenanceCommands maintenanceSystem = GetService<MaintenanceCommands>();
             maintenanceSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() => maintenanceSystem.ResultsProduced -= ProcessImmediateResults);
+            OfficerCommandCommands officerCommandSystem = GetService<OfficerCommandCommands>();
+            officerCommandSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => officerCommandSystem.ResultsProduced -= ProcessImmediateResults);
             BombardmentCommands bombardmentSystem = GetService<BombardmentCommands>();
             bombardmentSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() => bombardmentSystem.ResultsProduced -= ProcessImmediateResults);

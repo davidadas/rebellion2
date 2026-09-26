@@ -1993,6 +1993,8 @@ namespace Rebellion.Tests.Simulation
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
             config.Combat.SpaceCombat = new GameConfig.SpaceCombatConfig
             {
+                AdmiralLeadershipDivisor = 10,
+                CommanderCombatDivisor = 20,
                 LaserCannonCapitalDamageMultiplier = 1.0 / 6.0,
                 AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                 AutoResolveMaximumIterations = 4096,

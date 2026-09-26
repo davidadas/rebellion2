@@ -121,6 +121,11 @@ public enum StrategyMenuAction
     AdvisorChatMessages,
     AdvisorAdviceMessages,
     ToggleIdleBarTracking,
+    Command,
+    CommandNone,
+    CommandCommander,
+    CommandAdmiral,
+    CommandGeneral,
 }
 
 /// <summary>
@@ -128,6 +133,34 @@ public enum StrategyMenuAction
 /// </summary>
 public static class StrategyMenuActionExtensions
 {
+    /// <summary>
+    /// Tries to resolve a command-menu action to its officer rank.
+    /// </summary>
+    /// <param name="action">The semantic action identifier.</param>
+    /// <param name="rank">Receives the matching officer rank.</param>
+    /// <returns>True when the action is a command appointment.</returns>
+    public static bool TryGetOfficerRank(this StrategyMenuAction action, out OfficerRank rank)
+    {
+        switch (action)
+        {
+            case StrategyMenuAction.CommandNone:
+                rank = OfficerRank.None;
+                return true;
+            case StrategyMenuAction.CommandCommander:
+                rank = OfficerRank.Commander;
+                return true;
+            case StrategyMenuAction.CommandAdmiral:
+                rank = OfficerRank.Admiral;
+                return true;
+            case StrategyMenuAction.CommandGeneral:
+                rank = OfficerRank.General;
+                return true;
+            default:
+                rank = default;
+                return false;
+        }
+    }
+
     /// <summary>
     /// Tries to resolve a game-speed action to its simulation speed.
     /// </summary>

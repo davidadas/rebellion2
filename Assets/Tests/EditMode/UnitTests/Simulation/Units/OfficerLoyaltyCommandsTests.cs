@@ -15,12 +15,13 @@ namespace Rebellion.Tests.Simulation
     public class OfficerLoyaltyCommandsTests
     {
         [Test]
-        public void ApplyControlShift_FactionGainsPlanet_ShiftsOnlyFreeLivingOfficerLoyalty()
+        public void ApplyControlShift_FactionGainsPlanet_ShiftsBetrayableOfficerLoyaltyRegardlessOfRank()
         {
             GameRoot game = BuildScene(out Planet planet, out Officer empireOfficer);
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(alliance);
             empireOfficer.Loyalty = 50;
+            empireOfficer.CanBetray = true;
             Planet alliancePlanet = new Planet
             {
                 InstanceID = "alliance-planet",
@@ -33,16 +34,26 @@ namespace Rebellion.Tests.Simulation
                 alliance.InstanceID
             );
             allianceOfficer.Loyalty = 50;
+            allianceOfficer.CanBetray = true;
             game.AttachNode(allianceOfficer, alliancePlanet);
             Officer commander = EntityFactory.CreateOfficer(
                 "alliance-command",
                 alliance.InstanceID
             );
             commander.Loyalty = 50;
+            commander.CanBetray = true;
             commander.CurrentRank = OfficerRank.General;
             game.AttachNode(commander, alliancePlanet);
+            Officer loyalist = EntityFactory.CreateOfficer(
+                "alliance-loyalist",
+                alliance.InstanceID
+            );
+            loyalist.Loyalty = 50;
+            loyalist.CanBetray = false;
+            game.AttachNode(loyalist, alliancePlanet);
             Officer captive = EntityFactory.CreateOfficer("empire-captive", "empire");
             captive.Loyalty = 50;
+            captive.CanBetray = true;
             captive.IsCaptured = true;
             game.AttachNode(captive, alliancePlanet);
             OfficerLoyaltyCommands system = new OfficerLoyaltyCommands(
@@ -54,7 +65,8 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(55, allianceOfficer.Loyalty);
             Assert.AreEqual(45, empireOfficer.Loyalty);
-            Assert.AreEqual(50, commander.Loyalty);
+            Assert.AreEqual(55, commander.Loyalty);
+            Assert.AreEqual(50, loyalist.Loyalty);
             Assert.AreEqual(50, captive.Loyalty);
         }
 

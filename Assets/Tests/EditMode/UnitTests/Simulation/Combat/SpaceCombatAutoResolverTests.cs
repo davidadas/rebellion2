@@ -26,6 +26,183 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Resolve_AdmiralLeadership_IncreasesCapitalShipManeuverability()
+        {
+            CapitalShip uncommandedShip = CreateShip("uncommanded", hull: 100, weaponStrength: 0);
+            CapitalShip commandedShip = CreateShip("commanded", hull: 100, weaponStrength: 0);
+            foreach (CapitalShip ship in new[] { uncommandedShip, commandedShip })
+            {
+                ship.SublightSpeed = 1;
+                ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 20;
+                ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            }
+            Starfighter firstTarget = CreateFighter("first-target", 100, weaponStrength: 0);
+            Starfighter secondTarget = CreateFighter("second-target", 100, weaponStrength: 0);
+            firstTarget.SublightSpeed = 10;
+            secondTarget.SublightSpeed = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveMinimumManeuverRatio = 0.01;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult uncommanded = Resolve(
+                config,
+                new[] { uncommandedShip },
+                new List<Starfighter>(),
+                new List<CapitalShip>(),
+                new[] { firstTarget },
+                defenderCanWithdraw: true
+            );
+            SpaceCombatResult commanded = Resolve(
+                config,
+                new[] { commandedShip },
+                new List<Starfighter>(),
+                new List<CapitalShip>(),
+                new[] { secondTarget },
+                defenderCanWithdraw: true,
+                attackerCommand: new SpaceCombatCommandModifiers(
+                    admiralLeadership: 100,
+                    commanderCombat: 0
+                )
+            );
+
+            Assert.AreEqual(98, GetFighterOutcome(uncommanded, firstTarget).SquadronSizeAfter);
+            Assert.AreEqual(80, GetFighterOutcome(commanded, secondTarget).SquadronSizeAfter);
+        }
+
+        [Test]
+        public void Resolve_AdmiralLeadership_ImprovesCapitalShipReactionRate()
+        {
+            CapitalShip uncommandedShip = CreateShip("uncommanded", hull: 100, weaponStrength: 2);
+            CapitalShip commandedShip = CreateShip("commanded", hull: 100, weaponStrength: 2);
+            uncommandedShip.WeaponRecharge = 0;
+            commandedShip.WeaponRecharge = 0;
+            CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
+            CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AdmiralLeadershipDivisor = 50;
+            config.AutoResolveMaximumIterations = 2;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult uncommanded = Resolve(
+                config,
+                new[] { uncommandedShip },
+                new List<Starfighter>(),
+                new[] { firstTarget },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+            SpaceCombatResult commanded = Resolve(
+                config,
+                new[] { commandedShip },
+                new List<Starfighter>(),
+                new[] { secondTarget },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true,
+                attackerCommand: new SpaceCombatCommandModifiers(
+                    admiralLeadership: 100,
+                    commanderCombat: 0
+                )
+            );
+
+            Assert.AreEqual(98, GetShipOutcome(uncommanded, firstTarget).HullAfter);
+            Assert.AreEqual(96, GetShipOutcome(commanded, secondTarget).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_CommanderCombat_IncreasesStarfighterEffectiveness()
+        {
+            Starfighter uncommandedFighter = CreateFighter("uncommanded", 1, weaponStrength: 5);
+            Starfighter commandedFighter = CreateFighter("commanded", 1, weaponStrength: 5);
+            CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
+            CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.CommanderCombatDivisor = 25;
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult uncommanded = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { uncommandedFighter },
+                new[] { firstTarget },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+            SpaceCombatResult commanded = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { commandedFighter },
+                new[] { secondTarget },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true,
+                attackerCommand: new SpaceCombatCommandModifiers(
+                    admiralLeadership: 0,
+                    commanderCombat: 100
+                )
+            );
+
+            Assert.AreEqual(95, GetShipOutcome(uncommanded, firstTarget).HullAfter);
+            Assert.AreEqual(91, GetShipOutcome(commanded, secondTarget).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_CommanderCombat_IncreasesStarfighterManeuverability()
+        {
+            CapitalShip firstAttacker = CreateShip("first-attacker", hull: 100, weaponStrength: 0);
+            CapitalShip secondAttacker = CreateShip(
+                "second-attacker",
+                hull: 100,
+                weaponStrength: 0
+            );
+            foreach (CapitalShip ship in new[] { firstAttacker, secondAttacker })
+            {
+                ship.SublightSpeed = 1;
+                ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 20;
+                ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            }
+            Starfighter uncommandedFighter = CreateFighter("uncommanded", 100, weaponStrength: 0);
+            Starfighter commandedFighter = CreateFighter("commanded", 100, weaponStrength: 0);
+            uncommandedFighter.SublightSpeed = 10;
+            commandedFighter.SublightSpeed = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveMinimumManeuverRatio = 0.01;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult uncommanded = Resolve(
+                config,
+                new[] { firstAttacker },
+                new List<Starfighter>(),
+                new List<CapitalShip>(),
+                new[] { uncommandedFighter },
+                defenderCanWithdraw: true
+            );
+            SpaceCombatResult commanded = Resolve(
+                config,
+                new[] { secondAttacker },
+                new List<Starfighter>(),
+                new List<CapitalShip>(),
+                new[] { commandedFighter },
+                defenderCanWithdraw: true,
+                defenderCommand: new SpaceCombatCommandModifiers(
+                    admiralLeadership: 0,
+                    commanderCombat: 100
+                )
+            );
+
+            Assert.AreEqual(
+                98,
+                GetFighterOutcome(uncommanded, uncommandedFighter).SquadronSizeAfter
+            );
+            Assert.AreEqual(99, GetFighterOutcome(commanded, commandedFighter).SquadronSizeAfter);
+        }
+
+        [Test]
         public void Resolve_WeaponsAcrossSeveralArcs_UsesEveryReadyArc()
         {
             CapitalShip singleArc = CreateShip("single-arc", hull: 100, weaponStrength: 1);
@@ -1579,6 +1756,8 @@ namespace Rebellion.Tests.Simulation
         /// <param name="attackerCanWithdraw">Whether attacker can withdraw.</param>
         /// <param name="defenderCanWithdraw">Whether defender can withdraw.</param>
         /// <param name="random">The random.</param>
+        /// <param name="attackerCommand">The attacker's tactical command modifiers.</param>
+        /// <param name="defenderCommand">The defender's tactical command modifiers.</param>
         /// <returns>The resolved value.</returns>
         private static SpaceCombatResult Resolve(
             GameConfig.SpaceCombatConfig config,
@@ -1588,7 +1767,9 @@ namespace Rebellion.Tests.Simulation
             IReadOnlyList<Starfighter> defenderFighters,
             bool attackerCanWithdraw = false,
             bool defenderCanWithdraw = false,
-            IRandomNumberProvider random = null
+            IRandomNumberProvider random = null,
+            SpaceCombatCommandModifiers attackerCommand = default,
+            SpaceCombatCommandModifiers defenderCommand = default
         )
         {
             return CreateResolver(config, random)
@@ -1598,7 +1779,9 @@ namespace Rebellion.Tests.Simulation
                     defenderShips,
                     defenderFighters,
                     CreateWithdrawalGroups(attackerCanWithdraw, attackerShips, attackerFighters),
-                    CreateWithdrawalGroups(defenderCanWithdraw, defenderShips, defenderFighters)
+                    CreateWithdrawalGroups(defenderCanWithdraw, defenderShips, defenderFighters),
+                    attackerCommand,
+                    defenderCommand
                 );
         }
 
@@ -1610,6 +1793,8 @@ namespace Rebellion.Tests.Simulation
         {
             return new GameConfig.SpaceCombatConfig
             {
+                AdmiralLeadershipDivisor = 10,
+                CommanderCombatDivisor = 20,
                 LaserCannonCapitalDamageMultiplier = 1.0 / 6.0,
                 AutoResolveFighterWeaponRechargeMultiplier = 3.751,
                 AutoResolveMaximumIterations = 4096,
