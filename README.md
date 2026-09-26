@@ -1,53 +1,57 @@
 # Rebellion 2
 
 An open-source remake of the 1998 strategy game *Star Wars: Rebellion*, built with Unity.
-Despite the name, Rebellion 2 is not a sequel. Think of it as a remaster of the original game,
-but with the updates we have always wanted.
+Despite the name, Rebellion 2 is not a sequel: it is a modernized recreation of the original game
+with the improvements we have always wanted.
 
-<img width="3770" height="2110" alt="image" src="https://github.com/user-attachments/assets/f3b454e3-aa88-4363-b8ba-19d2447acb2e" />
+<img width="3770" height="2110" alt="Rebellion 2 strategy view" src="https://github.com/user-attachments/assets/f3b454e3-aa88-4363-b8ba-19d2447acb2e" />
 
-## Current Status
+## Download
+
+Rebellion 2 is available in early access for Windows and macOS.
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://github.com/adasgames/rebellion2-installers/releases/latest/download/Rebellion2-Windows-Setup.exe">
+        <img src="Docs/Assets/windows.svg" width="64" alt="Windows"><br>
+        <strong>Install latest for Windows</strong>
+      </a><br>
+      <sub>64-bit Windows installer</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://github.com/adasgames/rebellion2-installers/releases/download/latest-macos/Rebellion2-macOS.zip">
+        <img src="Docs/Assets/apple.svg" width="64" alt="macOS"><br>
+        <strong>Download latest for macOS</strong>
+      </a><br>
+      <sub>Universal Intel + Apple Silicon app</sub>
+    </td>
+  </tr>
+</table>
+
+[View release notes and all downloads](https://github.com/adasgames/rebellion2-installers/releases/latest)
+or browse the public [installer and launcher source code](https://github.com/adasgames/rebellion2-installers).
+
+The installer verifies ownership automatically. You must own either *Star Wars: Rebellion* or
+*Star Wars: Empire at War: Gold Pack* on GOG or Steam.
+
+> [!IMPORTANT]
+> Rebellion 2 remains in active development. Save compatibility is not guaranteed between releases.
+
+## Project status
 
 Rebellion 2 is approximately **60% complete toward a feature-complete single-player campaign**.
 
-| Area | Estimate |
-| --- | ---: |
-| Foundation and Data | 60% |
-| Strategy Simulation | 60% |
-| Strategic AI | 50% |
-| Missions | 80% |
-| Original Game Events | 85% |
-| Custom Events API | 30% |
-| Tactical Simulation | 0% |
-| Tactical AI | 0% |
-| Strategy Interface | 80% |
-| UI Upscaling | 40% |
-| Save Games | 100% |
-| Settings | 10% |
-| Moddability | 65% |
-| Modding Tools | 0% |
-| Multiplayer | 0% |
-
-**NOTE: Save compatibility is not guaranteed between versions during development.**
-
-## Playing the game
-
-Rebellion 2 is currently available through early-access installers for Windows and macOS:
-
-- [Download the latest Windows installer](https://github.com/adasgames/rebellion2-installers/releases/latest/download/Rebellion2-Windows-Setup.exe)
-- [Download the latest macOS installer](https://github.com/adasgames/rebellion2-installers/releases/download/latest-macos/Rebellion2-macOS.zip)
-- [View release notes and all downloads](https://github.com/adasgames/rebellion2-installers/releases/latest)
-
-macOS builds are updated monthly because their development and release costs are higher.
-
-The [installer and launcher source code](https://github.com/adasgames/rebellion2-installers) is
-publicly available.
-
-The installer verifies ownership automatically. You must own either *Star Wars: Rebellion* or
-*Star Wars: Empire at War: Gold Pack* on **GOG** or **Steam**.
-
-**NOTE: Installed game data and copyrighted assets must NEVER be redistributed, uploaded, or
-shared under any circumstances.**
+| Area | Estimate | Area | Estimate |
+| --- | ---: | --- | ---: |
+| Foundation and Data | 60% | Strategy Simulation | 60% |
+| Strategic AI | 50% | Missions | 80% |
+| Original Game Events | 85% | Custom Events API | 30% |
+| Strategy Interface | 80% | UI Upscaling | 40% |
+| Save Games | 100% | Settings | 10% |
+| Moddability | 65% | Modding Tools | 0% |
+| Tactical Simulation | 0% | Tactical AI | 0% |
+| Multiplayer | 0% | | |
 
 ## Documentation
 
@@ -55,33 +59,30 @@ shared under any circumstances.**
 - [Modding and content packs](Docs/Modding/Index.md)
 - [Creating game events](Docs/Modding/Events/Index.md)
 
-Game assets and generated UI artifacts are intentionally kept outside this source repository.
-For a development checkout, obtain the separate `rebellion2-media` repository and populate the
-ignored development asset directories described in the development guide. CI installs its media
-checkout automatically.
+Game assets and generated UI artifacts live outside this source repository. Development checkouts
+use the separate `rebellion2-media` repository and the ignored asset directories described in the
+[development guide](Docs/Development.md). CI installs its media checkout automatically.
 
-## Reporting bugs
+## Contributing and reporting bugs
 
-Search [existing issues](https://github.com/davidadas/rebellion2/issues) before filing a new bug.
+Focused fixes and improvements are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening
+a pull request.
+
+Before reporting a bug, search the [existing issues](https://github.com/davidadas/rebellion2/issues).
 Include your platform, game version, reproduction steps, expected and actual behavior, and relevant
-logs or screenshots. **DO NOT** attach copyrighted game assets or secrets.
-
-## Contributing
-
-Focused fixes and improvements are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a
-pull request.
+logs or screenshots. Do not attach copyrighted game assets or secrets.
 
 ## Legal
 
 This unofficial fan project is not affiliated with or endorsed by Disney, Lucasfilm, or the owners
 of *Star Wars*. Copyrighted game assets are not distributed in this repository and must not be
-redistributed by players, modders, or contributors.
+redistributed by players, modders, or contributors. Installed game data and copyrighted assets must
+not be redistributed, uploaded, or shared.
 
 Original source code authored by David Adams for this project is available under the
 [PolyForm Noncommercial License 1.0.0](LICENSE.md). It may be used, modified, and redistributed for
 permitted noncommercial purposes.
 
-**The license does not cover content or assets.** This includes images, icons, artwork, 3D models,
-textures, animations, audio, video, fonts, game data, other media, and any third-party software,
-names, or trademarks. The software license grants no permission to use, modify, or redistribute
-those excluded materials; they remain subject to their respective rights and licenses.
+The license does not cover content or assets, including images, icons, artwork, 3D models, textures,
+animations, audio, video, fonts, game data, other media, third-party software, names, or trademarks.
+Those materials remain subject to their respective rights and licenses.
